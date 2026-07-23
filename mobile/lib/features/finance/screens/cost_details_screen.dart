@@ -55,9 +55,14 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     final cost = provider.costById(widget.costId);
     final payments = provider.paymentsForCost(widget.costId);
     final schedules = provider.schedulesForCost(widget.costId);
+    final pendingSchedules = schedules.where((item) => item.isPending).toList()
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    final nextSchedule = pendingSchedules.isEmpty
+        ? null
+        : pendingSchedules.first;
     final currency = provider.summary.currency;
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'تفاصيل التكلفة',
       subtitle: cost?.title ?? 'كل ما يخص التكلفة في مكان واحد.',
       showBack: true,
@@ -104,6 +109,26 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                     provider.categoryById(cost.budgetCategoryId)?.name ??
                     cost.categoryName,
               ),
+              if (nextSchedule != null) ...[
+                const SizedBox(height: 14),
+                MoneySectionCard(
+                  title: 'موعد الدفع القادم',
+                  subtitle: 'أقرب موعد دفع معلق لهذه التكلفة.',
+                  icon: LucideIcons.calendarClock,
+                  child: ScheduleCard(
+                    schedule: nextSchedule,
+                    currency: currency,
+                    costTitle: cost.title,
+                    onTap: () => context.push(
+                      AppRouter.moneyScheduleDetails(
+                        widget.weddingPlanId,
+                        cost.id,
+                        nextSchedule.id,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               if (!provider.canManageMoney)
                 const MoneyMessageBanner(
@@ -114,10 +139,8 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                 _CostActions(
                   cost: cost,
                   isSubmitting: provider.isSubmitting,
-                  hasSchedules: schedules.isNotEmpty,
                   onEdit: () => _editCost(cost),
                   onCancel: () => _confirmCancel(cost),
-                  onDelete: () => _confirmDelete(cost),
                 ),
               const SizedBox(height: 22),
               AarastSectionHeader(
@@ -254,25 +277,6 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     }
   }
 
-  Future<void> _confirmDelete(WeddingCost cost) async {
-    final confirmed = await _confirmAction(
-      title: 'حذف التكلفة نهائيًا؟',
-      message:
-          'الحذف متاح فقط قبل وجود دفعات أو مواعيد. لا يمكن التراجع عن هذه الخطوة.',
-      actionLabel: 'حذف نهائي',
-      danger: true,
-    );
-    if (confirmed != true || !mounted) return;
-    final provider = context.read<FinanceProvider>();
-    final ok = await provider.deleteCost(cost);
-    if (!mounted || !ok) return;
-    if (context.canPop()) {
-      context.pop(true);
-    } else {
-      context.go(AppRouter.moneyCosts(widget.weddingPlanId));
-    }
-  }
-
   Future<bool?> _confirmAction({
     required String title,
     required String message,
@@ -323,9 +327,16 @@ class _CostHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = moneyValue(cost.totalAmount);
+    final paid = moneyValue(cost.paidAmount);
+    final progress = total <= 0 ? 0.0 : (paid / total).clamp(0.0, 1.0);
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: AppTheme.heroDecoration(),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        border: Border.all(color: AppTheme.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -334,9 +345,9 @@ class _CostHero extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  cost.title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.ink,
+                  'الإجمالي',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -345,57 +356,99 @@ class _CostHero extends StatelessWidget {
               MoneyStatusBadge(status: cost.status),
             ],
           ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final metrics = <Widget>[
-                MoneyMetricCard(
-                  label: 'الإجمالي',
-                  amount: cost.totalAmount,
-                  currency: currency,
-                  icon: LucideIcons.receipt,
-                ),
-                MoneyMetricCard(
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: MoneyAmountText(
+              amount: cost.totalAmount,
+              currency: currency,
+              color: AppTheme.ink,
+              style: Theme.of(context).textTheme.headlineLarge,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              color: cost.isPaid ? AppTheme.success : AppTheme.burgundy,
+              backgroundColor: AppTheme.border,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _CostHeroValue(
                   label: 'المدفوع',
                   amount: cost.paidAmount,
                   currency: currency,
-                  icon: LucideIcons.checkCircle,
                   color: AppTheme.success,
                 ),
-                MoneyMetricCard(
+              ),
+              Container(
+                width: 1,
+                height: 34,
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+                color: AppTheme.border,
+              ),
+              Expanded(
+                child: _CostHeroValue(
                   label: 'الباقي',
                   amount: cost.remainingAmount,
                   currency: currency,
-                  icon: LucideIcons.clock3,
                   color: moneyValue(cost.remainingAmount) > 0
                       ? AppTheme.warning
                       : AppTheme.success,
                 ),
-              ];
-              if (constraints.maxWidth < 430) {
-                return Column(
-                  children: [
-                    for (var index = 0; index < metrics.length; index++) ...[
-                      metrics[index],
-                      if (index != metrics.length - 1)
-                        const SizedBox(height: 8),
-                    ],
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var index = 0; index < metrics.length; index++) ...[
-                    Expanded(child: metrics[index]),
-                    if (index != metrics.length - 1) const SizedBox(width: 8),
-                  ],
-                ],
-              );
-            },
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CostHeroValue extends StatelessWidget {
+  const _CostHeroValue({
+    required this.label,
+    required this.amount,
+    required this.currency,
+    required this.color,
+  });
+
+  final String label;
+  final Object? amount;
+  final String currency;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: MoneyAmountText(
+            amount: amount,
+            currency: currency,
+            color: color,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -409,15 +462,12 @@ class _CostContextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final party = cost.partyLabel;
-    return AarastCard(
+    return MoneySectionCard(
+      title: 'معلومات التكلفة',
+      icon: LucideIcons.info,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
-            title: 'معلومات التكلفة',
-            icon: LucideIcons.info,
-          ),
-          const SizedBox(height: 12),
           _InfoRow(
             icon: LucideIcons.tags,
             label: 'التصنيف',
@@ -532,18 +582,14 @@ class _CostActions extends StatelessWidget {
   const _CostActions({
     required this.cost,
     required this.isSubmitting,
-    required this.hasSchedules,
     required this.onEdit,
     required this.onCancel,
-    required this.onDelete,
   });
 
   final WeddingCost cost;
   final bool isSubmitting;
-  final bool hasSchedules;
   final VoidCallback onEdit;
   final VoidCallback onCancel;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -552,18 +598,24 @@ class _CostActions extends StatelessWidget {
         message: 'هذه التكلفة ملغاة وسجلها محفوظ للرجوع إليه.',
       );
     }
-    final canDelete = cost.canDelete && !hasSchedules;
-    return AarastCard(
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.empty,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
-            title: 'إدارة التكلفة',
-            subtitle:
-                'الإجراءات موجودة هنا فقط حتى تبقى القائمة الرئيسية نظيفة.',
-            icon: LucideIcons.settings2,
+          Text(
+            'إدارة التكلفة',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -578,15 +630,6 @@ class _CostActions extends StatelessWidget {
                   onPressed: isSubmitting ? null : onCancel,
                   icon: const Icon(LucideIcons.circleSlash2),
                   label: const Text('إلغاء'),
-                ),
-              if (canDelete)
-                OutlinedButton.icon(
-                  onPressed: isSubmitting ? null : onDelete,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.danger,
-                  ),
-                  icon: const Icon(LucideIcons.trash2),
-                  label: const Text('حذف'),
                 ),
             ],
           ),

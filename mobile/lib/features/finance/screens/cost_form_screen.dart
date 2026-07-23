@@ -120,7 +120,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
     );
     if (accessBlock != null) return accessBlock;
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: _editing ? 'تعديل التكلفة' : 'إضافة تكلفة',
       subtitle: 'سجّل الاتفاق مرة واحدة، ثم أضف دفعاته ومواعيده من داخله.',
       showBack: true,
@@ -145,7 +145,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
             ],
-            AarastCard(
+            MoneySectionCard(
+              title: 'بيانات التكلفة',
+              subtitle: 'التصنيف والاسم والقيمة المتفق عليها.',
+              icon: LucideIcons.receipt,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -260,32 +263,28 @@ class _CostFormScreenState extends State<CostFormScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            AarastCard(
+            MoneySectionCard(
+              title: 'الجهة المرتبطة',
+              subtitle: 'اربط التكلفة بمزود أو جهة خارجية عند الحاجة.',
+              icon: LucideIcons.store,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'الجهة',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   SegmentedButton<_PartyKind>(
                     segments: const [
                       ButtonSegment(
                         value: _PartyKind.none,
-                        label: Text('بدون جهة'),
+                        label: Text('بدون مزود'),
                         icon: Icon(LucideIcons.userX),
                       ),
                       ButtonSegment(
                         value: _PartyKind.provider,
-                        label: Text('مزود'),
+                        label: Text('مزود من أعرست'),
                         icon: Icon(LucideIcons.store),
                       ),
                       ButtonSegment(
                         value: _PartyKind.external,
-                        label: Text('خارجية'),
+                        label: Text('مزود خارجي'),
                         icon: Icon(LucideIcons.user),
                       ),
                     ],
@@ -356,7 +355,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            AarastCard(
+            MoneySectionCard(
+              title: 'تفاصيل إضافية',
+              subtitle: 'تاريخ الاتفاق وأي ملاحظة تساعدك لاحقًا.',
+              icon: LucideIcons.fileText,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
@@ -74,11 +74,19 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     );
     final unallocated = total - allocated;
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'إدارة الميزانية',
       subtitle: 'حدد السقف المالي ثم وزّعه على التصنيفات.',
       showBack: true,
       onBack: () => context.pop(false),
+      actions: [
+        IconButton.filledTonal(
+          key: const ValueKey('money-budget-add-category'),
+          onPressed: _openCategoryCreate,
+          tooltip: 'إضافة تصنيف',
+          icon: const Icon(LucideIcons.plus, size: 20),
+        ),
+      ],
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Form(
         key: _formKey,
@@ -93,7 +101,10 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
               MoneyMessageBanner(message: _draftError!, error: true),
               const SizedBox(height: 12),
             ],
-            AarastCard(
+            MoneySectionCard(
+              title: 'الميزانية العامة',
+              subtitle: 'هذا هو الحد الذي تريد ألا تتجاوزه في الخطة.',
+              icon: LucideIcons.walletCards,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -133,77 +144,50 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                     const SizedBox(height: 6),
                     Text(
                       'لا يمكن تغيير العملة بعد تسجيل أول تكلفة.',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.muted,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final narrow = constraints.maxWidth < 330;
-                      final cards = [
-                        MoneyMetricCard(
-                          label: 'الموزع',
-                          amount: allocated,
-                          currency: _currency,
-                          icon: LucideIcons.pieChart,
-                        ),
-                        MoneyMetricCard(
-                          label: total <= 0 ? 'غير موزع' : 'المتبقي للتوزيع',
-                          amount: total <= 0 ? 0 : unallocated,
-                          currency: _currency,
-                          icon: LucideIcons.scale,
-                          color: unallocated < 0
-                              ? AppTheme.danger
-                              : AppTheme.success,
-                        ),
-                      ];
-                      if (narrow) {
-                        return Column(
-                          children: [
-                            cards[0],
-                            const SizedBox(height: 10),
-                            cards[1],
-                          ],
-                        );
-                      }
-                      return Row(
-                        children: [
-                          Expanded(child: cards[0]),
-                          const SizedBox(width: 10),
-                          Expanded(child: cards[1]),
-                        ],
-                      );
-                    },
+                  const SizedBox(height: 16),
+                  _AllocationSummary(
+                    allocated: allocated,
+                    unallocated: total <= 0 ? 0 : unallocated,
+                    total: total,
+                    currency: _currency,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            AarastSectionHeader(
-              title: 'التصنيفات',
-              icon: LucideIcons.tags,
-              actionLabel: 'إضافة تصنيف',
-              onAction: _addRow,
+            Text(
+              'التصنيفات',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'قسّم الميزانية بطريقة تناسب زفافك.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
             ),
             const SizedBox(height: 10),
             if (_rows.isEmpty)
-              const AarastEmptyState(
+              AarastEmptyState(
                 icon: LucideIcons.tags,
                 title: 'لا توجد تصنيفات بعد',
-                message: 'يمكنك حفظ الميزانية الآن وإضافة التصنيفات لاحقًا.',
+                message: 'استخدم زر الإضافة أعلى الشاشة لإنشاء أول تصنيف.',
               )
             else
               for (var index = 0; index < _rows.length; index++) ...[
-                _CategoryEditorRow(
+                _BudgetCategoryRow(
                   key: ValueKey(_rows[index].key),
-                  fieldIndex: index,
                   row: _rows[index],
                   currency: _currency,
-                  canRemove: _rows[index].costsCount == 0,
-                  onChanged: () => setState(() {}),
-                  onRemove: () => _removeRow(index),
+                  onTap: () => _openCategory(_rows[index]),
                 ),
                 const SizedBox(height: 10),
               ],
@@ -273,23 +257,42 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     return null;
   }
 
-  void _addRow() {
-    setState(() {
-      _draftError = null;
-      _rows.add(_CategoryDraft(name: '', amount: null));
-    });
+  Future<void> _openCategoryCreate() async {
+    final createdId = await context.push<String?>(
+      AppRouter.moneyCategoryCreate(widget.weddingPlanId),
+    );
+    if (createdId != null && mounted) await _refreshCategories();
   }
 
-  void _removeRow(int index) {
-    final row = _rows[index];
-    if (row.costsCount > 0) {
-      AarastToast.showInfo(context, 'لا يمكن حذف تصنيف مرتبط بتكاليف.');
-      return;
+  Future<void> _openCategory(_CategoryDraft row) async {
+    final id = row.id;
+    if (id == null) return;
+    final changed = await context.push<bool>(
+      AppRouter.moneyCategoryDetails(widget.weddingPlanId, id),
+    );
+    if (changed == true && mounted) await _refreshCategories();
+  }
+
+  Future<void> _refreshCategories() async {
+    final provider = context.read<FinanceProvider>();
+    await provider.loadMoney(widget.weddingPlanId);
+    if (!mounted || provider.errorMessage != null) return;
+    for (final row in _rows) {
+      row.dispose();
     }
-    setState(() {
-      _draftError = null;
-      _rows.removeAt(index).dispose();
-    });
+    _rows
+      ..clear()
+      ..addAll(
+        provider.categories.map(
+          (category) => _CategoryDraft(
+            id: category.id,
+            name: category.name,
+            amount: category.allocatedAmount,
+            costsCount: category.costsCount,
+          ),
+        ),
+      );
+    setState(() {});
   }
 
   Future<void> _save() async {
@@ -347,6 +350,123 @@ String _normalizedCategoryName(String value) {
   return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
 
+class _AllocationSummary extends StatelessWidget {
+  const _AllocationSummary({
+    required this.allocated,
+    required this.unallocated,
+    required this.total,
+    required this.currency,
+  });
+
+  final num allocated;
+  final num unallocated;
+  final num total;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final over = unallocated < 0;
+    final ratio = total <= 0 ? 0.0 : (allocated / total).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: over ? AppTheme.dangerSoft : AppTheme.empty,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(
+          color: over
+              ? AppTheme.danger.withValues(alpha: .22)
+              : AppTheme.border,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _AllocationValue(
+                  label: 'موزع على التصنيفات',
+                  amount: allocated,
+                  currency: currency,
+                  color: AppTheme.burgundy,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 38,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                color: AppTheme.border,
+              ),
+              Expanded(
+                child: _AllocationValue(
+                  label: total <= 0 ? 'بانتظار الميزانية' : 'متبقي للتوزيع',
+                  amount: unallocated,
+                  currency: currency,
+                  color: over ? AppTheme.danger : AppTheme.success,
+                ),
+              ),
+            ],
+          ),
+          if (total > 0) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 6,
+                color: over ? AppTheme.danger : AppTheme.burgundy,
+                backgroundColor: AppTheme.border,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AllocationValue extends StatelessWidget {
+  const _AllocationValue({
+    required this.label,
+    required this.amount,
+    required this.currency,
+    required this.color,
+  });
+
+  final String label;
+  final num amount;
+  final String currency;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: MoneyAmountText(
+            amount: amount,
+            currency: currency,
+            color: color,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CategoryDraft {
   _CategoryDraft({
     this.id,
@@ -369,86 +489,103 @@ class _CategoryDraft {
   }
 }
 
-class _CategoryEditorRow extends StatelessWidget {
-  const _CategoryEditorRow({
-    required this.fieldIndex,
+class _BudgetCategoryRow extends StatelessWidget {
+  const _BudgetCategoryRow({
     required this.row,
     required this.currency,
-    required this.canRemove,
-    required this.onChanged,
-    required this.onRemove,
+    required this.onTap,
     super.key,
   });
 
-  final int fieldIndex;
   final _CategoryDraft row;
   final String currency;
-  final bool canRemove;
-  final VoidCallback onChanged;
-  final VoidCallback onRemove;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: ValueKey('money-budget-category-${row.id}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Row(
             children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppTheme.burgundySoft,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: const Icon(
+                  LucideIcons.tag,
+                  color: AppTheme.burgundy,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: TextFormField(
-                  key: ValueKey('money-budget-category-name-$fieldIndex'),
-                  controller: row.name,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم التصنيف',
-                    prefixIcon: Icon(LucideIcons.tag),
-                  ),
-                  validator: (value) => value?.trim().isEmpty == true
-                      ? 'اسم التصنيف مطلوب'
-                      : null,
-                  onChanged: (_) => onChanged(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.name.text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      row.costsCount == 0
+                          ? 'لا توجد تكاليف بعد'
+                          : 'مرتبط بـ ${row.costsCount} تكلفة',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                onPressed: canRemove ? onRemove : null,
-                tooltip: canRemove ? 'حذف التصنيف' : 'التصنيف مرتبط بتكاليف',
-                icon: const Icon(LucideIcons.trash2),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 100),
+                child: row.amount.text.trim().isEmpty
+                    ? Text(
+                        'بلا مخصص',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppTheme.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : MoneyAmountText(
+                        amount: row.amount.text,
+                        currency: currency,
+                        style: Theme.of(context).textTheme.labelLarge,
+                        color: AppTheme.burgundy,
+                        textAlign: TextAlign.end,
+                      ),
+              ),
+              const SizedBox(width: 5),
+              const Icon(
+                LucideIcons.chevronLeft,
+                size: 17,
+                color: AppTheme.disabled,
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          TextFormField(
-            key: ValueKey('money-budget-category-amount-$fieldIndex'),
-            controller: row.amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textDirection: TextDirection.ltr,
-            decoration: InputDecoration(
-              labelText: 'المخصص (اختياري)',
-              prefixIcon: const Icon(LucideIcons.coins),
-              suffixText: currencyLabelAr(currency),
-            ),
-            validator: (value) {
-              final text = value?.replaceAll(',', '').trim() ?? '';
-              if (text.isEmpty) return null;
-              final parsed = num.tryParse(text);
-              return parsed == null || parsed < 0 ? 'المبلغ غير صحيح' : null;
-            },
-            onChanged: (_) => onChanged(),
-          ),
-          if (row.costsCount > 0) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'مرتبط بـ ${row.costsCount} تكلفة',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

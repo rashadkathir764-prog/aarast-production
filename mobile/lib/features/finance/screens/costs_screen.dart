@@ -48,7 +48,7 @@ class _CostsScreenState extends State<CostsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'كل التكاليف',
       subtitle: 'ابحث أو صفِّ حسب الحالة والتصنيف.',
       showBack: true,
@@ -67,92 +67,109 @@ class _CostsScreenState extends State<CostsScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 28),
           children: [
-            TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                labelText: 'ابحث عن تكلفة أو جهة',
-                prefixIcon: const Icon(LucideIcons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                          _applyFilters();
-                        },
-                        icon: const Icon(LucideIcons.x),
-                        tooltip: 'مسح البحث',
-                      ),
-              ),
-              onChanged: (_) {
-                setState(() {});
-                _debounce?.cancel();
-                _debounce = Timer(
-                  const Duration(milliseconds: 350),
-                  _applyFilters,
-                );
-              },
-              onSubmitted: (_) => _applyFilters(),
-            ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: 'الكل',
-                    selected: _status == null,
-                    onTap: () => _setStatus(null),
-                  ),
-                  _FilterChip(
-                    label: 'مفتوحة',
-                    selected: _status == 'OPEN',
-                    onTap: () => _setStatus('OPEN'),
-                  ),
-                  _FilterChip(
-                    label: 'مدفوعة جزئيًا',
-                    selected: _status == 'PARTIALLY_PAID',
-                    onTap: () => _setStatus('PARTIALLY_PAID'),
-                  ),
-                  _FilterChip(
-                    label: 'مكتملة',
-                    selected: _status == 'PAID',
-                    onTap: () => _setStatus('PAID'),
-                  ),
-                  _FilterChip(
-                    label: 'ملغاة',
-                    selected: _status == 'CANCELLED',
-                    onTap: () => _setStatus('CANCELLED'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String?>(
-              initialValue: _categoryId,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'التصنيف',
-                prefixIcon: Icon(LucideIcons.tags),
-              ),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('كل التصنيفات'),
+            if (provider.hasLoadedMoney || provider.errorMessage == null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.border),
                 ),
-                for (final category in provider.categories)
-                  DropdownMenuItem<String?>(
-                    value: category.id,
-                    child: Text(category.name, overflow: TextOverflow.ellipsis),
-                  ),
-              ],
-              onChanged: (value) {
-                setState(() => _categoryId = value);
-                _applyFilters();
-              },
-            ),
-            const SizedBox(height: 18),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        labelText: 'ابحث عن تكلفة أو جهة',
+                        prefixIcon: const Icon(LucideIcons.search),
+                        suffixIcon: _searchController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                  _applyFilters();
+                                },
+                                icon: const Icon(LucideIcons.x),
+                                tooltip: 'مسح البحث',
+                              ),
+                      ),
+                      onChanged: (_) {
+                        setState(() {});
+                        _debounce?.cancel();
+                        _debounce = Timer(
+                          const Duration(milliseconds: 350),
+                          _applyFilters,
+                        );
+                      },
+                      onSubmitted: (_) => _applyFilters(),
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _FilterChip(
+                            label: 'الكل',
+                            selected: _status == null,
+                            onTap: () => _setStatus(null),
+                          ),
+                          _FilterChip(
+                            label: 'مفتوحة',
+                            selected: _status == 'OPEN',
+                            onTap: () => _setStatus('OPEN'),
+                          ),
+                          _FilterChip(
+                            label: 'مدفوعة جزئيًا',
+                            selected: _status == 'PARTIALLY_PAID',
+                            onTap: () => _setStatus('PARTIALLY_PAID'),
+                          ),
+                          _FilterChip(
+                            label: 'مكتملة',
+                            selected: _status == 'PAID',
+                            onTap: () => _setStatus('PAID'),
+                          ),
+                          _FilterChip(
+                            label: 'ملغاة',
+                            selected: _status == 'CANCELLED',
+                            onTap: () => _setStatus('CANCELLED'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String?>(
+                      initialValue: _categoryId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'التصنيف',
+                        prefixIcon: Icon(LucideIcons.tags),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('كل التصنيفات'),
+                        ),
+                        for (final category in provider.categories)
+                          DropdownMenuItem<String?>(
+                            value: category.id,
+                            child: Text(
+                              category.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _categoryId = value);
+                        _applyFilters();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
             if (provider.hasLoadedMoney && provider.errorMessage != null) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),

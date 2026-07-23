@@ -254,7 +254,8 @@ void main() {
 
       final premiumWrapperPattern = RegExp(
         r'Aarast(ScreenFrame|PageScaffold|Scaffold)|'
-        r'AuthWeddingScaffold|GuestOnboardingStepScaffold',
+        r'AuthWeddingScaffold|GuestOnboardingStepScaffold|'
+        r'MoneySubpageScaffold',
       );
 
       final discovered =

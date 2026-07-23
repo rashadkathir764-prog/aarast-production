@@ -68,7 +68,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
     final currency = provider.summary.currency;
     final available = cost == null ? 0 : moneyValue(cost.remainingAmount);
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'تسجيل دفعة',
       subtitle: cost?.title ?? 'سجّل المبلغ الذي دُفع فعلًا.',
       showBack: true,
@@ -116,7 +116,10 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
             else
               Form(
                 key: _formKey,
-                child: AarastCard(
+                child: MoneySectionCard(
+                  title: 'بيانات الدفعة',
+                  subtitle: 'سجّل القيمة والتاريخ كما حدثا فعليًا.',
+                  icon: LucideIcons.banknote,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -260,7 +263,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
     final cost = costId == null ? null : provider.costById(costId);
     final currency = provider.summary.currency;
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'تفاصيل الدفعة',
       subtitle: cost?.title ?? payment?.costTitle ?? 'سجل مالي محفوظ.',
       showBack: true,
@@ -363,20 +366,13 @@ class _PaymentLimitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
+    return MoneySectionCard(
+      title: 'التكلفة المرتبطة',
+      subtitle: cost.title,
+      icon: LucideIcons.receipt,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            cost.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 14),
           Text(
             'الباقي على التكلفة',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -426,43 +422,15 @@ class _PaymentHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = payment.isReversal ? AppTheme.danger : AppTheme.success;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
-      child: Column(
-        children: [
-          Icon(
-            payment.isReversal ? LucideIcons.undo2 : LucideIcons.banknote,
-            color: color,
-            size: 34,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            payment.isReversal ? 'قيد عكس' : 'دفعة مسجلة',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          MoneyAmountText(
-            amount: payment.signedAmount,
-            currency: currency,
-            color: color,
-            style: Theme.of(context).textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            formatArabicDate(payment.paidAt),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+    return MoneyRecordHero(
+      icon: payment.isReversal ? LucideIcons.undo2 : LucideIcons.banknote,
+      label: 'سجل الدفعة',
+      amount: payment.signedAmount,
+      currency: currency,
+      supportingText: formatArabicDate(payment.paidAt),
+      statusLabel: payment.isReversal ? 'قيد عكس' : 'مسجلة',
+      statusColor: color,
+      amountColor: payment.isReversal ? AppTheme.danger : AppTheme.success,
     );
   }
 }
@@ -474,15 +442,12 @@ class _PaymentInformation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
+    return MoneySectionCard(
+      title: 'بيانات الدفعة',
+      icon: LucideIcons.listChecks,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
-            title: 'بيانات الدفعة',
-            icon: LucideIcons.listChecks,
-          ),
-          const SizedBox(height: 10),
           _PaymentInfoLine(
             label: 'الحالة',
             value: payment.isReversal

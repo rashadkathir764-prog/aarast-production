@@ -1,5 +1,5 @@
-// Visual preview for the redesigned money tab root (MoneyOverviewScreen):
-// compact hero metrics row, next-schedule strip, category grid, slim rows.
+// Visual preview for the dashboard-aligned money root: compact budget summary,
+// standalone next-payment card, settings access, costs, and recent payments.
 //
 // Regenerate with:
 //   flutter test test/money_overview_preview_test.dart --update-goldens
@@ -25,6 +25,52 @@ final _now = DateTime(2026, 7, 4);
 void main() {
   setUpAll(loadPreviewAppFonts);
 
+  test('golden fixture follows the canonical money arithmetic', () async {
+    final api = _FakeFinanceApi();
+    final summary = await api.getMoneySummary(_planId);
+    final costs = (await api.getCosts(_planId)).items;
+    final payments = (await api.getPlanPayments(_planId)).items;
+
+    final cardsTotal = costs.fold<num>(
+      0,
+      (sum, cost) => sum + moneyValue(cost.totalAmount),
+    );
+    final cardsPaid = costs.fold<num>(
+      0,
+      (sum, cost) => sum + moneyValue(cost.paidAmount),
+    );
+    final ledgerPaid = payments.fold<num>(
+      0,
+      (sum, payment) => sum + moneyValue(payment.signedAmount),
+    );
+    final categoriesAllocated = summary.categories.fold<num>(
+      0,
+      (sum, category) => sum + moneyValue(category.allocatedAmount),
+    );
+    final categoriesCost = summary.categories.fold<num>(
+      0,
+      (sum, category) => sum + moneyValue(category.confirmedCost),
+    );
+
+    expect(costs.length, summary.costs.count);
+    expect(cardsTotal, moneyValue(summary.costs.total));
+    expect(cardsTotal, moneyValue(summary.budget.confirmedCost));
+    expect(cardsPaid, moneyValue(summary.costs.paid));
+    expect(ledgerPaid, moneyValue(summary.costs.paid));
+    expect(cardsTotal - cardsPaid, moneyValue(summary.costs.outstanding));
+    expect(categoriesAllocated, moneyValue(summary.budget.allocated));
+    expect(categoriesCost, cardsTotal);
+    expect(
+      moneyValue(summary.budget.total) - cardsTotal,
+      moneyValue(summary.budget.remaining),
+    );
+    expect(
+      moneyValue(summary.budget.total) - categoriesAllocated,
+      moneyValue(summary.budget.unallocated),
+    );
+    expect(summary.confirmedRatio, closeTo(.26, .0000001));
+  });
+
   testWidgets('money — overview root (420)', (tester) async {
     tester.view.physicalSize = const Size(420, 1500);
     tester.view.devicePixelRatio = 1.0;
@@ -45,6 +91,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('26%'), findsOneWidget);
+    expect(find.text('دفعة متأخرة'), findsOneWidget);
     await expectLater(
       find.byType(MoneyOverviewScreen),
       matchesGoldenFile('goldens/money_overview.png'),
@@ -62,24 +110,30 @@ class _FakeFinanceApi extends FinanceApi {
       currency: 'YER',
       budget: const MoneyBudgetSummary(
         total: '10000000',
-        allocated: '3850000',
-        unallocated: '6150000',
-        confirmedCost: '3400000',
-        remaining: '6600000',
+        allocated: '3500000',
+        unallocated: '6500000',
+        confirmedCost: '2600000',
+        remaining: '7400000',
       ),
       costs: const MoneyCostsSummary(
-        total: '3400000',
-        paid: '2100000',
-        outstanding: '1300000',
+        total: '2600000',
+        paid: '1500000',
+        outstanding: '1100000',
         count: 3,
       ),
-      paymentSchedules: const MoneySchedulesSummary(upcomingCount: 1),
+      paymentSchedules: const MoneySchedulesSummary(
+        totalCount: 1,
+        overdueCount: 1,
+      ),
       categories: const [
         MoneyCategorySummary(
           categoryId: 'category-1',
           name: 'القاعة',
           allocatedAmount: '2000000',
           confirmedCost: '1500000',
+          paid: '1000000',
+          outstanding: '500000',
+          remainingAllocation: '500000',
           costsCount: 1,
         ),
         MoneyCategorySummary(
@@ -87,20 +141,19 @@ class _FakeFinanceApi extends FinanceApi {
           name: 'التصوير',
           allocatedAmount: '800000',
           confirmedCost: '600000',
+          paid: '0',
+          outstanding: '600000',
+          remainingAllocation: '200000',
           costsCount: 1,
         ),
         MoneyCategorySummary(
           categoryId: 'category-3',
           name: 'الملابس',
           allocatedAmount: '700000',
-          confirmedCost: '450000',
-          costsCount: 1,
-        ),
-        MoneyCategorySummary(
-          categoryId: 'category-4',
-          name: 'الدعوات',
-          allocatedAmount: '300000',
-          confirmedCost: '350000',
+          confirmedCost: '500000',
+          paid: '500000',
+          outstanding: '0',
+          remainingAllocation: '200000',
           costsCount: 1,
         ),
       ],
@@ -147,8 +200,8 @@ class _FakeFinanceApi extends FinanceApi {
         weddingPlanId: _planId,
         budgetCategoryId: 'category-3',
         title: 'بدلة العريس',
-        totalAmount: '450000',
-        paidAmount: '450000',
+        totalAmount: '500000',
+        paidAmount: '500000',
         remainingAmount: '0',
         status: 'PAID',
         createdAt: _now,
@@ -178,7 +231,7 @@ class _FakeFinanceApi extends FinanceApi {
       CostPayment(
         id: 'payment-2',
         costId: 'cost-3',
-        amount: '300000',
+        amount: '500000',
         paidAt: _now.subtract(const Duration(days: 7)),
         costTitle: 'بدلة العريس',
       ),
@@ -190,15 +243,14 @@ class _FakeFinanceApi extends FinanceApi {
   );
 
   @override
-  Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async =>
-      [
-        PaymentSchedule(
-          id: 'schedule-1',
-          costId: 'cost-1',
-          amount: '500000',
-          dueDate: _now.add(const Duration(days: 2)),
-          status: 'PENDING',
-          costTitle: 'حجز صالة الأفراح',
-        ),
-      ];
+  Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async => [
+    PaymentSchedule(
+      id: 'schedule-1',
+      costId: 'cost-1',
+      amount: '500000',
+      dueDate: _now.add(const Duration(days: 2)),
+      status: 'PENDING',
+      costTitle: 'حجز صالة الأفراح',
+    ),
+  ];
 }

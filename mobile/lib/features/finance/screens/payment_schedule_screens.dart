@@ -56,7 +56,7 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
         ? provider.dueSchedules
         : provider.schedulesForCost(widget.costId!);
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'مواعيد الدفع',
       subtitle: cost?.title ?? 'المواعيد القادمة والمتأخرة في خطتك.',
       showBack: true,
@@ -118,12 +118,7 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
               _ScheduleCounts(schedules: schedules),
               const SizedBox(height: 14),
               for (final schedule in schedules) ...[
-                ScheduleCard(
-                  schedule: schedule,
-                  currency: provider.summary.currency,
-                  costTitle: cost?.title,
-                  onTap: () => _openSchedule(schedule),
-                ),
+                _scheduleCard(provider, schedule, cost?.title),
                 const SizedBox(height: 10),
               ],
             ],
@@ -145,6 +140,42 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
     final costId = schedule.costId;
     final changed = await context.push<bool>(
       AppRouter.moneyScheduleDetails(widget.weddingPlanId, costId, schedule.id),
+      extra: schedule,
+    );
+    if (changed == true && mounted) await _load(refreshMoney: true);
+  }
+
+  WeddingCost? _payableCost(
+    FinanceProvider provider,
+    PaymentSchedule schedule,
+  ) {
+    final cost = provider.costById(schedule.costId);
+    return provider.canManageMoney &&
+            schedule.isPending &&
+            cost != null &&
+            !cost.isCancelled
+        ? cost
+        : null;
+  }
+
+  Widget _scheduleCard(
+    FinanceProvider provider,
+    PaymentSchedule schedule,
+    String? costTitle,
+  ) {
+    final payable = _payableCost(provider, schedule);
+    return ScheduleCard(
+      schedule: schedule,
+      currency: provider.summary.currency,
+      costTitle: costTitle,
+      onTap: () => _openSchedule(schedule),
+      onPay: payable == null ? null : () => _pay(schedule, payable),
+    );
+  }
+
+  Future<void> _pay(PaymentSchedule schedule, WeddingCost cost) async {
+    final changed = await context.push<bool>(
+      AppRouter.moneySchedulePay(widget.weddingPlanId, cost.id, schedule.id),
       extra: schedule,
     );
     if (changed == true && mounted) await _load(refreshMoney: true);
@@ -198,7 +229,7 @@ class _PaymentScheduleDetailsScreenState
         ? null
         : _paymentForSchedule(provider, schedule.id);
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'تفاصيل موعد الدفع',
       subtitle: cost?.title ?? schedule?.costTitle ?? 'موعد مرتبط بتكلفة.',
       showBack: true,
@@ -484,7 +515,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
     _initialize(schedule);
     final available = cost == null ? 0 : moneyValue(cost.remainingAmount);
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: _editing ? 'تعديل موعد الدفع' : 'إضافة موعد دفع',
       subtitle: cost?.title ?? 'حدد المبلغ والموعد فقط.',
       showBack: true,
@@ -552,7 +583,10 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
             const SizedBox(height: 14),
             Form(
               key: _formKey,
-              child: AarastCard(
+              child: MoneySectionCard(
+                title: 'بيانات الموعد',
+                subtitle: 'المبلغ المتوقع وتاريخ التذكير فقط.',
+                icon: LucideIcons.calendarClock,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -719,7 +753,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
     final cost = provider.costById(widget.costId);
     final schedule = provider.scheduleById(widget.scheduleId);
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: 'دفع الموعد',
       subtitle: cost?.title ?? 'المبلغ ثابت من موعد الدفع.',
       showBack: true,
@@ -756,40 +790,15 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
               error: true,
             )
           else ...[
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: AppTheme.heroDecoration(),
-              child: Column(
-                children: [
-                  const Icon(
-                    LucideIcons.calendarCheck,
-                    color: AppTheme.burgundy,
-                    size: 34,
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'المبلغ المحدد في الموعد',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  MoneyAmountText(
-                    amount: schedule.amount,
-                    currency: provider.summary.currency,
-                    color: AppTheme.burgundy,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'موعده ${formatArabicCompactDate(schedule.dueDate)}',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+            MoneyRecordHero(
+              icon: LucideIcons.calendarCheck,
+              label: 'المبلغ المحدد في الموعد',
+              amount: schedule.amount,
+              currency: provider.summary.currency,
+              supportingText:
+                  'موعده ${formatArabicCompactDate(schedule.dueDate)}',
+              statusLabel: 'بانتظار التأكيد',
+              statusColor: AppTheme.gold,
             ),
             const SizedBox(height: 12),
             const MoneyMessageBanner(
@@ -931,51 +940,17 @@ class _ScheduleHero extends StatelessWidget {
         : schedule.isOverdue
         ? 'متأخر'
         : 'قادم';
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
-      child: Column(
-        children: [
-          Icon(LucideIcons.calendarClock, color: color, size: 34),
-          const SizedBox(height: 10),
-          AarastStatusPill(
-            label: label,
-            color: color,
-            icon: schedule.isPaid
-                ? LucideIcons.checkCircle
-                : schedule.isCancelled
-                ? LucideIcons.circleSlash2
-                : LucideIcons.clock3,
-          ),
-          const SizedBox(height: 12),
-          MoneyAmountText(
-            amount: schedule.amount,
-            currency: currency,
-            color: color,
-            style: Theme.of(context).textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            formatArabicDate(schedule.dueDate),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          if (schedule.paidAt != null) ...[
-            const SizedBox(height: 5),
-            Text(
-              'دُفع في ${formatArabicCompactDate(schedule.paidAt!)}',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-            ),
-          ],
-        ],
-      ),
+    return MoneyRecordHero(
+      icon: LucideIcons.calendarClock,
+      label: 'موعد الدفع',
+      amount: schedule.amount,
+      currency: currency,
+      supportingText: schedule.paidAt == null
+          ? formatArabicDate(schedule.dueDate)
+          : '${formatArabicDate(schedule.dueDate)} · دُفع في ${formatArabicCompactDate(schedule.paidAt!)}',
+      statusLabel: label,
+      statusColor: color,
+      amountColor: schedule.isOverdue ? AppTheme.danger : AppTheme.ink,
     );
   }
 }
@@ -997,15 +972,13 @@ class _ScheduleActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
+    return MoneySectionCard(
+      title: 'إدارة الموعد',
+      subtitle: 'سجّل الدفع أو حدّث الموعد من مكانه.',
+      icon: LucideIcons.settings2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
-            title: 'إدارة الموعد',
-            icon: LucideIcons.settings2,
-          ),
-          const SizedBox(height: 14),
           AarastButton(
             label: 'تسجيل دفع الموعد',
             icon: LucideIcons.banknote,

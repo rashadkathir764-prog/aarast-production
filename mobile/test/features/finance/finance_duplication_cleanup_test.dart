@@ -7,6 +7,7 @@ import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
+import 'package:aarast_mobile/features/finance/widgets/money_widgets.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,16 +15,22 @@ import 'package:provider/provider.dart';
 
 void main() {
   group('one money system cleanup', () {
-    testWidgets('first money visit shows one budget setup action', (
+    testWidgets('first money visit permits cost entry before budget setup', (
       tester,
     ) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.noBudget()));
       await tester.pumpAndSettle();
 
-      expect(find.text('ابدأ بإعداد الميزانية'), findsOneWidget);
+      expect(find.text('الميزانية غير محددة'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('money-empty-add-cost')),
+        findsOneWidget,
+      );
+      expect(find.text('تحديد الميزانية'), findsWidgets);
       expect(find.byTooltip('إدارة الميزانية'), findsNothing);
-      expect(find.text('مواعيد الدفع'), findsNothing);
+      expect(find.byKey(const ValueKey('money-settings-menu')), findsOneWidget);
+      expect(find.text('إضافة تكلفة'), findsOneWidget);
       expect(find.text('التصنيفات'), findsNothing);
       expect(find.text('أحدث التكاليف'), findsNothing);
       expect(find.text('آخر الدفعات'), findsNothing);
@@ -47,23 +54,50 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('hero shows outstanding in a compact metrics row', (
-      tester,
-    ) async {
+    testWidgets('hero and settings stay compact at large text', (tester) async {
       _setPhoneView(tester);
       await tester.pumpWidget(
-        _wrap(_FakeFinanceApi.withCosts(), textScale: 1.3),
+        _wrap(_FakeFinanceApi.withCosts(), textScale: 1.6),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('الباقي عليك'), findsOneWidget);
-      expect(find.text('المدفوع'), findsOneWidget);
-      expect(find.text('التكاليف'), findsNothing);
-      expect(find.byType(GridView), findsOneWidget);
+      expect(find.text('الميزانية الكلية'), findsOneWidget);
+      expect(find.text('المتاح من الميزانية'), findsOneWidget);
+      expect(find.text('المدفوع'), findsWidgets);
+      expect(find.text('التكاليف'), findsOneWidget);
+      expect(find.text('المتبقي للدفع'), findsWidgets);
+      expect(find.text('إضافة تكلفة'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('money-destination-budget')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('money-destination-costs')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('money-destination-schedules')),
+        findsNothing,
+      );
+      expect(find.text('تنظيم إضافي'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('money-settings-menu')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('money-settings-budget')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('money-settings-schedules')),
+        findsOneWidget,
+      );
+      expect(find.text('الميزانية والتصنيفات'), findsOneWidget);
+      expect(find.text('مواعيد الدفع'), findsOneWidget);
+      expect(find.byType(GridView), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('budget-only state shows one next step and no empty sections', (
+    testWidgets('budget-only state guides without duplicating empty lists', (
       tester,
     ) async {
       _setPhoneView(tester);
@@ -72,26 +106,108 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('أضف أول تصنيف'), findsOneWidget);
-      expect(find.text('إضافة تصنيف'), findsOneWidget);
+      expect(find.text('لا توجد تكاليف بعد'), findsOneWidget);
       expect(find.text('مواعيد الدفع'), findsNothing);
+      expect(find.byKey(const ValueKey('money-settings-menu')), findsOneWidget);
+      expect(find.text('تنظيم إضافي'), findsNothing);
       expect(find.text('التصنيفات'), findsNothing);
       expect(find.text('أحدث التكاليف'), findsNothing);
       expect(find.text('آخر الدفعات'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('money root previews only the three newest costs', (
-      tester,
-    ) async {
+    testWidgets('money root shows each cost record once', (tester) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.withCosts()));
       await tester.pumpAndSettle();
 
-      expect(find.text('تكلفة 4'), findsOneWidget);
-      expect(find.text('تكلفة 3'), findsOneWidget);
-      expect(find.text('تكلفة 2'), findsOneWidget);
-      expect(find.text('تكلفة 1'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('money-destination-costs')),
+        findsNothing,
+      );
+      expect(find.text('إضافة تكلفة'), findsOneWidget);
+      for (var index = 1; index <= 4; index++) {
+        expect(find.text('تكلفة $index'), findsOneWidget);
+      }
+    });
+
+    test('payment status palette stays calm and distinct', () {
+      expect(moneyStatusMeta('OPEN').color, AppTheme.muted);
+      expect(moneyStatusMeta('OPEN').background, AppTheme.dangerSoft);
+      expect(moneyStatusMeta('PARTIALLY_PAID').color, AppTheme.warning);
+      expect(
+        moneyStatusMeta('PARTIALLY_PAID').background,
+        AppTheme.warningSoft,
+      );
+      expect(moneyStatusMeta('PAID').color, AppTheme.success);
+      expect(moneyStatusMeta('PAID').background, AppTheme.successSoft);
+      expect(moneyStatusMeta('CANCELLED').color, AppTheme.muted);
+      expect(
+        moneyStatusMeta('CANCELLED').background,
+        AppTheme.muted.withValues(alpha: .10),
+      );
+    });
+
+    testWidgets('past pending schedule is shown as an overdue payment', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.withCosts(
+            nextSchedule: PaymentSchedule(
+              id: 'schedule-overdue',
+              costId: 'cost-1',
+              amount: '1000',
+              dueDate: today.subtract(const Duration(days: 2)),
+              status: 'PENDING',
+              costTitle: 'تكلفة 1',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('money-next-schedule-strip')),
+        findsOneWidget,
+      );
+      expect(find.text('دفعة متأخرة'), findsOneWidget);
+      expect(find.text('موعد الدفع التالي'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('future pending schedule is shown as the next payment', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.withCosts(
+            nextSchedule: PaymentSchedule(
+              id: 'schedule-upcoming',
+              costId: 'cost-1',
+              amount: '1000',
+              dueDate: today.add(const Duration(days: 2)),
+              status: 'PENDING',
+              costTitle: 'تكلفة 1',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('money-next-schedule-strip')),
+        findsOneWidget,
+      );
+      expect(find.text('موعد الدفع التالي'), findsOneWidget);
+      expect(find.text('دفعة متأخرة'), findsNothing);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('money root stays overflow-free at 320px RTL and scale 1.3', (
@@ -224,8 +340,12 @@ Widget _wrap(
 }
 
 class _FakeFinanceApi extends FinanceApi {
-  _FakeFinanceApi._(this._costs, {this.fail = false, this.hasBudget = false})
-    : super(ApiClient(tokenProvider: () async => null));
+  _FakeFinanceApi._(
+    this._costs, {
+    this.fail = false,
+    this.hasBudget = false,
+    this.nextSchedule,
+  }) : super(ApiClient(tokenProvider: () async => null));
 
   factory _FakeFinanceApi.noBudget() => _FakeFinanceApi._(const []);
 
@@ -234,25 +354,27 @@ class _FakeFinanceApi extends FinanceApi {
 
   factory _FakeFinanceApi.failing() => _FakeFinanceApi._(const [], fail: true);
 
-  factory _FakeFinanceApi.withCosts() => _FakeFinanceApi._([
-    for (var index = 1; index <= 4; index++)
-      WeddingCost(
-        id: 'cost-$index',
-        weddingPlanId: 'plan-money-cleanup',
-        budgetCategoryId: 'category-1',
-        title: 'تكلفة $index',
-        totalAmount: '2000',
-        paidAmount: '0',
-        remainingAmount: '2000',
-        status: 'OPEN',
-        createdAt: DateTime.utc(2026, 7, index),
-        updatedAt: DateTime.utc(2026, 7, index),
-      ),
-  ]);
+  factory _FakeFinanceApi.withCosts({PaymentSchedule? nextSchedule}) =>
+      _FakeFinanceApi._([
+        for (var index = 1; index <= 4; index++)
+          WeddingCost(
+            id: 'cost-$index',
+            weddingPlanId: 'plan-money-cleanup',
+            budgetCategoryId: 'category-1',
+            title: 'تكلفة $index',
+            totalAmount: '2000',
+            paidAmount: '0',
+            remainingAmount: '2000',
+            status: 'OPEN',
+            createdAt: DateTime.utc(2026, 7, index),
+            updatedAt: DateTime.utc(2026, 7, index),
+          ),
+      ], nextSchedule: nextSchedule);
 
   final List<WeddingCost> _costs;
   final bool fail;
   final bool hasBudget;
+  final PaymentSchedule? nextSchedule;
 
   @override
   Future<MoneySummary> getMoneySummary(String planId) async {
@@ -286,6 +408,18 @@ class _FakeFinanceApi extends FinanceApi {
         total: '8000',
         outstanding: '8000',
         count: 4,
+      ),
+      paymentSchedules: MoneySchedulesSummary(
+        totalCount: nextSchedule == null ? 0 : 1,
+        upcomingCount:
+            nextSchedule != null && !nextSchedule!.isOverdueAt(DateTime.now())
+            ? 1
+            : 0,
+        overdueCount:
+            nextSchedule != null && nextSchedule!.isOverdueAt(DateTime.now())
+            ? 1
+            : 0,
+        next: nextSchedule,
       ),
       categories: const [
         MoneyCategorySummary(
@@ -332,7 +466,7 @@ class _FakeFinanceApi extends FinanceApi {
 
   @override
   Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async =>
-      const [];
+      nextSchedule == null ? const [] : [nextSchedule!];
 }
 
 SharedMember _deniedMember() {

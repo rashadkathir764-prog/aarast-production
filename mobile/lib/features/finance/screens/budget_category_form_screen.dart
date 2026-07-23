@@ -67,7 +67,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     );
     if (accessBlock != null) return accessBlock;
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: _editing ? 'تعديل التصنيف' : 'تصنيف جديد',
       subtitle: 'استخدم اسمًا واضحًا يفهمه كل المشاركين.',
       showBack: true,
@@ -90,7 +90,10 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
               MoneyMessageBanner(message: _draftError!, error: true),
               const SizedBox(height: 12),
             ],
-            AarastCard(
+            MoneySectionCard(
+              title: 'بيانات التصنيف',
+              subtitle: 'اسم واضح ومبلغ مخصص يمكنك تعديله لاحقًا.',
+              icon: LucideIcons.tag,
               child: Column(
                 children: [
                   TextFormField(

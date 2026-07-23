@@ -35,7 +35,7 @@ void main() {
     expect(find.text('الصالة'), findsWidgets);
     expect(find.text('المخصص'), findsOneWidget);
     expect(find.text('التكاليف'), findsWidgets);
-    expect(find.text('المدفوع'), findsOneWidget);
+    expect(find.text('المدفوع'), findsWidgets);
     expect(find.text('الباقي عليك'), findsOneWidget);
     expect(find.text('حجز الصالة'), findsWidgets);
     expect(find.text('إضافة تكلفة'), findsOneWidget);

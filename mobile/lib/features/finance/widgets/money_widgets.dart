@@ -7,6 +7,385 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../models/money_formatters.dart';
 import '../models/wedding_cost.dart';
 
+/// الغلاف البصري الموحّد لشاشات المال الفرعية.
+///
+/// الترويسة هادئة ومقصودة: رجوع، سياق «المال»، عنوان الشاشة، ثم الإجراء
+/// المرتبط بهذه الشاشة فقط. لا تكرر ملخص المال ولا زر الإضافة العام.
+class MoneySubpageScaffold extends StatelessWidget {
+  const MoneySubpageScaffold({
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.actions = const [],
+    this.showBack = true,
+    this.onBack,
+    this.padding = AppTheme.screenPadding,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<Widget> actions;
+  final bool showBack;
+  final VoidCallback? onBack;
+  final EdgeInsetsGeometry padding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPageScaffold(
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _MoneySubpageHeader(
+            title: title,
+            subtitle: subtitle,
+            actions: actions,
+            showBack: showBack,
+            onBack: onBack,
+          ),
+          const SizedBox(height: 18),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneySubpageHeader extends StatelessWidget {
+  const _MoneySubpageHeader({
+    required this.title,
+    required this.actions,
+    required this.showBack,
+    this.subtitle,
+    this.onBack,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<Widget> actions;
+  final bool showBack;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showBack) ...[
+              _MoneyHeaderButton(
+                icon: LucideIcons.arrowRight,
+                tooltip: 'رجوع',
+                onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'المال',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.goldDeep,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontFamily: AppTheme.displayFontFamily,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (actions.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.end,
+                  children: actions,
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: EdgeInsetsDirectional.only(start: showBack ? 56 : 0),
+            child: Text(
+              subtitle!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.muted,
+                fontWeight: FontWeight.w600,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MoneyHeaderButton extends StatelessWidget {
+  const _MoneyHeaderButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox.square(
+        dimension: 44,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            foregroundColor: AppTheme.burgundy,
+            backgroundColor: AppTheme.surface,
+            side: const BorderSide(color: AppTheme.border),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+          ),
+          child: Icon(icon, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+/// مساحة قسم هادئة للنماذج والتفاصيل؛ حدودها أخف من بطاقات الداشبورد حتى
+/// يبقى التركيز على الحقول والمعلومة لا على تكديس الكروت.
+class MoneySectionCard extends StatelessWidget {
+  const MoneySectionCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.subtitle,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.goldSoft,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+                child: Icon(icon, size: 18, color: AppTheme.goldDeep),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.muted,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// ملخص سجل مالي واحد. يستخدم سطحًا فاتحًا حتى لا تنافس كل شاشة فرعية
+/// بطاقة البطل الداكنة الموجودة في شاشة المال الرئيسية.
+class MoneyRecordHero extends StatelessWidget {
+  const MoneyRecordHero({
+    required this.icon,
+    required this.label,
+    required this.amount,
+    required this.currency,
+    required this.supportingText,
+    this.statusLabel,
+    this.statusColor = AppTheme.goldDeep,
+    this.amountColor = AppTheme.ink,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final Object? amount;
+  final String currency;
+  final String supportingText;
+  final String? statusLabel;
+  final Color statusColor;
+  final Color amountColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        color: AppTheme.burgundySoft.withValues(alpha: .58),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        border: Border.all(color: AppTheme.burgundy.withValues(alpha: .14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Icon(icon, color: AppTheme.burgundy, size: 19),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (statusLabel != null)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 112),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                      border: Border.all(
+                        color: statusColor.withValues(alpha: .18),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            statusLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: AppTheme.ink,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: MoneyAmountText(
+              amount: amount,
+              currency: currency,
+              color: amountColor,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontFamily: AppTheme.displayFontFamily,
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            supportingText,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class MoneyAmountText extends StatelessWidget {
   const MoneyAmountText({
     required this.amount,
@@ -43,6 +422,7 @@ class MoneyAmountText extends StatelessWidget {
     );
   }
 }
+
 class MoneyMetricCard extends StatelessWidget {
   const MoneyMetricCard({
     required this.label,
@@ -62,36 +442,50 @@ class MoneyMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      radius: AppTheme.radiusLg,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: AppTheme.iconMd, color: color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .09),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   label,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: AppTheme.muted,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 3),
+                MoneyAmountText(
+                  amount: amount,
+                  currency: currency,
+                  style: Theme.of(context).textTheme.titleSmall,
+                  color: color,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          MoneyAmountText(amount: amount, currency: currency, color: color),
         ],
       ),
     );
   }
 }
 
-/// صف تكلفة نحيف: أيقونة مصبوغة بالحالة + عنوان + سطر ميتا + المبلغ.
+/// بطاقة التكلفة تعرض حالة السداد والأرقام الثلاثة من السجل نفسه.
 class CostCard extends StatelessWidget {
   const CostCard({
     required this.cost,
@@ -109,85 +503,142 @@ class CostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = moneyStatusMeta(cost.status);
-    final leading = Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: status.background,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
-      child: Icon(
-        cost.providerId == null ? LucideIcons.receipt : LucideIcons.store,
-        size: 18,
-        color: status.color,
-      ),
-    );
     final metaParts = [?categoryName, ?cost.partyLabel].join(' · ');
 
     return AarastCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      radius: AppTheme.radiusMd,
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+      radius: AppTheme.radiusLg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          leading,
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  cost.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cost.isCancelled ? AppTheme.muted : AppTheme.ink,
-                    fontWeight: FontWeight.w800,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: status.background,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
-                const SizedBox(height: 3),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      if (metaParts.isNotEmpty)
-                        TextSpan(text: '$metaParts · '),
-                      TextSpan(
-                        text: status.label,
-                        style: TextStyle(
-                          color: status.color,
-                          fontWeight: FontWeight.w800,
-                        ),
+                child: Icon(
+                  cost.providerId == null
+                      ? LucideIcons.receipt
+                      : LucideIcons.store,
+                  size: 18,
+                  color: status.color,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cost.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: cost.isCancelled ? AppTheme.muted : AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (metaParts.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        metaParts,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                       ),
                     ],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              MoneyStatusBadge(status: cost.status),
+              const SizedBox(width: 3),
+              const Icon(
+                LucideIcons.chevronLeft,
+                size: 15,
+                color: AppTheme.disabled,
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 120),
-            child: MoneyAmountText(
-              amount: cost.totalAmount,
-              currency: currency,
-              style: Theme.of(context).textTheme.labelLarge,
-              color: cost.isCancelled ? AppTheme.muted : AppTheme.ink,
-              textAlign: TextAlign.end,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            LucideIcons.chevronLeft,
-            size: 16,
-            color: AppTheme.disabled,
+          const SizedBox(height: 10),
+          Container(height: 1, color: AppTheme.border),
+          const SizedBox(height: 9),
+          Row(
+            children: [
+              Expanded(
+                child: _CostAmountMetric(
+                  label: 'الإجمالي',
+                  amount: cost.totalAmount,
+                  currency: currency,
+                  color: cost.isCancelled ? AppTheme.muted : AppTheme.ink,
+                ),
+              ),
+              Expanded(
+                child: _CostAmountMetric(
+                  label: 'المدفوع',
+                  amount: cost.paidAmount,
+                  currency: currency,
+                  color: cost.isCancelled ? AppTheme.muted : AppTheme.success,
+                ),
+              ),
+              Expanded(
+                child: _CostAmountMetric(
+                  label: 'المتبقي للدفع',
+                  amount: cost.remainingAmount,
+                  currency: currency,
+                  color: cost.isCancelled ? AppTheme.muted : AppTheme.warning,
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CostAmountMetric extends StatelessWidget {
+  const _CostAmountMetric({
+    required this.label,
+    required this.amount,
+    required this.currency,
+    required this.color,
+  });
+
+  final String label;
+  final Object? amount;
+  final String currency;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        MoneyAmountText(
+          amount: amount,
+          currency: currency,
+          color: color,
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+      ],
     );
   }
 }
@@ -276,6 +727,7 @@ class ScheduleCard extends StatelessWidget {
     required this.schedule,
     required this.currency,
     required this.onTap,
+    this.onPay,
     this.costTitle,
     super.key,
   });
@@ -283,57 +735,81 @@ class ScheduleCard extends StatelessWidget {
   final PaymentSchedule schedule;
   final String currency;
   final VoidCallback onTap;
+  final VoidCallback? onPay;
   final String? costTitle;
 
   @override
   Widget build(BuildContext context) {
-    final color = schedule.isOverdue
-        ? AppTheme.danger
-        : schedule.isPaid
+    final color = schedule.isPaid
         ? AppTheme.success
+        : schedule.isCancelled
+        ? AppTheme.muted
+        : schedule.isOverdue
+        ? AppTheme.danger
         : AppTheme.goldDeep;
+    final statusLabel = schedule.isPaid
+        ? 'مدفوع'
+        : schedule.isCancelled
+        ? 'ملغي'
+        : schedule.isOverdue
+        ? 'متأخر'
+        : 'معلّق';
     return AarastCard(
       onTap: onTap,
       border: Border.all(color: color.withValues(alpha: .24)),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(LucideIcons.calendarClock, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  costTitle ?? schedule.costTitle ?? 'موعد دفع',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+          Row(
+            children: [
+              Icon(LucideIcons.calendarClock, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      costTitle ?? schedule.costTitle ?? 'موعد دفع',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$statusLabel · ${formatArabicCompactDate(schedule.dueDate)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  schedule.isOverdue
-                      ? 'متأخر · ${formatArabicCompactDate(schedule.dueDate)}'
-                      : formatArabicCompactDate(schedule.dueDate),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 130),
+                child: MoneyAmountText(
+                  amount: schedule.amount,
+                  currency: currency,
+                  color: color,
+                  textAlign: TextAlign.end,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 130),
-            child: MoneyAmountText(
-              amount: schedule.amount,
-              currency: currency,
-              color: color,
-              textAlign: TextAlign.end,
+          if (onPay != null) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton.icon(
+                onPressed: onPay,
+                icon: const Icon(LucideIcons.banknote, size: 16),
+                label: const Text('تسجيل الدفع'),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -341,29 +817,27 @@ class ScheduleCard extends StatelessWidget {
 }
 
 /// حالة التكلفة كهوية موحدة: نص ولون وخلفية تُستهلك في الشارة والصفوف.
-({String label, Color color, Color background}) moneyStatusMeta(
-  String status,
-) {
+({String label, Color color, Color background}) moneyStatusMeta(String status) {
   return switch (status) {
     'PAID' => (
-      label: 'مكتملة',
+      label: 'مكتمل الدفع',
       color: AppTheme.success,
       background: AppTheme.successSoft,
     ),
     'PARTIALLY_PAID' => (
-      label: 'مدفوعة جزئيًا',
+      label: 'مدفوع جزئيًا',
       color: AppTheme.warning,
       background: AppTheme.warningSoft,
     ),
     'CANCELLED' => (
-      label: 'ملغاة',
+      label: 'ملغي',
       color: AppTheme.muted,
-      background: AppTheme.empty,
+      background: AppTheme.muted.withValues(alpha: .10),
     ),
     _ => (
-      label: 'مفتوحة',
-      color: AppTheme.burgundy,
-      background: AppTheme.burgundySoft,
+      label: 'لم يُدفع',
+      color: AppTheme.muted,
+      background: AppTheme.dangerSoft,
     ),
   };
 }

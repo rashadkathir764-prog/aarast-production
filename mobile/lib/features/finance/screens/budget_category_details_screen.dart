@@ -42,7 +42,7 @@ class _BudgetCategoryDetailsScreenState
         .where((cost) => cost.budgetCategoryId == widget.categoryId)
         .toList();
 
-    return AarastPageScaffold(
+    return MoneySubpageScaffold(
       title: category?.name ?? 'تفاصيل التصنيف',
       subtitle: 'كل التكاليف والدفعات المرتبطة بهذا التصنيف.',
       showBack: true,
@@ -183,59 +183,97 @@ class _CategoryHero extends StatelessWidget {
     final allocation = moneyValue(category.allocatedAmount);
     final confirmed = moneyValue(category.confirmedCost);
     final over = category.allocatedAmount != null && confirmed > allocation;
+    final progress = allocation <= 0
+        ? 0.0
+        : (confirmed / allocation).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final cards = [
-              MoneyMetricCard(
-                label: 'المخصص',
-                amount: category.allocatedAmount ?? 0,
-                currency: currency,
-                icon: LucideIcons.pieChart,
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+            border: Border.all(
+              color: over
+                  ? AppTheme.danger.withValues(alpha: .28)
+                  : AppTheme.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                category.allocatedAmount == null ? 'المخصص غير محدد' : 'المخصص',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppTheme.muted,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              MoneyMetricCard(
-                label: 'التكاليف',
-                amount: category.confirmedCost,
-                currency: currency,
-                icon: LucideIcons.receipt,
-                color: over ? AppTheme.danger : AppTheme.burgundy,
-              ),
-              MoneyMetricCard(
-                label: 'المدفوع',
-                amount: category.paid,
-                currency: currency,
-                icon: LucideIcons.banknote,
-                color: AppTheme.success,
-              ),
-              MoneyMetricCard(
-                label: 'الباقي عليك',
-                amount: category.outstanding,
-                currency: currency,
-                icon: LucideIcons.clock3,
-                color: AppTheme.warning,
-              ),
-            ];
-            if (constraints.maxWidth < 360) {
-              return Column(
-                children: [
-                  for (var i = 0; i < cards.length; i++) ...[
-                    cards[i],
-                    if (i < cards.length - 1) const SizedBox(height: 10),
-                  ],
-                ],
-              );
-            }
-            return Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final card in cards)
-                  SizedBox(width: (constraints.maxWidth - 10) / 2, child: card),
+              const SizedBox(height: 5),
+              if (category.allocatedAmount == null)
+                Text(
+                  'يمكنك إضافة مخصص من تعديل التصنيف.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppTheme.ink),
+                )
+              else
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: MoneyAmountText(
+                    amount: category.allocatedAmount,
+                    currency: currency,
+                    style: Theme.of(context).textTheme.headlineLarge,
+                    color: over ? AppTheme.danger : AppTheme.ink,
+                  ),
+                ),
+              if (category.allocatedAmount != null) ...[
+                const SizedBox(height: 13),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    color: over ? AppTheme.danger : AppTheme.burgundy,
+                    backgroundColor: AppTheme.border,
+                  ),
+                ),
               ],
-            );
-          },
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: _CategoryValue(
+                      label: 'التكاليف',
+                      amount: category.confirmedCost,
+                      currency: currency,
+                      color: over ? AppTheme.danger : AppTheme.burgundy,
+                    ),
+                  ),
+                  const _CategoryDivider(),
+                  Expanded(
+                    child: _CategoryValue(
+                      label: 'المدفوع',
+                      amount: category.paid,
+                      currency: currency,
+                      color: AppTheme.success,
+                    ),
+                  ),
+                  const _CategoryDivider(),
+                  Expanded(
+                    child: _CategoryValue(
+                      label: 'الباقي عليك',
+                      amount: category.outstanding,
+                      currency: currency,
+                      color: AppTheme.warning,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         if (over) ...[
           const SizedBox(height: 10),
@@ -244,6 +282,63 @@ class _CategoryHero extends StatelessWidget {
             error: true,
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _CategoryDivider extends StatelessWidget {
+  const _CategoryDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 38,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      color: AppTheme.border,
+    );
+  }
+}
+
+class _CategoryValue extends StatelessWidget {
+  const _CategoryValue({
+    required this.label,
+    required this.amount,
+    required this.currency,
+    required this.color,
+  });
+
+  final String label;
+  final Object? amount;
+  final String currency;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: MoneyAmountText(
+            amount: amount,
+            currency: currency,
+            color: color,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+        ),
       ],
     );
   }

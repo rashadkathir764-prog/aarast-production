@@ -39,46 +39,6 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: aarast_ci
-          POSTGRES_USER: aarast
-          POSTGRES_PASSWORD: aarast_ci_password
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd "pg_isready -U aarast -d aarast_ci"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-      redis:
-        image: redis:7-alpine
-        ports:
-          - "6379:6379"
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      DATABASE_URL: postgresql://aarast:aarast_ci_password@127.0.0.1:5432/aarast_ci?schema=public
-      JWT_SECRET: ci-smoke-secret
-      AUTH_LOGIN_THROTTLE_PEPPER: ci-separate-login-throttle-pepper
-      REDIS_URL: redis://127.0.0.1:6379
-      READINESS_REQUIRE_MEDIA: "true"
-      AARAST_MEDIA_ENDPOINT: http://127.0.0.1:9000
-      AARAST_MEDIA_SIGNED_ENDPOINT: http://127.0.0.1:9000
-      AARAST_MEDIA_BUCKET: aarast-media
-      AARAST_MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:9000/aarast-media
-      AARAST_MEDIA_REGION: us-east-1
-      AARAST_MEDIA_FORCE_PATH_STYLE: "true"
-      AARAST_MEDIA_ACCESS_KEY_ID: aarast-ci-media-key
-      AARAST_MEDIA_SECRET_ACCESS_KEY: aarast-ci-media-secret-change-me
-      AUTH_OTP_MODE: dev
-      PORT: 3115
-      SMOKE_BASE_URL: http://127.0.0.1:3115
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,29 +49,20 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
-      - run: npx prisma migrate deploy
-      - name: Boot private S3-compatible media fixture
+      - name: Boot isolated smoke infrastructure
+        working-directory: .
         run: |
-          docker run -d --name aarast-ci-media -p 9000:9000 \
-            -e MINIO_ROOT_USER=aarast-ci-media-key \
-            -e MINIO_ROOT_PASSWORD=aarast-ci-media-secret-change-me \
-            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
-          for i in $(seq 1 30); do
-            curl -fs http://127.0.0.1:9000/minio/health/live && break
-            sleep 1
-          done
-          docker run --rm --network host --entrypoint sh \
-            minio/mc:RELEASE.2025-07-21T05-28-08Z \
-            -c "mc alias set local http://127.0.0.1:9000 aarast-ci-media-key aarast-ci-media-secret-change-me && mc mb --ignore-existing local/aarast-media && mc anonymous set download local/aarast-media/user-avatar && mc anonymous set download local/aarast-media/provider-logo && mc anonymous set download local/aarast-media/provider-cover && mc anonymous set download local/aarast-media/service-image"
-      - name: Boot backend and run all smoke suites
-        run: |
-          node dist/main.js &
-          for i in $(seq 1 30); do
-            curl -fs http://127.0.0.1:3115/health && break
-            sleep 1
-          done
-          node scripts/smoke/all-smoke.js
-          ADMIN_SMOKE_DATABASE_URL="$DATABASE_URL" node ../admin-web/scripts/admin-runtime-smoke.mjs
+          docker compose up -d --wait db redis media
+          docker compose run --rm --no-deps media-init
+      - name: Run all managed smoke suites
+        run: npm run smoke:all
+      - name: Run managed admin runtime smoke
+        working-directory: admin-web
+        run: npm run smoke:admin-runtime
+      - name: Stop isolated smoke infrastructure
+        if: always()
+        working-directory: .
+        run: docker compose down --remove-orphans
 
   admin-web:
     runs-on: ubuntu-latest

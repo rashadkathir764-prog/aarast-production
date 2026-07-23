@@ -245,6 +245,18 @@ test('official mutating smoke and load commands use managed isolation', () => {
   );
   assert.doesNotMatch(adminPackage.scripts['smoke:routes'], /run-isolated/);
   assert.doesNotMatch(adminPackage.scripts['smoke:honesty'], /run-isolated/);
+
+  const ciWorkflow = readFileSync(
+    join(repositoryRoot, '.github', 'workflows', 'ci.yml'),
+    'utf8',
+  );
+  assert.match(ciWorkflow, /npm run smoke:all/);
+  assert.match(ciWorkflow, /npm run smoke:admin-runtime/);
+  assert.doesNotMatch(ciWorkflow, /node scripts\/smoke\/all-smoke\.js/);
+  assert.doesNotMatch(
+    ciWorkflow,
+    /ADMIN_SMOKE_DATABASE_URL=.*admin-runtime-smoke\.mjs/,
+  );
 });
 
 test('isolation sources contain no permanent database fallback or destructive Prisma command', () => {

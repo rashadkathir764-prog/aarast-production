@@ -91,7 +91,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
             child: _GuestsHeader(guestCount: provider.guests.length),
           ),
           Expanded(
@@ -298,30 +298,38 @@ class _GuestsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ترويسة مضغوطة: عنوان + عداد حي — لا شارة زخرفية ثابتة.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Text(
-            'الضيوف',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
-          ),
-        ),
-        const SizedBox(width: 10),
-        AarastStatusPill(
-          label: guestCount == 0
-              ? 'قائمة الحضور'
-              : _guestCountLabel(guestCount),
-          color: AppTheme.burgundy,
-          backgroundColor: AppTheme.burgundySoft,
-          icon: LucideIcons.users,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final status = _invitationCountLabel(guestCount);
+        if (constraints.maxWidth < 360) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const AarastFeatureHeader(
+                title: 'الضيوف',
+                subtitle: 'حضور مرتب من أول دعوة',
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AarastStatusPill(
+                  label: status,
+                  color: AppTheme.burgundy,
+                  backgroundColor: AppTheme.burgundySoft,
+                  icon: LucideIcons.mail,
+                ),
+              ),
+            ],
+          );
+        }
+        return AarastFeatureHeader(
+          title: 'الضيوف',
+          subtitle: 'حضور مرتب من أول دعوة',
+          statusLabel: status,
+          statusColor: AppTheme.burgundy,
+          statusIcon: LucideIcons.mail,
+        );
+      },
     );
   }
 }
@@ -356,7 +364,7 @@ class _GuestsContent extends StatelessWidget {
     if (!planIdReady) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 70, 16, 120),
+        padding: const EdgeInsets.fromLTRB(20, 70, 20, 120),
         children: const [
           AarastEmptyState(
             icon: LucideIcons.calendarX,
@@ -374,7 +382,7 @@ class _GuestsContent extends StatelessWidget {
     if (provider.errorMessage != null && provider.guests.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 70, 16, 120),
+        padding: const EdgeInsets.fromLTRB(20, 70, 20, 120),
         children: [
           AarastEmptyState(
             icon: LucideIcons.alertCircle,
@@ -404,35 +412,33 @@ class _GuestsContent extends StatelessWidget {
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 132),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 132),
       children: [
         if (provider.errorMessage != null) ...[
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        GuestMeterHero(
-          summary: summary,
-          isLocalPlan: isLocalPlan,
-          footer: guests.isEmpty
-              ? null
-              : _GuestFilterBar(selected: filter, onChanged: onFilterChanged),
-        ),
+        GuestMeterHero(summary: summary, isLocalPlan: isLocalPlan),
         const SizedBox(height: 12),
         _ImportantGuestsCard(
           issues: importantIssues,
           onOpenFilter: onFilterChanged,
         ),
-        const SizedBox(height: 18),
-        AarastSectionHeader(title: _listTitle(filter), icon: LucideIcons.users),
-        const SizedBox(height: 12),
+        const SizedBox(height: 17),
+        _GuestListSectionHeader(
+          title: _listTitle(filter),
+          selected: filter,
+          onChanged: onFilterChanged,
+        ),
+        const SizedBox(height: 8),
         if (visibleGuests.isEmpty)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
+              border: Border.symmetric(
+                horizontal: BorderSide(color: AppTheme.border),
+              ),
             ),
             child: Text(
               _emptyGuestsMessage(filter),
@@ -445,22 +451,26 @@ class _GuestsContent extends StatelessWidget {
             ),
           )
         else
-          for (var i = 0; i < visibleGuests.length; i++) ...[
-            _staggeredGuest(
-              SmartGuestCard(
-                guest: visibleGuests[i],
-                groupLabel: _groupLabel(visibleGuests[i], provider.groups),
-                isDuplicate: duplicates.contains(visibleGuests[i].id),
-                isBusy: provider.isSubmitting,
-                onEdit: () => onEditGuest(visibleGuests[i]),
-                onStatus: (status) => onStatus(visibleGuests[i], status),
-                onDelete: () => onDelete(visibleGuests[i]),
-              ),
-              i,
-              MediaQuery.of(context).disableAnimations,
-            ),
-            const SizedBox(height: 10),
-          ],
+          Column(
+            children: [
+              for (var i = 0; i < visibleGuests.length; i++) ...[
+                _staggeredGuest(
+                  SmartGuestCard(
+                    guest: visibleGuests[i],
+                    groupLabel: _groupLabel(visibleGuests[i], provider.groups),
+                    isDuplicate: duplicates.contains(visibleGuests[i].id),
+                    isBusy: provider.isSubmitting,
+                    onEdit: () => onEditGuest(visibleGuests[i]),
+                    onStatus: (status) => onStatus(visibleGuests[i], status),
+                    onDelete: () => onDelete(visibleGuests[i]),
+                  ),
+                  i,
+                  MediaQuery.of(context).disableAnimations,
+                ),
+                if (i != visibleGuests.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          ),
       ],
     );
   }
@@ -477,22 +487,27 @@ class _ImportantGuestsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // كل شيء مكتمل؟ شريط نجاح هادئ بسطر واحد — لا كرت عنوانه أكبر من خبره.
     if (issues.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.successBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        ),
+      return AarastCard(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+        color: AppTheme.successSoft,
+        border: Border.all(color: AppTheme.success.withValues(alpha: .16)),
         child: Row(
           children: [
-            const Icon(
-              LucideIcons.badgeCheck,
-              color: AppTheme.success,
-              size: 18,
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: AppTheme.successBg,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.badgeCheck,
+                color: AppTheme.success,
+                size: 18,
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'كل بيانات الضيوف مكتملة',
@@ -506,90 +521,96 @@ class _ImportantGuestsCard extends StatelessWidget {
       );
     }
 
+    final issue = issues.first;
     return AarastCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      onTap: () => onOpenFilter(issue.filter),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      border: Border.all(color: issue.color.withValues(alpha: .2)),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.alertTriangle,
-                color: AppTheme.burgundy,
-                size: 17,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'يحتاج متابعة',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: issue.color.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(issue.icon, color: issue.color, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  issue.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: AppTheme.ink,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 1),
+                Text(
+                  issue.detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          for (final issue in issues) ...[
-            _IssueRow(issue: issue, onTap: () => onOpenFilter(issue.filter)),
-            if (issue != issues.last) const SizedBox(height: 6),
-          ],
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.goldSoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            ),
+            child: Text(
+              'متابعة',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.warning,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _IssueRow extends StatelessWidget {
-  const _IssueRow({required this.issue, required this.onTap});
+class _GuestListSectionHeader extends StatelessWidget {
+  const _GuestListSectionHeader({
+    required this.title,
+    required this.selected,
+    required this.onChanged,
+  });
 
-  final _GuestIssue issue;
-  final VoidCallback onTap;
+  final String title;
+  final _GuestFilter selected;
+  final ValueChanged<_GuestFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: issue.color.withAlpha(11),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: AppTheme.ink,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        child: Row(
-          children: [
-            Icon(issue.icon, color: issue.color, size: 15),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                issue.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(color: AppTheme.ink),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${issue.count}',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: issue.color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              LucideIcons.chevronLeft,
-              size: 14,
-              color: AppTheme.muted.withAlpha(180),
-            ),
-          ],
-        ),
-      ),
+        const SizedBox(height: 4),
+        _GuestFilterBar(selected: selected, onChanged: onChanged),
+      ],
     );
   }
 }
@@ -607,12 +628,43 @@ class _GuestFilterBar extends StatelessWidget {
       child: Row(
         children: [
           for (final item in _filterItems) ...[
-            AarastFilterPill(
+            InkWell(
               key: ValueKey('guest-filter-${item.filter.name}'),
-              label: item.label,
-              icon: item.icon,
-              selected: item.filter == selected,
               onTap: () => onChanged(item.filter),
+              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: item.filter == selected
+                          ? AppTheme.burgundySoft
+                          : AppTheme.surface,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                      border: Border.all(
+                        color: item.filter == selected
+                            ? AppTheme.burgundy.withValues(alpha: .2)
+                            : AppTheme.border,
+                      ),
+                    ),
+                    child: Text(
+                      item.label,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: item.filter == selected
+                            ? AppTheme.burgundy
+                            : AppTheme.muted,
+                        fontWeight: item.filter == selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             if (item != _filterItems.last) const SizedBox(width: 7),
           ],
@@ -629,7 +681,7 @@ class _GuestLoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 120),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 120),
       children: const [
         _SkeletonBox(height: 250),
         SizedBox(height: 14),
@@ -704,31 +756,31 @@ enum _GuestFilter {
   bride,
 }
 
-String _guestCountLabel(int count) {
+String _invitationCountLabel(int count) {
   return switch (count) {
-    1 => 'ضيف واحد',
-    2 => 'ضيفان',
-    >= 3 && <= 10 => '$count ضيوف',
-    _ => '$count ضيف',
+    0 => 'لا توجد دعوات',
+    1 => 'دعوة واحدة',
+    2 => 'دعوتان',
+    >= 3 && <= 10 => '$count دعوات',
+    _ => '$count دعوة',
   };
 }
 
 class _FilterItem {
-  const _FilterItem(this.filter, this.label, this.icon);
+  const _FilterItem(this.filter, this.label);
 
   final _GuestFilter filter;
   final String label;
-  final IconData icon;
 }
 
 const _filterItems = [
-  _FilterItem(_GuestFilter.all, 'الكل', LucideIcons.layoutGrid),
-  _FilterItem(_GuestFilter.confirmed, 'مؤكد', LucideIcons.checkCircle),
-  _FilterItem(_GuestFilter.pending, 'بانتظار الرد', LucideIcons.hourglass),
-  _FilterItem(_GuestFilter.declined, 'لن يحضر', LucideIcons.xCircle),
-  _FilterItem(_GuestFilter.incomplete, 'ناقص بيانات', LucideIcons.info),
-  _FilterItem(_GuestFilter.groom, 'طرف العريس', LucideIcons.user),
-  _FilterItem(_GuestFilter.bride, 'طرف العروسة', LucideIcons.user),
+  _FilterItem(_GuestFilter.all, 'الكل'),
+  _FilterItem(_GuestFilter.confirmed, 'مؤكد'),
+  _FilterItem(_GuestFilter.pending, 'بانتظار الرد'),
+  _FilterItem(_GuestFilter.declined, 'لن يحضر'),
+  _FilterItem(_GuestFilter.incomplete, 'ناقص بيانات'),
+  _FilterItem(_GuestFilter.groom, 'طرف العريس'),
+  _FilterItem(_GuestFilter.bride, 'طرف العروسة'),
 ];
 
 List<Guest> _filteredGuests(List<Guest> guests, _GuestFilter filter) {
@@ -751,74 +803,70 @@ List<_GuestIssue> _importantIssues(
   GuestSummary summary,
   Set<String> duplicates,
 ) {
-  final issues = <_GuestIssue>[];
   if (summary.incompleteGuestsCount > 0) {
-    issues.add(
+    return [
       _GuestIssue(
-        label: 'ضيوف يحتاجون إكمال بيانات',
-        count: summary.incompleteGuestsCount,
+        label: _incompleteGuestsLabel(summary.incompleteGuestsCount),
+        detail: _incompleteGuestsDetail(summary),
         filter: _GuestFilter.incomplete,
-        icon: LucideIcons.info,
+        icon: LucideIcons.alertTriangle,
         color: AppTheme.warning,
       ),
-    );
-  }
-  if (summary.missingPhoneCount > 0) {
-    issues.add(
-      _GuestIssue(
-        label: 'ضيوف بدون رقم جوال',
-        count: summary.missingPhoneCount,
-        filter: _GuestFilter.incomplete,
-        icon: LucideIcons.phoneOff,
-        color: AppTheme.gold,
-      ),
-    );
+    ];
   }
   if (duplicates.isNotEmpty) {
-    issues.add(
+    return [
       _GuestIssue(
-        label: 'تكرار محتمل في أرقام الضيوف',
-        count: duplicates.length,
+        label: duplicates.length == 1
+            ? 'تكرار محتمل يحتاج مراجعة'
+            : '${duplicates.length} تكرارات محتملة تحتاج مراجعة',
+        detail: 'راجع أرقام الجوال قبل متابعة الدعوات',
         filter: _GuestFilter.all,
         icon: LucideIcons.copy,
         color: AppTheme.danger,
       ),
-    );
+    ];
   }
   if (summary.pending > 0) {
-    issues.add(
+    return [
       _GuestIssue(
-        label: 'ضيوف بانتظار الرد',
-        count: summary.pending,
+        label: _pendingGuestsLabel(summary.pending),
+        detail: 'راجع الدعوات التي لم يصل ردها بعد',
         filter: _GuestFilter.pending,
         icon: LucideIcons.hourglass,
-        color: AppTheme.burgundy,
+        color: AppTheme.gold,
       ),
-    );
+    ];
   }
-  if (summary.totalGuests > 0 && (summary.bySideForSuper['groom'] ?? 0) == 0) {
-    issues.add(
-      const _GuestIssue(
-        label: 'لا يوجد ضيوف من طرف العريس',
-        count: 0,
-        filter: _GuestFilter.groom,
-        icon: LucideIcons.user,
-        color: AppTheme.ink,
-      ),
-    );
+  return const [];
+}
+
+String _incompleteGuestsLabel(int count) {
+  return switch (count) {
+    1 => 'ضيف واحد يحتاج إكمال بياناته',
+    2 => 'ضيفان يحتاجان إكمال بياناتهما',
+    >= 3 && <= 10 => '$count ضيوف يحتاجون إكمال بياناتهم',
+    _ => '$count ضيفًا يحتاجون إكمال بياناتهم',
+  };
+}
+
+String _incompleteGuestsDetail(GuestSummary summary) {
+  if (summary.missingPhoneCount == 1 && summary.incompleteGuestsCount == 1) {
+    return 'رقم الجوال غير مضاف بعد';
   }
-  if (summary.totalGuests > 0 && (summary.bySideForSuper['bride'] ?? 0) == 0) {
-    issues.add(
-      const _GuestIssue(
-        label: 'لا يوجد ضيوف من طرف العروسة',
-        count: 0,
-        filter: _GuestFilter.bride,
-        icon: LucideIcons.user,
-        color: AppTheme.ink,
-      ),
-    );
+  if (summary.missingPhoneCount > 0) {
+    return '${summary.missingPhoneCount} بدون رقم جوال';
   }
-  return issues.take(4).toList();
+  return 'راجع الاسم وبيانات التواصل';
+}
+
+String _pendingGuestsLabel(int count) {
+  return switch (count) {
+    1 => 'ضيف واحد بانتظار الرد',
+    2 => 'ضيفان بانتظار الرد',
+    >= 3 && <= 10 => '$count ضيوف بانتظار الرد',
+    _ => '$count ضيفًا بانتظار الرد',
+  };
 }
 
 Set<String> _duplicateGuests(List<Guest> guests) {
@@ -897,14 +945,14 @@ String _emptyGuestsMessage(_GuestFilter filter) {
 class _GuestIssue {
   const _GuestIssue({
     required this.label,
-    required this.count,
+    required this.detail,
     required this.filter,
     required this.icon,
     required this.color,
   });
 
   final String label;
-  final int count;
+  final String detail;
   final _GuestFilter filter;
   final IconData icon;
   final Color color;

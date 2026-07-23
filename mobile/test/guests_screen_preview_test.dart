@@ -1,6 +1,6 @@
-// Full-screen visual preview for the guests tab after the dashboard-language
-// polish: live count header, Lucide icons, compact follow-up card, and the
-// chip-based add-guest sheet fields.
+// Full-screen visual preview for the dashboard-aligned guests tab: truthful
+// seat meter, compact follow-up priority, text filters, and flat guest rows.
+// The second golden keeps the existing add-guest sheet covered.
 // Regenerate with:
 //   flutter test test/guests_screen_preview_test.dart --update-goldens
 @Tags(['golden'])

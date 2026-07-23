@@ -1,5 +1,4 @@
-// Visual preview for the NEW premium guest widgets
-// (phase/mobile-premium-screens-v1): GuestMeterHero + SmartGuestCard.
+// Focused preview for the dashboard-aligned GuestMeterHero + SmartGuestCard.
 //
 // Regenerate with:
 //   flutter test test/premium_guests_preview_test.dart --update-goldens
@@ -37,8 +36,8 @@ Guest _guest({
     attendanceStatus: status == 'CONFIRMED'
         ? 'CONFIRMED'
         : status == 'DECLINED'
-            ? 'DECLINED'
-            : 'PENDING',
+        ? 'DECLINED'
+        : 'PENDING',
     seatsCount: seats,
     companionsCount: companions,
     invitationStatus: 'INVITED',
@@ -48,8 +47,11 @@ Guest _guest({
   );
 }
 
-Future<void> _pump(WidgetTester tester, Widget child,
-    {required Size size}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  required Size size,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);

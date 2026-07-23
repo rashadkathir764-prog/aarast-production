@@ -6,12 +6,10 @@ import '../../../../core/theme/aarast_design_tokens.dart';
 import '../../../../core/theme/aarast_motion.dart';
 import '../../models/guest.dart';
 
-/// عدّاد الضيوف — بطل تبويب الضيوف.
+/// ملخص الضيوف بنفس لغة بطل الداشبورد.
 ///
-/// بدل "اكتمال البيانات 0%" المجرّد، نعرض الرقم الذي يهم اليمني فعلًا:
-/// **الحضور المتوقع** — عليه تُقاس تكلفة العرس. تحته شريط مقسّم
-/// (مؤكد/بانتظار/معتذر) وتقسيم الطرفين، و`footer` فتحة تضع فيها
-/// الشاشة شرائح الفلترة الحية — نفس عقد بطل المهام.
+/// [Guest.seatsCount] يشمل صاحب الدعوة ومرافقيه، لذلك نعرض
+/// [GuestSummary.expectedSeatsCount] مباشرة ولا نضيف عدد المرافقين مرة أخرى.
 class GuestMeterHero extends StatelessWidget {
   const GuestMeterHero({
     required this.summary,
@@ -26,155 +24,216 @@ class GuestMeterHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = summary.totalGuests;
-    final isFresh = total == 0;
-    final expectedAttendance =
-        summary.expectedSeatsCount + summary.companionsExpectedCount;
-    final reduceMotion = AarastMotion.reduceMotion(context);
-
-    final groomCount = summary.bySideForSuper['groom'] ?? 0;
-    final brideCount = summary.bySideForSuper['bride'] ?? 0;
-    final textTheme = Theme.of(context).textTheme;
+    final isFresh = summary.totalGuests == 0;
+    const radius = BorderRadius.all(
+      Radius.circular(AarastDesignTokens.radiusXl),
+    );
 
     return Container(
+      key: const ValueKey('guests-dashboard-hero'),
       decoration: BoxDecoration(
-        color: AarastDesignTokens.surface,
-        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusXl),
-        border: Border.all(color: AarastDesignTokens.border),
+        borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: AarastDesignTokens.ink.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: AarastDesignTokens.burgundyDark.withValues(alpha: 0.32),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-      child: isFresh
-          ? _buildFresh(context)
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'الحضور المتوقع',
-                            style: textTheme.labelMedium?.copyWith(
-                              color: AarastDesignTokens.muted,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              _CountUp(
-                                value: expectedAttendance,
-                                style: textTheme.displaySmall!.copyWith(
-                                  color: AarastDesignTokens.title,
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  'شخص',
-                                  style: textTheme.labelMedium?.copyWith(
-                                    color: AarastDesignTokens.muted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            '$total ${total == 1 ? 'دعوة' : 'دعوة'}'
-                            '${summary.companionsExpectedCount > 0 ? ' + ${summary.companionsExpectedCount} مرافق' : ''}',
-                            style: textTheme.labelSmall?.copyWith(
-                              color: AarastDesignTokens.muted,
-                            ),
-                          ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
+              colors: [
+                AarastDesignTokens.burgundyLight,
+                AarastDesignTokens.burgundy,
+                AarastDesignTokens.burgundyDark,
+              ],
+            ),
+            borderRadius: radius,
+          ),
+          child: Stack(
+            children: [
+              PositionedDirectional(
+                end: -42,
+                top: 12,
+                child: ExcludeSemantics(
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AarastDesignTokens.gold.withValues(alpha: 0.22),
+                          Colors.transparent,
                         ],
                       ),
                     ),
-                    if (isLocalPlan) _localBadge(context),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                _SegmentedBar(
-                  confirmed: summary.confirmed,
-                  pending: summary.pending,
-                  declined: summary.declined,
-                  reduceMotion: reduceMotion,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _Legend(
-                      color: AarastDesignTokens.success,
-                      label: 'مؤكد',
-                      value: summary.confirmed,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                child: isFresh ? _buildFresh(context) : _buildSummary(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummary(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final reduceMotion = AarastMotion.reduceMotion(context);
+    final groomCount = summary.bySideForSuper['groom'] ?? 0;
+    final brideCount = summary.bySideForSuper['bride'] ?? 0;
+    final unknownCount = summary.bySideForSuper['unknown'] ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'المقاعد المتوقعة',
+                    style: textTheme.labelMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.78),
+                      fontWeight: FontWeight.w700,
                     ),
-                    _Legend(
-                      color: AarastDesignTokens.gold,
-                      label: 'بانتظار',
-                      value: summary.pending,
-                    ),
-                    _Legend(
-                      color: AarastDesignTokens.muted,
-                      label: 'معتذر',
-                      value: summary.declined,
-                    ),
-                  ],
-                ),
-                if (groomCount > 0 || brideCount > 0) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AarastDesignTokens.ivory,
-                      borderRadius: BorderRadius.circular(
-                        AarastDesignTokens.radiusMd,
+                  ),
+                  const SizedBox(height: 2),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    children: [
+                      _CountUp(
+                        value: summary.expectedSeatsCount,
+                        style: textTheme.displaySmall!.copyWith(
+                          color: AarastDesignTokens.goldSoft,
+                          fontSize: 46,
+                          fontWeight: FontWeight.w800,
+                          height: 0.98,
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _SideChip(
-                            icon: LucideIcons.user,
-                            label: 'طرف العريس',
-                            value: groomCount,
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: 24,
-                          color: AarastDesignTokens.border,
-                        ),
-                        Expanded(
-                          child: _SideChip(
-                            icon: LucideIcons.user,
-                            label: 'طرف العروسة',
-                            value: brideCount,
+                      if (summary.companionsExpectedCount > 0) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text(
+                            _companionsLabel(summary.companionsExpectedCount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.labelSmall?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.76),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _invitationCountLabel(summary.totalGuests),
+                    style: textTheme.labelSmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.72),
                     ),
                   ),
                 ],
-                if (footer != null) ...[const SizedBox(height: 14), footer!],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _PeopleMark(invitationCount: summary.totalGuests),
+                if (isLocalPlan) ...[
+                  const SizedBox(height: 5),
+                  _localBadge(context),
+                ],
               ],
             ),
+          ],
+        ),
+        const SizedBox(height: 17),
+        _SegmentedBar(
+          confirmed: summary.confirmed,
+          pending: summary.pending,
+          declined: summary.declined,
+          reduceMotion: reduceMotion,
+        ),
+        const SizedBox(height: 11),
+        Row(
+          children: [
+            _ResponseStat(
+              label: 'مؤكد',
+              value: summary.confirmed,
+              color: AarastDesignTokens.success,
+            ),
+            const _StatDivider(),
+            _ResponseStat(
+              label: 'بانتظار الرد',
+              value: summary.pending,
+              color: AarastDesignTokens.gold,
+            ),
+            const _StatDivider(),
+            _ResponseStat(
+              label: 'لن يحضر',
+              value: summary.declined,
+              color: Colors.white.withValues(alpha: 0.82),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.only(top: 9),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'توزيع الدعوات',
+                style: textTheme.labelSmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.68),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _sideBreakdown(
+                    groom: groomCount,
+                    bride: brideCount,
+                    unknown: unknownCount,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (footer != null) ...[const SizedBox(height: 13), footer!],
+      ],
     );
   }
 
@@ -187,12 +246,17 @@ class GuestMeterHero extends StatelessWidget {
           height: 52,
           decoration: BoxDecoration(
             color: AarastDesignTokens.goldSoft,
-            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+            borderRadius: const BorderRadiusDirectional.only(
+              topStart: Radius.circular(18),
+              topEnd: Radius.circular(18),
+              bottomStart: Radius.circular(18),
+              bottomEnd: Radius.circular(5),
+            ),
           ),
           child: const Icon(
             LucideIcons.users,
             color: AarastDesignTokens.gold,
-            size: 26,
+            size: 25,
           ),
         ),
         const SizedBox(width: 14),
@@ -200,15 +264,16 @@ class GuestMeterHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'قائمة الضيوف',
-                      style: textTheme.titleMedium?.copyWith(
-                        color: AarastDesignTokens.title,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  Text(
+                    'قائمة الضيوف',
+                    style: textTheme.titleMedium?.copyWith(
+                      color: AarastDesignTokens.goldSoft,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   if (isLocalPlan) _localBadge(context),
@@ -216,9 +281,9 @@ class GuestMeterHero extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'أضف أول ضيف، وسنحسب لك الحضور المتوقع لتقدّر التكلفة بدقة.',
+                'أضف أول ضيف، وسنحسب المقاعد المتوقعة من بيانات الدعوات.',
                 style: textTheme.bodySmall?.copyWith(
-                  color: AarastDesignTokens.muted,
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w600,
                   height: 1.45,
                 ),
@@ -232,7 +297,7 @@ class GuestMeterHero extends StatelessWidget {
 
   Widget _localBadge(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: AarastDesignTokens.goldSoft,
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusPill),
@@ -246,14 +311,79 @@ class GuestMeterHero extends StatelessWidget {
             color: AarastDesignTokens.warning,
           ),
           const SizedBox(width: 4),
-          Text(
-            'تخطيط محلي',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AarastDesignTokens.ink,
-              fontWeight: FontWeight.w800,
+          Flexible(
+            child: Text(
+              'تخطيط محلي',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AarastDesignTokens.ink,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PeopleMark extends StatelessWidget {
+  const _PeopleMark({required this.invitationCount});
+
+  final int invitationCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleCount = invitationCount > 3 ? 3 : invitationCount;
+    const colors = [
+      AarastDesignTokens.burgundy,
+      AarastDesignTokens.gold,
+      AarastDesignTokens.ink,
+    ];
+
+    return Semantics(
+      label: _invitationCountLabel(invitationCount),
+      child: SizedBox(
+        width: 88,
+        height: 48,
+        child: Stack(
+          children: [
+            for (var index = 0; index < visibleCount; index++)
+              PositionedDirectional(
+                start: index * 23,
+                child: ExcludeSemantics(
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colors[index],
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        width: 4,
+                      ),
+                    ),
+                    child: invitationCount > 3 && index == 2
+                        ? Text(
+                            '+${invitationCount - 2}',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          )
+                        : const Icon(
+                            LucideIcons.user,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -278,14 +408,14 @@ class _SegmentedBar extends StatelessWidget {
     if (total == 0) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(99),
-        child: Container(height: 10, color: AarastDesignTokens.border),
+        child: Container(height: 6, color: AarastDesignTokens.border),
       );
     }
 
     Widget bar = ClipRRect(
       borderRadius: BorderRadius.circular(99),
       child: SizedBox(
-        height: 10,
+        height: 6,
         child: Row(
           children: [
             if (confirmed > 0)
@@ -302,7 +432,7 @@ class _SegmentedBar extends StatelessWidget {
               Expanded(
                 flex: declined,
                 child: Container(
-                  color: AarastDesignTokens.muted.withValues(alpha: 0.45),
+                  color: AarastDesignTokens.muted.withValues(alpha: 0.36),
                 ),
               ),
           ],
@@ -311,7 +441,6 @@ class _SegmentedBar extends StatelessWidget {
     );
 
     if (reduceMotion) return bar;
-    // RTL: يبدأ الشريط من جهة البداية (اليمين).
     return bar.animate().scaleX(
       begin: 0,
       end: 1,
@@ -322,43 +451,37 @@ class _SegmentedBar extends StatelessWidget {
   }
 }
 
-class _Legend extends StatelessWidget {
-  const _Legend({
-    required this.color,
+class _ResponseStat extends StatelessWidget {
+  const _ResponseStat({
     required this.label,
     required this.value,
+    required this.color,
   });
 
-  final Color color;
   final String label;
   final int value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
           Text(
-            '$value',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AarastDesignTokens.ink,
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.68),
             ),
           ),
-          const SizedBox(width: 3),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AarastDesignTokens.muted,
-              ),
+          const SizedBox(height: 1),
+          Text(
+            '$value',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -367,43 +490,16 @@ class _Legend extends StatelessWidget {
   }
 }
 
-class _SideChip extends StatelessWidget {
-  const _SideChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final int value;
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 14, color: AarastDesignTokens.burgundy),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AarastDesignTokens.muted,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          '$value',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: AarastDesignTokens.ink,
-          ),
-        ),
-      ],
+    return Container(
+      width: 1,
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: Colors.white.withValues(alpha: 0.16),
     );
   }
 }
@@ -423,7 +519,39 @@ class _CountUp extends StatelessWidget {
       tween: Tween(begin: 0, end: value.toDouble()),
       duration: const Duration(milliseconds: 1200),
       curve: Curves.easeOutExpo,
-      builder: (context, v, _) => Text('${v.round()}', style: style),
+      builder: (context, value, _) => Text('${value.round()}', style: style),
     );
   }
+}
+
+String _companionsLabel(int count) {
+  return switch (count) {
+    1 => 'منهم مرافق واحد',
+    2 => 'منهم مرافقان',
+    >= 3 && <= 10 => 'منهم $count مرافقين',
+    _ => 'منهم $count مرافقًا',
+  };
+}
+
+String _invitationCountLabel(int count) {
+  return switch (count) {
+    0 => 'لا توجد دعوات بعد',
+    1 => 'دعوة واحدة',
+    2 => 'دعوتان',
+    >= 3 && <= 10 => '$count دعوات',
+    _ => '$count دعوة',
+  };
+}
+
+String _sideBreakdown({
+  required int groom,
+  required int bride,
+  required int unknown,
+}) {
+  final parts = <String>[
+    'طرف العريس $groom',
+    'طرف العروسة $bride',
+    if (unknown > 0) 'غير محدد $unknown',
+  ];
+  return parts.join(' · ');
 }

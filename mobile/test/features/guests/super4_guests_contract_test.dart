@@ -6,6 +6,8 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
+import 'package:aarast_mobile/features/guests/widgets/premium/guest_meter_hero.dart';
+import 'package:aarast_mobile/features/guests/widgets/premium/smart_guest_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -72,6 +74,77 @@ void main() {
     expect(summary.bySideForSuper['bride'], 1);
   });
 
+  testWidgets('approved guest UI counts seats once when companions exist', (
+    tester,
+  ) async {
+    _setPhoneView(tester, height: 900);
+    final guests = [
+      _guest(
+        id: 'family-invite',
+        name: 'محمد علي',
+        phone: '+967777123456',
+        side: 'GROOM',
+        status: 'CONFIRMED',
+        attendanceStatus: 'CONFIRMED',
+        seatsCount: 3,
+        companionsCount: 2,
+      ),
+      _guest(
+        id: 'bride-invite',
+        name: 'ليلى سالم',
+        phone: '+967777654321',
+        side: 'BRIDE',
+        status: 'PENDING',
+        seatsCount: 1,
+      ),
+      _guest(
+        id: 'incomplete-invite',
+        name: 'ضيف بدون رقم',
+        side: 'GROOM',
+        status: 'INVITED',
+        seatsCount: 1,
+      ),
+    ];
+    final summary = GuestSummary.fromGuests(
+      weddingPlanId: _localPlanId,
+      guests: guests,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  GuestMeterHero(summary: summary),
+                  SmartGuestCard(
+                    guest: guests.first,
+                    groupLabel: 'العائلة',
+                    isDuplicate: false,
+                    isBusy: false,
+                    onEdit: () {},
+                    onStatus: (_) {},
+                    onDelete: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('منهم مرافقان'), findsOneWidget);
+    expect(find.text('3 مقاعد'), findsOneWidget);
+    expect(find.text('7'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('local guest appears in Super 4 Guests screen without login', (
     tester,
   ) async {
@@ -109,7 +182,7 @@ void main() {
     expect(find.text('ليلى سالم'), findsOneWidget);
     expect(find.text('+967 777 123 456'), findsOneWidget);
     expect(find.text('تخطيط محلي'), findsOneWidget);
-    expect(find.text('ضيوف يحتاجون إكمال بيانات'), findsOneWidget);
+    expect(find.text('ضيف واحد يحتاج إكمال بياناته'), findsOneWidget);
     expect(find.text('تم إرسال الدعوة'), findsNothing);
     expect(find.text('مشارك في الخطة'), findsNothing);
     expect(find.text('طلب عرض سعر'), findsNothing);
@@ -139,9 +212,10 @@ void main() {
     );
 
     await _pumpGuestsScreen(tester, harness);
-    expect(find.text('ضيوف بدون رقم جوال'), findsOneWidget);
+    expect(find.text('ضيف واحد يحتاج إكمال بياناته'), findsOneWidget);
+    expect(find.text('رقم الجوال غير مضاف بعد'), findsOneWidget);
 
-    await tester.tap(find.text('ضيوف يحتاجون إكمال بيانات'));
+    await tester.tap(find.text('ضيف واحد يحتاج إكمال بياناته'));
     await tester.pumpAndSettle();
 
     expect(find.text('ناقص بيانات'), findsWidgets);
@@ -193,7 +267,7 @@ void main() {
       notes: 'ملاحظة طويلة للتأكد من أن البطاقة لا تضغط العناصر في عرض ضيق.',
     );
 
-    await _pumpGuestsScreen(tester, harness, setView: false);
+    await _pumpGuestsScreen(tester, harness, setView: false, textScale: 1.3);
 
     expect(find.text('الضيوف'), findsWidgets);
     expect(tester.takeException(), isNull);
@@ -247,24 +321,37 @@ Future<void> _pumpGuestsScreen(
   WidgetTester tester,
   _Harness harness, {
   bool setView = true,
+  double textScale = 1,
 }) async {
   if (setView) _setPhoneView(tester);
-  await tester.pumpWidget(_providers(harness, GuestsProvider(harness.api)));
+  await tester.pumpWidget(
+    _providers(harness, GuestsProvider(harness.api), textScale: textScale),
+  );
   for (var i = 0; i < 12; i++) {
     await tester.pump(const Duration(milliseconds: 80));
   }
 }
 
-Widget _providers(_Harness harness, GuestsProvider provider) {
+Widget _providers(
+  _Harness harness,
+  GuestsProvider provider, {
+  double textScale = 1,
+}) {
   return MultiProvider(
     providers: [
       Provider<AuthStorage>.value(value: harness.authStorage),
       ChangeNotifierProvider<OfflineSyncService>.value(value: harness.offline),
       ChangeNotifierProvider<GuestsProvider>.value(value: provider),
     ],
-    child: const MaterialApp(
+    child: MaterialApp(
       themeMode: ThemeMode.light,
-      home: GuestListScreen(weddingPlanId: _localPlanId),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: const GuestListScreen(weddingPlanId: _localPlanId),
     ),
   );
 }

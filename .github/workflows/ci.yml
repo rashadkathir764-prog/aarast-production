@@ -29,7 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build backend
+      - run: docker build --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" backend
+      - run: docker build --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" --build-arg VITE_API_BASE_URL="https://aarast-api.shadowgardn.com" admin-web
 
   # Boots the real compiled backend against real Postgres + Redis and runs
   # all registered smoke suites end-to-end — the same command used before releases.

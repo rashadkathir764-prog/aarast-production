@@ -21,8 +21,8 @@ Do not claim the full target split is live until Dokploy/NPM are updated and ver
 ## Services
 
 - `postgres`: private PostgreSQL 16 database with the named volume `aarast_postgres_data`.
-- `backend`: NestJS API built from `backend/Dockerfile`, exposed on host port `8093` and container port `3000`.
-- `admin-web`: React/Vite admin dashboard built from `admin-web/Dockerfile`, exposed on host port `8094` and container port `80`.
+- `backend`: NestJS API deployed from a prebuilt content-addressed image, exposed on host port `8093` and container port `3000`.
+- `admin-web`: React/Vite admin dashboard deployed from a prebuilt content-addressed image, exposed on host port `8094` and container port `80`.
 
 PostgreSQL must stay private. Do not create a public domain or host-port binding for the database.
 
@@ -32,6 +32,8 @@ Copy `deploy/dokploy/.env.example` into Dokploy's environment editor or into a p
 
 Required:
 
+- `AARAST_BACKEND_IMAGE_ID`
+- `AARAST_ADMIN_WEB_IMAGE_ID`
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -91,6 +93,38 @@ origin so a missing build argument can never produce a browser bundle that
 calls `127.0.0.1`. The admin build gate rejects any production bundle that
 contains the development loopback origin or omits the current MFA login route.
 
+## Immutable Application Image Gate
+
+The production Compose file never builds application images and never pulls a
+mutable tag. Build both candidates from the final release commit on the
+Dokploy host:
+
+```sh
+export AARAST_GIT_REVISION="$(git rev-parse HEAD)"
+test "$(printf '%s' "$AARAST_GIT_REVISION" | wc -c)" -eq 40
+docker compose \
+  -f deploy/dokploy/docker-compose.build.yml \
+  build --no-cache backend admin-web
+```
+
+Resolve the resulting content-addressed IDs and verify both revision labels:
+
+```sh
+BACKEND_TAG="aarast-backend:candidate-${AARAST_GIT_REVISION}"
+ADMIN_TAG="aarast-admin-web:candidate-${AARAST_GIT_REVISION}"
+AARAST_BACKEND_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$BACKEND_TAG")"
+AARAST_ADMIN_WEB_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$ADMIN_TAG")"
+test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$AARAST_BACKEND_IMAGE_ID")" = "$AARAST_GIT_REVISION"
+test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$AARAST_ADMIN_WEB_IMAGE_ID")" = "$AARAST_GIT_REVISION"
+```
+
+Put only those two `sha256:...` IDs in Dokploy's private environment. Preserve
+both images with `docker save`, record the archive SHA-256, and copy the
+encrypted archive off-host before deployment. The runtime services use
+`pull_policy: never`; a missing local image is a hard failure, not permission
+to fall back to a tag. A registry digest may replace this single-host flow only
+after a project-owned registry and explicit pre-pull step are approved.
+
 If only the admin dashboard calls the API, `aarast-admin.shadowgardn.com` is enough. If Flutter web/mobile also runs on `aarast.shadowgardn.com`, include both browser origins:
 
 ```env
@@ -105,7 +139,9 @@ CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
 4. Select the GitHub repository for Aarast.
 5. Select the protected `main` release branch.
 6. Set the compose file path to `deploy/dokploy/docker-compose.yml`.
-7. Add environment variables from `deploy/dokploy/.env.example`, replacing every placeholder secret with a strong generated value.
+7. Complete the immutable image gate, then add environment variables from
+   `deploy/dokploy/.env.example`, replacing every placeholder secret and image
+   ID with the verified release values.
 8. Create a domain for the backend service:
    - Service: `backend`
    - Internal port: `3000`
@@ -117,7 +153,8 @@ CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
    - Host port: `8094`
    - Domain: `aarast-admin.shadowgardn.com`
 10. Enable SSL for both domains.
-11. Deploy.
+11. Deploy only after the backup restore rehearsal passes with the exact
+    `AARAST_BACKEND_IMAGE_ID`.
 12. Open logs for `postgres`, `backend`, and `admin-web`.
 13. Test API liveness and readiness at `https://aarast-api.shadowgardn.com/health`
     and `https://aarast-api.shadowgardn.com/ready`.

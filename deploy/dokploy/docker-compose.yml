@@ -126,10 +126,8 @@ services:
       - aarast_internal
 
   backend:
-    build:
-      context: ../../backend
-      dockerfile: Dockerfile
-    image: aarast-backend:prod
+    image: ${AARAST_BACKEND_IMAGE_ID:?AARAST_BACKEND_IMAGE_ID is required}
+    pull_policy: never
     container_name: aarast-backend-prod
     restart: unless-stopped
     depends_on:
@@ -207,12 +205,8 @@ services:
       - aarast_otp_transport
 
   admin-web:
-    build:
-      context: ../../admin-web
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://aarast-api.shadowgardn.com}
-    image: aarast-admin-web:prod
+    image: ${AARAST_ADMIN_WEB_IMAGE_ID:?AARAST_ADMIN_WEB_IMAGE_ID is required}
+    pull_policy: never
     container_name: aarast-admin-web-prod
     restart: unless-stopped
     environment:

@@ -10,6 +10,18 @@ const dockerfile = readFileSync(
   new URL('../../../backend/Dockerfile', import.meta.url),
   'utf8',
 );
+const adminDockerfile = readFileSync(
+  new URL('../../../admin-web/Dockerfile', import.meta.url),
+  'utf8',
+);
+const runtimeCompose = readFileSync(
+  new URL('../docker-compose.yml', import.meta.url),
+  'utf8',
+);
+const buildCompose = readFileSync(
+  new URL('../docker-compose.build.yml', import.meta.url),
+  'utf8',
+);
 const postgres16AlpineDigest =
   'postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229';
 
@@ -40,6 +52,42 @@ test('backend image distinguishes local builds and labels release revisions', ()
   assert.match(dockerfile, /\*\[!0-9a-f\]\*/);
   assert.match(
     dockerfile,
+    /LABEL org\.opencontainers\.image\.revision="\$\{AARAST_GIT_REVISION\}"/,
+  );
+});
+
+test('production runtime uses only prebuilt content-addressed application images', () => {
+  assert.match(runtimeCompose, /image: \$\{AARAST_BACKEND_IMAGE_ID:\?/);
+  assert.match(runtimeCompose, /image: \$\{AARAST_ADMIN_WEB_IMAGE_ID:\?/);
+  assert.equal((runtimeCompose.match(/pull_policy: never/g) ?? []).length, 2);
+  assert.doesNotMatch(runtimeCompose, /aarast-(?:backend|admin-web):prod/);
+
+  const backendBlock = runtimeCompose.match(
+    /  backend:\n(?<body>[\s\S]*?)\n  admin-web:/,
+  )?.groups?.body;
+  const adminBlock = runtimeCompose.match(
+    /  admin-web:\n(?<body>[\s\S]*?)\nvolumes:/,
+  )?.groups?.body;
+  assert.ok(backendBlock);
+  assert.ok(adminBlock);
+  assert.doesNotMatch(backendBlock, /\n    build:/);
+  assert.doesNotMatch(adminBlock, /\n    build:/);
+});
+
+test('release build compose stamps backend and admin images with one Git revision', () => {
+  assert.equal(
+    (buildCompose.match(/AARAST_GIT_REVISION: \$\{AARAST_GIT_REVISION:\?/g) ?? [])
+      .length,
+    2,
+  );
+  assert.match(buildCompose, /aarast-backend:candidate-\$\{AARAST_GIT_REVISION:\?/);
+  assert.match(buildCompose, /aarast-admin-web:candidate-\$\{AARAST_GIT_REVISION:\?/);
+  assert.match(
+    adminDockerfile,
+    /ARG AARAST_GIT_REVISION=development-unversioned/,
+  );
+  assert.match(
+    adminDockerfile,
     /LABEL org\.opencontainers\.image\.revision="\$\{AARAST_GIT_REVISION\}"/,
   );
 });

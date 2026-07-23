@@ -214,24 +214,23 @@ async function run() {
     acceptResponse.body?.planProviderLink?.providerId === providerId,
   );
   check(
-    'accepted quote response declares no automatic cost',
-    acceptResponse.body?.automaticCostCreated === false,
+    'accepted quote response declares automatic cost',
+    acceptResponse.body?.automaticCostCreated === true,
   );
   check(
     'accepted quote response includes next actions',
     Array.isArray(acceptResponse.body?.nextActions) &&
-      acceptResponse.body.nextActions.includes('createCost') &&
-      acceptResponse.body.nextActions.includes('createFollowUpTask') &&
+      acceptResponse.body.nextActions.includes('viewCost') &&
       acceptResponse.body.nextActions.includes('viewAcceptedProvider'),
   );
   check(
-    'accepted quote response suggests explicit cost creation',
-    acceptResponse.body?.costSuggestion?.recommendedAction === 'CREATE_COST',
+    'accepted quote response exposes the linked cost',
+    acceptResponse.body?.costSuggestion?.suggestedAction === 'VIEW_COST',
   );
   check(
-    'accept creates no automatic cost',
+    'accept creates one automatic cost',
     (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) ===
-      costsBefore,
+      costsBefore + 1,
   );
 
   const inviteResponse = await request(

@@ -12,6 +12,7 @@ const { uploadVerifiedImage } = require('./verified-media-upload');
 
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
+const MANAGED_SMOKE = process.env.AARAST_SMOKE_MANAGED === '1';
 const suffix = `${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`;
 const PASSWORD = 'SmokeTest123!';
 const users = [];
@@ -115,22 +116,26 @@ async function run() {
       },
     });
     providerId = provider.id;
-    const quote = await prisma.quoteRequest.create({
-      data: {
-        userId: requester.user.id,
-        providerId: provider.id,
+    const quote = await request(
+      'POST',
+      `/api/v1/providers/${provider.id}/quote-requests`,
+      {
+        cityId: city.id,
         message: 'Private chat media smoke',
       },
-    });
-
-    const ensured = await request(
-      'POST',
-      `/api/v1/conversations/quote-requests/${quote.id}`,
-      {},
       requester.accessToken,
     );
-    check('requester creates quote conversation', ensured.status === 201);
-    const conversationId = requireResponseId('quote conversation', ensured);
+    check('requester creates quote request', quote.status === 201);
+    const quoteId = requireResponseId('quote request', quote);
+
+    const conversation = await request(
+      'GET',
+      `/api/v1/quote-requests/${quoteId}/conversation`,
+      undefined,
+      requester.accessToken,
+    );
+    check('requester reads unified quote conversation', conversation.status === 200);
+    const conversationId = requireResponseId('quote conversation', conversation);
 
     const media = await uploadVerifiedImage({
       request,
@@ -224,7 +229,7 @@ async function run() {
       undefined,
       stranger.accessToken,
     );
-    check('non-participant cannot enumerate attachments', outsiderMessages.status === 403);
+    check('non-participant cannot enumerate attachments', outsiderMessages.status === 404);
 
     const providerMessages = await request(
       'GET',
@@ -242,7 +247,7 @@ async function run() {
       undefined,
       stranger.accessToken,
     );
-    check('non-participant cannot refresh a link', outsiderRefresh.status === 403);
+    check('non-participant cannot refresh a link', outsiderRefresh.status === 404);
 
     const memberRefresh = await request(
       'GET',
@@ -254,11 +259,15 @@ async function run() {
     check('refreshed link expires in 120 seconds', memberRefresh.body?.expiresInSeconds === 120);
     check('refresh response hides storageKey', !hasStorageKey(memberRefresh.body));
   } finally {
-    if (providerId) {
-      await prisma.provider.deleteMany({ where: { id: providerId } });
-    }
-    if (users.length) {
-      await prisma.user.deleteMany({ where: { id: { in: users } } });
+    if (MANAGED_SMOKE) {
+      console.log('INFO - fixture cleanup is owned by the managed isolated smoke runner');
+    } else {
+      if (providerId) {
+        await prisma.provider.deleteMany({ where: { id: providerId } });
+      }
+      if (users.length) {
+        await prisma.user.deleteMany({ where: { id: { in: users } } });
+      }
     }
     await prisma.$disconnect();
   }

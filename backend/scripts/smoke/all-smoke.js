@@ -3,6 +3,9 @@
 
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { assertManagedSmokeEnvironment } = require('./smoke-utils');
+
+assertManagedSmokeEnvironment(process.env);
 
 const smokeScripts = [
   ['smoke:health', 'health-smoke.js'],
@@ -27,6 +30,8 @@ const smokeScripts = [
   ['smoke:otp-profile', 'otp-profile-smoke.js'],
   ['smoke:marketplace', 'marketplace-smoke.js'],
   ['smoke:providers-quotes', 'providers-quotes-smoke.js'],
+  ['smoke:quote-stability', 'quote-stability-smoke.js'],
+  ['smoke:conversation-unification', 'conversation-unification-smoke.js'],
   ['smoke:private-chat-media', 'private-chat-media-smoke.js'],
   [
     'smoke:account-deletion',
@@ -48,6 +53,8 @@ console.log(`Target: ${smokeBaseUrl}\n`);
 for (const [index, [script, fileName, preloads = []]] of smokeScripts.entries()) {
   console.log(`===== ${script} =====`);
   const result = spawnSync(process.execPath, [
+    '-r',
+    path.join(__dirname, 'smoke-isolation-hook.js'),
     '-r',
     path.join(__dirname, 'smoke-client-ip-hook.js'),
     ...preloads.flatMap((preload) => ['-r', require.resolve(preload)]),

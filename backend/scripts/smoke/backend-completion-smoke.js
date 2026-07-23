@@ -246,8 +246,9 @@ async function run() {
   {
     const res = await request('POST', `/api/v1/payment-schedules/${paymentScheduleId}/pay`, {}, owner.token);
     check('POST payment schedule pay - HTTP 201', res.status === 201);
-    check('schedule payment links to schedule', res.body?.paymentScheduleId === paymentScheduleId);
-    check('schedule payment amount is preserved', Number(res.body?.amount) === 100000);
+    check('schedule payment links to schedule', res.body?.payment?.paymentScheduleId === paymentScheduleId);
+    check('schedule payment amount is preserved', Number(res.body?.payment?.amount) === 100000);
+    check('schedule payment returns paid schedule', res.body?.schedule?.id === paymentScheduleId && res.body?.schedule?.status === 'PAID');
   }
 
   {
@@ -431,9 +432,10 @@ async function run() {
     const res = await request('PATCH', `/api/v1/quote-offers/${offerId}/accept`, null, owner.token);
     check('PATCH quote offer accept - HTTP 200', res.status === 200);
     check('accept creates provider link', res.body?.planProviderLink?.providerId === providerId);
-    check('accept declares no automatic cost', res.body?.automaticCostCreated === false);
-    check('accept exposes explicit cost suggestion', res.body?.costSuggestion?.recommendedAction === 'CREATE_COST');
-    check('accept exposes next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createCost'));
+    check('accept declares automatic cost', res.body?.automaticCostCreated === true);
+    check('accept returns the automatic cost', typeof res.body?.weddingCost?.id === 'string');
+    check('accept exposes the linked cost', res.body?.costSuggestion?.suggestedAction === 'VIEW_COST');
+    check('accept exposes next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('viewCost'));
   }
 
   {

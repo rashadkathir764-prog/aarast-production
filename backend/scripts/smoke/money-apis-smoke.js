@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+require('./smoke-isolation-hook');
+
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
@@ -318,8 +320,9 @@ async function run() {
       { paidAt: dateOffsetIso(0), method: 'cash', note: 'Scheduled payment smoke' },
       owner.token,
     );
-    check('paying a schedule creates one canonical payment', payment.status === 201 && payment.body?.entryType === 'PAYMENT' && payment.body?.paymentScheduleId === scheduleId);
-    const paymentId = payment.body?.id;
+    check('paying a schedule creates one canonical payment', payment.status === 201 && payment.body?.payment?.entryType === 'PAYMENT' && payment.body?.payment?.paymentScheduleId === scheduleId);
+    check('paying a schedule returns its paid schedule', payment.body?.schedule?.id === scheduleId && payment.body?.schedule?.status === 'PAID');
+    const paymentId = payment.body?.payment?.id;
     if (!paymentId) throw new Error('scheduled payment setup failed');
 
     const paidCost = await request('GET', `/api/v1/costs/${costId}`, null, owner.token);

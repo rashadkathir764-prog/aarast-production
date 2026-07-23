@@ -9,10 +9,10 @@
  * latency percentiles.
  *
  * Usage:
- *   LOAD_BASE_URL=http://127.0.0.1:3000 node scripts/load/load-test.js
+ *   npm run load:test
  *
  * Env knobs:
- *   LOAD_BASE_URL      target (default http://127.0.0.1:3115)
+ *   LOAD_BASE_URL      managed target (set only by the isolation wrapper)
  *   LOAD_CONNECTIONS   concurrent keep-alive connections (default 50)
  *   LOAD_DURATION_S    seconds to run (default 30)
  *
@@ -26,8 +26,19 @@ const { URL } = require('node:url');
 const {
   registerVerified,
 } = require('../smoke/verified-registration');
+const {
+  assertManagedSmokeEnvironment,
+} = require('../smoke/smoke-utils');
 
-const baseUrl = new URL(process.env.LOAD_BASE_URL || 'http://127.0.0.1:3115');
+assertManagedSmokeEnvironment(process.env);
+if (
+  !process.env.LOAD_BASE_URL ||
+  process.env.LOAD_BASE_URL !== process.env.SMOKE_BASE_URL
+) {
+  throw new Error('LOAD_BASE_URL must be owned by managed smoke isolation.');
+}
+
+const baseUrl = new URL(process.env.LOAD_BASE_URL);
 const connections = Number(process.env.LOAD_CONNECTIONS || 50);
 const durationMs = Number(process.env.LOAD_DURATION_S || 30) * 1000;
 

@@ -2,6 +2,9 @@
 'use strict';
 
 const http = require('node:http');
+const { assertManagedSmokeEnvironment } = require('./smoke-utils');
+
+assertManagedSmokeEnvironment(process.env);
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const suffix = `${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 9)}`;

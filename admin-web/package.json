@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/build-config-smoke.mjs",
     "preview": "vite preview",
-    "smoke:admin-runtime": "node scripts/admin-runtime-smoke.mjs",
+    "smoke:admin-runtime": "node ../backend/scripts/smoke/run-isolated-smoke.js --admin-runtime",
     "smoke:routes": "npm run build && node scripts/route-smoke.mjs",
     "smoke:honesty": "node scripts/source-honesty-smoke.mjs",
     "test": "vitest run",

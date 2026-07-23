@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+require('./smoke-isolation-hook');
+
 const { registerVerified } = require('./verified-registration');
 
 const http = require('http');

@@ -1,5 +1,7 @@
 'use strict';
 
+require('./smoke-isolation-hook');
+
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
@@ -132,7 +134,8 @@ async function run() {
       request('POST', `/api/v1/payment-schedules/${scheduleId}/pay`, {}, token, `schedule-pay-b-${suffix}`),
     ]);
     check('both concurrent schedule-pay calls complete successfully', payResults.every((item) => item.status === 201));
-    check('both concurrent calls resolve to the same payment', payResults[0].body?.id === payResults[1].body?.id && payResults.every((item) => item.body?.entryType === 'PAYMENT'));
+    check('both concurrent calls resolve to the same payment', payResults[0].body?.payment?.id === payResults[1].body?.payment?.id && payResults.every((item) => item.body?.payment?.entryType === 'PAYMENT'));
+    check('both concurrent calls return the paid schedule', payResults.every((item) => item.body?.schedule?.id === scheduleId && item.body?.schedule?.status === 'PAID'));
 
     let ledger = await request(
       'GET',

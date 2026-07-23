@@ -305,10 +305,11 @@ async function run() {
     check('PATCH /api/v1/quote-offers/:id/accept - HTTP 200', res.status === 200);
     check('accepted offer status is ACCEPTED', res.body?.offer?.status === 'ACCEPTED');
     check('accept creates plan provider link', res.body?.planProviderLink?.providerId === providerId);
-    check('accept declares no automatic cost', res.body?.automaticCostCreated === false);
-    check('accept returns explicit cost suggestion', res.body?.costSuggestion?.recommendedAction === 'CREATE_COST');
-    check('accept returns canonical next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createCost') && res.body.nextActions.includes('createFollowUpTask') && res.body.nextActions.includes('viewAcceptedProvider'));
-    check('accept creates no automatic cost', (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) === costsBeforeAccept);
+    check('accept declares automatic cost', res.body?.automaticCostCreated === true);
+    check('accept returns the automatic cost', typeof res.body?.weddingCost?.id === 'string');
+    check('accept exposes the linked cost', res.body?.costSuggestion?.suggestedAction === 'VIEW_COST');
+    check('accept returns canonical next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('viewCost') && res.body.nextActions.includes('viewAcceptedProvider'));
+    check('accept creates one automatic cost', (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) === costsBeforeAccept + 1);
   }
 
   {

@@ -1,16 +1,38 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const baseUrl = (
-  process.env.ADMIN_SMOKE_BASE_URL ||
-  process.env.VITE_API_BASE_URL ||
-  "http://127.0.0.1:3115"
-).replace(/\/$/, "");
-const localComposeDatabaseUrl =
-  "postgresql://aarast:aarast_dev_password@localhost:5433/aarast?schema=public";
+const backendRequire = createRequire(
+  resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "backend",
+    "package.json",
+  ),
+);
+const { assertManagedSmokeEnvironment } = backendRequire(
+  "./scripts/smoke/smoke-utils.js",
+);
+assertManagedSmokeEnvironment(process.env);
+
+if (
+  !process.env.ADMIN_SMOKE_BASE_URL ||
+  process.env.ADMIN_SMOKE_BASE_URL !== process.env.SMOKE_BASE_URL
+) {
+  throw new Error("ADMIN_SMOKE_BASE_URL must be owned by managed smoke isolation.");
+}
+if (
+  !process.env.ADMIN_SMOKE_DATABASE_URL ||
+  process.env.ADMIN_SMOKE_DATABASE_URL !== process.env.SMOKE_DATABASE_URL
+) {
+  throw new Error(
+    "ADMIN_SMOKE_DATABASE_URL must be the managed disposable database.",
+  );
+}
+
+const baseUrl = process.env.ADMIN_SMOKE_BASE_URL.replace(/\/$/, "");
 
 const checks = [];
 let token = "";
@@ -79,58 +101,6 @@ function isLocalTarget() {
   }
 }
 
-function loadBackendEnvIfNeeded() {
-  if (process.env.DATABASE_URL) return;
-
-  const backendEnvPath = resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "..",
-    "backend",
-    ".env",
-  );
-  if (!existsSync(backendEnvPath)) return;
-
-  for (const line of readFileSync(backendEnvPath, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-
-    const equalsIndex = trimmed.indexOf("=");
-    if (equalsIndex === -1) continue;
-
-    const key = trimmed.slice(0, equalsIndex).trim();
-    let value = trimmed.slice(equalsIndex + 1).trim();
-    if (!key || process.env[key] !== undefined) continue;
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    process.env[key] = value;
-  }
-}
-
-function configureLocalAdminDatabaseUrl() {
-  if (process.env.ADMIN_SMOKE_DATABASE_URL) {
-    process.env.DATABASE_URL = process.env.ADMIN_SMOKE_DATABASE_URL;
-    return;
-  }
-
-  if (process.env.SMOKE_DATABASE_URL) {
-    process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-    return;
-  }
-
-  if (isLocalTarget()) {
-    process.env.DATABASE_URL = localComposeDatabaseUrl;
-    return;
-  }
-
-  loadBackendEnvIfNeeded();
-}
-
 async function createLocalSmokeAdmin() {
   if (!isLocalTarget()) {
     throw new Error(
@@ -138,22 +108,6 @@ async function createLocalSmokeAdmin() {
     );
   }
 
-  configureLocalAdminDatabaseUrl();
-  if (!process.env.DATABASE_URL) {
-    throw new Error(
-      "DATABASE_URL is required to auto-provision a local admin smoke account.",
-    );
-  }
-
-  const backendRequire = createRequire(
-    resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "..",
-      "..",
-      "backend",
-      "package.json",
-    ),
-  );
   const { PrismaClient } = backendRequire("@prisma/client");
   const bcryptjs = backendRequire("bcryptjs");
   const prisma = new PrismaClient();
@@ -199,12 +153,6 @@ async function createLocalSmokeAdmin() {
 }
 
 async function resolveCredentials() {
-  const phone = process.env.ADMIN_SMOKE_PHONE || "";
-  const password = process.env.ADMIN_SMOKE_PASSWORD || "";
-  if (phone && password) {
-    return { phone, password, source: "provided by env" };
-  }
-
   return createLocalSmokeAdmin();
 }
 
@@ -336,7 +284,7 @@ async function run() {
     Array.isArray(res.body?.items) &&
       res.body.items
         .filter((item) =>
-          ["INSTALLMENT_DUE_SOON", "INSTALLMENT_OVERDUE", "DEBT_DUE_SOON"].includes(
+          ["PAYMENT_SCHEDULE_DUE_SOON", "PAYMENT_SCHEDULE_OVERDUE"].includes(
             item.type,
           ),
         )

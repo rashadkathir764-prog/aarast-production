@@ -19,6 +19,25 @@ export class OutboxDispatcher {
         });
         return;
       }
+      case OutboxEventTypes.conversationActivityAvailable: {
+        const conversationId = requiredText(payload, 'conversationId');
+        const activityKind = requiredText(payload, 'activityKind');
+        const activity = {
+          conversationId,
+          activityKind,
+          ...(typeof payload.messageId === 'string'
+            ? { messageId: payload.messageId }
+            : {}),
+          ...(typeof payload.eventId === 'string'
+            ? { eventId: payload.eventId }
+            : {}),
+        };
+        if (activityKind === 'EVENT') {
+          this.realtime.event(conversationId, activity);
+        }
+        this.realtime.activityAvailable(conversationId, activity);
+        return;
+      }
       case OutboxEventTypes.notificationCreated: {
         const userId = requiredText(payload, 'userId');
         const notificationId = requiredText(payload, 'notificationId');

@@ -21,6 +21,11 @@ import {
 import { MoneyBudgetService } from "../src/money/money-budget.service";
 import { MoneySummaryService } from "../src/money/money-summary.service";
 import { ReplaceMoneyBudgetDto } from "../src/money/dto/replace-money-budget.dto";
+import {
+  findLogicalBudgetCategory,
+  findOtherBudgetCategory,
+  normalizeBudgetCategoryName,
+} from "../src/marketplace/quote-cost-category";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
 
 test("money validation accepts bounded amounts and rejects unsafe values", () => {
@@ -215,6 +220,55 @@ test("strict finance dates reject impossible and ambiguous calendar input", () =
   );
   assert.throws(() => requiredDate("2026-02-30"), BadRequestException);
   assert.throws(() => requiredDate("01/02/2026"), BadRequestException);
+});
+
+test("quote service categories match budget categories logically and preserve the canonical fallback", () => {
+  const categories = [
+    { id: "hall", name: "قاعات الأفراح", normalizedName: "قاعات الأفراح" },
+    { id: "photo", name: "التصوير", normalizedName: "التصوير" },
+    { id: "other", name: "اخرى", normalizedName: "اخرى" },
+  ];
+  assert.equal(
+    findLogicalBudgetCategory(categories, "الصالات وقاعات المناسبات")?.id,
+    "hall",
+  );
+  assert.equal(
+    findLogicalBudgetCategory(categories, "Photography")?.id,
+    "photo",
+  );
+  assert.equal(findLogicalBudgetCategory(categories, "خدمة خاصة"), null);
+  assert.equal(findOtherBudgetCategory(categories)?.id, "other");
+  assert.equal(normalizeBudgetCategoryName("  أخرى  "), "أخرى");
+});
+
+test("an accepted quote offer cannot be linked to a second cost", async () => {
+  const service = new WeddingCostsService({} as any, {} as any);
+  const tx = {
+    quoteOffer: {
+      findUnique: async () => ({
+        id: "offer-1",
+        providerId: "provider-1",
+        status: "ACCEPTED",
+        currency: "YER",
+        amount: new Prisma.Decimal("250000"),
+        quoteRequest: { weddingPlanId: "plan-1" },
+        provider: { status: "ACTIVE" },
+        weddingCosts: [{ id: "cost-existing" }],
+      }),
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      (service as any).normalizeCounterparty(tx, {
+        weddingPlanId: "plan-1",
+        planCurrency: "YER",
+        totalAmount: new Prisma.Decimal("250000"),
+        providerId: "provider-1",
+        quoteOfferId: "offer-1",
+      }),
+    ConflictException,
+  );
 });
 
 test("a direct payment ignores reminder totals and cancels pending reminders when it settles the cost", async () => {

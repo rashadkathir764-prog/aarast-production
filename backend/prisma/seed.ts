@@ -1,4 +1,6 @@
 import {
+  ConversationEventType,
+  ConversationScope,
   CostPaymentType,
   GuestAttendanceStatus,
   GuestInvitationStatus,
@@ -730,12 +732,55 @@ async function upsertBackendCompletionQuoteRequest(
     budgetMax: '450000',
     status: QuoteRequestStatus.ACCEPTED,
   };
-  if (existing) {
-    return prisma.quoteRequest.update({ where: { id: existing.id }, data });
-  }
-  return prisma.quoteRequest.create({
-    data: { weddingPlanId, ...data },
+  let conversation = await prisma.conversation.findFirst({
+    where: { scope: ConversationScope.PLAN, weddingPlanId, providerId },
+    select: { id: true },
   });
+  if (!conversation) {
+    const provider = await prisma.provider.findUnique({
+      where: { id: providerId },
+      select: { userId: true },
+    });
+    conversation = await prisma.conversation.create({
+      data: {
+        scope: ConversationScope.PLAN,
+        weddingPlanId,
+        providerId,
+        createdByUserId: userId,
+        participants: {
+          create: [
+            { userId },
+            ...(provider?.userId && provider.userId !== userId
+              ? [{ userId: provider.userId }]
+              : []),
+          ],
+        },
+      },
+      select: { id: true },
+    });
+  }
+  const quote = existing
+    ? await prisma.quoteRequest.update({
+        where: { id: existing.id },
+        data: { ...data, conversationId: conversation.id },
+      })
+    : await prisma.quoteRequest.create({
+        data: { weddingPlanId, conversationId: conversation.id, ...data },
+      });
+  await prisma.conversationEvent.upsert({
+    where: { dedupeKey: `quote-request:${quote.id}:created` },
+    update: {},
+    create: {
+      conversationId: conversation.id,
+      quoteRequestId: quote.id,
+      actorUserId: userId,
+      type: ConversationEventType.QUOTE_REQUEST_CREATED,
+      occurredAt: quote.createdAt,
+      dedupeKey: `quote-request:${quote.id}:created`,
+      data: { status: QuoteRequestStatus.SENT },
+    },
+  });
+  return quote;
 }
 
 async function upsertBackendCompletionQuoteOffer(

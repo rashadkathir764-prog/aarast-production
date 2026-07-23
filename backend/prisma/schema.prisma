@@ -188,9 +188,18 @@ enum NotificationType {
   GENERAL
 }
 
-enum ConversationParticipantRole {
-  REQUESTER
-  PROVIDER
+enum ConversationScope {
+  PLAN
+  ACCOUNT
+}
+
+enum ConversationEventType {
+  QUOTE_REQUEST_CREATED
+  QUOTE_REQUEST_CANCELLED
+  QUOTE_REQUEST_REJECTED
+  QUOTE_OFFER_RECEIVED
+  QUOTE_OFFER_REJECTED
+  QUOTE_OFFER_ACCEPTED
 }
 
 enum ConversationReportStatus {
@@ -282,6 +291,9 @@ model User {
   favoriteProviders            FavoriteProvider[]
   providerReviews              ProviderReview[]
   quoteRequests                QuoteRequest[]
+  accountConversations         Conversation[]                @relation("ConversationAccountRequester")
+  createdConversations         Conversation[]                @relation("ConversationCreatedBy")
+  customerBlockedConversations Conversation[]                @relation("ConversationCustomerBlockedBy")
   reviewedProviders            Provider[]                    @relation("ProviderReviewedBy")
   assignedWeddingTasks         WeddingTask[]                 @relation("AssignedWeddingTasks")
   sentPlanInvites              PlanInvite[]                  @relation("PlanInviteInviter")
@@ -292,6 +304,7 @@ model User {
   conversationParticipants     ConversationParticipant[]
   chatMessages                 ChatMessage[]                 @relation("ChatMessageSender")
   conversationReports          ConversationReport[]          @relation("ConversationReporter")
+  conversationEvents           ConversationEvent[]           @relation("ConversationEventActor")
   mediaUploadTickets           MediaUploadTicket[]
 }
 
@@ -401,7 +414,7 @@ model LoginThrottle {
   failedCount     Int       @default(0)
   windowStartedAt DateTime
   lockedUntil     DateTime?
-  updatedAt       DateTime  @updatedAt
+  updatedAt       DateTime  @default(now()) @updatedAt
 
   @@index([lockedUntil])
   @@index([updatedAt])
@@ -447,6 +460,7 @@ model WeddingPlan {
   guests                Guest[]
   guestGroups           GuestGroup[]
   providerLinks         PlanProviderLink[]
+  conversations         Conversation[]
 
   @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
@@ -485,7 +499,7 @@ model WeddingCost {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   weddingPlan      WeddingPlan       @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  budgetCategory   BudgetCategory    @relation(fields: [budgetCategoryId, weddingPlanId], references: [id, weddingPlanId], onDelete: Restrict)
+  budgetCategory   BudgetCategory    @relation(fields: [budgetCategoryId, weddingPlanId], references: [id, weddingPlanId], onDelete: Restrict, map: "WeddingCost_category_same_plan_fkey")
   provider         Provider?         @relation(fields: [providerId], references: [id], onDelete: SetNull)
   quoteOffer       QuoteOffer?       @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
   payments         CostPayment[]
@@ -508,8 +522,8 @@ model CostPayment {
   reversalOfId      String?          @unique
   createdAt         DateTime         @default(now())
   weddingCost       WeddingCost      @relation(fields: [weddingCostId], references: [id], onDelete: Restrict)
-  paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict)
-  reversalOf        CostPayment?     @relation("CostPaymentReversal", fields: [reversalOfId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict)
+  paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_schedule_same_cost_fkey")
+  reversalOf        CostPayment?     @relation("CostPaymentReversal", fields: [reversalOfId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_reversal_same_cost_fkey")
   reversedBy        CostPayment?     @relation("CostPaymentReversal")
 
   @@unique([id, weddingCostId])
@@ -595,7 +609,7 @@ model SharedMember {
 }
 
 model PlanInvite {
-  id                   String           @id @default(cuid())
+  id                   String                   @id @default(cuid())
   weddingPlanId        String
   inviterUserId        String
   inviteeUserId        String?
@@ -603,27 +617,27 @@ model PlanInvite {
   phone                String?
   normalizedPhone      String?
   email                String?
-  tokenHash            String           @unique
-  role                 SharedMemberRole @default(VIEWER)
-  canViewMoney         Boolean          @default(false)
-  canEditPlan          Boolean          @default(false)
-  canManageTasks       Boolean          @default(false)
-  canManageGuests      Boolean          @default(false)
-  canManageProviders   Boolean          @default(false)
-  canInviteMembers     Boolean          @default(false)
-  canManageMoney       Boolean          @default(false)
-  receiveNotifications Boolean          @default(true)
+  tokenHash            String                   @unique
+  role                 SharedMemberRole         @default(VIEWER)
+  canViewMoney         Boolean                  @default(false)
+  canEditPlan          Boolean                  @default(false)
+  canManageTasks       Boolean                  @default(false)
+  canManageGuests      Boolean                  @default(false)
+  canManageProviders   Boolean                  @default(false)
+  canInviteMembers     Boolean                  @default(false)
+  canManageMoney       Boolean                  @default(false)
+  receiveNotifications Boolean                  @default(true)
   expiresAt            DateTime
   acceptedAt           DateTime?
   declinedAt           DateTime?
   revokedAt            DateTime?
   deliveryStatus       PlanInviteDeliveryStatus @default(UNKNOWN)
   deliveryAttemptedAt  DateTime?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  weddingPlan          WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  inviter              User             @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
-  invitee              User?            @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  weddingPlan          WeddingPlan              @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  inviter              User                     @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
+  invitee              User?                    @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
 
   @@index([weddingPlanId, createdAt])
   @@index([inviteeUserId, acceptedAt])
@@ -826,6 +840,7 @@ model Provider {
   quoteOffers       QuoteOffer[]
   planLinks         PlanProviderLink[]
   weddingCosts      WeddingCost[]
+  conversations     Conversation[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
@@ -918,7 +933,7 @@ model ProviderReview {
 }
 
 model QuoteRequest {
-  id                     String             @id @default(uuid())
+  id                     String              @id @default(uuid())
   userId                 String
   weddingPlanId          String?
   providerId             String
@@ -930,46 +945,50 @@ model QuoteRequest {
   contactName            String?
   contactPhone           String?
   contactNormalizedPhone String?
-  message                String?            @db.Text
-  budgetMin              Decimal?           @db.Decimal(14, 2)
-  budgetMax              Decimal?           @db.Decimal(14, 2)
-  status                 QuoteRequestStatus @default(SENT)
+  message                String?             @db.Text
+  budgetMin              Decimal?            @db.Decimal(14, 2)
+  budgetMax              Decimal?            @db.Decimal(14, 2)
+  status                 QuoteRequestStatus  @default(SENT)
   acceptedAt             DateTime?
   rejectedAt             DateTime?
   cancelledAt            DateTime?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weddingPlan            WeddingPlan?       @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
-  provider               Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service                ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  city                   City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan            WeddingPlan?        @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider               Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service                ProviderService?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  city                   City?               @relation(fields: [cityId], references: [id], onDelete: SetNull)
   offers                 QuoteOffer[]
   providerLinks          PlanProviderLink[]
-  conversation           Conversation?
+  conversationId         String
+  conversation           Conversation        @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  conversationEvents     ConversationEvent[]
 
   @@index([userId, status])
   @@index([providerId, status])
   @@index([weddingPlanId])
+  @@index([conversationId, createdAt])
   @@index([contactNormalizedPhone])
 }
 
 model QuoteOffer {
-  id             String             @id @default(uuid())
-  quoteRequestId String
-  providerId     String
-  title          String?
-  message        String?            @db.Text
-  amount         Decimal?           @db.Decimal(14, 2)
-  currency       String             @default("YER")
-  validUntil     DateTime?
-  status         QuoteOfferStatus   @default(PENDING)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  quoteRequest   QuoteRequest       @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
-  provider       Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  providerLinks  PlanProviderLink[]
-  weddingCosts   WeddingCost[]
+  id                 String              @id @default(uuid())
+  quoteRequestId     String
+  providerId         String
+  title              String?
+  message            String?             @db.Text
+  amount             Decimal?            @db.Decimal(14, 2)
+  currency           String              @default("YER")
+  validUntil         DateTime?
+  status             QuoteOfferStatus    @default(PENDING)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  quoteRequest       QuoteRequest        @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  provider           Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerLinks      PlanProviderLink[]
+  weddingCosts       WeddingCost[]
+  conversationEvents ConversationEvent[]
 
   @@index([quoteRequestId, status])
   @@index([providerId, status])
@@ -996,36 +1015,72 @@ model PlanProviderLink {
 }
 
 model Conversation {
-  id             String                    @id @default(cuid())
-  quoteRequestId String                    @unique
-  lastMessageAt  DateTime?
-  closedAt       DateTime?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
-  quoteRequest   QuoteRequest              @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
-  participants   ConversationParticipant[]
-  messages       ChatMessage[]
-  reports        ConversationReport[]
+  id                      String                    @id @default(cuid())
+  scope                   ConversationScope
+  weddingPlanId           String?
+  accountRequesterUserId  String?
+  providerId              String
+  createdByUserId         String?
+  lastActivityAt          DateTime                  @default(now())
+  closedAt                DateTime?
+  customerSideBlockedAt   DateTime?
+  customerSideBlockedById String?
+  providerSideBlockedAt   DateTime?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  weddingPlan             WeddingPlan?              @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  accountRequester        User?                     @relation("ConversationAccountRequester", fields: [accountRequesterUserId], references: [id], onDelete: Cascade)
+  provider                Provider                  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdBy               User?                     @relation("ConversationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  customerSideBlockedBy   User?                     @relation("ConversationCustomerBlockedBy", fields: [customerSideBlockedById], references: [id], onDelete: SetNull)
+  quoteRequests           QuoteRequest[]
+  participants            ConversationParticipant[]
+  messages                ChatMessage[]
+  events                  ConversationEvent[]
+  reports                 ConversationReport[]
 
-  @@index([lastMessageAt])
-  @@index([lastMessageAt, createdAt, id])
+  @@index([weddingPlanId, providerId])
+  @@index([accountRequesterUserId, providerId])
+  @@index([providerId, lastActivityAt])
+  @@index([lastActivityAt, createdAt, id])
 }
 
 model ConversationParticipant {
-  id             String                      @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   userId         String
-  role           ConversationParticipantRole
+  joinedAt       DateTime     @default(now())
+  revokedAt      DateTime?
   lastReadAt     DateTime?
   mutedAt        DateTime?
-  blockedAt      DateTime?
-  createdAt      DateTime                    @default(now())
-  updatedAt      DateTime                    @updatedAt
-  conversation   Conversation                @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([userId, updatedAt])
+}
+
+model ConversationEvent {
+  id             String                @id @default(cuid())
+  conversationId String
+  quoteRequestId String?
+  quoteOfferId   String?
+  actorUserId    String?
+  type           ConversationEventType
+  occurredAt     DateTime              @default(now())
+  dedupeKey      String                @unique
+  data           Json?
+  createdAt      DateTime              @default(now())
+  conversation   Conversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  quoteRequest   QuoteRequest?         @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer     QuoteOffer?           @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  actorUser      User?                 @relation("ConversationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, occurredAt, id])
+  @@index([quoteRequestId, occurredAt])
+  @@index([quoteOfferId, occurredAt])
 }
 
 model ChatMessage {

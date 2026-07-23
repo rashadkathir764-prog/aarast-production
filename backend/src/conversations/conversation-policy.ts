@@ -1,14 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
-
-export function assertConversationParticipant(
-  currentUserId: string,
-  requesterUserId: string,
-  providerUserId: string | null,
-): void {
-  if (currentUserId !== requesterUserId && currentUserId !== providerUserId) {
-    throw new ForbiddenException('Conversation access denied');
-  }
-}
+import { BadRequestException } from '@nestjs/common';
 
 export function normalizeMessageBody(value: string): string {
   const body = value.trim();
@@ -25,30 +15,4 @@ export function normalizeMessagePageSize(value?: string): number {
     throw new BadRequestException('limit must be between 1 and 50');
   }
   return parsed;
-}
-
-interface ConversationParticipantStateInput {
-  userId: string;
-  blockedAt: Date | null;
-  lastReadAt: Date | null;
-}
-
-export function conversationParticipantState(
-  currentUserId: string,
-  participants: ConversationParticipantStateInput[],
-) {
-  const membership = participants.find(
-    (participant) => participant.userId === currentUserId,
-  );
-  const counterpart = participants.find(
-    (participant) => participant.userId !== currentUserId,
-  );
-  const blockedByMe = membership?.blockedAt != null;
-  const blockedByCounterpart = counterpart?.blockedAt != null;
-  return {
-    blocked: blockedByMe || blockedByCounterpart,
-    blockedByMe,
-    blockedByCounterpart,
-    counterpartLastReadAt: counterpart?.lastReadAt ?? null,
-  };
 }

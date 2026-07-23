@@ -21,15 +21,6 @@ import { ConversationsService } from './conversations.service';
 export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
 
-  @Post('quote-requests/:quoteRequestId')
-  @Header('Cache-Control', 'private, no-store')
-  ensureForQuote(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('quoteRequestId') quoteRequestId: string,
-  ) {
-    return this.conversations.ensureForQuote(currentUser, quoteRequestId);
-  }
-
   @Get()
   @Header('Cache-Control', 'private, no-store')
   list(
@@ -55,6 +46,26 @@ export class ConversationsController {
     @Query('limit') limit?: string,
   ) {
     return this.conversations.messages(currentUser, id, cursor, limit);
+  }
+
+  @Get(':id/quote-requests')
+  @Header('Cache-Control', 'private, no-store')
+  quoteRequests(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.conversations.quoteRequests(currentUser, id);
+  }
+
+  @Get(':id/timeline')
+  @Header('Cache-Control', 'private, no-store')
+  timeline(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.conversations.timeline(currentUser, id, cursor, limit);
   }
 
   @Post(':id/messages')
@@ -107,5 +118,20 @@ export class ConversationsController {
     @Body() dto: ReportConversationDto,
   ) {
     return this.conversations.report(currentUser, id, dto.reason);
+  }
+}
+
+@Controller('api/v1/quote-requests')
+@UseGuards(JwtAuthGuard)
+export class QuoteRequestConversationsController {
+  constructor(private readonly conversations: ConversationsService) {}
+
+  @Get(':quoteRequestId/conversation')
+  @Header('Cache-Control', 'private, no-store')
+  getForQuote(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('quoteRequestId') quoteRequestId: string,
+  ) {
+    return this.conversations.getForQuote(currentUser, quoteRequestId);
   }
 }

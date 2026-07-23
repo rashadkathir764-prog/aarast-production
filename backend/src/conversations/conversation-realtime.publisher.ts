@@ -22,6 +22,26 @@ export class ConversationRealtimePublisher {
       .emit('conversation:read', receipt);
   }
 
+  event(conversationId: string, event: unknown) {
+    this.server
+      ?.to(conversationRoom(conversationId))
+      .emit('conversation:event', event);
+  }
+
+  activityAvailable(conversationId: string, event: unknown) {
+    this.server
+      ?.to(conversationRoom(conversationId))
+      .emit('conversation:activity-available', event);
+  }
+
+  revokeConversationAccess(userId: string, conversationIds: string[]) {
+    const userSockets = this.server?.in(userRoom(userId));
+    for (const conversationId of conversationIds) {
+      userSockets?.emit('conversation:permission-revoked', { conversationId });
+      userSockets?.socketsLeave(conversationRoom(conversationId));
+    }
+  }
+
   messageAvailable(conversationId: string, event: unknown) {
     this.server
       ?.to(conversationRoom(conversationId))

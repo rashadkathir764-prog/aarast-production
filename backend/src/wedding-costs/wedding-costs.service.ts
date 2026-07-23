@@ -27,22 +27,11 @@ import { PayPaymentScheduleDto } from "./dto/pay-payment-schedule.dto";
 import { ReverseCostPaymentDto } from "./dto/reverse-cost-payment.dto";
 import { UpdatePaymentScheduleDto } from "./dto/update-payment-schedule.dto";
 import { UpdateWeddingCostDto } from "./dto/update-wedding-cost.dto";
-
-const costInclude = Prisma.validator<Prisma.WeddingCostInclude>()({
-  budgetCategory: { select: { name: true } },
-  provider: { select: { businessName: true } },
-  _count: {
-    select: {
-      payments: {
-        where: {
-          entryType: CostPaymentType.PAYMENT,
-          reversedBy: null,
-        },
-      },
-      paymentSchedules: true,
-    },
-  },
-});
+import {
+  toWeddingCostResponse,
+  weddingCostResponseInclude,
+  type WeddingCostResponse,
+} from "./wedding-cost.presenter";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {
@@ -63,9 +52,6 @@ const scheduleInclude = Prisma.validator<Prisma.PaymentScheduleInclude>()({
   },
 });
 
-type CostWithDetails = Prisma.WeddingCostGetPayload<{
-  include: typeof costInclude;
-}>;
 type PaymentWithDetails = Prisma.CostPaymentGetPayload<{
   include: typeof paymentInclude;
 }>;
@@ -80,29 +66,6 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   total: number;
   totalPages: number;
-}
-
-export interface WeddingCostResponse {
-  id: string;
-  weddingPlanId: string;
-  budgetCategoryId: string;
-  categoryName: string;
-  providerId: string | null;
-  providerName: string | null;
-  quoteOfferId: string | null;
-  title: string;
-  partyName: string | null;
-  partyPhone: string | null;
-  totalAmount: string;
-  paidAmount: string;
-  remainingAmount: string;
-  agreementDate: Date | null;
-  status: WeddingCostStatus;
-  note: string | null;
-  paymentsCount: number;
-  paymentSchedulesCount: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface CostPaymentResponse {
@@ -144,6 +107,11 @@ export interface PaymentScheduleResponse {
   note: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface SchedulePaymentResponse {
+  payment: CostPaymentResponse;
+  schedule: PaymentScheduleResponse;
 }
 
 interface NormalizedCounterparty {
@@ -223,12 +191,12 @@ export class WeddingCostsService {
           }
           return tx.weddingCost.findUniqueOrThrow({
             where: { id: created.id },
-            include: costInclude,
+            include: weddingCostResponseInclude,
           });
         },
       );
       if (initialPayment.gt(0)) paymentsRecordedTotal.inc();
-      return this.costResponse(cost);
+      return toWeddingCostResponse(cost);
     } catch (error) {
       this.rethrowKnownPrismaError(error);
     }
@@ -271,7 +239,7 @@ export class WeddingCostsService {
     const [costs, total] = await this.prisma.$transaction([
       this.prisma.weddingCost.findMany({
         where,
-        include: costInclude,
+        include: weddingCostResponseInclude,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -279,7 +247,7 @@ export class WeddingCostsService {
       this.prisma.weddingCost.count({ where }),
     ]);
     return {
-      items: costs.map((cost) => this.costResponse(cost)),
+      items: costs.map(toWeddingCostResponse),
       page,
       pageSize,
       total,
@@ -293,7 +261,7 @@ export class WeddingCostsService {
   ): Promise<WeddingCostResponse> {
     const cost = await this.costOrThrow(id);
     await this.permissions.assertMoneyReadable(cost.weddingPlanId, currentUser);
-    return this.costResponse(cost);
+    return toWeddingCostResponse(cost);
   }
 
   async updateCost(
@@ -371,10 +339,10 @@ export class WeddingCostsService {
                 ? {}
                 : { note: this.optionalText(dto.note) }),
             },
-            include: costInclude,
+            include: weddingCostResponseInclude,
           });
           await this.cancelPendingSchedulesWhenPaid(tx, id, status);
-          return this.costResponse(updated);
+          return toWeddingCostResponse(updated);
         },
       );
     } catch (error) {
@@ -418,10 +386,10 @@ export class WeddingCostsService {
     return this.prisma.$transaction(async (tx) => {
       const locked = await this.lockCost(tx, id);
       if (locked.status === WeddingCostStatus.CANCELLED) {
-        return this.costResponse(
+        return toWeddingCostResponse(
           await tx.weddingCost.findUniqueOrThrow({
             where: { id },
-            include: costInclude,
+            include: weddingCostResponseInclude,
           }),
         );
       }
@@ -437,9 +405,9 @@ export class WeddingCostsService {
       const cancelled = await tx.weddingCost.update({
         where: { id },
         data: { status: WeddingCostStatus.CANCELLED },
-        include: costInclude,
+        include: weddingCostResponseInclude,
       });
-      return this.costResponse(cancelled);
+      return toWeddingCostResponse(cancelled);
     });
   }
 
@@ -825,7 +793,7 @@ export class WeddingCostsService {
     currentUser: AuthenticatedUser,
     id: string,
     dto: PayPaymentScheduleDto,
-  ): Promise<CostPaymentResponse> {
+  ): Promise<SchedulePaymentResponse> {
     const current = await this.scheduleOrThrow(id);
     await this.permissions.assertMoneyManageable(
       current.weddingCost.weddingPlanId,
@@ -853,7 +821,15 @@ export class WeddingCostsService {
             throw new ConflictException(
               "Payment schedule ledger is inconsistent",
             );
-          return { payment: this.paymentResponse(existing), created: false };
+          const paidSchedule = await tx.paymentSchedule.findUniqueOrThrow({
+            where: { id },
+            include: scheduleInclude,
+          });
+          return {
+            payment: this.paymentResponse(existing),
+            schedule: this.scheduleResponse(paidSchedule),
+            created: false,
+          };
         }
         if (schedule.status !== PaymentScheduleStatus.PENDING) {
           throw new ConflictException(
@@ -892,9 +868,10 @@ export class WeddingCostsService {
           },
           include: paymentInclude,
         });
-        await tx.paymentSchedule.update({
+        const paidSchedule = await tx.paymentSchedule.update({
           where: { id },
           data: { status: PaymentScheduleStatus.PAID, paidAt },
+          include: scheduleInclude,
         });
         const paidAmount = cost.paidAmount.plus(schedule.amount);
         const status = this.deriveStatus(cost.totalAmount, paidAmount);
@@ -906,11 +883,15 @@ export class WeddingCostsService {
           },
         });
         await this.cancelPendingSchedulesWhenPaid(tx, cost.id, status);
-        return { payment: this.paymentResponse(payment), created: true };
+        return {
+          payment: this.paymentResponse(payment),
+          schedule: this.scheduleResponse(paidSchedule),
+          created: true,
+        };
       },
     );
     if (result.created) paymentsRecordedTotal.inc();
-    return result.payment;
+    return { payment: result.payment, schedule: result.schedule };
   }
 
   private async normalizeCounterparty(
@@ -1054,7 +1035,7 @@ export class WeddingCostsService {
   private async costOrThrow(id: string) {
     const cost = await this.prisma.weddingCost.findUnique({
       where: { id },
-      include: costInclude,
+      include: weddingCostResponseInclude,
     });
     if (!cost) throw new NotFoundException("Wedding cost not found");
     return cost;
@@ -1076,31 +1057,6 @@ export class WeddingCostsService {
     });
     if (!schedule) throw new NotFoundException("Payment schedule not found");
     return schedule;
-  }
-
-  private costResponse(cost: CostWithDetails): WeddingCostResponse {
-    return {
-      id: cost.id,
-      weddingPlanId: cost.weddingPlanId,
-      budgetCategoryId: cost.budgetCategoryId,
-      categoryName: cost.budgetCategory.name,
-      providerId: cost.providerId,
-      providerName: cost.provider?.businessName ?? null,
-      quoteOfferId: cost.quoteOfferId,
-      title: cost.title,
-      partyName: cost.partyName,
-      partyPhone: cost.partyPhone,
-      totalAmount: cost.totalAmount.toString(),
-      paidAmount: cost.paidAmount.toString(),
-      remainingAmount: cost.totalAmount.minus(cost.paidAmount).toString(),
-      agreementDate: cost.agreementDate,
-      status: cost.status,
-      note: cost.note,
-      paymentsCount: cost._count.payments,
-      paymentSchedulesCount: cost._count.paymentSchedules,
-      createdAt: cost.createdAt,
-      updatedAt: cost.updatedAt,
-    };
   }
 
   private paymentResponse(payment: PaymentWithDetails): CostPaymentResponse {

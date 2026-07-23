@@ -295,11 +295,11 @@ export class AdminService {
           },
           conversation: {
             select: {
-              quoteRequestId: true,
-              quoteRequest: {
-                select: {
-                  provider: { select: { id: true, businessName: true } },
-                },
+              provider: { select: { id: true, businessName: true } },
+              quoteRequests: {
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                take: 1,
+                select: { id: true },
               },
             },
           },

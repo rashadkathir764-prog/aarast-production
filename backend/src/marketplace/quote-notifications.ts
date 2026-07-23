@@ -74,7 +74,7 @@ export function offerAcceptedRequesterNotification(args: {
     type: NotificationType.QUOTE_ACCEPTED,
     priority: NotificationPriority.HIGH,
     title: "تم قبول عرض السعر",
-    body: "أصبح المزود ضمن مزودي الخطة المقبولين. لم يتم إنشاء تكلفة أو دفعة تلقائيًا.",
+    body: "أصبح المزود ضمن مزودي الخطة المقبولين، وأنشئت التكلفة تلقائيًا دون إنشاء دفعة أو موعد دفع أو مهمة.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: requesterQuoteRoute(args.quoteRequestId),
@@ -84,6 +84,84 @@ export function offerAcceptedRequesterNotification(args: {
       providerId: args.providerId,
     },
     dedupeKey: `${args.requesterId}:quote-accepted:${args.quoteRequestId}`,
+  };
+}
+
+export function providerRejectedRequestNotification(args: {
+  requesterId: string;
+  weddingPlanId: string | null;
+  quoteRequestId: string;
+  providerId: string;
+  providerName: string;
+}): CreateNotificationInput {
+  return {
+    userId: args.requesterId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.QUOTE_REJECTED,
+    priority: NotificationPriority.NORMAL,
+    title: "اعتذر المورد عن الطلب",
+    body: `اعتذر ${args.providerName} عن طلب عرض السعر. يمكنك فتح الطلب ومراجعة حالته.`,
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      providerId: args.providerId,
+      status: "REJECTED",
+    },
+    dedupeKey: `${args.requesterId}:provider-rejected-quote:${args.quoteRequestId}`,
+  };
+}
+
+export function requesterRejectedOfferNotification(args: {
+  providerUserId: string;
+  quoteRequestId: string;
+  quoteOfferId: string;
+  providerId: string;
+}): CreateNotificationInput {
+  return {
+    userId: args.providerUserId,
+    type: NotificationType.QUOTE_REJECTED,
+    priority: NotificationPriority.NORMAL,
+    title: "لم يُقبل عرض السعر",
+    body: "اختار صاحب الطلب عدم قبول العرض. افتح بوابة المورد لمراجعة الطلب.",
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: PROVIDER_PORTAL_ROUTE,
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      quoteOfferId: args.quoteOfferId,
+      providerId: args.providerId,
+      status: "REJECTED",
+    },
+    dedupeKey: `${args.providerUserId}:requester-rejected-offer:${args.quoteOfferId}`,
+  };
+}
+
+export function quoteOfferReceivedNotification(args: {
+  requesterId: string;
+  weddingPlanId: string | null;
+  quoteRequestId: string;
+  quoteOfferId: string;
+  providerId: string;
+  providerName: string;
+}): CreateNotificationInput {
+  return {
+    userId: args.requesterId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.QUOTE_OFFER_RECEIVED,
+    priority: NotificationPriority.HIGH,
+    title: "وصل عرض سعر",
+    body: `أرسل ${args.providerName} عرضًا لطلبك. افتح الطلب لمراجعة التفاصيل.`,
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      quoteOfferId: args.quoteOfferId,
+      providerId: args.providerId,
+    },
+    dedupeKey: `${args.requesterId}:quote-offer:${args.quoteOfferId}`,
   };
 }
 

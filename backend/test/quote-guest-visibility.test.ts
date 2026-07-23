@@ -35,7 +35,10 @@ test("guest phone is hidden from a read-only member, shown to a guest manager", 
 
   const viewer = new GuestsService(
     prisma as any,
-    { assertPlanReadable: async () => readerContext, canManageGuests: () => false } as any,
+    {
+      assertPlanReadable: async () => readerContext,
+      canManageGuests: () => false,
+    } as any,
   );
   const [redacted] = await viewer.findForPlan(user("u2"), "p1");
   assert.equal(redacted.phone, null, "viewer must not see the phone");
@@ -44,7 +47,10 @@ test("guest phone is hidden from a read-only member, shown to a guest manager", 
 
   const manager = new GuestsService(
     prisma as any,
-    { assertPlanReadable: async () => readerContext, canManageGuests: () => true } as any,
+    {
+      assertPlanReadable: async () => readerContext,
+      canManageGuests: () => true,
+    } as any,
   );
   const [full] = await manager.findForPlan(user("u2"), "p1");
   assert.equal(full.phone, "+967711111111");
@@ -106,7 +112,7 @@ const provider = () => ({
   primaryCategory: null,
 });
 
-const quoteOffer = () => ({
+const quoteOffer = (withCost = false) => ({
   id: "offer1",
   quoteRequestId: "q1",
   providerId: "prov1",
@@ -118,7 +124,7 @@ const quoteOffer = () => ({
   status: "ACCEPTED",
   createdAt: new Date(),
   updatedAt: new Date(),
-  weddingCosts: [],
+  weddingCosts: withCost ? [{ id: "cost-from-offer" }] : [],
 });
 
 const quoteRow = (
@@ -179,7 +185,7 @@ test("quote budget and contact phone are hidden from a read-only member", async 
 
 test("quote offer amounts and financial suggestion are hidden from a read-only member", async () => {
   const svc = marketplace(
-    quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer()] }),
+    quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer(true)] }),
     {
       canViewMoney: () => false,
       canManageProviders: () => false,
@@ -207,9 +213,26 @@ test("quote budget and contact phone are visible to a provider+budget manager", 
   assert.equal(q.budgetMax, "5000");
 });
 
+test("plan owner sees the full plan quote context", async () => {
+  const quote = quoteRow("requester");
+  const svc = new MarketplaceService(
+    { quoteRequest: { findMany: async () => [quote] } } as any,
+    {
+      assertPlanReadable: async () => ({ isOwner: true, sharedMember: null }),
+      canViewMoney: (context: any) => context.isOwner,
+      canManageProviders: (context: any) => context.isOwner,
+    } as any,
+    {} as any,
+  );
+  const [q] = await svc.findPlanQuoteRequests(user("owner"), "p1");
+  assert.equal(q.contactPhone, "+967733333333");
+  assert.equal(q.budgetMin, "1000");
+  assert.equal(q.guestCount, 100);
+});
+
 test("quote offer amounts and financial suggestion are visible to a budget manager", async () => {
   const svc = marketplace(
-    quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer()] }),
+    quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer(true)] }),
     {
       canViewMoney: () => true,
       canManageProviders: () => true,
@@ -220,9 +243,10 @@ test("quote offer amounts and financial suggestion are visible to a budget manag
   assert.equal(q.offers[0].currency, "YER");
   assert.equal(q.costSuggestion.quotedAmount, "250000");
   assert.equal(q.costSuggestion.currency, "YER");
-  assert.equal(q.costSuggestion.suggestedAction, "CREATE_COST");
-  assert.deepEqual(q.costSuggestion.availableActions, ["CREATE_COST"]);
-  assert.equal(q.costSuggestion.automaticCostCreated, false);
+  assert.equal(q.costSuggestion.suggestedAction, "VIEW_COST");
+  assert.deepEqual(q.costSuggestion.availableActions, ["VIEW_COST"]);
+  assert.equal(q.costSuggestion.costId, "cost-from-offer");
+  assert.equal(q.costSuggestion.automaticCostCreated, true);
 });
 
 test("the member who submitted the request always sees their own contact and budget", async () => {

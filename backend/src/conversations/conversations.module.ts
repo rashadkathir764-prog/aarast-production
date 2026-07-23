@@ -4,7 +4,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { MediaModule } from '../media/media.module';
 import { OutboxModule } from '../outbox/outbox.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { ConversationsController } from './conversations.controller';
+import {
+  ConversationsController,
+  QuoteRequestConversationsController,
+} from './conversations.controller';
 import { ConversationsService } from './conversations.service';
 import { ConversationsGateway } from './conversations.gateway';
 import { ConversationRealtimeModule } from './conversation-realtime.module';
@@ -18,7 +21,7 @@ import { ConversationRealtimeModule } from './conversation-realtime.module';
     OutboxModule,
     ConversationRealtimeModule,
   ],
-  controllers: [ConversationsController],
+  controllers: [ConversationsController, QuoteRequestConversationsController],
   providers: [
     ConversationsService,
     ConversationsGateway,

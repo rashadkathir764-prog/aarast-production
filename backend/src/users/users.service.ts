@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  MediaUploadStatus,
   NotificationPreference,
   Prisma,
   UserRole,
@@ -155,9 +156,9 @@ export class UsersService {
    * Wedding-plan children are protected by `onDelete: Restrict` (a deliberate
    * guard against accidental cascade of financial data), so an owned plan
    * cannot be removed until its children are gone. We therefore delete the
-   * plan's children leaf-to-root, then the plans, then the user — the remaining
-   * user-owned rows are all `Cascade`/`SetNull`. Rows keyed by userId/phone
-   * WITHOUT a foreign key (idempotency keys, OTP codes) never cascade, so they
+   * account's quote requests before the conversations they restrict, then the
+   * plan children leaf-to-root, the plans/provider profile, and the user. Rows
+   * keyed by userId/phone WITHOUT a foreign key (idempotency keys, OTP codes)
    * are removed explicitly. Everything runs in one transaction: any ordering
    * mistake rolls back rather than leaving the account half-deleted.
    */
@@ -206,7 +207,7 @@ export class UsersService {
 
         // Parent rows are locked in a deterministic order before any child is
         // purged. This blocks new FK children while this transaction deletes
-        // the complete plan graph and avoids cross-plan lock inversions.
+        // the complete account graph and avoids cross-context lock inversions.
         const ownedPlans = await tx.$queryRaw<Array<{ id: string }>>(
           Prisma.sql`
             SELECT "id"
@@ -217,6 +218,17 @@ export class UsersService {
           `,
         );
         const planIds = ownedPlans.map((plan) => plan.id);
+
+        const ownedProviders = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "Provider"
+            WHERE "userId" = ${userId}
+            ORDER BY "id" ASC
+            FOR UPDATE
+          `,
+        );
+        const providerIds = ownedProviders.map((provider) => provider.id);
 
         if (planIds.length > 0) {
           // Every money mutation locks WeddingCost before CostPayment. Account
@@ -234,20 +246,107 @@ export class UsersService {
           );
         }
 
-        const [notificationRows, conversationRows] = await Promise.all([
-          tx.notification.findMany({
-            where: { userId },
-            select: { id: true },
-          }),
-          tx.conversationParticipant.findMany({
-            where: { userId },
-            select: { conversationId: true },
-          }),
-        ]);
-        const notificationIds = notificationRows.map((row) => row.id);
-        const conversationIds = conversationRows.map(
-          (row) => row.conversationId,
+        const conversationPredicates: Prisma.Sql[] = [
+          Prisma.sql`"accountRequesterUserId" = ${userId}`,
+        ];
+        if (planIds.length > 0) {
+          conversationPredicates.push(
+            Prisma.sql`"weddingPlanId" IN (${Prisma.join(planIds)})`,
+          );
+        }
+        if (providerIds.length > 0) {
+          conversationPredicates.push(
+            Prisma.sql`"providerId" IN (${Prisma.join(providerIds)})`,
+          );
+        }
+        // Only contexts owned by the account are selected here. Merely being
+        // a Participant or creator in somebody else's PLAN conversation does
+        // not make that conversation eligible for deletion.
+        const conversationsToDelete = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "Conversation"
+            WHERE ${Prisma.join(conversationPredicates, " OR ")}
+            ORDER BY "id" ASC
+            FOR UPDATE
+          `,
         );
+        const conversationIds = conversationsToDelete.map(
+          (conversation) => conversation.id,
+        );
+
+        const quoteRequestPredicates: Prisma.Sql[] = [
+          Prisma.sql`"userId" = ${userId}`,
+        ];
+        if (planIds.length > 0) {
+          quoteRequestPredicates.push(
+            Prisma.sql`"weddingPlanId" IN (${Prisma.join(planIds)})`,
+          );
+        }
+        if (providerIds.length > 0) {
+          quoteRequestPredicates.push(
+            Prisma.sql`"providerId" IN (${Prisma.join(providerIds)})`,
+          );
+        }
+        if (conversationIds.length > 0) {
+          quoteRequestPredicates.push(
+            Prisma.sql`"conversationId" IN (${Prisma.join(conversationIds)})`,
+          );
+        }
+        const quoteRequestsToDelete = await tx.$queryRaw<
+          Array<{ id: string }>
+        >(
+          Prisma.sql`
+            SELECT "id"
+            FROM "QuoteRequest"
+            WHERE ${Prisma.join(quoteRequestPredicates, " OR ")}
+            ORDER BY "id" ASC
+            FOR UPDATE
+          `,
+        );
+        const quoteRequestIds = quoteRequestsToDelete.map((quote) => quote.id);
+
+        const attachmentRows =
+          conversationIds.length > 0
+            ? await tx.chatAttachment.findMany({
+                where: {
+                  message: { conversationId: { in: conversationIds } },
+                },
+                orderBy: { id: "asc" },
+                select: { id: true },
+              })
+            : [];
+        const attachmentIds = attachmentRows.map((attachment) => attachment.id);
+        if (attachmentIds.length > 0) {
+          // A conversation can contain media uploaded by the other party. Its
+          // durable ticket must survive the cascade as a deletion job too.
+          await tx.mediaUploadTicket.updateMany({
+            where: {
+              consumedByType: "CHAT_ATTACHMENT",
+              consumedById: { in: attachmentIds },
+              status: MediaUploadStatus.VERIFIED,
+            },
+            data: { status: MediaUploadStatus.DELETE_PENDING },
+          });
+        }
+
+        const notificationConditions: Prisma.NotificationWhereInput[] = [
+          { userId },
+        ];
+        if (planIds.length > 0) {
+          notificationConditions.push({ weddingPlanId: { in: planIds } });
+        }
+        if (quoteRequestIds.length > 0) {
+          notificationConditions.push({
+            entityType: "quote_request",
+            entityId: { in: quoteRequestIds },
+          });
+        }
+        const notificationRows = await tx.notification.findMany({
+          where: { OR: notificationConditions },
+          select: { id: true },
+        });
+        const notificationIds = notificationRows.map((row) => row.id);
         if (notificationIds.length > 0 || conversationIds.length > 0) {
           await tx.outboxEvent.deleteMany({
             where: {
@@ -270,6 +369,26 @@ export class UsersService {
                   : []),
               ],
             },
+          });
+        }
+        if (notificationIds.length > 0) {
+          await tx.notification.deleteMany({
+            where: { id: { in: notificationIds } },
+          });
+        }
+
+        // QuoteRequest.conversationId is Restrict by design so ordinary quote
+        // removal can never erase a shared thread. Account purge is the one
+        // explicit path that removes all requests in owned contexts first,
+        // then removes only those contexts.
+        if (quoteRequestIds.length > 0) {
+          await tx.quoteRequest.deleteMany({
+            where: { id: { in: quoteRequestIds } },
+          });
+        }
+        if (conversationIds.length > 0) {
+          await tx.conversation.deleteMany({
+            where: { id: { in: conversationIds } },
           });
         }
         if (planIds.length > 0) {
@@ -296,9 +415,14 @@ export class UsersService {
           await tx.weddingPlan.deleteMany({ where: { id: { in: planIds } } });
         }
 
-        // A provider profile would otherwise be orphaned (owner SetNull); erase
-        // it — its own children are all Cascade/SetNull.
-        await tx.provider.deleteMany({ where: { userId } });
+        // A provider profile would otherwise be orphaned (owner SetNull). Its
+        // customer requests/conversations were purged above; other owners'
+        // plans and costs remain through the existing SetNull relations.
+        if (providerIds.length > 0) {
+          await tx.provider.deleteMany({
+            where: { id: { in: providerIds } },
+          });
+        }
 
         // Keyed by userId / phone with no User foreign key: never cascades.
         await tx.idempotencyKey.deleteMany({ where: { userId } });
@@ -306,10 +430,9 @@ export class UsersService {
           await tx.otpCode.deleteMany({ where: { phone: currentUser.phone } });
         }
 
-        // Finally the user. Cascades refresh tokens, shared memberships,
-        // notifications, favorites, reviews, quote requests, conversations and
-        // booking leads; SetNulls assigned tasks in others' plans and invitee
-        // links.
+        // Finally the user. Cascades refresh tokens, memberships, personal
+        // conversation state/messages, and any remaining requester rows;
+        // SetNulls actor/creator fields in other owners' contexts.
         await tx.user.delete({ where: { id: userId } });
       },
       {

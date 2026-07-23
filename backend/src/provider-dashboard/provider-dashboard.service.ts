@@ -7,8 +7,7 @@ import {
 import {
   AppRole,
   City,
-  NotificationType,
-  NotificationPriority,
+  ConversationEventType,
   Prisma,
   Provider,
   ProviderCategory,
@@ -28,11 +27,17 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { toReviewIdentity } from '../common/privacy/review-identity';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
+import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { recordConversationEvent } from '../conversations/conversation-lifecycle';
 import {
   assertQuoteRequestTransition,
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
-import { requesterQuoteRoute } from '../marketplace/quote-notifications';
+import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
+import {
+  providerRejectedRequestNotification,
+  quoteOfferReceivedNotification,
+} from '../marketplace/quote-notifications';
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -620,23 +625,49 @@ export class ProviderDashboardService {
   ) {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteRequestId');
-    const existing = await this.prisma.quoteRequest.findFirst({
-      where: { id, providerId: provider.id },
-    });
-    if (!existing) {
-      throw new NotFoundException('Quote request not found');
-    }
-    assertQuoteRequestTransition(existing.status, dto.status, 'provider');
+    const quote = await runSerializableTransaction(this.prisma, async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${id} FOR UPDATE`,
+      );
+      const existing = await tx.quoteRequest.findFirst({
+        where: { id, providerId: provider.id },
+      });
+      if (!existing) {
+        throw new NotFoundException('Quote request not found');
+      }
+      assertQuoteRequestTransition(existing.status, dto.status, 'provider');
 
-    const quote = await this.prisma.quoteRequest.update({
-      where: { id },
-      data: {
-        status: dto.status,
-        ...(dto.status === QuoteRequestStatus.REJECTED
-          ? { rejectedAt: new Date() }
-          : {}),
-      },
-      include: this.quoteInclude(),
+      const updated = await tx.quoteRequest.update({
+        where: { id },
+        data: {
+          status: dto.status,
+          ...(dto.status === QuoteRequestStatus.REJECTED
+            ? { rejectedAt: new Date() }
+            : {}),
+        },
+        include: this.quoteInclude(),
+      });
+      if (dto.status === QuoteRequestStatus.REJECTED) {
+        await recordConversationEvent(tx, {
+          conversationId: existing.conversationId,
+          quoteRequestId: existing.id,
+          actorUserId: currentUser.id,
+          type: ConversationEventType.QUOTE_REQUEST_REJECTED,
+          dedupeKey: `quote-request:${existing.id}:rejected`,
+          data: { status: QuoteRequestStatus.REJECTED },
+        });
+        await this.notifications.createNotificationInTransaction(
+          tx,
+          providerRejectedRequestNotification({
+            requesterId: existing.userId,
+            weddingPlanId: existing.weddingPlanId,
+            quoteRequestId: existing.id,
+            providerId: provider.id,
+            providerName: provider.businessName,
+          }),
+        );
+      }
+      return updated;
     });
 
     return this.toQuoteResponse(quote);
@@ -649,19 +680,33 @@ export class ProviderDashboardService {
   ) {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(quoteRequestId, 'quoteRequestId');
-    const quote = await this.prisma.quoteRequest.findFirst({
-      where: { id: quoteRequestId, providerId: provider.id },
-    });
-    if (!quote) {
-      throw new NotFoundException('Quote request not found');
-    }
-    assertQuoteRequestTransition(
-      quote.status,
-      QuoteRequestStatus.RESPONDED,
-      'provider_offer',
-    );
+    const offer = await runSerializableTransaction(this.prisma, async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${quoteRequestId} FOR UPDATE`,
+      );
+      const quote = await tx.quoteRequest.findFirst({
+        where: { id: quoteRequestId, providerId: provider.id },
+      });
+      if (!quote) {
+        throw new NotFoundException('Quote request not found');
+      }
+      assertQuoteRequestTransition(
+        quote.status,
+        QuoteRequestStatus.RESPONDED,
+        'provider_offer',
+      );
+      const existingOffer = await tx.quoteOffer.findFirst({
+        where: { quoteRequestId },
+        select: { id: true },
+      });
+      if (existingOffer) {
+        throw new ConflictException({
+          code: 'QUOTE_OFFER_ALREADY_EXISTS',
+          message: 'يوجد عرض سعر لهذا الطلب بالفعل.',
+          quoteOfferId: existingOffer.id,
+        });
+      }
 
-    const offer = await this.prisma.$transaction(async (tx) => {
       const created = await tx.quoteOffer.create({
         data: {
           quoteRequestId,
@@ -679,25 +724,30 @@ export class ProviderDashboardService {
         data: { status: QuoteRequestStatus.RESPONDED },
       });
 
-      return created;
-    });
-
-    await this.notifications.createNotification({
-      userId: quote.userId,
-      weddingPlanId: quote.weddingPlanId,
-      type: NotificationType.QUOTE_OFFER_RECEIVED,
-      priority: NotificationPriority.HIGH,
-      title: 'Quote offer received',
-      body: `${provider.businessName} sent an offer for your quote request.`,
-      entityType: 'quote_request',
-      entityId: quoteRequestId,
-      routeTarget: requesterQuoteRoute(quoteRequestId),
-      data: {
+      await recordConversationEvent(tx, {
+        conversationId: quote.conversationId,
         quoteRequestId,
-        quoteOfferId: offer.id,
-        providerId: provider.id,
-      },
-      dedupeKey: `${quote.userId}:quote-offer:${offer.id}`,
+        quoteOfferId: created.id,
+        actorUserId: currentUser.id,
+        type: ConversationEventType.QUOTE_OFFER_RECEIVED,
+        occurredAt: created.createdAt,
+        dedupeKey: `quote-offer:${created.id}:received`,
+        data: { status: QuoteOfferStatus.PENDING },
+      });
+
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        quoteOfferReceivedNotification({
+          requesterId: quote.userId,
+          weddingPlanId: quote.weddingPlanId,
+          quoteRequestId,
+          quoteOfferId: created.id,
+          providerId: provider.id,
+          providerName: provider.businessName,
+        }),
+      );
+
+      return created;
     });
 
     return this.toQuoteOfferResponse(offer);
@@ -1084,6 +1134,7 @@ export class ProviderDashboardService {
   }
 
   private toQuoteOfferResponse(offer: QuoteOffer) {
+    const isExpired = isQuoteOfferExpired(offer);
     return {
       id: offer.id,
       quoteRequestId: offer.quoteRequestId,
@@ -1094,6 +1145,8 @@ export class ProviderDashboardService {
       currency: offer.currency,
       validUntil: offer.validUntil,
       status: offer.status,
+      isExpired,
+      isActionable: offer.status === QuoteOfferStatus.PENDING && !isExpired,
       createdAt: offer.createdAt,
       updatedAt: offer.updatedAt,
     };

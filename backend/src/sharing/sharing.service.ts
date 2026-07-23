@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import {
   NotificationPriority,
@@ -23,6 +24,7 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { invitationDeliveryPersistenceFailuresTotal } from "../common/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -185,6 +187,7 @@ export class SharingService {
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
     private readonly invitationDelivery: InvitationDeliveryService,
+    @Optional() private readonly realtime?: ConversationRealtimePublisher,
   ) {}
 
   async create(
@@ -825,6 +828,9 @@ export class SharingService {
       isOwner: false,
       sharedMember: nextRecord,
     });
+    const hadProviderConversationAccess = existing.canManageProviders;
+    const keepsProviderConversationAccess = nextRecord.canManageProviders;
+    let revokedConversationIds: string[] = [];
     const member = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.sharedMember.update({
         where: { id: existing.id },
@@ -845,8 +851,30 @@ export class SharingService {
           weddingPlanId,
         );
       }
+      if (hadProviderConversationAccess && !keepsProviderConversationAccess) {
+        revokedConversationIds = (
+          await tx.conversation.findMany({
+            where: { weddingPlanId },
+            select: { id: true },
+          })
+        ).map((conversation) => conversation.id);
+        await tx.conversationParticipant.updateMany({
+          where: {
+            userId: existing.userId,
+            conversationId: { in: revokedConversationIds },
+          },
+          data: { revokedAt: new Date() },
+        });
+      }
       return updated;
     });
+
+    if (revokedConversationIds.length > 0) {
+      this.realtime?.revokeConversationAccess(
+        existing.userId,
+        revokedConversationIds,
+      );
+    }
 
     return this.toMemberResponse(member);
   }
@@ -874,7 +902,21 @@ export class SharingService {
       existing.role,
       this.permissionFlagsForRecord(existing),
     );
+    let revokedConversationIds: string[] = [];
     await this.prisma.$transaction(async (tx) => {
+      revokedConversationIds = (
+        await tx.conversation.findMany({
+          where: { weddingPlanId },
+          select: { id: true },
+        })
+      ).map((conversation) => conversation.id);
+      await tx.conversationParticipant.updateMany({
+        where: {
+          userId: existing.userId,
+          conversationId: { in: revokedConversationIds },
+        },
+        data: { revokedAt: new Date() },
+      });
       await tx.sharedMember.delete({ where: { id: existing.id } });
       await this.notifications.purgeMoneyForMember(
         tx,
@@ -882,6 +924,12 @@ export class SharingService {
         weddingPlanId,
       );
     });
+    if (revokedConversationIds.length > 0) {
+      this.realtime?.revokeConversationAccess(
+        existing.userId,
+        revokedConversationIds,
+      );
+    }
     return { id: existing.id, deleted: true };
   }
 

@@ -12,6 +12,7 @@ import {
   QuoteOfferStatus,
   QuoteRequestStatus,
 } from "@prisma/client";
+import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { toReviewIdentity } from "../common/privacy/review-identity";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { weddingLocationResponse } from "../wedding-plans/wedding-location";
@@ -452,6 +453,7 @@ export class MarketplacePresenter {
   }
 
   static toQuoteOfferResponse(offer: QuoteOffer, showFinancials = true) {
+    const isExpired = isQuoteOfferExpired(offer);
     return {
       id: offer.id,
       quoteRequestId: offer.quoteRequestId,
@@ -462,6 +464,8 @@ export class MarketplacePresenter {
       currency: showFinancials ? offer.currency : null,
       validUntil: offer.validUntil,
       status: offer.status,
+      isExpired,
+      isActionable: offer.status === QuoteOfferStatus.PENDING && !isExpired,
       createdAt: offer.createdAt,
       updatedAt: offer.updatedAt,
     };
@@ -477,7 +481,8 @@ export class MarketplacePresenter {
         )
       : null;
     const isAccepted = quote.status === QuoteRequestStatus.ACCEPTED;
-    const hasCost = (acceptedOffer?.weddingCosts.length ?? 0) > 0;
+    const costId = acceptedOffer?.weddingCosts[0]?.id ?? null;
+    const hasCost = costId !== null;
     return {
       providerId: quote.providerId,
       providerName: quote.provider.businessName,
@@ -488,15 +493,12 @@ export class MarketplacePresenter {
       quotedAmount: acceptedOffer?.amount?.toString() ?? null,
       currency: acceptedOffer?.currency ?? null,
       suggestedAction:
-        showFinancials && isAccepted && acceptedOffer?.amount && !hasCost
-          ? "CREATE_COST"
-          : "NONE",
+        showFinancials && isAccepted && hasCost ? "VIEW_COST" : "NONE",
       availableActions:
-        showFinancials && isAccepted && acceptedOffer?.amount && !hasCost
-          ? ["CREATE_COST"]
-          : [],
+        showFinancials && isAccepted && hasCost ? ["VIEW_COST"] : [],
       quoteOfferId: acceptedOffer?.id ?? null,
-      automaticCostCreated: false,
+      costId,
+      automaticCostCreated: hasCost,
     };
   }
 }

@@ -6,9 +6,8 @@ import {
 } from "@nestjs/common";
 import {
   City,
+  ConversationEventType,
   FavoriteProvider,
-  NotificationPriority,
-  NotificationType,
   Prisma,
   Provider,
   ProviderCategory,
@@ -18,7 +17,6 @@ import {
   ProviderServiceImage,
   ProviderStatus,
   PlanProviderLink,
-  PlanProviderLinkStatus,
   QuoteOffer,
   QuoteOfferStatus,
   QuoteRequest,
@@ -29,6 +27,7 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -36,6 +35,7 @@ import {
   type PlanAccessContext,
 } from "../sharing/permission.service";
 import { normalizeWeddingLocationInput } from "../wedding-plans/wedding-location";
+import { toWeddingCostResponse } from "../wedding-costs/wedding-cost.presenter";
 import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
 import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
@@ -49,10 +49,10 @@ import {
 import {
   offerAcceptedProviderNotification,
   offerAcceptedRequesterNotification,
-  quoteSubmittedProviderNotification,
-  quoteSubmittedRequesterNotification,
-  requesterQuoteRoute,
+  requesterRejectedOfferNotification,
 } from "./quote-notifications";
+import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import { createQuoteRequestInTransaction } from "./quote-request-creation";
 
 import {
   FULL_QUOTE_VISIBILITY,
@@ -64,6 +64,7 @@ import {
   MarketplacePresenter,
   MarketplaceQuery,
 } from "./marketplace.presenter";
+import { acceptQuoteOfferInTransaction } from "./quote-offer-acceptance";
 
 export type { PaginatedResponse } from "./marketplace.contracts";
 
@@ -361,49 +362,35 @@ export class MarketplaceService {
       contactPhone,
       "contactPhone",
     );
+    const weddingPlanId = dto.weddingPlanId ?? null;
+    const serviceId = dto.serviceId ?? null;
+    const cityId = dto.cityId ?? null;
+    const eventDate = MarketplaceQuery.optionalDate(dto.eventDate, "eventDate");
 
-    const quote = await this.prisma.quoteRequest.create({
-      data: {
-        userId: currentUser.id,
-        providerId,
-        weddingPlanId: dto.weddingPlanId ?? null,
-        serviceId: dto.serviceId ?? null,
-        eventDate: MarketplaceQuery.optionalDate(dto.eventDate, "eventDate"),
-        location: location ?? Prisma.JsonNull,
-        cityId: dto.cityId ?? null,
-        guestCount: dto.guestCount ?? null,
-        contactName,
-        contactPhone,
-        contactNormalizedPhone,
-        message: MarketplaceQuery.optionalText(dto.message),
-        budgetMin,
-        budgetMax,
-      },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-    });
-
-    await this.notifications.createNotification(
-      quoteSubmittedRequesterNotification({
+    const quote = await createQuoteRequestInTransaction(
+      this.prisma,
+      this.notifications,
+      {
         requesterId: currentUser.id,
-        weddingPlanId: quote.weddingPlanId,
-        quoteId: quote.id,
-        providerId: quote.providerId,
-        providerName: quote.provider.businessName,
-      }),
-    );
-
-    // تنبيه المورد نفسه — قبل هذا كان الطلب يصل صامتًا ولا يعلم به المورد.
-    const providerUserId = quote.provider.userId;
-    if (providerUserId && providerUserId !== currentUser.id) {
-      await this.notifications.createNotification(
-        quoteSubmittedProviderNotification({
-          providerUserId,
-          quoteId: quote.id,
-          providerId: quote.providerId,
+        contactName,
+        data: {
+          userId: currentUser.id,
+          providerId,
+          weddingPlanId,
+          serviceId,
+          eventDate,
+          location: location ?? Prisma.JsonNull,
+          cityId,
+          guestCount: dto.guestCount ?? null,
           contactName,
-        }),
-      );
-    }
+          contactPhone,
+          contactNormalizedPhone,
+          message: MarketplaceQuery.optionalText(dto.message),
+          budgetMin,
+          budgetMax,
+        },
+      },
+    );
 
     return MarketplacePresenter.toQuoteResponse(quote);
   }
@@ -491,13 +478,23 @@ export class MarketplaceService {
       QuoteRequestStatus.CANCELLED,
       "requester",
     );
-    const quote = await this.prisma.quoteRequest.update({
-      where: { id: existing.id },
-      data: {
-        status: QuoteRequestStatus.CANCELLED,
-        cancelledAt: new Date(),
-      },
-      include: MARKETPLACE_QUOTE_INCLUDE,
+    const quote = await this.prisma.$transaction(async (tx) => {
+      const cancelledAt = new Date();
+      const updated = await tx.quoteRequest.update({
+        where: { id: existing.id },
+        data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
+        include: MARKETPLACE_QUOTE_INCLUDE,
+      });
+      await recordConversationEvent(tx, {
+        conversationId: existing.conversationId,
+        quoteRequestId: existing.id,
+        actorUserId: currentUser.id,
+        type: ConversationEventType.QUOTE_REQUEST_CANCELLED,
+        occurredAt: cancelledAt,
+        dedupeKey: `quote-request:${existing.id}:cancelled`,
+        data: { status: QuoteRequestStatus.CANCELLED },
+      });
+      return updated;
     });
 
     return MarketplacePresenter.toQuoteResponse(quote, visibility);
@@ -505,88 +502,49 @@ export class MarketplaceService {
 
   async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
     const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
+    if (isQuoteOfferExpired(offer)) {
+      throw new ConflictException({
+        code: "QUOTE_OFFER_EXPIRED",
+        message: "انتهت صلاحية عرض السعر. أنشئ طلبًا جديدًا للمتابعة.",
+      });
+    }
     if (!offer.quoteRequest.weddingPlanId) {
       throw new BadRequestException(
         "Quote offer is not linked to a wedding plan",
       );
     }
-    if (offer.status !== QuoteOfferStatus.PENDING) {
-      throw new ConflictException("Quote offer is not pending");
-    }
     const weddingPlanId = offer.quoteRequest.weddingPlanId;
     await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
-    assertQuoteRequestTransition(
-      offer.quoteRequest.status,
-      QuoteRequestStatus.ACCEPTED,
-      "requester",
-    );
-    if (offer.validUntil && offer.validUntil.getTime() < Date.now()) {
-      throw new ConflictException("Quote offer has expired");
-    }
+    await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const acceptedOffer = await tx.quoteOffer.update({
-        where: { id },
-        data: { status: QuoteOfferStatus.ACCEPTED },
-      });
-
-      await tx.quoteOffer.updateMany({
-        where: {
-          quoteRequestId: offer.quoteRequestId,
-          id: { not: id },
-          status: QuoteOfferStatus.PENDING,
-        },
-        data: { status: QuoteOfferStatus.REJECTED },
-      });
-
-      await tx.quoteRequest.update({
-        where: { id: offer.quoteRequestId },
-        data: {
-          status: QuoteRequestStatus.ACCEPTED,
-          acceptedAt: new Date(),
-        },
-      });
-
-      const link = await tx.planProviderLink.upsert({
-        where: {
-          weddingPlanId_providerId: {
-            weddingPlanId,
-            providerId: offer.providerId,
-          },
-        },
-        update: {
-          quoteRequestId: offer.quoteRequestId,
-          quoteOfferId: offer.id,
-          status: PlanProviderLinkStatus.ACTIVE,
-        },
-        create: {
-          weddingPlanId,
-          providerId: offer.providerId,
-          quoteRequestId: offer.quoteRequestId,
-          quoteOfferId: offer.id,
-          status: PlanProviderLinkStatus.ACTIVE,
-        },
-      });
-
-      return { offer: acceptedOffer, link };
+    const result = await acceptQuoteOfferInTransaction(this.prisma, {
+      id,
+      weddingPlanId,
+      actorUserId: currentUser.id,
     });
 
-    await this.notifications.createNotification(
-      offerAcceptedRequesterNotification({
-        requesterId: offer.quoteRequest.userId,
-        weddingPlanId,
-        quoteRequestId: offer.quoteRequestId,
-        quoteOfferId: offer.id,
-        providerId: offer.providerId,
-      }),
-    );
+    if (result.acceptedNow) {
+      await this.notifications.createNotification(
+        offerAcceptedRequesterNotification({
+          requesterId: offer.quoteRequest.userId,
+          weddingPlanId,
+          quoteRequestId: offer.quoteRequestId,
+          quoteOfferId: offer.id,
+          providerId: offer.providerId,
+        }),
+      );
+    }
 
     // تنبيه المورد بقبول عرضه — الطرف الثاني في الاتفاق يستحق أن يعرف فورًا.
     const providerAccount = await this.prisma.provider.findUnique({
       where: { id: offer.providerId },
       select: { userId: true },
     });
-    if (providerAccount?.userId && providerAccount.userId !== currentUser.id) {
+    if (
+      result.acceptedNow &&
+      providerAccount?.userId &&
+      providerAccount.userId !== currentUser.id
+    ) {
       await this.notifications.createNotification(
         offerAcceptedProviderNotification({
           providerUserId: providerAccount.userId,
@@ -609,24 +567,34 @@ export class MarketplaceService {
         createdAt: result.link.createdAt,
         updatedAt: result.link.updatedAt,
       },
-      automaticCostCreated: false,
+      weddingCost: toWeddingCostResponse(result.cost),
+      automaticCostCreated: true,
       costSuggestion: {
-        recommendedAction: result.offer.amount ? "CREATE_COST" : "NONE",
-        message:
-          "Offer acceptance links the provider to the plan only. Create a cost explicitly to track the agreed amount, payments, and payment dates.",
+        suggestedAction: "VIEW_COST",
+        availableActions: ["VIEW_COST"],
+        automaticCostCreated: true,
+        costId: result.cost.id,
         quotedAmount: result.offer.amount?.toString() ?? null,
         currency: result.offer.currency ?? null,
         providerId: offer.providerId,
+        providerName: result.offer.provider.businessName,
+        category: result.offer.quoteRequest.service?.category.nameAr ?? null,
         planProviderLinkId: result.link.id,
         quoteRequestId: offer.quoteRequestId,
         quoteOfferId: offer.id,
       },
-      nextActions: ["createCost", "createFollowUpTask", "viewAcceptedProvider"],
+      nextActions: ["viewCost", "viewAcceptedProvider"],
     };
   }
 
   async rejectQuoteOffer(currentUser: AuthenticatedUser, id: string) {
     const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
+    if (isQuoteOfferExpired(offer)) {
+      throw new ConflictException({
+        code: "QUOTE_OFFER_EXPIRED",
+        message: "انتهت صلاحية عرض السعر.",
+      });
+    }
     if (offer.status !== QuoteOfferStatus.PENDING) {
       throw new ConflictException("Quote offer is not pending");
     }
@@ -654,25 +622,42 @@ export class MarketplaceService {
           rejectedAt: new Date(),
         },
       });
-      return updatedOffer;
-    });
-
-    await this.notifications.createNotification({
-      userId: offer.quoteRequest.userId,
-      weddingPlanId: offer.quoteRequest.weddingPlanId,
-      type: NotificationType.QUOTE_REJECTED,
-      priority: NotificationPriority.NORMAL,
-      title: "تم رفض عرض السعر",
-      body: "تم إغلاق عرض السعر دون إنشاء حجز أو التزام مالي.",
-      entityType: "quote_request",
-      entityId: offer.quoteRequestId,
-      routeTarget: requesterQuoteRoute(offer.quoteRequestId),
-      data: {
+      await recordConversationEvent(tx, {
+        conversationId: offer.quoteRequest.conversationId,
         quoteRequestId: offer.quoteRequestId,
         quoteOfferId: offer.id,
-        providerId: offer.providerId,
-      },
-      dedupeKey: `${offer.quoteRequest.userId}:quote-rejected:${offer.quoteRequestId}`,
+        actorUserId: currentUser.id,
+        type: ConversationEventType.QUOTE_OFFER_REJECTED,
+        dedupeKey: `quote-offer:${offer.id}:rejected`,
+        data: { status: QuoteOfferStatus.REJECTED },
+      });
+      await recordConversationEvent(tx, {
+        conversationId: offer.quoteRequest.conversationId,
+        quoteRequestId: offer.quoteRequestId,
+        actorUserId: currentUser.id,
+        type: ConversationEventType.QUOTE_REQUEST_REJECTED,
+        dedupeKey: `quote-request:${offer.quoteRequestId}:rejected`,
+        data: { status: QuoteRequestStatus.REJECTED },
+      });
+      const providerAccount = await tx.provider.findUnique({
+        where: { id: offer.providerId },
+        select: { userId: true },
+      });
+      if (
+        providerAccount?.userId &&
+        providerAccount.userId !== currentUser.id
+      ) {
+        await this.notifications.createNotificationInTransaction(
+          tx,
+          requesterRejectedOfferNotification({
+            providerUserId: providerAccount.userId,
+            quoteRequestId: offer.quoteRequestId,
+            quoteOfferId: offer.id,
+            providerId: offer.providerId,
+          }),
+        );
+      }
+      return updatedOffer;
     });
 
     return MarketplacePresenter.toQuoteOfferResponse(rejected);
@@ -717,13 +702,23 @@ export class MarketplaceService {
       "requester",
     );
 
-    const quote = await this.prisma.quoteRequest.update({
-      where: { id },
-      data: {
-        status: QuoteRequestStatus.CANCELLED,
-        cancelledAt: new Date(),
-      },
-      include: MARKETPLACE_QUOTE_INCLUDE,
+    const quote = await this.prisma.$transaction(async (tx) => {
+      const cancelledAt = new Date();
+      const updated = await tx.quoteRequest.update({
+        where: { id },
+        data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
+        include: MARKETPLACE_QUOTE_INCLUDE,
+      });
+      await recordConversationEvent(tx, {
+        conversationId: existing.conversationId,
+        quoteRequestId: existing.id,
+        actorUserId: currentUser.id,
+        type: ConversationEventType.QUOTE_REQUEST_CANCELLED,
+        occurredAt: cancelledAt,
+        dedupeKey: `quote-request:${existing.id}:cancelled`,
+        data: { status: QuoteRequestStatus.CANCELLED },
+      });
+      return updated;
     });
 
     return MarketplacePresenter.toQuoteResponse(quote);

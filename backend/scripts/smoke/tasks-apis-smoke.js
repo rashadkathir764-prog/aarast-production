@@ -70,12 +70,7 @@ function hasPasswordHash(value) {
   return JSON.stringify(value).includes('passwordHash');
 }
 
-function dateOffsetIso(days) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(11, 0, 0, 0);
-  return date.toISOString();
-}
+const { riyadhDateOffsetIso: dateOffsetIso } = require('./smoke-utils');
 
 async function registerUser(name, phone) {
   const res = await registerVerified(request, {

@@ -78,12 +78,7 @@ function hasPasswordHash(value) {
   return JSON.stringify(value).includes('passwordHash');
 }
 
-function dateOffsetIso(days) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(10, 0, 0, 0);
-  return date.toISOString();
-}
+const { riyadhDateOffsetIso: dateOffsetIso } = require('./smoke-utils');
 
 async function ensureReferenceData() {
   const city = await prisma.city.upsert({

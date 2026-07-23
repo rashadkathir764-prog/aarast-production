@@ -4,6 +4,7 @@
 require('./smoke-isolation-hook');
 
 const { registerVerified } = require('./verified-registration');
+const { riyadhDateOffsetIso } = require('./smoke-utils');
 
 /**
  * Dashboard Summary Smoke Test
@@ -71,13 +72,6 @@ function hasPasswordHash(value) {
   return JSON.stringify(value).includes('passwordHash');
 }
 
-function dateOffsetIso(days) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(10, 0, 0, 0);
-  return date.toISOString();
-}
-
 async function registerUser(name, phone) {
   const res = await registerVerified(request, {
     name,
@@ -97,7 +91,7 @@ async function createOptionalQuote(planId, token) {
 
   const quoteRes = await request('POST', `/api/v1/providers/${provider.id}/quote-requests`, {
     weddingPlanId: planId,
-    eventDate: dateOffsetIso(30),
+    eventDate: riyadhDateOffsetIso(30),
     guestCount: 120,
     message: 'Dashboard summary smoke quote',
   }, token);
@@ -124,7 +118,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Dashboard Summary Plan',
       city: 'Sanaa',
-      weddingDate: dateOffsetIso(45),
+      weddingDate: riyadhDateOffsetIso(45),
       estimatedBudget: '2000',
     }, owner.token);
     check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
@@ -180,24 +174,24 @@ async function run() {
 
     const scheduleRes = await request('POST', `/api/v1/costs/${payableCostId}/payment-schedules`, {
       amount: '200',
-      dueDate: dateOffsetIso(0),
+      dueDate: riyadhDateOffsetIso(0),
     }, owner.token);
     check('owner creates due payment schedule - HTTP 201', scheduleRes.status === 201);
     await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Done task',
-      dueDate: dateOffsetIso(0),
+      dueDate: riyadhDateOffsetIso(0),
       status: 'DONE',
       priority: 'MEDIUM',
     }, owner.token);
     await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Today task',
-      dueDate: dateOffsetIso(0),
+      dueDate: riyadhDateOffsetIso(0),
       status: 'TODO',
       priority: 'HIGH',
     }, owner.token);
     await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Overdue task',
-      dueDate: dateOffsetIso(-1),
+      dueDate: riyadhDateOffsetIso(-1),
       status: 'TODO',
       priority: 'HIGH',
     }, owner.token);

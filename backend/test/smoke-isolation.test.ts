@@ -15,6 +15,7 @@ const {
   assertManagedSmokeEnvironment,
   assertSafeSmokeDatabaseUrl,
   databaseNameFromUrl,
+  riyadhDateOffsetIso,
 } = require('../scripts/smoke/smoke-utils.js');
 
 const backendRoot = join(__dirname, '..');
@@ -48,6 +49,24 @@ test('managed smoke identity names every disposable resource with one run id', (
     databaseName: 'aarast_smoke_20260723123456789_abcdef12',
     bucketName: 'aarast-smoke-20260723123456789-abcdef12',
   });
+});
+
+test('Riyadh smoke dates stay on the business day across a UTC date boundary', () => {
+  const beforeRiyadhMidnight = new Date('2026-07-23T20:59:59.000Z');
+  const afterRiyadhMidnight = new Date('2026-07-23T21:00:01.000Z');
+
+  assert.equal(
+    riyadhDateOffsetIso(0, beforeRiyadhMidnight),
+    '2026-07-23T07:00:00.000Z',
+  );
+  assert.equal(
+    riyadhDateOffsetIso(0, afterRiyadhMidnight),
+    '2026-07-24T07:00:00.000Z',
+  );
+  assert.equal(
+    riyadhDateOffsetIso(-1, afterRiyadhMidnight),
+    '2026-07-23T07:00:00.000Z',
+  );
 });
 
 test('database guard accepts only the exact disposable smoke database', () => {

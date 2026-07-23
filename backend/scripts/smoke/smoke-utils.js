@@ -10,6 +10,7 @@ const FORBIDDEN_SMOKE_DATABASES = new Set([
   'template0',
   'template1',
 ]);
+const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 function loadLocalEnvFile() {
   const envPath = path.resolve(__dirname, '..', '..', '.env');
@@ -74,6 +75,21 @@ function databaseNameFromUrl(value) {
     throw new Error('Smoke database name must be a safe lowercase identifier.');
   }
   return databaseName;
+}
+
+function riyadhDateOffsetIso(days, now = new Date()) {
+  const riyadhNow = new Date(now.getTime() + RIYADH_OFFSET_MS);
+  return new Date(
+    Date.UTC(
+      riyadhNow.getUTCFullYear(),
+      riyadhNow.getUTCMonth(),
+      riyadhNow.getUTCDate() + days,
+      7,
+      0,
+      0,
+      0,
+    ),
+  ).toISOString();
 }
 
 function assertSafeSmokeDatabaseUrl(value, expectedDatabaseName) {
@@ -197,4 +213,5 @@ module.exports = {
   databaseNameFromUrl,
   loadLocalEnvFile,
   requireResponseId,
+  riyadhDateOffsetIso,
 };

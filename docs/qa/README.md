@@ -20,6 +20,14 @@ archive rules are owned by `docs/README.md`.
 
 ## Backend Changes
 
+Start the root Docker Compose PostgreSQL, Redis, and MinIO services before a
+backend smoke command. Mutating smoke, admin-runtime smoke, and `load:test`
+must run through the managed isolation wrapper; it starts a source backend on
+a temporary port and never targets the development backend on `3115`. A run
+fails closed if its database name lacks `smoke`/`test`, its Redis namespace is
+not empty, or any URL/resource differs from the exact run id. Do not invoke the
+underlying fixture scripts directly.
+
 ```powershell
 cd D:\projects\aarast\backend
 npm run check
@@ -56,6 +64,11 @@ Money-domain changes additionally fail unless tests prove:
   reservations, and any payment that completes a cost cancels all remaining
   pending reminders;
 - a null general budget stays null and category allocations never replace it;
+- repeated acceptance of one provider offer creates exactly one WeddingCost,
+  returns that cost, chooses a logical category or creates `أخرى`, and creates
+  no payment, schedule, task, or booking;
+- schedule payment always returns `{ payment, schedule }` to direct and replay
+  clients, and local summary paid totals come from PAYMENT minus REVERSAL rows;
 - the atomic money-budget route accepts `categories: []` for budget-first setup
   without creating a placeholder category and rejects any positive allocation
   when `totalBudget` is null; the mobile form prevents an entirely empty no-op
@@ -138,6 +151,24 @@ The root Docker Compose environment includes MinIO-compatible object storage
 and bucket initialization for local media smoke. `/ready` must report media as
 `up`; a run where media is `disabled` is not evidence for the media release
 gate.
+
+For unified provider conversations, database and live API coverage must prove
+that two requests for the same plan/provider reuse one Conversation, while a
+different plan or ACCOUNT requester receives a different Conversation. Every
+QuoteRequest must have `conversationId`; the two partial unique indexes must
+report zero duplicates; deleting a QuoteRequest must leave its Conversation.
+The smoke must also cover a concurrent creation attempt, a provider without a
+User, a provider linked later, timeline order/system-event dedupe, message-only
+unread, personal mute, side-level block, report/attachment privacy, and durable
+notification/outbox idempotency.
+
+Authorization coverage must exercise the plan owner, an explicit
+`canManageProviders` member, a member without that flag, the ACCOUNT requester,
+and the linked provider. Revoking the flag must return 404 to REST immediately,
+mark any Participant revoked, and eject the current Socket.IO room. Flutter
+coverage must include PLAN/ACCOUNT labels, one inbox row with multiple request
+count, read-only quote lookup, event navigation, provider-not-joined state,
+error/retry, reconnect, permission revocation, and duplicate-free pagination.
 
 ## Mobile Changes
 

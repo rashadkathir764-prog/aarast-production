@@ -90,9 +90,11 @@ Network-failed safe writes create a local dirty row and add a `sync_queue` item:
 - create/update/delete or pay a payment schedule
 - create/update/delete task
 - favorite/unfavorite provider
-- create quote request
 
-Login, registration, OTP, password flows, provider dashboard/admin actions, and shared-member permission mutations remain online-only.
+Login, registration, OTP, password flows, quote-request creation, provider
+dashboard/admin actions, and shared-member permission mutations remain
+online-only. Quote-request reads may use `cached_bookings`, but a failed create
+is never presented as queued or saved offline.
 
 ## Sync Behavior
 

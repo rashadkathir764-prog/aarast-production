@@ -325,7 +325,10 @@ Finance state rules:
   substitute budget.
 - Payment schedules are reminders and must not look paid before a CostPayment
   exists.
-- Quote-prefilled cost forms require an explicit confirmation step.
+- The Money root shows summary then cost cards; payment rows stay inside cost
+  details and never become a recent-operations section.
+- Accepted quote cards open the automatically created cost and never offer a
+  duplicate manual cost action.
 
 ## Motion
 

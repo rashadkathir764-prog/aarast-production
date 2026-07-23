@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-23
 
 ## Principles
 
@@ -27,8 +27,9 @@ Snapshot date: 2026-07-11
   those PII payloads in SharedPreferences.
 - Pending registration: `PendingRegistration` exists in navigation memory only
   between OTP request and `/api/v1/auth/register/complete`; it is never persisted.
-- Provider conversations: `mobile/lib/features/marketplace/` using REST
-  history and authenticated Socket.IO delivery.
+- Provider conversations: `mobile/lib/features/chat/` using a server-created
+  plan/provider or account/provider identity, REST conversation/timeline pages,
+  and authenticated Socket.IO delivery/recovery.
 
 ## QA Focus
 
@@ -39,6 +40,8 @@ Snapshot date: 2026-07-11
 - Shared-member privacy states.
 - Provider/user navigation separation.
 - Provider portal state remains separate from the wedding-user shell.
-- Quote chat uses REST history and authenticated Socket.IO events.
+- Quote entry performs read-only conversation lookup. The chat timeline merges
+  message and quote/offer event pages, recovers durable activity after
+  reconnect, and removes state immediately on permission-revoked events.
 - Message sending and media upload remain online-only protected actions;
   they must not enter the wedding-planning SQLite sync queue.

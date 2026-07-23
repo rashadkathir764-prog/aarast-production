@@ -260,8 +260,10 @@ Visible stable flows:
 - Open provider detail.
 - Request quote only when authenticated and feature enabled.
 - Provider dashboard only for provider path.
-- Accepting a quote may offer a prefilled cost draft only after explicit user
-  confirmation; cancelling that confirmation creates no money record.
+- Accepting a plan-scoped quote creates one unpaid WeddingCost and refreshes
+  Money; replaying acceptance must show the same cost and never a duplicate.
+- The accepted quote offers `عرض التكلفة في المال`, not a second manual cost
+  form, and creates no payment, payment schedule, task, or booking.
 
 Deferred or flagged flows:
 

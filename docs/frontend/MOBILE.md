@@ -1,11 +1,11 @@
 # Mobile
 
-Snapshot date: 2026-07-17
+Snapshot date: 2026-07-23
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
 tasks, guests, sharing, notifications, providers/quotes, settings, support,
-offline/cache behavior, the five-tab provider portal, quote-scoped
+offline/cache behavior, the five-tab provider portal, unified provider
 conversations, signed image uploads, and rotating refresh sessions.
 
 ## Current Direction
@@ -14,10 +14,22 @@ conversations, signed image uploads, and rotating refresh sessions.
 - Wedding Financial OS first.
 - Money uses five user-facing terms only: `الميزانية`, `التصنيف`, `التكلفة`,
   `الدفعة`, and `موعد الدفع`.
+- The Money root shows the canonical summary followed by WeddingCost cards;
+  payment history stays inside each cost. `إضافة تكلفة` remains available when
+  the general budget is unset. Accepting a provider offer refreshes Money so
+  the automatically created cost appears immediately.
 - Provider flows use a dedicated five-tab portal: Home, Requests, Services,
   Messages, and Profile.
 - The approved messaging design starts only from a real quote request and
-  remains an account-backed online action.
+  remains an account-backed online action. The inbox shows one row per
+  plan/provider or account/provider context, even when it contains multiple
+  requests.
+- Quote entry reads the conversation already linked by Backend. Chat renders a
+  single message/system-event timeline, distinguishes PLAN from ACCOUNT, and
+  disables sending with a clear state when the provider has no linked account.
+- `canManageProviders` is a strong sharing permission: it grants the existing
+  plan conversation history and authority to send as the plan. The sharing UI
+  must state this explicitly.
 - Conversation/media actions remain online-only and never enter the wedding
   planning SQLite sync queue.
 - Access and refresh tokens are stored through `flutter_secure_storage` 10.3.1;
@@ -100,8 +112,9 @@ conversations, signed image uploads, and rotating refresh sessions.
 - A cost always requires a category. It may optionally use either an Aarast
   provider or an external party; payment entry never asks for category or party
   again because those values are inherited from the selected cost.
-- Accepted quote data may prefill the cost form only after explicit user
-  confirmation. Quote acceptance alone never creates money data.
+- Accepting a valid plan-scoped quote creates exactly one linked `WeddingCost`
+  automatically with `paidAmount = 0`. It does not create a payment, payment
+  schedule, wedding task, or confirmed booking.
 - A payment schedule requires a date and remains a reminder until paid.
 - A missing general budget must render as unset, not zero and not the sum of
   category allocations.

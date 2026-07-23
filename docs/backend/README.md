@@ -1,11 +1,11 @@
 # Backend
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-23
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
 references, quote leads, provider dashboard behavior, admin operations, and
-notifications, rotating refresh sessions, quote-scoped conversations,
+notifications, rotating refresh sessions, unified provider conversations,
 Socket.IO delivery, fully decoded/sanitized signed provider/chat media,
 pepper-keyed durable login throttling, and report moderation.
 
@@ -25,8 +25,14 @@ npm run build
 npm run smoke:all
 ```
 
-Smoke scripts use `SMOKE_BASE_URL`. Some provider/marketplace smokes may also
-use `SMOKE_DATABASE_URL` for local fixtures.
+Database-writing smoke and load commands are managed by
+`scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker
+Compose PostgreSQL, Redis, and MinIO services, but creates a per-run database,
+MinIO bucket, Redis namespace, and backend port. It applies committed migrations
+with `prisma migrate deploy` and removes only those exact run-owned resources in
+`finally`, including after a failed check. The supported `npm run smoke:*` and
+`npm run load:test` commands must be used instead of invoking fixture scripts
+directly; they refuse the permanent `aarast` and `aarast_dev` databases.
 
 ## Boundaries
 

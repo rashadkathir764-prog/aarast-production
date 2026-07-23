@@ -574,10 +574,10 @@ total; the cost and initial CostPayment commit atomically. Update requests may
 change the category, title, total, party/provider context, agreement date, and
 note but cannot set a due date, paid amount, or derived payment status.
 
-Accepted quote data may prefill this request only after explicit user
-confirmation. Quote acceptance itself returns `automaticCostCreated: false`
-and never invokes the cost route. Hard delete is limited to costs without
-ledger history; cancellation is explicit and must not erase paid money.
+The accepted-quote route creates this record inside the same serializable
+transaction as offer acceptance. Manual cost creation remains available for
+non-quote costs. Hard delete is limited to costs without ledger history;
+cancellation is explicit and must not erase paid money.
 
 ## Cost Payments
 
@@ -654,6 +654,15 @@ creates one linked CostPayment, and makes concurrent retries idempotent. Any
 direct or scheduled payment that fully pays the cost cancels every remaining
 pending reminder. Reversing a schedule-linked payment reopens that schedule.
 Paid schedules and schedules with payment history cannot be hard-deleted.
+The pay response is always one canonical wrapper so online and replay clients
+cache the same state:
+
+```json
+{
+  "payment": { "id": "payment_id", "paymentScheduleId": "schedule_id" },
+  "schedule": { "id": "schedule_id", "status": "PAID" }
+}
+```
 
 ## Money Summary
 
@@ -689,7 +698,7 @@ The response is one nested contract with no legacy aliases:
       "id": "schedule_id",
       "weddingCostId": "cost_id",
       "amount": "100000.00",
-      "dueAt": "2026-12-15T00:00:00.000Z",
+      "dueDate": "2026-12-15T00:00:00.000Z",
       "status": "PENDING",
       "isOverdue": false
     }
@@ -1078,20 +1087,43 @@ Plan-scoped `/api/v1` quote routes:
 - `PATCH /api/v1/quote-offers/:id/accept`
 - `PATCH /api/v1/quote-offers/:id/reject`
 
-Accepting an offer returns the accepted offer and `planProviderLink`, and explicitly returns:
+Quote-request creation is an authenticated online mutation and should send a
+stable `X-Client-Request-Id` for one logical submission. Replaying the same
+method, target, and body with the same key returns the stored response without
+duplicating the request, notification, or outbox event. A different key is a
+new attempt, but the domain still rejects an identical active request with
+`ACTIVE_QUOTE_REQUEST_EXISTS`. Identity is requester, provider, optional plan,
+optional service (including `null`), event date, and city; message, budget,
+contact, and guest details do not create a second active lead. `SENT`, `VIEWED`,
+and `RESPONDED` are active, except that a `RESPONDED` cycle whose pending offers
+are all past `validUntil` is effectively closed for starting a new request.
 
-- `automaticCostCreated: false`
-- `costSuggestion`, containing `recommendedAction`, `message`, quoted amount,
-  currency, provider id, and quote-offer id
-- `nextActions`, including `createCost`, `createFollowUpTask`, and
-  `viewAcceptedProvider`; payment recording is unavailable until a cost exists
+Quote-offer responses expose derived `isExpired` and `isActionable` fields.
+Expired pending offers remain historically `PENDING` in storage, cannot be
+accepted or rejected, and return `QUOTE_OFFER_EXPIRED` if a stale client tries.
+Provider offer creation locks the quote request and permits one offer for the
+current request cycle.
 
-Accepting an offer must not silently create costs, payment schedules, tasks,
-payments, deposits, or confirmed bookings. A `CREATE_COST` suggestion may
-prefill the cost form only after explicit confirmation. Quote presentation
-uses `availableActions: ["CREATE_COST"]` while an accepted offer has no cost;
-when a linked cost exists it may return `costId` and
-`availableActions: ["VIEW_COST"]` instead.
+Accepting a plan-scoped offer requires both provider-management and
+money-management permission. It atomically accepts the offer, links the
+provider, and creates or returns the single `WeddingCost` identified by the
+unique `quoteOfferId`. The offer amount must be positive and use the plan
+currency. The service category is matched logically against
+`BudgetCategory.normalizedName`; otherwise `أخرى` is reused or created without
+an allocation.
+
+The response contains:
+
+- `automaticCostCreated: true`
+- `weddingCost`, using the canonical cost response including
+  `totalAmount`, `paidAmount`, and derived `remainingAmount`
+- `costSuggestion` with `suggestedAction: "VIEW_COST"`, `costId`, and
+  `availableActions: ["VIEW_COST"]`
+- `nextActions: ["viewCost", "viewAcceptedProvider"]`
+
+Retries return the existing cost and do not repeat notifications. Acceptance
+does not create a CostPayment, PaymentSchedule, task, deposit, paid booking, or
+confirmed booking.
 
 Provider dashboard routes:
 
@@ -1118,21 +1150,31 @@ Provider dashboard routes:
 - `PATCH /api/v1/provider/me/quote-offers/:id`
 - `GET /api/v1/provider/me/reviews`
 
-Known follow-up from the 2026-06-20 audit: quote request/offer permissions should be tightened before shared-plan users are allowed to manage quote decisions broadly.
+Plan members may read plan quote requests through the plan-scoped route. Budget
+and contact fields remain redacted unless the corresponding money/provider
+permission allows them; quote mutations require provider-management permission,
+and acceptance additionally requires money-management permission.
 
 ## Quote Conversations And Media
 
-Conversations are available only for a real quote request and only to its
-requester and provider account. Open or unsolicited messaging is excluded.
+Conversations begin only with a real quote request; open or unsolicited
+messaging is excluded. A `PLAN` conversation is unique by WeddingPlan and
+Provider. An `ACCOUNT` conversation is unique by requester account and
+Provider. Creating a QuoteRequest creates or reuses that context inside the
+same transaction, so opening chat never mutates server state.
 
-- `POST /api/v1/conversations/quote-requests/:quoteRequestId` creates or returns the
-  quote conversation.
+- `GET /api/v1/quote-requests/:quoteRequestId/conversation` returns the existing
+  conversation linked to that request.
 - `GET /api/v1/conversations` lists the current account's conversations with
   optional `cursor` and `limit` (default 30, maximum 50), returning
   `{ items, nextCursor }`.
 - `GET /api/v1/conversations/:id` returns the exact participant-authorized
-  conversation summary, including mute/block/read metadata, so a direct route
-  does not depend on that conversation appearing in the first inbox page.
+  conversation summary, so a direct route does not depend on that conversation
+  appearing in the first inbox page.
+- `GET /api/v1/conversations/:id/quote-requests` returns every linked request;
+  price and contact fields remain permission-redacted.
+- `GET /api/v1/conversations/:id/timeline` returns cursor-paginated human
+  messages and request/offer system events in one stable chronological stream.
 - `GET /api/v1/conversations/:id/messages` returns paginated message history.
 - `POST /api/v1/conversations/:id/messages` sends text and approved signed-media
   attachments.
@@ -1142,14 +1184,27 @@ requester and provider account. Open or unsolicited messaging is excluded.
   state.
 - `POST /api/v1/conversations/:id/report` creates a moderation report.
 
-Conversation list responses include the aggregate `blocked` value plus
-`blockedByMe`, `blockedByCounterpart`, and `counterpartLastReadAt` so clients
-can distinguish who owns a block and show read receipts without exposing other
-private participant state. `unreadCount` is derived for the current account.
+Conversation summaries include `scope`, optional `weddingPlan`, `provider`,
+`quoteRequestCount`, `latestQuoteRequest`, `lastActivityAt`,
+`unreadMessageCount`, personal `muted`, aggregate/side block state,
+`providerJoined`, `canSend`, and UI permissions. They never present one
+QuoteRequest as the conversation identity. Unread counts include human messages
+only; system events update activity but not unread.
 
-Authenticated Socket.IO events are `conversation:join`,
-`conversation:message`, and `conversation:read`. Server authorization is
-rechecked before room access and message actions.
+For `PLAN`, access is derived live from plan ownership, explicit
+`SharedMember.canManageProviders`, or `Provider.userId`. For `ACCOUNT`, access
+is limited to the requester and linked provider account. Participant rows store
+joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
+participant and forces current sockets out of the room. This permission is
+strong because it exposes the prior conversation history and allows sending as
+the plan; money fields still require money permissions.
+
+Authenticated Socket.IO events include `conversation:join`,
+`conversation:message`, `conversation:read`, `conversation:event`,
+`conversation:activity-available`, and `conversation:permission-revoked`.
+Server authorization is rechecked before join, send, and read. A provider with
+no linked User does not block quote creation; the summary returns
+`providerJoined: false` and `canSend: false` until the account is linked.
 
 `POST /api/v1/media/uploads/presign` issues short-lived S3-compatible upload
 URLs for approved purposes and declared size/MIME limits. The returned
@@ -1394,9 +1449,10 @@ configuration, and smoke checks.
 | GET | `/api/v1/conversations/:id/messages` | `conversations.messages` | 🔒 |
 | POST | `/api/v1/conversations/:id/messages` | `conversations.send` | 🔒 |
 | PATCH | `/api/v1/conversations/:id/mute` | `conversations.mute` | 🔒 |
+| GET | `/api/v1/conversations/:id/quote-requests` | `conversations.quoteRequests` | 🔒 |
 | PATCH | `/api/v1/conversations/:id/read` | `conversations.markRead` | 🔒 |
 | POST | `/api/v1/conversations/:id/report` | `conversations.report` | 🔒 |
-| POST | `/api/v1/conversations/quote-requests/:quoteRequestId` | `conversations.ensureForQuote` | 🔒 |
+| GET | `/api/v1/conversations/:id/timeline` | `conversations.timeline` | 🔒 |
 | GET | `/api/v1/cost-payments/:id` | `wedding-costs.get` | 🔒 |
 | POST | `/api/v1/cost-payments/:id/reverse` | `wedding-costs.reverse` | 🔒 |
 | DELETE | `/api/v1/costs/:id` | `wedding-costs.remove` | 🔒 |
@@ -1474,6 +1530,7 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/quote-offers/:id/reject` | `marketplace.rejectOffer` | 🔒 |
 | GET | `/api/v1/quote-requests/:id` | `marketplace.findQuoteRequest` | 🔒 |
 | PATCH | `/api/v1/quote-requests/:id/cancel` | `marketplace.cancelQuoteRequest` | 🔒 |
+| GET | `/api/v1/quote-requests/:quoteRequestId/conversation` | `conversations.getForQuote` | 🔒 |
 | DELETE | `/api/v1/reviews/:id` | `marketplace.deleteReview` | 🔒 |
 | PATCH | `/api/v1/reviews/:id` | `marketplace.updateReview` | 🔒 |
 | GET | `/api/v1/services` | `marketplace.findServices` |  |

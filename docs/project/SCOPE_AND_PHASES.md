@@ -1,6 +1,6 @@
 # Scope And Phases
 
-Snapshot date: 2026-07-14
+Snapshot date: 2026-07-23
 
 This is the compact phase source. Older phase files were archived during the
 2026-07 documentation consolidation.
@@ -24,9 +24,11 @@ Current implemented scope includes:
 - Flutter mobile flows for the planning, money, task, sharing, provider, and
   account surfaces.
 - Mobile SQLite/offline cache and selected sync queue behavior.
-- Five-tab provider portal and quote-scoped conversation UI.
-- Quote-scoped conversations, real-time delivery, unread/read state, mute,
-  block, reporting, and admin moderation.
+- Five-tab provider portal and unified plan/provider or account/provider
+  conversation UI.
+- Quote-started conversations with multiple requests per conversation, unified
+  message/system-event timeline, real-time delivery, unread/read state, mute,
+  side-level block, reporting, and admin moderation.
 - Signed provider, avatar, and chat media upload with full server-side image
   decode/sanitize/re-encode before persistence, durable ownership tickets,
   account quota, and abandoned-upload cleanup.

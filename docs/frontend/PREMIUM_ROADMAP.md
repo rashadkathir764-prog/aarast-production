@@ -43,9 +43,11 @@ Its visible structure is:
 3. Costs, with clear paid/outstanding state and optional provider or external
    party context.
 4. Upcoming payment dates.
-5. Recent payments.
+5. Payment history inside each cost only; the root has no recent-operations
+   section.
 
-The root FAB contains only `إضافة تكلفة`, `تسجيل دفعة`, and `إضافة تصنيف`.
+The root FAB contains only `إضافة تكلفة` and remains available before a general
+budget is configured.
 Budget editing belongs to the budget card. A payment chooses a cost and inherits
 its category and provider/party; it never asks the user to classify the same
 money twice.
@@ -66,10 +68,10 @@ The complete routed surface is:
 - Create or edit payment date.
 - Payment-date details and explicit pay action.
 
-An accepted quote may offer a prefilled cost draft only after an explicit user
-confirmation. Cancelling that confirmation creates no money data. A cost always
-requires one category and may optionally reference either an Aarast provider or
-an external party, never both.
+An accepted plan-scoped quote already has one automatically created cost. The
+marketplace opens that record instead of offering a second manual cost draft. A
+cost always requires one category and may optionally reference either an Aarast
+provider or an external party, never both.
 
 ## Cross-Screen Design Contract
 
@@ -112,7 +114,8 @@ whole routed flow.
 
 Tasks, guests, sharing, providers, quotes, provider operations, account, and
 support continue to use the same design contract. Provider flows remain
-planning/reference and quote-scoped: no silent booking, deposit, payment
+planning/reference and quote-started: multiple requests may share one
+plan/provider conversation, but there is no silent booking, deposit, payment
 processing, financing, or open unsolicited messaging.
 
 ## Current Execution Order

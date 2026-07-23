@@ -28,8 +28,10 @@ Snapshot date: 2026-07-14
 - Admin browser sessions require password + phone OTP; admin JWTs are bound to
   rotating server sessions, refresh material is HttpOnly, and logout revokes
   active access immediately.
-- Quote-scoped conversations, Socket.IO delivery, message attachments,
-  reporting/blocking/muting/read state, and signed media uploads.
+- One conversation per plan/provider or account/provider context, Socket.IO
+  delivery/recovery, quote/offer system events, message attachments,
+  reporting/side-level blocking/personal mute/read state, and signed media
+  uploads.
 - Media verification fully decodes and sanitizes JPEG/PNG/WebP objects before
   conditional replacement; signed creation cannot overwrite an existing key.
 - Every presign has a durable account-owned upload ticket, rolling daily

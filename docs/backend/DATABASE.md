@@ -36,9 +36,8 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
 | QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. |
-| QuoteOffer | Implemented for provider responses to quote requests. Accepting/rejecting an offer is a planning decision only, not a paid booking. |
+| QuoteOffer | Implemented for provider responses to quote requests. Accepting a plan-scoped offer atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
 | PlanProviderLink | Implemented to connect an accepted provider/offer to a WeddingPlan as planning context. |
-| Attachment | Represents an optional supporting file or image for costs, payment records, payment schedules, quote requests, or provider agreements. This is planning-level only and does not imply payment processing. |
 
 ## Conversation And Session Entities
 
@@ -50,8 +49,9 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | LoginThrottle | Durable cross-replica password-attempt window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Five failures lock one realm for fifteen minutes; successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
 | OtpDispatchQuota | Atomic cross-replica OTP delivery windows for phone, IP, and global scopes. Subjects are HMAC-SHA-256 digests; no raw phone or IP is persisted. Failed deliveries still consume quota and an hourly advisory-lock cleanup removes expired rows. |
 | MediaUploadTicket | Durable owner, purpose, declared/verified byte size, expiry, verification state, and consumption state for every signed upload. It enforces a rolling per-account quota and allows bounded cleanup of abandoned objects without trusting a client-supplied URL. |
-| Conversation | One quote-scoped thread joining the requester, provider, quote request, and WeddingPlan context, with a composite inbox-order index for cursor pagination. |
-| ConversationParticipant | Per-user unread/read, mute, block, and participation state. |
+| Conversation | One provider relationship thread. `PLAN` is unique by WeddingPlan + Provider; `ACCOUNT` is unique by requester User + Provider. The row owns last activity, administrative close, and customer/provider-side block state. |
+| ConversationParticipant | Per-user joined/revoked, last-read, and personal mute state. It is not an authorization source; access is derived live from plan ownership, explicit provider-management permission, account request ownership, or the provider account. |
+| ConversationEvent | Idempotent, non-sensitive QuoteRequest/QuoteOffer lifecycle activity merged with messages at timeline read time. Human content remains in ChatMessage only. |
 | ChatMessage | Authored conversation message with delivery/read timestamps and no payment semantics. |
 | ChatAttachment | Private object `storageKey` plus MIME/size metadata tied to a message; permanent or public download URLs are never stored. |
 | ConversationReport | Participant report with moderation status; admin views do not expose message bodies. |
@@ -170,7 +170,7 @@ rewrite as permission to restore a removed live model.
 | Model | Field count | Notable fields |
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
-| `User` | 43 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `User` | 47 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 12 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
@@ -178,7 +178,7 @@ rewrite as permission to restore a removed live model.
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
-| `WeddingPlan` | 28 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 29 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 21 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
@@ -195,20 +195,21 @@ rewrite as permission to restore a removed live model.
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `ProviderCategory` | 11 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 36 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
+| `Provider` | 37 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
-| `QuoteRequest` | 29 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
-| `QuoteOffer` | 15 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
+| `QuoteRequest` | 31 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteOffer` | 16 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
-| `Conversation` | 10 | `id`, `quoteRequestId`, `lastMessageAt`, `closedAt`, `createdAt`, `updatedAt` |
-| `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `lastReadAt`, `mutedAt`, `blockedAt`, `createdAt`, `updatedAt` |
+| `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
+| `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
+| `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
 | `ChatMessage` | 11 | `id`, `conversationId`, `senderUserId`, `editedAt`, `deletedAt`, `createdAt`, `updatedAt` |
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 40
+Total models: 41
 <!-- DOCS-SYNC:END -->

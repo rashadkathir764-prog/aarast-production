@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-19
+Snapshot date: 2026-07-23
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -33,6 +33,10 @@ and runtime checks override historical completion reports.
   schedules. Database constraints and row-locked mutations also enforce
   positive amounts, paid not exceeding cost, one reversal per payment, and one
   payment transition per schedule.
+- Accepted provider offers now create or return one idempotent `WeddingCost`
+  inside the acceptance transaction. Category matching uses the provider
+  service and normalized logical aliases, with an unallocated `أخرى` fallback;
+  no payment, schedule, task, or booking is created.
 - Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS
@@ -53,9 +57,12 @@ and runtime checks override historical completion reports.
   guests, sharing, permissions, notifications, and offline/cache support.
 - Provider catalog, favorites, reviews, quote requests/offers, provider
   dashboard operations, and admin catalog/provider operations.
-- Quote-scoped conversations, authenticated Socket.IO delivery, unread/read,
-  mute, block, report, private chat objects with membership-gated 120-second
-  signed downloads, and admin report moderation.
+- One conversation per plan/provider or account/provider context, created with
+  the first real quote request and reused by later requests. The implemented
+  timeline combines human messages with persisted quote/offer system events,
+  authenticated Socket.IO delivery, unread/read, personal mute, side-level
+  block, report, private chat objects with membership-gated 120-second signed
+  downloads, and admin report moderation.
 - Image writes verify and sanitize the complete uploaded object server-side
   before persistence. JPEG/PNG/WebP uploads must match their ownership metadata,
   stored size/MIME, fully decode within the pixel/dimension/single-frame bounds,

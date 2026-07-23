@@ -1,6 +1,6 @@
 # Product
 
-Snapshot date: 2026-07-15
+Snapshot date: 2026-07-23
 
 Aarast / اعّرست is a Yemen-first wedding planning product. The product center
 is a Wedding Financial OS: wedding plans, one general budget, budget
@@ -9,15 +9,17 @@ sharing, and privacy-aware family coordination.
 
 Provider and marketplace features are support flows only at the current stage:
 provider references, services, packages, favorites, reviews, quote requests,
-provider portal, quote-scoped conversations, and admin approval/catalog
+provider portal, plan/provider conversations, and admin approval/catalog
 operations. They must remain
 planning/reference and quote-lead flows until an explicit later phase approves a
 broader marketplace.
 
-The approved conversation scope is deliberately narrow: a conversation exists
-only between the requester and the provider account attached to a real quote
-request. It is not an open social inbox and it does not create a booking or a
-financial record.
+The approved conversation scope is deliberately narrow: a conversation starts
+only from a real quote request. A plan request reuses one conversation for the
+same `WeddingPlan + Provider`; a request outside a plan reuses one conversation
+for the same `Account requester + Provider`. Multiple requests and offers form
+one timeline with that provider. It is not an open social inbox and it does not
+create a booking or a financial record.
 
 Financial planning uses one domain only:
 
@@ -38,9 +40,11 @@ Financial planning uses one domain only:
   reservations. Any payment that completes the cost cancels its remaining
   pending reminders.
 
-An accepted provider offer may prefill a cost draft only after an explicit
-user confirmation. Acceptance never creates a cost, payment, schedule, task,
-deposit, or booking silently.
+Accepting a plan-scoped provider offer atomically creates one `WeddingCost`
+linked to the plan, provider, and accepted offer. Its total is the offer amount,
+its paid amount starts at zero, and its category is matched from the provider
+service or falls back to an automatically created unallocated `أخرى` category.
+Acceptance never creates a payment, payment schedule, task, deposit, or booking.
 
 ## Boundaries
 
@@ -59,7 +63,7 @@ Currently excluded unless explicitly approved:
 ## Privacy
 
 Financial data is private by default. Budgets, categories, costs, payments,
-payment schedules, attachments, private tasks, and sensitive plan details must
+payment schedules, private tasks, and sensitive plan details must
 not be shown to shared members unless `canViewMoney` allows it. Financial write
 actions require `canManageMoney`.
 

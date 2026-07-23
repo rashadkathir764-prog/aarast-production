@@ -43,6 +43,14 @@
 | --- | --- | --- |
 | Allow a temporary hardened OpenWA OTP transport for the risk-accepted MVP, while retaining Meta as the target channel. | Accepted and locally verified; limited rollout gates remain | Aarast never calls stock `send-text`, applies durable HMAC-keyed phone/IP/global quotas, and fails readiness unless a connected session exposes the transient contract. The pinned fork, QR link, no-persistence proof, protected restart, and live self-recipient request/verify flow pass. An independently owned second recipient and 24-hour stability observation remain mandatory before widening the MVP rollout. |
 
+## Current Decisions Addendum - 2026-07-23
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Make conversation identity the provider relationship context, not one request. | Accepted and implemented | `PLAN` is unique by `weddingPlanId + providerId`; `ACCOUNT` is unique by `accountRequesterUserId + providerId`. Every QuoteRequest is linked to exactly one conversation and multiple requests share its timeline. |
+| Derive conversation authorization live from plan/provider relations. | Accepted and implemented | Plan owners, explicit `SharedMember.canManageProviders` members, the account requester, and the linked provider account are authorized by current rows on every REST/Socket operation. `ConversationParticipant` stores only personal state and is never an authority source. |
+| Keep quote lifecycle updates as system events, separate from human messages. | Accepted and implemented | `ConversationEvent` stores idempotent request/offer events without price or contact data. Offer expiry is derived from `validUntil`; unread counts include human messages only. |
+
 ## Current Decisions Addendum - 2026-07-15
 
 | Decision | Status | Rationale |
@@ -54,6 +62,12 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Send participant invitation links from Aarast and bind access to token plus verified phone. | Accepted and implemented in source | Invite creation remains pending until the recipient proves the exact invited phone. The backend sends a generic private link through the hardened transient OpenWA contract, reports uncertain delivery honestly, sends OTP only after token-phone matching, and the mobile client accepts and opens the shared plan after successful OTP. Manual `wa.me` composition was removed so the owner is not responsible for delivering the link. |
+
+## Current Decisions Addendum - 2026-07-20
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Create one planning cost when a provider offer is accepted. | Accepted and implemented in source | Offer acceptance and `WeddingCost` creation are one serializable, idempotent transaction keyed by unique `quoteOfferId`. The cost starts unpaid, uses the plan currency and provider/service context, and falls back to `أخرى` only when no logical budget-category match exists. This creates no payment, payment schedule, task, booking, settlement, or payment-processing state. |
 
 ## Initial Project Decisions
 

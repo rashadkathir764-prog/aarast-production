@@ -455,7 +455,7 @@ void main() {
       card,
       matchesGoldenFile('goldens/provider_received_offer.png'),
     );
-  });
+  }, tags: const ['golden']);
 }
 
 Future<void> _pump(

@@ -60,6 +60,8 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
    against an unmounted ordinary host directory.
 4. Run `docker compose --env-file .env config --quiet`.
 5. Start the stack and require `db`, `redis`, and `openwa` to become healthy.
+   Keep `OPENWA_MEMORY_LIMIT` at `2g` or higher unless a measured acceptance
+   run proves a lower cgroup limit does not OOM-kill Chromium.
 6. Start `operator-qr-bridge.mjs` as the deployment user with the master key and
    session ID supplied only through its environment. It binds to server
    loopback, exposes neither key, and shuts down automatically after 15 minutes.

@@ -42,6 +42,8 @@ class ChatRealtimeClient {
   Future<void>? _connectFuture;
   void Function(ChatMessage message)? _onMessage;
   void Function(String conversationId, String messageId)? _onMessageAvailable;
+  void Function(String conversationId)? _onActivityAvailable;
+  void Function(String conversationId)? _onPermissionRevoked;
   void Function(String conversationId, String userId, DateTime? lastReadAt)?
   _onRead;
   bool _stopped = true;
@@ -53,6 +55,8 @@ class ChatRealtimeClient {
     required void Function(ChatMessage message) onMessage,
     required void Function(String conversationId, String messageId)
     onMessageAvailable,
+    required void Function(String conversationId) onActivityAvailable,
+    required void Function(String conversationId) onPermissionRevoked,
     required void Function(
       String conversationId,
       String userId,
@@ -62,6 +66,8 @@ class ChatRealtimeClient {
   }) {
     _onMessage = onMessage;
     _onMessageAvailable = onMessageAvailable;
+    _onActivityAvailable = onActivityAvailable;
+    _onPermissionRevoked = onPermissionRevoked;
     _onRead = onRead;
     _stopped = false;
     if (_socket?.connected == true) return Future.value();
@@ -131,6 +137,21 @@ class ChatRealtimeClient {
         json['messageId']?.toString() ?? '',
       );
     });
+    socket.on('conversation:event', (value) {
+      final json = _json(value);
+      if (json == null) return;
+      _onActivityAvailable?.call(json['conversationId']?.toString() ?? '');
+    });
+    socket.on('conversation:activity-available', (value) {
+      final json = _json(value);
+      if (json == null) return;
+      _onActivityAvailable?.call(json['conversationId']?.toString() ?? '');
+    });
+    socket.on('conversation:permission-revoked', (value) {
+      final json = _json(value);
+      if (json == null) return;
+      _onPermissionRevoked?.call(json['conversationId']?.toString() ?? '');
+    });
     socket.on('conversation:read', (value) {
       final json = _json(value);
       if (json == null) return;
@@ -174,6 +195,8 @@ class ChatRealtimeClient {
       if (_stopped ||
           _onMessage == null ||
           _onMessageAvailable == null ||
+          _onActivityAvailable == null ||
+          _onPermissionRevoked == null ||
           _onRead == null) {
         return;
       }
@@ -182,6 +205,8 @@ class ChatRealtimeClient {
         connect(
           onMessage: _onMessage!,
           onMessageAvailable: _onMessageAvailable!,
+          onActivityAvailable: _onActivityAvailable!,
+          onPermissionRevoked: _onPermissionRevoked!,
           onRead: _onRead!,
         ).catchError((_) {}),
       );

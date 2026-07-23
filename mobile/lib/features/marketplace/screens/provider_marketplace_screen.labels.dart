@@ -1,16 +1,22 @@
 part of 'provider_marketplace_screen.dart';
 
 int _offersReceivedCount(List<QuoteRequest> quotes) {
-  return quotes.where((quote) {
-    return quote.lifecycleStatus == 'RECEIVED' ||
-        quote.lifecycleStatus == 'ACCEPTED' ||
-        quote.lifecycleStatus == 'REJECTED' ||
-        quote.offers.isNotEmpty;
-  }).length;
+  return quotes.where((quote) => quote.offers.isNotEmpty).length;
 }
 
 int _acceptedProviderCount(List<QuoteRequest> quotes) {
-  return quotes.where((quote) => quote.lifecycleStatus == 'ACCEPTED').length;
+  return quotes
+      .where(
+        (quote) =>
+            quote.lifecycleStatus == 'ACCEPTED' || quote.acceptedOffer != null,
+      )
+      .length;
+}
+
+int _sentRequestsCount(List<QuoteRequest> quotes) {
+  return quotes
+      .where((quote) => quote.status == 'SENT' || quote.status == 'VIEWED')
+      .length;
 }
 
 /// ترتيب كرت "عروض وصلتك": ما يحتاج قرارًا أولًا، ثم المنتظر، ثم المقبول.
@@ -180,7 +186,7 @@ String _quoteServiceLabel(QuoteRequest quote) {
   if (serviceTitle != null && serviceTitle.isNotEmpty) return serviceTitle;
   final category = quote.service?.category?.nameAr.trim();
   if (category != null && category.isNotEmpty) return category;
-  return 'خدمة غير محددة';
+  return quote.serviceId == null ? 'حسب اقتراح المورد' : 'خدمة غير متاحة';
 }
 
 /// مبلغ العرض للعرض البارز: مُنسّق بفواصل مع اسم العملة العربي، أو النص الخام.

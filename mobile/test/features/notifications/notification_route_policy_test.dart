@@ -23,6 +23,30 @@ void main() {
     );
   });
 
+  test('chat notification keeps the unified conversation route', () {
+    final notification = AarastNotification(
+      id: 'notification-chat',
+      userId: 'user-1',
+      type: 'CHAT_MESSAGE_RECEIVED',
+      title: 'رسالة جديدة',
+      body: 'لديك رسالة جديدة',
+      entityType: 'conversation',
+      entityId: 'conversation-1',
+      routeTarget: '/conversations/conversation-1',
+      data: const {
+        'conversationId': 'conversation-1',
+        'quoteRequestId': 'quote-1',
+      },
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    expect(
+      resolveNotificationRouteTarget(notification),
+      '/conversations/conversation-1',
+    );
+  });
+
   test('external and unknown notification routes stay blocked', () {
     expect(
       isSafeNotificationRouteTarget('https://example.com/conversations/1'),

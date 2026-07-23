@@ -47,7 +47,7 @@ class _ConversationListViewState extends State<ConversationListView> {
           if (widget.embedded) ...[
             const AarastSectionHeader(
               title: 'الرسائل',
-              subtitle: 'محادثات مرتبطة بطلبات أسعار حقيقية فقط.',
+              subtitle: 'محادثة واحدة مع كل مورد داخل الخطة.',
               icon: LucideIcons.messagesSquare,
             ),
             const SizedBox(height: 18),
@@ -64,7 +64,7 @@ class _ConversationListViewState extends State<ConversationListView> {
             const AarastEmptyState(
               icon: LucideIcons.messageCircle,
               title: 'لا توجد محادثات بعد',
-              message: 'تبدأ المحادثة من طلب سعر لحماية المستخدم والمزوّد.',
+              message: 'تظهر المحادثة تلقائيًا عند إنشاء أول طلب سعر.',
             )
           else
             for (final conversation in chat.conversations) ...[
@@ -110,10 +110,10 @@ class _ConversationTile extends StatelessWidget {
             CircleAvatar(
               radius: 27,
               backgroundColor: AppTheme.burgundySoft,
-              backgroundImage: conversation.counterpart.avatarUrl == null
+              backgroundImage: conversation.provider.logoUrl == null
                   ? null
-                  : NetworkImage(conversation.counterpart.avatarUrl!),
-              child: conversation.counterpart.avatarUrl == null
+                  : NetworkImage(conversation.provider.logoUrl!),
+              child: conversation.provider.logoUrl == null
                   ? const Icon(LucideIcons.store, color: AppTheme.burgundy)
                   : null,
             ),
@@ -123,7 +123,7 @@ class _ConversationTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    conversation.counterpart.name,
+                    conversation.provider.businessName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -133,9 +133,7 @@ class _ConversationTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    conversation.lastMessage?.body ??
-                        conversation.serviceTitle ??
-                        'طلب عرض سعر',
+                    _contextLabel(conversation),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -143,10 +141,29 @@ class _ConversationTile extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 3),
+                  Text(
+                    conversation.providerJoined
+                        ? (conversation.lastMessage?.body ??
+                              'آخر نشاط على طلبات الأسعار')
+                        : 'المورد لم ينضم بعد',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: conversation.providerJoined
+                          ? AppTheme.muted
+                          : AppTheme.gold,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
-            if (conversation.unreadCount > 0)
+            if (conversation.muted) ...[
+              const Icon(LucideIcons.bellOff, size: 17, color: AppTheme.muted),
+              const SizedBox(width: 8),
+            ],
+            if (conversation.unreadMessageCount > 0)
               Container(
                 constraints: const BoxConstraints(minWidth: 24),
                 height: 24,
@@ -157,7 +174,7 @@ class _ConversationTile extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  '${conversation.unreadCount}',
+                  '${conversation.unreadMessageCount}',
                   textDirection: TextDirection.ltr,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Colors.white,
@@ -172,4 +189,14 @@ class _ConversationTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _contextLabel(ChatConversation conversation) {
+  final scope = conversation.scope == ChatConversationScope.plan
+      ? (conversation.weddingPlan?.title ?? 'خطة الزفاف')
+      : 'طلب مستقل عن الخطة';
+  final count = conversation.quoteRequestCount == 1
+      ? 'طلب واحد'
+      : '${conversation.quoteRequestCount} طلبات';
+  return '$scope · $count';
 }

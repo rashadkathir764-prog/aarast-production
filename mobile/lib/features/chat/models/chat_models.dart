@@ -1,3 +1,5 @@
+enum ChatConversationScope { plan, account }
+
 class ChatUser {
   const ChatUser({required this.id, required this.name, this.avatarUrl});
 
@@ -10,6 +12,103 @@ class ChatUser {
   final String id;
   final String name;
   final String? avatarUrl;
+}
+
+class ChatWeddingPlan {
+  const ChatWeddingPlan({required this.id, required this.title});
+
+  factory ChatWeddingPlan.fromJson(Map<String, dynamic> json) =>
+      ChatWeddingPlan(
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+      );
+
+  final String id;
+  final String title;
+}
+
+class ChatProviderSummary {
+  const ChatProviderSummary({
+    required this.id,
+    required this.businessName,
+    this.logoUrl,
+  });
+
+  factory ChatProviderSummary.fromJson(Map<String, dynamic> json) =>
+      ChatProviderSummary(
+        id: json['id']?.toString() ?? '',
+        businessName: json['businessName']?.toString() ?? '',
+        logoUrl: json['logoUrl']?.toString(),
+      );
+
+  final String id;
+  final String businessName;
+  final String? logoUrl;
+}
+
+class ChatConversationPermissions {
+  const ChatConversationPermissions({
+    required this.canManageProviders,
+    required this.canViewMoney,
+    required this.canManageMoney,
+    required this.canViewContact,
+  });
+
+  factory ChatConversationPermissions.fromJson(Map<String, dynamic> json) =>
+      ChatConversationPermissions(
+        canManageProviders: json['canManageProviders'] == true,
+        canViewMoney: json['canViewMoney'] == true,
+        canManageMoney: json['canManageMoney'] == true,
+        canViewContact: json['canViewContact'] == true,
+      );
+
+  static const none = ChatConversationPermissions(
+    canManageProviders: false,
+    canViewMoney: false,
+    canManageMoney: false,
+    canViewContact: false,
+  );
+
+  final bool canManageProviders;
+  final bool canViewMoney;
+  final bool canManageMoney;
+  final bool canViewContact;
+}
+
+class ChatQuoteService {
+  const ChatQuoteService({required this.id, required this.title});
+
+  factory ChatQuoteService.fromJson(Map<String, dynamic> json) =>
+      ChatQuoteService(
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+      );
+
+  final String id;
+  final String title;
+}
+
+class ChatQuoteRequestSummary {
+  const ChatQuoteRequestSummary({
+    required this.id,
+    required this.status,
+    required this.createdAt,
+    this.service,
+  });
+
+  factory ChatQuoteRequestSummary.fromJson(Map<String, dynamic> json) =>
+      ChatQuoteRequestSummary(
+        id: json['id']?.toString() ?? '',
+        status: json['status']?.toString() ?? '',
+        createdAt:
+            _date(json['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        service: _map(json['service'], ChatQuoteService.fromJson),
+      );
+
+  final String id;
+  final String status;
+  final DateTime createdAt;
+  final ChatQuoteService? service;
 }
 
 class ChatAttachment {
@@ -83,110 +182,217 @@ class ChatMessage {
   final bool pending;
 }
 
-class ChatConversation {
-  const ChatConversation({
+class ChatConversationEvent {
+  const ChatConversationEvent({
     required this.id,
-    required this.quoteRequestId,
-    required this.counterpart,
-    required this.unreadCount,
-    required this.muted,
-    required this.blocked,
-    required this.createdAt,
-    required this.updatedAt,
-    this.lastMessage,
-    this.lastMessageAt,
-    this.serviceTitle,
-    this.providerName,
-    this.blockedByMe = false,
-    this.blockedByCounterpart = false,
-    this.counterpartLastReadAt,
+    required this.conversationId,
+    required this.type,
+    required this.occurredAt,
+    this.quoteRequestId,
+    this.quoteOfferId,
+    this.data,
   });
 
-  factory ChatConversation.fromJson(Map<String, dynamic> json) {
-    final quote = _jsonMap(json['quoteRequest']);
-    final service = _jsonMap(quote?['service']);
-    final provider = _jsonMap(quote?['provider']);
-    return ChatConversation(
-      id: json['id']?.toString() ?? '',
-      quoteRequestId: json['quoteRequestId']?.toString() ?? '',
-      counterpart:
-          _map(json['counterpart'], ChatUser.fromJson) ??
-          const ChatUser(id: '', name: 'مستخدم أعرست'),
-      unreadCount: _int(json['unreadCount']),
-      muted: json['muted'] == true,
-      blocked: json['blocked'] == true,
-      blockedByMe: json['blockedByMe'] == true,
-      blockedByCounterpart: json['blockedByCounterpart'] == true,
-      counterpartLastReadAt: _date(json['counterpartLastReadAt']),
-      lastMessage: _map(json['lastMessage'], ChatMessage.fromJson),
-      lastMessageAt: _date(json['lastMessageAt']),
-      serviceTitle: service?['title']?.toString(),
-      providerName: provider?['businessName']?.toString(),
-      createdAt:
-          _date(json['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt:
-          _date(json['updatedAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+  factory ChatConversationEvent.fromJson(Map<String, dynamic> json) =>
+      ChatConversationEvent(
+        id: json['id']?.toString() ?? '',
+        conversationId: json['conversationId']?.toString() ?? '',
+        type: json['type']?.toString() ?? '',
+        occurredAt:
+            _date(json['occurredAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        quoteRequestId: json['quoteRequestId']?.toString(),
+        quoteOfferId: json['quoteOfferId']?.toString(),
+        data: _jsonMap(json['data']),
+      );
+
+  final String id;
+  final String conversationId;
+  final String type;
+  final DateTime occurredAt;
+  final String? quoteRequestId;
+  final String? quoteOfferId;
+  final Map<String, dynamic>? data;
+}
+
+enum ChatTimelineItemKind { message, event }
+
+class ChatTimelineItem {
+  const ChatTimelineItem._({
+    required this.kind,
+    required this.occurredAt,
+    this.message,
+    this.event,
+  });
+
+  factory ChatTimelineItem.fromJson(Map<String, dynamic> json) {
+    final kind = json['kind']?.toString();
+    if (kind == 'EVENT') {
+      return ChatTimelineItem._(
+        kind: ChatTimelineItemKind.event,
+        occurredAt:
+            _date(json['occurredAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        event: _map(json['event'], ChatConversationEvent.fromJson),
+      );
+    }
+    return ChatTimelineItem._(
+      kind: ChatTimelineItemKind.message,
+      occurredAt:
+          _date(json['occurredAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      message: _map(json['message'], ChatMessage.fromJson),
     );
   }
 
+  factory ChatTimelineItem.pending(ChatMessage message) => ChatTimelineItem._(
+    kind: ChatTimelineItemKind.message,
+    occurredAt: message.createdAt,
+    message: message,
+  );
+
+  final ChatTimelineItemKind kind;
+  final DateTime occurredAt;
+  final ChatMessage? message;
+  final ChatConversationEvent? event;
+
+  String get identity => switch (kind) {
+    ChatTimelineItemKind.message => 'M:${message?.id ?? ''}',
+    ChatTimelineItemKind.event => 'E:${event?.id ?? ''}',
+  };
+}
+
+class ChatConversation {
+  const ChatConversation({
+    required this.id,
+    required this.scope,
+    required this.provider,
+    required this.quoteRequestCount,
+    required this.unreadMessageCount,
+    required this.muted,
+    required this.blocked,
+    required this.providerJoined,
+    required this.canSend,
+    required this.permissions,
+    required this.lastActivityAt,
+    required this.createdAt,
+    required this.updatedAt,
+    this.weddingPlan,
+    this.latestQuoteRequest,
+    this.counterpart,
+    this.lastMessage,
+    this.blockedByMe = false,
+    this.blockedByCounterpart = false,
+  });
+
+  factory ChatConversation.fromJson(Map<String, dynamic> json) =>
+      ChatConversation(
+        id: json['id']?.toString() ?? '',
+        scope: json['scope']?.toString() == 'ACCOUNT'
+            ? ChatConversationScope.account
+            : ChatConversationScope.plan,
+        weddingPlan: _map(json['weddingPlan'], ChatWeddingPlan.fromJson),
+        provider:
+            _map(json['provider'], ChatProviderSummary.fromJson) ??
+            const ChatProviderSummary(id: '', businessName: 'مورد'),
+        counterpart: _map(json['counterpart'], ChatUser.fromJson),
+        quoteRequestCount: _int(json['quoteRequestCount']),
+        latestQuoteRequest: _map(
+          json['latestQuoteRequest'],
+          ChatQuoteRequestSummary.fromJson,
+        ),
+        lastMessage: _map(json['lastMessage'], ChatMessage.fromJson),
+        lastActivityAt:
+            _date(json['lastActivityAt']) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        unreadMessageCount: _int(json['unreadMessageCount']),
+        muted: json['muted'] == true,
+        blocked: json['blocked'] == true,
+        blockedByMe: json['blockedByMe'] == true,
+        blockedByCounterpart: json['blockedByCounterpart'] == true,
+        providerJoined: json['providerJoined'] == true,
+        canSend: json['canSend'] == true,
+        permissions:
+            _map(json['permissions'], ChatConversationPermissions.fromJson) ??
+            ChatConversationPermissions.none,
+        createdAt:
+            _date(json['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        updatedAt:
+            _date(json['updatedAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      );
+
   final String id;
-  final String quoteRequestId;
-  final ChatUser counterpart;
-  final int unreadCount;
+  final ChatConversationScope scope;
+  final ChatWeddingPlan? weddingPlan;
+  final ChatProviderSummary provider;
+  final ChatUser? counterpart;
+  final int quoteRequestCount;
+  final ChatQuoteRequestSummary? latestQuoteRequest;
+  final ChatMessage? lastMessage;
+  final DateTime lastActivityAt;
+  final int unreadMessageCount;
   final bool muted;
   final bool blocked;
   final bool blockedByMe;
   final bool blockedByCounterpart;
-  final DateTime? counterpartLastReadAt;
-  final ChatMessage? lastMessage;
-  final DateTime? lastMessageAt;
-  final String? serviceTitle;
-  final String? providerName;
+  final bool providerJoined;
+  final bool canSend;
+  final ChatConversationPermissions permissions;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   ChatConversation copyWith({
-    int? unreadCount,
+    int? unreadMessageCount,
     bool? muted,
     bool? blocked,
     bool? blockedByMe,
     bool? blockedByCounterpart,
-    DateTime? counterpartLastReadAt,
+    bool? providerJoined,
+    bool? canSend,
     ChatMessage? lastMessage,
-    DateTime? lastMessageAt,
-  }) {
-    return ChatConversation(
-      id: id,
-      quoteRequestId: quoteRequestId,
-      counterpart: counterpart,
-      unreadCount: unreadCount ?? this.unreadCount,
-      muted: muted ?? this.muted,
-      blocked: blocked ?? this.blocked,
-      blockedByMe: blockedByMe ?? this.blockedByMe,
-      blockedByCounterpart: blockedByCounterpart ?? this.blockedByCounterpart,
-      counterpartLastReadAt:
-          counterpartLastReadAt ?? this.counterpartLastReadAt,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      lastMessage: lastMessage ?? this.lastMessage,
-      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
-      serviceTitle: serviceTitle,
-      providerName: providerName,
-    );
-  }
+    DateTime? lastActivityAt,
+  }) => ChatConversation(
+    id: id,
+    scope: scope,
+    weddingPlan: weddingPlan,
+    provider: provider,
+    counterpart: counterpart,
+    quoteRequestCount: quoteRequestCount,
+    latestQuoteRequest: latestQuoteRequest,
+    lastMessage: lastMessage ?? this.lastMessage,
+    lastActivityAt: lastActivityAt ?? this.lastActivityAt,
+    unreadMessageCount: unreadMessageCount ?? this.unreadMessageCount,
+    muted: muted ?? this.muted,
+    blocked: blocked ?? this.blocked,
+    blockedByMe: blockedByMe ?? this.blockedByMe,
+    blockedByCounterpart: blockedByCounterpart ?? this.blockedByCounterpart,
+    providerJoined: providerJoined ?? this.providerJoined,
+    canSend: canSend ?? this.canSend,
+    permissions: permissions,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
 }
 
-class ChatMessagePage {
-  const ChatMessagePage({required this.items, this.nextCursor});
+class ChatTimelinePage {
+  const ChatTimelinePage({required this.items, this.nextCursor});
 
-  factory ChatMessagePage.fromJson(Map<String, dynamic> json) =>
-      ChatMessagePage(
-        items: _list(json['items'], ChatMessage.fromJson),
+  factory ChatTimelinePage.fromJson(Map<String, dynamic> json) =>
+      ChatTimelinePage(
+        items: _list(json['items'], ChatTimelineItem.fromJson),
         nextCursor: json['nextCursor']?.toString(),
       );
 
-  final List<ChatMessage> items;
+  final List<ChatTimelineItem> items;
   final String? nextCursor;
+}
+
+class ChatQuoteRequestPage {
+  const ChatQuoteRequestPage({required this.items});
+
+  factory ChatQuoteRequestPage.fromJson(Map<String, dynamic> json) =>
+      ChatQuoteRequestPage(
+        items: _list(json['items'], ChatQuoteRequestSummary.fromJson),
+      );
+
+  final List<ChatQuoteRequestSummary> items;
 }
 
 class ChatConversationPage {

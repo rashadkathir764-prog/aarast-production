@@ -60,7 +60,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ChatScreen), findsOneWidget);
-      expect(find.text('ابدأ المحادثة'), findsOneWidget);
+      expect(find.text('لا يوجد نشاط بعد'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -327,15 +327,24 @@ Future<AuthStorage> _authStorage() async => AuthStorage(await _preferences());
 
 final _conversation = ChatConversation(
   id: 'conversation-1',
-  quoteRequestId: 'quote-1',
+  scope: ChatConversationScope.plan,
+  weddingPlan: const ChatWeddingPlan(id: 'plan-1', title: 'خطة الزفاف'),
+  provider: const ChatProviderSummary(
+    id: 'provider-1',
+    businessName: 'مزود بخدمات وتجهيزات حفلات طويلة الاسم',
+  ),
   counterpart: ChatUser(
     id: 'provider-user-1',
     name: 'مزود بخدمات وتجهيزات حفلات طويلة الاسم',
   ),
-  unreadCount: 0,
+  quoteRequestCount: 1,
+  unreadMessageCount: 0,
   muted: false,
   blocked: false,
-  serviceTitle: 'تنسيق وتجهيز حفل الزفاف بالكامل',
+  providerJoined: true,
+  canSend: true,
+  permissions: ChatConversationPermissions.none,
+  lastActivityAt: _fixedDate,
   createdAt: _fixedDate,
   updatedAt: _fixedDate,
 );

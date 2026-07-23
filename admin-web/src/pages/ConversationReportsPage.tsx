@@ -161,9 +161,11 @@ export function ConversationReportsPage() {
                   </span>
                 </td>
                 <td>
-                  {report.conversation.quoteRequest.provider.businessName}
+                  {report.conversation.provider.businessName}
                   <span className="table-subtle">
-                    طلب {report.conversation.quoteRequestId}
+                    {report.conversation.quoteRequests[0]
+                      ? `آخر طلب ${report.conversation.quoteRequests[0].id}`
+                      : 'لا توجد طلبات مرتبطة'}
                   </span>
                 </td>
                 <td>{report.reason}</td>

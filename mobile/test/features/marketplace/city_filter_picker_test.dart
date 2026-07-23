@@ -163,7 +163,11 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   bool get includesAccountData => true;
 
   @override
-  Future<void> loadMarketplace({bool? includeAccountData}) async {}
+  Future<void> loadMarketplace({
+    bool? includeAccountData,
+    String? weddingPlanId,
+    bool updateQuoteScope = false,
+  }) async {}
 
   @override
   Future<void> setCity(String? id) async {

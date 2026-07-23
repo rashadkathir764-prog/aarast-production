@@ -32,8 +32,6 @@ class _QuoteConversationEntryScreenState
     if (mounted) setState(() => _error = null);
     try {
       final chat = context.read<ChatProvider>();
-      await chat.initialize();
-      if (!mounted) return;
       final conversation = await chat.openQuote(widget.quoteRequestId);
       if (!mounted) return;
       setState(() {

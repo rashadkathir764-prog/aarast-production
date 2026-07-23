@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -24,6 +27,13 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? _cityId;
   String? _categoryId;
   bool _includeAccountData = true;
+  String? _quotePlanId;
+  int _loadGeneration = 0;
+  int _currentPage = 0;
+  int _totalProviders = 0;
+  int _totalPages = 0;
+  bool _isLoadingMore = false;
+  String? _loadMoreErrorMessage;
   List<MarketplaceCity> _cities = const [];
   List<ProviderCategory> _categories = const [];
   List<MarketplaceProvider> _providers = const [];
@@ -36,6 +46,10 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   Set<String> _favoriteProviderIds = {};
   List<FavoriteProvider> _favoriteProviders = const [];
   List<QuoteRequest> _quoteRequests = const [];
+  final Set<String> _providerQuoteContextsLoading = {};
+  QuoteRequest? _existingActiveQuote;
+  String? _quoteAttemptSignature;
+  String? _quoteAttemptId;
   Future<void>? _referenceDataLoadInFlight;
 
   bool get isLoading => _isLoading;
@@ -58,34 +72,77 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   List<FavoriteProvider> get favoriteProviders => _favoriteProviders;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
   bool get includesAccountData => _includeAccountData;
+  int get currentPage => _currentPage;
+  int get totalProviders => _totalProviders;
+  int get totalPages => _totalPages;
+  bool get hasMoreProviders => _currentPage < _totalPages;
+  bool get isLoadingMore => _isLoadingMore;
+  String? get loadMoreErrorMessage => _loadMoreErrorMessage;
+  QuoteRequest? get existingActiveQuote => _existingActiveQuote;
 
   MarketplaceProvider? providerDetails(String id) => _details[id];
   List<MarketplaceService> servicesFor(String id) => _services[id] ?? const [];
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
   List<ProviderReview> reviewsFor(String id) => _reviews[id] ?? const [];
-  List<QuoteRequest> quotesForProvider(String providerId) => quoteRequests
-      .where((quote) => quote.providerId == providerId)
-      .toList(growable: false);
+  List<QuoteRequest> quotesForProvider(String providerId) {
+    final quotes = quoteRequests
+        .where((quote) => quote.providerId == providerId)
+        .toList(growable: false);
+    return [...quotes]..sort((a, b) {
+      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+  }
+
+  List<QuoteRequest> quotesForProviderInScope(
+    String providerId, {
+    String? weddingPlanId,
+  }) {
+    final planId = _normalizedOrNull(weddingPlanId);
+    return quotesForProvider(providerId)
+        .where(
+          (quote) => planId == null || quote.weddingPlanId == planId,
+        )
+        .toList(growable: false);
+  }
+
   List<QuoteRequest> quotesForPlan(String weddingPlanId) => quoteRequests
       .where((quote) => quote.weddingPlanId == weddingPlanId)
       .toList(growable: false);
 
-  Future<void> loadMarketplace({bool? includeAccountData}) async {
+  bool isProviderQuoteContextLoading(String providerId) =>
+      _providerQuoteContextsLoading.contains(providerId);
+
+  Future<void> loadMarketplace({
+    bool? includeAccountData,
+    String? weddingPlanId,
+    bool updateQuoteScope = false,
+  }) async {
     if (includeAccountData != null) {
       _includeAccountData = includeAccountData;
+    }
+    if (updateQuoteScope) {
+      final normalized = weddingPlanId?.trim();
+      _quotePlanId = normalized == null || normalized.isEmpty
+          ? null
+          : normalized;
     }
     if (!_includeAccountData) {
       _quoteRequestsErrorMessage = null;
     }
     _isLoading = true;
+    _isLoadingMore = false;
     _errorMessage = null;
+    _loadMoreErrorMessage = null;
+    final generation = ++_loadGeneration;
     notifyListeners();
 
     try {
       final results = await Future.wait<Object>([
         _safeCities(),
         _safeCategories(),
-        _api.getProviders(
+        _api.getProvidersPage(
           search: _search,
           cityId: _cityId,
           categoryId: _categoryId,
@@ -94,13 +151,19 @@ class ProviderMarketplaceProvider extends ChangeNotifier
             ? _safeFavorites()
             : Future.value(const <FavoriteProvider>[]),
         _includeAccountData
-            ? _safeQuoteRequests()
+            ? _safeQuoteRequests(weddingPlanId: _quotePlanId)
             : Future.value(const <QuoteRequest>[]),
       ]);
 
+      if (generation != _loadGeneration) return;
+
       _cities = results[0] as List<MarketplaceCity>;
       _categories = results[1] as List<ProviderCategory>;
-      _providers = results[2] as List<MarketplaceProvider>;
+      final providerPage = results[2] as MarketplaceProviderPage;
+      _providers = providerPage.items;
+      _currentPage = providerPage.currentPage;
+      _totalProviders = providerPage.total;
+      _totalPages = providerPage.totalPages;
       final favorites = results[3] as List<FavoriteProvider>;
       _favoriteProviders = favorites;
       _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
@@ -109,12 +172,55 @@ class ProviderMarketplaceProvider extends ChangeNotifier
         _budgetMatchedServices = await _safeBudgetMatchedServices();
       }
     } on ApiException catch (error) {
+      if (generation != _loadGeneration) return;
       _errorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
+      if (generation != _loadGeneration) return;
       _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _loadGeneration) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> loadMoreProviders() async {
+    if (_isLoading || _isLoadingMore || !hasMoreProviders) return;
+    final generation = _loadGeneration;
+    final nextPage = _currentPage + 1;
+    _isLoadingMore = true;
+    _loadMoreErrorMessage = null;
+    notifyListeners();
+    try {
+      final page = await _api.getProvidersPage(
+        search: _search,
+        cityId: _cityId,
+        categoryId: _categoryId,
+        page: nextPage,
+      );
+      if (generation != _loadGeneration) return;
+      final merged = <String, MarketplaceProvider>{
+        for (final provider in _providers) provider.id: provider,
+        for (final provider in page.items) provider.id: provider,
+      };
+      _providers = merged.values.toList(growable: false);
+      _currentPage = page.currentPage;
+      _totalProviders = page.total;
+      _totalPages = page.totalPages;
+    } on ApiException catch (error) {
+      if (generation == _loadGeneration) {
+        _loadMoreErrorMessage = marketplaceErrorMessage(error.message);
+      }
+    } catch (_) {
+      if (generation == _loadGeneration) {
+        _loadMoreErrorMessage = aarastBackendConnectionErrorMessage;
+      }
+    } finally {
+      if (generation == _loadGeneration) {
+        _isLoadingMore = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -216,9 +322,13 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     await loadMarketplace();
   }
 
-  Future<void> loadProviderDetails(String providerId) async {
+  Future<void> loadProviderDetails(
+    String providerId, {
+    String? weddingPlanId,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
+    _providerQuoteContextsLoading.add(providerId);
     notifyListeners();
 
     try {
@@ -227,16 +337,24 @@ class ProviderMarketplaceProvider extends ChangeNotifier
         _safeProviderServices(providerId),
         _safeProviderPackages(providerId),
         _safeProviderReviews(providerId),
+        if (_includeAccountData)
+          _safeQuoteRequests(weddingPlanId: weddingPlanId)
+        else
+          Future.value(const <QuoteRequest>[]),
       ]);
       _services[providerId] = results[0] as List<MarketplaceService>;
       _packages[providerId] = results[1] as List<ProviderPackage>;
       _reviews[providerId] = results[2] as List<ProviderReview>;
+      if (_includeAccountData) {
+        _mergeQuotes(results[3] as List<QuoteRequest>);
+      }
     } on ApiException catch (error) {
       _errorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
       _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
+      _providerQuoteContextsLoading.remove(providerId);
       notifyListeners();
     }
   }
@@ -303,8 +421,27 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     notifyListeners();
 
     try {
+      final signature = jsonEncode({
+        'providerId': providerId.trim(),
+        'weddingPlanId': weddingPlanId?.trim(),
+        'serviceId': serviceId?.trim(),
+        'eventDate': eventDate?.toIso8601String(),
+        'location': location,
+        'cityId': cityId?.trim(),
+        'guestCount': guestCount,
+        'contactName': contactName?.trim(),
+        'contactPhone': contactPhone?.trim(),
+        'message': message?.trim(),
+        'budgetMin': budgetMin?.trim(),
+        'budgetMax': budgetMax?.trim(),
+      });
+      if (_quoteAttemptSignature != signature || _quoteAttemptId == null) {
+        _quoteAttemptSignature = signature;
+        _quoteAttemptId = _newUuidV4();
+      }
       final quote = await _api.createQuoteRequest(
         providerId: providerId,
+        clientRequestId: _quoteAttemptId!,
         weddingPlanId: weddingPlanId,
         serviceId: serviceId,
         eventDate: eventDate,
@@ -321,9 +458,28 @@ class ProviderMarketplaceProvider extends ChangeNotifier
         quote,
         ..._quoteRequests.where((item) => item.id != quote.id),
       ];
+      _quoteAttemptSignature = null;
+      _quoteAttemptId = null;
+      _existingActiveQuote = null;
       return true;
     } on ApiException catch (error) {
       _quoteSubmitErrorMessage = marketplaceErrorMessage(error.message);
+      if (error.serverCode == 'ACTIVE_QUOTE_REQUEST_EXISTS') {
+        final refreshed = await _safeQuoteRequests(
+          weddingPlanId: weddingPlanId,
+        );
+        _mergeQuotes(refreshed);
+        _existingActiveQuote = _findMatchingActiveQuote(
+          providerId: providerId,
+          weddingPlanId: weddingPlanId,
+          serviceId: serviceId,
+          eventDate: eventDate,
+          cityId: cityId,
+        );
+      } else if (!error.isNetworkFailure && (error.statusCode ?? 0) < 500) {
+        _quoteAttemptSignature = null;
+        _quoteAttemptId = null;
+      }
       return false;
     } catch (_) {
       _quoteSubmitErrorMessage = 'تعذر إرسال طلب عرض السعر.';
@@ -363,16 +519,19 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     }
   }
 
-  Future<List<QuoteRequest>> _safeQuoteRequests() async {
+  Future<List<QuoteRequest>> _safeQuoteRequests({String? weddingPlanId}) async {
     _quoteRequestsErrorMessage = null;
     try {
-      return await _api.getMyQuoteRequests();
+      final normalizedPlanId = weddingPlanId?.trim();
+      return normalizedPlanId == null || normalizedPlanId.isEmpty
+          ? await _api.getMyQuoteRequests()
+          : await _api.getPlanQuoteRequests(normalizedPlanId);
     } on ApiException catch (error) {
       _quoteRequestsErrorMessage = marketplaceErrorMessage(error.message);
-      return _quoteRequests;
+      return _quotesForScope(weddingPlanId);
     } catch (_) {
       _quoteRequestsErrorMessage = aarastBackendConnectionErrorMessage;
-      return _quoteRequests;
+      return _quotesForScope(weddingPlanId);
     }
   }
 
@@ -387,6 +546,11 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     } finally {
       notifyListeners();
     }
+  }
+
+  Future<void> loadScopedQuoteRequests() async {
+    _quoteRequests = await _safeQuoteRequests(weddingPlanId: _quotePlanId);
+    notifyListeners();
   }
 
   Future<bool> loadQuoteRequest(String quoteRequestId) async {
@@ -445,8 +609,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     try {
       final updated = await action();
       _quoteRequests = [
-        for (final quote in _quoteRequests)
-          if (quote.id == updated.id) updated else quote,
+        updated,
+        ..._quoteRequests.where((quote) => quote.id != updated.id),
       ];
       return true;
     } on ApiException catch (error) {
@@ -543,12 +707,70 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     notifyListeners();
   }
 
+  void _mergeQuotes(List<QuoteRequest> quotes) {
+    final merged = <String, QuoteRequest>{
+      for (final quote in _quoteRequests) quote.id: quote,
+      for (final quote in quotes) quote.id: quote,
+    };
+    _quoteRequests = merged.values.toList(growable: false);
+  }
+
+  List<QuoteRequest> _quotesForScope(String? weddingPlanId) {
+    final planId = weddingPlanId?.trim();
+    if (planId == null || planId.isEmpty) return _quoteRequests;
+    return _quoteRequests
+        .where((quote) => quote.weddingPlanId == planId)
+        .toList(growable: false);
+  }
+
+  QuoteRequest? _findMatchingActiveQuote({
+    required String providerId,
+    String? weddingPlanId,
+    String? serviceId,
+    DateTime? eventDate,
+    String? cityId,
+  }) {
+    for (final quote in quotesForProvider(providerId)) {
+      if (quote.weddingPlanId != _normalizedOrNull(weddingPlanId) ||
+          quote.serviceId != _normalizedOrNull(serviceId) ||
+          quote.cityId != _normalizedOrNull(cityId) ||
+          !_sameInstant(quote.eventDate, eventDate) ||
+          !const {'SENT', 'VIEWED', 'RESPONDED'}.contains(quote.status)) {
+        continue;
+      }
+      return quote;
+    }
+    return null;
+  }
+
   MarketplaceProvider? _providerFromCurrentState(String providerId) {
     for (final provider in _providers) {
       if (provider.id == providerId) return provider;
     }
     return _details[providerId];
   }
+}
+
+String _newUuidV4() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+}
+
+String? _normalizedOrNull(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
+}
+
+bool _sameInstant(DateTime? a, DateTime? b) {
+  if (a == null || b == null) return a == null && b == null;
+  return a.toUtc().isAtSameMomentAs(b.toUtc());
 }
 
 class ProviderDashboardProvider extends ChangeNotifier

@@ -15,6 +15,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final offersReceived = _offersReceivedCount(quotes);
     final acceptedProviders = _acceptedProviderCount(quotes);
+    final sentRequests = _sentRequestsCount(quotes);
 
     Widget title() => Expanded(
       child: Text(
@@ -99,16 +100,19 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
             child: Row(
               children: [
                 _MiniStat(
+                  key: const Key('quote-stat-sent'),
                   label: 'طلبات مرسلة',
-                  value: quotes.length.toString(),
+                  value: sentRequests.toString(),
                   color: AppTheme.muted,
                 ),
                 _MiniStat(
+                  key: const Key('quote-stat-received'),
                   label: 'عروض وصلت',
                   value: offersReceived.toString(),
                   color: AppTheme.gold,
                 ),
                 _MiniStat(
+                  key: const Key('quote-stat-accepted'),
                   label: 'عروض مقبولة',
                   value: acceptedProviders.toString(),
                   color: AppTheme.success,
@@ -170,6 +174,7 @@ class _MiniStat extends StatelessWidget {
     required this.value,
     required this.color,
     this.onTap,
+    super.key,
   });
   final String label;
   final String value;

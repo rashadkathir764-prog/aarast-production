@@ -33,7 +33,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     final unreadMessages = context
         .watch<ChatProvider>()
         .conversations
-        .fold<int>(0, (sum, item) => sum + item.unreadCount);
+        .fold<int>(0, (sum, item) => sum + item.unreadMessageCount);
     return RootTabBackScope(
       activeIndex: _activeIndex,
       onReturnToRoot: () => _openTab(0),

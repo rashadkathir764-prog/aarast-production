@@ -47,7 +47,7 @@ Widget _header() {
                   ),
                 ),
                 Text(
-                  'طلب عرض سعر — حفل زفاف',
+                  'خطة زفاف رشا ومحمد · طلبان',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: AppTheme.muted, fontSize: 12),
@@ -62,11 +62,7 @@ Widget _header() {
   );
 }
 
-Widget _bubble({
-  required String body,
-  required bool mine,
-  bool read = false,
-}) {
+Widget _bubble({required String body, required bool mine, bool read = false}) {
   return Align(
     alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
     child: Container(
@@ -110,6 +106,39 @@ Widget _bubble({
   );
 }
 
+Widget _eventCard(String label, IconData icon) {
+  return Align(
+    child: Container(
+      constraints: const BoxConstraints(maxWidth: 360),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: AppTheme.burgundy),
+          const SizedBox(width: 9),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(LucideIcons.chevronLeft, size: 17, color: AppTheme.muted),
+        ],
+      ),
+    ),
+  );
+}
+
 Widget _composer() {
   return Container(
     padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
@@ -133,10 +162,7 @@ Widget _composer() {
           ),
         ),
         const SizedBox(width: 8),
-        IconButton.filled(
-          onPressed: () {},
-          icon: const Icon(LucideIcons.send),
-        ),
+        IconButton.filled(onPressed: () {}, icon: const Icon(LucideIcons.send)),
       ],
     ),
   );
@@ -144,8 +170,10 @@ Widget _composer() {
 
 Widget _conversationTile({
   required String name,
+  required String contextLabel,
   required String preview,
   required int unread,
+  bool providerJoined = true,
 }) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 10),
@@ -174,12 +202,23 @@ Widget _conversationTile({
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  preview,
+                  contextLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  providerJoined ? preview : 'المورد لم ينضم بعد',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: providerJoined ? AppTheme.muted : AppTheme.gold,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -232,24 +271,28 @@ Future<void> _pumpList(WidgetTester tester, {required Size size}) async {
               children: [
                 const AarastSectionHeader(
                   title: 'الرسائل',
-                  subtitle: 'محادثات مرتبطة بطلبات أسعار حقيقية فقط.',
+                  subtitle: 'محادثة واحدة مع كل مورد داخل الخطة.',
                   icon: LucideIcons.messagesSquare,
                 ),
                 const SizedBox(height: 18),
                 _conversationTile(
                   name: 'قاعة اللؤلؤة للأفراح',
+                  contextLabel: 'خطة زفاف رشا ومحمد · طلبان',
                   preview: 'أرسلت لك عرض السعر التفصيلي في الطلب.',
                   unread: 12,
                 ),
                 _conversationTile(
                   name: 'استوديو نجمة للتصوير',
+                  contextLabel: 'خطة زفاف رشا ومحمد · طلب واحد',
                   preview: 'شكراً، سنؤكد الموعد قريباً.',
                   unread: 3,
                 ),
                 _conversationTile(
                   name: 'ضيافة الأصالة',
-                  preview: 'طلب عرض سعر — بوفيه 400 ضيف',
+                  contextLabel: 'طلب مستقل عن الخطة · طلب واحد',
+                  preview: 'بانتظار انضمام المورد',
                   unread: 0,
+                  providerJoined: false,
                 ),
               ],
             ),
@@ -288,6 +331,7 @@ Future<void> _pump(WidgetTester tester, {required Size size}) async {
                         mine: true,
                         read: true,
                       ),
+                      _eventCard('وصل عرض سعر جديد', LucideIcons.mailCheck),
                       _bubble(
                         body:
                             'وعليكم السلام، نعم متاحة. تتسع لـ 400 ضيف مع تنسيق كامل للإضاءة.',

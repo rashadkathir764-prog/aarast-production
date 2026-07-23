@@ -276,6 +276,17 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    if (marketplace.existingActiveQuote case final quote?)
+                      Center(
+                        child: TextButton.icon(
+                          key: const Key('continue-active-quote'),
+                          onPressed: () => context.push(
+                            AppRouter.quoteConversation(quote.id),
+                          ),
+                          icon: const Icon(LucideIcons.messageCircle),
+                          label: const Text('متابعة الطلب الحالي'),
+                        ),
+                      ),
                     const SizedBox(height: 12),
                   ],
                   AarastButton(

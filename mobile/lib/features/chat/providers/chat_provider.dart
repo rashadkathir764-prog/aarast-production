@@ -27,8 +27,11 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isSending = false;
   String? _errorMessage;
   List<ChatConversation> _conversations = const [];
-  final Map<String, List<ChatMessage>> _messages = {};
-  final Map<String, String?> _nextCursors = {};
+  final Map<String, List<ChatTimelineItem>> _timelines = {};
+  final Map<String, List<ChatQuoteRequestSummary>> _quoteRequests = {};
+  final Map<String, String?> _nextTimelineCursors = {};
+  final Map<String, DateTime> _counterpartReadAt = {};
+  final Map<String, Future<void>> _activityRefreshes = {};
   final Set<String> _loadingOlder = {};
   final Set<String> _conversationLoadErrors = {};
   String? _nextConversationCursor;
@@ -44,22 +47,21 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   List<ChatConversation> get conversations => _conversations;
   String? get currentUserId => _sessionUserId;
   bool get canLoadMoreConversations => _nextConversationCursor != null;
-  List<ChatMessage> messagesFor(String conversationId) =>
-      _messages[conversationId] ?? const [];
+  List<ChatTimelineItem> timelineFor(String conversationId) =>
+      _timelines[conversationId] ?? const [];
+  List<ChatQuoteRequestSummary> quoteRequestsFor(String conversationId) =>
+      _quoteRequests[conversationId] ?? const [];
   bool canLoadOlder(String conversationId) =>
-      _nextCursors[conversationId] != null;
+      _nextTimelineCursors[conversationId] != null;
   bool isLoadingOlder(String conversationId) =>
       _loadingOlder.contains(conversationId);
   bool hasConversationLoadError(String conversationId) =>
       _conversationLoadErrors.contains(conversationId);
+
   bool isMessageRead(ChatMessage message) {
     if (message.pending || message.senderUserId != currentUserId) return false;
-    for (final conversation in _conversations) {
-      if (conversation.id != message.conversationId) continue;
-      final readAt = conversation.counterpartLastReadAt;
-      return readAt != null && !readAt.isBefore(message.createdAt);
-    }
-    return false;
+    final readAt = _counterpartReadAt[message.conversationId];
+    return readAt != null && !readAt.isBefore(message.createdAt);
   }
 
   void syncSessionUser(String? userId) {
@@ -72,8 +74,11 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _isSending = false;
     _errorMessage = null;
     _conversations = const [];
-    _messages.clear();
-    _nextCursors.clear();
+    _timelines.clear();
+    _quoteRequests.clear();
+    _nextTimelineCursors.clear();
+    _counterpartReadAt.clear();
+    _activityRefreshes.clear();
     _loadingOlder.clear();
     _conversationLoadErrors.clear();
     _nextConversationCursor = null;
@@ -98,12 +103,14 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       await _realtime.connect(
         onMessage: _receive,
         onMessageAvailable: _recoverAvailableMessage,
+        onActivityAvailable: _recoverActivity,
+        onPermissionRevoked: _permissionRevoked,
         onRead: _receiveRead,
       );
       for (final conversation in _conversations) {
         _realtime.join(conversation.id);
       }
-      for (final conversationId in _messages.keys) {
+      for (final conversationId in _timelines.keys) {
         _realtime.join(conversationId);
       }
     } on Object {
@@ -162,15 +169,20 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<ChatConversation?> openQuote(String quoteRequestId) async {
     _errorMessage = null;
     try {
-      final conversation = await _api.ensureForQuote(quoteRequestId);
+      final conversation = await _api
+          .conversationForQuote(quoteRequestId)
+          .timeout(const Duration(seconds: 15));
       _upsertConversation(conversation);
-      await openConversation(conversation.id);
       return conversation;
+    } on TimeoutException {
+      _errorMessage = 'استغرق فتح المحادثة وقتًا أطول من المتوقع. حاول مجددًا.';
     } on ApiException catch (error) {
       _errorMessage = error.message;
-      notifyListeners();
-      return null;
+    } catch (_) {
+      _errorMessage = aarastBackendConnectionErrorMessage;
     }
+    notifyListeners();
+    return null;
   }
 
   Future<void> openConversation(String conversationId) async {
@@ -184,9 +196,15 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       if (!_conversations.any((item) => item.id == conversationId)) {
         _upsertConversation(await _api.getConversation(conversationId));
       }
-      final page = await _api.messages(conversationId);
-      _messages[conversationId] = page.items;
-      _nextCursors[conversationId] = page.nextCursor;
+      final results = await Future.wait<Object>([
+        _api.timeline(conversationId),
+        _api.quoteRequests(conversationId),
+      ]);
+      final timeline = results[0] as ChatTimelinePage;
+      final quoteRequests = results[1] as ChatQuoteRequestPage;
+      _timelines[conversationId] = timeline.items;
+      _quoteRequests[conversationId] = quoteRequests.items;
+      _nextTimelineCursors[conversationId] = timeline.nextCursor;
       _realtime.join(conversationId);
       await _api.markRead(conversationId);
       _realtime.markRead(conversationId);
@@ -210,20 +228,20 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<void> loadOlder(String conversationId) async {
-    final cursor = _nextCursors[conversationId];
+    final cursor = _nextTimelineCursors[conversationId];
     if (cursor == null || _loadingOlder.contains(conversationId)) return;
     _loadingOlder.add(conversationId);
     _errorMessage = null;
     notifyListeners();
     try {
-      final page = await _api.messages(conversationId, cursor: cursor);
-      final existing = messagesFor(conversationId);
-      final existingIds = existing.map((message) => message.id).toSet();
-      _messages[conversationId] = [
-        ...page.items.where((message) => !existingIds.contains(message.id)),
+      final page = await _api.timeline(conversationId, cursor: cursor);
+      final existing = timelineFor(conversationId);
+      final existingIds = existing.map((item) => item.identity).toSet();
+      _timelines[conversationId] = [
+        ...page.items.where((item) => !existingIds.contains(item.identity)),
         ...existing,
       ];
-      _nextCursors[conversationId] = page.nextCursor;
+      _nextTimelineCursors[conversationId] = page.nextCursor;
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -241,6 +259,14 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   }) async {
     final normalized = body.trim();
     if (normalized.isEmpty) return false;
+    final conversation = _conversation(conversationId);
+    if (conversation?.canSend != true) {
+      _errorMessage = conversation?.providerJoined == false
+          ? 'المورد لم ينضم للمحادثة بعد'
+          : 'لا يمكن إرسال رسائل في هذه المحادثة الآن.';
+      notifyListeners();
+      return false;
+    }
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     final pending = ChatMessage(
       id: pendingId,
@@ -250,7 +276,10 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       createdAt: DateTime.now(),
       pending: true,
     );
-    _messages[conversationId] = [...messagesFor(conversationId), pending];
+    _timelines[conversationId] = [
+      ...timelineFor(conversationId),
+      ChatTimelineItem.pending(pending),
+    ];
     _isSending = true;
     _errorMessage = null;
     notifyListeners();
@@ -260,23 +289,15 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
         body: normalized,
         attachments: attachments,
       );
-      _messages[conversationId] = [
-        for (final message in messagesFor(conversationId))
-          if (message.id != pendingId && message.id != sent.id) message,
-        sent,
-      ];
+      _replacePending(conversationId, pendingId, sent);
       _applyMessageToConversation(sent);
       return true;
     } on ApiException catch (error) {
-      _messages[conversationId] = messagesFor(
-        conversationId,
-      ).where((message) => message.id != pendingId).toList(growable: false);
+      _removeTimelineMessage(conversationId, pendingId);
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _messages[conversationId] = messagesFor(
-        conversationId,
-      ).where((message) => message.id != pendingId).toList(growable: false);
+      _removeTimelineMessage(conversationId, pendingId);
       _errorMessage = aarastBackendConnectionErrorMessage;
       return false;
     } finally {
@@ -309,6 +330,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
         conversation.copyWith(
           blocked: enabled || conversation.blockedByCounterpart,
           blockedByMe: enabled,
+          canSend: !enabled && !conversation.blockedByCounterpart,
         ),
       );
       notifyListeners();
@@ -341,12 +363,16 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       for (final item in _conversations)
         if (item.id == conversation.id) conversation else item,
     ];
+    _sortConversations();
   }
 
   void _receive(ChatMessage message) {
-    final current = messagesFor(message.conversationId);
-    if (current.any((item) => item.id == message.id)) return;
-    _messages[message.conversationId] = [...current, message];
+    final current = timelineFor(message.conversationId);
+    if (current.any((item) => item.message?.id == message.id)) return;
+    _timelines[message.conversationId] = [
+      ...current,
+      ChatTimelineItem.pending(message),
+    ];
     _applyMessageToConversation(message);
     if (_activeConversationId == message.conversationId &&
         message.senderUserId != currentUserId) {
@@ -360,19 +386,66 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     String messageId,
   ) async {
     if (conversationId.isEmpty || messageId.isEmpty) return;
-    if (messagesFor(conversationId).any((item) => item.id == messageId)) return;
-    try {
-      final page = await _api.messages(conversationId);
-      if (isSessionDisposed) return;
-      for (final message in page.items) {
-        if (message.id == messageId) {
-          _receive(message);
-          return;
-        }
-      }
-    } on Object {
-      // The durable event remains idempotent. Normal open/refresh retries REST.
+    if (timelineFor(
+      conversationId,
+    ).any((item) => item.message?.id == messageId)) {
+      return;
     }
+    await _recoverActivity(conversationId);
+  }
+
+  Future<void> _recoverActivity(String conversationId) async {
+    if (conversationId.isEmpty) return;
+    final active = _activityRefreshes[conversationId];
+    if (active != null) return active;
+    final refresh = _refreshActivity(conversationId);
+    _activityRefreshes[conversationId] = refresh;
+    try {
+      await refresh;
+    } finally {
+      if (identical(_activityRefreshes[conversationId], refresh)) {
+        _activityRefreshes.remove(conversationId);
+      }
+    }
+  }
+
+  Future<void> _refreshActivity(String conversationId) async {
+    try {
+      final results = await Future.wait<Object>([
+        _api.getConversation(conversationId),
+        _api.timeline(conversationId),
+        _api.quoteRequests(conversationId),
+      ]);
+      if (isSessionDisposed) return;
+      _upsertConversation(results[0] as ChatConversation, notify: false);
+      final page = results[1] as ChatTimelinePage;
+      _timelines[conversationId] = page.items;
+      _nextTimelineCursors[conversationId] = page.nextCursor;
+      _quoteRequests[conversationId] =
+          (results[2] as ChatQuoteRequestPage).items;
+      if (_activeConversationId == conversationId) {
+        await _markReadAfterReceive(conversationId);
+      }
+      notifyListeners();
+    } on Object {
+      // The outbox event is durable; opening or refreshing retries REST.
+    }
+  }
+
+  void _permissionRevoked(String conversationId) {
+    if (conversationId.isEmpty) return;
+    _conversations = _conversations
+        .where((item) => item.id != conversationId)
+        .toList(growable: false);
+    _timelines.remove(conversationId);
+    _quoteRequests.remove(conversationId);
+    _nextTimelineCursors.remove(conversationId);
+    _counterpartReadAt.remove(conversationId);
+    _conversationLoadErrors.add(conversationId);
+    if (_activeConversationId == conversationId) {
+      _errorMessage = 'تم سحب صلاحية الوصول إلى هذه المحادثة.';
+    }
+    notifyListeners();
   }
 
   Future<void> _markReadAfterReceive(String conversationId) async {
@@ -382,7 +455,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       _clearUnread(conversationId);
       notifyListeners();
     } on Object {
-      // The visible message remains available; the next open retries read state.
+      // The visible activity remains available; the next open retries read state.
     }
   }
 
@@ -392,26 +465,17 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _conversations = [
       for (final item in _conversations)
         if (item.id == message.conversationId)
-          ChatConversation(
-            id: item.id,
-            quoteRequestId: item.quoteRequestId,
-            counterpart: item.counterpart,
-            unreadCount: isActive || isMine ? 0 : item.unreadCount + 1,
-            muted: item.muted,
-            blocked: item.blocked,
-            blockedByMe: item.blockedByMe,
-            blockedByCounterpart: item.blockedByCounterpart,
-            counterpartLastReadAt: item.counterpartLastReadAt,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
+          item.copyWith(
+            unreadMessageCount: isActive || isMine
+                ? 0
+                : item.unreadMessageCount + 1,
             lastMessage: message,
-            lastMessageAt: message.createdAt,
-            serviceTitle: item.serviceTitle,
-            providerName: item.providerName,
+            lastActivityAt: message.createdAt,
           )
         else
           item,
     ];
+    _sortConversations();
   }
 
   void _receiveRead(
@@ -425,66 +489,68 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
         lastReadAt == null) {
       return;
     }
-    _conversations = [
-      for (final item in _conversations)
-        if (item.id == conversationId &&
-            (item.counterpartLastReadAt == null ||
-                item.counterpartLastReadAt!.isBefore(lastReadAt)))
-          ChatConversation(
-            id: item.id,
-            quoteRequestId: item.quoteRequestId,
-            counterpart: item.counterpart,
-            unreadCount: item.unreadCount,
-            muted: item.muted,
-            blocked: item.blocked,
-            blockedByMe: item.blockedByMe,
-            blockedByCounterpart: item.blockedByCounterpart,
-            counterpartLastReadAt: lastReadAt,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-            lastMessage: item.lastMessage,
-            lastMessageAt: item.lastMessageAt,
-            serviceTitle: item.serviceTitle,
-            providerName: item.providerName,
-          )
-        else
-          item,
-    ];
-    notifyListeners();
+    final current = _counterpartReadAt[conversationId];
+    if (current == null || current.isBefore(lastReadAt)) {
+      _counterpartReadAt[conversationId] = lastReadAt;
+      notifyListeners();
+    }
   }
 
-  void _upsertConversation(ChatConversation conversation) {
+  void _upsertConversation(
+    ChatConversation conversation, {
+    bool notify = true,
+  }) {
     _conversations = [
       conversation,
       ..._conversations.where((item) => item.id != conversation.id),
     ];
-    notifyListeners();
+    _sortConversations();
+    if (notify) notifyListeners();
   }
 
   void _clearUnread(String conversationId) {
     _conversations = [
       for (final item in _conversations)
         if (item.id == conversationId)
-          ChatConversation(
-            id: item.id,
-            quoteRequestId: item.quoteRequestId,
-            counterpart: item.counterpart,
-            unreadCount: 0,
-            muted: item.muted,
-            blocked: item.blocked,
-            blockedByMe: item.blockedByMe,
-            blockedByCounterpart: item.blockedByCounterpart,
-            counterpartLastReadAt: item.counterpartLastReadAt,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-            lastMessage: item.lastMessage,
-            lastMessageAt: item.lastMessageAt,
-            serviceTitle: item.serviceTitle,
-            providerName: item.providerName,
-          )
+          item.copyWith(unreadMessageCount: 0)
         else
           item,
     ];
+  }
+
+  ChatConversation? _conversation(String conversationId) {
+    for (final conversation in _conversations) {
+      if (conversation.id == conversationId) return conversation;
+    }
+    return null;
+  }
+
+  void _replacePending(
+    String conversationId,
+    String pendingId,
+    ChatMessage sent,
+  ) {
+    _timelines[conversationId] = [
+      for (final item in timelineFor(conversationId))
+        if (item.message?.id == pendingId)
+          ChatTimelineItem.pending(sent)
+        else if (item.message?.id != sent.id)
+          item,
+    ];
+  }
+
+  void _removeTimelineMessage(String conversationId, String messageId) {
+    _timelines[conversationId] = timelineFor(
+      conversationId,
+    ).where((item) => item.message?.id != messageId).toList(growable: false);
+  }
+
+  void _sortConversations() {
+    _conversations = [..._conversations]
+      ..sort((left, right) {
+        final byActivity = right.lastActivityAt.compareTo(left.lastActivityAt);
+        return byActivity != 0 ? byActivity : right.id.compareTo(left.id);
+      });
   }
 
   @override

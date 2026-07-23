@@ -58,6 +58,25 @@ class MarketplaceApi {
     int page = 1,
     int limit = 30,
   }) async {
+    final result = await getProvidersPage(
+      search: search,
+      cityId: cityId,
+      categoryId: categoryId,
+      featured: featured,
+      page: page,
+      limit: limit,
+    );
+    return result.items;
+  }
+
+  Future<MarketplaceProviderPage> getProvidersPage({
+    String? search,
+    String? cityId,
+    String? categoryId,
+    bool? featured,
+    int page = 1,
+    int limit = 30,
+  }) async {
     try {
       final json = await _apiClient.getJson(
         _path('/api/v1/providers', {
@@ -86,7 +105,19 @@ class MarketplaceApi {
           );
         }
       }
-      return items.map(MarketplaceProvider.fromJson).toList();
+      final total = _intValue(json['total'], fallback: items.length);
+      final totalPages = _intValue(
+        json['totalPages'],
+        fallback: total == 0 ? 0 : (total / limit).ceil(),
+      );
+      final currentPage = _intValue(json['page'], fallback: page);
+      return MarketplaceProviderPage(
+        items: items.map(MarketplaceProvider.fromJson).toList(),
+        currentPage: currentPage,
+        total: total,
+        totalPages: totalPages,
+        hasMore: currentPage < totalPages,
+      );
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
       await _offline.noteNetworkFailure((error as ApiException).message);
@@ -95,7 +126,14 @@ class MarketplaceApi {
       );
       final filtered = _filterProviders(cached, search, cityId, categoryId);
       if (filtered.isEmpty) rethrow;
-      return filtered.map(MarketplaceProvider.fromJson).toList();
+      final items = filtered.map(MarketplaceProvider.fromJson).toList();
+      return MarketplaceProviderPage(
+        items: items,
+        currentPage: 1,
+        total: items.length,
+        totalPages: items.isEmpty ? 0 : 1,
+        hasMore: false,
+      );
     }
   }
 
@@ -288,6 +326,7 @@ class MarketplaceApi {
 
   Future<QuoteRequest> createQuoteRequest({
     required String providerId,
+    required String clientRequestId,
     String? weddingPlanId,
     String? serviceId,
     DateTime? eventDate,
@@ -323,9 +362,19 @@ class MarketplaceApi {
       payload['location'] = location;
     }
     try {
-      final json = await _apiClient.postJson(
-        '/api/v1/providers/$providerId/quote-requests',
+      final planId = weddingPlanId?.trim();
+      final isPlanScoped = planId != null && planId.isNotEmpty;
+      if (isPlanScoped) {
+        payload.remove('weddingPlanId');
+        payload['providerId'] = providerId;
+      }
+      final json = await _apiClient.mutateJson(
+        isPlanScoped
+            ? '/api/v1/wedding-plans/$planId/quote-requests'
+            : '/api/v1/providers/$providerId/quote-requests',
         payload,
+        method: 'POST',
+        clientRequestId: clientRequestId,
       );
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedBookings,
@@ -356,9 +405,39 @@ class MarketplaceApi {
     }
   }
 
+  Future<List<QuoteRequest>> getPlanQuoteRequests(String weddingPlanId) async {
+    final planId = weddingPlanId.trim();
+    try {
+      final items = await _getJsonMapList(
+        '/api/v1/wedding-plans/$planId/quote-requests',
+      );
+      for (final item in items) {
+        await _offline?.database.saveCachedItem(
+          table: OfflineTables.cachedBookings,
+          json: item,
+        );
+      }
+      return items.map(QuoteRequest.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedBookings,
+      );
+      if (cached == null) rethrow;
+      return cached
+          .where((item) => item['weddingPlanId']?.toString() == planId)
+          .map(QuoteRequest.fromJson)
+          .toList();
+    }
+  }
+
   Future<QuoteRequest> getQuoteRequest(String quoteRequestId) async {
     final json = await _apiClient.getJson(
       '/api/v1/quote-requests/$quoteRequestId',
+    );
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBookings,
+      json: json,
     );
     return QuoteRequest.fromJson(json);
   }
@@ -367,6 +446,10 @@ class MarketplaceApi {
     final json = await _apiClient.patchJson(
       '/api/v1/quote-requests/$quoteRequestId/cancel',
       const {},
+    );
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBookings,
+      json: json,
     );
     return QuoteRequest.fromJson(json);
   }
@@ -412,6 +495,11 @@ class MarketplaceApi {
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
+  }
+
+  int _intValue(Object? value, {required int fallback}) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
   Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(
@@ -487,6 +575,22 @@ class MarketplaceApi {
       return haystack.contains(query);
     }).toList();
   }
+}
+
+class MarketplaceProviderPage {
+  const MarketplaceProviderPage({
+    required this.items,
+    required this.currentPage,
+    required this.total,
+    required this.totalPages,
+    required this.hasMore,
+  });
+
+  final List<MarketplaceProvider> items;
+  final int currentPage;
+  final int total;
+  final int totalPages;
+  final bool hasMore;
 }
 
 class ProviderDashboardApi {

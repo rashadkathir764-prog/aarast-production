@@ -16,10 +16,9 @@ class ChatApi {
     );
   }
 
-  Future<ChatConversation> ensureForQuote(String quoteRequestId) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/conversations/quote-requests/$quoteRequestId',
-      const {},
+  Future<ChatConversation> conversationForQuote(String quoteRequestId) async {
+    final json = await _apiClient.getJson(
+      '/api/v1/quote-requests/$quoteRequestId/conversation',
     );
     return ChatConversation.fromJson(json);
   }
@@ -30,16 +29,24 @@ class ChatApi {
     );
   }
 
-  Future<ChatMessagePage> messages(
+  Future<ChatTimelinePage> timeline(
     String conversationId, {
     String? cursor,
   }) async {
     final suffix = cursor == null
         ? ''
         : '?cursor=${Uri.encodeQueryComponent(cursor)}';
-    return ChatMessagePage.fromJson(
+    return ChatTimelinePage.fromJson(
       await _apiClient.getJson(
-        '/api/v1/conversations/$conversationId/messages$suffix',
+        '/api/v1/conversations/$conversationId/timeline$suffix',
+      ),
+    );
+  }
+
+  Future<ChatQuoteRequestPage> quoteRequests(String conversationId) async {
+    return ChatQuoteRequestPage.fromJson(
+      await _apiClient.getJson(
+        '/api/v1/conversations/$conversationId/quote-requests',
       ),
     );
   }

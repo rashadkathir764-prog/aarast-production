@@ -4,6 +4,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -241,50 +242,60 @@ void main() {
     expect(find.text('quote-opened'), findsNothing);
   });
 
-  testWidgets(
-    'accepted offer shows explicit next step without automatic finance creation',
-    (tester) async {
-      final state = _FakeMarketplaceProvider(
-        quoteRequests: const [
-          QuoteRequest(
-            id: 'quote-1',
-            providerId: 'provider-1',
-            weddingPlanId: 'plan-1',
-            status: 'ACCEPTED',
-            lifecycleStatus: 'ACCEPTED',
-            provider: ProviderSummary(
-              id: 'provider-1',
-              businessName: 'قاعة السلام',
-              ratingAverage: 0,
-              ratingCount: 0,
-            ),
-            offers: [
-              QuoteOffer(
-                id: 'offer-1',
-                status: 'ACCEPTED',
-                amount: '250000',
-                currency: 'YER',
-              ),
-            ],
+  testWidgets('accepted offer shows the automatically created finance cost', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequests: const [
+        QuoteRequest(
+          id: 'quote-1',
+          providerId: 'provider-1',
+          weddingPlanId: 'plan-1',
+          status: 'ACCEPTED',
+          lifecycleStatus: 'ACCEPTED',
+          provider: ProviderSummary(
+            id: 'provider-1',
+            businessName: 'قاعة السلام',
+            ratingAverage: 0,
+            ratingCount: 0,
           ),
-        ],
-      );
+          offers: [
+            QuoteOffer(
+              id: 'offer-1',
+              status: 'ACCEPTED',
+              amount: '250000',
+              currency: 'YER',
+            ),
+          ],
+          costSuggestion: QuoteCostSuggestion(
+            providerId: 'provider-1',
+            providerName: 'قاعة السلام',
+            suggestedAction: 'VIEW_COST',
+            automaticCostCreated: true,
+            quotedAmount: '250000',
+            currency: 'YER',
+            quoteOfferId: 'offer-1',
+            costId: 'cost-1',
+            availableActions: ['VIEW_COST'],
+          ),
+        ),
+      ],
+    );
 
-      await _pumpMarketplace(tester, state, authenticated: true);
-      await tester.scrollUntilVisible(
-        find.textContaining('لن يُنشأ أي سجل تلقائيًا'),
-        360,
-        scrollable: find.byType(Scrollable).first,
-      );
+    await _pumpMarketplace(tester, state, authenticated: true);
+    await tester.scrollUntilVisible(
+      find.textContaining('إنشاء التكلفة تلقائيًا'),
+      360,
+      scrollable: find.byType(Scrollable).first,
+    );
 
-      expect(find.textContaining('250,000 ر.ي'), findsOneWidget);
-      expect(find.textContaining('250000 YER'), findsNothing);
-      expect(find.textContaining('لن يُنشأ أي سجل تلقائيًا'), findsOneWidget);
-      expect(find.textContaining('تم إنشاء مصروف'), findsNothing);
-      expect(find.textContaining('تم إنشاء دين'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(find.textContaining('250,000 ر.ي'), findsWidgets);
+    expect(find.textContaining('250000 YER'), findsNothing);
+    expect(find.textContaining('إنشاء التكلفة تلقائيًا'), findsOneWidget);
+    expect(find.textContaining('تم إنشاء مصروف'), findsNothing);
+    expect(find.textContaining('تم إنشاء دين'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Super 5 providers layout does not overflow at 320px width', (
     tester,
@@ -314,6 +325,36 @@ void main() {
     expect(find.textContaining('مورد باسم طويل'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'Marketplace load-more keeps results and uses the shared inline spinner',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        providers: [_provider(id: 'provider-1', businessName: 'قاعة السلام')],
+        hasMoreProviders: true,
+      );
+
+      await _pumpMarketplace(tester, state);
+      state.showLoadingMore();
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.byType(AarastInlineSpinner),
+        320,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(find.text('قاعة السلام'), findsOneWidget);
+      expect(find.byType(AarastInlineSpinner), findsOneWidget);
+      expect(find.byType(AarastSkeleton), findsNothing);
+      expect(
+        File(
+          'lib/features/marketplace/screens/provider_marketplace_screen.dart',
+        ).readAsStringSync(),
+        isNot(contains('CircularProgressIndicator')),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 Future<void> _pumpMarketplace(
@@ -452,16 +493,22 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     List<QuoteRequest> quoteRequests = const [],
     ProviderBudgetMatchIntent? budgetMatchIntent,
     List<MarketplaceService> budgetMatchedServices = const [],
+    bool isLoadingMore = false,
+    bool hasMoreProviders = false,
   }) : providersData = providers,
        categoriesData = categories,
        quoteRequestsData = quoteRequests,
        budgetMatchIntentData = budgetMatchIntent,
        budgetMatchedServicesData = budgetMatchedServices,
+       isLoadingMoreData = isLoadingMore,
+       hasMoreProvidersData = hasMoreProviders,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<MarketplaceProvider> providersData;
   final List<ProviderCategory> categoriesData;
   final List<QuoteRequest> quoteRequestsData;
+  bool isLoadingMoreData;
+  final bool hasMoreProvidersData;
   ProviderBudgetMatchIntent? budgetMatchIntentData;
   List<MarketplaceService> budgetMatchedServicesData;
 
@@ -494,6 +541,15 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   List<MarketplaceProvider> get providers => providersData;
 
   @override
+  int get totalProviders => providersData.length;
+
+  @override
+  bool get isLoadingMore => isLoadingMoreData;
+
+  @override
+  bool get hasMoreProviders => hasMoreProvidersData;
+
+  @override
   Set<String> get favoriteProviderIds => const {};
 
   @override
@@ -510,7 +566,11 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   bool get includesAccountData => _includeAccountData;
 
   @override
-  Future<void> loadMarketplace({bool? includeAccountData}) async {
+  Future<void> loadMarketplace({
+    bool? includeAccountData,
+    String? weddingPlanId,
+    bool updateQuoteScope = false,
+  }) async {
     lastIncludeAccountData = includeAccountData;
     _includeAccountData = includeAccountData ?? _includeAccountData;
   }
@@ -529,6 +589,14 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   Future<void> clearFilters() async {}
+
+  @override
+  Future<void> loadMoreProviders() async {}
+
+  void showLoadingMore() {
+    isLoadingMoreData = true;
+    notifyListeners();
+  }
 
   @override
   Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {

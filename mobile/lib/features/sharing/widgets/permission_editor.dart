@@ -154,6 +154,8 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                 ),
                 _PermissionRow(
                   title: 'الموردون والعروض',
+                  subtitle:
+                      'صلاحية قوية: تتيح رؤية كامل سجل محادثات الموردين وإرسال الرسائل باسم الخطة.',
                   value: value.canManageProviders,
                   enabled: widget.enabled,
                   onChanged: (v) =>
@@ -240,9 +242,11 @@ class _PermissionRow extends StatelessWidget {
     required this.value,
     required this.enabled,
     required this.onChanged,
+    this.subtitle,
   });
 
   final String title;
+  final String? subtitle;
   final bool value;
   final bool enabled;
   final ValueChanged<bool> onChanged;
@@ -250,13 +254,33 @@ class _PermissionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w700,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.muted,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

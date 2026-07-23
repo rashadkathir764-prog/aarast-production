@@ -49,6 +49,8 @@ void main() {
 
     expect(find.text('لا توجد خدمات منشورة'), findsOneWidget);
     expect(find.text('لا توجد باقات منشورة حاليًا.'), findsOneWidget);
+    expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
+    expect(find.textContaining('لا توجد صور منشورة'), findsOneWidget);
     final reviewsEmpty = find.text('لا توجد تقييمات بعد.');
     await tester.scrollUntilVisible(
       reviewsEmpty,
@@ -88,14 +90,33 @@ void main() {
     await tester.pump();
 
     expect(find.byType(PageView), findsOneWidget);
-    expect(find.text('3 / 6'), findsOneWidget);
+    expect(find.text('1 / 6'), findsOneWidget);
     expect(find.byTooltip('إغلاق معرض الصور'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'a cover-only provider exposes the same single photo in gallery',
+    (tester) async {
+      await _pumpView(
+        tester,
+        provider: _providerWithCover,
+        width: 320,
+        height: 1000,
+        textScale: 1.3,
+      );
+
+      expect(find.textContaining('معرض الصور 1'), findsOneWidget);
+      expect(find.text('معرض الصور'), findsOneWidget);
+      expect(find.text('عرض الكل'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 Future<void> _pumpView(
   WidgetTester tester, {
+  MarketplaceProvider provider = _provider,
   List<MarketplaceService> services = const [],
   List<ProviderPackage> packages = const [],
   List<ProviderReview> reviews = const [],
@@ -124,7 +145,7 @@ Future<void> _pumpView(
         textDirection: TextDirection.rtl,
         child: Scaffold(
           body: ProviderDetailsView(
-            provider: _provider,
+            provider: provider,
             services: services,
             packages: packages,
             reviews: reviews,
@@ -150,6 +171,17 @@ const _provider = MarketplaceProvider(
   isFeatured: true,
   city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
   description: 'قاعة مناسبة للمناسبات العائلية.',
+);
+
+const _providerWithCover = MarketplaceProvider(
+  id: 'provider-cover',
+  businessName: 'قاعة بصورة غلاف',
+  ownerName: 'مالك القاعة',
+  ratingAverage: 0,
+  ratingCount: 0,
+  isFeatured: false,
+  coverUrl: 'https://img.test/cover.jpg',
+  city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
 );
 
 const _service = MarketplaceService(

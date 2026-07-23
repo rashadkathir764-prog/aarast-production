@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -57,7 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
     final conversation = _conversation(chat);
-    final messages = chat.messagesFor(widget.conversationId);
+    final timeline = chat.timelineFor(widget.conversationId);
     return AarastScreenFrame(
       resizeToAvoidBottomInset: true,
       child: Column(
@@ -67,27 +69,27 @@ class _ChatScreenState extends State<ChatScreen> {
             onAction: (action) => _handleAction(chat, conversation, action),
           ),
           Expanded(
-            child: chat.isLoading && messages.isEmpty
+            child: chat.isLoading && timeline.isEmpty
                 ? const AarastScreenLoading(label: 'جارٍ تحميل الرسائل...')
                 : chat.hasConversationLoadError(widget.conversationId) &&
-                      messages.isEmpty
+                      timeline.isEmpty
                 ? AarastErrorState(
                     title: 'تعذر تحميل المحادثة',
                     message: chat.errorMessage!,
                     onRetry: () => chat.openConversation(widget.conversationId),
                   )
-                : messages.isEmpty
+                : timeline.isEmpty
                 ? const AarastEmptyState(
                     icon: LucideIcons.messageCircle,
-                    title: 'ابدأ المحادثة',
+                    title: 'لا يوجد نشاط بعد',
                     message:
-                        'ناقشا تفاصيل طلب السعر دون مشاركة بيانات مالية خاصة.',
+                        'ستظهر هنا الرسائل وتحديثات طلبات الأسعار والعروض.',
                   )
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
                     itemCount:
-                        messages.length +
+                        timeline.length +
                         (chat.canLoadOlder(widget.conversationId) ? 1 : 0),
                     itemBuilder: (context, index) {
                       final hasOlder = chat.canLoadOlder(widget.conversationId);
@@ -102,16 +104,31 @@ class _ChatScreenState extends State<ChatScreen> {
                             icon: chat.isLoadingOlder(widget.conversationId)
                                 ? const AarastInlineSpinner(dimension: 16)
                                 : const Icon(LucideIcons.history, size: 18),
-                            label: const Text('تحميل رسائل أقدم'),
+                            label: const Text('تحميل نشاط أقدم'),
                           ),
                         );
                       }
-                      final message = messages[index - (hasOlder ? 1 : 0)];
-                      return _MessageBubble(
-                        message: message,
-                        mine: message.senderUserId == chat.currentUserId,
-                        read: chat.isMessageRead(message),
-                      );
+                      final item = timeline[index - (hasOlder ? 1 : 0)];
+                      final message = item.message;
+                      if (message != null) {
+                        return _MessageBubble(
+                          message: message,
+                          mine: message.senderUserId == chat.currentUserId,
+                          read: chat.isMessageRead(message),
+                        );
+                      }
+                      final event = item.event;
+                      return event == null
+                          ? const SizedBox.shrink()
+                          : _ConversationEventCard(
+                              event: event,
+                              onTap: event.quoteRequestId == null
+                                  ? null
+                                  : () => _openQuoteEvent(
+                                      conversation,
+                                      event.quoteRequestId!,
+                                    ),
+                            );
                     },
                   ),
           ),
@@ -120,7 +137,9 @@ class _ChatScreenState extends State<ChatScreen> {
               blockedByMe: conversation?.blockedByMe == true,
               blockedByCounterpart: conversation?.blockedByCounterpart == true,
             )
-          else
+          else if (conversation?.providerJoined == false)
+            const _ProviderNotJoinedNotice()
+          else if (conversation?.canSend == true)
             _Composer(
               controller: _controller,
               attachment: _attachment,
@@ -128,9 +147,24 @@ class _ChatScreenState extends State<ChatScreen> {
               onPickImage: _pickImage,
               onRemoveAttachment: () => setState(() => _attachment = null),
               onSend: _send,
-            ),
+            )
+          else
+            const _ConversationUnavailableNotice(),
         ],
       ),
+    );
+  }
+
+  void _openQuoteEvent(ChatConversation? conversation, String quoteRequestId) {
+    final planId = conversation?.weddingPlan?.id;
+    if (planId != null && planId.isNotEmpty) {
+      context.push(
+        '/wedding-plans/$planId/providers?quoteId=${Uri.encodeQueryComponent(quoteRequestId)}',
+      );
+      return;
+    }
+    context.push(
+      '${AppRouter.providerMarketplace}?quoteId=${Uri.encodeQueryComponent(quoteRequestId)}',
     );
   }
 
@@ -279,10 +313,10 @@ class _ChatHeader extends StatelessWidget {
             ),
             CircleAvatar(
               backgroundColor: AppTheme.burgundySoft,
-              backgroundImage: conversation?.counterpart.avatarUrl == null
+              backgroundImage: conversation?.provider.logoUrl == null
                   ? null
-                  : NetworkImage(conversation!.counterpart.avatarUrl!),
-              child: conversation?.counterpart.avatarUrl == null
+                  : NetworkImage(conversation!.provider.logoUrl!),
+              child: conversation?.provider.logoUrl == null
                   ? const Icon(LucideIcons.store, color: AppTheme.burgundy)
                   : null,
             ),
@@ -292,7 +326,7 @@ class _ChatHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    conversation?.counterpart.name ?? 'المحادثة',
+                    conversation?.provider.businessName ?? 'المحادثة',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -301,7 +335,7 @@ class _ChatHeader extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    conversation?.serviceTitle ?? 'طلب عرض سعر',
+                    _conversationSubtitle(conversation),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -341,6 +375,83 @@ class _ChatHeader extends StatelessWidget {
     );
   }
 }
+
+String _conversationSubtitle(ChatConversation? conversation) {
+  if (conversation == null) return 'طلبات الأسعار';
+  final contextLabel = conversation.scope == ChatConversationScope.plan
+      ? (conversation.weddingPlan?.title ?? 'خطة الزفاف')
+      : 'طلب مستقل عن الخطة';
+  final countLabel = conversation.quoteRequestCount == 1
+      ? 'طلب واحد'
+      : '${conversation.quoteRequestCount} طلبات';
+  return '$contextLabel · $countLabel';
+}
+
+class _ConversationEventCard extends StatelessWidget {
+  const _ConversationEventCard({required this.event, this.onTap});
+
+  final ChatConversationEvent event;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = _eventPresentation(event.type);
+    return Align(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: InkWell(
+          key: Key('conversation-event-${event.type.toLowerCase()}'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 360),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(details.$1, size: 18, color: AppTheme.burgundy),
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Text(
+                    details.$2,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 8),
+                  const Icon(
+                    LucideIcons.chevronLeft,
+                    size: 17,
+                    color: AppTheme.muted,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+(IconData, String) _eventPresentation(String type) => switch (type) {
+  'QUOTE_REQUEST_CREATED' => (LucideIcons.filePlus2, 'أُنشئ طلب عرض سعر'),
+  'QUOTE_REQUEST_CANCELLED' => (LucideIcons.fileX2, 'أُلغي طلب عرض السعر'),
+  'QUOTE_REQUEST_REJECTED' => (LucideIcons.fileWarning, 'رُفض طلب عرض السعر'),
+  'QUOTE_OFFER_RECEIVED' => (LucideIcons.mailCheck, 'وصل عرض سعر جديد'),
+  'QUOTE_OFFER_REJECTED' => (LucideIcons.badgeX, 'رُفض عرض السعر'),
+  'QUOTE_OFFER_ACCEPTED' => (LucideIcons.badgeCheck, 'قُبل عرض السعر'),
+  'QUOTE_OFFER_EXPIRED' => (LucideIcons.clock3, 'انتهت صلاحية عرض السعر'),
+  _ => (LucideIcons.activity, 'تحديث على طلب السعر'),
+};
 
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
@@ -612,6 +723,44 @@ class _Composer extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderNotJoinedNotice extends StatelessWidget {
+  const _ProviderNotJoinedNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'المورد لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConversationUnavailableNotice extends StatelessWidget {
+  const _ConversationUnavailableNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'لا يمكن إرسال رسائل جديدة في هذه المحادثة الآن.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w800),
         ),
       ),
     );

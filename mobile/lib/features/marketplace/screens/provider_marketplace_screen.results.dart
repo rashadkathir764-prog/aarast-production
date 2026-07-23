@@ -241,7 +241,8 @@ class _OffersInboxCard extends StatelessWidget {
     required this.isSubmitting,
     required this.onAccept,
     required this.onReject,
-    required this.onCreateCost,
+    required this.onViewCost,
+    required this.onCreateNew,
   });
 
   final List<QuoteRequest> quotes;
@@ -249,7 +250,8 @@ class _OffersInboxCard extends StatelessWidget {
   final bool isSubmitting;
   final void Function(QuoteRequest quote) onAccept;
   final void Function(QuoteRequest quote) onReject;
-  final void Function(QuoteRequest quote) onCreateCost;
+  final void Function(QuoteRequest quote) onViewCost;
+  final void Function(QuoteRequest quote) onCreateNew;
 
   @override
   Widget build(BuildContext context) {
@@ -307,7 +309,8 @@ class _OffersInboxCard extends StatelessWidget {
               isSubmitting: isSubmitting,
               onAccept: () => onAccept(visible[index]),
               onReject: () => onReject(visible[index]),
-              onCreateCost: () => onCreateCost(visible[index]),
+              onViewCost: () => onViewCost(visible[index]),
+              onCreateNew: () => onCreateNew(visible[index]),
             ),
           ],
         ],
@@ -322,23 +325,28 @@ class _OfferQuoteTile extends StatelessWidget {
     required this.isSubmitting,
     required this.onAccept,
     required this.onReject,
-    required this.onCreateCost,
+    required this.onViewCost,
+    required this.onCreateNew,
   });
 
   final QuoteRequest quote;
   final bool isSubmitting;
   final VoidCallback onAccept;
   final VoidCallback onReject;
-  final VoidCallback onCreateCost;
+  final VoidCallback onViewCost;
+  final VoidCallback onCreateNew;
 
   @override
   Widget build(BuildContext context) {
     final serviceName = _quoteServiceLabel(quote);
     final isAccepted = quote.lifecycleStatus == 'ACCEPTED';
-    final acceptedAmount =
-        isAccepted && quote.costSuggestion?.canCreateCost != true
+    final acceptedAmount = isAccepted
         ? _quoteOfferAmountDisplay(quote.acceptedOffer)
         : null;
+
+    if (quote.hasExpiredOffer && !isAccepted) {
+      return _ExpiredOfferRow(quote: quote, onCreateNew: onCreateNew);
+    }
 
     if (!quote.canAcceptOrReject && !isAccepted) {
       return _CompactQuoteStatusRow(quote: quote);
@@ -387,8 +395,58 @@ class _OfferQuoteTile extends StatelessWidget {
           _OfferAcceptedArea(
             quote: quote,
             isSubmitting: isSubmitting,
-            onCreateCost: onCreateCost,
+            onViewCost: onViewCost,
           ),
+      ],
+    );
+  }
+}
+
+class _ExpiredOfferRow extends StatelessWidget {
+  const _ExpiredOfferRow({required this.quote, required this.onCreateNew});
+
+  final QuoteRequest quote;
+  final VoidCallback onCreateNew;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: Key('expired-offer-${quote.id}'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _quoteProviderLabel(quote),
+                style: const TextStyle(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const AarastStatusPill(
+              label: 'انتهت صلاحية العرض',
+              color: AppTheme.muted,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _quoteServiceLabel(quote),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppTheme.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton(
+            key: Key('expired-offer-new-request-${quote.id}'),
+            onPressed: onCreateNew,
+            child: const Text('طلب عرض جديد'),
+          ),
+        ),
       ],
     );
   }
@@ -599,22 +657,22 @@ class _OfferDecisionArea extends StatelessWidget {
   }
 }
 
-/// بعد القبول: رسالة صادقة (لا سجل تلقائي) + تسجيل التكلفة في المال بنقرة.
+/// بعد القبول: يعكس التكلفة التي أنشأها الخادم ويتيح فتحها مباشرة.
 class _OfferAcceptedArea extends StatelessWidget {
   const _OfferAcceptedArea({
     required this.quote,
     required this.isSubmitting,
-    required this.onCreateCost,
+    required this.onViewCost,
   });
 
   final QuoteRequest quote;
   final bool isSubmitting;
-  final VoidCallback onCreateCost;
+  final VoidCallback onViewCost;
 
   @override
   Widget build(BuildContext context) {
     final amountDisplay = _quoteOfferAmountDisplay(quote.acceptedOffer);
-    final canCreateCost = quote.costSuggestion?.canCreateCost == true;
+    final canViewCost = quote.costSuggestion?.canViewCost == true;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -628,7 +686,7 @@ class _OfferAcceptedArea extends StatelessWidget {
             border: Border.all(color: AppTheme.success.withValues(alpha: 0.22)),
           ),
           child: const Text(
-            'تم ربط المورد بالخطة. لن يُنشأ أي سجل تلقائيًا — سجّل التكلفة بنفسك متى أردت.',
+            'تم ربط المورد بالخطة وإنشاء التكلفة تلقائيًا في تبويب المال، دون تسجيل أي دفعة.',
             style: TextStyle(
               color: AppTheme.ink,
               fontWeight: FontWeight.w800,
@@ -636,11 +694,11 @@ class _OfferAcceptedArea extends StatelessWidget {
             ),
           ),
         ),
-        if (canCreateCost) ...[
+        if (canViewCost) ...[
           const SizedBox(height: 10),
           FilledButton.icon(
-            key: Key('quote-create-cost-${quote.id}'),
-            onPressed: isSubmitting ? null : onCreateCost,
+            key: Key('quote-view-cost-${quote.id}'),
+            onPressed: isSubmitting ? null : onViewCost,
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.gold,
               foregroundColor: AppTheme.ink,
@@ -648,8 +706,8 @@ class _OfferAcceptedArea extends StatelessWidget {
             icon: const Icon(LucideIcons.receipt, size: 18),
             label: Text(
               amountDisplay == null
-                  ? 'سجّل التكلفة في المال'
-                  : 'سجّل التكلفة في المال · $amountDisplay',
+                  ? 'عرض التكلفة في المال'
+                  : 'عرض التكلفة في المال · $amountDisplay',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

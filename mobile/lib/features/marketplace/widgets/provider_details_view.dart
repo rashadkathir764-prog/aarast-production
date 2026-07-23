@@ -3,7 +3,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../models/marketplace_models.dart';
 import 'provider_details_sections.dart';
 import 'provider_photo_gallery.dart';
@@ -34,51 +33,80 @@ class ProviderDetailsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final galleryImages = _galleryUrls(services);
-    final heroImage = _heroImageUrl(provider, galleryImages);
-    final photoCount = _photoCount(heroImage, galleryImages);
+    final serviceImages = _galleryUrls(services);
+    final heroImage = _heroImageUrl(provider, serviceImages);
+    final galleryImages = _allPhotoUrls(heroImage, serviceImages);
+    final photoCount = galleryImages.length;
+    final category = _providerCategory(services);
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.only(bottom: 10),
       children: [
         _ProviderHero(
+          providerName: provider.businessName,
+          category: category,
+          location: _providerLocationDetail(provider),
           imageUrl: heroImage,
+          logoUrl: provider.logoUrl,
           photoCount: photoCount,
           isFavorite: isFavorite,
           onBack: onBack,
           onShare: onShare,
           onFavorite: onFavorite,
         ),
-        const SizedBox(height: 16),
-        _pad(
-          _HeadlineCard(
-            provider: provider,
-            priceLabel: _providerPriceRange(services),
+        Transform.translate(
+          offset: const Offset(0, -28),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppTheme.ivory,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppTheme.radius2xl),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _ProviderMeta(
+                    category: category,
+                    ratingAverage: provider.ratingAverage,
+                    ratingCount: provider.ratingCount,
+                    isFeatured: provider.isFeatured,
+                  ),
+                  if (_providerPriceRange(services) case final price?) ...[
+                    const SizedBox(height: 18),
+                    _PriceBand(priceLabel: price),
+                  ],
+                  if (galleryImages.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    _GallerySection(images: galleryImages),
+                  ],
+                  const SizedBox(height: 24),
+                  ProviderDetailsSections(
+                    provider: provider,
+                    services: services,
+                    packages: packages,
+                    reviews: reviews,
+                    onRequestQuote: onRequestQuote,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        if (galleryImages.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _pad(_GallerySection(images: galleryImages)),
-        ],
-        const SizedBox(height: 16),
-        ProviderDetailsSections(
-          provider: provider,
-          services: services,
-          packages: packages,
-          reviews: reviews,
-          onRequestQuote: onRequestQuote,
         ),
       ],
     );
   }
 }
 
-Widget _pad(Widget child) =>
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: child);
-
 class _ProviderHero extends StatelessWidget {
   const _ProviderHero({
+    required this.providerName,
+    required this.category,
+    required this.location,
     required this.imageUrl,
+    required this.logoUrl,
     required this.photoCount,
     required this.isFavorite,
     required this.onBack,
@@ -86,7 +114,11 @@ class _ProviderHero extends StatelessWidget {
     required this.onFavorite,
   });
 
+  final String providerName;
+  final String? category;
+  final String? location;
   final String? imageUrl;
+  final String? logoUrl;
   final int photoCount;
   final bool isFavorite;
   final VoidCallback onBack;
@@ -96,44 +128,20 @@ class _ProviderHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 292,
+      height: 342,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(AppTheme.radiusXl),
-            ),
-            child: _HeroImage(url: imageUrl),
+          _HeroImage(
+            url: imageUrl,
+            logoUrl: logoUrl,
+            providerName: providerName,
           ),
-          // تدرّج غامق أسفل الصورة ليبرز عدّاد الصور فوق أي خلفية.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 96,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(AppTheme.radiusXl),
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      AppTheme.ink.withValues(alpha: 0.34),
-                      AppTheme.ink.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          const _HeroReadabilityGradient(),
           PositionedDirectional(
-            top: 12,
-            start: 12,
-            end: 12,
+            top: 14,
+            start: 14,
+            end: 14,
             child: Row(
               children: [
                 _HeroOverlayButton(
@@ -149,7 +157,7 @@ class _ProviderHero extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 _HeroOverlayButton(
-                  icon: LucideIcons.heart,
+                  icon: isFavorite ? LucideIcons.heart : LucideIcons.heart,
                   iconColor: isFavorite ? AppTheme.burgundy : null,
                   onTap: onFavorite,
                   tooltip: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المورد',
@@ -157,13 +165,115 @@ class _ProviderHero extends StatelessWidget {
               ],
             ),
           ),
-          if (photoCount > 1)
-            PositionedDirectional(
-              bottom: 14,
-              end: 14,
-              child: _PhotoCounter(count: photoCount),
+          PositionedDirectional(
+            start: 20,
+            end: 20,
+            bottom: 45,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (category != null) _HeroEyebrow(label: category!),
+                if (category != null) const SizedBox(height: 9),
+                Text(
+                  providerName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: Colors.white,
+                    fontFamily: AppTheme.displayFontFamily,
+                    fontWeight: FontWeight.w700,
+                    height: 1.18,
+                    shadows: [
+                      Shadow(
+                        color: AppTheme.ink.withValues(alpha: 0.54),
+                        blurRadius: 12,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 9),
+                _HeroDetailsLine(location: location, photoCount: photoCount),
+              ],
             ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _HeroReadabilityGradient extends StatelessWidget {
+  const _HeroReadabilityGradient();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0, 0.38, 1],
+          colors: [
+            AppTheme.ink.withValues(alpha: 0.36),
+            Colors.transparent,
+            AppTheme.ink.withValues(alpha: 0.84),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroEyebrow extends StatelessWidget {
+  const _HeroEyebrow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 28, height: 1.5, color: AppTheme.goldSoft),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppTheme.goldSoft,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroDetailsLine extends StatelessWidget {
+  const _HeroDetailsLine({required this.location, required this.photoCount});
+
+  final String? location;
+  final int photoCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = <String>[
+      ?location,
+      if (photoCount > 0) 'معرض الصور $photoCount' else 'لا توجد صور منشورة',
+    ];
+    return Text(
+      details.join(' · '),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Colors.white.withValues(alpha: 0.84),
+        fontWeight: FontWeight.w700,
+        height: 1.35,
       ),
     );
   }
@@ -184,24 +294,18 @@ class _HeroOverlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppTheme.surface.withValues(alpha: 0.92),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.ink.withValues(alpha: 0.18),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+    final button = Material(
+      color: AppTheme.ink.withValues(alpha: 0.44),
+      shape: CircleBorder(
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox.square(
+          dimension: 44,
+          child: Icon(icon, color: iconColor ?? Colors.white, size: 20),
         ),
-        child: Icon(icon, color: iconColor ?? AppTheme.burgundy, size: 20),
       ),
     );
     if (tooltip == null) return button;
@@ -209,29 +313,211 @@ class _HeroOverlayButton extends StatelessWidget {
   }
 }
 
-class _PhotoCounter extends StatelessWidget {
-  const _PhotoCounter({required this.count});
+class _HeroImage extends StatelessWidget {
+  const _HeroImage({
+    required this.url,
+    required this.logoUrl,
+    required this.providerName,
+  });
 
-  final int count;
+  final String? url;
+  final String? logoUrl;
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = url?.trim();
+    final fallback = _ProviderMediaFallback(
+      logoUrl: logoUrl,
+      providerName: providerName,
+    );
+    if (imageUrl == null || imageUrl.isEmpty) return fallback;
+
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      semanticLabel: 'صورة $providerName',
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) return child;
+        return fallback;
+      },
+      errorBuilder: (context, error, stackTrace) => fallback,
+    );
+  }
+}
+
+class _ProviderMediaFallback extends StatelessWidget {
+  const _ProviderMediaFallback({
+    required this.logoUrl,
+    required this.providerName,
+  });
+
+  final String? logoUrl;
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanLogo = logoUrl?.trim();
+    return Semantics(
+      container: true,
+      label: 'لا توجد صورة منشورة للمورد $providerName',
+      child: DecoratedBox(
+        key: const Key('provider-media-fallback'),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [AppTheme.burgundyDark, AppTheme.ink],
+          ),
+        ),
+        child: Stack(
+          children: [
+            PositionedDirectional(
+              top: 92,
+              start: -24,
+              child: Container(
+                width: 170,
+                height: 170,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppTheme.gold.withValues(alpha: 0.14),
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              top: 118,
+              start: 0,
+              end: 0,
+              child: Column(
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: cleanLogo == null || cleanLogo.isEmpty
+                        ? const Icon(
+                            LucideIcons.store,
+                            color: AppTheme.goldSoft,
+                            size: 36,
+                          )
+                        : Image.network(
+                            cleanLogo,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  LucideIcons.store,
+                                  color: AppTheme.goldSoft,
+                                  size: 36,
+                                ),
+                          ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'لا توجد صورة منشورة',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderMeta extends StatelessWidget {
+  const _ProviderMeta({
+    required this.category,
+    required this.ratingAverage,
+    required this.ratingCount,
+    required this.isFeatured,
+  });
+
+  final String? category;
+  final double ratingAverage;
+  final int ratingCount;
+  final bool isFeatured;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (isFeatured)
+            const _MetaBadge(
+              label: 'مرجع تخطيطي',
+              icon: LucideIcons.badgeCheck,
+              foreground: AppTheme.success,
+              background: AppTheme.successSoft,
+            ),
+          if (ratingCount > 0)
+            _MetaBadge(
+              label:
+                  '${ratingAverage.toStringAsFixed(1)} · $ratingCount تقييمًا',
+              icon: LucideIcons.star,
+              foreground: AppTheme.goldDeep,
+              background: AppTheme.goldLight,
+            ),
+          if (category != null)
+            _MetaBadge(
+              label: category!,
+              foreground: AppTheme.burgundy,
+              background: AppTheme.burgundySoft,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaBadge extends StatelessWidget {
+  const _MetaBadge({
+    required this.label,
+    required this.foreground,
+    required this.background,
+    this.icon,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppTheme.ink.withValues(alpha: 0.55),
+        color: background,
         borderRadius: BorderRadius.circular(AppTheme.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.image, size: 13, color: Colors.white),
-          const SizedBox(width: 5),
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: foreground),
+            const SizedBox(width: 5),
+          ],
           Text(
-            '1 / $count',
-            textDirection: TextDirection.ltr,
+            label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.white,
+              color: foreground,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -241,164 +527,60 @@ class _PhotoCounter extends StatelessWidget {
   }
 }
 
-class _HeroImage extends StatelessWidget {
-  const _HeroImage({this.url});
-
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = url?.trim();
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.ivory, AppTheme.burgundySoft],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-      ),
-      child: imageUrl == null || imageUrl.isEmpty
-          ? const Center(
-              child: Icon(LucideIcons.store, color: AppTheme.gold, size: 64),
-            )
-          : Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const Center(
-                child: Icon(LucideIcons.store, color: AppTheme.gold, size: 64),
-              ),
-            ),
-    );
-  }
-}
-
-class _HeadlineCard extends StatelessWidget {
-  const _HeadlineCard({required this.provider, required this.priceLabel});
-
-  final MarketplaceProvider provider;
-  final String? priceLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final category = provider.services.isEmpty
-        ? null
-        : provider.services.first.category?.nameAr.trim();
-    final location = _providerLocationDetail(provider);
-
-    return AarastCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            provider.businessName,
-            textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (category != null && category.isNotEmpty)
-                AarastStatusPill(
-                  label: category,
-                  icon: LucideIcons.shapes,
-                  color: AppTheme.burgundy,
-                  backgroundColor: AppTheme.burgundySoft,
-                ),
-              if (provider.ratingCount > 0)
-                AarastStatusPill(
-                  label:
-                      '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
-                  icon: LucideIcons.star,
-                  color: AppTheme.gold,
-                  backgroundColor: AppTheme.ivory,
-                ),
-              if (provider.isFeatured)
-                AarastStatusPill(
-                  label: 'مرجع تخطيطي',
-                  icon: LucideIcons.badgeCheck,
-                  color: AppTheme.success,
-                  backgroundColor: AppTheme.successSoft,
-                ),
-            ],
-          ),
-          if (location != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(LucideIcons.mapPin, size: 16, color: AppTheme.gold),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    location,
-                    style: const TextStyle(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (priceLabel != null) ...[
-            const SizedBox(height: 14),
-            _PriceBlock(priceLabel: priceLabel!),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PriceBlock extends StatelessWidget {
-  const _PriceBlock({required this.priceLabel});
+class _PriceBand extends StatelessWidget {
+  const _PriceBand({required this.priceLabel});
 
   final String priceLabel;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.ivory,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.goldSoft),
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(vertical: 17),
+      decoration: const BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(color: AppTheme.border),
+        ),
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppTheme.goldSoft,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: const Icon(LucideIcons.wallet, color: AppTheme.gold),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
+                  'نطاق سعري تقديري · يتأكد عند طلب العرض',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
                   priceLabel,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppTheme.burgundy,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'الأسعار تقديرية وتتأكد عند طلب العرض',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelMedium?.copyWith(color: AppTheme.muted),
-                ),
               ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppTheme.goldLight,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.goldSoft),
+            ),
+            child: const Icon(
+              LucideIcons.walletCards,
+              color: AppTheme.goldDeep,
+              size: 21,
             ),
           ),
         ],
@@ -414,38 +596,84 @@ class _GallerySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maximumVisible = MediaQuery.sizeOf(context).width < 360 ? 3 : 4;
-    final visible = images.take(maximumVisible).toList();
-    final extra = images.length - visible.length;
-
-    return AarastCard(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
-            title: 'معرض الصور',
-            icon: LucideIcons.image,
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
-              for (var i = 0; i < visible.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'معرض الصور',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (images.length > 1)
+                TextButton(
+                  onPressed: () => showProviderPhotoGallery(
+                    context,
+                    images: images,
+                    initialIndex: 0,
+                  ),
+                  child: const Text('عرض الكل'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 150,
+            child: Row(
+              children: [
                 Expanded(
+                  flex: 2,
                   child: _GalleryThumb(
-                    url: visible[i],
-                    overlayCount: (i == visible.length - 1 && extra > 0)
-                        ? extra
-                        : 0,
+                    url: images.first,
                     onTap: () => showProviderPhotoGallery(
                       context,
                       images: images,
-                      initialIndex: i,
+                      initialIndex: 0,
                     ),
                   ),
                 ),
+                if (images.length > 1) ...[
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _GalleryThumb(
+                            url: images[1],
+                            onTap: () => showProviderPhotoGallery(
+                              context,
+                              images: images,
+                              initialIndex: 1,
+                            ),
+                          ),
+                        ),
+                        if (images.length > 2) ...[
+                          const SizedBox(height: 9),
+                          Expanded(
+                            child: _GalleryThumb(
+                              url: images[2],
+                              overlayCount: images.length - 3,
+                              onTap: () => showProviderPhotoGallery(
+                                context,
+                                images: images,
+                                initialIndex: 2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ],
       ),
@@ -456,66 +684,52 @@ class _GallerySection extends StatelessWidget {
 class _GalleryThumb extends StatelessWidget {
   const _GalleryThumb({
     required this.url,
-    required this.overlayCount,
     required this.onTap,
+    this.overlayCount = 0,
   });
 
   final String url;
-  final int overlayCount;
   final VoidCallback onTap;
+  final int overlayCount;
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Material(
-        color: AppTheme.ivory,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => const Center(
+    return Material(
+      color: AppTheme.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const DecoratedBox(
+                decoration: BoxDecoration(color: AppTheme.pearl),
+                child: Center(
                   child: Icon(LucideIcons.image, color: AppTheme.gold),
                 ),
               ),
-              if (overlayCount > 0)
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppTheme.ink.withValues(alpha: 0.55),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '+$overlayCount',
-                          textDirection: TextDirection.ltr,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        Text(
-                          'عرض الكل',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
+            ),
+            if (overlayCount > 0)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppTheme.ink.withValues(alpha: 0.58),
+                ),
+                child: Center(
+                  child: Text(
+                    '+$overlayCount',
+                    textDirection: TextDirection.ltr,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -536,14 +750,22 @@ List<String> _galleryUrls(List<MarketplaceService> services) {
 String? _heroImageUrl(MarketplaceProvider provider, List<String> gallery) {
   final cover = provider.coverUrl?.trim();
   if (cover != null && cover.isNotEmpty) return cover;
-  final logo = provider.logoUrl?.trim();
-  if (logo != null && logo.isNotEmpty) return logo;
   return gallery.isNotEmpty ? gallery.first : null;
 }
 
-int _photoCount(String? hero, List<String> gallery) {
-  final set = <String>{if (hero != null && hero.isNotEmpty) hero, ...gallery};
-  return set.length;
+List<String> _allPhotoUrls(String? hero, List<String> serviceImages) {
+  return <String>{
+    if (hero != null && hero.isNotEmpty) hero,
+    ...serviceImages,
+  }.toList();
+}
+
+String? _providerCategory(List<MarketplaceService> services) {
+  for (final service in services) {
+    final category = service.category?.nameAr.trim();
+    if (category != null && category.isNotEmpty) return category;
+  }
+  return null;
 }
 
 String? _providerLocationDetail(MarketplaceProvider provider) {
@@ -570,7 +792,7 @@ String? _providerPriceRange(List<MarketplaceService> services) {
   if (min == null || max == null) return null;
   final unit = currencyLabelAr(_firstPricedCurrency(services));
   if (min == max) return '${_formatMoney(min)} $unit';
-  return '${_formatMoney(min)} - ${_formatMoney(max)} $unit';
+  return '${_formatMoney(min)} – ${_formatMoney(max)} $unit';
 }
 
 String? _firstPricedCurrency(List<MarketplaceService> services) {

@@ -40,7 +40,7 @@ void main() {
 
     expect(listSource, contains('.initialize()'));
     expect(listSource, contains('onRefresh: chat.initialize'));
-    expect(quoteEntrySource, contains('.initialize()'));
+    expect(quoteEntrySource, contains('.openQuote('));
   });
 
   test('direct conversation routes require an authenticated account', () {
@@ -122,26 +122,32 @@ void main() {
     expect(source, isNot(contains('دفع')));
   });
 
-  test('chat conversation parses unread state and quote context', () {
+  test('chat conversation parses unified provider and plan context', () {
     final conversation = ChatConversation.fromJson({
       'id': 'conversation-1',
-      'quoteRequestId': 'quote-1',
-      'unreadCount': 2,
+      'scope': 'PLAN',
+      'weddingPlan': {'id': 'plan-1', 'title': 'خطة رشا ومحمد'},
+      'provider': {
+        'id': 'provider-1',
+        'businessName': 'قاعة الياسمين',
+        'logoUrl': 'https://cdn.example/logo.webp',
+      },
+      'quoteRequestCount': 2,
+      'unreadMessageCount': 2,
       'muted': false,
       'blocked': true,
       'blockedByMe': false,
       'blockedByCounterpart': true,
-      'counterpartLastReadAt': '2026-07-05T10:01:00.000Z',
       'counterpart': {
         'id': 'provider-user-1',
         'name': 'قاعة الياسمين',
         'avatarUrl': 'https://cdn.example/logo.webp',
       },
-      'quoteRequest': {
+      'latestQuoteRequest': {
         'id': 'quote-1',
         'status': 'SENT',
-        'provider': {'id': 'provider-1', 'businessName': 'قاعة الياسمين'},
         'service': {'id': 'service-1', 'title': 'تنسيق القاعة'},
+        'createdAt': '2026-07-05T09:00:00.000Z',
       },
       'lastMessage': {
         'id': 'message-1',
@@ -151,37 +157,47 @@ void main() {
         'createdAt': '2026-07-05T10:00:00.000Z',
         'attachments': <Object?>[],
       },
+      'providerJoined': true,
+      'canSend': false,
+      'permissions': {
+        'canManageProviders': true,
+        'canViewMoney': false,
+        'canManageMoney': false,
+        'canViewContact': true,
+      },
+      'lastActivityAt': '2026-07-05T10:00:00.000Z',
       'createdAt': '2026-07-05T09:00:00.000Z',
       'updatedAt': '2026-07-05T10:00:00.000Z',
     });
 
-    expect(conversation.unreadCount, 2);
+    expect(conversation.unreadMessageCount, 2);
     expect(conversation.blockedByMe, isFalse);
     expect(conversation.blockedByCounterpart, isTrue);
-    expect(
-      conversation.counterpartLastReadAt,
-      DateTime.parse('2026-07-05T10:01:00.000Z'),
-    );
-    expect(conversation.counterpart.name, 'قاعة الياسمين');
-    expect(conversation.serviceTitle, 'تنسيق القاعة');
+    expect(conversation.provider.businessName, 'قاعة الياسمين');
+    expect(conversation.weddingPlan?.title, 'خطة رشا ومحمد');
+    expect(conversation.latestQuoteRequest?.service?.title, 'تنسيق القاعة');
     expect(conversation.lastMessage?.body, 'مرحبًا، وصل طلبكم');
   });
 
-  test('message page preserves chronological order and cursor', () {
-    final page = ChatMessagePage.fromJson({
+  test('timeline page preserves message activity and cursor', () {
+    final page = ChatTimelinePage.fromJson({
       'items': [
         {
-          'id': 'message-1',
-          'conversationId': 'conversation-1',
-          'senderUserId': 'user-1',
-          'body': 'الرسالة الأولى',
-          'createdAt': '2026-07-05T10:00:00.000Z',
-          'attachments': <Object?>[],
+          'kind': 'MESSAGE',
+          'occurredAt': '2026-07-05T10:00:00.000Z',
+          'message': {
+            'id': 'message-1',
+            'conversationId': 'conversation-1',
+            'senderUserId': 'user-1',
+            'body': 'الرسالة الأولى',
+            'createdAt': '2026-07-05T10:00:00.000Z',
+            'attachments': <Object?>[],
+          },
         },
       ],
       'nextCursor': 'message-0',
     });
-    expect(page.items.single.id, 'message-1');
+    expect(page.items.single.message?.id, 'message-1');
     expect(page.nextCursor, 'message-0');
   });
 
@@ -343,6 +359,8 @@ class _CountingRealtimeClient extends ChatRealtimeClient {
     required void Function(ChatMessage message) onMessage,
     required void Function(String conversationId, String messageId)
     onMessageAvailable,
+    required void Function(String conversationId) onActivityAvailable,
+    required void Function(String conversationId) onPermissionRevoked,
     required void Function(
       String conversationId,
       String userId,

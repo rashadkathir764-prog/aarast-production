@@ -337,6 +337,7 @@ class QuoteRequest {
     required this.status,
     required this.lifecycleStatus,
     this.weddingPlanId,
+    this.serviceId,
     this.userName,
     this.userPhone,
     this.contactName,
@@ -353,6 +354,7 @@ class QuoteRequest {
     this.budgetMax,
     this.offers = const [],
     this.costSuggestion,
+    this.createdAt,
   });
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
@@ -364,6 +366,7 @@ class QuoteRequest {
       id: json['id'].toString(),
       providerId: json['providerId']?.toString() ?? '',
       weddingPlanId: json['weddingPlanId']?.toString(),
+      serviceId: json['serviceId']?.toString(),
       userName: user is Map ? user['name']?.toString() : null,
       userPhone: user is Map ? user['phone']?.toString() : null,
       contactName: json['contactName']?.toString(),
@@ -401,12 +404,14 @@ class QuoteRequest {
         json['costSuggestion'],
         QuoteCostSuggestion.fromJson,
       ),
+      createdAt: _dateOrNull(json['createdAt']),
     );
   }
 
   final String id;
   final String providerId;
   final String? weddingPlanId;
+  final String? serviceId;
   final String? userName;
   final String? userPhone;
   final String? contactName;
@@ -425,6 +430,7 @@ class QuoteRequest {
   final String lifecycleStatus;
   final List<QuoteOffer> offers;
   final QuoteCostSuggestion? costSuggestion;
+  final DateTime? createdAt;
 
   QuoteOffer? get acceptedOffer {
     for (final offer in offers) {
@@ -435,10 +441,19 @@ class QuoteRequest {
 
   QuoteOffer? get pendingOffer {
     for (final offer in offers) {
-      if (offer.status == 'PENDING') return offer;
+      if (offer.isActionable) return offer;
     }
     return null;
   }
+
+  QuoteOffer? get expiredOffer {
+    for (final offer in offers) {
+      if (offer.isExpired) return offer;
+    }
+    return null;
+  }
+
+  bool get hasExpiredOffer => expiredOffer != null;
 
   bool get canAcceptOrReject =>
       lifecycleStatus == 'RECEIVED' && pendingOffer != null;
@@ -456,6 +471,7 @@ class QuoteOffer {
     this.amount,
     this.currency,
     this.validUntil,
+    this.serverIsExpired,
   });
 
   factory QuoteOffer.fromJson(Map<String, dynamic> json) {
@@ -467,6 +483,9 @@ class QuoteOffer {
       amount: json['amount']?.toString(),
       currency: json['currency']?.toString(),
       validUntil: _dateOrNull(json['validUntil']),
+      serverIsExpired: json['isExpired'] is bool
+          ? json['isExpired'] as bool
+          : null,
     );
   }
 
@@ -477,6 +496,16 @@ class QuoteOffer {
   final String? amount;
   final String? currency;
   final DateTime? validUntil;
+  final bool? serverIsExpired;
+
+  bool get isExpired {
+    if (status != 'PENDING') return false;
+    final expiry = validUntil;
+    if (expiry != null && expiry.isBefore(DateTime.now())) return true;
+    return serverIsExpired ?? false;
+  }
+
+  bool get isActionable => status == 'PENDING' && !isExpired;
 }
 
 class QuoteCostSuggestion {
@@ -521,14 +550,6 @@ class QuoteCostSuggestion {
   final String? quoteOfferId;
   final String? costId;
   final List<String> availableActions;
-
-  bool get canCreateCost =>
-      !automaticCostCreated &&
-      suggestedAction == 'CREATE_COST' &&
-      availableActions.contains('CREATE_COST') &&
-      providerId.trim().isNotEmpty &&
-      quotedAmount?.trim().isNotEmpty == true &&
-      quoteOfferId?.trim().isNotEmpty == true;
 
   bool get canViewCost =>
       availableActions.contains('VIEW_COST') &&

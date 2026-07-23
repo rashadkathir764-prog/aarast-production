@@ -1,4 +1,3 @@
-import 'package:aarast_mobile/features/marketplace/models/accepted_quote_cost_draft.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/quote_status_chip.dart';
 import 'package:flutter/material.dart';
@@ -32,7 +31,7 @@ void main() {
     expect(quote.canAcceptOrReject, isTrue);
   });
 
-  test('accepted quote exposes an optional canonical cost suggestion', () {
+  test('accepted quote exposes its automatically created canonical cost', () {
     final quote = QuoteRequest.fromJson({
       'id': 'quote-accepted',
       'providerId': 'provider-1',
@@ -54,31 +53,20 @@ void main() {
         'category': 'القاعات',
         'quotedAmount': '250000',
         'currency': 'YER',
-        'suggestedAction': 'CREATE_COST',
-        'availableActions': ['CREATE_COST'],
+        'suggestedAction': 'VIEW_COST',
+        'availableActions': ['VIEW_COST'],
         'quoteOfferId': 'offer-accepted',
-        'automaticCostCreated': false,
+        'costId': 'cost-from-offer',
+        'automaticCostCreated': true,
       },
     });
 
     expect(quote.costSuggestion?.providerId, 'provider-1');
     expect(quote.costSuggestion?.quotedAmount, '250000');
     expect(quote.costSuggestion?.quoteOfferId, 'offer-accepted');
-    expect(quote.costSuggestion?.automaticCostCreated, isFalse);
-    expect(quote.costSuggestion?.canCreateCost, isTrue);
-
-    final intent = costDraftIntentFromAcceptedQuote(
-      quote,
-      fallbackCurrency: 'SAR',
-    );
-    expect(intent, isNotNull);
-    expect(intent?.title, 'خدمة القاعة');
-    expect(intent?.totalAmount, '250000');
-    expect(intent?.providerId, 'provider-1');
-    expect(intent?.providerName, 'قاعة السعادة');
-    expect(intent?.quoteOfferId, 'offer-accepted');
-    expect(intent?.currency, 'YER');
-    expect(intent?.cameFromAcceptedQuote, isTrue);
+    expect(quote.costSuggestion?.automaticCostCreated, isTrue);
+    expect(quote.costSuggestion?.costId, 'cost-from-offer');
+    expect(quote.costSuggestion?.canViewCost, isTrue);
   });
 
   testWidgets('quote status chip uses truthful Arabic lifecycle labels', (

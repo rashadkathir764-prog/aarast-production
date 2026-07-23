@@ -103,8 +103,13 @@ class AppRouter {
   static const guestOnboardingPreview = '/dev/guest-onboarding';
   static const userNavigationShellPreview = '/dev/user-navigation-shell';
 
-  static String providerDetails(String id) {
-    return '/providers/$id';
+  static String providerDetails(String id, {String? weddingPlanId}) {
+    final planId = weddingPlanId?.trim();
+    if (planId == null || planId.isEmpty) return '/providers/$id';
+    return Uri(
+      path: '/providers/$id',
+      queryParameters: {'weddingPlanId': planId},
+    ).toString();
   }
 
   static String conversation(String id) {
@@ -352,7 +357,10 @@ class AppRouter {
           path: '/providers/:id',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return ProviderDetailsScreen(providerId: id);
+            return ProviderDetailsScreen(
+              providerId: id,
+              weddingPlanId: state.uri.queryParameters['weddingPlanId'],
+            );
           },
         ),
         GoRoute(

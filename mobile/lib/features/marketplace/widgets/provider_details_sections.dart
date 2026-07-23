@@ -4,7 +4,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../models/marketplace_models.dart';
 
 class ProviderDetailsSections extends StatelessWidget {
@@ -26,34 +25,105 @@ class ProviderDetailsSections extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _pad(_AboutCard(provider: provider)),
-        const SizedBox(height: 16),
-        _pad(
+        _section(_AboutSection(provider: provider)),
+        const _SectionDivider(),
+        _section(
           _ServicesSection(services: services, onRequestQuote: onRequestQuote),
         ),
-        const SizedBox(height: 16),
-        _pad(_PackagesSection(packages: packages)),
-        const SizedBox(height: 16),
-        _pad(_ReviewsSection(reviews: reviews)),
+        const _SectionDivider(),
+        _section(_PackagesSection(packages: packages)),
+        const _SectionDivider(),
+        _section(_ReviewsSection(reviews: reviews)),
       ],
     );
   }
 }
 
-Widget _pad(Widget child) =>
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: child);
+Widget _section(Widget child) => Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+  child: child,
+);
 
-class _AboutCard extends StatefulWidget {
-  const _AboutCard({required this.provider});
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: Divider(),
+    );
+  }
+}
+
+class _EditorialSectionHeader extends StatelessWidget {
+  const _EditorialSectionHeader({
+    required this.title,
+    required this.icon,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppTheme.burgundySoft,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 16, color: AppTheme.burgundy),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  subtitle!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AboutSection extends StatefulWidget {
+  const _AboutSection({required this.provider});
 
   final MarketplaceProvider provider;
 
   @override
-  State<_AboutCard> createState() => _AboutCardState();
+  State<_AboutSection> createState() => _AboutSectionState();
 }
 
-class _AboutCardState extends State<_AboutCard> {
+class _AboutSectionState extends State<_AboutSection> {
   bool _expanded = false;
 
   @override
@@ -62,72 +132,106 @@ class _AboutCardState extends State<_AboutCard> {
     final hasDescription = description != null && description.isNotEmpty;
     final text = hasDescription
         ? description
-        : 'لا توجد نبذة مفصلة بعد، لكن يمكنك طلب عرض سعر لمعرفة التفاصيل المناسبة لخطتك.';
+        : 'لا توجد نبذة مفصلة بعد. يمكنك طلب عرض سعر لمعرفة التفاصيل المناسبة لخطتك.';
     final canExpand = hasDescription && description.length > 150;
 
-    return AarastCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AarastSectionHeader(
-            title: 'نبذة عن المورد',
-            icon: LucideIcons.info,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _EditorialSectionHeader(
+          title: 'نبذة عن المورد',
+          icon: LucideIcons.info,
+        ),
+        const SizedBox(height: 14),
+        AnimatedSize(
+          duration: AppTheme.motionFast,
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: Text(
+            text,
+            textAlign: TextAlign.right,
+            maxLines: canExpand && !_expanded ? 3 : null,
+            overflow: canExpand && !_expanded
+                ? TextOverflow.ellipsis
+                : TextOverflow.clip,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w600,
+              height: 1.75,
+            ),
           ),
+        ),
+        if (canExpand)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              onPressed: () => setState(() => _expanded = !_expanded),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                minimumSize: const Size(0, 34),
+              ),
+              child: Text(_expanded ? 'عرض أقل' : 'عرض المزيد'),
+            ),
+          ),
+        if (_hasContactDetails(widget.provider)) ...[
           const SizedBox(height: 12),
-          AnimatedSize(
-            duration: AppTheme.motionFast,
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: Text(
-              text,
-              textAlign: TextAlign.right,
-              maxLines: canExpand && !_expanded ? 3 : null,
-              overflow: canExpand && !_expanded
-                  ? TextOverflow.ellipsis
-                  : TextOverflow.clip,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.muted,
-                fontWeight: FontWeight.w700,
-                height: 1.6,
-              ),
-            ),
-          ),
-          if (canExpand)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
-                onPressed: () => setState(() => _expanded = !_expanded),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  minimumSize: const Size(0, 32),
-                ),
-                child: Text(_expanded ? 'عرض أقل' : 'عرض المزيد'),
-              ),
-            ),
-          const SizedBox(height: 6),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               if (widget.provider.phone?.trim().isNotEmpty == true)
-                AarastStatusPill(
+                _ContactDetail(
                   label:
                       PhoneNumberUtils.directionalDisplay(
                         widget.provider.phone,
                       ) ??
                       widget.provider.phone!.trim(),
                   icon: LucideIcons.phone,
-                  color: AppTheme.ink,
-                  backgroundColor: AppTheme.ivory,
                 ),
               if (widget.provider.address?.trim().isNotEmpty == true)
-                AarastStatusPill(
+                _ContactDetail(
                   label: widget.provider.address!.trim(),
-                  icon: LucideIcons.building2,
-                  color: AppTheme.gold,
-                  backgroundColor: AppTheme.ivory,
+                  icon: LucideIcons.mapPin,
                 ),
             ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ContactDetail extends StatelessWidget {
+  const _ContactDetail({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 260),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.goldDeep),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -146,68 +250,65 @@ class _ServicesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AarastSectionHeader(
-            title: 'الخدمات المتاحة',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _EditorialSectionHeader(
+          title: 'الخدمات المتاحة',
+          subtitle: 'اختر خدمة لتبدأ طلب عرض السعر بالتفاصيل الصحيحة.',
+          icon: LucideIcons.sparkles,
+        ),
+        const SizedBox(height: 14),
+        if (services.isEmpty)
+          const _EditorialEmpty(
             icon: LucideIcons.wand,
+            title: 'لا توجد خدمات منشورة',
+            message: 'سيظهر هنا كتالوج خدمات المورد عند إضافته.',
+          )
+        else
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppTheme.border)),
+            ),
+            child: Column(
+              children: [
+                for (final service in services)
+                  _ServiceLine(
+                    service: service,
+                    onRequestQuote: onRequestQuote,
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          if (services.isEmpty)
-            const AarastEmptyState(
-              icon: LucideIcons.wand,
-              title: 'لا توجد خدمات منشورة',
-              message: 'سيظهر هنا كتالوج خدمات المورد عند إضافته.',
-            )
-          else
-            for (final service in services) ...[
-              _ServiceTile(service: service, onRequestQuote: onRequestQuote),
-              const SizedBox(height: 10),
-            ],
-        ],
-      ),
+      ],
     );
   }
 }
 
-class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({required this.service, required this.onRequestQuote});
+class _ServiceLine extends StatelessWidget {
+  const _ServiceLine({required this.service, required this.onRequestQuote});
 
   final MarketplaceService service;
   final ValueChanged<MarketplaceService> onRequestQuote;
 
   @override
   Widget build(BuildContext context) {
+    final description = service.description?.trim();
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.border)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.ivory,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(LucideIcons.sparkles, color: AppTheme.gold),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   service.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
@@ -217,18 +318,47 @@ class _ServiceTile extends StatelessWidget {
                   _priceText(service.basePrice, service.currency),
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.burgundy,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
+                if (description != null && description.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.muted,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'طلب عرض لهذه الخدمة',
-            onPressed: () => onRequestQuote(service),
-            icon: const Icon(LucideIcons.chevronLeft),
+          const SizedBox(width: 10),
+          Tooltip(
+            message: 'طلب عرض لهذه الخدمة',
+            child: Material(
+              color: AppTheme.surface,
+              shape: CircleBorder(
+                side: BorderSide(color: AppTheme.border.withValues(alpha: 0.9)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => onRequestQuote(service),
+                child: const SizedBox.square(
+                  dimension: 44,
+                  child: Icon(
+                    LucideIcons.arrowLeft,
+                    size: 19,
+                    color: AppTheme.burgundy,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -243,111 +373,89 @@ class _PackagesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AarastSectionHeader(
-            title: 'الباقات المتاحة',
-            icon: LucideIcons.package,
-          ),
-          const SizedBox(height: 12),
-          if (packages.isEmpty)
-            const Text(
-              'لا توجد باقات منشورة حاليًا.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.muted),
-            )
-          else
-            for (final item in packages) ...[
-              _PackageTile(item: item),
-              const SizedBox(height: 10),
-            ],
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _EditorialSectionHeader(
+          title: 'الباقات المتاحة',
+          subtitle: 'مرجع للمقارنة فقط؛ يتأكد المحتوى والسعر عبر طلب العرض.',
+          icon: LucideIcons.package,
+        ),
+        const SizedBox(height: 14),
+        if (packages.isEmpty)
+          const _EditorialEmpty(
+            icon: LucideIcons.packageOpen,
+            title: 'لا توجد باقات منشورة حاليًا.',
+            message: 'يمكنك طلب عرض سعر للخدمة المناسبة مباشرة.',
+          )
+        else
+          for (var index = 0; index < packages.length; index++) ...[
+            _PackageBlock(item: packages[index]),
+            if (index != packages.length - 1) const SizedBox(height: 10),
+          ],
+      ],
     );
   }
 }
 
-class _PackageTile extends StatelessWidget {
-  const _PackageTile({required this.item});
+class _PackageBlock extends StatelessWidget {
+  const _PackageBlock({required this.item});
 
   final ProviderPackage item;
 
   @override
   Widget build(BuildContext context) {
     final features = _packageFeatures(item.items);
+    final description = item.description?.trim();
+    final serviceTitle = item.serviceTitle?.trim();
     final hasPrice = item.price?.trim().isNotEmpty == true;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(color: AppTheme.goldSoft),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.burgundySoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  LucideIcons.gift,
-                  color: AppTheme.burgundy,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.ink,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (item.serviceTitle?.trim().isNotEmpty == true) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.serviceTitle!.trim(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(color: AppTheme.muted),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (hasPrice)
-                Text(
-                  _priceText(item.price, item.currency),
-                  textDirection: TextDirection.ltr,
-                  style: const TextStyle(
-                    color: AppTheme.burgundy,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-            ],
+          Text(
+            item.title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          if (item.description?.trim().isNotEmpty == true) ...[
+          if (serviceTitle != null && serviceTitle.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              serviceTitle,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+            ),
+          ],
+          if (hasPrice) ...[
+            const SizedBox(height: 9),
+            Text(
+              _priceText(item.price, item.currency),
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.burgundy,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+          if (description != null && description.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              item.description!.trim(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppTheme.muted, height: 1.4),
+              description,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.muted,
+                height: 1.5,
+              ),
             ),
           ],
           if (features.isNotEmpty) ...[
@@ -372,21 +480,25 @@ class _FeatureChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: const BoxConstraints(maxWidth: 230),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: AppTheme.ivory,
         borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.check, size: 13, color: AppTheme.gold),
+          const Icon(LucideIcons.check, size: 13, color: AppTheme.goldDeep),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.ink,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppTheme.ink),
             ),
           ),
         ],
@@ -402,78 +514,148 @@ class _ReviewsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AarastSectionHeader(title: 'التقييمات', icon: LucideIcons.star),
-          const SizedBox(height: 12),
-          if (reviews.isEmpty)
-            const Text(
-              'لا توجد تقييمات بعد.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.muted),
-            )
-          else
-            for (final review in reviews.take(4)) ...[
-              _ReviewTile(review: review),
-              const SizedBox(height: 10),
-            ],
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _EditorialSectionHeader(
+          title: 'التقييمات',
+          icon: LucideIcons.star,
+        ),
+        const SizedBox(height: 14),
+        if (reviews.isEmpty)
+          const _EditorialEmpty(
+            icon: LucideIcons.messageSquare,
+            title: 'لا توجد تقييمات بعد.',
+            message: 'ستظهر هنا تجارب العملاء عند توفرها.',
+          )
+        else
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppTheme.border)),
+            ),
+            child: Column(
+              children: [
+                for (final review in reviews.take(4))
+                  _ReviewLine(review: review),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
 
-class _ReviewTile extends StatelessWidget {
-  const _ReviewTile({required this.review});
+class _ReviewLine extends StatelessWidget {
+  const _ReviewLine({required this.review});
 
   final ProviderReview review;
 
   @override
   Widget build(BuildContext context) {
+    final comment = review.comment?.trim();
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.border)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.star, color: AppTheme.gold, size: 18),
-              const SizedBox(width: 4),
+              const Icon(LucideIcons.star, color: AppTheme.gold, size: 17),
+              const SizedBox(width: 5),
               Text(
                 '${review.rating}/5',
                 textDirection: TextDirection.ltr,
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 9),
               Expanded(
                 child: Text(
                   review.userName ?? 'مستخدم أعرست',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppTheme.muted),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-          if (review.comment?.trim().isNotEmpty == true) ...[
+          if (comment != null && comment.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              review.comment!.trim(),
+              comment,
               textAlign: TextAlign.right,
-              style: const TextStyle(color: AppTheme.muted, height: 1.5),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.muted,
+                height: 1.55,
+              ),
             ),
           ],
         ],
       ),
     );
   }
+}
+
+class _EditorialEmpty extends StatelessWidget {
+  const _EditorialEmpty({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: AppTheme.pearl,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: AppTheme.goldDeep),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+bool _hasContactDetails(MarketplaceProvider provider) {
+  return provider.phone?.trim().isNotEmpty == true ||
+      provider.address?.trim().isNotEmpty == true;
 }
 
 List<String> _packageFeatures(String? items) {

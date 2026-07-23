@@ -15,35 +15,48 @@ import '../widgets/provider_details_view.dart';
 import '../widgets/quote_status_chip.dart';
 
 class ProviderDetailsScreen extends StatefulWidget {
-  const ProviderDetailsScreen({required this.providerId, super.key});
+  const ProviderDetailsScreen({
+    required this.providerId,
+    this.weddingPlanId,
+    super.key,
+  });
 
   final String providerId;
+  final String? weddingPlanId;
 
   @override
   State<ProviderDetailsScreen> createState() => _ProviderDetailsScreenState();
 }
 
 class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
+  bool _quoteContextReady = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<ProviderMarketplaceProvider>().loadProviderDetails(
+      await context.read<ProviderMarketplaceProvider>().loadProviderDetails(
         widget.providerId,
+        weddingPlanId: widget.weddingPlanId,
       );
+      if (mounted) setState(() => _quoteContextReady = true);
     });
   }
 
   @override
   void didUpdateWidget(covariant ProviderDetailsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.providerId != widget.providerId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (oldWidget.providerId != widget.providerId ||
+        oldWidget.weddingPlanId != widget.weddingPlanId) {
+      _quoteContextReady = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        context.read<ProviderMarketplaceProvider>().loadProviderDetails(
+        await context.read<ProviderMarketplaceProvider>().loadProviderDetails(
           widget.providerId,
+          weddingPlanId: widget.weddingPlanId,
         );
+        if (mounted) setState(() => _quoteContextReady = true);
       });
     }
   }
@@ -55,68 +68,91 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       safeAreaBottom: false,
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        child: DecoratedBox(
           decoration: const BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.ivory,
             border: Border(top: BorderSide(color: AppTheme.border)),
           ),
-          child: Consumer<ProviderMarketplaceProvider>(
-            builder: (context, marketplace, _) {
-              final quotes = marketplace.quotesForProvider(widget.providerId);
-              final latest = quotes.isEmpty ? null : quotes.first;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (latest != null) ...[
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'آخر طلب لهذا المورد',
-                            style: TextStyle(
-                              color: AppTheme.muted,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        QuoteStatusChip(
-                          status: latest.lifecycleStatus,
-                          compact: true,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Row(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Consumer<ProviderMarketplaceProvider>(
+              builder: (context, marketplace, _) {
+                final quotes = marketplace.quotesForProviderInScope(
+                  widget.providerId,
+                  weddingPlanId: widget.weddingPlanId,
+                );
+                final latest = quotes.isEmpty ? null : quotes.first;
+                final loadingQuote =
+                    !_quoteContextReady ||
+                    marketplace.isProviderQuoteContextLoading(
+                      widget.providerId,
+                    );
+                return Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                    border: Border.all(color: AppTheme.border),
+                    boxShadow: AppTheme.softShadow(opacity: 0.12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (latest != null) ...[
-                        _ContactIconButton(
-                          key: const Key('provider-details-conversation'),
-                          onTap: () => context.push(
-                            AppRouter.quoteConversation(latest.id),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 2, 6, 7),
+                          child: Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'آخر طلب لهذا المورد',
+                                  style: TextStyle(
+                                    color: AppTheme.muted,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              QuoteStatusChip(
+                                status: latest.lifecycleStatus,
+                                compact: true,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
                       ],
-                      Expanded(
-                        child: AarastButton(
-                          label: latest == null
-                              ? 'اطلب عرض سعر'
-                              : 'طلب عرض سعر جديد',
-                          icon: LucideIcons.receipt,
-                          expand: false,
-                          onPressed: () => context.push(
-                            AppRouter.providerQuote(widget.providerId),
+                      Row(
+                        children: [
+                          if (latest != null) ...[
+                            _ContactIconButton(
+                              key: const Key('provider-details-conversation'),
+                              onTap: () => context.push(
+                                AppRouter.quoteConversation(latest.id),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            child: AarastButton(
+                              label: loadingQuote
+                                  ? 'تحميل حالة الطلب...'
+                                  : _primaryQuoteActionLabel(latest),
+                              expand: false,
+                              onPressed: loadingQuote
+                                  ? null
+                                  : () => _openPrimaryQuoteAction(
+                                      context,
+                                      latest,
+                                    ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -138,7 +174,10 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                 title: 'تعذر فتح المورد',
                 message: state.errorMessage!,
                 action: OutlinedButton.icon(
-                  onPressed: () => state.loadProviderDetails(widget.providerId),
+                  onPressed: () => state.loadProviderDetails(
+                    widget.providerId,
+                    weddingPlanId: widget.weddingPlanId,
+                  ),
                   icon: const Icon(LucideIcons.refreshCw),
                   label: const Text('إعادة المحاولة'),
                 ),
@@ -184,6 +223,38 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       ),
     );
   }
+
+  String _primaryQuoteActionLabel(QuoteRequest? quote) {
+    if (quote == null) return 'طلب عرض سعر';
+    if (quote.status == 'SENT' || quote.status == 'VIEWED') {
+      return 'متابعة الطلب الحالي';
+    }
+    if (quote.status == 'RESPONDED') {
+      return quote.hasExpiredOffer ? 'طلب عرض جديد' : 'مراجعة العرض';
+    }
+    if (quote.status == 'ACCEPTED') return 'عرض المورد في الخطة';
+    return 'طلب عرض جديد';
+  }
+
+  void _openPrimaryQuoteAction(BuildContext context, QuoteRequest? quote) {
+    if (quote == null ||
+        quote.status == 'CANCELLED' ||
+        quote.status == 'REJECTED' ||
+        quote.hasExpiredOffer) {
+      context.push(AppRouter.providerQuote(widget.providerId));
+      return;
+    }
+    if (quote.status == 'SENT' || quote.status == 'VIEWED') {
+      context.push(AppRouter.quoteConversation(quote.id));
+      return;
+    }
+    final planId = quote.weddingPlanId ?? widget.weddingPlanId;
+    if (quote.status == 'ACCEPTED' && planId != null && planId.isNotEmpty) {
+      context.push('/wedding-plans/$planId/providers?quoteId=${quote.id}');
+      return;
+    }
+    context.push('${AppRouter.providerMarketplace}?quoteId=${quote.id}');
+  }
 }
 
 Future<void> _shareProvider(
@@ -218,9 +289,7 @@ class _ContactIconButton extends StatelessWidget {
             foregroundColor: AppTheme.burgundy,
             backgroundColor: AppTheme.surface,
             side: const BorderSide(color: AppTheme.border),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            ),
+            shape: const CircleBorder(),
           ),
           child: const Icon(LucideIcons.messageCircle, size: 22),
         ),

@@ -11,6 +11,7 @@ import 'package:aarast_mobile/features/marketplace/screens/favorite_providers_sc
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -79,6 +80,122 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('provider details stay safe at 320px RTL and 1.3 scale', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 900);
+      addTearDown(tester.view.reset);
+      final marketplace = _FakeMarketplaceProvider();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: marketplace,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.3)),
+              child: child!,
+            ),
+            home: const ProviderDetailsScreen(providerId: _providerId),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
+      expect(find.text('طلب عرض سعر'), findsOneWidget);
+      expect(find.textContaining('YER'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('provider details CTA follows the latest quote lifecycle', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final cases = <QuoteRequest?, String>{
+        null: 'طلب عرض سعر',
+        _quote(status: 'SENT'): 'متابعة الطلب الحالي',
+        _quote(
+          status: 'RESPONDED',
+          offers: const [QuoteOffer(id: 'offer-live', status: 'PENDING')],
+        ): 'مراجعة العرض',
+        _quote(
+          status: 'RESPONDED',
+          offers: const [
+            QuoteOffer(
+              id: 'offer-expired',
+              status: 'PENDING',
+              serverIsExpired: true,
+            ),
+          ],
+        ): 'طلب عرض جديد',
+        _quote(status: 'ACCEPTED'): 'عرض المورد في الخطة',
+        _quote(status: 'CANCELLED'): 'طلب عرض جديد',
+      };
+
+      for (final entry in cases.entries) {
+        final marketplace = _FakeMarketplaceProvider(
+          quotes: entry.key == null ? const [] : [entry.key!],
+        );
+        await tester.pumpWidget(
+          ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+            value: marketplace,
+            child: const MaterialApp(
+              home: ProviderDetailsScreen(
+                providerId: _providerId,
+                weddingPlanId: 'plan-1',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(entry.value), findsOneWidget);
+      }
+    });
+
+    testWidgets('provider details conversation action routes with quote id', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final quote = _quote(status: 'SENT');
+      final marketplace = _FakeMarketplaceProvider(quotes: [quote]);
+      final router = GoRouter(
+        initialLocation: '/providers/$_providerId',
+        routes: [
+          GoRoute(
+            path: '/providers/:id',
+            builder: (_, _) => const ProviderDetailsScreen(
+              providerId: _providerId,
+              weddingPlanId: 'plan-1',
+            ),
+          ),
+          GoRoute(
+            path: '/quotes/:id/conversation',
+            builder: (_, state) => Scaffold(
+              body: Text('quote-chat-${state.pathParameters['id']}'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: marketplace,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('provider-details-conversation')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('quote-chat-${quote.id}'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('favorite providers keep comparison copy and currency labels', (
       tester,
     ) async {
@@ -106,7 +223,7 @@ void main() {
       expect(find.text('1,200 ر.س'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(
-        find.textContaining('لا يتم إنشاء حجز أو تكلفة تلقائياً'),
+        find.textContaining('عند قبول العرض تُنشأ التكلفة تلقائياً'),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -207,12 +324,33 @@ ProviderPackage _package() {
   );
 }
 
+QuoteRequest _quote({
+  required String status,
+  List<QuoteOffer> offers = const [],
+}) => QuoteRequest(
+  id: 'quote-$status-${offers.length}',
+  providerId: _providerId,
+  weddingPlanId: 'plan-1',
+  status: status,
+  lifecycleStatus: switch (status) {
+    'SENT' || 'VIEWED' => 'PENDING_PROVIDER',
+    'RESPONDED' => 'RECEIVED',
+    _ => status,
+  },
+  offers: offers,
+  createdAt: DateTime(2026, 7, 22),
+);
+
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
-  _FakeMarketplaceProvider({bool isSubmitting = false})
-    : _isSubmitting = isSubmitting,
-      super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+  _FakeMarketplaceProvider({
+    bool isSubmitting = false,
+    List<QuoteRequest> quotes = const [],
+  }) : _quotes = quotes,
+       _isSubmitting = isSubmitting,
+       super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final bool _isSubmitting;
+  final List<QuoteRequest> _quotes;
   int toggleFavoriteCallCount = 0;
 
   @override
@@ -252,10 +390,13 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   List<ProviderReview> reviewsFor(String id) => const [];
 
   @override
-  List<QuoteRequest> quotesForProvider(String providerId) => const [];
+  List<QuoteRequest> quotesForProvider(String providerId) => _quotes;
 
   @override
-  Future<void> loadProviderDetails(String providerId) async {}
+  Future<void> loadProviderDetails(
+    String providerId, {
+    String? weddingPlanId,
+  }) async {}
 
   @override
   Future<void> loadFavoriteProviders() async {}

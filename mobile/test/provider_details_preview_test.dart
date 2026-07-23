@@ -1,9 +1,7 @@
-// Full-screen visual preview for the redesigned consumer provider details
-// screen — full-bleed hero with overlay controls + photo counter, headline
-// card with category/rating/location + price block, photo gallery, expandable
-// "نبذة", packages with feature chips, and the pinned quote CTA. Matches the
-// approved marketplace mockup. Network images fall back to placeholders in the
-// golden harness; real photos render on device.
+// Full-screen visual preview for the approved editorial provider details:
+// real-media hero, overlapping detail sheet, price band, photo collage, flat
+// sections, and the pinned quote CTA. The golden deliberately renders the
+// honest no-photo fallback; real provider media renders on device.
 //
 // Regenerate with:
 //   flutter test test/provider_details_preview_test.dart --update-goldens
@@ -143,7 +141,10 @@ class _PreviewMarketplaceProvider extends ProviderMarketplaceProvider {
   List<QuoteRequest> quotesForProvider(String providerId) => const [];
 
   @override
-  Future<void> loadProviderDetails(String providerId) async {}
+  Future<void> loadProviderDetails(
+    String providerId, {
+    String? weddingPlanId,
+  }) async {}
 
   @override
   Future<void> toggleFavorite(String providerId) async {}

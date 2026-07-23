@@ -156,10 +156,8 @@ export type ConversationReport = {
     avatarUrl: string | null;
   };
   conversation: {
-    quoteRequestId: string;
-    quoteRequest: {
-      provider: { id: string; businessName: string };
-    };
+    provider: { id: string; businessName: string };
+    quoteRequests: Array<{ id: string }>;
   };
 };
 

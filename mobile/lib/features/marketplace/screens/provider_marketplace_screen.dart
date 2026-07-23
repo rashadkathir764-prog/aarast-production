@@ -8,12 +8,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../finance/providers/finance_provider.dart';
 import '../widgets/premium/premium_vendor_card.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
-import '../models/accepted_quote_cost_draft.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
@@ -45,6 +45,7 @@ class ProviderMarketplaceScreen extends StatefulWidget {
 class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _scrollController = ScrollController();
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
   bool _planContextResolved = false;
@@ -52,6 +53,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_loadMoreNearEnd);
     _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
     _planContextResolved = _weddingLocationPlanId != null;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -60,7 +62,11 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       _searchController.text = provider.search;
       final includeAccountData = await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
-      await provider.loadMarketplace(includeAccountData: includeAccountData);
+      await provider.loadMarketplace(
+        includeAccountData: includeAccountData,
+        weddingPlanId: widget.weddingPlanId,
+        updateQuoteScope: true,
+      );
       if (!mounted) return;
       await _loadRequestedQuote(provider, hasAccount: includeAccountData);
       if (!mounted) return;
@@ -84,6 +90,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         final hasAccount = await AuthActionGuard.hasAccount(context);
+        if (!mounted) return;
+        await context.read<ProviderMarketplaceProvider>().loadMarketplace(
+          includeAccountData: hasAccount,
+          weddingPlanId: widget.weddingPlanId,
+          updateQuoteScope: true,
+        );
         if (!mounted) return;
         await _loadWeddingLocationContext(
           hasAccount: hasAccount,
@@ -115,6 +127,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   @override
   void dispose() {
+    _scrollController
+      ..removeListener(_loadMoreNearEnd)
+      ..dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -130,8 +145,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           final quoteRequests = _visibleQuoteRequests(provider);
           return RefreshIndicator(
             color: AppTheme.burgundy,
-            onRefresh: provider.loadMarketplace,
+            onRefresh: () => provider.loadMarketplace(
+              weddingPlanId: widget.weddingPlanId,
+              updateQuoteScope: true,
+            ),
             child: ListView(
+              controller: _scrollController,
               padding: EdgeInsets.fromLTRB(
                 16,
                 widget.embedded ? 18 : 20,
@@ -179,7 +198,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     isSubmitting: provider.isSubmitting,
                     onAccept: _acceptQuote,
                     onReject: _rejectQuote,
-                    onCreateCost: _createCostFromAcceptedQuote,
+                    onViewCost: _viewAcceptedQuoteCost,
+                    onCreateNew: (quote) =>
+                        context.push(AppRouter.providerQuote(quote.providerId)),
                   ),
                 ],
                 if (provider.includesAccountData &&
@@ -188,7 +209,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   _ErrorCard(
                     title: 'تعذر تحميل عروض الأسعار',
                     message: provider.quoteRequestsErrorMessage!,
-                    onRetry: provider.loadMyQuoteRequests,
+                    onRetry: provider.loadScopedQuoteRequests,
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -221,8 +242,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     _BudgetMatchedServicesSection(
                       intent: provider.budgetMatchIntent!,
                       services: provider.budgetMatchedServices,
-                      onOpenProvider: (providerId) =>
-                          context.push(AppRouter.providerDetails(providerId)),
+                      onOpenProvider: (providerId) => context.push(
+                        AppRouter.providerDetails(
+                          providerId,
+                          weddingPlanId: _weddingLocationPlanId,
+                        ),
+                      ),
                       onRequestQuote: (service) => context.push(
                         AppRouter.providerQuote(service.providerId),
                         extra: ProviderQuoteInitialContext(
@@ -240,7 +265,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     const SizedBox(height: 18),
                   ],
                   _ResultsHeader(
-                    count: provider.providers.length,
+                    count: provider.totalProviders,
                     location: _weddingLocation,
                   ),
                   const SizedBox(height: 12),
@@ -259,11 +284,37 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         }
                         await provider.toggleFavorite(item.id);
                       },
-                      onTap: () =>
-                          context.push(AppRouter.providerDetails(item.id)),
+                      onTap: () => context.push(
+                        AppRouter.providerDetails(
+                          item.id,
+                          weddingPlanId: _weddingLocationPlanId,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                   ],
+                  if (provider.isLoadingMore)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(child: AarastInlineSpinner(dimension: 36)),
+                    )
+                  else if (provider.loadMoreErrorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: _ErrorCard(
+                        title: 'تعذر تحميل المزيد',
+                        message: provider.loadMoreErrorMessage!,
+                        onRetry: provider.loadMoreProviders,
+                      ),
+                    )
+                  else if (provider.hasMoreProviders)
+                    Center(
+                      child: TextButton(
+                        key: const Key('providers-load-more'),
+                        onPressed: provider.loadMoreProviders,
+                        child: const Text('تحميل المزيد'),
+                      ),
+                    ),
                 ],
               ],
             ),
@@ -271,6 +322,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         },
       ),
     );
+  }
+
+  void _loadMoreNearEnd() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.extentAfter > 500) return;
+    context.read<ProviderMarketplaceProvider>().loadMoreProviders();
   }
 
   Future<void> _loadWeddingLocationContext({
@@ -427,9 +484,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       );
       return;
     }
+    final planId = quote.weddingPlanId?.trim();
+    if (planId != null && planId.isNotEmpty) {
+      await context.read<FinanceProvider?>()?.loadMoney(planId);
+      if (!mounted) return;
+    }
     AarastToast.showSuccess(
       context,
-      'تم قبول العرض وربط المورد بالخطة. لم تُنشأ تكلفة أو دفعة تلقائيًا.',
+      'تم قبول العرض وإضافة التكلفة إلى تبويب المال.',
     );
   }
 
@@ -447,32 +509,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     AarastToast.showSuccess(context, 'تم رفض العرض.');
   }
 
-  // تسجيل التكلفة بنقرة: نموذج المال يفتح مملوءًا بمبلغ العرض المقبول.
-  Future<void> _createCostFromAcceptedQuote(QuoteRequest quote) async {
+  void _viewAcceptedQuoteCost(QuoteRequest quote) {
     final planId = quote.weddingPlanId?.trim();
-    if (planId == null || planId.isEmpty) {
-      AarastToast.showInfo(
-        context,
-        'اربط طلب العرض بخطة زفاف أولًا لتسجيل التكلفة.',
-      );
+    final costId = quote.costSuggestion?.costId?.trim();
+    if (planId == null || planId.isEmpty || costId == null || costId.isEmpty) {
+      AarastToast.showError(context, 'تعذر فتح التكلفة المرتبطة بهذا العرض.');
       return;
     }
-    final intent = costDraftIntentFromAcceptedQuote(
-      quote,
-      fallbackCurrency: defaultCurrencyCode,
-    );
-    if (intent == null) {
-      AarastToast.showError(context, 'لا يمكن إنشاء تكلفة من هذا العرض الآن.');
-      return;
-    }
-    final result = await context.push<bool>(
-      AppRouter.moneyCostCreate(planId),
-      extra: intent,
-    );
-    if (result != true || !mounted) return;
-    await context.read<ProviderMarketplaceProvider>().loadMyQuoteRequests();
-    if (mounted) {
-      AarastToast.showSuccess(context, 'تمت إضافة التكلفة إلى تبويب المال.');
-    }
+    context.push(AppRouter.moneyCostDetails(planId, costId));
   }
 }

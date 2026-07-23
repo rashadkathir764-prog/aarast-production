@@ -29,6 +29,8 @@ void main() {
       final connecting = client.connect(
         onMessage: (_) {},
         onMessageAvailable: (_, _) {},
+        onActivityAvailable: (_) {},
+        onPermissionRevoked: (_) {},
         onRead: (_, _, _) {},
       );
       client.join('conversation-1');
@@ -68,6 +70,8 @@ void main() {
     final connecting = client.connect(
       onMessage: (_) {},
       onMessageAvailable: (_, _) {},
+      onActivityAvailable: (_) {},
+      onPermissionRevoked: (_) {},
       onRead: (_, _, _) {},
     );
     await Future<void>.delayed(Duration.zero);
@@ -94,6 +98,8 @@ void main() {
       final connecting = client.connect(
         onMessage: (_) {},
         onMessageAvailable: (_, _) {},
+        onActivityAvailable: (_) {},
+        onPermissionRevoked: (_) {},
         onRead: (_, _, _) {},
       );
       await Future<void>.delayed(Duration.zero);
@@ -119,6 +125,8 @@ void main() {
     final connecting = client.connect(
       onMessage: (_) {},
       onMessageAvailable: (_, _) {},
+      onActivityAvailable: (_) {},
+      onPermissionRevoked: (_) {},
       onRead: (_, _, _) {},
     );
     client.join('conversation-1');
@@ -146,6 +154,8 @@ void main() {
           conversationId = conversation;
           messageId = message;
         },
+        onActivityAvailable: (_) {},
+        onPermissionRevoked: (_) {},
         onRead: (_, _, _) {},
       );
       await Future<void>.delayed(Duration.zero);
@@ -162,6 +172,38 @@ void main() {
       client.dispose();
     },
   );
+
+  test('activity and permission events expose the conversation id', () async {
+    String? activityConversationId;
+    String? revokedConversationId;
+    final client = ChatRealtimeClient(storage, socketFactory: factory.call);
+    final connecting = client.connect(
+      onMessage: (_) {},
+      onMessageAvailable: (_, _) {},
+      onActivityAvailable: (conversationId) {
+        activityConversationId = conversationId;
+      },
+      onPermissionRevoked: (conversationId) {
+        revokedConversationId = conversationId;
+      },
+      onRead: (_, _, _) {},
+    );
+    await Future<void>.delayed(Duration.zero);
+    final socket = factory.sockets.single;
+    socket.serverEvent('chat:ready', {'userId': 'user-1'});
+    await connecting;
+
+    socket.serverEvent('conversation:activity-available', {
+      'conversationId': 'conversation-1',
+    });
+    socket.serverEvent('conversation:permission-revoked', {
+      'conversationId': 'conversation-2',
+    });
+
+    expect(activityConversationId, 'conversation-1');
+    expect(revokedConversationId, 'conversation-2');
+    client.dispose();
+  });
 }
 
 Future<void> _saveSession(

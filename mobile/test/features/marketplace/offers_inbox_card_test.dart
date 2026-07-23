@@ -4,6 +4,10 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/money_summary.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
@@ -75,10 +79,11 @@ QuoteRequest _acceptedQuote() => const QuoteRequest(
     providerName: 'قاعة الثريا',
     quotedAmount: '450000',
     currency: 'YER',
-    suggestedAction: 'CREATE_COST',
-    automaticCostCreated: false,
+    suggestedAction: 'VIEW_COST',
+    automaticCostCreated: true,
     quoteOfferId: 'offer-2',
-    availableActions: ['CREATE_COST'],
+    costId: 'cost-from-offer-2',
+    availableActions: ['VIEW_COST'],
   ),
 );
 
@@ -108,6 +113,31 @@ QuoteRequest _archivedPlanQuote() => const QuoteRequest(
     ratingAverage: 0,
     ratingCount: 0,
   ),
+);
+
+QuoteRequest _expiredQuote() => QuoteRequest(
+  id: 'quote-expired',
+  providerId: 'provider-1',
+  weddingPlanId: 'plan-1',
+  status: 'RESPONDED',
+  lifecycleStatus: 'RECEIVED',
+  provider: const ProviderSummary(
+    id: 'provider-1',
+    businessName: 'قاعة الثريا',
+    ratingAverage: 0,
+    ratingCount: 0,
+  ),
+  offers: const [
+    QuoteOffer(id: 'offer-expired', status: 'PENDING', serverIsExpired: true),
+  ],
+);
+
+QuoteRequest _terminalQuote(String id, String status) => QuoteRequest(
+  id: id,
+  providerId: 'provider-$id',
+  weddingPlanId: 'plan-1',
+  status: status,
+  lifecycleStatus: status,
 );
 
 void main() {
@@ -141,6 +171,29 @@ void main() {
     // تصريف مؤقّت توست النجاح حتى لا يبقى Timer معلقًا.
     await tester.pump(const Duration(seconds: 8));
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('accepting an offer reloads Money with the automatic cost', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
+    final finance = FinanceProvider(_AcceptedQuoteFinanceApi());
+    addTearDown(finance.dispose);
+
+    await _pump(tester, state, finance: finance);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('quote-accept-quote-1')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('quote-accept-quote-1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(finance.loadedPlanId, 'plan-1');
+    expect(finance.costs.single.id, 'cost-from-offer-1');
+    expect(finance.summary.costs.count, 1);
+    await tester.pump(const Duration(seconds: 8));
   });
 
   testWidgets(
@@ -213,19 +266,87 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('accepted offer keeps the truth message and one-tap cost', (
+  testWidgets('accepted offer shows the automatic cost and one-tap details', (
     tester,
   ) async {
     final state = _FakeMarketplaceProvider(quoteRequests: [_acceptedQuote()]);
 
     await _pump(tester, state);
 
-    expect(find.textContaining('لن يُنشأ أي سجل تلقائيًا'), findsOneWidget);
-    expect(find.byKey(const Key('quote-create-cost-quote-2')), findsOneWidget);
-    expect(find.textContaining('سجّل التكلفة في المال'), findsOneWidget);
-    expect(find.textContaining('450,000'), findsOneWidget);
+    expect(find.textContaining('إنشاء التكلفة تلقائيًا'), findsOneWidget);
+    expect(find.byKey(const Key('quote-view-cost-quote-2')), findsOneWidget);
+    expect(find.textContaining('عرض التكلفة في المال'), findsOneWidget);
+    expect(find.textContaining('450,000'), findsWidgets);
     expect(find.byKey(const Key('quote-plan-center-quote-2')), findsNothing);
   });
+
+  testWidgets('expired offer hides decisions and offers a new request', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(quoteRequests: [_expiredQuote()]);
+
+    await _pump(tester, state);
+
+    expect(find.text('انتهت صلاحية العرض'), findsOneWidget);
+    expect(find.byKey(const Key('quote-accept-quote-expired')), findsNothing);
+    expect(find.byKey(const Key('quote-reject-quote-expired')), findsNothing);
+    expect(
+      find.byKey(const Key('expired-offer-new-request-quote-expired')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('null service is shown as a deliberate provider suggestion', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequests: [_waitingQuote('quote-suggest')],
+    );
+
+    await _pump(tester, state);
+
+    expect(find.text('حسب اقتراح المورد'), findsOneWidget);
+    expect(find.text('خدمة غير محددة'), findsNothing);
+  });
+
+  testWidgets(
+    'quote counters use offers and active waiting states truthfully',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        quoteRequests: [
+          _waitingQuote('quote-waiting'),
+          _receivedQuote(),
+          _acceptedQuote(),
+          _terminalQuote('quote-rejected-no-offer', 'REJECTED'),
+          _terminalQuote('quote-cancelled', 'CANCELLED'),
+        ],
+      );
+
+      await _pump(tester, state);
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('quote-stat-sent')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('quote-stat-received')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('quote-stat-accepted')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('notification deep link promotes its quote into the inbox', (
     tester,
@@ -341,6 +462,7 @@ Future<void> _pump(
   WidgetTester tester,
   _FakeMarketplaceProvider state, {
   String? initialQuoteId,
+  FinanceProvider? finance,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -365,6 +487,8 @@ Future<void> _pump(
         Provider<AuthRepository>.value(value: authRepository),
         ChangeNotifierProvider<AuthController>.value(value: authController),
         ChangeNotifierProvider<ProviderMarketplaceProvider>.value(value: state),
+        if (finance != null)
+          ChangeNotifierProvider<FinanceProvider>.value(value: finance),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -376,6 +500,78 @@ Future<void> _pump(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _AcceptedQuoteFinanceApi extends FinanceApi {
+  _AcceptedQuoteFinanceApi()
+    : super(ApiClient(tokenProvider: () async => null));
+
+  static const cost = WeddingCost(
+    id: 'cost-from-offer-1',
+    weddingPlanId: 'plan-1',
+    budgetCategoryId: 'category-1',
+    title: 'تصوير فوتوغرافي',
+    totalAmount: '280000',
+    paidAmount: '0',
+    remainingAmount: '280000',
+    status: 'OPEN',
+    providerId: 'provider-1',
+    quoteOfferId: 'offer-1',
+  );
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) async =>
+      const MoneySummary(
+        planId: 'plan-1',
+        costs: MoneyCostsSummary(
+          total: '280000',
+          paid: '0',
+          outstanding: '280000',
+          count: 1,
+        ),
+        categories: [
+          MoneyCategorySummary(
+            categoryId: 'category-1',
+            name: 'التصوير',
+            confirmedCost: '280000',
+            outstanding: '280000',
+            costsCount: 1,
+          ),
+        ],
+      );
+
+  @override
+  Future<FinancePage<WeddingCost>> getCosts(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+    String? status,
+    String? categoryId,
+    String? search,
+  }) async => const FinancePage(
+    items: [cost],
+    page: 1,
+    pageSize: 30,
+    total: 1,
+    totalPages: 1,
+  );
+
+  @override
+  Future<FinancePage<CostPayment>> getPlanPayments(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+  }) async => const FinancePage(
+    items: [],
+    page: 1,
+    pageSize: 30,
+    total: 0,
+    totalPages: 1,
+  );
+
+  @override
+  Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async =>
+      const [];
 }
 
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
@@ -433,7 +629,11 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   bool get includesAccountData => true;
 
   @override
-  Future<void> loadMarketplace({bool? includeAccountData}) async {}
+  Future<void> loadMarketplace({
+    bool? includeAccountData,
+    String? weddingPlanId,
+    bool updateQuoteScope = false,
+  }) async {}
 
   @override
   Future<bool> loadQuoteRequest(String quoteRequestId) async {

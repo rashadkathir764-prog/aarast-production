@@ -114,7 +114,10 @@ class _NoopMarketplaceProvider extends ProviderMarketplaceProvider {
   bool createQuoteAttempted = false;
 
   @override
-  Future<void> loadProviderDetails(String providerId) async {}
+  Future<void> loadProviderDetails(
+    String providerId, {
+    String? weddingPlanId,
+  }) async {}
 
   @override
   Future<void> loadReferenceData() async {}

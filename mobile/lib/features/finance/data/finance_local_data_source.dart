@@ -7,6 +7,7 @@ import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
 import 'finance_local_serializers.dart';
+import 'finance_local_summary.dart';
 import 'finance_money_rules.dart';
 
 int _lastLocalEntityMicros = 0;
@@ -100,10 +101,21 @@ class FinanceLocalDataSource {
       OfflineTables.cachedCosts,
       planId,
     )).where((cost) => cost['status']?.toString() != 'CANCELLED').toList();
-    final schedules = await _readPlanList(
-      OfflineTables.cachedPaymentSchedules,
-      planId,
-    );
+    final activeCostIds = costs
+        .map((cost) => cost['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    final payments =
+        (await _readPlanList(OfflineTables.cachedCostPayments, planId)).where(
+          (payment) => activeCostIds.contains(payment['costId']?.toString()),
+        );
+    final schedules =
+        (await _readPlanList(OfflineTables.cachedPaymentSchedules, planId))
+            .where(
+              (schedule) =>
+                  activeCostIds.contains(schedule['costId']?.toString()),
+            )
+            .toList();
 
     final total = FinanceMoneyRules.value(totalBudget);
     final allocated = rawCategories.fold<num>(
@@ -115,9 +127,10 @@ class FinanceLocalDataSource {
       0,
       (sum, cost) => sum + FinanceMoneyRules.value(cost['totalAmount']),
     );
+    final paidByCost = localNetPaidByCost(payments);
     final paidTotal = costs.fold<num>(
       0,
-      (sum, cost) => sum + FinanceMoneyRules.value(cost['paidAmount']),
+      (sum, cost) => sum + (paidByCost[cost['id']?.toString()] ?? 0),
     );
     final outstanding = (costTotal - paidTotal).clamp(0, costTotal);
     final categorySummaries = rawCategories.map((raw) {
@@ -131,7 +144,7 @@ class FinanceLocalDataSource {
       );
       final paid = categoryCosts.fold<num>(
         0,
-        (sum, cost) => sum + FinanceMoneyRules.value(cost['paidAmount']),
+        (sum, cost) => sum + (paidByCost[cost['id']?.toString()] ?? 0),
       );
       final allocation = _nullableMoney(raw['allocatedAmount']);
       return MoneyCategorySummary(
@@ -152,23 +165,10 @@ class FinanceLocalDataSource {
       );
     }).toList();
 
-    final today = _today();
-    final pending = schedules.where(
-      (schedule) => schedule['status']?.toString() == 'PENDING',
+    final scheduleSummary = LocalPaymentScheduleSummary.from(
+      schedules,
+      _today(),
     );
-    final overdueCount = pending.where((schedule) {
-      final dueDate = dateTimeOrNull(schedule['dueDate']);
-      return dueDate != null && dueDate.isBefore(today);
-    }).length;
-    final upcoming =
-        pending.where((schedule) {
-          final dueDate = dateTimeOrNull(schedule['dueDate']);
-          return dueDate != null && !dueDate.isBefore(today);
-        }).toList()..sort(
-          (a, b) => (dateTimeOrNull(a['dueDate']) ?? DateTime(9999)).compareTo(
-            dateTimeOrNull(b['dueDate']) ?? DateTime(9999),
-          ),
-        );
 
     final warnings = <MoneyWarning>[
       if (totalBudget != null && costTotal > total)
@@ -177,29 +177,31 @@ class FinanceLocalDataSource {
           severity: 'DANGER',
           amount: FinanceMoneyRules.asMoney(costTotal - total),
         ),
-      if (categorySummaries.any(
-        (category) =>
-            category.allocatedAmount != null &&
+      for (final category in categorySummaries)
+        if (category.allocatedAmount != null &&
             FinanceMoneyRules.value(category.confirmedCost) >
-                FinanceMoneyRules.value(category.allocatedAmount),
-      ))
-        MoneyWarning(
-          type: 'CATEGORY_EXCEEDED',
-          severity: 'WARNING',
-          count: categorySummaries
-              .where(
-                (category) =>
-                    category.allocatedAmount != null &&
-                    FinanceMoneyRules.value(category.confirmedCost) >
-                        FinanceMoneyRules.value(category.allocatedAmount),
-              )
-              .length,
-        ),
-      if (overdueCount > 0)
+                FinanceMoneyRules.value(category.allocatedAmount))
+          MoneyWarning(
+            type: 'CATEGORY_EXCEEDED',
+            severity: 'DANGER',
+            categoryId: category.categoryId,
+            count: category.costsCount,
+            amount: FinanceMoneyRules.asMoney(
+              FinanceMoneyRules.value(category.confirmedCost) -
+                  FinanceMoneyRules.value(category.allocatedAmount),
+            ),
+          ),
+      if (scheduleSummary.overdueCount > 0)
         MoneyWarning(
           type: 'PAYMENT_SCHEDULE_OVERDUE',
           severity: 'DANGER',
-          count: overdueCount,
+          count: scheduleSummary.overdueCount,
+        ),
+      if (scheduleSummary.dueSoonCount > 0)
+        MoneyWarning(
+          type: 'PAYMENT_SCHEDULE_DUE_SOON',
+          severity: 'WARNING',
+          count: scheduleSummary.dueSoonCount,
         ),
     ];
 
@@ -224,11 +226,13 @@ class FinanceLocalDataSource {
         count: costs.length,
       ),
       paymentSchedules: MoneySchedulesSummary(
-        upcomingCount: upcoming.length,
-        overdueCount: overdueCount,
-        next: upcoming.isEmpty
+        totalCount: schedules.length,
+        upcomingCount: scheduleSummary.upcomingCount,
+        overdueCount: scheduleSummary.overdueCount,
+        paidCount: scheduleSummary.paidCount,
+        next: scheduleSummary.pending.isEmpty
             ? null
-            : PaymentSchedule.fromJson(upcoming.first),
+            : PaymentSchedule.fromJson(scheduleSummary.pending.first),
       ),
       categories: categorySummaries,
       warnings: warnings,

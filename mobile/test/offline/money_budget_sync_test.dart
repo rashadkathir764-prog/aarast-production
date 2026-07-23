@@ -7,6 +7,7 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/data/finance_local_data_source.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,6 +58,174 @@ void main() {
       expect(
         pending.singleWhere((item) => item.localEntityId == 'plan-1').payload,
         {'totalBudget': '250'},
+      );
+    },
+  );
+
+  test(
+    'local money summary mirrors ledger, warnings, and schedule counts',
+    () async {
+      final database = await _freshDatabase();
+      final offline = OfflineSyncService(
+        database: database,
+        apiClient: _OfflineFinanceClient(),
+      );
+      await offline.initialize();
+      final local = FinanceLocalDataSource(offline);
+      const planId = 'plan-summary-contract';
+      await local.saveBudget(
+        planId: planId,
+        totalBudget: '1000',
+        currency: 'YER',
+        categories: const [
+          {
+            'id': 'category-1',
+            'weddingPlanId': planId,
+            'name': 'القاعات',
+            'allocatedAmount': '500',
+          },
+        ],
+      );
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCosts,
+        json: {
+          'id': 'cost-1',
+          'weddingPlanId': planId,
+          'budgetCategoryId': 'category-1',
+          'title': 'القاعة',
+          'totalAmount': '700',
+          'paidAmount': '999',
+          'status': 'PARTIALLY_PAID',
+        },
+      );
+      for (final payment in const [
+        {'id': 'payment-1', 'amount': '300', 'entryType': 'PAYMENT'},
+        {'id': 'reversal-1', 'amount': '100', 'entryType': 'REVERSAL'},
+      ]) {
+        await database.saveCachedItem(
+          table: OfflineTables.cachedCostPayments,
+          json: {
+            ...payment,
+            'weddingPlanId': planId,
+            'costId': 'cost-1',
+            'paidAt': '2026-07-20T00:00:00.000Z',
+          },
+        );
+      }
+      final today = DateTime.now();
+      final start = DateTime(today.year, today.month, today.day);
+      final schedules = [
+        {
+          'id': 'schedule-overdue',
+          'status': 'PENDING',
+          'dueDate': start.subtract(const Duration(days: 1)).toIso8601String(),
+        },
+        {
+          'id': 'schedule-due-soon',
+          'status': 'PENDING',
+          'dueDate': start.add(const Duration(days: 3)).toIso8601String(),
+        },
+        {
+          'id': 'schedule-paid',
+          'status': 'PAID',
+          'dueDate': start.add(const Duration(days: 10)).toIso8601String(),
+        },
+      ];
+      for (final schedule in schedules) {
+        await database.saveCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          json: {
+            ...schedule,
+            'weddingPlanId': planId,
+            'costId': 'cost-1',
+            'amount': '100',
+          },
+        );
+      }
+
+      final summary = await local.moneySummary(planId);
+
+      expect(summary.costs.paid, '200.00');
+      expect(summary.costs.outstanding, '500.00');
+      expect(summary.categories.single.paid, '200.00');
+      expect(summary.paymentSchedules.totalCount, 3);
+      expect(summary.paymentSchedules.upcomingCount, 1);
+      expect(summary.paymentSchedules.overdueCount, 1);
+      expect(summary.paymentSchedules.paidCount, 1);
+      expect(summary.paymentSchedules.next?.id, 'schedule-overdue');
+      expect(
+        summary.warnings.any(
+          (warning) =>
+              warning.type == 'CATEGORY_EXCEEDED' &&
+              warning.severity == 'DANGER' &&
+              warning.categoryId == 'category-1' &&
+              warning.amount == '200.00',
+        ),
+        isTrue,
+      );
+      expect(
+        summary.warnings.any(
+          (warning) => warning.type == 'PAYMENT_SCHEDULE_DUE_SOON',
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'online schedule payment consumes and caches the canonical wrapper',
+    () async {
+      final database = await _freshDatabase();
+      final client = ApiClient(tokenProvider: () async => 'token')
+        ..dio.httpClientAdapter = _StaticJsonAdapter({
+          'payment': {
+            'id': 'payment-online-1',
+            'weddingPlanId': 'plan-1',
+            'costId': 'cost-1',
+            'paymentScheduleId': 'schedule-1',
+            'amount': '200',
+            'entryType': 'PAYMENT',
+            'paidAt': '2026-07-20T00:00:00.000Z',
+            'reversible': true,
+          },
+          'schedule': {
+            'id': 'schedule-1',
+            'weddingPlanId': 'plan-1',
+            'costId': 'cost-1',
+            'amount': '200',
+            'dueDate': '2026-07-20T00:00:00.000Z',
+            'paidAt': '2026-07-20T00:00:00.000Z',
+            'status': 'PAID',
+          },
+        });
+      final offline = OfflineSyncService(database: database, apiClient: client);
+      await offline.ensureCacheOwner('user-1');
+      final payment = await FinanceApi(client, offline: offline).paySchedule(
+        schedule: PaymentSchedule(
+          id: 'schedule-1',
+          costId: 'cost-1',
+          amount: '200',
+          dueDate: DateTime(2026, 7, 20),
+          status: 'PENDING',
+          weddingPlanId: 'plan-1',
+        ),
+        cost: _cost(id: 'cost-1'),
+      );
+
+      expect(payment.id, 'payment-online-1');
+      expect(
+        (await database.readCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          id: 'schedule-1',
+        ))?['status'],
+        'PAID',
+      );
+      expect(
+        await database.readCachedItem(
+          table: OfflineTables.cachedCostPayments,
+          id: 'payment-online-1',
+        ),
+        isNotNull,
       );
     },
   );

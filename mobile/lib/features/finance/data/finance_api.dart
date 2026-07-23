@@ -1148,16 +1148,13 @@ class FinanceApi {
     }
     try {
       final json = await mutation.send();
-      final paymentJson = json['payment'] is Map
-          ? Map<String, dynamic>.from(json['payment'] as Map)
-          : json;
-      await _cache(OfflineTables.cachedCostPayments, paymentJson);
-      if (json['schedule'] is Map) {
-        await _cache(
-          OfflineTables.cachedPaymentSchedules,
-          Map<String, dynamic>.from(json['schedule'] as Map),
-        );
+      if (json['payment'] is! Map || json['schedule'] is! Map) {
+        throw const FormatException('Invalid payment schedule pay response.');
       }
+      final paymentJson = Map<String, dynamic>.from(json['payment'] as Map);
+      final scheduleJson = Map<String, dynamic>.from(json['schedule'] as Map);
+      await _cache(OfflineTables.cachedCostPayments, paymentJson);
+      await _cache(OfflineTables.cachedPaymentSchedules, scheduleJson);
       return CostPayment.fromJson(paymentJson);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueReplay(error) || _offline == null) rethrow;

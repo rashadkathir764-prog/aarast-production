@@ -186,13 +186,14 @@ class PaymentSchedule {
     final dueDate = dateTimeOrNull(json['dueDate']) ?? DateTime.now();
     return PaymentSchedule(
       id: json['id']?.toString() ?? '',
-      costId: json['costId']?.toString() ?? '',
+      costId:
+          json['costId']?.toString() ?? json['weddingCostId']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
       dueDate: dueDate,
       status: status,
       isOverdue:
           json['isOverdue'] == true ||
-          (status == 'PENDING' && dueDate.isBefore(_today())),
+          _isPaymentScheduleOverdueAt(status, dueDate, DateTime.now()),
       paidAt: dateTimeOrNull(json['paidAt']),
       note: stringOrNull(json['note']),
       weddingPlanId: stringOrNull(json['weddingPlanId']),
@@ -236,6 +237,12 @@ class PaymentSchedule {
   bool get isPending => status == 'PENDING';
   bool get isPaid => status == 'PAID';
   bool get isCancelled => status == 'CANCELLED';
+
+  /// Mirrors the backend rule: a pending reminder is overdue only when its
+  /// due instant is before the start of the current calendar day in Riyadh.
+  bool isOverdueAt(DateTime now) {
+    return _isPaymentScheduleOverdueAt(status, dueDate, now);
+  }
 }
 
 String? stringOrNull(Object? value) {
@@ -262,7 +269,17 @@ String? _nestedString(Object? value, String key) {
   return null;
 }
 
-DateTime _today() {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day);
+bool _isPaymentScheduleOverdueAt(
+  String status,
+  DateTime dueDate,
+  DateTime now,
+) {
+  if (status != 'PENDING') return false;
+  final riyadhNow = now.toUtc().add(const Duration(hours: 3));
+  final startOfTodayInRiyadh = DateTime.utc(
+    riyadhNow.year,
+    riyadhNow.month,
+    riyadhNow.day,
+  ).subtract(const Duration(hours: 3));
+  return dueDate.toUtc().isBefore(startOfTodayInRiyadh);
 }

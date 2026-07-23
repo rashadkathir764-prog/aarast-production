@@ -124,15 +124,19 @@ class MoneyCostsSummary {
 
 class MoneySchedulesSummary {
   const MoneySchedulesSummary({
+    this.totalCount = 0,
     this.upcomingCount = 0,
     this.overdueCount = 0,
+    this.paidCount = 0,
     this.next,
   });
 
   factory MoneySchedulesSummary.fromJson(Map<String, dynamic> json) {
     return MoneySchedulesSummary(
+      totalCount: intOrNull(json['totalCount']) ?? 0,
       upcomingCount: intOrNull(json['upcomingCount']) ?? 0,
       overdueCount: intOrNull(json['overdueCount']) ?? 0,
+      paidCount: intOrNull(json['paidCount']) ?? 0,
       next: json['next'] is Map
           ? PaymentSchedule.fromJson(
               Map<String, dynamic>.from(json['next'] as Map),
@@ -141,8 +145,10 @@ class MoneySchedulesSummary {
     );
   }
 
+  final int totalCount;
   final int upcomingCount;
   final int overdueCount;
+  final int paidCount;
   final PaymentSchedule? next;
 }
 

@@ -35,8 +35,8 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. |
 | Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
-| QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. |
-| QuoteOffer | Implemented for provider responses to quote requests. Accepting a plan-scoped offer atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
+| QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. Lifecycle mutations lock this row first, re-read its state, and update only from the expected prior state. |
+| QuoteOffer | Implemented for provider responses to quote requests. Lifecycle mutations lock the parent QuoteRequest and then the offer in one serializable transaction, so a losing accept/reject/update/cancel race cannot overwrite the winner. Accepting a plan-scoped offer rechecks provider and money permissions in that transaction and atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
 | PlanProviderLink | Implemented to connect an accepted provider/offer to a WeddingPlan as planning context. |
 
 ## Conversation And Session Entities

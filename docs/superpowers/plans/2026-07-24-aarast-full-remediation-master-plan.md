@@ -190,13 +190,22 @@ npm.cmd test
 
 **المتطلبات:**
 
-- [ ] accept/reject/update/cancel تستخدم نفس سياسة القفل والحالة المتوقعة.
-- [ ] reject/update لا يكتبان بعد انتقال العرض من `PENDING`.
-- [ ] قبول العرض يعيد فحص صلاحيات الخطة والمال داخل المعاملة.
-- [ ] منع تغيير مبلغ عرض `ACCEPTED`.
-- [ ] الحفاظ على idempotency: إعادة القبول تعيد نفس `WeddingCost`.
-- [ ] اختبارات accept-vs-reject وaccept-vs-update وaccept-vs-permission-revoke.
-- [ ] إثبات عدم وجود Cost أو PlanProviderLink مرتبط بعرض غير مقبول.
+- [x] accept/reject/update/cancel تستخدم نفس سياسة القفل والحالة المتوقعة.
+- [x] reject/update لا يكتبان بعد انتقال العرض من `PENDING`.
+- [x] قبول العرض يعيد فحص صلاحيات الخطة والمال داخل المعاملة.
+- [x] منع تغيير مبلغ عرض `ACCEPTED`.
+- [x] الحفاظ على idempotency: إعادة القبول تعيد نفس `WeddingCost`.
+- [x] اختبارات accept-vs-reject وaccept-vs-update وaccept-vs-permission-revoke.
+- [x] إثبات عدم وجود Cost أو PlanProviderLink مرتبط بعرض غير مقبول.
+
+**نتيجة تقييم 2A:** `10/10 — APPROVED` بتاريخ 2026-07-24. أصبحت جميع
+انتقالات الطلب/العرض تأخذ قفل `QuoteRequest` أولًا ثم `QuoteOffer`، وتعيد قراءة
+الحالة والصلاحيات داخل معاملة serializable قبل كتابة مشروطة بالحالة المتوقعة.
+نجح Smoke معزول في 100 تكرار لكل من قبول-رفض، قبول-تعديل، قبول-إلغاء،
+وقبول-سحب صلاحية (400 سباق حقيقي)، مع تكلفة واحدة ثابتة في replay وصفر
+`WeddingCost` و`PlanProviderLink` عندما يفشل القبول. نجحت مجموعة Backend
+الكاملة والبناء وPrisma والتوثيق، وعادت موارد Smoke في PostgreSQL وRedis
+وMinIO إلى الصفر.
 
 ### 2B — سحب صلاحية المحادثة
 

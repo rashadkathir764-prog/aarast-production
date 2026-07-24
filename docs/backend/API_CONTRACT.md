@@ -1124,13 +1124,23 @@ accepted or rejected, and return `QUOTE_OFFER_EXPIRED` if a stale client tries.
 Provider offer creation locks the quote request and permits one offer for the
 current request cycle.
 
+Every quote decision uses one serializable transition policy. Request rows are
+locked before offer rows, the current request/offer states are re-read under
+those locks, and each write includes its expected prior state. A losing
+accept/reject/update/cancel race therefore fails instead of overwriting the
+winner. An accepted offer cannot be edited, rejected, or left behind a
+cancelled request.
+
 Accepting a plan-scoped offer requires both provider-management and
 money-management permission. It atomically accepts the offer, links the
 provider, and creates or returns the single `WeddingCost` identified by the
 unique `quoteOfferId`. The offer amount must be positive and use the plan
 currency. The service category is matched logically against
 `BudgetCategory.normalizedName`; otherwise `أخرى` is reused or created without
-an allocation.
+an allocation. Acceptance re-reads both permissions inside the transition
+transaction while holding the relevant shared-member permission row. If
+revocation commits first, acceptance fails and creates no cost or provider
+link.
 
 The response contains:
 
@@ -1143,7 +1153,8 @@ The response contains:
 
 Retries return the existing cost and do not repeat notifications. Acceptance
 does not create a CostPayment, PaymentSchedule, task, deposit, paid booking, or
-confirmed booking.
+confirmed booking. A `WeddingCost` or `PlanProviderLink` tied to an offer is
+valid only while that offer and its request are `ACCEPTED`.
 
 Provider dashboard routes:
 

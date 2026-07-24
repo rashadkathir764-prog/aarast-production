@@ -10,11 +10,16 @@ import {
   QuoteOfferStatus,
   QuoteRequestStatus,
 } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
 import { weddingCostResponseInclude } from "../wedding-costs/wedding-cost.presenter";
-import { assertQuoteRequestTransition } from "./quote-lifecycle";
+import {
+  assertQuoteRequestTransition,
+  lockQuoteOfferTransitionRows,
+} from "./quote-lifecycle";
 import {
   findLogicalBudgetCategory,
   findOtherBudgetCategory,
@@ -25,19 +30,19 @@ import {
 interface AcceptQuoteOfferInput {
   id: string;
   weddingPlanId: string;
+  currentUser: AuthenticatedUser;
   actorUserId?: string;
 }
 
 export async function acceptQuoteOfferInTransaction(
   prisma: PrismaService,
+  permissions: PermissionService,
   input: AcceptQuoteOfferInput,
 ) {
   const { id, weddingPlanId } = input;
   return runSerializableTransaction(prisma, async (tx) => {
-    const lockedOffers = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "QuoteOffer" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (lockedOffers.length === 0) {
+    const locked = await lockQuoteOfferTransitionRows(tx, id);
+    if (!locked) {
       throw new NotFoundException("Quote offer not found");
     }
 
@@ -62,11 +67,22 @@ export async function acceptQuoteOfferInTransaction(
         "Quote offer is not linked to this wedding plan",
       );
     }
+    await permissions.assertProviderAndMoneyManageableInTransaction(
+      tx,
+      weddingPlanId,
+      input.currentUser,
+    );
     if (
       current.status !== QuoteOfferStatus.PENDING &&
       current.status !== QuoteOfferStatus.ACCEPTED
     ) {
       throw new ConflictException("Quote offer cannot be accepted");
+    }
+    if (
+      current.status === QuoteOfferStatus.ACCEPTED &&
+      current.quoteRequest.status !== QuoteRequestStatus.ACCEPTED
+    ) {
+      throw new ConflictException("Accepted quote state is inconsistent");
     }
 
     const acceptedNow = current.status === QuoteOfferStatus.PENDING;
@@ -146,9 +162,15 @@ export async function acceptQuoteOfferInTransaction(
     let acceptedOffer = current;
     if (acceptedNow) {
       const acceptedAt = new Date();
-      acceptedOffer = await tx.quoteOffer.update({
-        where: { id },
+      const offerTransition = await tx.quoteOffer.updateMany({
+        where: { id, status: QuoteOfferStatus.PENDING },
         data: { status: QuoteOfferStatus.ACCEPTED },
+      });
+      if (offerTransition.count !== 1) {
+        throw new ConflictException("Quote offer cannot be accepted");
+      }
+      acceptedOffer = await tx.quoteOffer.findUniqueOrThrow({
+        where: { id },
         include: {
           quoteRequest: {
             include: {
@@ -176,10 +198,16 @@ export async function acceptQuoteOfferInTransaction(
         },
         data: { status: QuoteOfferStatus.REJECTED },
       });
-      await tx.quoteRequest.update({
-        where: { id: current.quoteRequestId },
+      const requestTransition = await tx.quoteRequest.updateMany({
+        where: {
+          id: current.quoteRequestId,
+          status: current.quoteRequest.status,
+        },
         data: { status: QuoteRequestStatus.ACCEPTED, acceptedAt },
       });
+      if (requestTransition.count !== 1) {
+        throw new ConflictException("Quote request cannot be accepted");
+      }
       for (const rejectedOffer of rejectedOffers) {
         await recordConversationEvent(tx, {
           conversationId: current.quoteRequest.conversationId,

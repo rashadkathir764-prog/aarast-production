@@ -31,6 +31,8 @@ import { runSerializableTransaction } from '../common/prisma/serializable-transa
 import { recordConversationEvent } from '../conversations/conversation-lifecycle';
 import {
   assertQuoteRequestTransition,
+  lockQuoteOfferTransitionRows,
+  lockQuoteRequestTransitionRow,
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
@@ -626,9 +628,9 @@ export class ProviderDashboardService {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteRequestId');
     const quote = await runSerializableTransaction(this.prisma, async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${id} FOR UPDATE`,
-      );
+      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
+        throw new NotFoundException('Quote request not found');
+      }
       const existing = await tx.quoteRequest.findFirst({
         where: { id, providerId: provider.id },
       });
@@ -637,14 +639,20 @@ export class ProviderDashboardService {
       }
       assertQuoteRequestTransition(existing.status, dto.status, 'provider');
 
-      const updated = await tx.quoteRequest.update({
-        where: { id },
+      const transition = await tx.quoteRequest.updateMany({
+        where: { id, status: existing.status },
         data: {
           status: dto.status,
           ...(dto.status === QuoteRequestStatus.REJECTED
             ? { rejectedAt: new Date() }
             : {}),
         },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException('Quote request status changed');
+      }
+      const updated = await tx.quoteRequest.findUniqueOrThrow({
+        where: { id },
         include: this.quoteInclude(),
       });
       if (dto.status === QuoteRequestStatus.REJECTED) {
@@ -681,9 +689,9 @@ export class ProviderDashboardService {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(quoteRequestId, 'quoteRequestId');
     const offer = await runSerializableTransaction(this.prisma, async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${quoteRequestId} FOR UPDATE`,
-      );
+      if (!(await lockQuoteRequestTransitionRow(tx, quoteRequestId))) {
+        throw new NotFoundException('Quote request not found');
+      }
       const quote = await tx.quoteRequest.findFirst({
         where: { id: quoteRequestId, providerId: provider.id },
       });
@@ -760,31 +768,48 @@ export class ProviderDashboardService {
   ) {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteOfferId');
-    const existing = await this.prisma.quoteOffer.findFirst({
-      where: { id, providerId: provider.id },
-    });
-    if (!existing) {
-      throw new NotFoundException('Quote offer not found');
-    }
-    if (existing.status !== QuoteOfferStatus.PENDING) {
-      throw new ConflictException('Only pending quote offers can be updated');
-    }
+    const offer = await runSerializableTransaction(this.prisma, async (tx) => {
+      if (!(await lockQuoteOfferTransitionRows(tx, id))) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      const existing = await tx.quoteOffer.findFirst({
+        where: { id, providerId: provider.id },
+        include: {
+          quoteRequest: { select: { status: true } },
+        },
+      });
+      if (!existing) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      if (
+        existing.status !== QuoteOfferStatus.PENDING ||
+        existing.quoteRequest.status !== QuoteRequestStatus.RESPONDED
+      ) {
+        throw new ConflictException('Only pending quote offers can be updated');
+      }
 
-    const offer = await this.prisma.quoteOffer.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined ? { title: this.optionalText(dto.title) } : {}),
-        ...(dto.message !== undefined
-          ? { message: this.requiredText(dto.message ?? '', 'message') }
-          : {}),
-        ...(dto.amount !== undefined
-          ? { amount: this.optionalDecimal(dto.amount, 'amount') }
-          : {}),
-        ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
-        ...(dto.validUntil !== undefined
-          ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
-          : {}),
-      },
+      const transition = await tx.quoteOffer.updateMany({
+        where: { id, status: QuoteOfferStatus.PENDING },
+        data: {
+          ...(dto.title !== undefined
+            ? { title: this.optionalText(dto.title) }
+            : {}),
+          ...(dto.message !== undefined
+            ? { message: this.requiredText(dto.message ?? '', 'message') }
+            : {}),
+          ...(dto.amount !== undefined
+            ? { amount: this.optionalDecimal(dto.amount, 'amount') }
+            : {}),
+          ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
+          ...(dto.validUntil !== undefined
+            ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
+            : {}),
+        },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException('Only pending quote offers can be updated');
+      }
+      return tx.quoteOffer.findUniqueOrThrow({ where: { id } });
     });
 
     return this.toQuoteOfferResponse(offer);

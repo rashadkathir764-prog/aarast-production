@@ -135,6 +135,39 @@ export class PermissionService {
     throw new NotFoundException("Wedding plan not found");
   }
 
+  async assertProviderManageableInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const context = await this.getLockedPlanAccessContext(
+      tx,
+      weddingPlanId,
+      currentUser,
+    );
+    if (this.canManageProviders(context)) return context;
+    throw new NotFoundException("Wedding plan not found");
+  }
+
+  async assertProviderAndMoneyManageableInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const context = await this.getLockedPlanAccessContext(
+      tx,
+      weddingPlanId,
+      currentUser,
+    );
+    if (
+      this.canManageProviders(context) &&
+      this.canManageMoney(context)
+    ) {
+      return context;
+    }
+    throw new NotFoundException("Wedding plan not found");
+  }
+
   async assertMemberManageable(
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
@@ -232,5 +265,43 @@ export class PermissionService {
   canManageMembers(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
     return Boolean(context.sharedMember?.canInviteMembers);
+  }
+
+  private async getLockedPlanAccessContext(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const plan = await tx.weddingPlan.findUnique({
+      where: { id: weddingPlanId },
+    });
+    if (!plan) {
+      throw new NotFoundException("Wedding plan not found");
+    }
+    if (plan.ownerUserId === currentUser.id) {
+      return { plan, isOwner: true, sharedMember: null };
+    }
+
+    // FOR SHARE conflicts with permission updates/deletes. If revocation
+    // commits first, this transaction sees the revoked row; if this lock wins,
+    // the authorized quote transition serializes before the revocation.
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "SharedMember"
+        WHERE "weddingPlanId" = ${weddingPlanId}
+          AND "userId" = ${currentUser.id}
+        FOR SHARE
+      `,
+    );
+    const sharedMember = await tx.sharedMember.findUnique({
+      where: {
+        weddingPlanId_userId: {
+          weddingPlanId,
+          userId: currentUser.id,
+        },
+      },
+    });
+    return { plan, isOwner: false, sharedMember };
   }
 }

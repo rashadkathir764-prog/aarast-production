@@ -19,6 +19,7 @@ const allowedDirectDatabaseClients = new Map([
   'backend/scripts/smoke/notifications-apis-smoke.js',
   'backend/scripts/smoke/phase0-fixtures-smoke.js',
   'backend/scripts/smoke/phase1-identity-smoke.ts',
+  'backend/scripts/smoke/phase2-quote-concurrency-smoke.ts',
   'backend/scripts/smoke/private-chat-media-smoke.js',
   'backend/scripts/smoke/provider-dashboard-smoke.js',
   'backend/scripts/smoke/providers-quotes-smoke.js',
@@ -86,6 +87,7 @@ const managedCommandArguments = new Map([
   ['smoke:account-deletion', 'account-deletion-smoke.ts'],
   ['smoke:phase0-fixtures', 'phase0-fixtures-smoke.js'],
   ['smoke:phase1-identity', 'phase1-identity-smoke.ts'],
+  ['smoke:phase2-quote-concurrency', 'phase2-quote-concurrency-smoke.ts'],
   ['smoke:all', 'all-smoke.js'],
   ['load:test', '--load-test'],
 ]);

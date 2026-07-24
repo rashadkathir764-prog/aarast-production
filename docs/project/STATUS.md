@@ -36,7 +36,11 @@ and runtime checks override historical completion reports.
 - Accepted provider offers now create or return one idempotent `WeddingCost`
   inside the acceptance transaction. Category matching uses the provider
   service and normalized logical aliases, with an unallocated `أخرى` fallback;
-  no payment, schedule, task, or booking is created.
+  no payment, schedule, task, or booking is created. Accept, reject, provider
+  update, and requester cancel now share a request-first row-lock order and
+  expected-state writes. Acceptance rechecks provider and money permissions
+  under a locked shared-member row, preventing stale permission or lifecycle
+  races from producing a cost/link for a non-accepted offer.
 - Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS

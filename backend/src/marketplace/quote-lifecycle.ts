@@ -1,7 +1,42 @@
 import { ConflictException } from '@nestjs/common';
-import { QuoteRequestStatus } from '@prisma/client';
+import { Prisma, QuoteRequestStatus } from '@prisma/client';
 
 export type QuoteLifecycleActor = 'requester' | 'provider' | 'provider_offer';
+
+export async function lockQuoteRequestTransitionRow(
+  tx: Prisma.TransactionClient,
+  quoteRequestId: string,
+): Promise<boolean> {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${quoteRequestId} FOR UPDATE`,
+  );
+  return rows.length === 1;
+}
+
+export async function lockQuoteOfferTransitionRows(
+  tx: Prisma.TransactionClient,
+  quoteOfferId: string,
+): Promise<{ quoteRequestId: string } | null> {
+  // Every quote transition takes the request row first and the offer row
+  // second. One global order prevents accept/reject/update/cancel from
+  // deadlocking each other while the final state is re-read under both locks.
+  const requests = await tx.$queryRaw<Array<{ quoteRequestId: string }>>(
+    Prisma.sql`
+      SELECT qr."id" AS "quoteRequestId"
+      FROM "QuoteRequest" qr
+      INNER JOIN "QuoteOffer" qo ON qo."quoteRequestId" = qr."id"
+      WHERE qo."id" = ${quoteOfferId}
+      FOR UPDATE OF qr
+    `,
+  );
+  const request = requests[0];
+  if (!request) return null;
+
+  const offers = await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT "id" FROM "QuoteOffer" WHERE "id" = ${quoteOfferId} FOR UPDATE`,
+  );
+  return offers.length === 1 ? request : null;
+}
 
 const ALLOWED_TRANSITIONS: Record<
   QuoteLifecycleActor,

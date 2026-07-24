@@ -34,7 +34,7 @@ GREEN after remediation:
 
 ```text
 node --test -r ts-node/register test/phase0-guards.test.ts
-6 pass / 0 fail
+13 pass / 0 fail
 
 npm.cmd run smoke:phase0-fixtures
 PASS - Phase 0 PostgreSQL fixtures create operation outputs and clean them in finally.
@@ -57,12 +57,12 @@ The second command ran through the managed isolated runner, created a run-owned 
 
 | Check | Result |
 | --- | --- |
-| Phase 0 behavioral guards | PASS - 6/6 |
+| Phase 0 behavioral guards | PASS - 13/13 |
 | Existing smoke isolation guards | PASS - 12/12 |
 | Isolated PostgreSQL fixture smoke | PASS |
 | Backend check | PASS |
 | Backend build | PASS |
-| Backend test | PASS - pretest 24/24; main 371/371, 1 existing skip; posttest cleanliness PASS |
+| Backend test | PASS - pretest 31/31; main 371/371, 1 existing skip; posttest cleanliness PASS |
 | Docs sync | PASS - 0 drift |
 | Docs verify | PASS - 0 errors, 0 warnings |
 | Diff whitespace | PASS |
@@ -72,3 +72,9 @@ The second command ran through the managed isolated runner, created a run-owned 
 - No permanent database, Redis namespace, media bucket, golden, or tracked product fixture was modified.
 - No `prisma migrate reset`, `prisma db push`, or permanent database target was used.
 - Rollback is the focused revision commit revert.
+
+## Second review remediation
+
+RED was observed with `node --test -r ts-node/register test/phase0-guards.test.ts`: 6 failures for decoded PostgreSQL database targets, notification outbox cleanup, atomic permission fixture creation, OTP cleanup by phone, helper protection, and dependent-row smoke coverage. A follow-up RED was observed for raw/commented permanent URLs and observable barrier arrival/release ordering.
+
+GREEN: the same guard suite passes 13/13. The guard parses extracted PostgreSQL URL pathnames after decoding and rejects `aarast` and `aarast_dev` in raw or encoded form without rejecting isolated smoke names or non-PostgreSQL URLs. Permission fixtures are one transaction; notification IDs are collected before notification deletion and their `aggregateType: notification` outbox records are removed; user OTP cleanup uses the actual phones read before user deletion. The isolated fixture smoke now asserts all specified dependent tables are empty after cleanup.

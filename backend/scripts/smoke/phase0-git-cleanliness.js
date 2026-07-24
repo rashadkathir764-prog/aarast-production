@@ -29,7 +29,7 @@ function protectedTestArtifacts() {
     .split(/\r?\n/)
     .filter(Boolean)
     .filter(isProtectedTestArtifactPath);
-  return ['mobile/test/goldens', ...trackedFixtures];
+  return ['mobile/test/goldens', 'backend/test/support/phase0-postgres-support.js', ...trackedFixtures];
 }
 
 function main() {

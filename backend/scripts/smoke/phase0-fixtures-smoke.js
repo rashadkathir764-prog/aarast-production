@@ -14,13 +14,34 @@ const {
 assertManagedSmokeEnvironment(process.env);
 
 async function assertClean(prisma, scope) {
-  const [users, plans, quotes, conversations] = await Promise.all([
+  const [
+    users, plans, quotes, conversations, budgetCategories, weddingCosts, costPayments, paymentSchedules,
+    planProviderLinks, chatMessages, chatAttachments, conversationEvents, conversationParticipants,
+    notifications, outboxEvents, sharedMembers, conversationReports,
+  ] = await Promise.all([
     prisma.user.count({ where: { appEmail: { contains: scope } } }),
     prisma.weddingPlan.count({ where: { title: { contains: scope } } }),
     prisma.quoteOffer.count({ where: { title: { contains: scope } } }),
     prisma.conversation.count({ where: { createdBy: { appEmail: { contains: scope } } } }),
+    prisma.budgetCategory.count({ where: { name: { contains: scope } } }),
+    prisma.weddingCost.count({ where: { title: { contains: scope } } }),
+    prisma.costPayment.count({ where: { weddingCost: { title: { contains: scope } } } }),
+    prisma.paymentSchedule.count({ where: { weddingCost: { title: { contains: scope } } } }),
+    prisma.planProviderLink.count({ where: { weddingPlan: { title: { contains: scope } } } }),
+    prisma.chatMessage.count({ where: { body: scope } }),
+    prisma.chatAttachment.count({ where: { message: { body: scope } } }),
+    prisma.conversationEvent.count({ where: { dedupeKey: `phase0-${scope}` } }),
+    prisma.conversationParticipant.count({ where: { user: { appEmail: { contains: scope } } } }),
+    prisma.notification.count({ where: { title: scope } }),
+    prisma.outboxEvent.count({ where: { type: 'PHASE0_FIXTURE' } }),
+    prisma.sharedMember.count({ where: { user: { appEmail: { contains: scope } } } }),
+    prisma.conversationReport.count({ where: { reporter: { appEmail: { contains: scope } } } }),
   ]);
-  if (users || plans || quotes || conversations) {
+  if ([
+    users, plans, quotes, conversations, budgetCategories, weddingCosts, costPayments, paymentSchedules,
+    planProviderLinks, chatMessages, chatAttachments, conversationEvents, conversationParticipants,
+    notifications, outboxEvents, sharedMembers, conversationReports,
+  ].some(Boolean)) {
     throw new Error(`Phase 0 fixture cleanup left rows for ${scope}.`);
   }
 }
@@ -75,11 +96,22 @@ async function createOperationOutputs(prisma, fixture) {
     await tx.chatAttachment.create({
     data: { messageId: message.id, storageKey: `phase0/${fixture.scope}`, contentType: 'image/webp', byteSize: 1 },
     });
-    await tx.notification.create({
-    data: { userId: fixture.owner.id, weddingPlanId: fixture.plan.id, type: 'GENERAL', title: fixture.scope, body: fixture.scope },
+    const notification = await tx.notification.create({
+      data: {
+        userId: fixture.owner.id,
+        weddingPlanId: fixture.plan.id,
+        type: 'GENERAL',
+        title: fixture.scope,
+        body: fixture.scope,
+      },
     });
     await tx.outboxEvent.create({
-    data: { type: 'PHASE0_FIXTURE', aggregateId: fixture.offer.id, payload: { scope: fixture.scope } },
+      data: {
+        type: 'PHASE0_FIXTURE',
+        aggregateType: 'notification',
+        aggregateId: notification.id,
+        payload: { scope: fixture.scope },
+      },
     });
   });
 }

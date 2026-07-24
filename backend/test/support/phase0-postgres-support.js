@@ -43,10 +43,15 @@ async function inTransaction(prisma, callback) {
 }
 
 async function cleanupUsers(tx, userIds) {
+  const users = await tx.user.findMany({
+    where: { id: { in: userIds } },
+    select: { phone: true },
+  });
+  const phones = users.map((user) => user.phone).filter(Boolean);
   await tx.adminLoginChallenge.deleteMany({ where: { userId: { in: userIds } } });
   await tx.adminPasswordResetChallenge.deleteMany({ where: { userId: { in: userIds } } });
   await tx.refreshToken.deleteMany({ where: { userId: { in: userIds } } });
-  await tx.otpCode.deleteMany({ where: { phone: { in: userIds.map((id) => `unused-${id}`) } } });
+  if (phones.length) await tx.otpCode.deleteMany({ where: { phone: { in: phones } } });
   await tx.user.deleteMany({ where: { id: { in: userIds } } });
 }
 
@@ -91,76 +96,15 @@ async function createOtpAttemptFixture(prisma, environment = process.env) {
 
 async function createQuoteDecisionFixture(prisma, environment = process.env) {
   const scope = fixtureScope('quote-decision', environment);
-  const created = await inTransaction(prisma, async (tx) => {
-    const owner = await tx.user.create({ data: userData(scope, 'plan-owner') });
-    const providerUser = await tx.user.create({
-      data: userData(scope, 'provider-user', { role: 'PROVIDER', appRole: 'PROVIDER' }),
-    });
-    const city = await tx.city.create({ data: { nameAr: `Phase 0 ${scope}`, countryCode: 'YE' } });
-    const category = await tx.providerCategory.create({
-      data: { nameAr: `Phase 0 ${scope}`, slug: scope },
-    });
-    const provider = await tx.provider.create({
-      data: {
-        userId: providerUser.id,
-        cityId: city.id,
-        primaryCategoryId: category.id,
-        businessName: `Phase 0 ${scope}`,
-        phone: fixturePhone(scope, 'provider-business'),
-        status: 'ACTIVE',
-      },
-    });
-    const service = await tx.providerService.create({
-      data: {
-        providerId: provider.id,
-        categoryId: category.id,
-        cityId: city.id,
-        title: `Phase 0 ${scope}`,
-        basePrice: 100,
-      },
-    });
-    const plan = await tx.weddingPlan.create({
-      data: { ownerUserId: owner.id, title: `Phase 0 ${scope}` },
-    });
-    const conversation = await tx.conversation.create({
-      data: {
-        scope: 'PLAN',
-        weddingPlanId: plan.id,
-        providerId: provider.id,
-        createdByUserId: owner.id,
-      },
-    });
-    const quoteRequest = await tx.quoteRequest.create({
-      data: {
-        userId: owner.id,
-        weddingPlanId: plan.id,
-        providerId: provider.id,
-        serviceId: service.id,
-        cityId: city.id,
-        conversationId: conversation.id,
-        status: 'RESPONDED',
-      },
-    });
-    const offer = await tx.quoteOffer.create({
-      data: {
-        quoteRequestId: quoteRequest.id,
-        providerId: provider.id,
-        title: `Phase 0 ${scope}`,
-        amount: 100,
-        status: 'PENDING',
-      },
-    });
-    return {
-      scope, owner, providerUser, city, category, provider, service, plan, conversation, quoteRequest, offer,
-    };
-  });
+  const created = await inTransaction(prisma, (tx) => createQuoteDecisionRows(tx, scope));
   return { ...created, cleanup: () => cleanupQuoteFixtureGraph(prisma, created) };
 }
 
 async function createPermissionRevocationFixture(prisma, environment = process.env) {
-  const quote = await createQuoteDecisionFixture(prisma, environment);
+  const scope = fixtureScope('permission-revocation', environment);
   const created = await inTransaction(prisma, async (tx) => {
-    const member = await tx.user.create({ data: userData(quote.scope, 'provider-member') });
+    const quote = await createQuoteDecisionRows(tx, scope);
+    const member = await tx.user.create({ data: userData(scope, 'provider-member') });
     const sharedMember = await tx.sharedMember.create({
       data: {
         weddingPlanId: quote.plan.id,
@@ -172,13 +116,44 @@ async function createPermissionRevocationFixture(prisma, environment = process.e
     const participant = await tx.conversationParticipant.create({
       data: { conversationId: quote.conversation.id, userId: member.id },
     });
-    return { member, sharedMember, participant };
+    return { ...quote, member, sharedMember, participant };
   });
   return {
-    ...quote,
     ...created,
-    cleanup: () => cleanupQuoteFixtureGraph(prisma, { ...quote, ...created }),
+    cleanup: () => cleanupQuoteFixtureGraph(prisma, created),
   };
+}
+
+async function createQuoteDecisionRows(tx, scope) {
+  const owner = await tx.user.create({ data: userData(scope, 'plan-owner') });
+  const providerUser = await tx.user.create({
+    data: userData(scope, 'provider-user', { role: 'PROVIDER', appRole: 'PROVIDER' }),
+  });
+  const city = await tx.city.create({ data: { nameAr: `Phase 0 ${scope}`, countryCode: 'YE' } });
+  const category = await tx.providerCategory.create({ data: { nameAr: `Phase 0 ${scope}`, slug: scope } });
+  const provider = await tx.provider.create({
+    data: {
+      userId: providerUser.id, cityId: city.id, primaryCategoryId: category.id,
+      businessName: `Phase 0 ${scope}`, phone: fixturePhone(scope, 'provider-business'), status: 'ACTIVE',
+    },
+  });
+  const service = await tx.providerService.create({
+    data: { providerId: provider.id, categoryId: category.id, cityId: city.id, title: `Phase 0 ${scope}`, basePrice: 100 },
+  });
+  const plan = await tx.weddingPlan.create({ data: { ownerUserId: owner.id, title: `Phase 0 ${scope}` } });
+  const conversation = await tx.conversation.create({
+    data: { scope: 'PLAN', weddingPlanId: plan.id, providerId: provider.id, createdByUserId: owner.id },
+  });
+  const quoteRequest = await tx.quoteRequest.create({
+    data: {
+      userId: owner.id, weddingPlanId: plan.id, providerId: provider.id, serviceId: service.id,
+      cityId: city.id, conversationId: conversation.id, status: 'RESPONDED',
+    },
+  });
+  const offer = await tx.quoteOffer.create({
+    data: { quoteRequestId: quoteRequest.id, providerId: provider.id, title: `Phase 0 ${scope}`, amount: 100, status: 'PENDING' },
+  });
+  return { scope, owner, providerUser, city, category, provider, service, plan, conversation, quoteRequest, offer };
 }
 
 async function cleanupQuoteFixtureGraph(prisma, fixture) {
@@ -198,18 +173,30 @@ async function cleanupQuoteFixtureGraph(prisma, fixture) {
       where: { conversationId: fixture.conversation.id },
       select: { id: true },
     });
+    const notifications = await tx.notification.findMany({
+      where: { userId: { in: userIds } },
+      select: { id: true },
+    });
+    const notificationIds = notifications.map((notification) => notification.id);
     const aggregateIds = [
       fixture.plan.id, fixture.provider.id, fixture.conversation.id,
       fixture.quoteRequest.id, fixture.offer.id, ...costIds, ...messageIds,
-      ...events.map((event) => event.id),
+      ...events.map((event) => event.id), ...notificationIds,
     ];
 
     await tx.chatAttachment.deleteMany({ where: { messageId: { in: messageIds } } });
     await tx.chatMessage.deleteMany({ where: { conversationId: fixture.conversation.id } });
     await tx.conversationReport.deleteMany({ where: { conversationId: fixture.conversation.id } });
     await tx.conversationEvent.deleteMany({ where: { conversationId: fixture.conversation.id } });
+    await tx.outboxEvent.deleteMany({
+      where: {
+        OR: [
+          { aggregateId: { in: aggregateIds } },
+          { aggregateType: 'notification', aggregateId: { in: notificationIds } },
+        ],
+      },
+    });
     await tx.notification.deleteMany({ where: { userId: { in: userIds } } });
-    await tx.outboxEvent.deleteMany({ where: { aggregateId: { in: aggregateIds } } });
     await tx.planProviderLink.deleteMany({
       where: { weddingPlanId: fixture.plan.id, providerId: fixture.provider.id },
     });
@@ -245,7 +232,7 @@ async function withFixture(createFixture, callback, environment = process.env) {
   }
 }
 
-async function runConcurrentlyAfterBarrier(operations) {
+async function runConcurrentlyAfterBarrier(operations, { onAllArrived } = {}) {
   if (!Array.isArray(operations) || operations.length < 2 || operations.some((item) => typeof item !== 'function')) {
     throw new Error('Provide at least two concurrent fixture operations.');
   }
@@ -254,7 +241,10 @@ async function runConcurrentlyAfterBarrier(operations) {
   const barrier = new Promise((resolve) => { release = resolve; });
   return Promise.all(operations.map(async (operation) => {
     arrived += 1;
-    if (arrived === operations.length) release();
+    if (arrived === operations.length) {
+      onAllArrived?.({ arrived, total: operations.length });
+      release();
+    }
     await barrier;
     return operation();
   }));
@@ -262,6 +252,7 @@ async function runConcurrentlyAfterBarrier(operations) {
 
 module.exports = {
   cleanupQuoteFixtureGraph,
+  cleanupUsers,
   createOtpAttemptFixture,
   createPermissionRevocationFixture,
   createQuoteDecisionFixture,

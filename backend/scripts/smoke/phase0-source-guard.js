@@ -71,9 +71,24 @@ function assertNoUnsafeDatabaseTargets(source, label) {
   if (/\b(?:prisma\s+)?migrate\s+reset\b|\bprisma\s+db\s+push\b/i.test(source)) {
     throw new Error(`${label} contains a destructive Prisma command.`);
   }
-  if (/postgres(?:ql)?:\/\/[^\s'"`]+\/(?:aarast|aarast_dev)(?:[?/'"`]|$)/i.test(source)) {
-    throw new Error(`${label} contains a permanent Aarast database target.`);
+
+  for (const databaseUrl of extractPostgresUrls(source)) {
+    let parsed;
+    try {
+      parsed = new URL(databaseUrl);
+    } catch {
+      continue;
+    }
+    const databaseName = decodeURIComponent(parsed.pathname).replace(/^\/+|\/+$/g, '');
+    if (databaseName === 'aarast' || databaseName === 'aarast_dev') {
+      throw new Error(`${label} contains a permanent Aarast database target.`);
+    }
   }
+}
+
+function extractPostgresUrls(source) {
+  return [...source.matchAll(/(?:^|[^A-Za-z0-9_:\/])((?:postgres|postgresql):\/\/[^\s'"`\\]+)/gi)]
+    .map((match) => match[1]);
 }
 
 function collectFiles(directory) {
@@ -138,4 +153,5 @@ module.exports = {
   assertNoUnsafeDatabaseTargets,
   assertOfficialMutatingScriptsUseManagedRunner,
   collectGuardedSourceFiles,
+  extractPostgresUrls,
 };

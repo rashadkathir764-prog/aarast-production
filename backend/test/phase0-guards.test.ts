@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const backendRoot = join(__dirname, '..');
@@ -65,6 +66,28 @@ test('external OpenWA mutation has an exact command, explicit confirmation, and 
   );
 });
 
+test('source guard rejects decoded permanent PostgreSQL database names without false positives', () => {
+  for (const source of [
+    "const url = 'postgresql://user:password@localhost:5432/aarast';",
+    "const url = 'postgresql://user:password@localhost:5432/aarast_dev';",
+    "const url = 'postgresql://user:password@localhost:5432/%61arast';",
+    "const url = 'postgresql://user:password@localhost:5432/aarast%5Fdev?schema=public';",
+    '// postgresql://user:password@localhost:5432/aarast%5Fdev',
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertNoUnsafeDatabaseTargets(source, 'encoded-target.ts'),
+      /permanent Aarast database target/i,
+    );
+  }
+
+  for (const source of [
+    "const url = 'postgresql://user:password@localhost:5432/aarast_smoke_123';",
+    "const url = 'https://example.invalid/postgresql://user/aarast%5Fdev';",
+  ]) {
+    assert.doesNotThrow(() => sourceGuard.assertNoUnsafeDatabaseTargets(source, 'safe-source.ts'));
+  }
+});
+
 test('fixture wrapper rejects an unmanaged environment and cleans in finally after callback failure', async () => {
   assert.equal(typeof fixtures.withFixture, 'function');
   await assert.rejects(
@@ -124,13 +147,144 @@ test('quote fixture cleanup deletes operation outputs before fixture roots in on
   assert.ok(calls.includes('outboxEvent'));
 });
 
+test('quote cleanup deletes notification outbox records using collected notification ids', async () => {
+  const calls: Array<{ model: string; operation: string; value?: unknown }> = [];
+  const database = new Proxy({}, {
+    get(_target, model: string) {
+      if (model === '$executeRaw') return async () => { calls.push({ model, operation: 'execute' }); };
+      return {
+        findMany: async () => {
+          calls.push({ model, operation: 'find' });
+          if (model === 'notification') return [{ id: 'notification-1' }];
+          if (model === 'weddingCost') return [{ id: 'cost-1' }];
+          if (model === 'chatMessage') return [{ id: 'message-1' }];
+          return [];
+        },
+        deleteMany: async (value: unknown) => { calls.push({ model, operation: 'delete', value }); },
+      };
+    },
+  });
+  await fixtures.cleanupQuoteFixtureGraph({
+    $transaction: async (callback: (tx: unknown) => Promise<void>) => callback(database),
+  }, quoteFixture());
+
+  const outboxDelete = calls.find((call) => call.model === 'outboxEvent' && call.operation === 'delete');
+  assert.ok(calls.some((call) => call.model === 'notification' && call.operation === 'find'));
+  const notificationClause = (outboxDelete?.value as {
+    where: { OR: Array<{ aggregateType?: string; aggregateId?: { in: string[] } }> };
+  }).where.OR.find((clause) => clause.aggregateType === 'notification');
+  assert.deepEqual(notificationClause, {
+    aggregateType: 'notification',
+    aggregateId: { in: ['notification-1'] },
+  });
+});
+
+test('permission fixture creation is one transaction and retains the stage failure', async () => {
+  let transactionCalls = 0;
+  const tx = new Proxy({}, {
+    get(_target, model: string) {
+      return {
+        create: async () => {
+          if (model === 'sharedMember') throw new Error('second-stage failure');
+          return { id: `${model}-id` };
+        },
+      };
+    },
+  });
+  const prisma = {
+    $transaction: async (callback: (transaction: unknown) => Promise<void>) => {
+      transactionCalls += 1;
+      return callback(tx);
+    },
+  };
+
+  await assert.rejects(
+    fixtures.createPermissionRevocationFixture(prisma, managedEnvironment()),
+    /second-stage failure/,
+  );
+  assert.equal(transactionCalls, 1);
+});
+
+test('cleanup users removes OTP codes by the fixture users actual phones', async () => {
+  assert.equal(typeof fixtures.cleanupUsers, 'function');
+  const deletions: Array<{ model: string; value: unknown }> = [];
+  const tx = new Proxy({}, {
+    get(_target, model: string) {
+      return {
+        findMany: async () => model === 'user' ? [{ phone: '+967700000001' }, { phone: '+967700000002' }] : [],
+        deleteMany: async (value: unknown) => { deletions.push({ model, value }); },
+      };
+    },
+  });
+  await fixtures.cleanupUsers(tx, ['user-1', 'user-2']);
+  const otpDeletion = deletions.find((entry) => entry.model === 'otpCode');
+  assert.deepEqual(otpDeletion?.value, {
+    where: { phone: { in: ['+967700000001', '+967700000002'] } },
+  });
+});
+
+test('barrier runs every operation only after all arrivals and returns all values', async () => {
+  const lifecycle: string[] = [];
+  const values = await fixtures.runConcurrentlyAfterBarrier([
+    async () => { lifecycle.push('first'); return 'first-result'; },
+    async () => { lifecycle.push('second'); return 'second-result'; },
+    async () => { lifecycle.push('third'); return 'third-result'; },
+  ], {
+    onAllArrived: ({ arrived, total }: { arrived: number; total: number }) => {
+      lifecycle.push(`release:${arrived}/${total}`);
+    },
+  });
+  assert.equal(lifecycle[0], 'release:3/3');
+  assert.deepEqual(lifecycle.slice(1).sort(), ['first', 'second', 'third']);
+  assert.deepEqual(values.sort(), ['first-result', 'second-result', 'third-result']);
+});
+
+test('barrier propagates an operation failure after every operation reaches it', async () => {
+  const lifecycle: string[] = [];
+  await assert.rejects(
+    fixtures.runConcurrentlyAfterBarrier([
+      async () => { lifecycle.push('first'); return 'first-result'; },
+      async () => { lifecycle.push('second'); throw new Error('barrier operation failure'); },
+      async () => { lifecycle.push('third'); return 'third-result'; },
+    ], {
+      onAllArrived: ({ arrived, total }: { arrived: number; total: number }) => {
+        lifecycle.push(`release:${arrived}/${total}`);
+      },
+    }),
+    /barrier operation failure/,
+  );
+  assert.equal(lifecycle[0], 'release:3/3');
+  assert.deepEqual(lifecycle.slice(1).sort(), ['first', 'second', 'third']);
+});
+
 test('cleanliness protection includes all tracked fixture and golden filename patterns', () => {
   const files = cleanliness.protectedTestArtifacts();
   assert.ok(files.includes('mobile/test/goldens'));
   assert.ok(files.includes('mobile/test/features/marketplace/goldens/provider_received_offer.png'));
+  assert.ok(files.includes('backend/test/support/phase0-postgres-support.js'));
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/phase0.fixture.json'), true);
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/fixtures/custom-output.txt'), true);
 });
+
+test('isolated fixture smoke checks every dependent output table after cleanup', () => {
+  const source = readFileSync(join(backendRoot, 'scripts', 'smoke', 'phase0-fixtures-smoke.js'), 'utf8');
+  for (const model of [
+    'budgetCategory', 'weddingCost', 'costPayment', 'paymentSchedule', 'planProviderLink',
+    'chatMessage', 'chatAttachment', 'conversationEvent', 'conversationParticipant',
+    'notification', 'outboxEvent', 'sharedMember', 'conversationReport',
+  ]) {
+    assert.match(source, new RegExp(`prisma\\.${model}\\.count`));
+  }
+});
+
+function quoteFixture() {
+  return {
+    owner: { id: 'owner' }, providerUser: { id: 'provider-user' },
+    member: { id: 'member' }, plan: { id: 'plan' }, provider: { id: 'provider' },
+    city: { id: 'city' }, category: { id: 'category' }, service: { id: 'service' },
+    conversation: { id: 'conversation' }, quoteRequest: { id: 'request' }, offer: { id: 'offer' },
+  };
+}
 
 function managedEnvironment() {
   const database = 'aarast_smoke_20260724123456789_abcdef12';

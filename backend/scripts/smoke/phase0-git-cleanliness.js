@@ -20,11 +20,15 @@ function git(args) {
   return result.stdout;
 }
 
+function isProtectedTestArtifactPath(filePath) {
+  return /(?:^|[\/._-])(?:fixtures?|goldens?)(?:[\/._-]|$)/i.test(filePath);
+}
+
 function protectedTestArtifacts() {
-  const trackedFixtures = git(['ls-files', 'mobile/test', 'backend/test'])
+  const trackedFixtures = git(['ls-files'])
     .split(/\r?\n/)
     .filter(Boolean)
-    .filter((filePath) => /(?:^|\/)(?:fixtures?|goldens?)(?:\/|$)/i.test(filePath));
+    .filter(isProtectedTestArtifactPath);
   return ['mobile/test/goldens', ...trackedFixtures];
 }
 
@@ -41,4 +45,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { protectedTestArtifacts };
+module.exports = { isProtectedTestArtifactPath, protectedTestArtifacts };

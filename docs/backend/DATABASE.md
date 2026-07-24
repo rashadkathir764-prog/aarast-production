@@ -160,7 +160,11 @@ The backend now includes the approved provider-reference and quote-lead foundati
   databases receive an additive baseline catalog from migration
   `20260714100000_seed_provider_reference_catalog`; existing admin-managed rows
   are preserved without forced rename, reactivation, or deletion.
-- `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
+- `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage`
+  for public planning references. Every externally supplied `numeric(14,2)`
+  provider price is bounded by the central money validator before persistence;
+  null/blank optional values remain null and extra precision is never delegated
+  to database rounding.
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, and
   `PlanProviderLink` for saved providers, reviews, quote leads, and accepted
   planning provider links. The unused prelaunch `BookingLead` model was removed;

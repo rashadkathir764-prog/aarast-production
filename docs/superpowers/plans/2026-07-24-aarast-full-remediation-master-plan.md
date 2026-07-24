@@ -255,7 +255,7 @@ PostgreSQL وRedis وMinIO إلى الصفر.
 - [x] إضافة reconciliation موثّق لـambiguous idempotency tombstones.
 - [x] تنظيف RefreshToken المنتهي/الملغى بسياسة retention واضحة.
 - [x] جعل rating aggregate ذريًا أو اشتقاقه من البيانات بدل cache قابل للفقد.
-- [ ] استخدام money validator المركزي لكل أسعار المزود.
+- [x] استخدام money validator المركزي لكل أسعار المزود.
 - [ ] إضافة `PUT` إلى CORS واختبار preflight.
 - [ ] توحيد تفسير `canManageProviders` بين PermissionService والمحادثات.
 

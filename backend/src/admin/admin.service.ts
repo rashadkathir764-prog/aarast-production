@@ -19,7 +19,7 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
-import { requiredMoneyAmount } from '../common/validation/money';
+import { optionalMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
 import { runProviderReviewMutation } from '../marketplace/provider-review-rating';
@@ -183,7 +183,7 @@ export class AdminService {
         categoryId,
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
-        basePrice: this.optionalDecimal(dto.basePrice, 'basePrice'),
+        basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice'),
         priceUnit: this.optionalText(dto.priceUnit),
         currency: this.optionalText(dto.currency) ?? 'YER',
         cityId: this.optionalText(dto.cityId),
@@ -215,7 +215,7 @@ export class AdminService {
         ...(dto.categoryId !== undefined ? { categoryId: this.requiredText(dto.categoryId, 'categoryId') } : {}),
         ...(dto.title !== undefined ? { title: this.requiredText(dto.title, 'title') } : {}),
         ...(dto.description !== undefined ? { description: this.optionalText(dto.description) } : {}),
-        ...(dto.basePrice !== undefined ? { basePrice: this.optionalDecimal(dto.basePrice, 'basePrice') } : {}),
+        ...(dto.basePrice !== undefined ? { basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice') } : {}),
         ...(dto.priceUnit !== undefined ? { priceUnit: this.optionalText(dto.priceUnit) } : {}),
         ...(dto.currency !== undefined ? { currency: this.requiredText(dto.currency, 'currency') } : {}),
         ...(dto.cityId !== undefined ? { cityId: this.optionalText(dto.cityId) } : {}),
@@ -1181,13 +1181,6 @@ export class AdminService {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     return trimmed || null;
-  }
-
-  private optionalDecimal(value: string | null | undefined, field: string): string | null {
-    if (value === undefined || value === null) return null;
-    const normalized = value.trim();
-    if (!normalized) return null;
-    return requiredMoneyAmount(normalized, field);
   }
 
   private optionalBoolean(value: string | null | undefined, field: string): boolean | null {

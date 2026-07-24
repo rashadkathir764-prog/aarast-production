@@ -14,7 +14,7 @@ import {
 } from "@prisma/client";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { toReviewIdentity } from "../common/privacy/review-identity";
-import { requiredMoneyAmount } from "../common/validation/money";
+import { optionalMoneyAmount } from "../common/validation/money";
 import { weddingLocationResponse } from "../wedding-plans/wedding-location";
 import {
   FavoriteWithProvider,
@@ -180,10 +180,7 @@ export class MarketplaceQuery {
     value: string | null | undefined,
     field: string,
   ): string | null {
-    if (value === undefined || value === null) return null;
-    const normalized = value.trim();
-    if (!normalized) return null;
-    return requiredMoneyAmount(normalized, field);
+    return optionalMoneyAmount(value, field);
   }
 
   static assertUuid(value: string, field: string): void {

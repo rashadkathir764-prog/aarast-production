@@ -138,6 +138,7 @@ async function run() {
   let imageId = null;
   let packageId = null;
   let quoteId = null;
+  let offerId = null;
   let reviewId = null;
 
   {
@@ -184,6 +185,19 @@ async function run() {
     const res = await request('GET', '/api/v1/provider/me/summary', null, providerToken);
     check('GET /api/v1/provider/me/summary - HTTP 200', res.status === 200);
     check('summary starts with zero services', res.body?.servicesCount === 0);
+  }
+
+  {
+    const res = await request('POST', '/api/v1/provider/me/services', {
+      categoryId: reference.category.id,
+      title: 'Invalid oversized provider service',
+      basePrice: '9999999999999',
+    }, providerToken);
+    check('oversized provider service price - HTTP 400', res.status === 400);
+    check(
+      'oversized provider service price writes nothing',
+      await prisma.providerService.count({ where: { providerId } }) === 0,
+    );
   }
 
   {
@@ -275,6 +289,19 @@ async function run() {
   {
     const res = await request('POST', '/api/v1/provider/me/packages', {
       serviceId,
+      title: 'Invalid precision provider package',
+      price: '10.999',
+    }, providerToken);
+    check('over-precision provider package price - HTTP 400', res.status === 400);
+    check(
+      'over-precision provider package price writes nothing',
+      await prisma.providerPackage.count({ where: { providerId } }) === 0,
+    );
+  }
+
+  {
+    const res = await request('POST', '/api/v1/provider/me/packages', {
+      serviceId,
       title: 'باقة لوحة المزود',
       description: 'باقة لاختبار لوحة المزود.',
       price: '130000',
@@ -341,6 +368,43 @@ async function run() {
     }, providerToken);
     check('PATCH provider quote status - HTTP 200', res.status === 200);
     check('provider quote status updated', res.body?.status === 'VIEWED');
+  }
+
+  {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
+      message: 'Invalid oversized provider offer',
+      amount: '9999999999999',
+    }, providerToken);
+    check('oversized provider offer amount - HTTP 400', res.status === 400);
+    check(
+      'oversized provider offer writes nothing',
+      await prisma.quoteOffer.count({ where: { quoteRequestId: quoteId } }) === 0,
+    );
+  }
+
+  {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
+      message: 'Provider dashboard valid offer',
+      amount: '140000',
+      currency: 'YER',
+    }, providerToken);
+    check('POST provider quote offer - HTTP 201', res.status === 201);
+    offerId = requireResponseId('POST provider quote offer', res);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/provider/me/quote-offers/${offerId}`, {
+      amount: '10.999',
+    }, providerToken);
+    check('over-precision provider offer update - HTTP 400', res.status === 400);
+    const storedOffer = await prisma.quoteOffer.findUnique({
+      where: { id: offerId },
+      select: { amount: true },
+    });
+    check(
+      'invalid provider offer update preserves prior amount',
+      storedOffer?.amount?.toString() === '140000',
+    );
   }
 
   {

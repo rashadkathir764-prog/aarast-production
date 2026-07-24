@@ -28,6 +28,7 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { toReviewIdentity } from '../common/privacy/review-identity';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { optionalMoneyAmount } from '../common/validation/money';
 import { recordConversationEvent } from '../conversations/conversation-lifecycle';
 import {
   assertQuoteRequestTransition,
@@ -315,7 +316,7 @@ export class ProviderDashboardService {
         categoryId: dto.categoryId,
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
-        basePrice: this.optionalDecimal(dto.basePrice, 'basePrice'),
+        basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice'),
         priceUnit: this.optionalText(dto.priceUnit),
         currency: this.optionalText(dto.currency) ?? 'YER',
         cityId: this.optionalText(dto.cityId),
@@ -357,7 +358,7 @@ export class ProviderDashboardService {
           ? { description: this.optionalText(dto.description) }
           : {}),
         ...(dto.basePrice !== undefined
-          ? { basePrice: this.optionalDecimal(dto.basePrice, 'basePrice') }
+          ? { basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice') }
           : {}),
         ...(dto.priceUnit !== undefined
           ? { priceUnit: this.optionalText(dto.priceUnit) }
@@ -531,7 +532,7 @@ export class ProviderDashboardService {
         serviceId: this.optionalText(dto.serviceId),
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
-        price: this.optionalDecimal(dto.price, 'price'),
+        price: optionalMoneyAmount(dto.price, 'price'),
         currency: this.optionalText(dto.currency) ?? 'YER',
         ...(dto.items !== undefined
           ? { items: dto.items as Prisma.InputJsonValue }
@@ -567,7 +568,7 @@ export class ProviderDashboardService {
           ? { description: this.optionalText(dto.description) }
           : {}),
         ...(dto.price !== undefined
-          ? { price: this.optionalDecimal(dto.price, 'price') }
+          ? { price: optionalMoneyAmount(dto.price, 'price') }
           : {}),
         ...(dto.currency !== undefined
           ? { currency: this.requiredText(dto.currency, 'currency') }
@@ -721,7 +722,7 @@ export class ProviderDashboardService {
           providerId: provider.id,
           title: this.optionalText(dto.title),
           message: this.requiredText(dto.message, 'message'),
-          amount: this.optionalDecimal(dto.amount, 'amount'),
+          amount: optionalMoneyAmount(dto.amount, 'amount'),
           currency: dto.currency ?? 'YER',
           validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
         },
@@ -798,7 +799,7 @@ export class ProviderDashboardService {
             ? { message: this.requiredText(dto.message ?? '', 'message') }
             : {}),
           ...(dto.amount !== undefined
-            ? { amount: this.optionalDecimal(dto.amount, 'amount') }
+            ? { amount: optionalMoneyAmount(dto.amount, 'amount') }
             : {}),
           ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
           ...(dto.validUntil !== undefined
@@ -952,19 +953,6 @@ export class ProviderDashboardService {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     return trimmed || null;
-  }
-
-  private optionalDecimal(
-    value: string | null | undefined,
-    field: string,
-  ): string | null {
-    if (value === undefined || value === null) return null;
-    const normalized = value.trim();
-    if (!normalized) return null;
-    if (!/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-    return normalized;
   }
 
   private optionalSignedDecimal(

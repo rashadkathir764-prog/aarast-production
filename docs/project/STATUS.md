@@ -65,6 +65,9 @@ and runtime checks override historical completion reports.
   dashboard operations, and admin catalog/provider operations. Public provider
   rating caches are derived under an ordered provider-row lock in the same
   transaction as every user/admin review mutation and account-review purge.
+  Service, package, offer, admin-service, and marketplace-filter prices share
+  the bounded `numeric(14,2)` validator and fail before writes on overflow or
+  excess precision.
 - One conversation per plan/provider or account/provider context, created with
   the first real quote request and reused by later requests. The implemented
   timeline combines human messages with persisted quote/offer system events,

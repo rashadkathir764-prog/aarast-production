@@ -178,6 +178,12 @@ published `ProviderReview` rows. The live smoke must exercise interleaved
 mutations repeatedly on a managed isolated database and leave no disposable
 resource behind.
 
+Provider price coverage must send oversized and over-precision values through
+the live service, package, and quote-offer create/update routes, require `400`,
+and prove that no new row or partial update reached PostgreSQL. Source tests
+must also keep admin service writes and marketplace filters on the same central
+money validator.
+
 ## Mobile Changes
 
 ```powershell

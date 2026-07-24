@@ -1109,6 +1109,15 @@ user's reviews and refreshes every surviving provider under the same ordered
 locks; a successful response therefore cannot leave the public aggregate
 behind the review data.
 
+Provider service `basePrice`, package `price`, and quote-offer `amount` use the
+same money boundary as the planning ledger: a present value must be
+non-negative, contain at most 12 integer digits and 2 decimal places, and fit
+PostgreSQL `numeric(14,2)`. Null or blank optional prices clear/omit the value.
+Provider create/update, administrator service create/update, and marketplace
+price filters all share this validator. Invalid precision or overflow returns
+`400` before Prisma writes, so PostgreSQL never silently rounds a provider
+price and never surfaces numeric overflow as `500`.
+
 Plan-scoped `/api/v1` quote routes:
 
 - `POST /api/v1/wedding-plans/:weddingPlanId/quote-requests`

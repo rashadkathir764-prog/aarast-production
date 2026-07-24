@@ -30,6 +30,12 @@ export function optionalMoneyAmount(
   value: unknown,
   field: string,
 ): string | null {
-  if (value === undefined) return null;
+  if (
+    value === undefined ||
+    value === null ||
+    (typeof value === 'string' && value.trim() === '')
+  ) {
+    return null;
+  }
   return requiredMoneyAmount(value, field);
 }

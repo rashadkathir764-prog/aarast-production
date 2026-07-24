@@ -1,0 +1,98 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import test from "node:test";
+import { BadRequestException } from "@nestjs/common";
+import { ProviderStatus } from "@prisma/client";
+import { optionalMoneyAmount } from "../src/common/validation/money";
+import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
+
+test("provider service prices fail at validation before Prisma can round or overflow", async () => {
+  let writes = 0;
+  const prisma = {
+    provider: {
+      findUnique: async () => ({
+        id: "provider-1",
+        userId: "user-1",
+        status: ProviderStatus.ACTIVE,
+      }),
+    },
+    providerCategory: {
+      findFirst: async () => ({ id: "11111111-1111-4111-8111-111111111111" }),
+    },
+    providerService: {
+      create: async () => {
+        writes += 1;
+        throw new Error("database write reached");
+      },
+    },
+  };
+  const service = new ProviderDashboardService(
+    prisma as any,
+    {} as any,
+    {} as any,
+  );
+
+  for (const basePrice of ["9999999999999", "10.999"]) {
+    await assert.rejects(
+      () =>
+        service.createService(
+          { id: "user-1" } as any,
+          {
+            categoryId: "11111111-1111-4111-8111-111111111111",
+            title: "Service",
+            basePrice,
+          },
+        ),
+      BadRequestException,
+      basePrice,
+    );
+  }
+  assert.equal(writes, 0);
+});
+
+test("all provider-facing price fields share the central optional-money contract", () => {
+  assert.equal(optionalMoneyAmount(undefined, "price"), null);
+  assert.equal(optionalMoneyAmount(null, "price"), null);
+  assert.equal(optionalMoneyAmount("  ", "price"), null);
+  assert.equal(optionalMoneyAmount("999.25", "price"), "999.25");
+  assert.equal(
+    optionalMoneyAmount("999999999999.99", "price"),
+    "999999999999.99",
+  );
+
+  const source = readFileSync(
+    join(
+      __dirname,
+      "..",
+      "src",
+      "provider-dashboard",
+      "provider-dashboard.service.ts",
+    ),
+    "utf8",
+  );
+  const adminSource = readFileSync(
+    join(__dirname, "..", "src", "admin", "admin.service.ts"),
+    "utf8",
+  );
+  const marketplaceSource = readFileSync(
+    join(
+      __dirname,
+      "..",
+      "src",
+      "marketplace",
+      "marketplace.presenter.ts",
+    ),
+    "utf8",
+  );
+  assert.match(source, /optionalMoneyAmount/);
+  assert.ok(
+    (source.match(/optionalMoneyAmount\(/g) ?? []).length >= 6,
+    "service, package, and quote-offer create/update paths use the validator",
+  );
+  assert.doesNotMatch(source, /private optionalDecimal/);
+  assert.doesNotMatch(source, /\^\\d\+\\\(\\\.\\d\+\\\)\\\?\$/);
+  assert.match(adminSource, /optionalMoneyAmount/);
+  assert.doesNotMatch(adminSource, /private optionalDecimal/);
+  assert.match(marketplaceSource, /optionalMoneyAmount/);
+});

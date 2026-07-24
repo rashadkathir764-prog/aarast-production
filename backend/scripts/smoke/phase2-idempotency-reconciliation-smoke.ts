@@ -5,12 +5,11 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { reconcileAmbiguousIdempotencyKey } from "../../src/common/idempotency/idempotency-reconciliation";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
-  assertManagedSmokeEnvironment: (
-    environment: NodeJS.ProcessEnv,
-  ) => { runId: string };
+  assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
 };
 
-const { runId } = assertManagedSmokeEnvironment(process.env);
+assertManagedSmokeEnvironment(process.env);
+const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const prisma = new PrismaClient();
 const method = "POST";
 const path = "/api/v1/wedding-plans/:weddingPlanId/costs";

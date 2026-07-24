@@ -169,10 +169,13 @@ notification/outbox idempotency.
 Authorization coverage must exercise the plan owner, an explicit
 `canManageProviders` member, a member without that flag, the ACCOUNT requester,
 and the linked provider. Revoking the flag must return 404 to REST immediately,
-mark any Participant revoked, and eject the current Socket.IO room. Flutter
-coverage must include PLAN/ACCOUNT labels, one inbox row with multiple request
-count, read-only quote lookup, event navigation, provider-not-joined state,
-error/retry, reconnect, permission revocation, and duplicate-free pagination.
+mark any Participant revoked, and eject the current Socket.IO room. Live
+coverage must also prove that an explicit false on a role whose defaults grant
+provider management is denied by both provider APIs and conversation access.
+Flutter coverage must include PLAN/ACCOUNT labels, one inbox row with multiple
+request count, read-only quote lookup, event navigation, provider-not-joined
+state, error/retry, reconnect, permission revocation, and duplicate-free
+pagination.
 
 Provider review concurrency coverage must prove that create, rating update,
 delete, admin hide/publish, and reviewer-account deletion always leave

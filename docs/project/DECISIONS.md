@@ -50,7 +50,7 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Make conversation identity the provider relationship context, not one request. | Accepted and implemented | `PLAN` is unique by `weddingPlanId + providerId`; `ACCOUNT` is unique by `accountRequesterUserId + providerId`. Every QuoteRequest is linked to exactly one conversation and multiple requests share its timeline. |
-| Derive conversation authorization live from plan/provider relations. | Accepted and implemented | Plan owners, explicit `SharedMember.canManageProviders` members, the account requester, and the linked provider account are authorized by current rows on every REST/Socket operation. `ConversationParticipant` stores only personal state and is never an authority source. |
+| Derive conversation authorization live from plan/provider relations. | Accepted and implemented | Plan owners, explicit `SharedMember.canManageProviders` members, the account requester, and the linked provider account are authorized by current rows on every REST/Socket operation. Role defaults initialize the stored provider flag, but its current boolean value is authoritative across provider APIs and conversations. `ConversationParticipant` stores only personal state and is never an authority source. |
 | Keep quote lifecycle updates as system events, separate from human messages. | Accepted and implemented | `ConversationEvent` stores idempotent request/offer events without price or contact data. Offer expiry is derived from `validUntil`; unread counts include human messages only. |
 
 ## Current Decisions Addendum - 2026-07-15

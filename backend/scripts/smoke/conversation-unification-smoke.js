@@ -497,13 +497,38 @@ async function run() {
     (payload) => payload?.conversationId === planConversationId,
   );
   const revoke = await request('PATCH', `/api/v1/wedding-plans/${planOneId}/members/${memberBody.id}`, {
+    role: 'HELPER',
     canManageProviders: false,
   }, owner.token);
-  await expectStatus('Owner revokes canManageProviders', revoke, 200);
+  const revokedMemberBody = await expectStatus('Owner revokes canManageProviders', revoke, 200);
+  check(
+    'Explicit provider revocation overrides HELPER role default',
+    revokedMemberBody?.role === 'HELPER' &&
+      revokedMemberBody?.canManageProviders === false,
+  );
   const revokedPayload = await revokedEvent;
   check('Socket receives immediate permission-revoked event', revokedPayload?.conversationId === planConversationId);
   const revokedRest = await request('GET', `/api/v1/conversations/${planConversationId}`, null, member.token);
   check('Revoked member loses REST access immediately', revokedRest.status === 404, `HTTP ${revokedRest.status}`);
+  const revokedProviderMutation = await request(
+    'POST',
+    `/api/v1/wedding-plans/${planOneId}/quote-requests`,
+    {
+      providerId,
+      serviceId: fixture.serviceIds[0],
+      cityId: city.id,
+      guestCount: 111,
+      message: `Denied helper request ${marker}`,
+      budgetMin: '180000',
+      budgetMax: '350000',
+    },
+    member.token,
+  );
+  check(
+    'Revoked HELPER also loses provider-management API authority',
+    revokedProviderMutation.status === 404,
+    `HTTP ${revokedProviderMutation.status}`,
+  );
   const revokedParticipant = await prisma.conversationParticipant.findUnique({
     where: { conversationId_userId: { conversationId: planConversationId, userId: member.user.id } },
     select: { revokedAt: true },

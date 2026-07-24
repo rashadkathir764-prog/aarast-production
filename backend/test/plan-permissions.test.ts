@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SharedMemberRole } from '@prisma/client';
 import { rolePermissionDefaults } from '../src/sharing/plan-permissions';
+import { PermissionService } from '../src/sharing/permission.service';
 
 test('groom and bride roles can operate the plan while retaining explicit money access', () => {
   for (const role of [SharedMemberRole.GROOM, SharedMemberRole.BRIDE]) {
@@ -37,4 +38,38 @@ test('viewer role is read-only and owner retains every permission', () => {
 
   const owner = rolePermissionDefaults(SharedMemberRole.OWNER);
   assert.ok(Object.values(owner).every(Boolean));
+});
+
+test('stored provider permission overrides role defaults everywhere', () => {
+  const service = new PermissionService({} as any);
+  const context = (
+    role: SharedMemberRole,
+    canManageProviders: boolean,
+  ) => ({
+    plan: { ownerUserId: 'owner-1' },
+    isOwner: false,
+    sharedMember: {
+      role,
+      canManageProviders,
+    },
+  }) as any;
+
+  assert.equal(
+    service.canManageProviders(
+      context(SharedMemberRole.HELPER, false),
+    ),
+    false,
+  );
+  assert.equal(
+    service.canManageProviders(
+      context(SharedMemberRole.GROOM, false),
+    ),
+    false,
+  );
+  assert.equal(
+    service.canManageProviders(
+      context(SharedMemberRole.VIEWER, true),
+    ),
+    true,
+  );
 });

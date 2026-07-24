@@ -251,15 +251,7 @@ export class PermissionService {
 
   canManageProviders(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
-    const member = context.sharedMember;
-    return Boolean(
-      member?.canManageProviders ||
-      member?.role === SharedMemberRole.GROOM ||
-      member?.role === SharedMemberRole.BRIDE ||
-      member?.role === SharedMemberRole.HELPER ||
-      member?.role === SharedMemberRole.CONTRIBUTOR ||
-      member?.role === SharedMemberRole.MANAGER,
-    );
+    return Boolean(context.sharedMember?.canManageProviders);
   }
 
   canManageMembers(context: PlanAccessContext): boolean {

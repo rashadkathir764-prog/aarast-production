@@ -1256,9 +1256,12 @@ is limited to the requester and linked provider account. Participant rows store
 joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
 participant and forces current sockets out of the room. This permission is
 strong because it exposes the prior conversation history and allows sending as
-the plan; money fields still require money permissions. Revoked participants
-are reactivated only by an explicit provider-management permission grant, never
-as a side effect of opening, reading, marking read, or sending.
+the plan; money fields still require money permissions. Role defaults populate
+the stored flag when a member or invite is created or changes role, but an
+explicit stored `false` is authoritative for both provider APIs and
+conversations; a role name never silently restores the capability. Revoked
+participants are reactivated only by an explicit provider-management permission
+grant, never as a side effect of opening, reading, marking read, or sending.
 
 Authenticated Socket.IO events include `conversation:join`,
 `conversation:message`, `conversation:read`, `conversation:event`,

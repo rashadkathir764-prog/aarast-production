@@ -257,7 +257,7 @@ PostgreSQL وRedis وMinIO إلى الصفر.
 - [x] جعل rating aggregate ذريًا أو اشتقاقه من البيانات بدل cache قابل للفقد.
 - [x] استخدام money validator المركزي لكل أسعار المزود.
 - [x] إضافة `PUT` إلى CORS واختبار preflight.
-- [ ] توحيد تفسير `canManageProviders` بين PermissionService والمحادثات.
+- [x] توحيد تفسير `canManageProviders` بين PermissionService والمحادثات.
 
 **شرط خروج المرحلة 2:**
 

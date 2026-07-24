@@ -74,6 +74,9 @@ Money-domain changes additionally fail unless tests prove:
   without creating a placeholder category and rejects any positive allocation
   when `totalBudget` is null; the mobile form prevents an entirely empty no-op
   write before calling that route;
+- an HTTP `OPTIONS` preflight for the canonical money-budget route advertises
+  `PUT` in `Access-Control-Allow-Methods` without widening origin or header
+  policy;
 - schedule warnings expose counts with `amount: null`, so overlapping reminders
   are never summed or presented as debt;
 - direct SQL insert/update of one pending schedule above the current outstanding

@@ -59,6 +59,7 @@ test("admin MFA can securely verify a pre-MFA administrator phone", () => {
 test("admin refresh is a rotating HttpOnly cookie session", () => {
   const controller = read("src/auth/auth.controller.ts");
   const main = read("src/main.ts");
+  const corsOptions = read("src/common/config/cors-options.ts");
 
   assert.match(controller, /@Post\(["']admin\/refresh["']\)/);
   assert.match(controller, /@Post\(["']admin\/logout["']\)/);
@@ -66,7 +67,8 @@ test("admin refresh is a rotating HttpOnly cookie session", () => {
   assert.match(controller, /sameSite:\s*["']strict["']/);
   assert.match(controller, /path:\s*["']\/api\/v1\/auth\/admin["']/);
   assert.match(controller, /secure:\s*isProductionEnvironment\(\)/);
-  assert.match(main, /credentials:\s*true/);
+  assert.match(main, /app\.enableCors\(getCorsOptions\(\)\)/);
+  assert.match(corsOptions, /credentials:\s*true/);
 });
 
 function contextFor(user: {

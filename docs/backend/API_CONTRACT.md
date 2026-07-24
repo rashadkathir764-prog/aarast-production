@@ -521,6 +521,10 @@ money setup write is the protected atomic route:
 
 - `PUT /api/v1/wedding-plans/:planId/money-budget`
 
+Browser clients are allowed to preflight this route with `PUT`; the canonical
+CORS method list includes `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and
+`OPTIONS`, while the origin and credential restrictions remain unchanged.
+
 Its body contains `totalBudget`, `currency`, and `categories`:
 
 ```json

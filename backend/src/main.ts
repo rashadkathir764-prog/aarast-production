@@ -5,7 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import * as Sentry from '@sentry/node';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { getCorsOrigins } from './common/config/cors-origins';
+import { getCorsOptions } from './common/config/cors-options';
 import { validateRuntimeEnvironment } from './common/config/runtime-environment';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { requestObservability } from './common/observability/request-observability.middleware';
@@ -66,12 +66,7 @@ async function bootstrap() {
   app.use(helmet());
   app.use(requestObservability);
 
-  app.enableCors({
-    origin: getCorsOrigins(),
-    credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Request-Id'],
-  });
+  app.enableCors(getCorsOptions());
 
   app.useGlobalPipes(
     // transform is required so @Type() conversions run on query-string

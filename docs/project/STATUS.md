@@ -68,6 +68,8 @@ and runtime checks override historical completion reports.
   Service, package, offer, admin-service, and marketplace-filter prices share
   the bounded `numeric(14,2)` validator and fail before writes on overflow or
   excess precision.
+  Browser CORS preflight explicitly permits the canonical `PUT` money-budget
+  write while retaining the configured origin, credential, and header policy.
 - One conversation per plan/provider or account/provider context, created with
   the first real quote request and reused by later requests. The implemented
   timeline combines human messages with persisted quote/offer system events,

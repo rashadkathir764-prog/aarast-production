@@ -46,6 +46,7 @@
     "smoke:phase0-fixtures": "node scripts/smoke/run-isolated-smoke.js phase0-fixtures-smoke.js",
     "smoke:phase1-identity": "node scripts/smoke/run-isolated-smoke.js phase1-identity-smoke.ts",
     "smoke:phase2-quote-concurrency": "node scripts/smoke/run-isolated-smoke.js phase2-quote-concurrency-smoke.ts",
+    "smoke:phase2-conversation-revocation": "node scripts/smoke/run-isolated-smoke.js phase2-conversation-revocation-smoke.ts",
     "smoke:all": "node scripts/smoke/run-isolated-smoke.js all-smoke.js",
     "load:test": "node scripts/smoke/run-isolated-smoke.js --load-test",
     "dev:create-admin": "node scripts/dev/create-admin.cjs",

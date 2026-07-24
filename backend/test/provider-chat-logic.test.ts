@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import {
+  hasJoinedProvider,
+  isActiveConversationParticipant,
   normalizeMessageBody,
   normalizeMessagePageSize,
 } from '../src/conversations/conversation-policy';
@@ -22,6 +24,30 @@ test('message page size stays between 1 and 50', () => {
   assert.equal(normalizeMessagePageSize('50'), 50);
   assert.throws(() => normalizeMessagePageSize('0'), BadRequestException);
   assert.throws(() => normalizeMessagePageSize('51'), BadRequestException);
+});
+
+test('provider join and active participation never treat a revoked row as live', () => {
+  const participants = [
+    { userId: 'customer', revokedAt: null },
+    { userId: 'provider', revokedAt: new Date() },
+  ];
+  assert.equal(
+    isActiveConversationParticipant(participants, 'customer'),
+    true,
+  );
+  assert.equal(
+    isActiveConversationParticipant(participants, 'provider'),
+    false,
+  );
+  assert.equal(hasJoinedProvider('provider', participants), false);
+  assert.equal(
+    hasJoinedProvider('provider', [
+      ...participants,
+      { userId: 'provider', revokedAt: null },
+    ]),
+    true,
+  );
+  assert.equal(hasJoinedProvider(null, participants), false);
 });
 
 test('conversation schema owns plan/account identity instead of one quote request', () => {
@@ -60,9 +86,15 @@ test('authorization uses live plan ownership and explicit canManageProviders', (
   assert.match(service, /weddingPlan\.ownerUserId === currentUserId/);
   assert.match(service, /if \(!member\?\.canManageProviders\) return null/);
   assert.match(service, /revokedAt: new Date\(\)/);
+  assert.match(service, /assertActiveAccessInTransaction/);
+  assert.match(service, /FROM "SharedMember"[\s\S]*FOR SHARE/);
   assert.match(service, /PROVIDER_NOT_JOINED/);
   assert.match(service, /customerSideBlockedAt/);
   assert.match(service, /providerSideBlockedAt/);
+  assert.doesNotMatch(
+    service,
+    /data:\s*\{\s*lastReadAt,\s*revokedAt:\s*null\s*\}/,
+  );
   assert.doesNotMatch(service, /ConversationParticipantRole/);
 });
 

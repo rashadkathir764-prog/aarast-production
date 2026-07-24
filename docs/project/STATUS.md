@@ -68,7 +68,11 @@ and runtime checks override historical completion reports.
   timeline combines human messages with persisted quote/offer system events,
   authenticated Socket.IO delivery, unread/read, personal mute, side-level
   block, report, private chat objects with membership-gated 120-second signed
-  downloads, and admin report moderation.
+  downloads, and admin report moderation. Send and mark-read recheck live
+  authority and the active participant inside a serializable transaction;
+  permission revocation removes sockets and cannot be undone by those actions.
+  A not-yet-joined provider keeps the customer conversation readable while
+  sending remains disabled.
 - Image writes verify and sanitize the complete uploaded object server-side
   before persistence. JPEG/PNG/WebP uploads must match their ownership metadata,
   stored size/MIME, fully decode within the pixel/dimension/single-frame bounds,

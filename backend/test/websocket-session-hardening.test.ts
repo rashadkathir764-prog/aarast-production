@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ConversationRealtimePublisher } from '../src/conversations/conversation-realtime.publisher';
 import { ConversationsGateway } from '../src/conversations/conversations.gateway';
 
 interface FakeSocket {
@@ -75,6 +76,39 @@ function eligibleUser(overrides: Record<string, unknown> = {}) {
 }
 
 const futureExp = () => Math.floor(Date.now() / 1000) + 900;
+
+test('permission revocation removes every user socket from the conversation room', () => {
+  const calls = {
+    userRoom: '',
+    events: [] as Array<{ event: string; payload: unknown }>,
+    leftRooms: [] as string[],
+  };
+  const publisher = new ConversationRealtimePublisher();
+  publisher.attach({
+    in: (room: string) => {
+      calls.userRoom = room;
+      return {
+        emit: (event: string, payload: unknown) => {
+          calls.events.push({ event, payload });
+        },
+        socketsLeave: (conversationRoom: string) => {
+          calls.leftRooms.push(conversationRoom);
+        },
+      };
+    },
+  } as never);
+
+  publisher.revokeConversationAccess('user-1', ['conversation-1']);
+
+  assert.equal(calls.userRoom, 'user:user-1');
+  assert.deepEqual(calls.events, [
+    {
+      event: 'conversation:permission-revoked',
+      payload: { conversationId: 'conversation-1' },
+    },
+  ]);
+  assert.deepEqual(calls.leftRooms, ['conversation:conversation-1']);
+});
 
 test('a phone-unverified account cannot open a chat socket', async () => {
   const gateway = createGateway({

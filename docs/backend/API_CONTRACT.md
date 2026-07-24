@@ -1208,11 +1208,15 @@ same transaction, so opening chat never mutates server state.
   messages and request/offer system events in one stable chronological stream.
 - `GET /api/v1/conversations/:id/messages` returns paginated message history.
 - `POST /api/v1/conversations/:id/messages` sends text and approved signed-media
-  attachments.
+  attachments. Immediately before persistence, one serializable transaction
+  locks the conversation, rechecks the live plan/provider authority and active
+  participant row, and derives recipients from that same locked graph. A
+  permission revocation that commits first therefore rejects the send without
+  creating a message, notification, or outbox event.
 - `GET /api/v1/conversations/:id/attachments/:attachmentId/download` refreshes a
   private attachment link after rechecking conversation membership.
 - `PATCH /api/v1/conversations/:id/read`, `/mute`, and `/block` update participant
-  state.
+  state. Mark-read never reactivates a revoked participant.
 - `POST /api/v1/conversations/:id/report` creates a moderation report.
 
 Conversation summaries include `scope`, optional `weddingPlan`, `provider`,
@@ -1228,14 +1232,19 @@ is limited to the requester and linked provider account. Participant rows store
 joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
 participant and forces current sockets out of the room. This permission is
 strong because it exposes the prior conversation history and allows sending as
-the plan; money fields still require money permissions.
+the plan; money fields still require money permissions. Revoked participants
+are reactivated only by an explicit provider-management permission grant, never
+as a side effect of opening, reading, marking read, or sending.
 
 Authenticated Socket.IO events include `conversation:join`,
 `conversation:message`, `conversation:read`, `conversation:event`,
 `conversation:activity-available`, and `conversation:permission-revoked`.
 Server authorization is rechecked before join, send, and read. A provider with
 no linked User does not block quote creation; the summary returns
-`providerJoined: false` and `canSend: false` until the account is linked.
+`providerJoined: false` and `canSend: false` until that provider account opens
+or sends in the conversation. Customer reads do not falsely join the provider,
+and the conversation remains readable while sending returns the stable
+`PROVIDER_NOT_JOINED` conflict contract.
 
 `POST /api/v1/media/uploads/presign` issues short-lived S3-compatible upload
 URLs for approved purposes and declared size/MIME limits. The returned

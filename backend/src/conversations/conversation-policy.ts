@@ -16,3 +16,28 @@ export function normalizeMessagePageSize(value?: string): number {
   }
   return parsed;
 }
+
+interface ConversationParticipantState {
+  userId: string;
+  revokedAt: Date | null;
+}
+
+export function isActiveConversationParticipant(
+  participants: readonly ConversationParticipantState[],
+  userId: string,
+): boolean {
+  return participants.some(
+    (participant) =>
+      participant.userId === userId && participant.revokedAt === null,
+  );
+}
+
+export function hasJoinedProvider(
+  providerUserId: string | null,
+  participants: readonly ConversationParticipantState[],
+): boolean {
+  return Boolean(
+    providerUserId &&
+      isActiveConversationParticipant(participants, providerUserId),
+  );
+}

@@ -55,6 +55,12 @@ Required:
 - `VITE_API_BASE_URL`
 - `AUTH_OTP_MODE`
 - `AUTH_LOGIN_THROTTLE_PEPPER`
+- `AARAST_MEDIA_ROOT_USER`
+- `AARAST_MEDIA_ROOT_PASSWORD`
+- `AARAST_MEDIA_BUCKET`
+- `AARAST_MEDIA_ACCESS_KEY_ID`
+- `AARAST_MEDIA_SECRET_ACCESS_KEY`
+- `AARAST_MEDIA_SIGNED_ENDPOINT`
 
 Current backend note: the backend code reads `JWT_SECRET`. The compose file maps `JWT_ACCESS_SECRET` into the backend container as `JWT_SECRET`. `JWT_REFRESH_SECRET` is documented for the production secret contract, but it is not consumed by the current backend code.
 `JWT_ACCESS_SECRET` must contain at least 32 UTF-8 bytes, include at least 12
@@ -358,6 +364,41 @@ ambiguous, compare method and route, and update/delete it conditionally in one
 serializable transaction. If commit status cannot be proven, take no mutation
 action: preserve the tombstone and escalate. Never use direct SQL, `db push`,
 `migrate reset`, or a broad delete as a reconciliation shortcut.
+
+## MinIO identity and policy
+
+MinIO has two credential boundaries:
+
+- `AARAST_MEDIA_ROOT_USER` and `AARAST_MEDIA_ROOT_PASSWORD` are available only
+  to the `media` server and one-shot `media-init` service.
+- `AARAST_MEDIA_ACCESS_KEY_ID` and `AARAST_MEDIA_SECRET_ACCESS_KEY` identify a
+  dedicated Backend service account. These are the only MinIO credentials
+  available in the long-lived Backend container.
+
+`media-init` first removes anonymous access from the bucket, then enables
+download only for `user-avatar/`, `provider-logo/`, `provider-cover/`, and
+`service-image/`. It explicitly keeps `chat-image/` private. The Backend
+service-account session policy permits only `GetBucketLocation` and
+`PutObject/GetObject/DeleteObject` under those five exact prefixes in the one
+application bucket. It grants no bucket creation/deletion, policy/user
+administration, or access to another bucket. Re-running the initializer edits
+the exact service account and policy in place rather than creating duplicates.
+
+Before releasing, run the isolated MinIO least-privilege rehearsal and prove:
+
+1. Backend credentials can put/get/delete in a public asset prefix and in
+   `chat-image/`.
+2. An unsigned public-prefix GET succeeds while an unsigned `chat-image/` GET
+   is denied.
+3. The same credentials cannot create a bucket, change a policy, write outside
+   the five prefixes, or access a second bucket.
+4. Root credentials do not occur in the rendered Backend environment.
+
+Rotate the service account with a second access key: create and validate the
+new key/policy, roll Backend to it, then remove the old key after the rollback
+window. Never rotate by placing root credentials in Backend. If the new key
+fails readiness, route back to the old Backend/key and leave the failed key
+disabled for investigation.
 
 ## Health Checks
 

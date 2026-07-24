@@ -321,10 +321,20 @@ Backend الكاملة: 396 اختبارًا، منها 395 ناجحًا ووا�
 
 **المتطلبات:**
 
-- [ ] Root credentials تُستخدم لتهيئة MinIO فقط ولا تدخل Backend.
-- [ ] إنشاء service account بسياسة bucket/prefix محدودة.
-- [ ] backend لا يستطيع إدارة المستخدمين أو السياسات أو buckets الأخرى.
-- [ ] اختبار public prefixes والـprivate `chat-image` بعد التغيير.
+- [x] Root credentials تُستخدم لتهيئة MinIO فقط ولا تدخل Backend.
+- [x] إنشاء service account بسياسة bucket/prefix محدودة.
+- [x] backend لا يستطيع إدارة المستخدمين أو السياسات أو buckets أخرى.
+- [x] اختبار public prefixes والـprivate `chat-image` بعد التغيير.
+
+**نتيجة تقييم 3B:** `10/10 — APPROVED` بتاريخ 2026-07-24. أصبحت root
+credentials محصورة في MinIO وinitializer، ويستلم Backend service account
+مقيدًا بالـbucket وخمسة prefixes وبأفعال location/put/get/delete فقط. استبدل
+فحص الجاهزية `HeadBucket` بـ`GetBucketLocation` حتى لا يحتاج ListBucket.
+أثبتت بروفة حية أن تدوير السر يلغي القديم، وأن CRUD يعمل في public وprivate
+prefixes، وأن القراءة المجهولة تنجح للأصول العامة وتُرفض لـ`chat-image`.
+فشلت عمدًا إدارة bucket والسياسة والكتابة خارج النطاق والوصول إلى bucket
+آخر، وأعادت قائمة MinIO المرشحة الـbucket المسموح وحده. لا تطبع عملية
+initializer السر، ونُظف الحساب والـbucketان المعزولان بعد الاختبار.
 
 ### 3C — Backup/restore proof
 

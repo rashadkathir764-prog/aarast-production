@@ -94,8 +94,8 @@ services:
     restart: unless-stopped
     command: server /data
     environment:
-      MINIO_ROOT_USER: ${AARAST_MEDIA_ACCESS_KEY_ID:?AARAST_MEDIA_ACCESS_KEY_ID is required}
-      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_SECRET_ACCESS_KEY:?AARAST_MEDIA_SECRET_ACCESS_KEY is required}
+      MINIO_ROOT_USER: ${AARAST_MEDIA_ROOT_USER:?AARAST_MEDIA_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_ROOT_PASSWORD:?AARAST_MEDIA_ROOT_PASSWORD is required}
     volumes:
       - aarast_media_data:/data
     expose:
@@ -131,17 +131,18 @@ services:
         condition: service_healthy
     environment:
       AARAST_MEDIA_BUCKET: ${AARAST_MEDIA_BUCKET:?AARAST_MEDIA_BUCKET is required}
+      MINIO_ROOT_USER: ${AARAST_MEDIA_ROOT_USER:?AARAST_MEDIA_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_ROOT_PASSWORD:?AARAST_MEDIA_ROOT_PASSWORD is required}
       AARAST_MEDIA_ACCESS_KEY_ID: ${AARAST_MEDIA_ACCESS_KEY_ID:?AARAST_MEDIA_ACCESS_KEY_ID is required}
       AARAST_MEDIA_SECRET_ACCESS_KEY: ${AARAST_MEDIA_SECRET_ACCESS_KEY:?AARAST_MEDIA_SECRET_ACCESS_KEY is required}
-    entrypoint: >-
-      /bin/sh -ec '
-      mc alias set local http://media:9000 "$${AARAST_MEDIA_ACCESS_KEY_ID}" "$${AARAST_MEDIA_SECRET_ACCESS_KEY}";
-      mc mb --ignore-existing "local/$${AARAST_MEDIA_BUCKET}";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/user-avatar";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/provider-logo";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/provider-cover";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/service-image";
-      '
+    configs:
+      - source: media_init_script
+        target: /opt/aarast/media/init.sh
+        mode: 0555
+      - source: media_backend_policy
+        target: /opt/aarast/media/backend-policy.sh
+        mode: 0555
+    entrypoint: ["/bin/sh", "/opt/aarast/media/init.sh"]
     networks:
       - aarast_internal
 
@@ -314,6 +315,10 @@ volumes:
 configs:
   postgres_least_privilege:
     file: ./postgres/least-privilege.sql
+  media_init_script:
+    file: ../media/init.sh
+  media_backend_policy:
+    file: ../media/backend-policy.sh
 
 networks:
   aarast_internal:

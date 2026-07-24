@@ -8,6 +8,8 @@ import { loadOpenWaOtpConfig } from '../src/auth/openwa-otp-config';
 import { OpenWaTransientDeliveryRejectedError } from '../src/auth/openwa-transient-text';
 import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
 
+const strongRuntimeJwtSecret =
+  'Y7uQ4nD9pL2xV8mR5cK1sF6hJ3wB0zT4eN9gA2qP7vX5dM8k';
 const { normalizeBaseUrl, buildHistoryUrl } = require('../scripts/smoke/openwa-otp-smoke.js') as {
   normalizeBaseUrl: (value: string) => string;
   buildHistoryUrl: (baseUrl: string, sessionId: string) => string;
@@ -210,7 +212,7 @@ test('OpenWA production mode fails closed when its private contract is incomplet
       validateRuntimeEnvironment({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://example',
-        JWT_SECRET: 'a-secure-test-secret',
+        JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
         AUTH_OTP_MODE: 'openwa',
       }),
@@ -224,7 +226,7 @@ test('runtime rejects a malformed OTP global safety ceiling before boot', () => 
       validateRuntimeEnvironment({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://example',
-        JWT_SECRET: 'a-secure-test-secret',
+        JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
         AUTH_OTP_MODE: 'disabled',
         OTP_GLOBAL_DAILY_LIMIT: '0',

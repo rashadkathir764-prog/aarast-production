@@ -109,12 +109,12 @@ npm.cmd test
 
 **المتطلبات:**
 
-- [ ] `OPERATIONS` لا يستطيع تعطيل أو تفعيل حساب `ADMIN`.
-- [ ] إدارة حسابات الإدارة تتطلب `SUPER_ADMIN`.
-- [ ] منع تعطيل النفس.
-- [ ] منع تعطيل آخر `SUPER_ADMIN` نشط داخل transaction ذرية.
-- [ ] إخفاء/تعطيل الإجراء في Admin UI مع بقاء Backend مصدر الحقيقة.
-- [ ] تسجيل Audit Log للفاعل والهدف والنتيجة دون أسرار.
+- [x] `OPERATIONS` لا يستطيع تعطيل أو تفعيل حساب `ADMIN`.
+- [x] إدارة حسابات الإدارة تتطلب `SUPER_ADMIN`.
+- [x] منع تعطيل النفس.
+- [x] منع تعطيل آخر `SUPER_ADMIN` نشط داخل transaction ذرية.
+- [x] إخفاء/تعطيل الإجراء في Admin UI مع بقاء Backend مصدر الحقيقة.
+- [x] تسجيل Audit Log للفاعل والهدف والنتيجة دون أسرار.
 
 ### 1B — فصل جلسة Admin عن جلسة التطبيق
 
@@ -130,18 +130,18 @@ npm.cmd test
 
 **المتطلبات:**
 
-- [ ] إضافة scope صريح وموقع داخل access JWT: `application` أو `admin`.
-- [ ] `JwtAuthGuard` لمسارات المنتج يرفض admin-scoped tokens.
-- [ ] `AdminGuard` يطلب admin scope وMFA session حية.
-- [ ] refresh لا يستطيع تبديل scope.
-- [ ] logout/revocation يبقيان مفصولين حسب scope.
+- [x] إضافة scope صريح وموقع داخل access JWT: `application` أو `admin`.
+- [x] `JwtAuthGuard` لمسارات المنتج يرفض admin-scoped tokens.
+- [x] `AdminGuard` يطلب admin scope وMFA session حية.
+- [x] refresh لا يستطيع تبديل scope.
+- [x] logout/revocation يبقيان مفصولين حسب scope.
 
 ### 1C — قوة الأسرار وحدود OTP الذرية
 
 **الملفات:**
 
 - Modify: `backend/src/auth/jwt-secret.ts`
-- Modify: `backend/src/config/runtime-environment.ts`
+- Modify: `backend/src/common/config/runtime-environment.ts`
 - Modify: `backend/src/auth/auth.service.ts`
 - Modify: `backend/src/auth/login-throttle.service.ts`
 - Modify: `backend/test/auth-otp-mode.test.ts`
@@ -150,20 +150,26 @@ npm.cmd test
 
 **المتطلبات:**
 
-- [ ] فرض حد آمن لقوة `JWT_SECRET` في production دون طباعة القيمة.
-- [ ] جعل قراءة OTP وفحصه وزيادة المحاولات/استهلاكه عملية ذرية.
-- [ ] قفل سجل OTP أو استخدام update مشروط يضمن عدم تجاوز `maxAttempts`.
-- [ ] اختبار 20 محاولة خاطئة متزامنة يثبت أن عدد المقارنات المقبولة لا يتجاوز الحد.
-- [ ] اختبار تعارض محاولة صحيحة مع محاولات خاطئة.
-- [ ] ربط gate وتسجيل فشل login بصورة تمنع burst متزامن من تجاوز السقف.
+- [x] فرض حد آمن لقوة `JWT_SECRET` في production دون طباعة القيمة.
+- [x] جعل قراءة OTP وفحصه وزيادة المحاولات/استهلاكه عملية ذرية.
+- [x] قفل سجل OTP أو استخدام update مشروط يضمن عدم تجاوز `maxAttempts`.
+- [x] اختبار 20 محاولة خاطئة متزامنة يثبت أن عدد المقارنات المقبولة لا يتجاوز الحد.
+- [x] اختبار تعارض محاولة صحيحة مع محاولات خاطئة.
+- [x] حجز محاولة login قبل مقارنة كلمة المرور بصورة تمنع burst متزامن من تجاوز السقف.
 
 **شرط خروج المرحلة 1:**
 
-- جميع اختبارات الهوية وRBAC تمر.
-- اختبارات التزامن تعمل على PostgreSQL حقيقي، لا mocks فقط.
-- لا admin token يصل إلى product API.
-- لا يمكن تعطيل آخر SUPER_ADMIN.
-- لا يمكن تجاوز OTP/login thresholds بالتزامن.
+- [x] جميع اختبارات الهوية وRBAC تمر.
+- [x] اختبارات التزامن تعمل على PostgreSQL حقيقي، لا mocks فقط.
+- [x] لا admin token يصل إلى product API.
+- [x] لا يمكن تعطيل آخر SUPER_ADMIN.
+- [x] لا يمكن تجاوز OTP/login thresholds بالتزامن.
+
+**نتيجة التقييم:** `10/10 — APPROVED` بتاريخ 2026-07-24. أثبت Smoke
+معزول على PostgreSQL الحقيقي أن 20 محاولة OTP خاطئة لا تتجاوز السقف، وأن
+سباق الصحيح/الخاطئ يملك مستهلكًا ناجحًا واحدًا فقط، وأن 20 محاولة كلمة مرور
+متزامنة تسمح بخمس مقارنات فقط وترفض الخمس عشرة الباقية بالقفل. نجحت كذلك
+مجموعات Backend وAdmin Web وFlutter الكاملة دون فشل.
 
 ---
 

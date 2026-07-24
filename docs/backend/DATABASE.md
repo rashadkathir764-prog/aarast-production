@@ -46,7 +46,7 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation, replacement tracking, and persisted `APPLICATION`/`ADMIN` scope. |
 | AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login, bound by `otpId` to the exact private `ADMIN_LOGIN` OTP. It never stores the raw challenge or OTP. |
 | AdminPasswordResetChallenge | Hashed, short-lived, one-time administrator password-recovery challenge bound to one exact OTP. It stores a token hash and HMAC phone digest, not the raw token or phone, and is invalidated on retry, expiry, failure ceiling, or success. |
-| LoginThrottle | Durable cross-replica password-attempt window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Five failures lock one realm for fifteen minutes; successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
+| LoginThrottle | Durable cross-replica password-attempt admission window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Each request reserves a slot under the row lock before password comparison; five admitted attempts lock one realm for fifteen minutes. Successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
 | OtpDispatchQuota | Atomic cross-replica OTP delivery windows for phone, IP, and global scopes. Subjects are HMAC-SHA-256 digests; no raw phone or IP is persisted. Failed deliveries still consume quota and an hourly advisory-lock cleanup removes expired rows. |
 | MediaUploadTicket | Durable owner, purpose, declared/verified byte size, expiry, verification state, and consumption state for every signed upload. It enforces a rolling per-account quota and allows bounded cleanup of abandoned objects without trusting a client-supplied URL. |
 | Conversation | One provider relationship thread. `PLAN` is unique by WeddingPlan + Provider; `ACCOUNT` is unique by requester User + Provider. The row owns last activity, administrative close, and customer/provider-side block state. |
@@ -97,10 +97,15 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `OtpCode` for local, Meta WhatsApp, or temporary hardened OpenWA OTP
   request/verify flows, storing only
   hashed codes. A partial unique index permits one unconsumed code per
-  phone/purpose, and consumption uses a compare-and-set update so concurrent
-  replays cannot both succeed.
+  phone/purpose. Verification takes a row lock and commits comparison outcome,
+  bounded failure count, terminal exhaustion, or one-time consumption in one
+  retryable transaction so concurrent attempts cannot exceed the stored
+  ceiling or both succeed.
 - `LoginThrottle` replaces process-local password counters with a PostgreSQL
-  serializable failure window shared by all replicas. Its key is an
+  row-locked attempt-admission window shared by all replicas. A forced `upsert`
+  acquires the subject row and reserves the attempt before password comparison,
+  so concurrent requests observe the prior committed count without a
+  serialization-conflict gap and cannot execute comparisons beyond the ceiling. Its key is an
   HMAC-SHA-256 digest made with `AUTH_LOGIN_THROTTLE_PEPPER`; it stores no raw
   phone, email, password, IP address, pepper, or request body. Production fails
   closed without the pepper. An hourly transaction-level advisory lock ensures

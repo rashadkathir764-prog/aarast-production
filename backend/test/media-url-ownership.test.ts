@@ -15,6 +15,8 @@ import { UsersService } from "../src/users/users.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 import { validateRuntimeEnvironment } from "../src/common/config/runtime-environment";
 
+const strongRuntimeJwtSecret =
+  "Y7uQ4nD9pL2xV8mR5cK1sF6hJ3wB0zT4eN9gA2qP7vX5dM8k";
 const BASE = "https://cdn.example.test";
 
 test("local HTTP media URLs are accepted only outside production", () => {
@@ -50,7 +52,7 @@ test("production rejects client-facing media endpoints without HTTPS", () => {
       validateRuntimeEnvironment({
         NODE_ENV: "production",
         DATABASE_URL: "postgresql://example",
-        JWT_SECRET: "test-secret",
+        JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: "separate-test-pepper",
         AUTH_OTP_MODE: "disabled",
         READINESS_REQUIRE_MEDIA: "true",
@@ -66,7 +68,7 @@ test("production rejects client-facing media endpoints without HTTPS", () => {
     validateRuntimeEnvironment({
       NODE_ENV: "production",
       DATABASE_URL: "postgresql://example",
-      JWT_SECRET: "test-secret",
+      JWT_SECRET: strongRuntimeJwtSecret,
       AUTH_LOGIN_THROTTLE_PEPPER: "separate-test-pepper",
       AUTH_OTP_MODE: "disabled",
       READINESS_REQUIRE_MEDIA: "true",
@@ -84,7 +86,7 @@ test("production requires an explicit client-reachable signed media endpoint", (
       validateRuntimeEnvironment({
         NODE_ENV: "production",
         DATABASE_URL: "postgresql://example",
-        JWT_SECRET: "test-secret",
+        JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: "separate-test-pepper",
         AUTH_OTP_MODE: "disabled",
         READINESS_REQUIRE_MEDIA: "true",

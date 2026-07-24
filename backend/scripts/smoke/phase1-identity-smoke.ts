@@ -5,12 +5,16 @@ import assert from 'node:assert/strict';
 import {
   AdminRole,
   AuthSessionScope,
+  OtpPurpose,
   PrismaClient,
   UserRole,
   UserStatus,
 } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
+import * as bcryptjs from 'bcryptjs';
 import { AdminService } from '../../src/admin/admin.service';
+import { AuthService } from '../../src/auth/auth.service';
+import { LoginThrottleService } from '../../src/auth/login-throttle.service';
 import { toAuthenticatedUser } from '../../src/auth/safe-user';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
@@ -19,9 +23,14 @@ const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   ) => { runId: string };
 };
 const {
+  createOtpAttemptFixture,
   createSuperAdminPairFixture,
   withFixture,
 } = require('../../test/support/phase0-postgres-support.js') as {
+  createOtpAttemptFixture: (
+    prisma: any,
+    environment?: NodeJS.ProcessEnv,
+  ) => Promise<any>;
   createSuperAdminPairFixture: (
     prisma: any,
     environment?: NodeJS.ProcessEnv,
@@ -38,6 +47,14 @@ assertManagedSmokeEnvironment(process.env);
 const prisma = new PrismaClient();
 const realtime = { disconnectUser: () => undefined };
 const service = new AdminService(prisma as any, realtime as any);
+const loginThrottle = new LoginThrottleService(prisma as any);
+const authService = new AuthService(
+  prisma as any,
+  {} as any,
+  loginThrottle,
+  { consume: async () => undefined } as any,
+  realtime as any,
+);
 
 function authenticatedAdmin(user: any) {
   return {
@@ -233,6 +250,156 @@ async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
   );
 }
 
+async function assertConcurrentWrongOtpAttemptsRespectCeiling(): Promise<void> {
+  await withFixture(
+    (environment) => createOtpAttemptFixture(prisma, environment),
+    async (fixture) => {
+      const otp = await prisma.otpCode.update({
+        where: { id: fixture.otp.id },
+        data: { codeHash: await bcryptjs.hash('654321', 4) },
+      });
+      const now = new Date();
+      const results = await Promise.allSettled(
+        Array.from({ length: 20 }, () =>
+          (authService as any).assertSpecificOtpCodeMatches(
+            otp,
+            fixture.user.phone,
+            OtpPurpose.LOGIN,
+            '000000',
+            now,
+          ),
+        ),
+      );
+
+      assert.equal(
+        results.filter((result) => result.status === 'rejected').length,
+        20,
+      );
+      for (const result of results) {
+        assert.equal(result.status, 'rejected');
+        assert.equal((result as PromiseRejectedResult).reason?.getStatus?.(), 400);
+      }
+      const persisted = await prisma.otpCode.findUniqueOrThrow({
+        where: { id: otp.id },
+        select: { attempts: true, maxAttempts: true, consumedAt: true },
+      });
+      assert.equal(persisted.maxAttempts, 5);
+      assert.equal(
+        persisted.attempts,
+        persisted.maxAttempts,
+        'concurrent comparisons must never be admitted beyond maxAttempts',
+      );
+      assert.ok(
+        persisted.consumedAt,
+        'an OTP must be terminal after its attempt ceiling is reached',
+      );
+    },
+  );
+}
+
+async function assertCorrectAndWrongOtpRaceHasOneWinner(): Promise<void> {
+  await withFixture(
+    (environment) => createOtpAttemptFixture(prisma, environment),
+    async (fixture) => {
+      const otp = await prisma.otpCode.update({
+        where: { id: fixture.otp.id },
+        data: { codeHash: await bcryptjs.hash('654321', 4) },
+      });
+      const now = new Date();
+      const [correct, wrong] = await Promise.allSettled([
+        (authService as any).assertSpecificOtpCodeMatches(
+          otp,
+          fixture.user.phone,
+          OtpPurpose.LOGIN,
+          '654321',
+          now,
+        ),
+        (authService as any).assertSpecificOtpCodeMatches(
+          otp,
+          fixture.user.phone,
+          OtpPurpose.LOGIN,
+          '000000',
+          now,
+        ),
+      ]);
+
+      assert.equal(correct.status, 'fulfilled');
+      assert.equal(wrong.status, 'rejected');
+      const persisted = await prisma.otpCode.findUniqueOrThrow({
+        where: { id: otp.id },
+        select: { attempts: true, consumedAt: true },
+      });
+      assert.ok(persisted.consumedAt);
+      assert.ok(persisted.attempts === 0 || persisted.attempts === 1);
+      await assert.rejects(
+        () =>
+          (authService as any).assertSpecificOtpCodeMatches(
+            otp,
+            fixture.user.phone,
+            OtpPurpose.LOGIN,
+            '654321',
+            new Date(),
+          ),
+        (error: any) => error?.getStatus?.() === 400,
+      );
+    },
+  );
+}
+
+async function assertConcurrentLoginFailuresCannotBypassLock(): Promise<void> {
+  await withFixture(
+    (environment) => createOtpAttemptFixture(prisma, environment),
+    async (fixture) => {
+      await prisma.user.update({
+        where: { id: fixture.user.id },
+        data: {
+          passwordHash: await bcryptjs.hash('correct-password', 4),
+        },
+      });
+      const results = await Promise.allSettled(
+        Array.from({ length: 20 }, () =>
+          authService.login({
+            phone: fixture.user.phone,
+            password: 'definitely-wrong-password',
+          }),
+        ),
+      );
+      assert.equal(
+        results.filter(
+          (result) =>
+            result.status === 'rejected' &&
+            result.reason?.getStatus?.() === 401,
+        ).length,
+        LoginThrottleService.maxAttempts,
+        'only the configured number of password comparisons may be admitted',
+      );
+      assert.equal(
+        results.filter(
+          (result) =>
+            result.status === 'rejected' &&
+            result.reason?.getStatus?.() === 429,
+        ).length,
+        20 - LoginThrottleService.maxAttempts,
+        'the remaining concurrent attempts must be rejected before comparison',
+      );
+      await assert.rejects(
+        () => loginThrottle.assertAllowed(fixture.user.phone, 'application'),
+        (error: any) => error?.getStatus?.() === 429,
+      );
+      const persisted = await prisma.loginThrottle.findUniqueOrThrow({
+        where: {
+          subjectHash: LoginThrottleService.subjectHash(
+            fixture.user.phone,
+            'application',
+          ),
+        },
+        select: { lockedUntil: true },
+      });
+      assert.ok(persisted.lockedUntil && persisted.lockedUntil > new Date());
+    },
+  );
+}
+
 async function main(): Promise<void> {
   try {
     await assertOperationsCannotManageAdmin();
@@ -240,8 +407,11 @@ async function main(): Promise<void> {
     await assertSelfDisableIsRejected();
     await assertConcurrentDisableKeepsOneSuperAdmin();
     await assertSignedAccessRealmsStaySeparated();
+    await assertConcurrentWrongOtpAttemptsRespectCeiling();
+    await assertCorrectAndWrongOtpRaceHasOneWinner();
+    await assertConcurrentLoginFailuresCannotBypassLock();
     console.log(
-      'PASS - Phase 1 administrator hierarchy and signed access realms remain separated.',
+      'PASS - Phase 1 hierarchy, token realms, OTP ceilings, and login lockouts remain safe.',
     );
   } finally {
     await prisma.$disconnect();

@@ -69,6 +69,12 @@
 | --- | --- | --- |
 | Create one planning cost when a provider offer is accepted. | Accepted and implemented in source | Offer acceptance and `WeddingCost` creation are one serializable, idempotent transaction keyed by unique `quoteOfferId`. The cost starts unpaid, uses the plan currency and provider/service context, and falls back to `أخرى` only when no logical budget-category match exists. This creates no payment, payment schedule, task, booking, settlement, or payment-processing state. |
 
+## Current Decisions Addendum - 2026-07-24
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Fail closed on weak production JWT secrets and serialize authentication attempt ceilings at the database row. | Accepted and implemented in source | Production startup rejects missing, placeholder, short, repetitive, or low-entropy JWT secrets without exposing them. OTP comparison, failed attempts, exhaustion, and consumption are committed under one row lock; password attempts reserve admission under a row-locking upsert before credential comparison so concurrent replicas cannot bypass the configured ceiling. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

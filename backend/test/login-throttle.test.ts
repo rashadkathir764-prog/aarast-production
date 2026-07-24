@@ -21,9 +21,13 @@ function harness() {
   const records = new Map<string, ThrottleRow>();
   const loginThrottle = {
     findUnique: async ({ where }: any) => records.get(where.subjectHash) ?? null,
-    upsert: async ({ where, create }: any) => {
+    upsert: async ({ where, create, update }: any) => {
       const existing = records.get(where.subjectHash);
-      if (existing) return { ...existing };
+      if (existing) {
+        const updated = { ...existing, ...update };
+        records.set(where.subjectHash, updated);
+        return { ...updated };
+      }
       const row: ThrottleRow = {
         ...create,
         lockedUntil: null,
@@ -54,11 +58,11 @@ function harness() {
   };
 }
 
-test("login failures are stored under a one-way account hash", async () => {
+test("login attempts are stored under a one-way account hash", async () => {
   const { service, records } = harness();
   const phone = "+967777123456";
 
-  await service.recordFailure(phone);
+  await service.reserveAttempt(phone);
 
   assert.equal(records.size, 1);
   const [subjectHash] = records.keys();
@@ -74,11 +78,11 @@ test("login failures are stored under a one-way account hash", async () => {
     "test-only-login-throttle-pepper-with-32-bytes";
 });
 
-test("application failures never lock the administrator realm", async () => {
+test("application attempts never lock the administrator realm", async () => {
   const { service } = harness();
   const phone = "+967777123456";
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    await service.recordFailure(phone, "application");
+    await service.reserveAttempt(phone, "application");
   }
 
   await assert.rejects(() => service.assertAllowed(phone, "application"));
@@ -127,11 +131,11 @@ test("cleanup skips safely when another replica owns the lock", async () => {
   assert.equal(deletes, 0);
 });
 
-test("the fifth failure locks every server replica for fifteen minutes", async () => {
+test("the fifth admitted attempt locks every server replica for fifteen minutes", async () => {
   const { service } = harness();
   const phone = "+967777123456";
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    await service.recordFailure(phone);
+    await service.reserveAttempt(phone);
   }
 
   await assert.rejects(
@@ -140,12 +144,18 @@ test("the fifth failure locks every server replica for fifteen minutes", async (
       error instanceof HttpException &&
       error.getStatus() === HttpStatus.TOO_MANY_REQUESTS,
   );
+  await assert.rejects(
+    () => service.reserveAttempt(phone),
+    (error: unknown) =>
+      error instanceof HttpException &&
+      error.getStatus() === HttpStatus.TOO_MANY_REQUESTS,
+  );
 });
 
-test("successful authentication clears the durable failure window", async () => {
+test("successful authentication clears the durable attempt window", async () => {
   const { service, records } = harness();
   const phone = "+967777123456";
-  await service.recordFailure(phone);
+  await service.reserveAttempt(phone);
 
   await service.clear(phone);
 

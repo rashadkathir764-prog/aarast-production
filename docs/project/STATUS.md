@@ -49,9 +49,11 @@ and runtime checks override historical completion reports.
 
 ## Active Implemented Scope
 
-- Verified-phone registration, atomic OTP consumption, legacy unverified-row
-  recovery, stable Arabic auth errors, password/OTP login, separate app/admin
-  credentials, administrator password recovery, profile, and settings.
+- Verified-phone registration, row-locked OTP attempt ceilings and one-time
+  consumption, cross-replica login lockouts, production JWT-secret strength
+  enforcement, legacy unverified-row recovery, stable Arabic auth errors,
+  password/OTP login, separate app/admin credentials, administrator password
+  recovery, profile, and settings.
 - Wedding plans, onboarding, dashboard summaries, the canonical money domain
   (general budget, categories, costs, payments, and payment schedules), tasks,
   guests, sharing, permissions, notifications, and offline/cache support.
@@ -79,8 +81,9 @@ and runtime checks override historical completion reports.
   mobile storage, and one guarded retry after `401`.
 - Password brute-force protection is durable across restarts and backend
   replicas: PostgreSQL stores only an HMAC-SHA-256 account-identifier digest
-  keyed by a deployment-only pepper. Five failures enforce a fifteen-minute
-  lock that a successful login/reset clears; an hourly advisory-lock-protected
+  keyed by a deployment-only pepper. Each attempt reserves a row-locked slot
+  before password comparison; five admitted attempts enforce a fifteen-minute
+  lock that a successful login/reset clears. An hourly advisory-lock-protected
   job removes expired and inactive throttle rows on one replica.
 - Flutter account providers are recreated at a user-keyed boundary; plan data
   providers are replaced when the selected plan changes. Disposed providers

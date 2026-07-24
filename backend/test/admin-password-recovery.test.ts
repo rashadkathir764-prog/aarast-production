@@ -133,6 +133,8 @@ function createHarness(candidate: StoredUser | null) {
               otp.purpose === where.purpose &&
               otp.consumedAt === where.consumedAt,
           ) ?? null,
+      findUnique: async ({ where }: any) =>
+        otps.find((otp) => otp.id === where.id) ?? null,
       findUniqueOrThrow: async ({ where }: any) => {
         const otp = otps.find((item) => item.id === where.id);
         if (!otp) throw new Error('OTP not found');

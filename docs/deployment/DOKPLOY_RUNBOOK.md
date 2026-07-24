@@ -48,6 +48,10 @@ Required:
 - `AUTH_LOGIN_THROTTLE_PEPPER`
 
 Current backend note: the backend code reads `JWT_SECRET`. The compose file maps `JWT_ACCESS_SECRET` into the backend container as `JWT_SECRET`. `JWT_REFRESH_SECRET` is documented for the production secret contract, but it is not consumed by the current backend code.
+`JWT_ACCESS_SECRET` must contain at least 32 UTF-8 bytes, include at least 12
+distinct characters, and provide at least 128 estimated entropy bits. Known
+placeholder or repetitive values are rejected at process startup; validation
+errors never include the secret.
 
 Channel-dependent required values:
 

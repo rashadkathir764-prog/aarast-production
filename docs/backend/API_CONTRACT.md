@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-17.
+Current documentation snapshot: 2026-07-24.
 
 Source status:
 
@@ -43,6 +43,9 @@ Health endpoints have distinct orchestration semantics:
   sessions. Every access JWT carries a signed `scope` claim: `application` for
   `/api/v1` product APIs and Chat, or `admin` for `/admin`. Scope-less,
   cross-scope, and contradictory claim combinations are rejected.
+- Production refuses to start with a missing, placeholder, short, repetitive,
+  or low-entropy `JWT_SECRET`. The secret is validated without logging or
+  returning its value.
 - Private resources use ownership and sharing checks.
 - Some unauthorized private-resource access is intentionally returned as not found style behavior.
 - `passwordHash` is never returned.
@@ -132,13 +135,15 @@ Verified response:
 }
 ```
 
-The OTP is consumed atomically in the same serializable transaction that
-creates the verified User. A wrong, expired, already-consumed, or concurrently
-replayed code creates no account and issues no access or refresh token. Email is
-intentionally absent because a phone OTP cannot prove ownership of an email
-address. The initial response is generic; phone conflicts are checked only
-after valid phone proof so the start endpoint is not an account-enumeration
-oracle.
+OTP verification locks the current code row and commits the attempt or
+one-time consumption before any account mutation begins. A wrong, expired,
+already-consumed, exhausted, or concurrently replayed code creates no account
+and issues no access or refresh token. If a later account transaction fails,
+the successfully proved OTP remains consumed (fail closed) and the caller must
+request a new code. Email is intentionally absent because a phone OTP cannot
+prove ownership of an email address. The initial response is generic; phone
+conflicts are checked only after valid phone proof so the start endpoint is not
+an account-enumeration oracle.
 
 After valid phone proof, an existing unverified `USER` or `PROVIDER` row is
 claimed in place: its id, role, relations, and provider data are preserved while
@@ -182,8 +187,10 @@ role remains `ADMIN`.
 Password login, refresh, and protected JWT routes reject accounts whose
 `phoneVerifiedAt` is null. Existing unverified accounts must prove phone
 ownership through OTP (or a password-reset OTP) before receiving a session.
-Five failed password attempts within fifteen minutes lock that normalized
-account identifier for fifteen minutes. Application and administrator lock
+Five admitted password attempts within fifteen minutes lock that normalized
+account identifier for fifteen minutes. An attempt reserves its slot under the
+database row lock before password comparison, so a concurrent burst cannot run
+more comparisons than the configured ceiling. Application and administrator lock
 realms are independent, so one surface cannot lock the other. PostgreSQL stores only an
 HMAC-SHA-256 digest keyed by the deployment-only
 `AUTH_LOGIN_THROTTLE_PEPPER`, not the phone number, so the lock is shared by
@@ -300,6 +307,15 @@ delivery: 60-second phone cooldown, bounded phone/IP windows, and an
 `AUTH_LOGIN_THROTTLE_PEPPER`; raw phone numbers and IP addresses are not stored.
 Provider delivery failures also consume quota so a failing transport cannot be
 used to bypass the safety ceiling.
+
+OTP verification is serialized per code row. The compare, failed-attempt
+increment, terminal attempt ceiling, and successful one-time consumption are
+one retryable PostgreSQL transaction. Concurrent wrong attempts cannot record
+more than `maxAttempts`, and a correct/wrong race cannot create two successful
+consumers. Password login uses the same row-lock principle on the HMAC-keyed
+`LoginThrottle` row. Each request reserves one attempt before password
+comparison; a successful authentication clears the row, while a cross-replica
+burst cannot execute more than five comparisons in one window.
 
 For the official Meta channel, a valid 2xx response containing a message id
 means API acceptance only and returns `deliveryStatus: "PENDING"`; it does not
@@ -1251,9 +1267,11 @@ Admin routes are JWT-protected and require admin authorization:
 
 - `POST /api/v1/auth/admin/login` validates the admin password and returns only a
   short-lived MFA challenge after sending a `LOGIN` OTP.
-- `POST /api/v1/auth/admin/login/complete` atomically consumes the challenge + OTP,
-  returns a short-lived access JWT, and sets the rotating refresh token only as
-  a path-scoped `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
+- `POST /api/v1/auth/admin/login/complete` first consumes the exact OTP through
+  the row-locked one-time verifier, then compare-and-set consumes the live
+  challenge while issuing the administrator session. It returns a short-lived
+  access JWT and sets the rotating refresh token only as a path-scoped
+  `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
 - `POST /api/v1/auth/admin/refresh` rotates that cookie and its server session.
 - `POST /api/v1/auth/admin/logout` revokes the server session and clears the cookie.
 

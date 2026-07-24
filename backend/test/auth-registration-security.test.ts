@@ -66,6 +66,8 @@ function createHarness() {
               otp.purpose === where.purpose &&
               otp.consumedAt === where.consumedAt,
           ) ?? null,
+      findUnique: async ({ where }: any) =>
+        otps.find((otp) => otp.id === where.id) ?? null,
     },
     user: {
       findFirst: async ({ where }: any) => {
@@ -177,7 +179,7 @@ function createHarness() {
       } as any,
       {
         assertAllowed: async () => undefined,
-        recordFailure: async () => undefined,
+        reserveAttempt: async () => undefined,
         clear: async () => undefined,
       } as any,
       { consume: async () => undefined } as any,

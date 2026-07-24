@@ -5,14 +5,14 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
 import { PrismaService } from "../prisma/prisma.service";
 
 export type LoginThrottleRealm = "application" | "admin";
 
 @Injectable()
 export class LoginThrottleService {
-  static readonly maxFailures = 5;
+  static readonly maxAttempts = 5;
   static readonly windowMs = 15 * 60_000;
 
   constructor(private readonly prisma: PrismaService) {}
@@ -33,59 +33,65 @@ export class LoginThrottleService {
     }
   }
 
-  async recordFailure(
+  async reserveAttempt(
     phone: string,
     realm: LoginThrottleRealm = "application",
   ): Promise<void> {
     const subjectHash = LoginThrottleService.subjectHash(phone, realm);
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        await this.prisma.$transaction(
-          async (tx) => {
-            const now = new Date();
-            const existing = await tx.loginThrottle.upsert({
-              where: { subjectHash },
-              create: {
-                subjectHash,
-                failedCount: 0,
-                windowStartedAt: now,
-              },
-              update: {},
-            });
-            if (existing.lockedUntil && existing.lockedUntil > now) return;
+    let outcome: "admitted" | "locked";
+    try {
+      outcome = await runRetryableTransaction(
+        this.prisma,
+        async (tx) => {
+          const now = new Date();
+          // PostgreSQL's INSERT ... ON CONFLICT DO UPDATE acquires and keeps a
+          // row lock until this transaction commits. Every concurrent attempt
+          // therefore observes the count written by the previous transaction.
+          const existing = await tx.loginThrottle.upsert({
+            where: { subjectHash },
+            create: {
+              subjectHash,
+              failedCount: 0,
+              windowStartedAt: now,
+            },
+            update: { updatedAt: now },
+          });
+          if (existing.lockedUntil && existing.lockedUntil > now) {
+            return "locked" as const;
+          }
 
-            const windowExpired =
-              existing.lockedUntil !== null ||
-              existing.windowStartedAt.getTime() <=
-                now.getTime() - LoginThrottleService.windowMs;
-            const nextCount = windowExpired ? 1 : existing.failedCount + 1;
-            const shouldLock = nextCount >= LoginThrottleService.maxFailures;
-            await tx.loginThrottle.update({
-              where: { subjectHash },
-              data: {
-                failedCount: shouldLock ? 0 : nextCount,
-                windowStartedAt: windowExpired ? now : existing.windowStartedAt,
-                lockedUntil: shouldLock
-                  ? new Date(now.getTime() + LoginThrottleService.windowMs)
-                  : null,
-              },
-            });
-          },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-        );
-        return;
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2034" &&
-          attempt < 2
-        ) {
-          continue;
-        }
-        throw new ServiceUnavailableException(
-          "Login protection is temporarily unavailable",
-        );
-      }
+          const windowExpired =
+            existing.lockedUntil !== null ||
+            existing.windowStartedAt.getTime() <=
+              now.getTime() - LoginThrottleService.windowMs;
+          const nextCount = windowExpired ? 1 : existing.failedCount + 1;
+          const shouldLock = nextCount >= LoginThrottleService.maxAttempts;
+          await tx.loginThrottle.update({
+            where: { subjectHash },
+            data: {
+              failedCount: shouldLock ? 0 : nextCount,
+              windowStartedAt: windowExpired ? now : existing.windowStartedAt,
+              lockedUntil: shouldLock
+                ? new Date(now.getTime() + LoginThrottleService.windowMs)
+                : null,
+            },
+          });
+          return "admitted" as const;
+        },
+        { maxAttempts: 4 },
+      );
+    } catch {
+      // Preserve the public fail-closed contract without exposing database
+      // details or allowing authentication to continue.
+      throw new ServiceUnavailableException(
+        "Login protection is temporarily unavailable",
+      );
+    }
+    if (outcome === "locked") {
+      throw new HttpException(
+        "Too many failed login attempts. Try again later.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
   }
 

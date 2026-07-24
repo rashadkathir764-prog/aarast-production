@@ -294,11 +294,21 @@ Backend الكاملة: 396 اختبارًا، منها 395 ناجحًا ووا�
 
 **المتطلبات:**
 
-- [ ] فصل owner/migrator عن runtime user.
-- [ ] Backend runtime لا يملك `SUPERUSER` أو `CREATEDB` أو `CREATEROLE`.
-- [ ] migrations تعمل في job منفصلة بهوية migrator قبل تشغيل Backend.
-- [ ] runtime يملك أقل CRUD/sequence privileges اللازمة على schema التطبيق فقط.
-- [ ] تدوير credentials دون downtime مع خطة rollback.
+- [x] فصل owner/migrator عن runtime user.
+- [x] Backend runtime لا يملك `SUPERUSER` أو `CREATEDB` أو `CREATEROLE`.
+- [x] migrations تعمل في job منفصلة بهوية migrator قبل تشغيل Backend.
+- [x] runtime يملك أقل CRUD/sequence privileges اللازمة على schema التطبيق فقط.
+- [x] تدوير credentials دون downtime مع خطة rollback.
+
+**نتيجة تقييم 3A:** `10/10 — APPROVED` بتاريخ 2026-07-24. يفصل Compose
+الإنتاجي ثلاثة أدوار، ويشغّل تهيئة الصلاحيات ثم migration job قبل Backend الذي
+لا ينفذ أي DDL عند startup. طبّق migrator غير المميز 62/62 migration وحقق
+فرق Prisma صفرًا. نجح runtime في CRUD وفشل عمدًا في إنشاء جدول وقاعدة ودور
+وفي التحول إلى migrator. أثبتت استعلامات الأدوار أن
+`SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS=false` وأن عضوياته
+المميزة صفر. نجحت إعادة SQL بعد وجود جميع الجداول والدوال، وانتقلت ملكيتها
+كلها إلى migrator، ونجح تدوير كلمة runtime عبر مصادقة SCRAM فعلية مع رفض
+السر القديم. نُظفت قاعدة الاختبار والأدوار بعد كل جولة ولم تتغير `aarast`.
 
 ### 3B — MinIO least privilege
 

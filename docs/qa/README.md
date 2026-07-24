@@ -36,6 +36,7 @@ npm test
 npm run smoke:auth-verification
 npm run smoke:sharing-security
 npm run smoke:marketplace
+npm run smoke:phase2-provider-rating-concurrency
 npm run smoke:provider-dashboard
 npm run smoke:private-chat-media
 npm run smoke:money-apis
@@ -169,6 +170,13 @@ mark any Participant revoked, and eject the current Socket.IO room. Flutter
 coverage must include PLAN/ACCOUNT labels, one inbox row with multiple request
 count, read-only quote lookup, event navigation, provider-not-joined state,
 error/retry, reconnect, permission revocation, and duplicate-free pagination.
+
+Provider review concurrency coverage must prove that create, rating update,
+delete, admin hide/publish, and reviewer-account deletion always leave
+`Provider.ratingAverage` and `ratingCount` equal to a direct aggregate of
+published `ProviderReview` rows. The live smoke must exercise interleaved
+mutations repeatedly on a managed isolated database and leave no disposable
+resource behind.
 
 ## Mobile Changes
 

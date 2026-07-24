@@ -165,6 +165,13 @@ The backend now includes the approved provider-reference and quote-lead foundati
   `PlanProviderLink` for saved providers, reviews, quote leads, and accepted
   planning provider links. The unused prelaunch `BookingLead` model was removed;
   accepting an offer remains a planning decision and never creates a booking.
+  `Provider.ratingAverage` and `ratingCount` are cached public aggregates only:
+  every review mutation locks the Provider row, changes the review, derives the
+  published-only aggregate, and stores it inside one serializable transaction.
+  Account erasure explicitly refreshes surviving providers instead of relying
+  on the `ProviderReview.userId` cascade. Migration
+  `20260724180500_reconcile_provider_rating_cache` safely re-derives all
+  pre-existing caches during upgrade without deleting review data.
 - `WeddingCost`, `CostPayment`, and `PaymentSchedule` for category-first costs,
   actual money-out records, and dated payment reminders.
 - `WeddingTaskChecklistItem` plus task assignment support.

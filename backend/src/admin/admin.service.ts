@@ -22,6 +22,7 @@ import { runSerializableTransaction } from '../common/prisma/serializable-transa
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
+import { runProviderReviewMutation } from '../marketplace/provider-review-rating';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
@@ -262,24 +263,38 @@ export class AdminService {
   async updateReviewStatus(id: string, dto: AdminReviewStatusDto) {
     const existing = await this.findReviewOrThrow(id);
     const status = this.parseReviewStatus(dto.status);
-    const review = await this.prisma.providerReview.update({
-      where: { id },
-      data: { status },
-      include: this.adminReviewInclude(),
-    });
-    await this.recalculateProviderRating(existing.providerId);
-    return toAdminReviewResponse(review);
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findUnique({ where: { id } });
+        if (!current) throw new NotFoundException('Review not found');
+        const review = await tx.providerReview.update({
+          where: { id },
+          data: { status },
+          include: this.adminReviewInclude(),
+        });
+        return toAdminReviewResponse(review);
+      },
+    );
   }
 
   async hideReview(id: string) {
     const existing = await this.findReviewOrThrow(id);
-    const review = await this.prisma.providerReview.update({
-      where: { id },
-      data: { status: ReviewStatus.HIDDEN },
-      include: this.adminReviewInclude(),
-    });
-    await this.recalculateProviderRating(existing.providerId);
-    return { ...toAdminReviewResponse(review), deleted: false };
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findUnique({ where: { id } });
+        if (!current) throw new NotFoundException('Review not found');
+        const review = await tx.providerReview.update({
+          where: { id },
+          data: { status: ReviewStatus.HIDDEN },
+          include: this.adminReviewInclude(),
+        });
+        return { ...toAdminReviewResponse(review), deleted: false };
+      },
+    );
   }
 
   async listConversationReports(query: AdminConversationReportQueryDto) {
@@ -862,23 +877,6 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     return user;
-  }
-
-  private async recalculateProviderRating(providerId: string) {
-    const aggregate = await this.prisma.providerReview.aggregate({
-      where: { providerId, status: ReviewStatus.PUBLISHED },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
-    const ratingCount = aggregate._count._all;
-    const ratingAverage = ratingCount > 0 ? (aggregate._avg.rating ?? 0) : 0;
-    await this.prisma.provider.update({
-      where: { id: providerId },
-      data: {
-        ratingAverage: ratingAverage.toFixed(2),
-        ratingCount,
-      },
-    });
   }
 
   private async getUserReport(createdAt?: Prisma.DateTimeFilter) {

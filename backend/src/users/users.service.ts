@@ -16,6 +16,10 @@ import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
 import { MediaStorageService } from "../media/media-storage.service";
+import {
+  lockProviderRatingRows,
+  refreshProviderRating,
+} from "../marketplace/provider-review-rating";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
 import {
@@ -219,16 +223,42 @@ export class UsersService {
         );
         const planIds = ownedPlans.map((plan) => plan.id);
 
-        const ownedProviders = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "Provider"
-            WHERE "userId" = ${userId}
-            ORDER BY "id" ASC
-            FOR UPDATE
-          `,
-        );
+        const ownedProviders = await tx.provider.findMany({
+          where: { userId },
+          orderBy: { id: "asc" },
+          select: { id: true },
+        });
         const providerIds = ownedProviders.map((provider) => provider.id);
+        const reviewedProviders = await tx.providerReview.findMany({
+          where: { userId },
+          distinct: ["providerId"],
+          orderBy: { providerId: "asc" },
+          select: { providerId: true },
+        });
+        const ownedProviderIds = new Set(providerIds);
+        const externalRatedProviderIds = reviewedProviders
+          .map((review) => review.providerId)
+          .filter((providerId) => !ownedProviderIds.has(providerId));
+        const lockedProviderIds = new Set(
+          await lockProviderRatingRows(tx, [
+            ...providerIds,
+            ...externalRatedProviderIds,
+          ]),
+        );
+        const ratingsToRefresh = externalRatedProviderIds.filter((providerId) =>
+          lockedProviderIds.has(providerId),
+        );
+
+        if (reviewedProviders.length > 0) {
+          // ProviderReview cascades from User, but the provider cache does not.
+          // Remove these rows explicitly while every affected provider is
+          // locked, then refresh each surviving external provider before the
+          // account transaction can commit.
+          await tx.providerReview.deleteMany({ where: { userId } });
+          for (const providerId of ratingsToRefresh) {
+            await refreshProviderRating(tx, providerId);
+          }
+        }
 
         if (planIds.length > 0) {
           // Every money mutation locks WeddingCost before CostPayment. Account

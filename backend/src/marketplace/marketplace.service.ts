@@ -51,6 +51,7 @@ import {
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
+import { runProviderReviewMutation } from "./provider-review-rating";
 
 import {
   FULL_QUOTE_VISIBILITY,
@@ -685,41 +686,51 @@ export class MarketplaceService {
     providerId: string,
     dto: CreateProviderReviewDto,
   ) {
-    const provider = await this.findActiveProviderOrThrow(providerId);
-    if (provider.userId === currentUser.id) {
-      throw new BadRequestException(
-        "Provider owners cannot review their own profile",
-      );
-    }
+    MarketplaceQuery.assertUuid(providerId, "providerId");
+    return runProviderReviewMutation(
+      this.prisma,
+      providerId,
+      async (tx) => {
+        const provider = await tx.provider.findUnique({
+          where: { id: providerId },
+        });
+        if (!provider || provider.status !== ProviderStatus.ACTIVE) {
+          throw new NotFoundException("Provider not found");
+        }
+        if (provider.userId === currentUser.id) {
+          throw new BadRequestException(
+            "Provider owners cannot review their own profile",
+          );
+        }
 
-    const existing = await this.prisma.providerReview.findUnique({
-      where: {
-        userId_providerId: {
-          userId: currentUser.id,
-          providerId,
-        },
-      },
-    });
-    if (existing) {
-      throw new ConflictException("You already reviewed this provider");
-    }
+        const existing = await tx.providerReview.findUnique({
+          where: {
+            userId_providerId: {
+              userId: currentUser.id,
+              providerId,
+            },
+          },
+        });
+        if (existing) {
+          throw new ConflictException("You already reviewed this provider");
+        }
 
-    const review = await this.prisma.providerReview.create({
-      data: {
-        userId: currentUser.id,
-        providerId,
-        rating: dto.rating,
-        comment: MarketplaceQuery.optionalText(dto.comment),
+        const review = await tx.providerReview.create({
+          data: {
+            userId: currentUser.id,
+            providerId,
+            rating: dto.rating,
+            comment: MarketplaceQuery.optionalText(dto.comment),
+          },
+          include: {
+            user: {
+              select: { id: true, name: true, appName: true, role: true },
+            },
+          },
+        });
+        return MarketplacePresenter.toReviewResponse(review);
       },
-      include: {
-        user: {
-          select: { id: true, name: true, appName: true, role: true },
-        },
-      },
-    });
-
-    await this.recalculateProviderRating(providerId);
-    return MarketplacePresenter.toReviewResponse(review);
+    );
   }
 
   async updateReview(
@@ -736,23 +747,33 @@ export class MarketplaceService {
       throw new NotFoundException("Review not found");
     }
 
-    const review = await this.prisma.providerReview.update({
-      where: { id },
-      data: {
-        ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
-        ...(dto.comment !== undefined
-          ? { comment: MarketplaceQuery.optionalText(dto.comment) }
-          : {}),
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findFirst({
+          where: { id, userId: currentUser.id },
+        });
+        if (!current) {
+          throw new NotFoundException("Review not found");
+        }
+        const review = await tx.providerReview.update({
+          where: { id },
+          data: {
+            ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
+            ...(dto.comment !== undefined
+              ? { comment: MarketplaceQuery.optionalText(dto.comment) }
+              : {}),
+          },
+          include: {
+            user: {
+              select: { id: true, name: true, appName: true, role: true },
+            },
+          },
+        });
+        return MarketplacePresenter.toReviewResponse(review);
       },
-      include: {
-        user: {
-          select: { id: true, name: true, appName: true, role: true },
-        },
-      },
-    });
-
-    await this.recalculateProviderRating(existing.providerId);
-    return MarketplacePresenter.toReviewResponse(review);
+    );
   }
 
   async deleteReview(currentUser: AuthenticatedUser, id: string) {
@@ -765,9 +786,20 @@ export class MarketplaceService {
       throw new NotFoundException("Review not found");
     }
 
-    await this.prisma.providerReview.delete({ where: { id } });
-    await this.recalculateProviderRating(existing.providerId);
-    return { id, deleted: true };
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findFirst({
+          where: { id, userId: currentUser.id },
+        });
+        if (!current) {
+          throw new NotFoundException("Review not found");
+        }
+        await tx.providerReview.delete({ where: { id } });
+        return { id, deleted: true };
+      },
+    );
   }
 
   private async findActiveProviderOrThrow(
@@ -819,24 +851,6 @@ export class MarketplaceService {
     }
 
     return city;
-  }
-
-  private async recalculateProviderRating(providerId: string): Promise<void> {
-    const aggregate = await this.prisma.providerReview.aggregate({
-      where: { providerId, status: ReviewStatus.PUBLISHED },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
-    const ratingCount = aggregate._count._all;
-    const ratingAverage = ratingCount > 0 ? (aggregate._avg.rating ?? 0) : 0;
-
-    await this.prisma.provider.update({
-      where: { id: providerId },
-      data: {
-        ratingAverage: ratingAverage.toFixed(2),
-        ratingCount,
-      },
-    });
   }
 
   private async findAccessibleQuoteRequestOrThrow(

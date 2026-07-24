@@ -1102,6 +1102,12 @@ Authenticated user routes:
 Every review response uses a privacy-safe reviewer identity containing only
 `id` and `name`. Reviewer phone and email are never returned by public review,
 review create/update, provider-dashboard review, or admin-review responses.
+Review create, update, delete, publish, and hide operations lock the provider
+row and update `ratingAverage`/`ratingCount` from the published review rows in
+the same serializable transaction. Account deletion explicitly removes the
+user's reviews and refreshes every surviving provider under the same ordered
+locks; a successful response therefore cannot leave the public aggregate
+behind the review data.
 
 Plan-scoped `/api/v1` quote routes:
 
@@ -1359,7 +1365,11 @@ must not silently truncate to its first 50/80/100 results.
 
 Admin services are real `ProviderService` management operations. Deleting a service safely deactivates it (`isActive=false`) instead of hard-deleting data.
 
-Admin reviews are real `ProviderReview` moderation operations. Publishing or hiding a review recalculates the provider public rating from published reviews only. Reviewer contact details are not part of the moderation response or search contract.
+Admin reviews are real `ProviderReview` moderation operations. Publishing or
+hiding a review recalculates the provider public rating from published reviews
+only, inside the same provider-row-locked transaction as the moderation
+change. Reviewer contact details are not part of the moderation response or
+search contract.
 
 Admin notifications expose a privacy-minimized operational view of persisted
 notifications across users. The user reference contains `id`, `name`, and a

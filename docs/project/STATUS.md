@@ -62,7 +62,9 @@ and runtime checks override historical completion reports.
   (general budget, categories, costs, payments, and payment schedules), tasks,
   guests, sharing, permissions, notifications, and offline/cache support.
 - Provider catalog, favorites, reviews, quote requests/offers, provider
-  dashboard operations, and admin catalog/provider operations.
+  dashboard operations, and admin catalog/provider operations. Public provider
+  rating caches are derived under an ordered provider-row lock in the same
+  transaction as every user/admin review mutation and account-review purge.
 - One conversation per plan/provider or account/provider context, created with
   the first real quote request and reused by later requests. The implemented
   timeline combines human messages with persisted quote/offer system events,

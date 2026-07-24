@@ -21,6 +21,7 @@ const PLAN_CHILDREN = [
 
 interface RecordedGraph {
   providerIds?: string[];
+  reviewedProviderIds?: string[];
   conversationIds?: string[];
   quoteRequestIds?: string[];
   attachmentIds?: string[];
@@ -53,7 +54,12 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
       }
       if (text.includes('FROM "Provider"')) {
         calls.push("lockProviders");
-        return [...(graph.providerIds ?? [])]
+        return [
+          ...new Set([
+            ...(graph.providerIds ?? []),
+            ...(graph.reviewedProviderIds ?? []),
+          ]),
+        ]
           .sort()
           .map((id) => ({ id }));
       }
@@ -85,7 +91,29 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
         return { count: planIds.length };
       },
     },
-    provider: del("provider"),
+    provider: {
+      findMany: async () =>
+        [...(graph.providerIds ?? [])].sort().map((id) => ({ id })),
+      updateMany: async () => {
+        calls.push("refreshProviderRating");
+        return { count: 1 };
+      },
+      ...del("provider"),
+    },
+    providerReview: {
+      findMany: async () =>
+        [...(graph.reviewedProviderIds ?? [])]
+          .sort()
+          .map((providerId) => ({ providerId })),
+      aggregate: async () => ({
+        _avg: { rating: null },
+        _count: { _all: 0 },
+      }),
+      deleteMany: async () => {
+        calls.push("providerReview");
+        return { count: graph.reviewedProviderIds?.length ?? 0 };
+      },
+    },
     notification: {
       findMany: async () => [{ id: "notification-u1" }],
       deleteMany: async () => {
@@ -189,8 +217,8 @@ test("account deletion clears plan children before plans and deletes the user la
   const at = (name: string) => calls.indexOf(name);
   // Lock graph order is User -> ordered plans -> ordered costs -> payments.
   assert.ok(at("lockUser") < at("lockPlans"));
-  assert.ok(at("lockPlans") < at("lockProviders"));
-  assert.ok(at("lockProviders") < at("lockCosts"));
+  assert.equal(at("lockProviders"), -1);
+  assert.ok(at("lockPlans") < at("lockCosts"));
   assert.ok(at("lockCosts") < at("ledgerPurge"));
   assert.ok(at("lockCosts") < at("costPayment"));
   assert.ok(at("lockCosts") < at("lockConversations"));
@@ -302,6 +330,36 @@ test("deleting a shared member removes only that member's request and preserves 
     /"accountRequesterUserId"\s*=\s*/,
   );
   assert.doesNotMatch(conversationLock?.text ?? "", /Participant/);
+});
+
+test("account deletion refreshes every surviving provider reviewed by the user", async () => {
+  const { tx, calls, queries } = recordingTx([], {
+    reviewedProviderIds: ["provider-z", "provider-a"],
+  });
+  const svc = serviceFor(tx);
+
+  await svc.deleteMe({ id: "u1", phone: null } as any);
+
+  const providerLock = queries.find((query) =>
+    query.text.includes('FROM "Provider"'),
+  );
+  assert.match(
+    providerLock?.text ?? "",
+    /ORDER BY "id" ASC\s+FOR UPDATE/,
+  );
+  assert.deepEqual(providerLock?.values, ["provider-a", "provider-z"]);
+  assert.ok(calls.indexOf("lockProviders") < calls.indexOf("providerReview"));
+  assert.ok(
+    calls.indexOf("providerReview") <
+      calls.indexOf("refreshProviderRating"),
+  );
+  assert.ok(
+    calls.lastIndexOf("refreshProviderRating") < calls.indexOf("user.delete"),
+  );
+  assert.equal(
+    calls.filter((call) => call === "refreshProviderRating").length,
+    2,
+  );
 });
 
 test("account deletion retries a deadlock without changing its read-committed media snapshot", async () => {

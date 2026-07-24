@@ -254,11 +254,21 @@ test("provider rejection notifies the requester with the exact quote route", asy
 function acceptanceHarness({
   categories,
   providerCategoryName,
+  failNotifications = false,
 }: {
   categories: Array<{ id: string; name: string; normalizedName: string }>;
   providerCategoryName: string;
+  failNotifications?: boolean;
 }) {
   const { sent, notifications } = capture();
+  if (failNotifications) {
+    notifications.createNotification = async () => {
+      throw new Error("notification write failed");
+    };
+    notifications.createNotificationInTransaction = async () => {
+      throw new Error("notification write failed");
+    };
+  }
   let offerStatus = "PENDING";
   let quoteStatus = "RESPONDED";
   let createdCost: any = null;
@@ -385,7 +395,27 @@ function acceptanceHarness({
   const prisma = {
     quoteOffer: { findUnique: async () => accessibleOffer() },
     provider: { findUnique: async () => ({ userId: PROVIDER_USER_ID }) },
-    $transaction: async (fn: any) => fn(tx),
+    $transaction: async (fn: any) => {
+      const before = {
+        offerStatus,
+        quoteStatus,
+        createdCost,
+        costCreates,
+        fallbackCreates,
+        sentLength: sent.length,
+      };
+      try {
+        return await fn(tx);
+      } catch (error) {
+        offerStatus = before.offerStatus;
+        quoteStatus = before.quoteStatus;
+        createdCost = before.createdCost;
+        costCreates = before.costCreates;
+        fallbackCreates = before.fallbackCreates;
+        sent.splice(before.sentLength);
+        throw error;
+      }
+    },
   };
   const permissions = {
     assertPlanReadable: async () => ({}),
@@ -426,6 +456,12 @@ function acceptanceHarness({
     },
     get moneyPermissionChecks() {
       return moneyPermissionChecks;
+    },
+    get offerStatus() {
+      return offerStatus;
+    },
+    get quoteStatus() {
+      return quoteStatus;
     },
   };
 }
@@ -504,6 +540,29 @@ test("accepting an unmatched provider service creates and uses the other categor
   assert.equal(harness.fallbackCreates, 1);
   assert.equal(harness.createdCost.budgetCategoryId, "category-other");
   assert.equal(result.weddingCost.categoryName, "أخرى");
+});
+
+test("an accepted offer rolls back when its durable notification cannot be written", async () => {
+  const harness = acceptanceHarness({
+    categories: [
+      {
+        id: "category-hall",
+        name: "قاعات الأفراح",
+        normalizedName: "قاعات الأفراح",
+      },
+    ],
+    providerCategoryName: "الصالات وقاعات المناسبات",
+    failNotifications: true,
+  });
+
+  await assert.rejects(
+    harness.service.acceptQuoteOffer(requester, OFFER_ID),
+    /notification write failed/,
+  );
+  assert.equal(harness.offerStatus, "PENDING");
+  assert.equal(harness.quoteStatus, "RESPONDED");
+  assert.equal(harness.createdCost, null);
+  assert.equal(harness.costCreates, 0);
 });
 
 test("rejecting an offer notifies the provider rather than the requester", async () => {

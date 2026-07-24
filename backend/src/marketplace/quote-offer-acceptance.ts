@@ -13,6 +13,7 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
 import { weddingCostResponseInclude } from "../wedding-costs/wedding-cost.presenter";
@@ -26,6 +27,10 @@ import {
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
 } from "./quote-cost-category";
+import {
+  offerAcceptedProviderNotification,
+  offerAcceptedRequesterNotification,
+} from "./quote-notifications";
 
 interface AcceptQuoteOfferInput {
   id: string;
@@ -37,6 +42,7 @@ interface AcceptQuoteOfferInput {
 export async function acceptQuoteOfferInTransaction(
   prisma: PrismaService,
   permissions: PermissionService,
+  notifications: NotificationsService,
   input: AcceptQuoteOfferInput,
 ) {
   const { id, weddingPlanId } = input;
@@ -252,6 +258,33 @@ export async function acceptQuoteOfferInTransaction(
         status: PlanProviderLinkStatus.ACTIVE,
       },
     });
+
+    if (acceptedNow) {
+      await notifications.createNotificationInTransaction(
+        tx,
+        offerAcceptedRequesterNotification({
+          requesterId: current.quoteRequest.userId,
+          weddingPlanId,
+          quoteRequestId: current.quoteRequestId,
+          quoteOfferId: current.id,
+          providerId: current.providerId,
+        }),
+      );
+      if (
+        current.provider.userId &&
+        current.provider.userId !== input.currentUser.id
+      ) {
+        await notifications.createNotificationInTransaction(
+          tx,
+          offerAcceptedProviderNotification({
+            providerUserId: current.provider.userId,
+            quoteRequestId: current.quoteRequestId,
+            quoteOfferId: current.id,
+            providerId: current.providerId,
+          }),
+        );
+      }
+    }
 
     return { offer: acceptedOffer, cost, link, acceptedNow };
   });

@@ -1091,6 +1091,22 @@ test("invite create and reissue source contract stays transactional and authenti
   );
 });
 
+test("direct member creation persists its notification in the same transaction", () => {
+  const serviceSource = readFileSync(
+    join(process.cwd(), "src/sharing/sharing.service.ts"),
+    "utf8",
+  );
+  const createBlock = serviceSource.slice(
+    serviceSource.indexOf("async create("),
+    serviceSource.indexOf("async findSharedPlans("),
+  );
+
+  assert.match(createBlock, /runSerializableTransaction/);
+  assert.match(createBlock, /assertMemberManageableInTransaction/);
+  assert.match(createBlock, /createNotificationInTransaction\(tx/);
+  assert.doesNotMatch(createBlock, /createNotification\(/);
+});
+
 test("invite delivery migration preserves unknown historical outcomes", () => {
   const migration = readFileSync(
     join(

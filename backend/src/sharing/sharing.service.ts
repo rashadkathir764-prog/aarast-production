@@ -219,7 +219,29 @@ export class SharingService {
       );
     }
 
-    const member = await this.prisma.$transaction(async (tx) => {
+    const member = await runSerializableTransaction(this.prisma, async (tx) => {
+      const transactionalAccess =
+        await this.permissions.assertMemberManageableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+      this.assertPermissionCeiling(
+        transactionalAccess,
+        role,
+        permissionData,
+      );
+      if (userId === transactionalAccess.plan.ownerUserId) {
+        throw new BadRequestException("Owner cannot be added as a shared member");
+      }
+      const duplicate = await tx.sharedMember.findUnique({
+        where: { weddingPlanId_userId: { weddingPlanId, userId } },
+      });
+      if (duplicate) {
+        throw new ConflictException(
+          "User is already shared on this wedding plan",
+        );
+      }
       const created = await tx.sharedMember.create({
         data: {
           weddingPlanId,
@@ -241,25 +263,24 @@ export class SharingService {
           true,
         );
       }
-      return created;
-    });
-
-    await this.notifications.createNotification({
-      userId,
-      weddingPlanId,
-      type: NotificationType.SHARING_INVITATION,
-      priority: NotificationPriority.HIGH,
-      title: "تمت إضافتك إلى خطة زفاف",
-      body: `أصبحت مشاركًا في "${plan.title}" بدور ${member.role}.`,
-      entityType: "shared_member",
-      entityId: member.id,
-      routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
-      data: {
-        sharedMemberId: member.id,
+      await this.notifications.createNotificationInTransaction(tx, {
+        userId,
         weddingPlanId,
-        role: member.role,
-      },
-      dedupeKey: `${userId}:sharing:${member.id}:invitation`,
+        type: NotificationType.SHARING_INVITATION,
+        priority: NotificationPriority.HIGH,
+        title: "تمت إضافتك إلى خطة زفاف",
+        body: `أصبحت مشاركًا في "${transactionalAccess.plan.title}" بدور ${created.role}.`,
+        entityType: "shared_member",
+        entityId: created.id,
+        routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
+        data: {
+          sharedMemberId: created.id,
+          weddingPlanId,
+          role: created.role,
+        },
+        dedupeKey: `${userId}:sharing:${created.id}:invitation`,
+      });
+      return created;
     });
 
     return this.toMemberResponse(member);

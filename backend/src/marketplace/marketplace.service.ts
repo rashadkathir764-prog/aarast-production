@@ -48,10 +48,6 @@ import {
   lockQuoteRequestTransitionRow,
   quoteLifecycleStatus,
 } from "./quote-lifecycle";
-import {
-  offerAcceptedProviderNotification,
-  offerAcceptedRequesterNotification,
-} from "./quote-notifications";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
@@ -542,6 +538,7 @@ export class MarketplaceService {
     const result = await acceptQuoteOfferInTransaction(
       this.prisma,
       this.permissions,
+      this.notifications,
       {
         id,
         weddingPlanId,
@@ -549,38 +546,6 @@ export class MarketplaceService {
         actorUserId: currentUser.id,
       },
     );
-
-    if (result.acceptedNow) {
-      await this.notifications.createNotification(
-        offerAcceptedRequesterNotification({
-          requesterId: offer.quoteRequest.userId,
-          weddingPlanId,
-          quoteRequestId: offer.quoteRequestId,
-          quoteOfferId: offer.id,
-          providerId: offer.providerId,
-        }),
-      );
-    }
-
-    // تنبيه المورد بقبول عرضه — الطرف الثاني في الاتفاق يستحق أن يعرف فورًا.
-    const providerAccount = await this.prisma.provider.findUnique({
-      where: { id: offer.providerId },
-      select: { userId: true },
-    });
-    if (
-      result.acceptedNow &&
-      providerAccount?.userId &&
-      providerAccount.userId !== currentUser.id
-    ) {
-      await this.notifications.createNotification(
-        offerAcceptedProviderNotification({
-          providerUserId: providerAccount.userId,
-          quoteRequestId: offer.quoteRequestId,
-          quoteOfferId: offer.id,
-          providerId: offer.providerId,
-        }),
-      );
-    }
 
     return {
       offer: MarketplacePresenter.toQuoteOfferResponse(result.offer),

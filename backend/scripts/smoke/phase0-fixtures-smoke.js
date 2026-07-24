@@ -11,9 +11,37 @@ const {
   withFixture,
 } = require('../../test/support/phase0-postgres-support');
 
+const REQUIRED_OPERATION_OUTPUT_KEYS = Object.freeze([
+  'budgetCategory',
+  'cost',
+  'costPayment',
+  'paymentSchedule',
+  'planProviderLink',
+  'conversationEvent',
+  'chatMessage',
+  'chatAttachment',
+  'notification',
+  'outboxEvent',
+]);
+
 async function assertClean(prisma, fixture) {
-  if (fixture.quoteRequest && !fixture.operationOutputs) {
-    throw new Error(`Phase 0 quote fixture ${fixture.scope} is missing operationOutputs.`);
+  if (fixture.quoteRequest) {
+    const output = fixture.operationOutputs;
+    if (!output || typeof output !== 'object') {
+      throw new Error(`Phase 0 quote fixture ${fixture.scope} is missing operationOutputs.`);
+    }
+    for (const key of REQUIRED_OPERATION_OUTPUT_KEYS) {
+      const value = output[key];
+      if (
+        !Object.prototype.hasOwnProperty.call(output, key) ||
+        !value ||
+        typeof value !== 'object' ||
+        typeof value.id !== 'string' ||
+        value.id.trim().length === 0
+      ) {
+        throw new Error(`Phase 0 quote fixture ${fixture.scope} has an invalid operation output: ${key}.`);
+      }
+    }
   }
   const ids = (...items) => items.filter(Boolean).map((item) => item.id);
   const output = fixture.operationOutputs ?? {};
@@ -160,4 +188,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = { assertClean, createOperationOutputs, main };
+module.exports = {
+  REQUIRED_OPERATION_OUTPUT_KEYS,
+  assertClean,
+  createOperationOutputs,
+  main,
+};

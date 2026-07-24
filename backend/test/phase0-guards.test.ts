@@ -37,6 +37,18 @@ test('source guard inventories official TypeScript, ESM, and CommonJS smoke/load
   assert.ok(files.some((file: string) => file.endsWith('openwa-otp-smoke.js')));
 });
 
+test('account-deletion smoke uses only explicit local-media environment keys', () => {
+  const source = readFileSync(join(backendRoot, 'scripts', 'smoke', 'account-deletion-smoke.ts'), 'utf8');
+  assert.doesNotMatch(source, /Object\.entries\(localMediaDefaults\)/);
+  for (const key of [
+    'AARAST_MEDIA_ENDPOINT', 'AARAST_MEDIA_SIGNED_ENDPOINT', 'AARAST_MEDIA_BUCKET',
+    'AARAST_MEDIA_PUBLIC_BASE_URL', 'AARAST_MEDIA_REGION', 'AARAST_MEDIA_FORCE_PATH_STYLE',
+    'AARAST_MEDIA_ACCESS_KEY_ID', 'AARAST_MEDIA_SECRET_ACCESS_KEY',
+  ]) {
+    assert.match(source, new RegExp(`process\\.env\\.${key}`));
+  }
+});
+
 test('external OpenWA mutation has an exact command, explicit confirmation, and no database access', () => {
   assert.equal(typeof sourceGuard.assertExternalOpenwaSmokeContract, 'function');
   assert.doesNotThrow(() => sourceGuard.assertExternalOpenwaSmokeContract(
@@ -76,7 +88,7 @@ test('source guard rejects decoded permanent PostgreSQL database names without f
   ]) {
     assert.throws(
       () => sourceGuard.assertNoUnsafeDatabaseTargets(source, 'encoded-target.ts'),
-      /permanent Aarast database target/i,
+      /permanent Aarast database target|unresolved PostgreSQL expression/i,
     );
   }
 
@@ -96,7 +108,7 @@ test('source guard evaluates escaped and concatenated PostgreSQL strings through
   ]) {
     assert.throws(
       () => sourceGuard.assertNoUnsafeDatabaseTargets(source, 'ast-target.ts'),
-      /permanent Aarast database target/i,
+      /permanent Aarast database target|unresolved PostgreSQL expression/i,
     );
   }
   assert.doesNotThrow(() => sourceGuard.assertNoUnsafeDatabaseTargets(
@@ -106,13 +118,18 @@ test('source guard evaluates escaped and concatenated PostgreSQL strings through
 });
 
 test('source guard evaluates template interpolation from constants', () => {
-  assert.throws(
-    () => sourceGuard.assertNoUnsafeDatabaseTargets(
-      "const database = 'aarast_dev'; const url = `postgresql://user:password@localhost:5432/${database}`;",
-      'template-target.ts',
-    ),
-    /permanent Aarast database target/i,
-  );
+  for (const source of [
+    "const database = 'aarast_dev' as const; const url = `postgresql://user:password@localhost:5432/${database}`;",
+    "{ const database = 'aarast_dev'; } const database = 'aarast_smoke_123'; const url = `postgresql://user:password@localhost:5432/${database}`;",
+    "const url = ('postgresql://user:password@localhost:5432/aarast_dev' as const)! satisfies string;",
+    "const database = runtimeDatabase; const url = `postgresql://user:password@localhost:5432/${database}`;",
+    "const database = runtimeDatabase; const url = 'postgresql://user:password@localhost:5432/' + database;",
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertNoUnsafeDatabaseTargets(source, 'template-target.ts'),
+      /permanent Aarast database target|unresolved PostgreSQL expression/i,
+    );
+  }
 });
 
 test('source guard rejects independent datasource overrides and direct database clients in unapproved entrypoints', () => {
@@ -131,7 +148,7 @@ test('source guard rejects independent datasource overrides and direct database 
   ]) {
     assert.throws(
       () => sourceGuard.assertEntrypointDatabaseContract(source, 'scripts/smoke/unapproved.js'),
-      /independent database client|datasource override|DATABASE_URL/i,
+      /independent database client|datasource override|DATABASE_URL|environment mutation/i,
     );
   }
   assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
@@ -147,17 +164,34 @@ test('source guard rejects independent datasource overrides and direct database 
   );
 });
 
-test('source guard rejects environment aliases, dynamic database imports, and allowed Prisma re-aliases', () => {
+test('source guard uses a narrow fail-closed environment and Prisma grammar', () => {
   for (const source of [
-    "const env = process.env; env.DATABASE_URL ||= isolatedOrPermanentUrl;",
-    "const { env } = process; env.SMOKE_DATABASE_URL = isolatedOrPermanentUrl;",
-    "const env = process.env; Object.assign(env, { DATABASE_URL: isolatedOrPermanentUrl });",
-    "const env = process.env; Reflect.set(env, 'SMOKE_DATABASE_URL', isolatedOrPermanentUrl);",
-    "async function connect() { const pg = await import('pg'); return new pg.Client(); }",
+    "const proc = process; proc.env.DATABASE_URL = value;",
+    "const { env } = process; env.SMOKE_DATABASE_URL = value;",
+    "let env; env = process.env; env.DATABASE_URL = value;",
+    "const DATABASE_URL = value; Object.assign(process.env, { DATABASE_URL });",
+    "Object.defineProperty(process.env, 'DATABASE_URL', { value });",
+    "Reflect.defineProperty(process.env, 'SMOKE_DATABASE_URL', { value });",
+    "const pg = module.require('pg');",
+    "import pg = require('pg');",
+    "async function connect() { const packageName = ['p', 'g'].join(''); return import(packageName); }",
+    "const { PrismaClient } = require('@prisma/client'); const Database = PrismaClient; new Database();",
+    "const { PrismaClient } = require('@prisma/client'); let Database; Database = PrismaClient; new Database({});",
+    "const { PrismaClient } = require('@prisma/client'); Reflect.construct(PrismaClient, [{}]);",
+    "const { PrismaClient } = require('@prisma/client'); consume(PrismaClient);",
+    "const { PrismaClient } = require('@prisma/client'); const options = { PrismaClient };",
+    "const { PrismaClient } = require('@prisma/client'); const clients = [PrismaClient];",
+    "const { PrismaClient } = require('@prisma/client'); function create(value = PrismaClient) { return value; }",
+    'const { PrismaClient } = unknown; consume(PrismaClient);',
+    'const { PrismaClient } = unknown;',
+    "const { PrismaClient: Database } = require('@prisma/client'); new Database();",
+    "const database = require('@prisma/client'); new database.PrismaClient();",
+    "import * as database from '@prisma/client'; new database.PrismaClient();",
+    "import { PrismaClient as Database } from '@prisma/client'; new Database();",
   ]) {
     assert.throws(
       () => sourceGuard.assertEntrypointDatabaseContract(source, 'backend/scripts/smoke/unapproved.js'),
-      /DATABASE_URL|SMOKE_DATABASE_URL|independent database client/i,
+      /process alias|environment mutation|independent database client|PrismaClient|outside the narrow environment grammar|dynamic import/i,
     );
   }
   assert.throws(
@@ -165,22 +199,114 @@ test('source guard rejects environment aliases, dynamic database imports, and al
       "const { PrismaClient } = require('@prisma/client'); const ManagedDatabase = PrismaClient; new ManagedDatabase({ log: ['query'] });",
       'backend/scripts/smoke/phase0-fixtures-smoke.js',
     ),
-    /constructor arguments/i,
+    /PrismaClient alias/i,
   );
   assert.throws(
     () => sourceGuard.assertEntrypointDatabaseContract(
-      "const prismaNamespace = require('@prisma/client'); const PC = prismaNamespace.PrismaClient; const PC2 = require('@prisma/client').PrismaClient; new PC({}); new PC2({});",
+      "const { PrismaClient } = require('@prisma/client'); new PrismaClient({});",
       'backend/scripts/smoke/phase0-fixtures-smoke.js',
     ),
     /constructor arguments/i,
   );
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "const { PrismaClient, ProviderStatus } = require('@prisma/client'); new PrismaClient();",
+    'backend/scripts/smoke/phase0-fixtures-smoke.js',
+  ));
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "import { PrismaClient, ProviderStatus } from '@prisma/client'; new PrismaClient();",
+    'backend/scripts/smoke/account-deletion-smoke.ts',
+  ));
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "const { PrismaClient } = backendRequire('@prisma/client'); new PrismaClient();",
+    'admin-web/scripts/admin-runtime-smoke.mjs',
+  ));
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "const baseUrl = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';",
+    'backend/scripts/smoke/unapproved.js',
+  ));
   assert.throws(
     () => sourceGuard.assertEntrypointDatabaseContract(
-      "async function connect() { const prisma = await import('@prisma/client'); return new prisma.PrismaClient(); }",
-      'backend/scripts/smoke/phase0-fixtures-smoke.js',
+      'process.env = replacementEnvironment;',
+      'backend/scripts/smoke/unapproved.js',
     ),
-    /independent database client/i,
+    /environment mutation|process\.env/i,
   );
+});
+
+test('source guard rejects computed require loaders and indirect process aliases', () => {
+  for (const source of [
+    "const pg = require(['p', 'g'].join(''));",
+    "const req = require; const pg = req('pg');",
+    "const proc = globalThis.process; proc.env.DATABASE_URL = value;",
+    "const proc = globalThis['process']; proc.env.DATABASE_URL = value;",
+    "const env = global.process.env; env.SMOKE_DATABASE_URL = value;",
+    "const processModule = require('node:process'); processModule.env.DATABASE_URL = value;",
+    "function connect(proc = process) { proc.env.DATABASE_URL = value; }",
+    "function connect(env = process.env) { env.DATABASE_URL = value; }",
+    "Object['defineProperty'](process.env, 'DATABASE_URL', { value });",
+    "Reflect['defineProperty'](process.env, 'SMOKE_DATABASE_URL', { value });",
+    "const defineProperty = Object.defineProperty; defineProperty(process.env, 'DATABASE_URL', { value });",
+    "const { createRequire } = require('node:module'); const load = createRequire(__filename); load('pg');",
+    "const load = require('module').createRequire(__filename); load('pg');",
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertEntrypointDatabaseContract(
+        source,
+        'backend/scripts/smoke/unapproved.js',
+      ),
+      /dynamic require|require alias|process alias|process module|environment grammar|environment mutation|module loader/i,
+    );
+  }
+
+  assert.throws(
+    () => sourceGuard.assertEntrypointDatabaseContract(
+      "const loader = backendRequire; const { PrismaClient } = loader('@prisma/client'); new PrismaClient();",
+      'admin-web/scripts/admin-runtime-smoke.mjs',
+    ),
+    /backendRequire alias|static database-client grammar/i,
+  );
+
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "const socket = require(path.join(socketIoRoot, 'client-dist', 'socket.io.js'));",
+    'backend/scripts/smoke/conversation-unification-smoke.js',
+  ));
+});
+
+test('source guard rejects process environment and mutator capability escapes', () => {
+  for (const source of [
+    "function mutate(target) { target.DATABASE_URL = value; } mutate(process.env);",
+    "function mutate(target) { target.env.DATABASE_URL = value; } mutate(process);",
+    "const env = (0, process.env); env.DATABASE_URL = value;",
+    "const [env] = [process.env]; env.DATABASE_URL = value;",
+    "const holder = { env: process.env }; holder.env.DATABASE_URL = value;",
+    "const mutators = [Object.defineProperty]; mutators[0](process.env, 'DATABASE_URL', { value });",
+    "function mutate(setter = Object.defineProperty) { setter(process.env, 'DATABASE_URL', { value }); }",
+    "delete process.env.DATABASE_URL;",
+    "process.env.DATABASE_URL++;",
+    "const assertManagedSmokeEnvironment = (value) => value; const env = assertManagedSmokeEnvironment(process.env); env.DATABASE_URL = value;",
+    "const { assertManagedSmokeEnvironment } = require('./smoke-utils'); function escape(assertManagedSmokeEnvironment) { assertManagedSmokeEnvironment(process.env); } escape((env) => { env.DATABASE_URL = value; });",
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertEntrypointDatabaseContract(
+        source,
+        'backend/scripts/smoke/unapproved.js',
+      ),
+      /process|environment|mutation capability/i,
+    );
+  }
+
+  assert.throws(
+    () => sourceGuard.assertEntrypointDatabaseContract(
+      "const env = (0, process.env); env.DATABASE_URL = value;",
+      'backend/scripts/smoke/run-isolated-smoke.js',
+    ),
+    /process|environment/i,
+  );
+
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "const { assertManagedSmokeEnvironment } = require('./smoke-utils'); assertManagedSmokeEnvironment(process.env); const baseUrl = process.env.SMOKE_BASE_URL;",
+    'backend/scripts/smoke/auth-verification-smoke.js',
+  ));
 });
 
 test('fixture wrapper rejects an unmanaged environment and cleans in finally after callback failure', async () => {
@@ -412,6 +538,10 @@ test('fixture smoke exports output creation and fail-closed cleanup contracts wi
   const smoke = require('../scripts/smoke/phase0-fixtures-smoke.js');
   assert.equal(typeof smoke.createOperationOutputs, 'function');
   assert.equal(typeof smoke.assertClean, 'function');
+  assert.deepEqual(smoke.REQUIRED_OPERATION_OUTPUT_KEYS, [
+    'budgetCategory', 'cost', 'costPayment', 'paymentSchedule', 'planProviderLink',
+    'conversationEvent', 'chatMessage', 'chatAttachment', 'notification', 'outboxEvent',
+  ]);
 
   const output = await smoke.createOperationOutputs(fakeOutputPrisma(), quoteFixture());
   for (const key of [
@@ -425,6 +555,29 @@ test('fixture smoke exports output creation and fail-closed cleanup contracts wi
     smoke.assertClean(fakeCountPrisma([]), quoteFixture()),
     /operationOutputs/i,
   );
+
+  for (const key of smoke.REQUIRED_OPERATION_OUTPUT_KEYS) {
+    const missingCalls: Array<{ model: string; where: unknown }> = [];
+    const { [key]: _missing, ...withoutKey } = output;
+    await assert.rejects(
+      smoke.assertClean(fakeCountPrisma(missingCalls), {
+        ...quoteFixture(), operationOutputs: withoutKey,
+      }),
+      new RegExp(key),
+    );
+    assert.equal(missingCalls.length, 0);
+
+    for (const invalidOutput of [{}, { id: '' }, { id: '   ' }]) {
+      const invalidCalls: Array<{ model: string; where: unknown }> = [];
+      await assert.rejects(
+        smoke.assertClean(fakeCountPrisma(invalidCalls), {
+          ...quoteFixture(), operationOutputs: { ...output, [key]: invalidOutput },
+        }),
+        new RegExp(key),
+      );
+      assert.equal(invalidCalls.length, 0);
+    }
+  }
 
   const calls: Array<{ model: string; where: unknown }> = [];
   await smoke.assertClean(fakeCountPrisma(calls), { ...quoteFixture(), operationOutputs: output });

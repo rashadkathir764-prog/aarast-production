@@ -23,25 +23,34 @@ const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
 
 assertManagedSmokeEnvironment(process.env);
 
-const localMediaDefaults = {
-  AARAST_MEDIA_ENDPOINT: 'http://127.0.0.1:9000',
-  AARAST_MEDIA_SIGNED_ENDPOINT: 'http://127.0.0.1:9000',
-  AARAST_MEDIA_BUCKET: 'aarast-media',
-  AARAST_MEDIA_PUBLIC_BASE_URL: 'http://127.0.0.1:9000/aarast-media',
-  AARAST_MEDIA_REGION: 'us-east-1',
-  AARAST_MEDIA_FORCE_PATH_STYLE: 'true',
-  AARAST_MEDIA_ACCESS_KEY_ID: 'aarast-local-media-key',
-  AARAST_MEDIA_SECRET_ACCESS_KEY:
-    'aarast-local-media-secret-change-me',
-} as const;
-
 function configureLocalMediaWhenNeeded(): void {
   const smokeUrl = new URL(
     process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115',
   );
   if (!['127.0.0.1', 'localhost', '::1'].includes(smokeUrl.hostname)) return;
-  for (const [name, value] of Object.entries(localMediaDefaults)) {
-    if (!process.env[name]?.trim()) process.env[name] = value;
+  if (!process.env.AARAST_MEDIA_ENDPOINT?.trim()) {
+    process.env.AARAST_MEDIA_ENDPOINT = 'http://127.0.0.1:9000';
+  }
+  if (!process.env.AARAST_MEDIA_SIGNED_ENDPOINT?.trim()) {
+    process.env.AARAST_MEDIA_SIGNED_ENDPOINT = 'http://127.0.0.1:9000';
+  }
+  if (!process.env.AARAST_MEDIA_BUCKET?.trim()) {
+    process.env.AARAST_MEDIA_BUCKET = 'aarast-media';
+  }
+  if (!process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.trim()) {
+    process.env.AARAST_MEDIA_PUBLIC_BASE_URL = 'http://127.0.0.1:9000/aarast-media';
+  }
+  if (!process.env.AARAST_MEDIA_REGION?.trim()) {
+    process.env.AARAST_MEDIA_REGION = 'us-east-1';
+  }
+  if (!process.env.AARAST_MEDIA_FORCE_PATH_STYLE?.trim()) {
+    process.env.AARAST_MEDIA_FORCE_PATH_STYLE = 'true';
+  }
+  if (!process.env.AARAST_MEDIA_ACCESS_KEY_ID?.trim()) {
+    process.env.AARAST_MEDIA_ACCESS_KEY_ID = 'aarast-local-media-key';
+  }
+  if (!process.env.AARAST_MEDIA_SECRET_ACCESS_KEY?.trim()) {
+    process.env.AARAST_MEDIA_SECRET_ACCESS_KEY = 'aarast-local-media-secret-change-me';
   }
 }
 

@@ -1,5 +1,30 @@
-import { Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import {
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { AuthenticatedUser } from './authenticated-user.interface';
+import { JwtSessionGuard } from './jwt-session.guard';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {}
+export class JwtAuthGuard extends JwtSessionGuard {
+  handleRequest<TUser = AuthenticatedUser>(
+    error: unknown,
+    user: AuthenticatedUser | false | null,
+    info: unknown,
+    context: ExecutionContext,
+    status?: unknown,
+  ): TUser {
+    const authenticated = super.handleRequest<AuthenticatedUser>(
+      error,
+      user,
+      info,
+      context,
+      status,
+    );
+    if (authenticated.sessionScope !== 'application') {
+      throw new UnauthorizedException('Application session is required');
+    }
+    return authenticated as TUser;
+  }
+}

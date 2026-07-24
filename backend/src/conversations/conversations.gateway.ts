@@ -12,6 +12,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { resolveJwtSessionScope } from '../auth/access-token-scope';
+import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { toAuthenticatedUser } from '../auth/safe-user';
 import { getCorsOrigins } from '../common/config/cors-origins';
 import { PrismaService } from '../prisma/prisma.service';
@@ -63,13 +65,14 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
   async handleConnection(socket: AuthenticatedSocket) {
     try {
       const token = this.socketToken(socket);
-      const payload = await this.jwt.verifyAsync<{ sub?: string; exp?: number }>(
-        token,
-      );
+      const payload = await this.jwt.verifyAsync<
+        Partial<JwtPayload> & { exp?: number }
+      >(token);
       if (
         !payload.sub ||
         typeof payload.exp !== 'number' ||
-        !Number.isFinite(payload.exp)
+        !Number.isFinite(payload.exp) ||
+        resolveJwtSessionScope(payload as JwtPayload) !== 'application'
       ) {
         throw new Error('Missing required token claims');
       }
@@ -81,7 +84,11 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
       if (!user || user.status === 'DISABLED' || !user.phoneVerifiedAt) {
         throw new Error('Ineligible user');
       }
-      socket.data.user = toAuthenticatedUser(user);
+      socket.data.user = {
+        ...toAuthenticatedUser(user),
+        adminMfa: false,
+        sessionScope: 'application',
+      };
       await socket.join(userRoom(user.id));
       this.scheduleTokenExpiryDisconnect(socket, payload.exp);
       socket.emit('chat:ready', { userId: user.id });

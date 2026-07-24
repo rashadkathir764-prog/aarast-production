@@ -136,7 +136,7 @@ export class AuthController {
   ) {
     const refreshToken = this.readCookie(cookieHeader, ADMIN_REFRESH_COOKIE);
     const result = refreshToken
-      ? await this.authService.logoutRefreshToken(refreshToken)
+      ? await this.authService.logoutAdminRefreshToken(refreshToken)
       : { revoked: 0 };
     response.clearCookie(ADMIN_REFRESH_COOKIE, {
       httpOnly: true,

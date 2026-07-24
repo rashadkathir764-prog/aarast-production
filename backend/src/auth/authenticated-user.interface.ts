@@ -6,6 +6,7 @@ import {
   UserStatus,
   WeddingPersona,
 } from '@prisma/client';
+import type { JwtSessionScope } from './jwt-payload.interface';
 
 export interface AuthenticatedUser {
   id: string;
@@ -32,4 +33,6 @@ export interface AuthenticatedUser {
   updatedAt: Date;
   /** True only for a JWT minted after the admin password + OTP boundary. */
   adminMfa?: boolean;
+  /** Present on HTTP and realtime identities authenticated from an access JWT. */
+  sessionScope?: JwtSessionScope;
 }

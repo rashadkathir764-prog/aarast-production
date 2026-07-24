@@ -620,7 +620,7 @@ export class AuthService {
         accessToken: this.signToken(
           existing.user.id,
           existing.user.phone,
-          requiredRole === UserRole.ADMIN,
+          requiredRole === UserRole.ADMIN ? "admin" : "application",
           adminSessionId,
         ),
         refreshToken: nextToken,
@@ -638,10 +638,13 @@ export class AuthService {
     return this.refresh({ refreshToken }, UserRole.ADMIN);
   }
 
-  async logoutRefreshToken(refreshToken: string): Promise<{ revoked: number }> {
+  async logoutAdminRefreshToken(
+    refreshToken: string,
+  ): Promise<{ revoked: number }> {
     const result = await this.prisma.refreshToken.updateMany({
       where: {
         tokenHash: hashRefreshToken(refreshToken),
+        scope: AuthSessionScope.ADMIN,
         revokedAt: null,
       },
       data: { revokedAt: new Date() },
@@ -1268,7 +1271,7 @@ export class AuthService {
       accessToken: this.signToken(
         user.id,
         user.phone,
-        adminMfa,
+        adminMfa ? "admin" : "application",
         adminMfa ? refreshSession.id : undefined,
       ),
       refreshToken,
@@ -1320,13 +1323,20 @@ export class AuthService {
   private signToken(
     userId: string,
     phone: string | null,
-    adminMfa = false,
+    scope: JwtPayload["scope"],
     adminSessionId?: string,
   ): string {
+    if (
+      (scope === "admin" && !adminSessionId) ||
+      (scope === "application" && adminSessionId !== undefined)
+    ) {
+      throw new Error("Access-token scope and session are inconsistent");
+    }
     const payload: JwtPayload = {
       sub: userId,
       phone,
-      ...(adminMfa && adminSessionId
+      scope,
+      ...(scope === "admin"
         ? { amr: "admin_mfa" as const, sid: adminSessionId }
         : {}),
     };

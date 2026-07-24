@@ -9,6 +9,7 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
+import { JwtService } from '@nestjs/jwt';
 import { AdminService } from '../../src/admin/admin.service';
 import { toAuthenticatedUser } from '../../src/auth/safe-user';
 
@@ -168,14 +169,79 @@ async function assertSelfDisableIsRejected(): Promise<void> {
   );
 }
 
+async function accessStatus(
+  path: string,
+  accessToken: string,
+): Promise<number> {
+  const response = await fetch(`${process.env.SMOKE_BASE_URL}${path}`, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  await response.arrayBuffer();
+  return response.status;
+}
+
+async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
+  await withFixture(
+    (environment) => createSuperAdminPairFixture(prisma, environment),
+    async (fixture) => {
+      const secret = process.env.JWT_SECRET;
+      assert.ok(secret);
+      const jwt = new JwtService({ secret });
+      const adminSession = await prisma.refreshToken.create({
+        data: {
+          userId: fixture.actingAdmin.id,
+          tokenHash: `phase1-admin-${fixture.scope}`,
+          scope: AuthSessionScope.ADMIN,
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      });
+      const basePayload = {
+        sub: fixture.actingAdmin.id,
+        phone: fixture.actingAdmin.phone,
+      };
+      const adminToken = jwt.sign({
+        ...basePayload,
+        scope: 'admin',
+        amr: 'admin_mfa',
+        sid: adminSession.id,
+      });
+      const applicationToken = jwt.sign({
+        ...basePayload,
+        scope: 'application',
+      });
+      const realmLessToken = jwt.sign(basePayload);
+      const contradictoryToken = jwt.sign({
+        ...basePayload,
+        scope: 'application',
+        amr: 'admin_mfa',
+        sid: adminSession.id,
+      });
+
+      assert.equal(await accessStatus('/api/v1/me', adminToken), 401);
+      assert.equal(
+        await accessStatus('/admin/dashboard/stats', adminToken),
+        200,
+      );
+      assert.equal(await accessStatus('/api/v1/me', applicationToken), 200);
+      assert.equal(
+        await accessStatus('/admin/dashboard/stats', applicationToken),
+        403,
+      );
+      assert.equal(await accessStatus('/api/v1/me', realmLessToken), 401);
+      assert.equal(await accessStatus('/api/v1/me', contradictoryToken), 401);
+    },
+  );
+}
+
 async function main(): Promise<void> {
   try {
     await assertOperationsCannotManageAdmin();
     await assertOperationsCanManageNonAdminAndRevokeSessions();
     await assertSelfDisableIsRejected();
     await assertConcurrentDisableKeepsOneSuperAdmin();
+    await assertSignedAccessRealmsStaySeparated();
     console.log(
-      'PASS - Phase 1 admin hierarchy rejects delegated admin control and preserves one active SUPER_ADMIN.',
+      'PASS - Phase 1 administrator hierarchy and signed access realms remain separated.',
     );
   } finally {
     await prisma.$disconnect();

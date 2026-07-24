@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtSessionGuard } from '../auth/jwt-session.guard';
 import { AdminPermission } from '../common/admin/admin-permissions';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminGuard } from './admin.guard';
@@ -8,7 +8,7 @@ import { AdminPermissionGuard } from './admin-permission.guard';
 import { AdminAuditQueryDto } from './dto/admin-audit-query.dto';
 
 @Controller('admin/audit-logs')
-@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionGuard)
+@UseGuards(JwtSessionGuard, AdminGuard, AdminPermissionGuard)
 export class AdminAuditController {
   constructor(private readonly auditService: AdminAuditService) {}
 

@@ -40,7 +40,9 @@ Health endpoints have distinct orchestration semantics:
 - JSON request and response bodies are used for API routes.
 - Protected routes require `Authorization: Bearer <accessToken>`.
 - Access JWTs default to 15 minutes and are renewed through rotating refresh
-  sessions.
+  sessions. Every access JWT carries a signed `scope` claim: `application` for
+  `/api/v1` product APIs and Chat, or `admin` for `/admin`. Scope-less,
+  cross-scope, and contradictory claim combinations are rejected.
 - Private resources use ownership and sharing checks.
 - Some unauthorized private-resource access is intentionally returned as not found style behavior.
 - `passwordHash` is never returned.
@@ -201,7 +203,9 @@ expire after 30 days and are stored as hashes.
   `/api/v1/auth/refresh` rejects administration tokens, and
   `/api/v1/auth/admin/refresh` rejects application tokens. A general
   application session can never be upgraded into an MFA-assured administrator
-  session through refresh.
+  session through refresh. Rotation mints an access JWT with the same realm:
+  `application` refresh sessions mint only `scope=application`, and `ADMIN`
+  refresh sessions mint only `scope=admin`.
 - `POST /api/v1/auth/refresh` rotates one valid refresh token and returns a new access
   and refresh pair. Reuse of a revoked/expired token is rejected.
 - `POST /api/v1/auth/logout` revokes the supplied application refresh token;
@@ -1254,10 +1258,12 @@ Admin routes are JWT-protected and require admin authorization:
 - `POST /api/v1/auth/admin/logout` revokes the server session and clears the cookie.
 
 General password login, general OTP login, and general refresh never mint the
-`admin_mfa` assurance required by `AdminGuard`. Each admin access JWT also
-carries a server-side refresh-session id; refresh or logout revokes that row,
-so the prior access JWT stops working immediately. The JSON contract never
-returns the admin refresh token.
+`scope=admin` plus `admin_mfa` assurance required by `AdminGuard`. Each admin
+access JWT also carries a server-side refresh-session id; refresh or logout
+revokes that row, so the prior access JWT stops working immediately. Admin
+access JWTs cannot authorize `/api/v1` product APIs or Chat, and application
+access JWTs cannot authorize `/admin`. The JSON contract never returns the
+admin refresh token.
 
 - `GET /admin/dashboard/stats`
 - `GET /admin/reports/overview`

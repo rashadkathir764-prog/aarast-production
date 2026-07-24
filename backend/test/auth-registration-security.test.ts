@@ -15,6 +15,7 @@ function createHarness() {
   const otps: any[] = [];
   const users: any[] = [];
   const refreshTokens: any[] = [];
+  const signedPayloads: any[] = [];
   const lookupEvents: string[] = [];
   let otpSequence = 0;
   let userSequence = 0;
@@ -168,7 +169,12 @@ function createHarness() {
   return {
     service: new AuthService(
       prisma,
-      { sign: () => 'signed-access-token' } as any,
+      {
+        sign: (payload: any) => {
+          signedPayloads.push(payload);
+          return 'signed-access-token';
+        },
+      } as any,
       {
         assertAllowed: async () => undefined,
         recordFailure: async () => undefined,
@@ -180,6 +186,7 @@ function createHarness() {
     users,
     otps,
     refreshTokens,
+    signedPayloads,
     prisma,
     lookupEvents,
     addUser: async (phone: string, verified: boolean, email: string | null = null) =>
@@ -343,7 +350,7 @@ test('an admin needs a separate application password for a wedding-app bearer', 
 
 test('general OTP login gives an admin only a standard wedding-app session', async () => {
   await withDevOtp(async () => {
-    const { service, refreshTokens, addUser } = createHarness();
+    const { service, refreshTokens, signedPayloads, addUser } = createHarness();
     const admin = await addUser('+967777123456', true);
     admin.role = 'ADMIN';
     admin.adminRole = 'SUPER_ADMIN';
@@ -369,6 +376,9 @@ test('general OTP login gives an admin only a standard wedding-app session', asy
     assert.deepEqual(response.user?.adminPermissions, []);
     assert.match(response.refreshToken, /^aarast_app_/);
     assert.equal(refreshTokens.length, 1);
+    assert.equal(signedPayloads[0]?.scope, 'application');
+    assert.equal(signedPayloads[0]?.amr, undefined);
+    assert.equal(signedPayloads[0]?.sid, undefined);
   });
 });
 
@@ -718,7 +728,12 @@ test('an old JWT cannot access protected routes for an unverified account', asyn
       },
     } as any);
     await assert.rejects(
-      () => strategy.validate({ sub: 'legacy-user', phone: '+967777123456' }),
+      () =>
+        strategy.validate({
+          sub: 'legacy-user',
+          phone: '+967777123456',
+          scope: 'application',
+        }),
       /unverified/,
     );
   } finally {

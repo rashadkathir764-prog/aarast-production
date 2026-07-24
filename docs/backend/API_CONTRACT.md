@@ -1386,8 +1386,13 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
   for different request content returns `409`, while an identical request still
   in progress returns retryable `503`. Raw paths, query values, and invite
   tokens are represented only by a SHA-256 fingerprint and are not persisted.
-  Pending reservations expire after 24 hours by default, completed responses
-  after 168 hours; both are environment-bounded and cleaned hourly.
+  Pending reservations expire after 24 hours by default and completed
+  responses after 168 hours. The hourly cleanup deletes only expired completed
+  responses. An expired row with `completedAt = NULL` is an ambiguous
+  tombstone because its domain transaction may already have committed; it is
+  retained, counted by an operations metric, and can be released or completed
+  only through the id-bound, evidence-gated reconciliation command documented
+  in the deployment runbook.
 - Access/error telemetry records the matched route template only. Query
   strings, concrete resource ids, invite tokens, exception messages, and
   exception stacks are not sent to application logs or Sentry. Unmatched

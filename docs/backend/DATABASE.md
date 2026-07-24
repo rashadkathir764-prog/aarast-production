@@ -140,9 +140,13 @@ The backend now includes the approved provider-reference and quote-lead foundati
   endpoints (offline-queue replays return the original response instead of
   duplicating financial records). Each key is bound to a SHA-256 fingerprint of
   method + concrete target + canonical body, while only the safe route template
-  is stored in readable form. `expiresAt` bounds both pending reservations and
+  is stored in readable form. `expiresAt` bounds active reservations and
   completed replay responses; an hourly, advisory-lock-protected job removes
-  expired rows across replicas. Migration
+  only expired completed rows across replicas. Expired rows with no
+  `completedAt` remain fail-closed as ambiguous tombstones until the
+  evidence-gated operations reconciler either releases one proven
+  non-committed request or stores the exact replay for one proven committed
+  request. Migration
   `20260710173000_bind_idempotency_requests` expires legacy unbound rows. Stored
   paths use route templates only;
   migration `20260710140000_redact_legacy_idempotency_paths` removes legacy

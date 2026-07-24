@@ -33,6 +33,7 @@ test('source guard inventories official TypeScript, ESM, and CommonJS smoke/load
   assert.equal(typeof sourceGuard.collectGuardedSourceFiles, 'function');
   const files = sourceGuard.collectGuardedSourceFiles();
   assert.ok(files.some((file: string) => file.endsWith('account-deletion-smoke.ts')));
+  assert.ok(files.some((file: string) => file.endsWith('phase2-idempotency-reconciliation-smoke.ts')));
   assert.ok(files.some((file: string) => file.endsWith('phase2-conversation-revocation-smoke.ts')));
   assert.ok(files.some((file: string) => file.endsWith('phase2-quote-concurrency-smoke.ts')));
   assert.ok(files.some((file: string) => file.endsWith('admin-runtime-smoke.mjs')));

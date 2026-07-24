@@ -205,6 +205,76 @@ AARAST_PROVIDER_TEST_PASSWORD="set-this-outside-git" npm run prod:bootstrap-mark
 
 The script upserts Yemen-first city references, provider categories, one clearly marked test provider account, and one active provider service. It does not delete data and must not be used as a payment, booking, deposit, loan, credit, or financing setup.
 
+## Idempotency Tombstone Reconciliation
+
+An expired `IdempotencyKey` with `completedAt = NULL` is ambiguous: the domain
+transaction may have committed before its replay response was stored. The
+hourly scheduler reports the `aarast_idempotency_ambiguous_tombstones` metric
+but never deletes or reclaims these rows automatically.
+
+Run the reconciliation command only inside the built Backend runtime whose
+`DATABASE_URL` is already managed by Dokploy. It never prints the client key,
+user id, request hash, stored response, or database credentials.
+
+1. List at most the oldest 100 expired ambiguous rows, then inspect one exact
+   opaque id:
+
+   ```sh
+   npm run prod:reconcile-idempotency -- --action=list
+   npm run prod:reconcile-idempotency -- --action=inspect --id=<opaque-id>
+   ```
+
+2. Correlate the safe method/route/time with Backend request logs, the relevant
+   domain row, audit records, notifications, and outbox events. Do not infer an
+   outcome from the HTTP error alone.
+3. If the domain mutation is proven not to have committed, release only that
+   expired row. The exact method and route from `inspect`, an explicit proof
+   label, and an id-bound confirmation are mandatory:
+
+   ```sh
+   IDEMPOTENCY_RECONCILE_CONFIRM=RECONCILE_IDEMPOTENCY_<opaque-id> \
+     npm run prod:reconcile-idempotency -- \
+     --action=release \
+     --id=<opaque-id> \
+     --expected-method=POST \
+     --expected-path=/api/v1/example/:id \
+     --proof=no-domain-commit
+   ```
+
+4. If the domain mutation is proven to have committed, reconstruct the exact
+   original 2xx body, status, and only replay-safe representation headers in a
+   private JSON file:
+
+   ```json
+   {
+     "body": { "id": "verified-domain-id" },
+     "statusCode": 201,
+     "headers": { "location": "/api/v1/example/verified-domain-id" }
+   }
+   ```
+
+   Then complete the same tombstone for deterministic replay:
+
+   ```sh
+   IDEMPOTENCY_RECONCILE_CONFIRM=RECONCILE_IDEMPOTENCY_<opaque-id> \
+     npm run prod:reconcile-idempotency -- \
+     --action=complete \
+     --id=<opaque-id> \
+     --expected-method=POST \
+     --expected-path=/api/v1/example/:id \
+     --proof=domain-commit-verified \
+     --response-file=/secure/local/path/replay.json
+   ```
+
+   Remove the private response file after the incident evidence is retained in
+   the approved operations system.
+
+Both mutation modes lock the exact row, require it to remain expired and
+ambiguous, compare method and route, and update/delete it conditionally in one
+serializable transaction. If commit status cannot be proven, take no mutation
+action: preserve the tombstone and escalate. Never use direct SQL, `db push`,
+`migrate reset`, or a broad delete as a reconciliation shortcut.
+
 ## Health Checks
 
 After deploy:

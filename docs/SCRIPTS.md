@@ -45,6 +45,7 @@
 | `backend` | `npm run smoke:otp-profile` | `node scripts/smoke/run-isolated-smoke.js otp-profile-smoke.js` |
 | `backend` | `npm run smoke:phase0-fixtures` | `node scripts/smoke/run-isolated-smoke.js phase0-fixtures-smoke.js` |
 | `backend` | `npm run smoke:phase1-identity` | `node scripts/smoke/run-isolated-smoke.js phase1-identity-smoke.ts` |
+| `backend` | `npm run smoke:phase2-auth-retention` | `node scripts/smoke/run-isolated-smoke.js phase2-auth-retention-smoke.ts` |
 | `backend` | `npm run smoke:phase2-conversation-revocation` | `node scripts/smoke/run-isolated-smoke.js phase2-conversation-revocation-smoke.ts` |
 | `backend` | `npm run smoke:phase2-idempotency-reconciliation` | `node scripts/smoke/run-isolated-smoke.js phase2-idempotency-reconciliation-smoke.ts` |
 | `backend` | `npm run smoke:phase2-quote-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-quote-concurrency-smoke.ts` |

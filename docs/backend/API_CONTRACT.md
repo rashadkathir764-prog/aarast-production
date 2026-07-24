@@ -219,6 +219,11 @@ expire after 30 days and are stored as hashes.
   when omitted it revokes all application sessions for that user.
 - `POST /api/v1/auth/logout-all` revokes all active application refresh
   sessions. Administrator logout/recovery affects only administrator sessions.
+- A revoked refresh row is retained for 30 days from `revokedAt`; an unrevoked
+  expired row is retained for 30 days from `expiresAt`. One hourly
+  PostgreSQL-advisory-lock cleanup removes older rows on only one replica. This
+  bounded history preserves token-family reuse detection and incident evidence
+  without allowing terminal sessions to accumulate forever.
 
 The mobile client stores both tokens in secure storage and retries one failed
 request once after a successful refresh. Auth endpoints do not recursively

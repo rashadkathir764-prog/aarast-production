@@ -407,6 +407,7 @@ model RefreshToken {
   @@index([userId])
   @@index([userId, scope, revokedAt])
   @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model LoginThrottle {

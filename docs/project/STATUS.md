@@ -86,7 +86,8 @@ and runtime checks override historical completion reports.
 - Append-only cost payment/reversal entries, unique schedule-payment links,
   and row-locked payment-schedule transitions.
 - Rotating refresh sessions with single-session logout, logout-all, secure
-  mobile storage, and one guarded retry after `401`.
+  mobile storage, one guarded retry after `401`, and bounded 30-day terminal
+  history cleaned by one hourly advisory-lock holder.
 - Password brute-force protection is durable across restarts and backend
   replicas: PostgreSQL stores only an HMAC-SHA-256 account-identifier digest
   keyed by a deployment-only pepper. Each attempt reserves a row-locked slot

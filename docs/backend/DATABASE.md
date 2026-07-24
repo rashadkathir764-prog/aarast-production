@@ -131,6 +131,10 @@ The backend now includes the approved provider-reference and quote-lead foundati
   independent and neither recovery route can overwrite the other.
 - Refresh rows persist their application/administrator scope; logout, reset,
   rotation, and token-family compromise revocation stay inside that scope.
+- Terminal refresh sessions have bounded security retention: revoked rows are
+  removed 30 days after `revokedAt`, while unrevoked expired rows are removed
+  30 days after `expiresAt`. The same hourly advisory-lock cleanup guarantees
+  that only one replica performs the deletion.
 - Expired OTP and authentication challenge rows are retained for one day and
   then removed by a distinct advisory-lock cleanup job.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.

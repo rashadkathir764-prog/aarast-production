@@ -251,9 +251,9 @@ PostgreSQL وRedis وMinIO إلى الصفر.
 
 **المتطلبات:**
 
-- [ ] الإشعارات المهمة تُكتب داخل transaction أو Outbox، ولا ترجع mutation ناجحة كـ5xx بسبب notification.
-- [ ] إضافة reconciliation موثّق لـambiguous idempotency tombstones.
-- [ ] تنظيف RefreshToken المنتهي/الملغى بسياسة retention واضحة.
+- [x] الإشعارات المهمة تُكتب داخل transaction أو Outbox، ولا ترجع mutation ناجحة كـ5xx بسبب notification.
+- [x] إضافة reconciliation موثّق لـambiguous idempotency tombstones.
+- [x] تنظيف RefreshToken المنتهي/الملغى بسياسة retention واضحة.
 - [ ] جعل rating aggregate ذريًا أو اشتقاقه من البيانات بدل cache قابل للفقد.
 - [ ] استخدام money validator المركزي لكل أسعار المزود.
 - [ ] إضافة `PUT` إلى CORS واختبار preflight.

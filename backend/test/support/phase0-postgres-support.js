@@ -239,7 +239,7 @@ async function runConcurrentlyAfterBarrier(operations, { onAllArrived } = {}) {
   let arrived = 0;
   let release;
   const barrier = new Promise((resolve) => { release = resolve; });
-  return Promise.all(operations.map(async (operation) => {
+  const results = await Promise.allSettled(operations.map(async (operation) => {
     arrived += 1;
     if (arrived === operations.length) {
       onAllArrived?.({ arrived, total: operations.length });
@@ -248,6 +248,10 @@ async function runConcurrentlyAfterBarrier(operations, { onAllArrived } = {}) {
     await barrier;
     return operation();
   }));
+  const failures = results.filter((result) => result.status === 'rejected').map((result) => result.reason);
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) throw new AggregateError(failures, 'Multiple concurrent fixture operations failed.');
+  return results.map((result) => result.value);
 }
 
 module.exports = {

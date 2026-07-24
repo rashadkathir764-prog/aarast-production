@@ -13,36 +13,39 @@ const {
 
 assertManagedSmokeEnvironment(process.env);
 
-async function assertClean(prisma, scope) {
-  const [
-    users, plans, quotes, conversations, budgetCategories, weddingCosts, costPayments, paymentSchedules,
-    planProviderLinks, chatMessages, chatAttachments, conversationEvents, conversationParticipants,
-    notifications, outboxEvents, sharedMembers, conversationReports,
-  ] = await Promise.all([
-    prisma.user.count({ where: { appEmail: { contains: scope } } }),
-    prisma.weddingPlan.count({ where: { title: { contains: scope } } }),
-    prisma.quoteOffer.count({ where: { title: { contains: scope } } }),
-    prisma.conversation.count({ where: { createdBy: { appEmail: { contains: scope } } } }),
-    prisma.budgetCategory.count({ where: { name: { contains: scope } } }),
-    prisma.weddingCost.count({ where: { title: { contains: scope } } }),
-    prisma.costPayment.count({ where: { weddingCost: { title: { contains: scope } } } }),
-    prisma.paymentSchedule.count({ where: { weddingCost: { title: { contains: scope } } } }),
-    prisma.planProviderLink.count({ where: { weddingPlan: { title: { contains: scope } } } }),
-    prisma.chatMessage.count({ where: { body: scope } }),
-    prisma.chatAttachment.count({ where: { message: { body: scope } } }),
-    prisma.conversationEvent.count({ where: { dedupeKey: `phase0-${scope}` } }),
-    prisma.conversationParticipant.count({ where: { user: { appEmail: { contains: scope } } } }),
-    prisma.notification.count({ where: { title: scope } }),
-    prisma.outboxEvent.count({ where: { type: 'PHASE0_FIXTURE' } }),
-    prisma.sharedMember.count({ where: { user: { appEmail: { contains: scope } } } }),
-    prisma.conversationReport.count({ where: { reporter: { appEmail: { contains: scope } } } }),
-  ]);
-  if ([
-    users, plans, quotes, conversations, budgetCategories, weddingCosts, costPayments, paymentSchedules,
-    planProviderLinks, chatMessages, chatAttachments, conversationEvents, conversationParticipants,
-    notifications, outboxEvents, sharedMembers, conversationReports,
-  ].some(Boolean)) {
-    throw new Error(`Phase 0 fixture cleanup left rows for ${scope}.`);
+async function assertClean(prisma, fixture) {
+  const ids = (...items) => items.filter(Boolean).map((item) => item.id);
+  const output = fixture.operationOutputs ?? {};
+  const userIds = ids(fixture.actingAdmin, fixture.peerAdmin, fixture.user, fixture.owner, fixture.providerUser, fixture.member);
+  const phones = [fixture.user?.phone, fixture.owner?.phone, fixture.providerUser?.phone, fixture.member?.phone]
+    .filter(Boolean);
+  const checks = [
+    prisma.user.count({ where: { id: { in: userIds } } }),
+    prisma.otpCode.count({ where: { phone: { in: phones } } }),
+    prisma.city.count({ where: { id: { in: ids(fixture.city) } } }),
+    prisma.providerCategory.count({ where: { id: { in: ids(fixture.category) } } }),
+    prisma.provider.count({ where: { id: { in: ids(fixture.provider) } } }),
+    prisma.providerService.count({ where: { id: { in: ids(fixture.service) } } }),
+    prisma.weddingPlan.count({ where: { id: { in: ids(fixture.plan) } } }),
+    prisma.quoteRequest.count({ where: { id: { in: ids(fixture.quoteRequest) } } }),
+    prisma.quoteOffer.count({ where: { id: { in: ids(fixture.offer) } } }),
+    prisma.conversation.count({ where: { id: { in: ids(fixture.conversation) } } }),
+    prisma.budgetCategory.count({ where: { id: { in: ids(output.budgetCategory) } } }),
+    prisma.weddingCost.count({ where: { id: { in: ids(output.cost) } } }),
+    prisma.costPayment.count({ where: { id: { in: ids(output.costPayment) } } }),
+    prisma.paymentSchedule.count({ where: { id: { in: ids(output.paymentSchedule) } } }),
+    prisma.planProviderLink.count({ where: { id: { in: ids(output.planProviderLink) } } }),
+    prisma.chatMessage.count({ where: { id: { in: ids(output.chatMessage) } } }),
+    prisma.chatAttachment.count({ where: { id: { in: ids(output.chatAttachment) } } }),
+    prisma.conversationEvent.count({ where: { id: { in: ids(output.conversationEvent) } } }),
+    prisma.conversationParticipant.count({ where: { id: { in: ids(fixture.participant) } } }),
+    prisma.notification.count({ where: { id: { in: ids(output.notification) } } }),
+    prisma.outboxEvent.count({ where: { id: { in: ids(output.outboxEvent) } } }),
+    prisma.sharedMember.count({ where: { id: { in: ids(fixture.sharedMember) } } }),
+    prisma.conversationReport.count({ where: { conversationId: { in: ids(fixture.conversation) } } }),
+  ];
+  if ((await Promise.all(checks)).some(Boolean)) {
+    throw new Error(`Phase 0 fixture cleanup left rows for ${fixture.scope}.`);
   }
 }
 
@@ -65,15 +68,15 @@ async function createOperationOutputs(prisma, fixture) {
         totalAmount: 100,
       },
     });
-    await tx.paymentSchedule.create({
+    const paymentSchedule = await tx.paymentSchedule.create({
       data: { weddingCostId: cost.id, amount: 10, dueDate: new Date(Date.now() + 86_400_000) },
     });
-    await tx.costPayment.create({ data: { weddingCostId: cost.id, amount: 5 } });
+    const costPayment = await tx.costPayment.create({ data: { weddingCostId: cost.id, amount: 5 } });
     await tx.weddingCost.update({
       where: { id: cost.id },
       data: { paidAmount: 5, status: 'PARTIALLY_PAID' },
     });
-    await tx.planProviderLink.create({
+    const planProviderLink = await tx.planProviderLink.create({
     data: {
       weddingPlanId: fixture.plan.id,
       providerId: fixture.provider.id,
@@ -81,7 +84,7 @@ async function createOperationOutputs(prisma, fixture) {
       quoteOfferId: fixture.offer.id,
     },
     });
-    await tx.conversationEvent.create({
+    const conversationEvent = await tx.conversationEvent.create({
     data: {
       conversationId: fixture.conversation.id,
       quoteRequestId: fixture.quoteRequest.id,
@@ -93,7 +96,7 @@ async function createOperationOutputs(prisma, fixture) {
     const message = await tx.chatMessage.create({
     data: { conversationId: fixture.conversation.id, senderUserId: fixture.owner.id, body: fixture.scope },
     });
-    await tx.chatAttachment.create({
+    const chatAttachment = await tx.chatAttachment.create({
     data: { messageId: message.id, storageKey: `phase0/${fixture.scope}`, contentType: 'image/webp', byteSize: 1 },
     });
     const notification = await tx.notification.create({
@@ -105,7 +108,7 @@ async function createOperationOutputs(prisma, fixture) {
         body: fixture.scope,
       },
     });
-    await tx.outboxEvent.create({
+    const outboxEvent = await tx.outboxEvent.create({
       data: {
         type: 'PHASE0_FIXTURE',
         aggregateType: 'notification',
@@ -113,6 +116,10 @@ async function createOperationOutputs(prisma, fixture) {
         payload: { scope: fixture.scope },
       },
     });
+    return {
+      budgetCategory: category, cost, costPayment, paymentSchedule, planProviderLink,
+      conversationEvent, chatMessage: message, chatAttachment, notification, outboxEvent,
+    };
   });
 }
 
@@ -120,20 +127,23 @@ async function main() {
   const prisma = new PrismaClient();
   try {
     for (const createFixture of [createSuperAdminPairFixture, createOtpAttemptFixture]) {
-      let scope;
+      let completedFixture;
       await withFixture(
         (environment) => createFixture(prisma, environment),
-        async (fixture) => { scope = fixture.scope; },
+        async (fixture) => { completedFixture = fixture; },
       );
-      await assertClean(prisma, scope);
+      await assertClean(prisma, completedFixture);
     }
     for (const createFixture of [createQuoteDecisionFixture, createPermissionRevocationFixture]) {
-      let scope;
+      let completedFixture;
       await withFixture(
         (environment) => createFixture(prisma, environment),
-        async (fixture) => { scope = fixture.scope; await createOperationOutputs(prisma, fixture); },
+        async (fixture) => {
+          fixture.operationOutputs = await createOperationOutputs(prisma, fixture);
+          completedFixture = fixture;
+        },
       );
-      await assertClean(prisma, scope);
+      await assertClean(prisma, completedFixture);
     }
     console.log('PASS - Phase 0 PostgreSQL fixtures create operation outputs and clean them in finally.');
   } finally {

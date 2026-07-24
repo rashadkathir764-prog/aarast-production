@@ -3,12 +3,29 @@
 
 const { existsSync, readFileSync, readdirSync } = require('fs');
 const { join, resolve } = require('path');
+const ts = require('typescript');
 
 const backendRoot = resolve(__dirname, '..', '..');
 const repositoryRoot = resolve(backendRoot, '..');
 const managedRunner = 'scripts/smoke/run-isolated-smoke.js';
 const externalOpenwaCommand = 'node scripts/smoke/openwa-otp-smoke.js';
 const sourceExtensions = new Set(['.js', '.ts', '.mjs', '.cjs']);
+const allowedDirectDatabaseClients = new Set([
+  'admin-web/scripts/admin-runtime-smoke.mjs',
+  'backend/scripts/smoke/account-deletion-smoke.ts',
+  'backend/scripts/smoke/backend-completion-smoke.js',
+  'backend/scripts/smoke/conversation-unification-smoke.js',
+  'backend/scripts/smoke/marketplace-smoke.js',
+  'backend/scripts/smoke/notifications-apis-smoke.js',
+  'backend/scripts/smoke/phase0-fixtures-smoke.js',
+  'backend/scripts/smoke/private-chat-media-smoke.js',
+  'backend/scripts/smoke/provider-dashboard-smoke.js',
+  'backend/scripts/smoke/providers-quotes-smoke.js',
+  'backend/scripts/smoke/quote-stability-smoke.js',
+  'backend/scripts/smoke/sharing-security-smoke.js',
+  'backend/scripts/smoke/ux-c4-c7-smoke.js',
+]);
+const allowedDatabaseUrlWriters = new Set(['backend/scripts/smoke/smoke-utils.js']);
 
 const managedCommandArguments = new Map([
   ['smoke', 'health-smoke.js auth-smoke.js'],
@@ -87,8 +104,198 @@ function assertNoUnsafeDatabaseTargets(source, label) {
 }
 
 function extractPostgresUrls(source) {
-  return [...source.matchAll(/(?:^|[^A-Za-z0-9_:\/])((?:postgres|postgresql):\/\/[^\s'"`\\]+)/gi)]
-    .map((match) => match[1]);
+  const sourceFile = parseSource(source);
+  const constants = collectStringConstants(sourceFile);
+  const staticStrings = new Set();
+  const visit = (node) => {
+    const value = evaluateStaticString(node, constants);
+    if (value !== undefined) staticStrings.add(value);
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  const urls = new Set();
+  for (const value of staticStrings) {
+    for (const match of value.matchAll(/(?:^|[^A-Za-z0-9_:\/])((?:postgres|postgresql):\/\/[^\s'"`\\]+)/gi)) {
+      urls.add(match[1]);
+    }
+  }
+  for (const match of source.matchAll(/(?:^|[^A-Za-z0-9_:\/])((?:postgres|postgresql):\/\/[^\s'"`\\]+)/gi)) {
+    urls.add(match[1]);
+  }
+  return [...urls];
+}
+
+function parseSource(source) {
+  return ts.createSourceFile('phase0-guard.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+}
+
+function collectStringConstants(sourceFile) {
+  const constants = new Map();
+  const visit = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const declarationList = node.parent;
+      if (ts.isVariableDeclarationList(declarationList) && (declarationList.flags & ts.NodeFlags.Const)) {
+        constants.set(node.name.text, node.initializer);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return constants;
+}
+
+function evaluateStaticString(node, constants, visited = new Set()) {
+  if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+  if (ts.isParenthesizedExpression(node)) return evaluateStaticString(node.expression, constants, visited);
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = evaluateStaticString(node.left, constants, visited);
+    const right = evaluateStaticString(node.right, constants, visited);
+    return left === undefined || right === undefined ? undefined : left + right;
+  }
+  if (ts.isIdentifier(node) && constants.has(node.text) && !visited.has(node.text)) {
+    const nextVisited = new Set(visited);
+    nextVisited.add(node.text);
+    return evaluateStaticString(constants.get(node.text), constants, nextVisited);
+  }
+  return undefined;
+}
+
+function assertEntrypointDatabaseContract(source, label) {
+  const sourceFile = parseSource(source);
+  const normalizedLabel = label.replace(/\\/g, '/');
+  const directClientAllowed = allowedDirectDatabaseClients.has(normalizedLabel);
+  const databaseUrlWriterAllowed = allowedDatabaseUrlWriters.has(normalizedLabel);
+  const constants = collectStringConstants(sourceFile);
+  const databaseAliases = collectDatabaseAliases(sourceFile);
+  if (!directClientAllowed && importsDatabaseModule(sourceFile)) {
+    throw new Error(`${normalizedLabel} imports an independent database client outside managed smoke infrastructure.`);
+  }
+  let violation;
+  const visit = (node) => {
+    if (violation) return;
+    if (ts.isNewExpression(node) && isDirectDatabaseConstructor(node.expression, databaseAliases)) {
+      if (!directClientAllowed) {
+        violation = `${normalizedLabel} creates an independent database client.`;
+      } else if (node.arguments?.length) {
+        violation = `${normalizedLabel} gives an allowed database client unapproved constructor arguments.`;
+      }
+    }
+    if (ts.isPropertyAssignment(node) && /^(?:datasourceUrl|datasources)$/.test(staticPropertyName(node.name, constants) ?? '')) {
+      violation = `${normalizedLabel} contains a datasource override.`;
+    }
+    if (
+      ts.isBinaryExpression(node) && isAssignmentOperator(node.operatorToken.kind) &&
+      environmentAssignmentName(node.left, constants) &&
+      !databaseUrlWriterAllowed
+    ) {
+      violation = `${normalizedLabel} writes ${environmentAssignmentName(node.left, constants)} outside managed smoke infrastructure.`;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (violation) throw new Error(violation);
+}
+
+function collectDatabaseAliases(sourceFile) {
+  const aliases = new Set(['PrismaClient']);
+  const visit = (node) => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && isDatabaseModule(node.moduleSpecifier.text)) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const item of bindings.elements) aliases.add(item.name.text);
+      }
+      if (bindings && ts.isNamespaceImport(bindings)) aliases.add(bindings.name.text);
+      if (node.importClause?.name) aliases.add(node.importClause.name.text);
+    }
+    if (
+      ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer) &&
+      ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === 'require' &&
+      node.initializer.arguments.length === 1 && ts.isStringLiteral(node.initializer.arguments[0]) &&
+      isDatabaseModule(node.initializer.arguments[0].text)
+    ) {
+      if (ts.isIdentifier(node.name)) aliases.add(node.name.text);
+      if (ts.isObjectBindingPattern(node.name)) {
+        for (const element of node.name.elements) aliases.add(element.name.getText(sourceFile));
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return aliases;
+}
+
+function importsDatabaseModule(sourceFile) {
+  let imported = false;
+  const visit = (node) => {
+    if (
+      (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && isDatabaseModule(node.moduleSpecifier.text)) ||
+      (
+        ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require' &&
+        node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && isDatabaseModule(node.arguments[0].text)
+      )
+    ) imported = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return imported;
+}
+
+function isDatabaseModule(moduleName) {
+  return moduleName === '@prisma/client' || moduleName === 'pg' || moduleName === 'postgres' ||
+    moduleName.startsWith('@prisma/adapter-') || moduleName.startsWith('@prisma/driver-adapter-');
+}
+
+function isDirectDatabaseConstructor(expression, aliases) {
+  if (ts.isIdentifier(expression)) return aliases.has(expression.text) || /^(?:PrismaClient|Client|Pool)$/.test(expression.text);
+  return ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression) && aliases.has(expression.expression.text);
+}
+
+function staticPropertyName(name, constants) {
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) return name.text;
+  if (ts.isComputedPropertyName(name)) return evaluateStaticString(name.expression, constants);
+  return undefined;
+}
+
+function environmentAssignmentName(left, constants) {
+  let environmentAccess;
+  let name;
+  if (ts.isPropertyAccessExpression(left)) {
+    environmentAccess = left.expression;
+    name = left.name.text;
+  } else if (ts.isElementAccessExpression(left)) {
+    environmentAccess = left.expression;
+    name = evaluateStaticString(left.argumentExpression, constants);
+  } else {
+    return undefined;
+  }
+  return (
+    ts.isPropertyAccessExpression(environmentAccess) &&
+    ts.isIdentifier(environmentAccess.expression) && environmentAccess.expression.text === 'process' &&
+    environmentAccess.name.text === 'env' &&
+    (name === 'DATABASE_URL' || name === 'SMOKE_DATABASE_URL')
+  ) ? name : undefined;
+}
+
+function isAssignmentOperator(kind) {
+  return new Set([
+    ts.SyntaxKind.EqualsToken,
+    ts.SyntaxKind.PlusEqualsToken,
+    ts.SyntaxKind.MinusEqualsToken,
+    ts.SyntaxKind.AsteriskEqualsToken,
+    ts.SyntaxKind.AsteriskAsteriskEqualsToken,
+    ts.SyntaxKind.SlashEqualsToken,
+    ts.SyntaxKind.PercentEqualsToken,
+    ts.SyntaxKind.LessThanLessThanEqualsToken,
+    ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,
+    ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
+    ts.SyntaxKind.AmpersandEqualsToken,
+    ts.SyntaxKind.BarEqualsToken,
+    ts.SyntaxKind.CaretEqualsToken,
+    ts.SyntaxKind.BarBarEqualsToken,
+    ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+    ts.SyntaxKind.QuestionQuestionEqualsToken,
+  ]).has(kind);
 }
 
 function collectFiles(directory) {
@@ -137,10 +344,10 @@ function main() {
   }
 
   for (const sourcePath of collectGuardedSourceFiles()) {
-    assertNoUnsafeDatabaseTargets(
-      readFileSync(sourcePath, 'utf8'),
-      sourcePath.slice(repositoryRoot.length + 1),
-    );
+    const label = sourcePath.slice(repositoryRoot.length + 1).replace(/\\/g, '/');
+    const source = readFileSync(sourcePath, 'utf8');
+    assertNoUnsafeDatabaseTargets(source, label);
+    assertEntrypointDatabaseContract(source, label);
   }
 
   console.log('PASS - Phase 0 source guard: exact managed commands, external OpenWA contract, and database targets are safe.');
@@ -151,6 +358,7 @@ if (require.main === module) main();
 module.exports = {
   assertExternalOpenwaSmokeContract,
   assertNoUnsafeDatabaseTargets,
+  assertEntrypointDatabaseContract,
   assertOfficialMutatingScriptsUseManagedRunner,
   collectGuardedSourceFiles,
   extractPostgresUrls,

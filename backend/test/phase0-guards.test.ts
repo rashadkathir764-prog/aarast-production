@@ -88,6 +88,55 @@ test('source guard rejects decoded permanent PostgreSQL database names without f
   }
 });
 
+test('source guard evaluates escaped and concatenated PostgreSQL strings through the AST', () => {
+  for (const source of [
+    String.raw`const url = 'postgresql:\/\/user:password@localhost:5432\/aarast_dev';`,
+    "const url = 'postgresql://' + 'user:password@localhost:5432/aarast_dev';",
+    "const scheme = 'postgresql://'; const target = scheme + 'user:password@localhost:5432/%61arast';",
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertNoUnsafeDatabaseTargets(source, 'ast-target.ts'),
+      /permanent Aarast database target/i,
+    );
+  }
+  assert.doesNotThrow(() => sourceGuard.assertNoUnsafeDatabaseTargets(
+    "const url = 'postgresql://' + 'user:password@localhost:5432/aarast_smoke_123';",
+    'ast-safe.ts',
+  ));
+});
+
+test('source guard rejects independent datasource overrides and direct database clients in unapproved entrypoints', () => {
+  assert.equal(typeof sourceGuard.assertEntrypointDatabaseContract, 'function');
+  for (const source of [
+    "const { PrismaClient } = require('@prisma/client'); new PrismaClient();",
+    "const client = new PrismaClient({ datasourceUrl: 'postgresql://user:password@localhost:5432/aarast_smoke_123' });",
+    "process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/aarast_smoke_123';",
+    "const { PrismaClient: ManagedClient } = require('@prisma/client'); new ManagedClient();",
+    "import { PrismaClient as ManagedClient } from '@prisma/client'; new ManagedClient();",
+    "const pg = require('pg'); new pg.Client();",
+    "const postgres = require('postgres');",
+    "process.env['SMOKE_DATABASE_URL'] = 'postgresql://user:password@localhost:5432/aarast_smoke_123';",
+    "const key = 'DATABASE_URL'; process.env[key] = 'postgresql://user:password@localhost:5432/aarast_smoke_123';",
+    "process.env.DATABASE_URL ||= 'postgresql://user:password@localhost:5432/aarast_smoke_123';",
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertEntrypointDatabaseContract(source, 'scripts/smoke/unapproved.js'),
+      /independent database client|datasource override|DATABASE_URL/i,
+    );
+  }
+  assert.doesNotThrow(() => sourceGuard.assertEntrypointDatabaseContract(
+    "const url = 'postgresql://user:password@localhost:5432/aarast_smoke_123';",
+    'scripts/smoke/unapproved.js',
+  ));
+  assert.throws(
+    () => sourceGuard.assertEntrypointDatabaseContract(
+      "const { PrismaClient } = require('@prisma/client'); new PrismaClient({});",
+      'backend/scripts/smoke/phase0-fixtures-smoke.js',
+    ),
+    /constructor arguments|datasource override/i,
+  );
+});
+
 test('fixture wrapper rejects an unmanaged environment and cleans in finally after callback failure', async () => {
   assert.equal(typeof fixtures.withFixture, 'function');
   await assert.rejects(
@@ -257,6 +306,39 @@ test('barrier propagates an operation failure after every operation reaches it',
   assert.deepEqual(lifecycle.slice(1).sort(), ['first', 'second', 'third']);
 });
 
+test('barrier waits for a slow settlement before withFixture cleanup after a fast failure', async () => {
+  const events: string[] = [];
+  await assert.rejects(
+    fixtures.withFixture(
+      async () => ({ cleanup: async () => { events.push('cleanup'); } }),
+      async () => fixtures.runConcurrentlyAfterBarrier([
+        async () => {
+          events.push('slow-start');
+          await new Promise((resolve) => setTimeout(resolve, 25));
+          events.push('slow-finish');
+        },
+        async () => {
+          events.push('fast-failure');
+          throw new Error('fast failure');
+        },
+      ]),
+      managedEnvironment(),
+    ),
+    /fast failure/,
+  );
+  assert.ok(events.indexOf('slow-finish') < events.indexOf('cleanup'));
+});
+
+test('barrier reports every failure only after all operations settle', async () => {
+  await assert.rejects(
+    fixtures.runConcurrentlyAfterBarrier([
+      async () => { throw new Error('first failure'); },
+      async () => { throw new Error('second failure'); },
+    ]),
+    (error: Error) => error instanceof AggregateError && error.errors.length === 2,
+  );
+});
+
 test('cleanliness protection includes all tracked fixture and golden filename patterns', () => {
   const files = cleanliness.protectedTestArtifacts();
   assert.ok(files.includes('mobile/test/goldens'));
@@ -272,6 +354,7 @@ test('isolated fixture smoke checks every dependent output table after cleanup',
     'budgetCategory', 'weddingCost', 'costPayment', 'paymentSchedule', 'planProviderLink',
     'chatMessage', 'chatAttachment', 'conversationEvent', 'conversationParticipant',
     'notification', 'outboxEvent', 'sharedMember', 'conversationReport',
+    'otpCode', 'city', 'providerCategory', 'provider', 'providerService', 'quoteRequest',
   ]) {
     assert.match(source, new RegExp(`prisma\\.${model}\\.count`));
   }

@@ -78,3 +78,25 @@ The second command ran through the managed isolated runner, created a run-owned 
 RED was observed with `node --test -r ts-node/register test/phase0-guards.test.ts`: 6 failures for decoded PostgreSQL database targets, notification outbox cleanup, atomic permission fixture creation, OTP cleanup by phone, helper protection, and dependent-row smoke coverage. A follow-up RED was observed for raw/commented permanent URLs and observable barrier arrival/release ordering.
 
 GREEN: the same guard suite passes 13/13. The guard parses extracted PostgreSQL URL pathnames after decoding and rejects `aarast` and `aarast_dev` in raw or encoded form without rejecting isolated smoke names or non-PostgreSQL URLs. Permission fixtures are one transaction; notification IDs are collected before notification deletion and their `aggregateType: notification` outbox records are removed; user OTP cleanup uses the actual phones read before user deletion. The isolated fixture smoke now asserts all specified dependent tables are empty after cleanup.
+
+## Third review remediation
+
+RED was observed for escaped/concatenated PostgreSQL URLs, independent direct database clients and datasource overrides, multiple concurrent failures, cleanup before slow settlement, and the expanded fixture table inventory.
+
+GREEN: the TypeScript AST guard evaluates literals, escaped strings, constant concatenations, and constant identifiers without `eval`. It also blocks unapproved direct database client imports/requires, aliases, datasource overrides, and writes to `DATABASE_URL` or `SMOKE_DATABASE_URL`; managed direct Prisma entrypoints are explicitly allowlisted and cannot use constructor arguments. Concurrent fixture operations now settle through `Promise.allSettled` before rethrowing one original error or an `AggregateError`. The isolated smoke checks every fixture and operation row by saved IDs or actual phones.
+
+### Current full gate evidence
+
+| Command | Result |
+| --- | --- |
+| `npx.cmd prisma validate` | PASS |
+| Backend `npm.cmd run check` / `npm.cmd run build` | PASS / PASS |
+| Backend `npm.cmd test` | PASS - pretest 35/35; main 371/371, 1 existing skip; posttest PASS |
+| Backend `npm.cmd run smoke:phase0-fixtures` | PASS - managed isolated PostgreSQL |
+| Flutter `flutter analyze` | PASS - no issues |
+| Flutter `flutter test` | PASS - 721/721 |
+| Admin `npm.cmd run typecheck` / `npm.cmd test` / `npm.cmd run build` | PASS / PASS 50/50 / PASS |
+| `node .\\scripts\\docs-sync.mjs --check` / `node .\\scripts\\docs-verify.mjs` | PASS - 0 drift / 0 errors, 0 warnings |
+| `git diff --check` | PASS |
+
+`git status --short` reports seven Flutter generated registrant paths after the requested Flutter gates. Every worktree blob hash exactly equals its index hash, so there is no content delta; they are excluded from the focused Phase 0 commit.

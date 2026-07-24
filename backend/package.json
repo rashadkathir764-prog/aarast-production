@@ -44,6 +44,7 @@
     "smoke:backend-completion": "node scripts/smoke/run-isolated-smoke.js backend-completion-smoke.js",
     "smoke:account-deletion": "node scripts/smoke/run-isolated-smoke.js account-deletion-smoke.ts",
     "smoke:phase0-fixtures": "node scripts/smoke/run-isolated-smoke.js phase0-fixtures-smoke.js",
+    "smoke:phase1-identity": "node scripts/smoke/run-isolated-smoke.js phase1-identity-smoke.ts",
     "smoke:all": "node scripts/smoke/run-isolated-smoke.js all-smoke.js",
     "load:test": "node scripts/smoke/run-isolated-smoke.js --load-test",
     "dev:create-admin": "node scripts/dev/create-admin.cjs",

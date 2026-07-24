@@ -267,8 +267,11 @@ export class AdminController {
 
   @Patch('users/:id/activate')
   @RequireAdminPermission(AdminPermission.USERS_WRITE)
-  activateUser(@Param('id') id: string) {
-    return this.adminService.activateUser(id);
+  activateUser(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.activateUser(currentUser, id);
   }
 
   @Patch('users/:id/disable')

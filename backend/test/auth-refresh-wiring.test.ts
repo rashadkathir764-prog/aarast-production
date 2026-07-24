@@ -230,7 +230,7 @@ test("disabling an account revokes all active refresh sessions", () => {
     /async disableUser[\s\S]*?private async reviewProvider/,
   )?.[0];
   assert.ok(disableBlock);
-  assert.match(disableBlock, /\$transaction/);
+  assert.match(disableBlock, /runSerializableTransaction\(this\.prisma/);
   assert.match(disableBlock, /refreshToken\.updateMany/);
   assert.match(disableBlock, /revokedAt/);
 });

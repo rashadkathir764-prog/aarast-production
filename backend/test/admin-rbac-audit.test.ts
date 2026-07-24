@@ -88,6 +88,25 @@ test('role permission matrix preserves least privilege', () => {
   );
 });
 
+test('admin account status changes require a live super administrator and preserve the last one', () => {
+  const controller = read('src/admin/admin.controller.ts');
+  const service = read('src/admin/admin.service.ts');
+  const userStatus = read('src/admin/admin-user-status.ts');
+
+  assert.match(
+    controller,
+    /activateUser\(\s*@CurrentUser\(\) currentUser: AuthenticatedUser/,
+  );
+  assert.match(userStatus, /actor\.adminRole !== AdminRole\.SUPER_ADMIN/);
+  assert.match(service, /runSerializableTransaction\(this\.prisma/);
+  assert.match(service, /activeSuperAdmins <= 1/);
+  assert.match(service, /last active super administrator cannot be disabled/i);
+  assert.match(
+    service,
+    /refreshToken\.updateMany\([\s\S]*userId: target\.id[\s\S]*revokedAt: now/,
+  );
+});
+
 test('permission guard denies missing metadata and insufficient roles', () => {
   const context = (adminRole: AdminRole) =>
     ({

@@ -1,5 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  AdminRole,
   AppRole,
   ConversationReportStatus,
   NotificationPriority,
@@ -12,6 +18,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
@@ -36,6 +43,7 @@ import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dt
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
+import { authorizeAdminUserStatusChange } from './admin-user-status';
 
 interface Pagination {
   page: number;
@@ -593,12 +601,18 @@ export class AdminService {
     return toUserResponse(user);
   }
 
-  async activateUser(id: string) {
-    await this.findUserOrThrow(id);
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { status: UserStatus.ACTIVE },
-      select: this.userSelect(true),
+  async activateUser(currentUser: AuthenticatedUser, id: string) {
+    const user = await runSerializableTransaction(this.prisma, async (tx) => {
+      const target = await authorizeAdminUserStatusChange(
+        tx,
+        currentUser,
+        id,
+      );
+      return tx.user.update({
+        where: { id: target.id },
+        data: { status: UserStatus.ACTIVE },
+        select: this.userSelect(true),
+      });
     });
     return toUserResponse(user);
   }
@@ -607,19 +621,43 @@ export class AdminService {
     if (currentUser.id === id) {
       throw new BadRequestException('Admins cannot disable their own account');
     }
-    await this.findUserOrThrow(id);
     const now = new Date();
-    const [user] = await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id },
+    const user = await runSerializableTransaction(this.prisma, async (tx) => {
+      const target = await authorizeAdminUserStatusChange(
+        tx,
+        currentUser,
+        id,
+      );
+      if (
+        target.role === UserRole.ADMIN &&
+        target.adminRole === AdminRole.SUPER_ADMIN &&
+        target.status === UserStatus.ACTIVE
+      ) {
+        const activeSuperAdmins = await tx.user.count({
+          where: {
+            role: UserRole.ADMIN,
+            adminRole: AdminRole.SUPER_ADMIN,
+            status: UserStatus.ACTIVE,
+          },
+        });
+        if (activeSuperAdmins <= 1) {
+          throw new ConflictException(
+            'The last active super administrator cannot be disabled',
+          );
+        }
+      }
+
+      const updated = await tx.user.update({
+        where: { id: target.id },
         data: { status: UserStatus.DISABLED },
         select: this.userSelect(true),
-      }),
-      this.prisma.refreshToken.updateMany({
-        where: { userId: id, revokedAt: null },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: target.id, revokedAt: null },
         data: { revokedAt: now },
-      }),
-    ]);
+      });
+      return updated;
+    });
     // Sessions were just revoked; sever any live realtime channel the now
     // disabled account still holds open.
     this.realtime.disconnectUser(id);

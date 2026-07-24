@@ -43,6 +43,7 @@
 | `backend` | `npm run smoke:openwa-otp` | `node scripts/smoke/openwa-otp-smoke.js` |
 | `backend` | `npm run smoke:otp-profile` | `node scripts/smoke/run-isolated-smoke.js otp-profile-smoke.js` |
 | `backend` | `npm run smoke:phase0-fixtures` | `node scripts/smoke/run-isolated-smoke.js phase0-fixtures-smoke.js` |
+| `backend` | `npm run smoke:phase1-identity` | `node scripts/smoke/run-isolated-smoke.js phase1-identity-smoke.ts` |
 | `backend` | `npm run smoke:private-chat-media` | `node scripts/smoke/run-isolated-smoke.js private-chat-media-smoke.js` |
 | `backend` | `npm run smoke:provider-dashboard` | `node scripts/smoke/run-isolated-smoke.js provider-dashboard-smoke.js` |
 | `backend` | `npm run smoke:providers-quotes` | `node scripts/smoke/run-isolated-smoke.js providers-quotes-smoke.js` |

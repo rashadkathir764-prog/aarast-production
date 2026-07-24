@@ -10,7 +10,7 @@ const repositoryRoot = resolve(backendRoot, '..');
 const managedRunner = 'scripts/smoke/run-isolated-smoke.js';
 const externalOpenwaCommand = 'node scripts/smoke/openwa-otp-smoke.js';
 const sourceExtensions = new Set(['.js', '.ts', '.mjs', '.cjs']);
-const allowedDirectDatabaseClients = new Set([
+const allowedDirectDatabaseClients = new Map([
   'admin-web/scripts/admin-runtime-smoke.mjs',
   'backend/scripts/smoke/account-deletion-smoke.ts',
   'backend/scripts/smoke/backend-completion-smoke.js',
@@ -24,7 +24,7 @@ const allowedDirectDatabaseClients = new Set([
   'backend/scripts/smoke/quote-stability-smoke.js',
   'backend/scripts/smoke/sharing-security-smoke.js',
   'backend/scripts/smoke/ux-c4-c7-smoke.js',
-]);
+].map((label) => [label, new Set(['@prisma/client'])]));
 const allowedDatabaseUrlWriters = new Set(['backend/scripts/smoke/smoke-utils.js']);
 
 const managedCommandArguments = new Map([
@@ -147,6 +147,15 @@ function collectStringConstants(sourceFile) {
 
 function evaluateStaticString(node, constants, visited = new Set()) {
   if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+  if (ts.isTemplateExpression(node)) {
+    let value = node.head.text;
+    for (const span of node.templateSpans) {
+      const expression = evaluateStaticString(span.expression, constants, visited);
+      if (expression === undefined) return undefined;
+      value += expression + span.literal.text;
+    }
+    return value;
+  }
   if (ts.isParenthesizedExpression(node)) return evaluateStaticString(node.expression, constants, visited);
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
     const left = evaluateStaticString(node.left, constants, visited);
@@ -164,12 +173,19 @@ function evaluateStaticString(node, constants, visited = new Set()) {
 function assertEntrypointDatabaseContract(source, label) {
   const sourceFile = parseSource(source);
   const normalizedLabel = label.replace(/\\/g, '/');
-  const directClientAllowed = allowedDirectDatabaseClients.has(normalizedLabel);
+  const allowedClientModules = allowedDirectDatabaseClients.get(normalizedLabel) ?? new Set();
+  const directClientAllowed = allowedClientModules.size > 0;
   const databaseUrlWriterAllowed = allowedDatabaseUrlWriters.has(normalizedLabel);
   const constants = collectStringConstants(sourceFile);
   const databaseAliases = collectDatabaseAliases(sourceFile);
-  if (!directClientAllowed && importsDatabaseModule(sourceFile)) {
+  const environmentAliases = collectEnvironmentAliases(sourceFile, constants);
+  if (hasDynamicDatabaseImport(sourceFile, constants)) {
     throw new Error(`${normalizedLabel} imports an independent database client outside managed smoke infrastructure.`);
+  }
+  for (const moduleName of importedDatabaseModules(sourceFile, constants)) {
+    if (!allowedClientModules.has(moduleName)) {
+      throw new Error(`${normalizedLabel} imports an independent database client outside managed smoke infrastructure.`);
+    }
   }
   let violation;
   const visit = (node) => {
@@ -186,10 +202,14 @@ function assertEntrypointDatabaseContract(source, label) {
     }
     if (
       ts.isBinaryExpression(node) && isAssignmentOperator(node.operatorToken.kind) &&
-      environmentAssignmentName(node.left, constants) &&
+      environmentAssignmentName(node.left, constants, environmentAliases) &&
       !databaseUrlWriterAllowed
     ) {
-      violation = `${normalizedLabel} writes ${environmentAssignmentName(node.left, constants)} outside managed smoke infrastructure.`;
+      violation = `${normalizedLabel} writes ${environmentAssignmentName(node.left, constants, environmentAliases)} outside managed smoke infrastructure.`;
+    }
+    if (!databaseUrlWriterAllowed && ts.isCallExpression(node)) {
+      const name = environmentMutationName(node, constants, environmentAliases);
+      if (name) violation = `${normalizedLabel} writes ${name} outside managed smoke infrastructure.`;
     }
     ts.forEachChild(node, visit);
   };
@@ -222,23 +242,65 @@ function collectDatabaseAliases(sourceFile) {
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const collectAliases = (node) => {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isDatabaseAliasExpression(node.initializer, aliases)) {
+        if (!aliases.has(node.name.text)) {
+          aliases.add(node.name.text);
+          changed = true;
+        }
+      }
+      ts.forEachChild(node, collectAliases);
+    };
+    collectAliases(sourceFile);
+  }
   return aliases;
 }
 
-function importsDatabaseModule(sourceFile) {
-  let imported = false;
+function isDatabaseAliasExpression(expression, aliases) {
+  if (ts.isIdentifier(expression)) return aliases.has(expression.text);
+  if (ts.isParenthesizedExpression(expression) || ts.isAwaitExpression(expression)) {
+    return isDatabaseAliasExpression(expression.expression, aliases);
+  }
+  if (!ts.isPropertyAccessExpression(expression) || !/^(?:PrismaClient|Client|Pool)$/.test(expression.name.text)) return false;
+  if (ts.isIdentifier(expression.expression)) return aliases.has(expression.expression.text);
+  return ts.isCallExpression(expression.expression) && ts.isIdentifier(expression.expression.expression) &&
+    expression.expression.expression.text === 'require' && expression.expression.arguments.length === 1 &&
+    ts.isStringLiteral(expression.expression.arguments[0]) && isDatabaseModule(expression.expression.arguments[0].text);
+}
+
+function importedDatabaseModules(sourceFile, constants) {
+  const modules = new Set();
   const visit = (node) => {
-    if (
-      (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && isDatabaseModule(node.moduleSpecifier.text)) ||
-      (
-        ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require' &&
-        node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && isDatabaseModule(node.arguments[0].text)
-      )
-    ) imported = true;
+    const moduleName = staticImportedModuleName(node, constants);
+    if (moduleName && isDatabaseModule(moduleName)) modules.add(moduleName);
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return imported;
+  return modules;
+}
+
+function hasDynamicDatabaseImport(sourceFile, constants) {
+  let found = false;
+  const visit = (node) => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments.length === 1) {
+      const moduleName = evaluateStaticString(node.arguments[0], constants);
+      if (moduleName && isDatabaseModule(moduleName)) found = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function staticImportedModuleName(node, constants) {
+  if (ts.isImportDeclaration(node)) return ts.isStringLiteral(node.moduleSpecifier) ? node.moduleSpecifier.text : undefined;
+  if (!ts.isCallExpression(node) || node.arguments.length !== 1) return undefined;
+  const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require';
+  const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+  return isRequire || isDynamicImport ? evaluateStaticString(node.arguments[0], constants) : undefined;
 }
 
 function isDatabaseModule(moduleName) {
@@ -257,7 +319,44 @@ function staticPropertyName(name, constants) {
   return undefined;
 }
 
-function environmentAssignmentName(left, constants) {
+function collectEnvironmentAliases(sourceFile, constants) {
+  const aliases = new Set();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const visit = (node) => {
+      if (ts.isVariableDeclaration(node) && node.initializer) {
+        if (ts.isIdentifier(node.name) && isProcessEnvironment(node.initializer, constants, aliases) && !aliases.has(node.name.text)) {
+          aliases.add(node.name.text);
+          changed = true;
+        }
+        if (ts.isObjectBindingPattern(node.name) && ts.isIdentifier(node.initializer) && node.initializer.text === 'process') {
+          for (const element of node.name.elements) {
+            const property = element.propertyName ? staticPropertyName(element.propertyName, constants) : element.name.getText(sourceFile);
+            if (property === 'env' && ts.isIdentifier(element.name) && !aliases.has(element.name.text)) {
+              aliases.add(element.name.text);
+              changed = true;
+            }
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+  return aliases;
+}
+
+function isProcessEnvironment(expression, constants, aliases) {
+  if (ts.isIdentifier(expression)) return aliases.has(expression.text);
+  if (ts.isPropertyAccessExpression(expression)) {
+    return ts.isIdentifier(expression.expression) && expression.expression.text === 'process' && expression.name.text === 'env';
+  }
+  return ts.isElementAccessExpression(expression) && ts.isIdentifier(expression.expression) &&
+    expression.expression.text === 'process' && evaluateStaticString(expression.argumentExpression, constants) === 'env';
+}
+
+function environmentAssignmentName(left, constants, aliases) {
   let environmentAccess;
   let name;
   if (ts.isPropertyAccessExpression(left)) {
@@ -269,12 +368,28 @@ function environmentAssignmentName(left, constants) {
   } else {
     return undefined;
   }
-  return (
-    ts.isPropertyAccessExpression(environmentAccess) &&
-    ts.isIdentifier(environmentAccess.expression) && environmentAccess.expression.text === 'process' &&
-    environmentAccess.name.text === 'env' &&
-    (name === 'DATABASE_URL' || name === 'SMOKE_DATABASE_URL')
-  ) ? name : undefined;
+  return isProcessEnvironment(environmentAccess, constants, aliases) &&
+    (name === 'DATABASE_URL' || name === 'SMOKE_DATABASE_URL') ? name : undefined;
+}
+
+function environmentMutationName(node, constants, aliases) {
+  if (ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression)) {
+    if (node.expression.expression.text === 'Object' && node.expression.name.text === 'assign' && node.arguments.length >= 2 &&
+      isProcessEnvironment(node.arguments[0], constants, aliases) && ts.isObjectLiteralExpression(node.arguments[1])) {
+      for (const property of node.arguments[1].properties) {
+        if (ts.isPropertyAssignment(property)) {
+          const name = staticPropertyName(property.name, constants);
+          if (name === 'DATABASE_URL' || name === 'SMOKE_DATABASE_URL') return name;
+        }
+      }
+    }
+    if (node.expression.expression.text === 'Reflect' && node.expression.name.text === 'set' && node.arguments.length >= 2 &&
+      isProcessEnvironment(node.arguments[0], constants, aliases)) {
+      const name = evaluateStaticString(node.arguments[1], constants);
+      if (name === 'DATABASE_URL' || name === 'SMOKE_DATABASE_URL') return name;
+    }
+  }
+  return undefined;
 }
 
 function isAssignmentOperator(kind) {

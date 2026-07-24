@@ -105,6 +105,16 @@ test('source guard evaluates escaped and concatenated PostgreSQL strings through
   ));
 });
 
+test('source guard evaluates template interpolation from constants', () => {
+  assert.throws(
+    () => sourceGuard.assertNoUnsafeDatabaseTargets(
+      "const database = 'aarast_dev'; const url = `postgresql://user:password@localhost:5432/${database}`;",
+      'template-target.ts',
+    ),
+    /permanent Aarast database target/i,
+  );
+});
+
 test('source guard rejects independent datasource overrides and direct database clients in unapproved entrypoints', () => {
   assert.equal(typeof sourceGuard.assertEntrypointDatabaseContract, 'function');
   for (const source of [
@@ -134,6 +144,42 @@ test('source guard rejects independent datasource overrides and direct database 
       'backend/scripts/smoke/phase0-fixtures-smoke.js',
     ),
     /constructor arguments|datasource override/i,
+  );
+});
+
+test('source guard rejects environment aliases, dynamic database imports, and allowed Prisma re-aliases', () => {
+  for (const source of [
+    "const env = process.env; env.DATABASE_URL ||= isolatedOrPermanentUrl;",
+    "const { env } = process; env.SMOKE_DATABASE_URL = isolatedOrPermanentUrl;",
+    "const env = process.env; Object.assign(env, { DATABASE_URL: isolatedOrPermanentUrl });",
+    "const env = process.env; Reflect.set(env, 'SMOKE_DATABASE_URL', isolatedOrPermanentUrl);",
+    "async function connect() { const pg = await import('pg'); return new pg.Client(); }",
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertEntrypointDatabaseContract(source, 'backend/scripts/smoke/unapproved.js'),
+      /DATABASE_URL|SMOKE_DATABASE_URL|independent database client/i,
+    );
+  }
+  assert.throws(
+    () => sourceGuard.assertEntrypointDatabaseContract(
+      "const { PrismaClient } = require('@prisma/client'); const ManagedDatabase = PrismaClient; new ManagedDatabase({ log: ['query'] });",
+      'backend/scripts/smoke/phase0-fixtures-smoke.js',
+    ),
+    /constructor arguments/i,
+  );
+  assert.throws(
+    () => sourceGuard.assertEntrypointDatabaseContract(
+      "const prismaNamespace = require('@prisma/client'); const PC = prismaNamespace.PrismaClient; const PC2 = require('@prisma/client').PrismaClient; new PC({}); new PC2({});",
+      'backend/scripts/smoke/phase0-fixtures-smoke.js',
+    ),
+    /constructor arguments/i,
+  );
+  assert.throws(
+    () => sourceGuard.assertEntrypointDatabaseContract(
+      "async function connect() { const prisma = await import('@prisma/client'); return new prisma.PrismaClient(); }",
+      'backend/scripts/smoke/phase0-fixtures-smoke.js',
+    ),
+    /independent database client/i,
   );
 });
 
@@ -346,6 +392,8 @@ test('cleanliness protection includes all tracked fixture and golden filename pa
   assert.ok(files.includes('backend/test/support/phase0-postgres-support.js'));
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/phase0.fixture.json'), true);
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/fixtures/custom-output.txt'), true);
+  assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/fixtures/managed-fixture.ts'), true);
+  assert.equal(cleanliness.isProtectedTestArtifactPath('backend/scripts/smoke/phase0-fixtures-smoke.js'), false);
 });
 
 test('isolated fixture smoke checks every dependent output table after cleanup', () => {
@@ -360,6 +408,36 @@ test('isolated fixture smoke checks every dependent output table after cleanup',
   }
 });
 
+test('fixture smoke exports output creation and fail-closed cleanup contracts without starting main', async () => {
+  const smoke = require('../scripts/smoke/phase0-fixtures-smoke.js');
+  assert.equal(typeof smoke.createOperationOutputs, 'function');
+  assert.equal(typeof smoke.assertClean, 'function');
+
+  const output = await smoke.createOperationOutputs(fakeOutputPrisma(), quoteFixture());
+  for (const key of [
+    'budgetCategory', 'cost', 'costPayment', 'paymentSchedule', 'planProviderLink',
+    'conversationEvent', 'chatMessage', 'chatAttachment', 'notification', 'outboxEvent',
+  ]) {
+    assert.equal(output[key].id, `${key}-id`);
+  }
+
+  await assert.rejects(
+    smoke.assertClean(fakeCountPrisma([]), quoteFixture()),
+    /operationOutputs/i,
+  );
+
+  const calls: Array<{ model: string; where: unknown }> = [];
+  await smoke.assertClean(fakeCountPrisma(calls), { ...quoteFixture(), operationOutputs: output });
+  for (const [outputKey, model] of [
+    ['budgetCategory', 'budgetCategory'], ['cost', 'weddingCost'], ['costPayment', 'costPayment'],
+    ['paymentSchedule', 'paymentSchedule'], ['planProviderLink', 'planProviderLink'],
+    ['conversationEvent', 'conversationEvent'], ['chatMessage', 'chatMessage'],
+    ['chatAttachment', 'chatAttachment'], ['notification', 'notification'], ['outboxEvent', 'outboxEvent'],
+  ]) {
+    assert.ok(calls.some((call) => call.model === model && JSON.stringify(call.where).includes(`${outputKey}-id`)));
+  }
+});
+
 function quoteFixture() {
   return {
     owner: { id: 'owner' }, providerUser: { id: 'provider-user' },
@@ -367,6 +445,35 @@ function quoteFixture() {
     city: { id: 'city' }, category: { id: 'category' }, service: { id: 'service' },
     conversation: { id: 'conversation' }, quoteRequest: { id: 'request' }, offer: { id: 'offer' },
   };
+}
+
+function fakeOutputPrisma() {
+  const transaction = new Proxy({}, {
+    get(_target, model: string) {
+      return {
+        create: async () => ({ id: `${outputKeyForModel(model)}-id` }),
+        update: async () => undefined,
+      };
+    },
+  });
+  return { $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(transaction) };
+}
+
+function fakeCountPrisma(calls: Array<{ model: string; where: unknown }>) {
+  return new Proxy({}, {
+    get(_target, model: string) {
+      return { count: async ({ where }: { where: unknown }) => { calls.push({ model, where }); return 0; } };
+    },
+  });
+}
+
+function outputKeyForModel(model: string) {
+  return ({
+    budgetCategory: 'budgetCategory', weddingCost: 'cost', costPayment: 'costPayment',
+    paymentSchedule: 'paymentSchedule', planProviderLink: 'planProviderLink',
+    conversationEvent: 'conversationEvent', chatMessage: 'chatMessage', chatAttachment: 'chatAttachment',
+    notification: 'notification', outboxEvent: 'outboxEvent',
+  } as Record<string, string>)[model] ?? model;
 }
 
 function managedEnvironment() {

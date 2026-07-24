@@ -4,45 +4,57 @@ Date: 2026-07-24
 Branch: `codex/aarast-full-remediation`
 Merge base: `87a1f0df6c7ec8cd4280991a974b42686268c819`
 
-## Result
+## Scope and review status
 
-PASS. Phase 0 remains test-isolation infrastructure only: no product logic, schema, migration, deployment, Admin behavior, or Flutter UI changes.
+Status: `READY_FOR_INDEPENDENT_REVIEW`.
 
-## Review remediation
+This work is limited to Phase 0 test-isolation infrastructure: managed smoke execution, fixture cleanup, source and cleanliness guards, and their tests. It does not change product behavior, Flutter UI, Admin behavior, Prisma schema or migrations, Docker/Compose, or deployment configuration.
 
-The review found that the original guard was too permissive and fixture checks were mostly structural. This revision corrects those gaps.
+## Backup evidence
 
-- Official mutating smoke/load commands now use an exact command allowlist. Command chains, prefixes, suffixes, and pipes do not pass.
-- The source scan inventories `.js`, `.ts`, `.mjs`, and `.cjs` files under Backend smoke/load and Admin smoke paths.
-- `smoke:openwa-otp` is an explicit external, non-database contract. Its exact command and literal `OPENWA_SMOKE_CONFIRM=I_ACCEPT_REAL_WHATSAPP_SEND` confirmation are required, and the source guard rejects database access in the script.
-- The fixture wrapper validates the managed environment and invokes cleanup through `finally`.
-- Quote fixture cleanup runs in one transaction and removes messages, attachments, events, reports, notifications, outbox records, plan-provider links, payment ledger rows, schedules, costs, quote data, participants, conversation, and fixture roots. Its transaction-local ledger purge setting matches the existing account-deletion maintenance path and changes no product behavior.
-- The cleanliness guard checks all tracked paths whose names identify fixtures or goldens, including filename patterns outside a literal `fixtures/` directory.
+The pre-remediation backup is:
+
+- Path: `D:\projects\aarast-backups\aarast-phase0-20260724-030527.dump`
+- Size: `349434` bytes
+- SHA-256: `472D43AA3075D6070EBFC5C07CE04CF22E451FA649B6AE2967234885BA97A6A4`
+- `pg_restore --list` inventory: `395` lines
+
+No permanent database was targeted during this remediation. The isolated smoke runner creates a run-owned `aarast_smoke_*` database and removes it in cleanup.
 
 ## TDD evidence
 
-RED before remediation:
+RED was observed before each repair:
+
+- The original Phase 0 guard suite began at `0/6` passing checks.
+- Follow-up RED cases covered permanent PostgreSQL targets, fixture-graph cleanup, concurrent cleanup ordering, AST aliases/interpolation/dynamic database imports, and the fixture-smoke return/fail-closed contracts.
+- The final cleanliness RED proved that the dirty executable entrypoint was incorrectly classified as a protected artifact; a second RED proved that a TypeScript fixture must remain protected.
+
+GREEN evidence from the final implementation:
 
 ```text
 node --test -r ts-node/register test/phase0-guards.test.ts
-0 pass / 6 fail
+20 pass / 0 fail
+
+npm.cmd test
+pretest 38 pass / 0 fail
+main 371 pass / 0 fail / 1 existing skip
+posttest PASS
 ```
 
-The failures covered runner-command bypasses, extension inventory, the external OpenWA contract, `finally` cleanup, operation-output cleanup ordering, and fixture filename cleanliness coverage.
+The final tests prove that `createOperationOutputs` returns its transaction result; every saved operation-output id is counted through its matching model; cleanup fails closed when a quote fixture lacks `operationOutputs`; and importing the smoke script does not start `main`.
 
-GREEN after remediation:
+## Guard and fixture contracts
 
-```text
-node --test -r ts-node/register test/phase0-guards.test.ts
-13 pass / 0 fail
+- Official mutating smoke/load commands must exactly match a managed runner command; command chains, prefixes, suffixes, and pipes are rejected.
+- Guarded source inventory covers `.js`, `.ts`, `.mjs`, and `.cjs` smoke/load/Admin paths.
+- PostgreSQL target inspection parses TypeScript AST expressions, including escaped literals, concatenation, constant identifiers, and template interpolation. It rejects decoded `aarast` and `aarast_dev` targets without rejecting isolated smoke names.
+- Database-client policy is module-specific. Allowlisted entrypoints may use only `@prisma/client`; `pg`, `postgres`, adapter imports, and all dynamic database imports are rejected. Prisma constructor aliases are tracked and constructor arguments are rejected.
+- Environment aliases and mutations are guarded for direct properties, computed keys, `Object.assign`, and `Reflect.set`.
+- Quote fixture cleanup runs transactionally, removes dependent operation records before fixture roots, and validates every saved output id after cleanup.
+- Cleanliness protection keeps all fixture/golden path patterns, including TypeScript fixture paths, protected. The one explicit exception is the executable implementation entrypoint `backend/scripts/smoke/phase0-fixtures-smoke.js`, which is reviewed and tested as code rather than as a static test artifact.
+- OpenWA remains an explicit, separately-confirmed external non-database contract; it is not silently treated as an isolated database smoke.
 
-npm.cmd run smoke:phase0-fixtures
-PASS - Phase 0 PostgreSQL fixtures create operation outputs and clean them in finally.
-```
-
-The second command ran through the managed isolated runner, created a run-owned temporary PostgreSQL database, applied migrations there, exercised the fixture shapes and operation outputs, and cleaned the run-owned resources.
-
-## Changed files
+## Changed Phase 0 files
 
 - `backend/package.json`
 - `backend/scripts/smoke/phase0-source-guard.js`
@@ -53,50 +65,42 @@ The second command ran through the managed isolated runner, created a run-owned 
 - `docs/SCRIPTS.md`
 - `docs/superpowers/reports/2026-07-24-phase-0-baseline.md`
 
-## Verification
+## Final verification evidence
 
 | Check | Result |
 | --- | --- |
-| Phase 0 behavioral guards | PASS - 13/13 |
-| Existing smoke isolation guards | PASS - 12/12 |
-| Isolated PostgreSQL fixture smoke | PASS |
-| Backend check | PASS |
-| Backend build | PASS |
-| Backend test | PASS - pretest 31/31; main 371/371, 1 existing skip; posttest cleanliness PASS |
-| Docs sync | PASS - 0 drift |
-| Docs verify | PASS - 0 errors, 0 warnings |
-| Diff whitespace | PASS |
+| `node --test -r ts-node/register test/phase0-guards.test.ts` | PASS - 20/20 |
+| `npx.cmd prisma validate` | PASS (with Prisma package-config deprecation warning) |
+| Backend `npm.cmd run check` / `npm.cmd run build` | PASS / PASS |
+| Backend `npm.cmd test` | PASS - pretest 38/38; main 371/371; 1 existing skip; posttest PASS |
+| `npm.cmd run smoke:phase0-fixtures` | PASS - managed isolated PostgreSQL fixture create/cleanup |
+| PostgreSQL count for `aarast_smoke%` after smoke | PASS - `0` |
+| Flutter `flutter analyze` / `flutter test` | PASS - no issues / 721/721 |
+| Admin `npm.cmd run typecheck` / `npm.cmd test` / `npm.cmd run build` | PASS / PASS 50/50 / PASS |
+| `node .\scripts\docs-sync.mjs --check` / `node .\scripts\docs-verify.mjs` | PASS - 0 drift / 0 errors, 0 warnings |
+| `git diff --check` | PASS |
+
+The Admin test deliberately exercises an error boundary and prints its expected render-failure stack while still completing 50/50 tests successfully.
+
+## Ten-point exit-evidence rubric
+
+This is evidence for an independent reviewer, not a self-assigned readiness score.
+
+| # | Exit condition | Evidence |
+| --- | --- | --- |
+| 1 | Scope contains no product, schema, migration, UI, or deployment change | PASS - focused Phase 0 paths only |
+| 2 | Original state can be recovered | PASS - verified backup path, size, hash, and inventory recorded |
+| 3 | Managed commands cannot be bypassed | PASS - exact-command behavioral tests |
+| 4 | Permanent Aarast database targets are rejected | PASS - AST and decoded-target tests |
+| 5 | Independent DB clients and env mutation aliases are rejected | PASS - module/alias/dynamic-import tests |
+| 6 | Fixture creation and cleanup are transactional and ordered | PASS - behavioral tests and managed smoke |
+| 7 | Cleanup validates all saved operation outputs and fails closed | PASS - behavioral tests and managed smoke |
+| 8 | Test artifacts remain protected | PASS - positive TypeScript fixture test and exact entrypoint exception |
+| 9 | Full backend, mobile, Admin, and documentation gates pass | PASS - results recorded above |
+| 10 | Disposable smoke resources are absent after completion | PASS - post-smoke `aarast_smoke%` count is `0` |
 
 ## Data impact and rollback
 
-- No permanent database, Redis namespace, media bucket, golden, or tracked product fixture was modified.
+- No permanent database, Redis namespace, media bucket, golden, or tracked product fixture was changed by the smoke run.
 - No `prisma migrate reset`, `prisma db push`, or permanent database target was used.
-- Rollback is the focused revision commit revert.
-
-## Second review remediation
-
-RED was observed with `node --test -r ts-node/register test/phase0-guards.test.ts`: 6 failures for decoded PostgreSQL database targets, notification outbox cleanup, atomic permission fixture creation, OTP cleanup by phone, helper protection, and dependent-row smoke coverage. A follow-up RED was observed for raw/commented permanent URLs and observable barrier arrival/release ordering.
-
-GREEN: the same guard suite passes 13/13. The guard parses extracted PostgreSQL URL pathnames after decoding and rejects `aarast` and `aarast_dev` in raw or encoded form without rejecting isolated smoke names or non-PostgreSQL URLs. Permission fixtures are one transaction; notification IDs are collected before notification deletion and their `aggregateType: notification` outbox records are removed; user OTP cleanup uses the actual phones read before user deletion. The isolated fixture smoke now asserts all specified dependent tables are empty after cleanup.
-
-## Third review remediation
-
-RED was observed for escaped/concatenated PostgreSQL URLs, independent direct database clients and datasource overrides, multiple concurrent failures, cleanup before slow settlement, and the expanded fixture table inventory.
-
-GREEN: the TypeScript AST guard evaluates literals, escaped strings, constant concatenations, and constant identifiers without `eval`. It also blocks unapproved direct database client imports/requires, aliases, datasource overrides, and writes to `DATABASE_URL` or `SMOKE_DATABASE_URL`; managed direct Prisma entrypoints are explicitly allowlisted and cannot use constructor arguments. Concurrent fixture operations now settle through `Promise.allSettled` before rethrowing one original error or an `AggregateError`. The isolated smoke checks every fixture and operation row by saved IDs or actual phones.
-
-### Current full gate evidence
-
-| Command | Result |
-| --- | --- |
-| `npx.cmd prisma validate` | PASS |
-| Backend `npm.cmd run check` / `npm.cmd run build` | PASS / PASS |
-| Backend `npm.cmd test` | PASS - pretest 35/35; main 371/371, 1 existing skip; posttest PASS |
-| Backend `npm.cmd run smoke:phase0-fixtures` | PASS - managed isolated PostgreSQL |
-| Flutter `flutter analyze` | PASS - no issues |
-| Flutter `flutter test` | PASS - 721/721 |
-| Admin `npm.cmd run typecheck` / `npm.cmd test` / `npm.cmd run build` | PASS / PASS 50/50 / PASS |
-| `node .\\scripts\\docs-sync.mjs --check` / `node .\\scripts\\docs-verify.mjs` | PASS - 0 drift / 0 errors, 0 warnings |
-| `git diff --check` | PASS |
-
-`git status --short` reports seven Flutter generated registrant paths after the requested Flutter gates. Every worktree blob hash exactly equals its index hash, so there is no content delta; they are excluded from the focused Phase 0 commit.
+- Rollback is a focused revert of the Phase 0 remediation commit range after independent review.

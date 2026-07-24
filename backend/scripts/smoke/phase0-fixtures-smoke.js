@@ -11,9 +11,10 @@ const {
   withFixture,
 } = require('../../test/support/phase0-postgres-support');
 
-assertManagedSmokeEnvironment(process.env);
-
 async function assertClean(prisma, fixture) {
+  if (fixture.quoteRequest && !fixture.operationOutputs) {
+    throw new Error(`Phase 0 quote fixture ${fixture.scope} is missing operationOutputs.`);
+  }
   const ids = (...items) => items.filter(Boolean).map((item) => item.id);
   const output = fixture.operationOutputs ?? {};
   const userIds = ids(fixture.actingAdmin, fixture.peerAdmin, fixture.user, fixture.owner, fixture.providerUser, fixture.member);
@@ -50,7 +51,7 @@ async function assertClean(prisma, fixture) {
 }
 
 async function createOperationOutputs(prisma, fixture) {
-  await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const category = await tx.budgetCategory.create({
       data: {
         weddingPlanId: fixture.plan.id,
@@ -124,6 +125,7 @@ async function createOperationOutputs(prisma, fixture) {
 }
 
 async function main() {
+  assertManagedSmokeEnvironment(process.env);
   const prisma = new PrismaClient();
   try {
     for (const createFixture of [createSuperAdminPairFixture, createOtpAttemptFixture]) {
@@ -151,7 +153,11 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { assertClean, createOperationOutputs, main };

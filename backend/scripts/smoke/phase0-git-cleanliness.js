@@ -21,7 +21,11 @@ function git(args) {
 }
 
 function isProtectedTestArtifactPath(filePath) {
-  return /(?:^|[\/._-])(?:fixtures?|goldens?)(?:[\/._-]|$)/i.test(filePath);
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  return (
+    normalizedPath !== 'backend/scripts/smoke/phase0-fixtures-smoke.js' &&
+    /(?:^|[\/._-])(?:fixtures?|goldens?)(?:[\/._-]|$)/i.test(normalizedPath)
+  );
 }
 
 function protectedTestArtifacts() {

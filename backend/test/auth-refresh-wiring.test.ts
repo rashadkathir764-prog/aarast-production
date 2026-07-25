@@ -155,6 +155,7 @@ test("admin MFA refresh rotates only into another admin-scoped session", async (
   );
   assert.equal(signedPayloads[0].amr, "admin_mfa");
   assert.equal(signedPayloads[0].sid, "refresh-admin-next");
+  assert.equal(signedPayloads[0].scope, "admin");
   assert.equal(response.user.adminRole, "SUPER_ADMIN");
   assert.ok(response.user.adminPermissions.length > 0);
 });
@@ -230,7 +231,7 @@ test("disabling an account revokes all active refresh sessions", () => {
     /async disableUser[\s\S]*?private async reviewProvider/,
   )?.[0];
   assert.ok(disableBlock);
-  assert.match(disableBlock, /\$transaction/);
+  assert.match(disableBlock, /runSerializableTransaction\(this\.prisma/);
   assert.match(disableBlock, /refreshToken\.updateMany/);
   assert.match(disableBlock, /revokedAt/);
 });

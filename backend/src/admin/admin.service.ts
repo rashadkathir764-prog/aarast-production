@@ -1,5 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  AdminRole,
   AppRole,
   ConversationReportStatus,
   NotificationPriority,
@@ -12,9 +18,11 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { requiredMoneyAmount } from '../common/validation/money';
+import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { optionalMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
+import { runProviderReviewMutation } from '../marketplace/provider-review-rating';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
@@ -36,6 +44,7 @@ import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dt
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
+import { authorizeAdminUserStatusChange } from './admin-user-status';
 
 interface Pagination {
   page: number;
@@ -174,7 +183,7 @@ export class AdminService {
         categoryId,
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
-        basePrice: this.optionalDecimal(dto.basePrice, 'basePrice'),
+        basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice'),
         priceUnit: this.optionalText(dto.priceUnit),
         currency: this.optionalText(dto.currency) ?? 'YER',
         cityId: this.optionalText(dto.cityId),
@@ -206,7 +215,7 @@ export class AdminService {
         ...(dto.categoryId !== undefined ? { categoryId: this.requiredText(dto.categoryId, 'categoryId') } : {}),
         ...(dto.title !== undefined ? { title: this.requiredText(dto.title, 'title') } : {}),
         ...(dto.description !== undefined ? { description: this.optionalText(dto.description) } : {}),
-        ...(dto.basePrice !== undefined ? { basePrice: this.optionalDecimal(dto.basePrice, 'basePrice') } : {}),
+        ...(dto.basePrice !== undefined ? { basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice') } : {}),
         ...(dto.priceUnit !== undefined ? { priceUnit: this.optionalText(dto.priceUnit) } : {}),
         ...(dto.currency !== undefined ? { currency: this.requiredText(dto.currency, 'currency') } : {}),
         ...(dto.cityId !== undefined ? { cityId: this.optionalText(dto.cityId) } : {}),
@@ -254,24 +263,38 @@ export class AdminService {
   async updateReviewStatus(id: string, dto: AdminReviewStatusDto) {
     const existing = await this.findReviewOrThrow(id);
     const status = this.parseReviewStatus(dto.status);
-    const review = await this.prisma.providerReview.update({
-      where: { id },
-      data: { status },
-      include: this.adminReviewInclude(),
-    });
-    await this.recalculateProviderRating(existing.providerId);
-    return toAdminReviewResponse(review);
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findUnique({ where: { id } });
+        if (!current) throw new NotFoundException('Review not found');
+        const review = await tx.providerReview.update({
+          where: { id },
+          data: { status },
+          include: this.adminReviewInclude(),
+        });
+        return toAdminReviewResponse(review);
+      },
+    );
   }
 
   async hideReview(id: string) {
     const existing = await this.findReviewOrThrow(id);
-    const review = await this.prisma.providerReview.update({
-      where: { id },
-      data: { status: ReviewStatus.HIDDEN },
-      include: this.adminReviewInclude(),
-    });
-    await this.recalculateProviderRating(existing.providerId);
-    return { ...toAdminReviewResponse(review), deleted: false };
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findUnique({ where: { id } });
+        if (!current) throw new NotFoundException('Review not found');
+        const review = await tx.providerReview.update({
+          where: { id },
+          data: { status: ReviewStatus.HIDDEN },
+          include: this.adminReviewInclude(),
+        });
+        return { ...toAdminReviewResponse(review), deleted: false };
+      },
+    );
   }
 
   async listConversationReports(query: AdminConversationReportQueryDto) {
@@ -593,12 +616,18 @@ export class AdminService {
     return toUserResponse(user);
   }
 
-  async activateUser(id: string) {
-    await this.findUserOrThrow(id);
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { status: UserStatus.ACTIVE },
-      select: this.userSelect(true),
+  async activateUser(currentUser: AuthenticatedUser, id: string) {
+    const user = await runSerializableTransaction(this.prisma, async (tx) => {
+      const target = await authorizeAdminUserStatusChange(
+        tx,
+        currentUser,
+        id,
+      );
+      return tx.user.update({
+        where: { id: target.id },
+        data: { status: UserStatus.ACTIVE },
+        select: this.userSelect(true),
+      });
     });
     return toUserResponse(user);
   }
@@ -607,19 +636,43 @@ export class AdminService {
     if (currentUser.id === id) {
       throw new BadRequestException('Admins cannot disable their own account');
     }
-    await this.findUserOrThrow(id);
     const now = new Date();
-    const [user] = await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id },
+    const user = await runSerializableTransaction(this.prisma, async (tx) => {
+      const target = await authorizeAdminUserStatusChange(
+        tx,
+        currentUser,
+        id,
+      );
+      if (
+        target.role === UserRole.ADMIN &&
+        target.adminRole === AdminRole.SUPER_ADMIN &&
+        target.status === UserStatus.ACTIVE
+      ) {
+        const activeSuperAdmins = await tx.user.count({
+          where: {
+            role: UserRole.ADMIN,
+            adminRole: AdminRole.SUPER_ADMIN,
+            status: UserStatus.ACTIVE,
+          },
+        });
+        if (activeSuperAdmins <= 1) {
+          throw new ConflictException(
+            'The last active super administrator cannot be disabled',
+          );
+        }
+      }
+
+      const updated = await tx.user.update({
+        where: { id: target.id },
         data: { status: UserStatus.DISABLED },
         select: this.userSelect(true),
-      }),
-      this.prisma.refreshToken.updateMany({
-        where: { userId: id, revokedAt: null },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: target.id, revokedAt: null },
         data: { revokedAt: now },
-      }),
-    ]);
+      });
+      return updated;
+    });
     // Sessions were just revoked; sever any live realtime channel the now
     // disabled account still holds open.
     this.realtime.disconnectUser(id);
@@ -824,23 +877,6 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     return user;
-  }
-
-  private async recalculateProviderRating(providerId: string) {
-    const aggregate = await this.prisma.providerReview.aggregate({
-      where: { providerId, status: ReviewStatus.PUBLISHED },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
-    const ratingCount = aggregate._count._all;
-    const ratingAverage = ratingCount > 0 ? (aggregate._avg.rating ?? 0) : 0;
-    await this.prisma.provider.update({
-      where: { id: providerId },
-      data: {
-        ratingAverage: ratingAverage.toFixed(2),
-        ratingCount,
-      },
-    });
   }
 
   private async getUserReport(createdAt?: Prisma.DateTimeFilter) {
@@ -1145,13 +1181,6 @@ export class AdminService {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     return trimmed || null;
-  }
-
-  private optionalDecimal(value: string | null | undefined, field: string): string | null {
-    if (value === undefined || value === null) return null;
-    const normalized = value.trim();
-    if (!normalized) return null;
-    return requiredMoneyAmount(normalized, field);
   }
 
   private optionalBoolean(value: string | null | undefined, field: string): boolean | null {

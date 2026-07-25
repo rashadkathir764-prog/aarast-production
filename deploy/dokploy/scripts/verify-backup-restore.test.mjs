@@ -57,19 +57,28 @@ test('backend image distinguishes local builds and labels release revisions', ()
 });
 
 test('production runtime uses only prebuilt content-addressed application images', () => {
-  assert.match(runtimeCompose, /image: \$\{AARAST_BACKEND_IMAGE_ID:\?/);
+  assert.equal(
+    (runtimeCompose.match(/image: \$\{AARAST_BACKEND_IMAGE_ID:\?/g) ?? [])
+      .length,
+    2,
+  );
   assert.match(runtimeCompose, /image: \$\{AARAST_ADMIN_WEB_IMAGE_ID:\?/);
-  assert.equal((runtimeCompose.match(/pull_policy: never/g) ?? []).length, 2);
+  assert.equal((runtimeCompose.match(/pull_policy: never/g) ?? []).length, 3);
   assert.doesNotMatch(runtimeCompose, /aarast-(?:backend|admin-web):prod/);
 
+  const migrateBlock = runtimeCompose.match(
+    /  migrate:\n(?<body>[\s\S]*?)\n  backend:/,
+  )?.groups?.body;
   const backendBlock = runtimeCompose.match(
     /  backend:\n(?<body>[\s\S]*?)\n  admin-web:/,
   )?.groups?.body;
   const adminBlock = runtimeCompose.match(
     /  admin-web:\n(?<body>[\s\S]*?)\nvolumes:/,
   )?.groups?.body;
+  assert.ok(migrateBlock);
   assert.ok(backendBlock);
   assert.ok(adminBlock);
+  assert.doesNotMatch(migrateBlock, /\n    build:/);
   assert.doesNotMatch(backendBlock, /\n    build:/);
   assert.doesNotMatch(adminBlock, /\n    build:/);
 });

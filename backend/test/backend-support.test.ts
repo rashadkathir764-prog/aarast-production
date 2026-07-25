@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -49,6 +50,46 @@ test("backend image records the supplied Git revision in its OCI metadata", () =
   assert.match(
     runtimeStage,
     /^LABEL org\.opencontainers\.image\.revision="\$\{AARAST_GIT_REVISION\}"$/m,
+  );
+});
+
+test("production database identity check fails closed without exposing credentials", () => {
+  const script = join(
+    __dirname,
+    "..",
+    "scripts",
+    "prod",
+    "assert-database-identity.cjs",
+  );
+  const baseEnvironment = {
+    ...process.env,
+    POSTGRES_DB: "aarast",
+    AARAST_DB_EXPECTED_ROLE: "aarast_runtime",
+  };
+  const accepted = spawnSync(process.execPath, [script], {
+    encoding: "utf8",
+    env: {
+      ...baseEnvironment,
+      DATABASE_URL:
+        "postgresql://aarast_runtime:runtime-secret@postgres:5432/aarast?schema=public",
+    },
+  });
+  assert.equal(accepted.status, 0);
+  assert.match(accepted.stdout, /Database identity check passed/);
+
+  const rejected = spawnSync(process.execPath, [script], {
+    encoding: "utf8",
+    env: {
+      ...baseEnvironment,
+      DATABASE_URL:
+        "postgresql://aarast_owner:never-print-this@postgres:5432/aarast?schema=public",
+    },
+  });
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /does not match the assigned service role/);
+  assert.doesNotMatch(
+    `${rejected.stdout}${rejected.stderr}`,
+    /aarast_owner|never-print-this|postgres:5432/,
   );
 });
 

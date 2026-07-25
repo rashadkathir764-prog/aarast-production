@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ConversationRealtimePublisher } from '../src/conversations/conversation-realtime.publisher';
 import { ConversationsGateway } from '../src/conversations/conversations.gateway';
 
 interface FakeSocket {
@@ -76,9 +77,42 @@ function eligibleUser(overrides: Record<string, unknown> = {}) {
 
 const futureExp = () => Math.floor(Date.now() / 1000) + 900;
 
+test('permission revocation removes every user socket from the conversation room', () => {
+  const calls = {
+    userRoom: '',
+    events: [] as Array<{ event: string; payload: unknown }>,
+    leftRooms: [] as string[],
+  };
+  const publisher = new ConversationRealtimePublisher();
+  publisher.attach({
+    in: (room: string) => {
+      calls.userRoom = room;
+      return {
+        emit: (event: string, payload: unknown) => {
+          calls.events.push({ event, payload });
+        },
+        socketsLeave: (conversationRoom: string) => {
+          calls.leftRooms.push(conversationRoom);
+        },
+      };
+    },
+  } as never);
+
+  publisher.revokeConversationAccess('user-1', ['conversation-1']);
+
+  assert.equal(calls.userRoom, 'user:user-1');
+  assert.deepEqual(calls.events, [
+    {
+      event: 'conversation:permission-revoked',
+      payload: { conversationId: 'conversation-1' },
+    },
+  ]);
+  assert.deepEqual(calls.leftRooms, ['conversation:conversation-1']);
+});
+
 test('a phone-unverified account cannot open a chat socket', async () => {
   const gateway = createGateway({
-    payload: { sub: 'u1', exp: futureExp() },
+    payload: { sub: 'u1', scope: 'application', exp: futureExp() },
     user: eligibleUser({ phoneVerifiedAt: null }),
   });
   const socket = createSocket();
@@ -92,7 +126,7 @@ test('a phone-unverified account cannot open a chat socket', async () => {
 
 test('a disabled account cannot open a chat socket', async () => {
   const gateway = createGateway({
-    payload: { sub: 'u1', exp: futureExp() },
+    payload: { sub: 'u1', scope: 'application', exp: futureExp() },
     user: eligibleUser({ status: 'DISABLED' }),
   });
   const socket = createSocket();
@@ -105,7 +139,7 @@ test('a disabled account cannot open a chat socket', async () => {
 
 test('an eligible account joins its user room and stays connected', async () => {
   const gateway = createGateway({
-    payload: { sub: 'u1', exp: futureExp() },
+    payload: { sub: 'u1', scope: 'application', exp: futureExp() },
     user: eligibleUser(),
   });
   const socket = createSocket();
@@ -120,7 +154,11 @@ test('an eligible account joins its user room and stays connected', async () => 
 test('the chat socket is torn down when its access token expires', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const gateway = createGateway({
-    payload: { sub: 'u1', exp: Math.floor(Date.now() / 1000) + 1 },
+    payload: {
+      sub: 'u1',
+      scope: 'application',
+      exp: Math.floor(Date.now() / 1000) + 1,
+    },
     user: eligibleUser(),
   });
   const socket = createSocket();
@@ -134,7 +172,41 @@ test('the chat socket is torn down when its access token expires', async (t) => 
 
 test('a token without an expiry cannot open a chat socket', async () => {
   const gateway = createGateway({
-    payload: { sub: 'u1' },
+    payload: { sub: 'u1', scope: 'application' },
+    user: eligibleUser(),
+  });
+  const socket = createSocket();
+
+  await gateway.handleConnection(socket as any);
+
+  assert.equal(socket.disconnected, 1);
+  assert.deepEqual(socket.joined, []);
+  assert.deepEqual(socket.emitted, []);
+});
+
+test('an admin-scoped token cannot open the application chat socket', async () => {
+  const gateway = createGateway({
+    payload: {
+      sub: 'u1',
+      scope: 'admin',
+      amr: 'admin_mfa',
+      sid: 'admin-session',
+      exp: futureExp(),
+    },
+    user: eligibleUser({ role: 'ADMIN', adminRole: 'SUPER_ADMIN' }),
+  });
+  const socket = createSocket();
+
+  await gateway.handleConnection(socket as any);
+
+  assert.equal(socket.disconnected, 1);
+  assert.deepEqual(socket.joined, []);
+  assert.deepEqual(socket.emitted, []);
+});
+
+test('a realm-less legacy token cannot open the application chat socket', async () => {
+  const gateway = createGateway({
+    payload: { sub: 'u1', exp: futureExp() },
     user: eligibleUser(),
   });
   const socket = createSocket();

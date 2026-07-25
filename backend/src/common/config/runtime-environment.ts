@@ -1,5 +1,6 @@
 import { loadWhatsAppOtpConfig } from '../../auth/whatsapp-otp-config';
 import { loadOpenWaOtpConfig } from '../../auth/openwa-otp-config';
+import { getJwtSecret } from '../../auth/jwt-secret';
 
 export function isProductionEnvironment(
   environment: NodeJS.ProcessEnv = process.env,
@@ -16,6 +17,7 @@ export function validateRuntimeEnvironment(
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
+  getJwtSecret(environment);
 
   const otpMode = environment.AUTH_OTP_MODE?.trim().toLowerCase();
   if (otpMode && !['dev', 'whatsapp', 'openwa', 'disabled'].includes(otpMode)) {

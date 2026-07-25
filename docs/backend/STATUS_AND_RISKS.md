@@ -26,8 +26,9 @@ Snapshot date: 2026-07-14
   once; mismatched key reuse is rejected, responses expire, and one replica
   performs hourly cleanup under an advisory lock.
 - Admin browser sessions require password + phone OTP; admin JWTs are bound to
-  rotating server sessions, refresh material is HttpOnly, and logout revokes
-  active access immediately.
+  rotating server sessions, every access JWT has an explicit signed
+  application/admin scope, product and Chat routes reject admin scope, refresh
+  material is HttpOnly, and logout revokes active admin access immediately.
 - One conversation per plan/provider or account/provider context, Socket.IO
   delivery/recovery, quote/offer system events, message attachments,
   reporting/side-level blocking/personal mute/read state, and signed media

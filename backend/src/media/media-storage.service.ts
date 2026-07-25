@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import {
   DeleteObjectsCommand,
+  GetBucketLocationCommand,
   GetObjectCommand,
-  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -278,7 +278,9 @@ export class MediaStorageService {
   async checkReadiness(): Promise<void> {
     const config = this.config(false);
     try {
-      await config.client.send(new HeadBucketCommand({ Bucket: config.bucket }));
+      await config.client.send(
+        new GetBucketLocationCommand({ Bucket: config.bucket }),
+      );
     } finally {
       config.client.destroy();
     }

@@ -28,9 +28,12 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { toReviewIdentity } from '../common/privacy/review-identity';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { optionalMoneyAmount } from '../common/validation/money';
 import { recordConversationEvent } from '../conversations/conversation-lifecycle';
 import {
   assertQuoteRequestTransition,
+  lockQuoteOfferTransitionRows,
+  lockQuoteRequestTransitionRow,
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
@@ -313,7 +316,7 @@ export class ProviderDashboardService {
         categoryId: dto.categoryId,
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
-        basePrice: this.optionalDecimal(dto.basePrice, 'basePrice'),
+        basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice'),
         priceUnit: this.optionalText(dto.priceUnit),
         currency: this.optionalText(dto.currency) ?? 'YER',
         cityId: this.optionalText(dto.cityId),
@@ -355,7 +358,7 @@ export class ProviderDashboardService {
           ? { description: this.optionalText(dto.description) }
           : {}),
         ...(dto.basePrice !== undefined
-          ? { basePrice: this.optionalDecimal(dto.basePrice, 'basePrice') }
+          ? { basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice') }
           : {}),
         ...(dto.priceUnit !== undefined
           ? { priceUnit: this.optionalText(dto.priceUnit) }
@@ -529,7 +532,7 @@ export class ProviderDashboardService {
         serviceId: this.optionalText(dto.serviceId),
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
-        price: this.optionalDecimal(dto.price, 'price'),
+        price: optionalMoneyAmount(dto.price, 'price'),
         currency: this.optionalText(dto.currency) ?? 'YER',
         ...(dto.items !== undefined
           ? { items: dto.items as Prisma.InputJsonValue }
@@ -565,7 +568,7 @@ export class ProviderDashboardService {
           ? { description: this.optionalText(dto.description) }
           : {}),
         ...(dto.price !== undefined
-          ? { price: this.optionalDecimal(dto.price, 'price') }
+          ? { price: optionalMoneyAmount(dto.price, 'price') }
           : {}),
         ...(dto.currency !== undefined
           ? { currency: this.requiredText(dto.currency, 'currency') }
@@ -626,9 +629,9 @@ export class ProviderDashboardService {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteRequestId');
     const quote = await runSerializableTransaction(this.prisma, async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${id} FOR UPDATE`,
-      );
+      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
+        throw new NotFoundException('Quote request not found');
+      }
       const existing = await tx.quoteRequest.findFirst({
         where: { id, providerId: provider.id },
       });
@@ -637,14 +640,20 @@ export class ProviderDashboardService {
       }
       assertQuoteRequestTransition(existing.status, dto.status, 'provider');
 
-      const updated = await tx.quoteRequest.update({
-        where: { id },
+      const transition = await tx.quoteRequest.updateMany({
+        where: { id, status: existing.status },
         data: {
           status: dto.status,
           ...(dto.status === QuoteRequestStatus.REJECTED
             ? { rejectedAt: new Date() }
             : {}),
         },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException('Quote request status changed');
+      }
+      const updated = await tx.quoteRequest.findUniqueOrThrow({
+        where: { id },
         include: this.quoteInclude(),
       });
       if (dto.status === QuoteRequestStatus.REJECTED) {
@@ -681,9 +690,9 @@ export class ProviderDashboardService {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(quoteRequestId, 'quoteRequestId');
     const offer = await runSerializableTransaction(this.prisma, async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${quoteRequestId} FOR UPDATE`,
-      );
+      if (!(await lockQuoteRequestTransitionRow(tx, quoteRequestId))) {
+        throw new NotFoundException('Quote request not found');
+      }
       const quote = await tx.quoteRequest.findFirst({
         where: { id: quoteRequestId, providerId: provider.id },
       });
@@ -713,7 +722,7 @@ export class ProviderDashboardService {
           providerId: provider.id,
           title: this.optionalText(dto.title),
           message: this.requiredText(dto.message, 'message'),
-          amount: this.optionalDecimal(dto.amount, 'amount'),
+          amount: optionalMoneyAmount(dto.amount, 'amount'),
           currency: dto.currency ?? 'YER',
           validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
         },
@@ -760,31 +769,48 @@ export class ProviderDashboardService {
   ) {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteOfferId');
-    const existing = await this.prisma.quoteOffer.findFirst({
-      where: { id, providerId: provider.id },
-    });
-    if (!existing) {
-      throw new NotFoundException('Quote offer not found');
-    }
-    if (existing.status !== QuoteOfferStatus.PENDING) {
-      throw new ConflictException('Only pending quote offers can be updated');
-    }
+    const offer = await runSerializableTransaction(this.prisma, async (tx) => {
+      if (!(await lockQuoteOfferTransitionRows(tx, id))) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      const existing = await tx.quoteOffer.findFirst({
+        where: { id, providerId: provider.id },
+        include: {
+          quoteRequest: { select: { status: true } },
+        },
+      });
+      if (!existing) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      if (
+        existing.status !== QuoteOfferStatus.PENDING ||
+        existing.quoteRequest.status !== QuoteRequestStatus.RESPONDED
+      ) {
+        throw new ConflictException('Only pending quote offers can be updated');
+      }
 
-    const offer = await this.prisma.quoteOffer.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined ? { title: this.optionalText(dto.title) } : {}),
-        ...(dto.message !== undefined
-          ? { message: this.requiredText(dto.message ?? '', 'message') }
-          : {}),
-        ...(dto.amount !== undefined
-          ? { amount: this.optionalDecimal(dto.amount, 'amount') }
-          : {}),
-        ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
-        ...(dto.validUntil !== undefined
-          ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
-          : {}),
-      },
+      const transition = await tx.quoteOffer.updateMany({
+        where: { id, status: QuoteOfferStatus.PENDING },
+        data: {
+          ...(dto.title !== undefined
+            ? { title: this.optionalText(dto.title) }
+            : {}),
+          ...(dto.message !== undefined
+            ? { message: this.requiredText(dto.message ?? '', 'message') }
+            : {}),
+          ...(dto.amount !== undefined
+            ? { amount: optionalMoneyAmount(dto.amount, 'amount') }
+            : {}),
+          ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
+          ...(dto.validUntil !== undefined
+            ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
+            : {}),
+        },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException('Only pending quote offers can be updated');
+      }
+      return tx.quoteOffer.findUniqueOrThrow({ where: { id } });
     });
 
     return this.toQuoteOfferResponse(offer);
@@ -927,19 +953,6 @@ export class ProviderDashboardService {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     return trimmed || null;
-  }
-
-  private optionalDecimal(
-    value: string | null | undefined,
-    field: string,
-  ): string | null {
-    if (value === undefined || value === null) return null;
-    const normalized = value.trim();
-    if (!normalized) return null;
-    if (!/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-    return normalized;
   }
 
   private optionalSignedDecimal(

@@ -35,8 +35,8 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. |
 | Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
-| QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. |
-| QuoteOffer | Implemented for provider responses to quote requests. Accepting a plan-scoped offer atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
+| QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. Lifecycle mutations lock this row first, re-read its state, and update only from the expected prior state. |
+| QuoteOffer | Implemented for provider responses to quote requests. Lifecycle mutations lock the parent QuoteRequest and then the offer in one serializable transaction, so a losing accept/reject/update/cancel race cannot overwrite the winner. Accepting a plan-scoped offer rechecks provider and money permissions in that transaction and atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
 | PlanProviderLink | Implemented to connect an accepted provider/offer to a WeddingPlan as planning context. |
 
 ## Conversation And Session Entities
@@ -46,11 +46,11 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation, replacement tracking, and persisted `APPLICATION`/`ADMIN` scope. |
 | AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login, bound by `otpId` to the exact private `ADMIN_LOGIN` OTP. It never stores the raw challenge or OTP. |
 | AdminPasswordResetChallenge | Hashed, short-lived, one-time administrator password-recovery challenge bound to one exact OTP. It stores a token hash and HMAC phone digest, not the raw token or phone, and is invalidated on retry, expiry, failure ceiling, or success. |
-| LoginThrottle | Durable cross-replica password-attempt window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Five failures lock one realm for fifteen minutes; successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
+| LoginThrottle | Durable cross-replica password-attempt admission window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Each request reserves a slot under the row lock before password comparison; five admitted attempts lock one realm for fifteen minutes. Successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
 | OtpDispatchQuota | Atomic cross-replica OTP delivery windows for phone, IP, and global scopes. Subjects are HMAC-SHA-256 digests; no raw phone or IP is persisted. Failed deliveries still consume quota and an hourly advisory-lock cleanup removes expired rows. |
 | MediaUploadTicket | Durable owner, purpose, declared/verified byte size, expiry, verification state, and consumption state for every signed upload. It enforces a rolling per-account quota and allows bounded cleanup of abandoned objects without trusting a client-supplied URL. |
 | Conversation | One provider relationship thread. `PLAN` is unique by WeddingPlan + Provider; `ACCOUNT` is unique by requester User + Provider. The row owns last activity, administrative close, and customer/provider-side block state. |
-| ConversationParticipant | Per-user joined/revoked, last-read, and personal mute state. It is not an authorization source; access is derived live from plan ownership, explicit provider-management permission, account request ownership, or the provider account. |
+| ConversationParticipant | Per-user joined/revoked, last-read, and personal mute state. It is not an authorization source; access is derived live from plan ownership, explicit provider-management permission, account request ownership, or the provider account. Send and mark-read lock and recheck the active row in the same serializable transaction; only an explicit permission grant may clear `revokedAt`. |
 | ConversationEvent | Idempotent, non-sensitive QuoteRequest/QuoteOffer lifecycle activity merged with messages at timeline read time. Human content remains in ChatMessage only. |
 | ChatMessage | Authored conversation message with delivery/read timestamps and no payment semantics. |
 | ChatAttachment | Private object `storageKey` plus MIME/size metadata tied to a message; permanent or public download URLs are never stored. |
@@ -97,10 +97,15 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `OtpCode` for local, Meta WhatsApp, or temporary hardened OpenWA OTP
   request/verify flows, storing only
   hashed codes. A partial unique index permits one unconsumed code per
-  phone/purpose, and consumption uses a compare-and-set update so concurrent
-  replays cannot both succeed.
+  phone/purpose. Verification takes a row lock and commits comparison outcome,
+  bounded failure count, terminal exhaustion, or one-time consumption in one
+  retryable transaction so concurrent attempts cannot exceed the stored
+  ceiling or both succeed.
 - `LoginThrottle` replaces process-local password counters with a PostgreSQL
-  serializable failure window shared by all replicas. Its key is an
+  row-locked attempt-admission window shared by all replicas. A forced `upsert`
+  acquires the subject row and reserves the attempt before password comparison,
+  so concurrent requests observe the prior committed count without a
+  serialization-conflict gap and cannot execute comparisons beyond the ceiling. Its key is an
   HMAC-SHA-256 digest made with `AUTH_LOGIN_THROTTLE_PEPPER`; it stores no raw
   phone, email, password, IP address, pepper, or request body. Production fails
   closed without the pepper. An hourly transaction-level advisory lock ensures
@@ -126,6 +131,10 @@ The backend now includes the approved provider-reference and quote-lead foundati
   independent and neither recovery route can overwrite the other.
 - Refresh rows persist their application/administrator scope; logout, reset,
   rotation, and token-family compromise revocation stay inside that scope.
+- Terminal refresh sessions have bounded security retention: revoked rows are
+  removed 30 days after `revokedAt`, while unrevoked expired rows are removed
+  30 days after `expiresAt`. The same hourly advisory-lock cleanup guarantees
+  that only one replica performs the deletion.
 - Expired OTP and authentication challenge rows are retained for one day and
   then removed by a distinct advisory-lock cleanup job.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
@@ -135,9 +144,13 @@ The backend now includes the approved provider-reference and quote-lead foundati
   endpoints (offline-queue replays return the original response instead of
   duplicating financial records). Each key is bound to a SHA-256 fingerprint of
   method + concrete target + canonical body, while only the safe route template
-  is stored in readable form. `expiresAt` bounds both pending reservations and
+  is stored in readable form. `expiresAt` bounds active reservations and
   completed replay responses; an hourly, advisory-lock-protected job removes
-  expired rows across replicas. Migration
+  only expired completed rows across replicas. Expired rows with no
+  `completedAt` remain fail-closed as ambiguous tombstones until the
+  evidence-gated operations reconciler either releases one proven
+  non-committed request or stores the exact replay for one proven committed
+  request. Migration
   `20260710173000_bind_idempotency_requests` expires legacy unbound rows. Stored
   paths use route templates only;
   migration `20260710140000_redact_legacy_idempotency_paths` removes legacy
@@ -147,11 +160,22 @@ The backend now includes the approved provider-reference and quote-lead foundati
   databases receive an additive baseline catalog from migration
   `20260714100000_seed_provider_reference_catalog`; existing admin-managed rows
   are preserved without forced rename, reactivation, or deletion.
-- `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
+- `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage`
+  for public planning references. Every externally supplied `numeric(14,2)`
+  provider price is bounded by the central money validator before persistence;
+  null/blank optional values remain null and extra precision is never delegated
+  to database rounding.
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, and
   `PlanProviderLink` for saved providers, reviews, quote leads, and accepted
   planning provider links. The unused prelaunch `BookingLead` model was removed;
   accepting an offer remains a planning decision and never creates a booking.
+  `Provider.ratingAverage` and `ratingCount` are cached public aggregates only:
+  every review mutation locks the Provider row, changes the review, derives the
+  published-only aggregate, and stores it inside one serializable transaction.
+  Account erasure explicitly refreshes surviving providers instead of relying
+  on the `ProviderReview.userId` cascade. Migration
+  `20260724180500_reconcile_provider_rating_cache` safely re-derives all
+  pre-existing caches during upgrade without deleting review data.
 - `WeddingCost`, `CostPayment`, and `PaymentSchedule` for category-first costs,
   actual money-out records, and dated payment reminders.
 - `WeddingTaskChecklistItem` plus task assignment support.

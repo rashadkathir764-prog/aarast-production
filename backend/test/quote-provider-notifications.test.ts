@@ -223,7 +223,8 @@ test("provider rejection notifies the requester with the exact quote route", asy
     $queryRaw: async () => [{ id: QUOTE_ID }],
     quoteRequest: {
       findFirst: async () => existing,
-      update: async () => updated,
+      updateMany: async () => ({ count: 1 }),
+      findUniqueOrThrow: async () => updated,
     },
   };
   const prisma = {
@@ -253,11 +254,21 @@ test("provider rejection notifies the requester with the exact quote route", asy
 function acceptanceHarness({
   categories,
   providerCategoryName,
+  failNotifications = false,
 }: {
   categories: Array<{ id: string; name: string; normalizedName: string }>;
   providerCategoryName: string;
+  failNotifications?: boolean;
 }) {
   const { sent, notifications } = capture();
+  if (failNotifications) {
+    notifications.createNotification = async () => {
+      throw new Error("notification write failed");
+    };
+    notifications.createNotificationInTransaction = async () => {
+      throw new Error("notification write failed");
+    };
+  }
   let offerStatus = "PENDING";
   let quoteStatus = "RESPONDED";
   let createdCost: any = null;
@@ -322,20 +333,28 @@ function acceptanceHarness({
     updatedAt: now,
   };
   const tx = {
-    $queryRaw: async () => [{ id: OFFER_ID }],
+    $queryRaw: async () => [
+      { id: OFFER_ID, quoteRequestId: QUOTE_ID },
+    ],
     quoteOffer: {
       findUnique: async () => richOffer(),
-      update: async () => {
-        offerStatus = "ACCEPTED";
-        return richOffer();
+      findUniqueOrThrow: async () => richOffer(),
+      updateMany: async ({ where, data }: any) => {
+        if (where.id === OFFER_ID && where.status === "PENDING") {
+          offerStatus = data.status;
+          return { count: 1 };
+        }
+        return { count: 0 };
       },
-      updateMany: async () => ({ count: 0 }),
       findMany: async () => [],
     },
     quoteRequest: {
-      update: async () => {
-        quoteStatus = "ACCEPTED";
-        return {};
+      updateMany: async ({ where, data }: any) => {
+        if (where.id === QUOTE_ID && where.status === quoteStatus) {
+          quoteStatus = data.status;
+          return { count: 1 };
+        }
+        return { count: 0 };
       },
     },
     budgetCategory: {
@@ -376,7 +395,27 @@ function acceptanceHarness({
   const prisma = {
     quoteOffer: { findUnique: async () => accessibleOffer() },
     provider: { findUnique: async () => ({ userId: PROVIDER_USER_ID }) },
-    $transaction: async (fn: any) => fn(tx),
+    $transaction: async (fn: any) => {
+      const before = {
+        offerStatus,
+        quoteStatus,
+        createdCost,
+        costCreates,
+        fallbackCreates,
+        sentLength: sent.length,
+      };
+      try {
+        return await fn(tx);
+      } catch (error) {
+        offerStatus = before.offerStatus;
+        quoteStatus = before.quoteStatus;
+        createdCost = before.createdCost;
+        costCreates = before.costCreates;
+        fallbackCreates = before.fallbackCreates;
+        sent.splice(before.sentLength);
+        throw error;
+      }
+    },
   };
   const permissions = {
     assertPlanReadable: async () => ({}),
@@ -385,6 +424,11 @@ function acceptanceHarness({
       return {};
     },
     assertMoneyManageable: async () => {
+      moneyPermissionChecks += 1;
+      return {};
+    },
+    assertProviderAndMoneyManageableInTransaction: async () => {
+      providerPermissionChecks += 1;
       moneyPermissionChecks += 1;
       return {};
     },
@@ -412,6 +456,12 @@ function acceptanceHarness({
     },
     get moneyPermissionChecks() {
       return moneyPermissionChecks;
+    },
+    get offerStatus() {
+      return offerStatus;
+    },
+    get quoteStatus() {
+      return quoteStatus;
     },
   };
 }
@@ -452,8 +502,8 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
   assert.equal(harness.createdCost.title, "خدمة القاعة");
   assert.equal(result.costSuggestion.suggestedAction, "VIEW_COST");
   assert.deepEqual(result.nextActions, ["viewCost", "viewAcceptedProvider"]);
-  assert.equal(harness.providerPermissionChecks, 2);
-  assert.equal(harness.moneyPermissionChecks, 2);
+  assert.equal(harness.providerPermissionChecks, 4);
+  assert.equal(harness.moneyPermissionChecks, 4);
 
   const toRequester = harness.sent.find((n) => n.userId === requester.id);
   const toProvider = harness.sent.find((n) => n.userId === PROVIDER_USER_ID);
@@ -492,6 +542,29 @@ test("accepting an unmatched provider service creates and uses the other categor
   assert.equal(result.weddingCost.categoryName, "أخرى");
 });
 
+test("an accepted offer rolls back when its durable notification cannot be written", async () => {
+  const harness = acceptanceHarness({
+    categories: [
+      {
+        id: "category-hall",
+        name: "قاعات الأفراح",
+        normalizedName: "قاعات الأفراح",
+      },
+    ],
+    providerCategoryName: "الصالات وقاعات المناسبات",
+    failNotifications: true,
+  });
+
+  await assert.rejects(
+    harness.service.acceptQuoteOffer(requester, OFFER_ID),
+    /notification write failed/,
+  );
+  assert.equal(harness.offerStatus, "PENDING");
+  assert.equal(harness.quoteStatus, "RESPONDED");
+  assert.equal(harness.createdCost, null);
+  assert.equal(harness.costCreates, 0);
+});
+
 test("rejecting an offer notifies the provider rather than the requester", async () => {
   const { sent, notifications } = capture();
   const offerRow = {
@@ -516,10 +589,18 @@ test("rejecting an offer notifies the provider rather than the requester", async
   };
   const tx = {
     ...eventTxFields(),
+    $queryRaw: async () => [
+      { id: OFFER_ID, quoteRequestId: QUOTE_ID },
+    ],
     quoteOffer: {
-      update: async () => ({ ...offerRow, status: "REJECTED" }),
+      findUnique: async () => offerRow,
+      updateMany: async () => ({ count: 1 }),
+      findUniqueOrThrow: async () => ({
+        ...offerRow,
+        status: "REJECTED",
+      }),
     },
-    quoteRequest: { update: async () => ({}) },
+    quoteRequest: { updateMany: async () => ({ count: 1 }) },
     provider: { findUnique: async () => ({ userId: PROVIDER_USER_ID }) },
   };
   const prisma = {
@@ -529,6 +610,7 @@ test("rejecting an offer notifies the provider rather than the requester", async
   const permissions = {
     assertPlanReadable: async () => ({}),
     assertProviderManageable: async () => ({}),
+    assertProviderManageableInTransaction: async () => ({}),
   };
   const service = new MarketplaceService(
     prisma as any,
@@ -563,10 +645,18 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
   };
   const tx = {
     ...eventTxFields(),
+    $queryRaw: async () => [
+      { id: OFFER_ID, quoteRequestId: QUOTE_ID },
+    ],
     quoteOffer: {
-      update: async () => ({ ...offerRow, status: "REJECTED" }),
+      findUnique: async () => offerRow,
+      updateMany: async () => ({ count: 1 }),
+      findUniqueOrThrow: async () => ({
+        ...offerRow,
+        status: "REJECTED",
+      }),
     },
-    quoteRequest: { update: async () => ({}) },
+    quoteRequest: { updateMany: async () => ({ count: 1 }) },
     provider: { findUnique: async () => ({ userId: null }) },
   };
   const service = new MarketplaceService(
@@ -577,6 +667,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
     {
       assertPlanReadable: async () => ({}),
       assertProviderManageable: async () => ({}),
+      assertProviderManageableInTransaction: async () => ({}),
     } as any,
     notifications as any,
   );

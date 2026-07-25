@@ -21,6 +21,10 @@ Do not claim the full target split is live until Dokploy/NPM are updated and ver
 ## Services
 
 - `postgres`: private PostgreSQL 16 database with the named volume `aarast_postgres_data`.
+- `postgres-roles`: one-shot owner-authenticated role/grant initializer. It never
+  starts the application and exits after reconciling the migrator/runtime roles.
+- `migrate`: one-shot Backend image that validates the migrator identity, applies
+  committed Prisma migrations, confirms their status, and exits before Backend.
 - `backend`: NestJS API deployed from a prebuilt content-addressed image, exposed on host port `8093` and container port `3000`.
 - `admin-web`: React/Vite admin dashboard deployed from a prebuilt content-addressed image, exposed on host port `8094` and container port `80`.
 
@@ -35,9 +39,14 @@ Required:
 - `AARAST_BACKEND_IMAGE_ID`
 - `AARAST_ADMIN_WEB_IMAGE_ID`
 - `POSTGRES_DB`
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `DATABASE_URL`
+- `POSTGRES_OWNER_USER`
+- `POSTGRES_OWNER_PASSWORD`
+- `AARAST_DB_MIGRATOR_USER`
+- `AARAST_DB_MIGRATOR_PASSWORD`
+- `AARAST_DB_MIGRATOR_DATABASE_URL`
+- `AARAST_DB_RUNTIME_USER`
+- `AARAST_DB_RUNTIME_PASSWORD`
+- `AARAST_DB_RUNTIME_DATABASE_URL`
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
 - `CORS_ORIGINS`
@@ -46,8 +55,18 @@ Required:
 - `VITE_API_BASE_URL`
 - `AUTH_OTP_MODE`
 - `AUTH_LOGIN_THROTTLE_PEPPER`
+- `AARAST_MEDIA_ROOT_USER`
+- `AARAST_MEDIA_ROOT_PASSWORD`
+- `AARAST_MEDIA_BUCKET`
+- `AARAST_MEDIA_ACCESS_KEY_ID`
+- `AARAST_MEDIA_SECRET_ACCESS_KEY`
+- `AARAST_MEDIA_SIGNED_ENDPOINT`
 
 Current backend note: the backend code reads `JWT_SECRET`. The compose file maps `JWT_ACCESS_SECRET` into the backend container as `JWT_SECRET`. `JWT_REFRESH_SECRET` is documented for the production secret contract, but it is not consumed by the current backend code.
+`JWT_ACCESS_SECRET` must contain at least 32 UTF-8 bytes, include at least 12
+distinct characters, and provide at least 128 estimated entropy bits. Known
+placeholder or repetitive values are rejected at process startup; validation
+errors never include the secret.
 
 Channel-dependent required values:
 
@@ -75,11 +94,31 @@ channel; the hardened OpenWA channel is the explicitly risk-accepted MVP path.
 Its API key must come from the bootstrap secret and its session must pass the
 `otp-readiness` contract before backend traffic is switched.
 
-Use the Docker network service name for PostgreSQL:
+Use the Docker network service name for PostgreSQL. Passwords inside either URL
+must be percent-encoded; the matching plain password remains in Dokploy's secret
+environment for the one-shot role initializer:
 
 ```env
-DATABASE_URL=postgresql://aarast_app:replace-with-strong-postgres-password@postgres:5432/aarast?schema=public
+AARAST_DB_MIGRATOR_DATABASE_URL=postgresql://aarast_migrator:replace-with-url-encoded-migrator-password@postgres:5432/aarast?schema=public
+AARAST_DB_RUNTIME_DATABASE_URL=postgresql://aarast_runtime:replace-with-url-encoded-runtime-password@postgres:5432/aarast?schema=public
 ```
+
+The three identities are deliberately separate:
+
+- The PostgreSQL owner is the bootstrap/recovery identity and is available only
+  to `postgres`, `postgres-roles`, and the backup operation.
+- The migrator owns the application database, `public` schema, and migration
+  objects, but is explicitly `NOSUPERUSER NOCREATEDB NOCREATEROLE
+  NOREPLICATION NOBYPASSRLS`.
+- The runtime can connect, use the application schema and types, perform
+  `SELECT/INSERT/UPDATE/DELETE`, and use sequences. It cannot create schemas,
+  tables, roles, or databases and receives no owner/migrator membership.
+
+For an existing PostgreSQL volume, `POSTGRES_OWNER_USER` must name the actual
+bootstrap superuser that already owns the cluster; changing the variable does
+not create a new owner inside an initialized PostgreSQL volume. The
+`postgres-roles` operation safely transfers current application objects to the
+migrator and reconciles grants without deleting data.
 
 Set CORS and API URLs for the public domains:
 
@@ -175,13 +214,68 @@ All deployed browser domains must have SSL enabled in Dokploy. Keep `CORS_ORIGIN
 
 ## Migration And Startup Behavior
 
-The backend service runs:
+Migrations never run in the long-lived Backend runtime. Compose enforces this
+order:
 
-```sh
-npx prisma migrate deploy && node dist/main.js
+```text
+postgres healthy
+  -> postgres-roles completed successfully
+  -> migrate completed successfully
+  -> backend starts with the runtime URL
 ```
 
+Both one-shot and runtime containers execute
+`assert-database-identity.cjs` before touching the database. It validates that
+the URL user and database match the assigned service role without printing the
+URL or credentials. The `migrate` job then runs `prisma migrate deploy` and
+`prisma migrate status`; Backend runs only `node dist/main.js`.
+
 `prisma migrate deploy` applies committed migrations only. Do not run `prisma migrate dev`, `prisma db push`, database resets, or destructive migration commands against production.
+
+After a clean deployment, verify the role attributes and database ownership
+read-only from the private network:
+
+```sh
+docker compose -f deploy/dokploy/docker-compose.yml exec -T postgres \
+  psql -U "$POSTGRES_OWNER_USER" -d "$POSTGRES_DB" -Atc \
+  "SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+   FROM pg_roles
+   WHERE rolname IN ('$AARAST_DB_MIGRATOR_USER', '$AARAST_DB_RUNTIME_USER')
+   ORDER BY rolname;"
+
+docker compose -f deploy/dokploy/docker-compose.yml exec -T postgres \
+  psql -U "$POSTGRES_OWNER_USER" -d "$POSTGRES_DB" -Atc \
+  "SELECT datname, pg_get_userbyid(datdba)
+   FROM pg_database WHERE datname = '$POSTGRES_DB';"
+```
+
+Expected: both application roles return `f` for every cluster-wide capability,
+and the application database owner is the migrator. The release rehearsal must
+also connect as runtime, prove CRUD succeeds, and prove `CREATE TABLE`,
+`CREATE DATABASE`, and `CREATE ROLE` fail.
+
+### Zero-downtime credential rotation and rollback
+
+Do not replace the password of the live role in place. PostgreSQL keeps existing
+sessions alive, but a pool reconnect in the rotation window could still fail.
+Use a blue/green role and Backend rollout:
+
+1. Keep the old Backend and role unchanged.
+2. Choose a new safe runtime role name, generate a new password, and update the
+   three `AARAST_DB_RUNTIME_*` values in the green deployment only.
+3. Run `postgres-roles`, then `migrate`, for green. The initializer creates the
+   new runtime role with the same bounded grants while blue remains connected.
+4. Start green, wait for `/ready`, send a read and a reversible application
+   smoke request, then switch traffic in Dokploy.
+5. Drain blue. Revoke `CONNECT` and terminate only idle sessions of the exact
+   old runtime role after the rollback window; do not drop the role while any
+   owned or reviewed dependency remains.
+
+Rollback before retiring blue is a router switch back to the still-running blue
+Backend. If green fails after traffic moves, restore the old traffic target and
+leave the new bounded role disabled for investigation. Owner and migrator
+credentials use the same blue/green secret procedure around one-shot jobs; they
+are never introduced into a Backend environment.
 
 Before the first production deployment, confirm a database backup and rollback process exists. For later deployments, check migration SQL before deploying.
 
@@ -200,6 +294,111 @@ AARAST_PROVIDER_TEST_PASSWORD="set-this-outside-git" npm run prod:bootstrap-mark
 ```
 
 The script upserts Yemen-first city references, provider categories, one clearly marked test provider account, and one active provider service. It does not delete data and must not be used as a payment, booking, deposit, loan, credit, or financing setup.
+
+## Idempotency Tombstone Reconciliation
+
+An expired `IdempotencyKey` with `completedAt = NULL` is ambiguous: the domain
+transaction may have committed before its replay response was stored. The
+hourly scheduler reports the `aarast_idempotency_ambiguous_tombstones` metric
+but never deletes or reclaims these rows automatically.
+
+Run the reconciliation command only inside the built Backend runtime whose
+`DATABASE_URL` is already managed by Dokploy. It never prints the client key,
+user id, request hash, stored response, or database credentials.
+
+1. List at most the oldest 100 expired ambiguous rows, then inspect one exact
+   opaque id:
+
+   ```sh
+   npm run prod:reconcile-idempotency -- --action=list
+   npm run prod:reconcile-idempotency -- --action=inspect --id=<opaque-id>
+   ```
+
+2. Correlate the safe method/route/time with Backend request logs, the relevant
+   domain row, audit records, notifications, and outbox events. Do not infer an
+   outcome from the HTTP error alone.
+3. If the domain mutation is proven not to have committed, release only that
+   expired row. The exact method and route from `inspect`, an explicit proof
+   label, and an id-bound confirmation are mandatory:
+
+   ```sh
+   IDEMPOTENCY_RECONCILE_CONFIRM=RECONCILE_IDEMPOTENCY_<opaque-id> \
+     npm run prod:reconcile-idempotency -- \
+     --action=release \
+     --id=<opaque-id> \
+     --expected-method=POST \
+     --expected-path=/api/v1/example/:id \
+     --proof=no-domain-commit
+   ```
+
+4. If the domain mutation is proven to have committed, reconstruct the exact
+   original 2xx body, status, and only replay-safe representation headers in a
+   private JSON file:
+
+   ```json
+   {
+     "body": { "id": "verified-domain-id" },
+     "statusCode": 201,
+     "headers": { "location": "/api/v1/example/verified-domain-id" }
+   }
+   ```
+
+   Then complete the same tombstone for deterministic replay:
+
+   ```sh
+   IDEMPOTENCY_RECONCILE_CONFIRM=RECONCILE_IDEMPOTENCY_<opaque-id> \
+     npm run prod:reconcile-idempotency -- \
+     --action=complete \
+     --id=<opaque-id> \
+     --expected-method=POST \
+     --expected-path=/api/v1/example/:id \
+     --proof=domain-commit-verified \
+     --response-file=/secure/local/path/replay.json
+   ```
+
+   Remove the private response file after the incident evidence is retained in
+   the approved operations system.
+
+Both mutation modes lock the exact row, require it to remain expired and
+ambiguous, compare method and route, and update/delete it conditionally in one
+serializable transaction. If commit status cannot be proven, take no mutation
+action: preserve the tombstone and escalate. Never use direct SQL, `db push`,
+`migrate reset`, or a broad delete as a reconciliation shortcut.
+
+## MinIO identity and policy
+
+MinIO has two credential boundaries:
+
+- `AARAST_MEDIA_ROOT_USER` and `AARAST_MEDIA_ROOT_PASSWORD` are available only
+  to the `media` server and one-shot `media-init` service.
+- `AARAST_MEDIA_ACCESS_KEY_ID` and `AARAST_MEDIA_SECRET_ACCESS_KEY` identify a
+  dedicated Backend service account. These are the only MinIO credentials
+  available in the long-lived Backend container.
+
+`media-init` first removes anonymous access from the bucket, then enables
+download only for `user-avatar/`, `provider-logo/`, `provider-cover/`, and
+`service-image/`. It explicitly keeps `chat-image/` private. The Backend
+service-account session policy permits only `GetBucketLocation` and
+`PutObject/GetObject/DeleteObject` under those five exact prefixes in the one
+application bucket. It grants no bucket creation/deletion, policy/user
+administration, or access to another bucket. Re-running the initializer edits
+the exact service account and policy in place rather than creating duplicates.
+
+Before releasing, run the isolated MinIO least-privilege rehearsal and prove:
+
+1. Backend credentials can put/get/delete in a public asset prefix and in
+   `chat-image/`.
+2. An unsigned public-prefix GET succeeds while an unsigned `chat-image/` GET
+   is denied.
+3. The same credentials cannot create a bucket, change a policy, write outside
+   the five prefixes, or access a second bucket.
+4. Root credentials do not occur in the rendered Backend environment.
+
+Rotate the service account with a second access key: create and validate the
+new key/policy, roll Backend to it, then remove the old key after the rollback
+window. Never rotate by placing root credentials in Backend. If the new key
+fails readiness, route back to the old Backend/key and leave the failed key
+disabled for investigation.
 
 ## Health Checks
 

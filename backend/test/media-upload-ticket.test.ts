@@ -306,7 +306,7 @@ test("database migration enforces one live verified upload per domain target", (
   assert.match(migration, /"consumedAt" IS NOT NULL/);
 });
 
-test("GitHub media fixture runs the compose media initializer with a shell entrypoint", () => {
+test("GitHub media fixture runs the shared least-privilege initializer", () => {
   const workflow = readFileSync(
     join(process.cwd(), "../.github/workflows/ci.yml"),
     "utf8",
@@ -322,7 +322,7 @@ test("GitHub media fixture runs the compose media initializer with a shell entry
   );
   assert.match(
     compose,
-    /  media-init:\r?\n    image: minio\/mc:[^\s]+\r?\n[\s\S]*?    entrypoint: >-\r?\n      \/bin\/sh -c "/,
+    /  media-init:\r?\n    image: minio\/mc:[^\s]+\r?\n[\s\S]*?source: media_init_script[\s\S]*?source: media_backend_policy[\s\S]*?entrypoint: \["\/bin\/sh", "\/opt\/aarast\/media\/init\.sh"\]/,
   );
 });
 

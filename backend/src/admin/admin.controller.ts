@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtSessionGuard } from '../auth/jwt-session.guard';
 import { AdminGuard } from './admin.guard';
 import { AdminPermissionGuard } from './admin-permission.guard';
 import { RequireAdminPermission } from './admin-permission.decorator';
@@ -33,7 +33,7 @@ import {
 } from './dto/admin-conversation-report.dto';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionGuard)
+@UseGuards(JwtSessionGuard, AdminGuard, AdminPermissionGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
@@ -267,8 +267,11 @@ export class AdminController {
 
   @Patch('users/:id/activate')
   @RequireAdminPermission(AdminPermission.USERS_WRITE)
-  activateUser(@Param('id') id: string) {
-    return this.adminService.activateUser(id);
+  activateUser(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.activateUser(currentUser, id);
   }
 
   @Patch('users/:id/disable')

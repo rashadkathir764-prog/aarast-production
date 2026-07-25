@@ -46,7 +46,7 @@ interface ResponseLike {
 
 type ReplayHeaders = Record<string, string | string[]>;
 
-interface ReplayMetadata {
+export interface ReplayMetadata {
   statusCode?: number;
   headers?: ReplayHeaders;
 }
@@ -346,7 +346,7 @@ function isOneTimeInviteBearerRoute(method: string, path: string): boolean {
   );
 }
 
-function encodeStoredResponse(
+export function encodeStoredResponse(
   response: unknown,
   metadata: ReplayMetadata,
 ): Prisma.InputJsonValue {

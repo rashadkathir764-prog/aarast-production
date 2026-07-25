@@ -37,8 +37,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: aarast-local-media-key
-      MINIO_ROOT_PASSWORD: aarast-local-media-secret-change-me
+      MINIO_ROOT_USER: aarast-local-media-root
+      MINIO_ROOT_PASSWORD: aarast-local-media-root-secret-change-me
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -56,15 +56,20 @@ services:
     depends_on:
       media:
         condition: service_healthy
-    entrypoint: >-
-      /bin/sh -c "
-      mc alias set local http://media:9000 aarast-local-media-key aarast-local-media-secret-change-me &&
-      mc mb --ignore-existing local/aarast-media &&
-      mc anonymous set download local/aarast-media/user-avatar &&
-      mc anonymous set download local/aarast-media/provider-logo &&
-      mc anonymous set download local/aarast-media/provider-cover &&
-      mc anonymous set download local/aarast-media/service-image
-      "
+    environment:
+      MINIO_ROOT_USER: aarast-local-media-root
+      MINIO_ROOT_PASSWORD: aarast-local-media-root-secret-change-me
+      AARAST_MEDIA_BUCKET: aarast-media
+      AARAST_MEDIA_ACCESS_KEY_ID: aarast-local-media
+      AARAST_MEDIA_SECRET_ACCESS_KEY: aarast-local-media-secret-change-me
+    configs:
+      - source: media_init_script
+        target: /opt/aarast/media/init.sh
+        mode: 0555
+      - source: media_backend_policy
+        target: /opt/aarast/media/backend-policy.sh
+        mode: 0555
+    entrypoint: ["/bin/sh", "/opt/aarast/media/init.sh"]
 
   backend:
     build:
@@ -95,7 +100,7 @@ services:
       AARAST_MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:9000/aarast-media
       AARAST_MEDIA_REGION: us-east-1
       AARAST_MEDIA_FORCE_PATH_STYLE: "true"
-      AARAST_MEDIA_ACCESS_KEY_ID: aarast-local-media-key
+      AARAST_MEDIA_ACCESS_KEY_ID: aarast-local-media
       AARAST_MEDIA_SECRET_ACCESS_KEY: aarast-local-media-secret-change-me
     ports:
       - "3115:3000"
@@ -114,3 +119,9 @@ services:
 volumes:
   aarast_db_data:
   aarast_media_data:
+
+configs:
+  media_init_script:
+    file: ./deploy/media/init.sh
+  media_backend_policy:
+    file: ./deploy/media/backend-policy.sh

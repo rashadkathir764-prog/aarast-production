@@ -27,6 +27,7 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -44,15 +45,13 @@ import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import {
   assertQuoteRequestTransition,
+  lockQuoteRequestTransitionRow,
   quoteLifecycleStatus,
 } from "./quote-lifecycle";
-import {
-  offerAcceptedProviderNotification,
-  offerAcceptedRequesterNotification,
-  requesterRejectedOfferNotification,
-} from "./quote-notifications";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
+import { runProviderReviewMutation } from "./provider-review-rating";
 
 import {
   FULL_QUOTE_VISIBILITY,
@@ -461,28 +460,45 @@ export class MarketplaceService {
     currentUser: AuthenticatedUser,
     id: string,
   ) {
-    const { quote: existing } = await this.findAccessibleQuoteRequestOrThrow(
-      currentUser,
-      id,
-    );
-    let visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY;
-    if (existing.weddingPlanId) {
-      const context = await this.permissions.assertProviderManageable(
-        existing.weddingPlanId,
-        currentUser,
+    MarketplaceQuery.assertUuid(id, "quoteRequestId");
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
+        throw new NotFoundException("Quote request not found");
+      }
+      const existing = await tx.quoteRequest.findUnique({
+        where: { id },
+        include: MARKETPLACE_QUOTE_INCLUDE,
+      });
+      if (!existing) {
+        throw new NotFoundException("Quote request not found");
+      }
+      let visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY;
+      if (existing.weddingPlanId) {
+        const context =
+          await this.permissions.assertProviderManageableInTransaction(
+            tx,
+            existing.weddingPlanId,
+            currentUser,
+          );
+        visibility = this.quoteVisibility(context, existing, currentUser);
+      } else if (existing.userId !== currentUser.id) {
+        throw new NotFoundException("Quote request not found");
+      }
+      assertQuoteRequestTransition(
+        existing.status,
+        QuoteRequestStatus.CANCELLED,
+        "requester",
       );
-      visibility = this.quoteVisibility(context, existing, currentUser);
-    }
-    assertQuoteRequestTransition(
-      existing.status,
-      QuoteRequestStatus.CANCELLED,
-      "requester",
-    );
-    const quote = await this.prisma.$transaction(async (tx) => {
       const cancelledAt = new Date();
-      const updated = await tx.quoteRequest.update({
-        where: { id: existing.id },
+      const transition = await tx.quoteRequest.updateMany({
+        where: { id: existing.id, status: existing.status },
         data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException("Quote request cannot be cancelled");
+      }
+      const updated = await tx.quoteRequest.findUniqueOrThrow({
+        where: { id: existing.id },
         include: MARKETPLACE_QUOTE_INCLUDE,
       });
       await recordConversationEvent(tx, {
@@ -494,10 +510,13 @@ export class MarketplaceService {
         dedupeKey: `quote-request:${existing.id}:cancelled`,
         data: { status: QuoteRequestStatus.CANCELLED },
       });
-      return updated;
+      return { quote: updated, visibility };
     });
 
-    return MarketplacePresenter.toQuoteResponse(quote, visibility);
+    return MarketplacePresenter.toQuoteResponse(
+      result.quote,
+      result.visibility,
+    );
   }
 
   async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
@@ -517,43 +536,17 @@ export class MarketplaceService {
     await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
     await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
 
-    const result = await acceptQuoteOfferInTransaction(this.prisma, {
-      id,
-      weddingPlanId,
-      actorUserId: currentUser.id,
-    });
-
-    if (result.acceptedNow) {
-      await this.notifications.createNotification(
-        offerAcceptedRequesterNotification({
-          requesterId: offer.quoteRequest.userId,
-          weddingPlanId,
-          quoteRequestId: offer.quoteRequestId,
-          quoteOfferId: offer.id,
-          providerId: offer.providerId,
-        }),
-      );
-    }
-
-    // تنبيه المورد بقبول عرضه — الطرف الثاني في الاتفاق يستحق أن يعرف فورًا.
-    const providerAccount = await this.prisma.provider.findUnique({
-      where: { id: offer.providerId },
-      select: { userId: true },
-    });
-    if (
-      result.acceptedNow &&
-      providerAccount?.userId &&
-      providerAccount.userId !== currentUser.id
-    ) {
-      await this.notifications.createNotification(
-        offerAcceptedProviderNotification({
-          providerUserId: providerAccount.userId,
-          quoteRequestId: offer.quoteRequestId,
-          quoteOfferId: offer.id,
-          providerId: offer.providerId,
-        }),
-      );
-    }
+    const result = await acceptQuoteOfferInTransaction(
+      this.prisma,
+      this.permissions,
+      this.notifications,
+      {
+        id,
+        weddingPlanId,
+        currentUser,
+        actorUserId: currentUser.id,
+      },
+    );
 
     return {
       offer: MarketplacePresenter.toQuoteOfferResponse(result.offer),
@@ -610,55 +603,12 @@ export class MarketplaceService {
       "requester",
     );
 
-    const rejected = await this.prisma.$transaction(async (tx) => {
-      const updatedOffer = await tx.quoteOffer.update({
-        where: { id },
-        data: { status: QuoteOfferStatus.REJECTED },
-      });
-      await tx.quoteRequest.update({
-        where: { id: offer.quoteRequestId },
-        data: {
-          status: QuoteRequestStatus.REJECTED,
-          rejectedAt: new Date(),
-        },
-      });
-      await recordConversationEvent(tx, {
-        conversationId: offer.quoteRequest.conversationId,
-        quoteRequestId: offer.quoteRequestId,
-        quoteOfferId: offer.id,
-        actorUserId: currentUser.id,
-        type: ConversationEventType.QUOTE_OFFER_REJECTED,
-        dedupeKey: `quote-offer:${offer.id}:rejected`,
-        data: { status: QuoteOfferStatus.REJECTED },
-      });
-      await recordConversationEvent(tx, {
-        conversationId: offer.quoteRequest.conversationId,
-        quoteRequestId: offer.quoteRequestId,
-        actorUserId: currentUser.id,
-        type: ConversationEventType.QUOTE_REQUEST_REJECTED,
-        dedupeKey: `quote-request:${offer.quoteRequestId}:rejected`,
-        data: { status: QuoteRequestStatus.REJECTED },
-      });
-      const providerAccount = await tx.provider.findUnique({
-        where: { id: offer.providerId },
-        select: { userId: true },
-      });
-      if (
-        providerAccount?.userId &&
-        providerAccount.userId !== currentUser.id
-      ) {
-        await this.notifications.createNotificationInTransaction(
-          tx,
-          requesterRejectedOfferNotification({
-            providerUserId: providerAccount.userId,
-            quoteRequestId: offer.quoteRequestId,
-            quoteOfferId: offer.id,
-            providerId: offer.providerId,
-          }),
-        );
-      }
-      return updatedOffer;
-    });
+    const rejected = await rejectQuoteOfferInTransaction(
+      this.prisma,
+      this.permissions,
+      this.notifications,
+      { id, currentUser },
+    );
 
     return MarketplacePresenter.toQuoteOfferResponse(rejected);
   }
@@ -689,24 +639,31 @@ export class MarketplaceService {
 
   async cancelMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const existing = await this.prisma.quoteRequest.findFirst({
-      where: { id, userId: currentUser.id },
-    });
-
-    if (!existing) {
-      throw new NotFoundException("Quote request not found");
-    }
-    assertQuoteRequestTransition(
-      existing.status,
-      QuoteRequestStatus.CANCELLED,
-      "requester",
-    );
-
-    const quote = await this.prisma.$transaction(async (tx) => {
+    const quote = await runSerializableTransaction(this.prisma, async (tx) => {
+      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
+        throw new NotFoundException("Quote request not found");
+      }
+      const existing = await tx.quoteRequest.findFirst({
+        where: { id, userId: currentUser.id },
+      });
+      if (!existing) {
+        throw new NotFoundException("Quote request not found");
+      }
+      assertQuoteRequestTransition(
+        existing.status,
+        QuoteRequestStatus.CANCELLED,
+        "requester",
+      );
       const cancelledAt = new Date();
-      const updated = await tx.quoteRequest.update({
-        where: { id },
+      const transition = await tx.quoteRequest.updateMany({
+        where: { id, status: existing.status },
         data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException("Quote request cannot be cancelled");
+      }
+      const updated = await tx.quoteRequest.findUniqueOrThrow({
+        where: { id },
         include: MARKETPLACE_QUOTE_INCLUDE,
       });
       await recordConversationEvent(tx, {
@@ -729,41 +686,51 @@ export class MarketplaceService {
     providerId: string,
     dto: CreateProviderReviewDto,
   ) {
-    const provider = await this.findActiveProviderOrThrow(providerId);
-    if (provider.userId === currentUser.id) {
-      throw new BadRequestException(
-        "Provider owners cannot review their own profile",
-      );
-    }
+    MarketplaceQuery.assertUuid(providerId, "providerId");
+    return runProviderReviewMutation(
+      this.prisma,
+      providerId,
+      async (tx) => {
+        const provider = await tx.provider.findUnique({
+          where: { id: providerId },
+        });
+        if (!provider || provider.status !== ProviderStatus.ACTIVE) {
+          throw new NotFoundException("Provider not found");
+        }
+        if (provider.userId === currentUser.id) {
+          throw new BadRequestException(
+            "Provider owners cannot review their own profile",
+          );
+        }
 
-    const existing = await this.prisma.providerReview.findUnique({
-      where: {
-        userId_providerId: {
-          userId: currentUser.id,
-          providerId,
-        },
-      },
-    });
-    if (existing) {
-      throw new ConflictException("You already reviewed this provider");
-    }
+        const existing = await tx.providerReview.findUnique({
+          where: {
+            userId_providerId: {
+              userId: currentUser.id,
+              providerId,
+            },
+          },
+        });
+        if (existing) {
+          throw new ConflictException("You already reviewed this provider");
+        }
 
-    const review = await this.prisma.providerReview.create({
-      data: {
-        userId: currentUser.id,
-        providerId,
-        rating: dto.rating,
-        comment: MarketplaceQuery.optionalText(dto.comment),
+        const review = await tx.providerReview.create({
+          data: {
+            userId: currentUser.id,
+            providerId,
+            rating: dto.rating,
+            comment: MarketplaceQuery.optionalText(dto.comment),
+          },
+          include: {
+            user: {
+              select: { id: true, name: true, appName: true, role: true },
+            },
+          },
+        });
+        return MarketplacePresenter.toReviewResponse(review);
       },
-      include: {
-        user: {
-          select: { id: true, name: true, appName: true, role: true },
-        },
-      },
-    });
-
-    await this.recalculateProviderRating(providerId);
-    return MarketplacePresenter.toReviewResponse(review);
+    );
   }
 
   async updateReview(
@@ -780,23 +747,33 @@ export class MarketplaceService {
       throw new NotFoundException("Review not found");
     }
 
-    const review = await this.prisma.providerReview.update({
-      where: { id },
-      data: {
-        ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
-        ...(dto.comment !== undefined
-          ? { comment: MarketplaceQuery.optionalText(dto.comment) }
-          : {}),
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findFirst({
+          where: { id, userId: currentUser.id },
+        });
+        if (!current) {
+          throw new NotFoundException("Review not found");
+        }
+        const review = await tx.providerReview.update({
+          where: { id },
+          data: {
+            ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
+            ...(dto.comment !== undefined
+              ? { comment: MarketplaceQuery.optionalText(dto.comment) }
+              : {}),
+          },
+          include: {
+            user: {
+              select: { id: true, name: true, appName: true, role: true },
+            },
+          },
+        });
+        return MarketplacePresenter.toReviewResponse(review);
       },
-      include: {
-        user: {
-          select: { id: true, name: true, appName: true, role: true },
-        },
-      },
-    });
-
-    await this.recalculateProviderRating(existing.providerId);
-    return MarketplacePresenter.toReviewResponse(review);
+    );
   }
 
   async deleteReview(currentUser: AuthenticatedUser, id: string) {
@@ -809,9 +786,20 @@ export class MarketplaceService {
       throw new NotFoundException("Review not found");
     }
 
-    await this.prisma.providerReview.delete({ where: { id } });
-    await this.recalculateProviderRating(existing.providerId);
-    return { id, deleted: true };
+    return runProviderReviewMutation(
+      this.prisma,
+      existing.providerId,
+      async (tx) => {
+        const current = await tx.providerReview.findFirst({
+          where: { id, userId: currentUser.id },
+        });
+        if (!current) {
+          throw new NotFoundException("Review not found");
+        }
+        await tx.providerReview.delete({ where: { id } });
+        return { id, deleted: true };
+      },
+    );
   }
 
   private async findActiveProviderOrThrow(
@@ -863,24 +851,6 @@ export class MarketplaceService {
     }
 
     return city;
-  }
-
-  private async recalculateProviderRating(providerId: string): Promise<void> {
-    const aggregate = await this.prisma.providerReview.aggregate({
-      where: { providerId, status: ReviewStatus.PUBLISHED },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
-    const ratingCount = aggregate._count._all;
-    const ratingAverage = ratingCount > 0 ? (aggregate._avg.rating ?? 0) : 0;
-
-    await this.prisma.provider.update({
-      where: { id: providerId },
-      data: {
-        ratingAverage: ratingAverage.toFixed(2),
-        ratingCount,
-      },
-    });
   }
 
   private async findAccessibleQuoteRequestOrThrow(

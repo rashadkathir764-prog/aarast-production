@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;
 const RETENTION_MS = 24 * 60 * 60 * 1_000;
+const REFRESH_TOKEN_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
 
 @Injectable()
 export class AuthChallengeCleanupScheduler {
@@ -19,7 +20,11 @@ export class AuthChallengeCleanupScheduler {
       `;
       if (!lock?.locked) return null;
 
-      const retainedAfter = new Date(Date.now() - RETENTION_MS);
+      const now = Date.now();
+      const retainedAfter = new Date(now - RETENTION_MS);
+      const refreshRetainedAfter = new Date(
+        now - REFRESH_TOKEN_RETENTION_MS,
+      );
       const [loginChallenges, resetChallenges] = await Promise.all([
         tx.adminLoginChallenge.deleteMany({
           where: { expiresAt: { lt: retainedAfter } },
@@ -31,11 +36,34 @@ export class AuthChallengeCleanupScheduler {
       const otpCodes = await tx.otpCode.deleteMany({
         where: { expiresAt: { lt: retainedAfter } },
       });
-      return loginChallenges.count + resetChallenges.count + otpCodes.count;
+      const refreshTokens = await tx.refreshToken.deleteMany({
+        where: {
+          OR: [
+            {
+              revokedAt: null,
+              expiresAt: { lt: refreshRetainedAfter },
+            },
+            {
+              revokedAt: {
+                not: null,
+                lt: refreshRetainedAfter,
+              },
+            },
+          ],
+        },
+      });
+      return (
+        loginChallenges.count +
+        resetChallenges.count +
+        otpCodes.count +
+        refreshTokens.count
+      );
     });
 
     if (removed && removed > 0) {
-      this.logger.log(`Removed ${removed} expired authentication row(s)`);
+      this.logger.log(
+        `Removed ${removed} expired or revoked authentication row(s)`,
+      );
     }
     return removed;
   }

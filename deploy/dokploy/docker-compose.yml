@@ -7,8 +7,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_OWNER_USER:?POSTGRES_OWNER_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is required}
     volumes:
       - aarast_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,6 +21,52 @@ services:
       resources:
         limits:
           memory: ${POSTGRES_MEMORY_LIMIT:-1g}
+    networks:
+      - aarast_internal
+
+  postgres-roles:
+    image: postgres:16-alpine
+    container_name: aarast-postgres-roles-prod
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_OWNER_USER: ${POSTGRES_OWNER_USER:?POSTGRES_OWNER_USER is required}
+      POSTGRES_OWNER_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is required}
+      AARAST_DB_MIGRATOR_USER: ${AARAST_DB_MIGRATOR_USER:?AARAST_DB_MIGRATOR_USER is required}
+      AARAST_DB_MIGRATOR_PASSWORD: ${AARAST_DB_MIGRATOR_PASSWORD:?AARAST_DB_MIGRATOR_PASSWORD is required}
+      AARAST_DB_RUNTIME_USER: ${AARAST_DB_RUNTIME_USER:?AARAST_DB_RUNTIME_USER is required}
+      AARAST_DB_RUNTIME_PASSWORD: ${AARAST_DB_RUNTIME_PASSWORD:?AARAST_DB_RUNTIME_PASSWORD is required}
+    configs:
+      - source: postgres_least_privilege
+        target: /opt/aarast/postgres/least-privilege.sql
+        mode: 0444
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        for role in "$${POSTGRES_OWNER_USER}" "$${AARAST_DB_MIGRATOR_USER}" "$${AARAST_DB_RUNTIME_USER}"; do
+          case "$${role}" in
+            ""|*[!A-Za-z0-9_]*)
+              echo "FAIL: PostgreSQL role names must contain only letters, digits, and underscores" >&2
+              exit 1
+              ;;
+          esac
+        done
+        if [ "$${POSTGRES_OWNER_USER}" = "$${AARAST_DB_MIGRATOR_USER}" ] ||
+           [ "$${POSTGRES_OWNER_USER}" = "$${AARAST_DB_RUNTIME_USER}" ] ||
+           [ "$${AARAST_DB_MIGRATOR_USER}" = "$${AARAST_DB_RUNTIME_USER}" ]; then
+          echo "FAIL: PostgreSQL owner, migrator, and runtime roles must be distinct" >&2
+          exit 1
+        fi
+        export PGPASSWORD="$${POSTGRES_OWNER_PASSWORD}"
+        exec psql \
+          --host=postgres \
+          --username="$${POSTGRES_OWNER_USER}" \
+          --dbname="$${POSTGRES_DB}" \
+          --file=/opt/aarast/postgres/least-privilege.sql
     networks:
       - aarast_internal
 
@@ -48,8 +94,8 @@ services:
     restart: unless-stopped
     command: server /data
     environment:
-      MINIO_ROOT_USER: ${AARAST_MEDIA_ACCESS_KEY_ID:?AARAST_MEDIA_ACCESS_KEY_ID is required}
-      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_SECRET_ACCESS_KEY:?AARAST_MEDIA_SECRET_ACCESS_KEY is required}
+      MINIO_ROOT_USER: ${AARAST_MEDIA_ROOT_USER:?AARAST_MEDIA_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_ROOT_PASSWORD:?AARAST_MEDIA_ROOT_PASSWORD is required}
     volumes:
       - aarast_media_data:/data
     expose:
@@ -85,17 +131,18 @@ services:
         condition: service_healthy
     environment:
       AARAST_MEDIA_BUCKET: ${AARAST_MEDIA_BUCKET:?AARAST_MEDIA_BUCKET is required}
+      MINIO_ROOT_USER: ${AARAST_MEDIA_ROOT_USER:?AARAST_MEDIA_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_ROOT_PASSWORD:?AARAST_MEDIA_ROOT_PASSWORD is required}
       AARAST_MEDIA_ACCESS_KEY_ID: ${AARAST_MEDIA_ACCESS_KEY_ID:?AARAST_MEDIA_ACCESS_KEY_ID is required}
       AARAST_MEDIA_SECRET_ACCESS_KEY: ${AARAST_MEDIA_SECRET_ACCESS_KEY:?AARAST_MEDIA_SECRET_ACCESS_KEY is required}
-    entrypoint: >-
-      /bin/sh -ec '
-      mc alias set local http://media:9000 "$${AARAST_MEDIA_ACCESS_KEY_ID}" "$${AARAST_MEDIA_SECRET_ACCESS_KEY}";
-      mc mb --ignore-existing "local/$${AARAST_MEDIA_BUCKET}";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/user-avatar";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/provider-logo";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/provider-cover";
-      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/service-image";
-      '
+    configs:
+      - source: media_init_script
+        target: /opt/aarast/media/init.sh
+        mode: 0555
+      - source: media_backend_policy
+        target: /opt/aarast/media/backend-policy.sh
+        mode: 0555
+    entrypoint: ["/bin/sh", "/opt/aarast/media/init.sh"]
     networks:
       - aarast_internal
 
@@ -109,8 +156,8 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_OWNER_USER:?POSTGRES_OWNER_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is required}
       SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
       BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-4}
@@ -122,6 +169,28 @@ services:
       resources:
         limits:
           memory: 256m
+    networks:
+      - aarast_internal
+
+  migrate:
+    image: ${AARAST_BACKEND_IMAGE_ID:?AARAST_BACKEND_IMAGE_ID is required}
+    pull_policy: never
+    container_name: aarast-migrate-prod
+    restart: "no"
+    depends_on:
+      postgres-roles:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${AARAST_DB_MIGRATOR_DATABASE_URL:?AARAST_DB_MIGRATOR_DATABASE_URL is required}
+      AARAST_DB_EXPECTED_ROLE: ${AARAST_DB_MIGRATOR_USER:?AARAST_DB_MIGRATOR_USER is required}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        node scripts/prod/assert-database-identity.cjs
+        npx prisma migrate deploy
+        npx prisma migrate status
     networks:
       - aarast_internal
 
@@ -137,10 +206,14 @@ services:
         condition: service_healthy
       media-init:
         condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${AARAST_DB_RUNTIME_DATABASE_URL:?AARAST_DB_RUNTIME_DATABASE_URL is required}
+      AARAST_DB_EXPECTED_ROLE: ${AARAST_DB_RUNTIME_USER:?AARAST_DB_RUNTIME_USER is required}
+      POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_ACCESS_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
@@ -182,7 +255,12 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
     volumes:
       - ${OPENWA_PRODUCTION_CREDENTIAL_DIR:-aarast_openwa_production_credential}:/run/aarast:ro
-    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        node scripts/prod/assert-database-identity.cjs
+        exec node dist/main.js
     ports:
       - "8093:3000"
     healthcheck:
@@ -233,6 +311,14 @@ volumes:
   aarast_postgres_backups:
   aarast_media_data:
   aarast_openwa_production_credential:
+
+configs:
+  postgres_least_privilege:
+    file: ./postgres/least-privilege.sql
+  media_init_script:
+    file: ../media/init.sh
+  media_backend_policy:
+    file: ../media/backend-policy.sh
 
 networks:
   aarast_internal:

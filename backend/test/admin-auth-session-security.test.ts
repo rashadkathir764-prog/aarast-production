@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { join } from "node:path";
 import type { ExecutionContext } from "@nestjs/common";
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { AdminGuard } from "../src/admin/admin.guard";
+import { JwtAuthGuard } from "../src/auth/jwt-auth.guard";
+import { resolveJwtSessionScope } from "../src/auth/access-token-scope";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
@@ -57,6 +59,7 @@ test("admin MFA can securely verify a pre-MFA administrator phone", () => {
 test("admin refresh is a rotating HttpOnly cookie session", () => {
   const controller = read("src/auth/auth.controller.ts");
   const main = read("src/main.ts");
+  const corsOptions = read("src/common/config/cors-options.ts");
 
   assert.match(controller, /@Post\(["']admin\/refresh["']\)/);
   assert.match(controller, /@Post\(["']admin\/logout["']\)/);
@@ -64,12 +67,14 @@ test("admin refresh is a rotating HttpOnly cookie session", () => {
   assert.match(controller, /sameSite:\s*["']strict["']/);
   assert.match(controller, /path:\s*["']\/api\/v1\/auth\/admin["']/);
   assert.match(controller, /secure:\s*isProductionEnvironment\(\)/);
-  assert.match(main, /credentials:\s*true/);
+  assert.match(main, /app\.enableCors\(getCorsOptions\(\)\)/);
+  assert.match(corsOptions, /credentials:\s*true/);
 });
 
 function contextFor(user: {
   role: UserRole;
   adminMfa?: boolean;
+  sessionScope?: "application" | "admin";
 }): ExecutionContext {
   return {
     switchToHttp: () => ({ getRequest: () => ({ user }) }),
@@ -80,7 +85,13 @@ test("admin guard requires both the ADMIN role and MFA assurance", () => {
   const guard = new AdminGuard();
 
   assert.equal(
-    guard.canActivate(contextFor({ role: UserRole.ADMIN, adminMfa: true })),
+    guard.canActivate(
+      contextFor({
+        role: UserRole.ADMIN,
+        adminMfa: true,
+        sessionScope: "admin",
+      }),
+    ),
     true,
   );
   assert.throws(
@@ -91,6 +102,78 @@ test("admin guard requires both the ADMIN role and MFA assurance", () => {
     () =>
       guard.canActivate(contextFor({ role: UserRole.USER, adminMfa: true })),
     ForbiddenException,
+  );
+  assert.throws(
+    () =>
+      guard.canActivate(
+        contextFor({
+          role: UserRole.ADMIN,
+          adminMfa: true,
+          sessionScope: "application",
+        }),
+      ),
+    ForbiddenException,
+  );
+});
+
+test("access-token scope is explicit, non-contradictory, and enforced by product routes", () => {
+  assert.equal(
+    resolveJwtSessionScope({
+      sub: "user",
+      phone: null,
+      scope: "application",
+    }),
+    "application",
+  );
+  assert.equal(
+    resolveJwtSessionScope({
+      sub: "admin",
+      phone: null,
+      scope: "admin",
+      amr: "admin_mfa",
+      sid: "session",
+    }),
+    "admin",
+  );
+  assert.equal(
+    resolveJwtSessionScope({
+      sub: "admin",
+      phone: null,
+      scope: "application",
+      amr: "admin_mfa",
+      sid: "session",
+    }),
+    null,
+  );
+  assert.equal(
+    resolveJwtSessionScope({
+      sub: "admin",
+      phone: null,
+      scope: undefined as never,
+    }),
+    null,
+  );
+
+  const guard = new JwtAuthGuard();
+  const context = {} as ExecutionContext;
+  const applicationUser = { sessionScope: "application" };
+  assert.equal(
+    guard.handleRequest(null, applicationUser as any, null, context),
+    applicationUser,
+  );
+  assert.throws(
+    () =>
+      guard.handleRequest(
+        null,
+        { sessionScope: "admin" } as any,
+        null,
+        context,
+      ),
+    UnauthorizedException,
+  );
+  assert.throws(
+    () => guard.handleRequest(null, {} as any, null, context),
+    UnauthorizedException,
   );
 });
 
@@ -114,9 +197,10 @@ test("application and admin credentials stay separated and only admin MFA mints 
   assert.doesNotMatch(loginBlock, /createAuthResponse\([^)]*,\s*true/);
   assert.doesNotMatch(otpBlock, /createAuthResponse\([^)]*,\s*true/);
   assert.match(read("src/admin/admin.guard.ts"), /adminMfa !== true/);
+  assert.match(read("src/admin/admin.guard.ts"), /sessionScope !== 'admin'/);
   assert.match(
     read("src/auth/jwt.strategy.ts"),
-    /payload\.amr === 'admin_mfa'/,
+    /resolveJwtSessionScope\(payload\)/,
   );
 });
 
@@ -129,6 +213,10 @@ test("application and administrator sessions are persisted and revoked by scope"
   assert.match(schema, /scope\s+AuthSessionScope\s+@default\(APPLICATION\)/);
   assert.match(service, /scope:\s*AuthSessionScope\.APPLICATION/);
   assert.match(service, /scope:\s*AuthSessionScope\.ADMIN/);
+  assert.match(
+    service,
+    /logoutAdminRefreshToken[\s\S]*scope:\s*AuthSessionScope\.ADMIN/,
+  );
   assert.match(strategy, /scope:\s*AuthSessionScope\.ADMIN/);
 });
 
@@ -146,6 +234,7 @@ test("admin access JWTs are bound to a live revocable server session", () => {
   const strategy = read("src/auth/jwt.strategy.ts");
 
   assert.match(payload, /sid\?: string/);
+  assert.match(payload, /scope: JwtSessionScope/);
   assert.match(service, /sid: adminSessionId/);
   assert.match(service, /requiredRole === UserRole\.ADMIN \? replacement\.id/);
   assert.match(strategy, /payload\.sid/);

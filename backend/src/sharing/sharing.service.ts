@@ -219,36 +219,68 @@ export class SharingService {
       );
     }
 
-    const member = await this.prisma.sharedMember.create({
-      data: {
-        weddingPlanId,
-        userId,
+    const member = await runSerializableTransaction(this.prisma, async (tx) => {
+      const transactionalAccess =
+        await this.permissions.assertMemberManageableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+      this.assertPermissionCeiling(
+        transactionalAccess,
         role,
-        ...permissionData,
-      },
-      include: {
-        user: {
-          select: { id: true, phone: true, ...applicationNameFields },
+        permissionData,
+      );
+      if (userId === transactionalAccess.plan.ownerUserId) {
+        throw new BadRequestException("Owner cannot be added as a shared member");
+      }
+      const duplicate = await tx.sharedMember.findUnique({
+        where: { weddingPlanId_userId: { weddingPlanId, userId } },
+      });
+      if (duplicate) {
+        throw new ConflictException(
+          "User is already shared on this wedding plan",
+        );
+      }
+      const created = await tx.sharedMember.create({
+        data: {
+          weddingPlanId,
+          userId,
+          role,
+          ...permissionData,
         },
-      },
-    });
-
-    await this.notifications.createNotification({
-      userId,
-      weddingPlanId,
-      type: NotificationType.SHARING_INVITATION,
-      priority: NotificationPriority.HIGH,
-      title: "تمت إضافتك إلى خطة زفاف",
-      body: `أصبحت مشاركًا في "${plan.title}" بدور ${member.role}.`,
-      entityType: "shared_member",
-      entityId: member.id,
-      routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
-      data: {
-        sharedMemberId: member.id,
+        include: {
+          user: {
+            select: { id: true, phone: true, ...applicationNameFields },
+          },
+        },
+      });
+      if (created.canManageProviders) {
+        await this.setProviderConversationParticipation(
+          tx,
+          weddingPlanId,
+          userId,
+          true,
+        );
+      }
+      await this.notifications.createNotificationInTransaction(tx, {
+        userId,
         weddingPlanId,
-        role: member.role,
-      },
-      dedupeKey: `${userId}:sharing:${member.id}:invitation`,
+        type: NotificationType.SHARING_INVITATION,
+        priority: NotificationPriority.HIGH,
+        title: "تمت إضافتك إلى خطة زفاف",
+        body: `أصبحت مشاركًا في "${transactionalAccess.plan.title}" بدور ${created.role}.`,
+        entityType: "shared_member",
+        entityId: created.id,
+        routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
+        data: {
+          sharedMemberId: created.id,
+          weddingPlanId,
+          role: created.role,
+        },
+        dedupeKey: `${userId}:sharing:${created.id}:invitation`,
+      });
+      return created;
     });
 
     return this.toMemberResponse(member);
@@ -702,6 +734,14 @@ export class SharingService {
           },
         },
       });
+      if (member.canManageProviders) {
+        await this.setProviderConversationParticipation(
+          tx,
+          invite.weddingPlanId,
+          currentUser.id,
+          true,
+        );
+      }
 
       const acceptedInvite = await tx.planInvite.findUnique({
         where: { id: invite.id },
@@ -830,6 +870,8 @@ export class SharingService {
     });
     const hadProviderConversationAccess = existing.canManageProviders;
     const keepsProviderConversationAccess = nextRecord.canManageProviders;
+    const gainsProviderConversationAccess =
+      !hadProviderConversationAccess && keepsProviderConversationAccess;
     let revokedConversationIds: string[] = [];
     const member = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.sharedMember.update({
@@ -852,19 +894,20 @@ export class SharingService {
         );
       }
       if (hadProviderConversationAccess && !keepsProviderConversationAccess) {
-        revokedConversationIds = (
-          await tx.conversation.findMany({
-            where: { weddingPlanId },
-            select: { id: true },
-          })
-        ).map((conversation) => conversation.id);
-        await tx.conversationParticipant.updateMany({
-          where: {
-            userId: existing.userId,
-            conversationId: { in: revokedConversationIds },
-          },
-          data: { revokedAt: new Date() },
-        });
+        revokedConversationIds =
+          await this.setProviderConversationParticipation(
+            tx,
+            weddingPlanId,
+            existing.userId,
+            false,
+          );
+      } else if (gainsProviderConversationAccess) {
+        await this.setProviderConversationParticipation(
+          tx,
+          weddingPlanId,
+          existing.userId,
+          true,
+        );
       }
       return updated;
     });
@@ -904,20 +947,14 @@ export class SharingService {
     );
     let revokedConversationIds: string[] = [];
     await this.prisma.$transaction(async (tx) => {
-      revokedConversationIds = (
-        await tx.conversation.findMany({
-          where: { weddingPlanId },
-          select: { id: true },
-        })
-      ).map((conversation) => conversation.id);
-      await tx.conversationParticipant.updateMany({
-        where: {
-          userId: existing.userId,
-          conversationId: { in: revokedConversationIds },
-        },
-        data: { revokedAt: new Date() },
-      });
       await tx.sharedMember.delete({ where: { id: existing.id } });
+      revokedConversationIds =
+        await this.setProviderConversationParticipation(
+          tx,
+          weddingPlanId,
+          existing.userId,
+          false,
+        );
       await this.notifications.purgeMoneyForMember(
         tx,
         existing.userId,
@@ -1326,6 +1363,58 @@ export class SharingService {
       return;
     }
     throw new NotFoundException("Invite not found");
+  }
+
+  private async setProviderConversationParticipation(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+    active: boolean,
+  ): Promise<string[]> {
+    const conversations = await tx.conversation.findMany({
+      where: { weddingPlanId },
+      select: {
+        id: true,
+        provider: { select: { userId: true } },
+        weddingPlan: { select: { ownerUserId: true } },
+      },
+    });
+    const conversationIds = conversations
+      .filter(
+        (conversation) =>
+          active ||
+          (conversation.provider.userId !== userId &&
+            conversation.weddingPlan?.ownerUserId !== userId),
+      )
+      .map((conversation) => conversation.id);
+    if (conversationIds.length === 0) return [];
+
+    if (active) {
+      await tx.conversationParticipant.updateMany({
+        where: {
+          userId,
+          conversationId: { in: conversationIds },
+        },
+        data: { revokedAt: null },
+      });
+      await tx.conversationParticipant.createMany({
+        data: conversationIds.map((conversationId) => ({
+          conversationId,
+          userId,
+        })),
+        skipDuplicates: true,
+      });
+    } else {
+      await tx.conversationParticipant.updateMany({
+        where: {
+          userId,
+          conversationId: { in: conversationIds },
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+    }
+    return conversationIds;
   }
 
   private assignableRole(role: SharedMemberRole): SharedMemberRole {

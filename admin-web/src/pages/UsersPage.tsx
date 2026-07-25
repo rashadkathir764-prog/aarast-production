@@ -17,6 +17,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { formatDate } from './providerHelpers';
 import { Can } from '../auth/Can';
 import { AdminPermission } from '../auth/adminPermissions';
+import { useAuth } from '../auth/AuthProvider';
 
 type UserRow = AdminUser & {
   provider?: {
@@ -27,6 +28,7 @@ type UserRow = AdminUser & {
 };
 
 export function UsersPage() {
+  const { user: currentAdmin } = useAuth();
   const [items, setItems] = useState<UserRow[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -175,13 +177,20 @@ export function UsersPage() {
                       عرض التفاصيل
                     </Link>
                     <Can permission={AdminPermission.USERS_WRITE}>
-                      <ActionButton
-                        tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
-                        size="small"
-                        onClick={() => toggleUser(user)}
-                      >
-                        {user.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'}
-                      </ActionButton>
+                      {user.role !== 'ADMIN' ||
+                      currentAdmin?.adminRole === 'SUPER_ADMIN' ? (
+                        <ActionButton
+                          tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
+                          size="small"
+                          disabled={
+                            user.id === currentAdmin?.id &&
+                            user.status === 'ACTIVE'
+                          }
+                          onClick={() => toggleUser(user)}
+                        >
+                          {user.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'}
+                        </ActionButton>
+                      ) : null}
                     </Can>
                   </td>
                 </tr>

@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-17.
+Current documentation snapshot: 2026-07-24.
 
 Source status:
 
@@ -40,7 +40,12 @@ Health endpoints have distinct orchestration semantics:
 - JSON request and response bodies are used for API routes.
 - Protected routes require `Authorization: Bearer <accessToken>`.
 - Access JWTs default to 15 minutes and are renewed through rotating refresh
-  sessions.
+  sessions. Every access JWT carries a signed `scope` claim: `application` for
+  `/api/v1` product APIs and Chat, or `admin` for `/admin`. Scope-less,
+  cross-scope, and contradictory claim combinations are rejected.
+- Production refuses to start with a missing, placeholder, short, repetitive,
+  or low-entropy `JWT_SECRET`. The secret is validated without logging or
+  returning its value.
 - Private resources use ownership and sharing checks.
 - Some unauthorized private-resource access is intentionally returned as not found style behavior.
 - `passwordHash` is never returned.
@@ -130,13 +135,15 @@ Verified response:
 }
 ```
 
-The OTP is consumed atomically in the same serializable transaction that
-creates the verified User. A wrong, expired, already-consumed, or concurrently
-replayed code creates no account and issues no access or refresh token. Email is
-intentionally absent because a phone OTP cannot prove ownership of an email
-address. The initial response is generic; phone conflicts are checked only
-after valid phone proof so the start endpoint is not an account-enumeration
-oracle.
+OTP verification locks the current code row and commits the attempt or
+one-time consumption before any account mutation begins. A wrong, expired,
+already-consumed, exhausted, or concurrently replayed code creates no account
+and issues no access or refresh token. If a later account transaction fails,
+the successfully proved OTP remains consumed (fail closed) and the caller must
+request a new code. Email is intentionally absent because a phone OTP cannot
+prove ownership of an email address. The initial response is generic; phone
+conflicts are checked only after valid phone proof so the start endpoint is not
+an account-enumeration oracle.
 
 After valid phone proof, an existing unverified `USER` or `PROVIDER` row is
 claimed in place: its id, role, relations, and provider data are preserved while
@@ -180,8 +187,10 @@ role remains `ADMIN`.
 Password login, refresh, and protected JWT routes reject accounts whose
 `phoneVerifiedAt` is null. Existing unverified accounts must prove phone
 ownership through OTP (or a password-reset OTP) before receiving a session.
-Five failed password attempts within fifteen minutes lock that normalized
-account identifier for fifteen minutes. Application and administrator lock
+Five admitted password attempts within fifteen minutes lock that normalized
+account identifier for fifteen minutes. An attempt reserves its slot under the
+database row lock before password comparison, so a concurrent burst cannot run
+more comparisons than the configured ceiling. Application and administrator lock
 realms are independent, so one surface cannot lock the other. PostgreSQL stores only an
 HMAC-SHA-256 digest keyed by the deployment-only
 `AUTH_LOGIN_THROTTLE_PEPPER`, not the phone number, so the lock is shared by
@@ -201,13 +210,20 @@ expire after 30 days and are stored as hashes.
   `/api/v1/auth/refresh` rejects administration tokens, and
   `/api/v1/auth/admin/refresh` rejects application tokens. A general
   application session can never be upgraded into an MFA-assured administrator
-  session through refresh.
+  session through refresh. Rotation mints an access JWT with the same realm:
+  `application` refresh sessions mint only `scope=application`, and `ADMIN`
+  refresh sessions mint only `scope=admin`.
 - `POST /api/v1/auth/refresh` rotates one valid refresh token and returns a new access
   and refresh pair. Reuse of a revoked/expired token is rejected.
 - `POST /api/v1/auth/logout` revokes the supplied application refresh token;
   when omitted it revokes all application sessions for that user.
 - `POST /api/v1/auth/logout-all` revokes all active application refresh
   sessions. Administrator logout/recovery affects only administrator sessions.
+- A revoked refresh row is retained for 30 days from `revokedAt`; an unrevoked
+  expired row is retained for 30 days from `expiresAt`. One hourly
+  PostgreSQL-advisory-lock cleanup removes older rows on only one replica. This
+  bounded history preserves token-family reuse detection and incident evidence
+  without allowing terminal sessions to accumulate forever.
 
 The mobile client stores both tokens in secure storage and retries one failed
 request once after a successful refresh. Auth endpoints do not recursively
@@ -296,6 +312,15 @@ delivery: 60-second phone cooldown, bounded phone/IP windows, and an
 `AUTH_LOGIN_THROTTLE_PEPPER`; raw phone numbers and IP addresses are not stored.
 Provider delivery failures also consume quota so a failing transport cannot be
 used to bypass the safety ceiling.
+
+OTP verification is serialized per code row. The compare, failed-attempt
+increment, terminal attempt ceiling, and successful one-time consumption are
+one retryable PostgreSQL transaction. Concurrent wrong attempts cannot record
+more than `maxAttempts`, and a correct/wrong race cannot create two successful
+consumers. Password login uses the same row-lock principle on the HMAC-keyed
+`LoginThrottle` row. Each request reserves one attempt before password
+comparison; a successful authentication clears the row, while a cross-replica
+burst cannot execute more than five comparisons in one window.
 
 For the official Meta channel, a valid 2xx response containing a message id
 means API acceptance only and returns `deliveryStatus: "PENDING"`; it does not
@@ -495,6 +520,10 @@ The optional general budget is `WeddingPlan.estimatedBudget`. The canonical
 money setup write is the protected atomic route:
 
 - `PUT /api/v1/wedding-plans/:planId/money-budget`
+
+Browser clients are allowed to preflight this route with `PUT`; the canonical
+CORS method list includes `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and
+`OPTIONS`, while the origin and credential restrictions remain unchanged.
 
 Its body contains `totalBudget`, `currency`, and `categories`:
 
@@ -1077,6 +1106,21 @@ Authenticated user routes:
 Every review response uses a privacy-safe reviewer identity containing only
 `id` and `name`. Reviewer phone and email are never returned by public review,
 review create/update, provider-dashboard review, or admin-review responses.
+Review create, update, delete, publish, and hide operations lock the provider
+row and update `ratingAverage`/`ratingCount` from the published review rows in
+the same serializable transaction. Account deletion explicitly removes the
+user's reviews and refreshes every surviving provider under the same ordered
+locks; a successful response therefore cannot leave the public aggregate
+behind the review data.
+
+Provider service `basePrice`, package `price`, and quote-offer `amount` use the
+same money boundary as the planning ledger: a present value must be
+non-negative, contain at most 12 integer digits and 2 decimal places, and fit
+PostgreSQL `numeric(14,2)`. Null or blank optional prices clear/omit the value.
+Provider create/update, administrator service create/update, and marketplace
+price filters all share this validator. Invalid precision or overflow returns
+`400` before Prisma writes, so PostgreSQL never silently rounds a provider
+price and never surfaces numeric overflow as `500`.
 
 Plan-scoped `/api/v1` quote routes:
 
@@ -1104,13 +1148,23 @@ accepted or rejected, and return `QUOTE_OFFER_EXPIRED` if a stale client tries.
 Provider offer creation locks the quote request and permits one offer for the
 current request cycle.
 
+Every quote decision uses one serializable transition policy. Request rows are
+locked before offer rows, the current request/offer states are re-read under
+those locks, and each write includes its expected prior state. A losing
+accept/reject/update/cancel race therefore fails instead of overwriting the
+winner. An accepted offer cannot be edited, rejected, or left behind a
+cancelled request.
+
 Accepting a plan-scoped offer requires both provider-management and
 money-management permission. It atomically accepts the offer, links the
 provider, and creates or returns the single `WeddingCost` identified by the
 unique `quoteOfferId`. The offer amount must be positive and use the plan
 currency. The service category is matched logically against
 `BudgetCategory.normalizedName`; otherwise `أخرى` is reused or created without
-an allocation.
+an allocation. Acceptance re-reads both permissions inside the transition
+transaction while holding the relevant shared-member permission row. If
+revocation commits first, acceptance fails and creates no cost or provider
+link.
 
 The response contains:
 
@@ -1123,7 +1177,8 @@ The response contains:
 
 Retries return the existing cost and do not repeat notifications. Acceptance
 does not create a CostPayment, PaymentSchedule, task, deposit, paid booking, or
-confirmed booking.
+confirmed booking. A `WeddingCost` or `PlanProviderLink` tied to an offer is
+valid only while that offer and its request are `ACCEPTED`.
 
 Provider dashboard routes:
 
@@ -1177,11 +1232,15 @@ same transaction, so opening chat never mutates server state.
   messages and request/offer system events in one stable chronological stream.
 - `GET /api/v1/conversations/:id/messages` returns paginated message history.
 - `POST /api/v1/conversations/:id/messages` sends text and approved signed-media
-  attachments.
+  attachments. Immediately before persistence, one serializable transaction
+  locks the conversation, rechecks the live plan/provider authority and active
+  participant row, and derives recipients from that same locked graph. A
+  permission revocation that commits first therefore rejects the send without
+  creating a message, notification, or outbox event.
 - `GET /api/v1/conversations/:id/attachments/:attachmentId/download` refreshes a
   private attachment link after rechecking conversation membership.
 - `PATCH /api/v1/conversations/:id/read`, `/mute`, and `/block` update participant
-  state.
+  state. Mark-read never reactivates a revoked participant.
 - `POST /api/v1/conversations/:id/report` creates a moderation report.
 
 Conversation summaries include `scope`, optional `weddingPlan`, `provider`,
@@ -1197,14 +1256,22 @@ is limited to the requester and linked provider account. Participant rows store
 joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
 participant and forces current sockets out of the room. This permission is
 strong because it exposes the prior conversation history and allows sending as
-the plan; money fields still require money permissions.
+the plan; money fields still require money permissions. Role defaults populate
+the stored flag when a member or invite is created or changes role, but an
+explicit stored `false` is authoritative for both provider APIs and
+conversations; a role name never silently restores the capability. Revoked
+participants are reactivated only by an explicit provider-management permission
+grant, never as a side effect of opening, reading, marking read, or sending.
 
 Authenticated Socket.IO events include `conversation:join`,
 `conversation:message`, `conversation:read`, `conversation:event`,
 `conversation:activity-available`, and `conversation:permission-revoked`.
 Server authorization is rechecked before join, send, and read. A provider with
 no linked User does not block quote creation; the summary returns
-`providerJoined: false` and `canSend: false` until the account is linked.
+`providerJoined: false` and `canSend: false` until that provider account opens
+or sends in the conversation. Customer reads do not falsely join the provider,
+and the conversation remains readable while sending returns the stable
+`PROVIDER_NOT_JOINED` conflict contract.
 
 `POST /api/v1/media/uploads/presign` issues short-lived S3-compatible upload
 URLs for approved purposes and declared size/MIME limits. The returned
@@ -1247,17 +1314,21 @@ Admin routes are JWT-protected and require admin authorization:
 
 - `POST /api/v1/auth/admin/login` validates the admin password and returns only a
   short-lived MFA challenge after sending a `LOGIN` OTP.
-- `POST /api/v1/auth/admin/login/complete` atomically consumes the challenge + OTP,
-  returns a short-lived access JWT, and sets the rotating refresh token only as
-  a path-scoped `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
+- `POST /api/v1/auth/admin/login/complete` first consumes the exact OTP through
+  the row-locked one-time verifier, then compare-and-set consumes the live
+  challenge while issuing the administrator session. It returns a short-lived
+  access JWT and sets the rotating refresh token only as a path-scoped
+  `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
 - `POST /api/v1/auth/admin/refresh` rotates that cookie and its server session.
 - `POST /api/v1/auth/admin/logout` revokes the server session and clears the cookie.
 
 General password login, general OTP login, and general refresh never mint the
-`admin_mfa` assurance required by `AdminGuard`. Each admin access JWT also
-carries a server-side refresh-session id; refresh or logout revokes that row,
-so the prior access JWT stops working immediately. The JSON contract never
-returns the admin refresh token.
+`scope=admin` plus `admin_mfa` assurance required by `AdminGuard`. Each admin
+access JWT also carries a server-side refresh-session id; refresh or logout
+revokes that row, so the prior access JWT stops working immediately. Admin
+access JWTs cannot authorize `/api/v1` product APIs or Chat, and application
+access JWTs cannot authorize `/admin`. The JSON contract never returns the
+admin refresh token.
 
 - `GET /admin/dashboard/stats`
 - `GET /admin/reports/overview`
@@ -1310,7 +1381,11 @@ must not silently truncate to its first 50/80/100 results.
 
 Admin services are real `ProviderService` management operations. Deleting a service safely deactivates it (`isActive=false`) instead of hard-deleting data.
 
-Admin reviews are real `ProviderReview` moderation operations. Publishing or hiding a review recalculates the provider public rating from published reviews only. Reviewer contact details are not part of the moderation response or search contract.
+Admin reviews are real `ProviderReview` moderation operations. Publishing or
+hiding a review recalculates the provider public rating from published reviews
+only, inside the same provider-row-locked transaction as the moderation
+change. Reviewer contact details are not part of the moderation response or
+search contract.
 
 Admin notifications expose a privacy-minimized operational view of persisted
 notifications across users. The user reference contains `id`, `name`, and a
@@ -1342,8 +1417,13 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
   for different request content returns `409`, while an identical request still
   in progress returns retryable `503`. Raw paths, query values, and invite
   tokens are represented only by a SHA-256 fingerprint and are not persisted.
-  Pending reservations expire after 24 hours by default, completed responses
-  after 168 hours; both are environment-bounded and cleaned hourly.
+  Pending reservations expire after 24 hours by default and completed
+  responses after 168 hours. The hourly cleanup deletes only expired completed
+  responses. An expired row with `completedAt = NULL` is an ambiguous
+  tombstone because its domain transaction may already have committed; it is
+  retained, counted by an operations metric, and can be released or completed
+  only through the id-bound, evidence-gated reconciliation command documented
+  in the deployment runbook.
 - Access/error telemetry records the matched route template only. Query
   strings, concrete resource ids, invite tokens, exception messages, and
   exception stacks are not sent to application logs or Sentry. Unmatched

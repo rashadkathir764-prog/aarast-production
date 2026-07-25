@@ -36,7 +36,11 @@ and runtime checks override historical completion reports.
 - Accepted provider offers now create or return one idempotent `WeddingCost`
   inside the acceptance transaction. Category matching uses the provider
   service and normalized logical aliases, with an unallocated `أخرى` fallback;
-  no payment, schedule, task, or booking is created.
+  no payment, schedule, task, or booking is created. Accept, reject, provider
+  update, and requester cancel now share a request-first row-lock order and
+  expected-state writes. Acceptance rechecks provider and money permissions
+  under a locked shared-member row, preventing stale permission or lifecycle
+  races from producing a cost/link for a non-accepted offer.
 - Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS
@@ -49,20 +53,33 @@ and runtime checks override historical completion reports.
 
 ## Active Implemented Scope
 
-- Verified-phone registration, atomic OTP consumption, legacy unverified-row
-  recovery, stable Arabic auth errors, password/OTP login, separate app/admin
-  credentials, administrator password recovery, profile, and settings.
+- Verified-phone registration, row-locked OTP attempt ceilings and one-time
+  consumption, cross-replica login lockouts, production JWT-secret strength
+  enforcement, legacy unverified-row recovery, stable Arabic auth errors,
+  password/OTP login, separate app/admin credentials, administrator password
+  recovery, profile, and settings.
 - Wedding plans, onboarding, dashboard summaries, the canonical money domain
   (general budget, categories, costs, payments, and payment schedules), tasks,
   guests, sharing, permissions, notifications, and offline/cache support.
 - Provider catalog, favorites, reviews, quote requests/offers, provider
-  dashboard operations, and admin catalog/provider operations.
+  dashboard operations, and admin catalog/provider operations. Public provider
+  rating caches are derived under an ordered provider-row lock in the same
+  transaction as every user/admin review mutation and account-review purge.
+  Service, package, offer, admin-service, and marketplace-filter prices share
+  the bounded `numeric(14,2)` validator and fail before writes on overflow or
+  excess precision.
+  Browser CORS preflight explicitly permits the canonical `PUT` money-budget
+  write while retaining the configured origin, credential, and header policy.
 - One conversation per plan/provider or account/provider context, created with
   the first real quote request and reused by later requests. The implemented
   timeline combines human messages with persisted quote/offer system events,
   authenticated Socket.IO delivery, unread/read, personal mute, side-level
   block, report, private chat objects with membership-gated 120-second signed
-  downloads, and admin report moderation.
+  downloads, and admin report moderation. Send and mark-read recheck live
+  authority and the active participant inside a serializable transaction;
+  permission revocation removes sockets and cannot be undone by those actions.
+  A not-yet-joined provider keeps the customer conversation readable while
+  sending remains disabled.
 - Image writes verify and sanitize the complete uploaded object server-side
   before persistence. JPEG/PNG/WebP uploads must match their ownership metadata,
   stored size/MIME, fully decode within the pixel/dimension/single-frame bounds,
@@ -76,11 +93,13 @@ and runtime checks override historical completion reports.
 - Append-only cost payment/reversal entries, unique schedule-payment links,
   and row-locked payment-schedule transitions.
 - Rotating refresh sessions with single-session logout, logout-all, secure
-  mobile storage, and one guarded retry after `401`.
+  mobile storage, one guarded retry after `401`, and bounded 30-day terminal
+  history cleaned by one hourly advisory-lock holder.
 - Password brute-force protection is durable across restarts and backend
   replicas: PostgreSQL stores only an HMAC-SHA-256 account-identifier digest
-  keyed by a deployment-only pepper. Five failures enforce a fifteen-minute
-  lock that a successful login/reset clears; an hourly advisory-lock-protected
+  keyed by a deployment-only pepper. Each attempt reserves a row-locked slot
+  before password comparison; five admitted attempts enforce a fifteen-minute
+  lock that a successful login/reset clears. An hourly advisory-lock-protected
   job removes expired and inactive throttle rows on one replica.
 - Flutter account providers are recreated at a user-keyed boundary; plan data
   providers are replaced when the selected plan changes. Disposed providers

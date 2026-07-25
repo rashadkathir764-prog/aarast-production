@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import { OtpDeliveryUncertainError, WhatsAppOtpChannel } from '../src/auth/otp-channel';
 import { loadWhatsAppOtpConfig } from '../src/auth/whatsapp-otp-config';
 import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
+import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
+const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const config = {
   apiVersion: 'v23.0',
   phoneNumberId: '123456789',
@@ -170,7 +172,7 @@ test('WhatsApp mode fails configuration validation before boot when incomplete',
       validateRuntimeEnvironment({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://example',
-        JWT_SECRET: 'a-secure-test-secret',
+        JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
         AUTH_OTP_MODE: 'whatsapp',
       }),
@@ -184,7 +186,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
       validateRuntimeEnvironment({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://example',
-        JWT_SECRET: 'a-secure-test-secret',
+        JWT_SECRET: strongRuntimeJwtSecret,
       }),
     /AUTH_OTP_MODE is required in production/,
   );
@@ -194,7 +196,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
       validateRuntimeEnvironment({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://example',
-        JWT_SECRET: 'a-secure-test-secret',
+        JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_OTP_MODE: 'dev',
       }),
     /forbidden in production/,
@@ -204,7 +206,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
     validateRuntimeEnvironment({
       NODE_ENV: 'production',
       DATABASE_URL: 'postgresql://example',
-      JWT_SECRET: 'a-secure-test-secret',
+      JWT_SECRET: strongRuntimeJwtSecret,
       AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
       AUTH_OTP_MODE: 'whatsapp',
       WHATSAPP_GRAPH_API_VERSION: config.apiVersion,

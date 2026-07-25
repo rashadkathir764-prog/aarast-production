@@ -101,11 +101,15 @@ longer work. Object-storage credentials remain server-side.
 ## Public Provider Media
 
 The Dokploy Compose stack provisions a persistent MinIO volume and a one-shot
-bucket initializer. Anonymous downloads are limited to the `user-avatar/`,
+bucket/service-account initializer. MinIO root credentials exist only in those
+two services; Backend receives a separate session-policy-limited service
+account. Anonymous downloads are limited to the `user-avatar/`,
 `provider-logo/`, `provider-cover/`, and `service-image/` prefixes. The
-`chat-image/` prefix is never public. Provider services may own multiple image
-rows; Flutter uploads and verifies each selected image before binding it to the
-service, and the public provider profile exposes the ordered gallery.
+`chat-image/` prefix is never public. Backend can get bucket location and
+put/get/delete objects only below those five application prefixes; it cannot
+list or manage buckets, users, or policies. Provider services may own multiple
+image rows; Flutter uploads and verifies each selected image before binding it
+to the service, and the public provider profile exposes the ordered gallery.
 
 ## Mobile Store Release Gate
 

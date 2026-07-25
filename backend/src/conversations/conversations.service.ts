@@ -12,6 +12,7 @@ import {
   SharedMemberRole,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OutboxEventTypes } from '../outbox/outbox.constants';
@@ -23,6 +24,8 @@ import {
   toApplicationUserSummary,
 } from '../users/application-user-identity';
 import {
+  hasJoinedProvider,
+  isActiveConversationParticipant,
   normalizeMessageBody,
   normalizeMessagePageSize,
 } from './conversation-policy';
@@ -144,12 +147,10 @@ export class ConversationsService {
     const hasMore = candidates.length > limit;
     const page = candidates.slice(0, limit);
     await this.ensureParticipants(
-      page.flatMap((conversation) => [
-        { conversationId: conversation.id, userId: currentUser.id },
-        ...(conversation.provider.userId
-          ? [{ conversationId: conversation.id, userId: conversation.provider.userId }]
-          : []),
-      ]),
+      page.map((conversation) => ({
+        conversationId: conversation.id,
+        userId: currentUser.id,
+      })),
     );
     const ids = page.map((conversation) => conversation.id);
     const conversations = ids.length
@@ -332,17 +333,15 @@ export class ConversationsService {
   }
 
   async send(currentUser: AuthenticatedUser, conversationId: string, dto: SendMessageDto) {
-    const { conversation, access } = await this.assertAccess(currentUser, conversationId);
-    if (conversation.closedAt) throw new ConflictException('Conversation is closed');
-    if (!conversation.provider.userId) {
-      throw new ConflictException({
-        code: 'PROVIDER_NOT_JOINED',
-        message: 'المورد لم ينضم للمحادثة بعد',
-      });
-    }
-    if (this.isBlocked(conversation)) {
-      throw new ConflictException('Conversation is blocked');
-    }
+    const { conversation, access } = await this.assertAccess(
+      currentUser,
+      conversationId,
+      false,
+    );
+    this.assertConversationSendable(
+      conversation,
+      access.side === 'PROVIDER',
+    );
     const attachments = dto.attachments ?? [];
     if (attachments.length > 4) {
       throw new BadRequestException('A message can contain up to 4 attachments');
@@ -367,9 +366,20 @@ export class ConversationsService {
       ),
     );
     const body = normalizeMessageBody(dto.body);
-    const now = new Date();
-    const recipientIds = this.messageRecipientIds(conversation, access.side, currentUser.id);
-    const message = await this.prisma.$transaction(async (tx) => {
+    const message = await runSerializableTransaction(this.prisma, async (tx) => {
+      const { conversation: current, access } =
+        await this.assertActiveAccessInTransaction(
+          tx,
+          currentUser,
+          conversationId,
+        );
+      this.assertConversationSendable(current);
+      const now = new Date();
+      const recipientIds = this.messageRecipientIds(
+        current,
+        access.side,
+        currentUser.id,
+      );
       const created = await tx.chatMessage.create({
         data: {
           conversationId,
@@ -407,10 +417,17 @@ export class ConversationsService {
         where: { id: conversationId },
         data: { lastActivityAt: now },
       });
-      await tx.conversationParticipant.updateMany({
-        where: { conversationId, userId: currentUser.id },
-        data: { lastReadAt: now, revokedAt: null },
+      const senderState = await tx.conversationParticipant.updateMany({
+        where: {
+          conversationId,
+          userId: currentUser.id,
+          revokedAt: null,
+        },
+        data: { lastReadAt: now },
       });
+      if (senderState.count !== 1) {
+        throw new NotFoundException('Conversation not found');
+      }
       await this.outbox.enqueue(tx, {
         type: OutboxEventTypes.conversationMessageAvailable,
         aggregateType: 'conversation',
@@ -449,7 +466,7 @@ export class ConversationsService {
           if (participantByUser.get(recipientId)?.mutedAt) continue;
           await this.notifications.createNotificationInTransaction(tx, {
             userId: recipientId,
-            weddingPlanId: conversation.weddingPlanId,
+            weddingPlanId: current.weddingPlanId,
             type: NotificationType.CHAT_MESSAGE_RECEIVED,
             priority: NotificationPriority.NORMAL,
             title: 'رسالة جديدة',
@@ -459,9 +476,9 @@ export class ConversationsService {
             routeTarget: `/conversations/${conversationId}`,
             data: {
               conversationId,
-              providerId: conversation.providerId,
-              ...(conversation.weddingPlanId
-                ? { weddingPlanId: conversation.weddingPlanId }
+              providerId: current.providerId,
+              ...(current.weddingPlanId
+                ? { weddingPlanId: current.weddingPlanId }
                 : {}),
               messageId: created.id,
             },
@@ -502,11 +519,24 @@ export class ConversationsService {
   }
 
   async markRead(currentUser: AuthenticatedUser, conversationId: string) {
-    await this.assertAccess(currentUser, conversationId);
     const lastReadAt = new Date();
-    await this.prisma.conversationParticipant.updateMany({
-      where: { conversationId, userId: currentUser.id },
-      data: { lastReadAt, revokedAt: null },
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.assertActiveAccessInTransaction(
+        tx,
+        currentUser,
+        conversationId,
+      );
+      const updated = await tx.conversationParticipant.updateMany({
+        where: {
+          conversationId,
+          userId: currentUser.id,
+          revokedAt: null,
+        },
+        data: { lastReadAt },
+      });
+      if (updated.count !== 1) {
+        throw new NotFoundException('Conversation not found');
+      }
     });
     const receipt = { conversationId, lastReadAt, userId: currentUser.id };
     this.realtime.read(conversationId, receipt);
@@ -581,7 +611,11 @@ export class ConversationsService {
     );
   }
 
-  private async assertAccess(currentUser: AuthenticatedUser, conversationId: string) {
+  private async assertAccess(
+    currentUser: AuthenticatedUser,
+    conversationId: string,
+    ensureCurrentParticipant = true,
+  ) {
     let conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: conversationInclude,
@@ -596,17 +630,141 @@ export class ConversationsService {
       this.realtime.revokeConversationAccess(currentUser.id, [conversationId]);
       throw new NotFoundException('Conversation not found');
     }
-    await this.ensureParticipants([
-      { conversationId, userId: currentUser.id },
-      ...(conversation.provider.userId
-        ? [{ conversationId, userId: conversation.provider.userId }]
-        : []),
-    ]);
-    conversation = await this.prisma.conversation.findUniqueOrThrow({
+    if (ensureCurrentParticipant) {
+      await this.ensureParticipants([
+        { conversationId, userId: currentUser.id },
+      ]);
+      conversation = await this.prisma.conversation.findUniqueOrThrow({
+        where: { id: conversationId },
+        include: conversationInclude,
+      });
+    }
+    return { conversation, access };
+  }
+
+  private async assertActiveAccessInTransaction(
+    tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
+    conversationId: string,
+  ): Promise<{
+    conversation: ConversationRecord;
+    access: ConversationAccess;
+  }> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "Conversation"
+        WHERE "id" = ${conversationId}
+        FOR UPDATE
+      `,
+    );
+    if (locked.length !== 1) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const identity = await tx.conversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        scope: true,
+        weddingPlanId: true,
+        provider: { select: { userId: true } },
+        weddingPlan: { select: { ownerUserId: true } },
+      },
+    });
+    if (!identity) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const isProvider = identity.provider.userId === currentUser.id;
+    const isPlanOwner =
+      identity.scope === ConversationScope.PLAN &&
+      identity.weddingPlan?.ownerUserId === currentUser.id;
+    if (
+      identity.scope === ConversationScope.PLAN &&
+      identity.weddingPlanId &&
+      !isProvider &&
+      !isPlanOwner
+    ) {
+      await tx.$queryRaw(
+        Prisma.sql`
+          SELECT "id"
+          FROM "SharedMember"
+          WHERE "weddingPlanId" = ${identity.weddingPlanId}
+            AND "userId" = ${currentUser.id}
+          FOR SHARE
+        `,
+      );
+    }
+
+    let conversation = await tx.conversation.findUnique({
       where: { id: conversationId },
       include: conversationInclude,
     });
+    let access = conversation
+      ? this.accessFor(conversation, currentUser.id)
+      : null;
+    if (!conversation || !access) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    await tx.conversationParticipant.createMany({
+      data: [{ conversationId, userId: currentUser.id }],
+      skipDuplicates: true,
+    });
+    const participant = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "ConversationParticipant"
+        WHERE "conversationId" = ${conversationId}
+          AND "userId" = ${currentUser.id}
+          AND "revokedAt" IS NULL
+        FOR UPDATE
+      `,
+    );
+    if (participant.length !== 1) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    conversation = await tx.conversation.findUnique({
+      where: { id: conversationId },
+      include: conversationInclude,
+    });
+    access = conversation ? this.accessFor(conversation, currentUser.id) : null;
+    if (
+      !conversation ||
+      !access ||
+      !isActiveConversationParticipant(
+        conversation.participants,
+        currentUser.id,
+      )
+    ) {
+      throw new NotFoundException('Conversation not found');
+    }
     return { conversation, access };
+  }
+
+  private assertConversationSendable(
+    conversation: ConversationRecord,
+    allowProviderSelfJoin = false,
+  ): void {
+    if (conversation.closedAt) {
+      throw new ConflictException('Conversation is closed');
+    }
+    if (
+      !allowProviderSelfJoin &&
+      !hasJoinedProvider(
+        conversation.provider.userId,
+        conversation.participants,
+      )
+    ) {
+      throw new ConflictException({
+        code: 'PROVIDER_NOT_JOINED',
+        message: 'المورد لم ينضم للمحادثة بعد',
+      });
+    }
+    if (this.isBlocked(conversation)) {
+      throw new ConflictException('Conversation is blocked');
+    }
   }
 
   private accessFor(
@@ -691,15 +849,10 @@ export class ConversationsService {
       ...new Map(values.map((value) => [`${value.conversationId}:${value.userId}`, value])).values(),
     ];
     if (unique.length === 0) return;
-    await this.prisma.$transaction([
-      ...unique.map((value) =>
-        this.prisma.conversationParticipant.updateMany({
-          where: value,
-          data: { revokedAt: null },
-        }),
-      ),
-      this.prisma.conversationParticipant.createMany({ data: unique, skipDuplicates: true }),
-    ]);
+    await this.prisma.conversationParticipant.createMany({
+      data: unique,
+      skipDuplicates: true,
+    });
   }
 
   private async unreadCounts(currentUserId: string, conversationIds: string[]) {
@@ -754,13 +907,10 @@ export class ConversationsService {
       (participant) => participant.userId === currentUserId && !participant.revokedAt,
     );
     if (!membership) throw new NotFoundException('Conversation not found');
-    const providerParticipant = conversation.provider.userId
-      ? conversation.participants.find(
-          (participant) =>
-            participant.userId === conversation.provider.userId && !participant.revokedAt,
-        )
-      : null;
-    const providerJoined = Boolean(conversation.provider.userId && providerParticipant);
+    const providerJoined = hasJoinedProvider(
+      conversation.provider.userId,
+      conversation.participants,
+    );
     const blocked = this.isBlocked(conversation);
     const latestQuote = conversation.quoteRequests[0] ?? null;
     const counterpart =

@@ -36,6 +36,7 @@ npm test
 npm run smoke:auth-verification
 npm run smoke:sharing-security
 npm run smoke:marketplace
+npm run smoke:phase2-provider-rating-concurrency
 npm run smoke:provider-dashboard
 npm run smoke:private-chat-media
 npm run smoke:money-apis
@@ -73,6 +74,9 @@ Money-domain changes additionally fail unless tests prove:
   without creating a placeholder category and rejects any positive allocation
   when `totalBudget` is null; the mobile form prevents an entirely empty no-op
   write before calling that route;
+- an HTTP `OPTIONS` preflight for the canonical money-budget route advertises
+  `PUT` in `Access-Control-Allow-Methods` without widening origin or header
+  policy;
 - schedule warnings expose counts with `amount: null`, so overlapping reminders
   are never summed or presented as debt;
 - direct SQL insert/update of one pending schedule above the current outstanding
@@ -165,10 +169,26 @@ notification/outbox idempotency.
 Authorization coverage must exercise the plan owner, an explicit
 `canManageProviders` member, a member without that flag, the ACCOUNT requester,
 and the linked provider. Revoking the flag must return 404 to REST immediately,
-mark any Participant revoked, and eject the current Socket.IO room. Flutter
-coverage must include PLAN/ACCOUNT labels, one inbox row with multiple request
-count, read-only quote lookup, event navigation, provider-not-joined state,
-error/retry, reconnect, permission revocation, and duplicate-free pagination.
+mark any Participant revoked, and eject the current Socket.IO room. Live
+coverage must also prove that an explicit false on a role whose defaults grant
+provider management is denied by both provider APIs and conversation access.
+Flutter coverage must include PLAN/ACCOUNT labels, one inbox row with multiple
+request count, read-only quote lookup, event navigation, provider-not-joined
+state, error/retry, reconnect, permission revocation, and duplicate-free
+pagination.
+
+Provider review concurrency coverage must prove that create, rating update,
+delete, admin hide/publish, and reviewer-account deletion always leave
+`Provider.ratingAverage` and `ratingCount` equal to a direct aggregate of
+published `ProviderReview` rows. The live smoke must exercise interleaved
+mutations repeatedly on a managed isolated database and leave no disposable
+resource behind.
+
+Provider price coverage must send oversized and over-precision values through
+the live service, package, and quote-offer create/update routes, require `400`,
+and prove that no new row or partial update reached PostgreSQL. Source tests
+must also keep admin service writes and marketplace filters on the same central
+money validator.
 
 ## Mobile Changes
 

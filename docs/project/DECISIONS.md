@@ -18,7 +18,7 @@
 | Calculate every money surface from the canonical cost ledger. | Accepted | Confirmed cost is the sum of non-cancelled cost totals. Paid is the net append-only payment ledger after reversals. Outstanding is confirmed cost minus paid, and remaining budget is the general budget minus confirmed cost. A schedule is only a reminder and contributes nothing until paid. |
 | Keep category allocation separate from the general budget. | Accepted | A null general budget remains unset and category allocations never become a fallback general budget. Budget-first setup may save no categories; any positive category allocation requires a non-null general budget, and total allocations may not exceed it. |
 | Make finance sharing understandable. | Accepted | `canViewMoney` controls all private money reads and `canManageMoney` controls all money writes. Hidden values are absent, not returned as misleading zeros. |
-| Use short-lived access tokens with rotating refresh tokens. | Accepted and implemented | Access JWTs default to 15 minutes. Opaque 30-day refresh tokens are hashed at rest, rotated transactionally, and revocable per session or per user. |
+| Use short-lived access tokens with rotating refresh tokens. | Accepted and implemented | Access JWTs default to 15 minutes. Opaque 30-day refresh tokens are hashed at rest, rotated transactionally, and revocable per session or per user. Terminal rows remain for 30 days after their applicable expiry or revocation event for reuse detection and incident evidence, then an hourly single-replica cleanup removes them. |
 | Keep one active documentation source per area. | Accepted | `docs/README.md` owns the source map. Historical plans and reports live as `.md.txt` under `docs/archive/` and must not compete with current docs. |
 
 ## Current Decisions Addendum - 2026-07-10
@@ -35,7 +35,9 @@
 | Separate liveness from readiness. | Accepted and implemented | `/live` and `/health` prove only that the process responds; `/ready` verifies PostgreSQL and required Redis/media dependencies with bounded timeouts and redacted failures. Production containers use readiness before receiving dependent traffic. |
 | Use a transactional PostgreSQL outbox before adding an external broker. | Accepted and implemented | Notification and chat availability events commit with their domain rows. Workers use `FOR UPDATE SKIP LOCKED`, stale-lock recovery, bounded retries, failed-event retention, metrics, and alerts. Immediate Socket.IO delivery remains the low-latency path; outbox availability events repair commit-to-publish crashes. |
 | Bind and expire idempotency keys. | Accepted and implemented | A user key is valid only for one method, concrete target, and canonical body. Identical retries replay safely, mismatches return `409`, pending reservations and completed responses have bounded lifetimes, and cleanup uses a cross-replica PostgreSQL advisory lock. |
-| Require password + phone OTP and server-bound browser sessions for administration. | Accepted and implemented | General login paths cannot mint admin assurance. Access tokens stay in memory, refresh tokens stay in rotating HttpOnly/SameSite cookies, each admin JWT references a live server session, and refresh/logout invalidate the prior JWT immediately. |
+| Keep provider rating caches transactionally exact. | Accepted and implemented | Review create/update/delete and admin publish/hide serialize on the Provider row, mutate the review, and derive the published-only count/average in one transaction. Account deletion explicitly refreshes every surviving provider whose review cascades would otherwise make the cache stale. |
+| Validate provider prices at the shared money boundary. | Accepted and implemented | Service base prices, package prices, quote-offer amounts, admin service prices, and marketplace price filters share one `numeric(14,2)` validator. Overflow and excess precision fail as `400` before persistence instead of becoming PostgreSQL rounding or `500`. |
+| Require password + phone OTP and server-bound browser sessions for administration. | Accepted and implemented | General login paths cannot mint admin assurance. Every access JWT has a signed `application` or `admin` scope; product and Chat guards reject admin-scoped tokens, while admin guards require the admin scope, MFA, and a live server session. Access tokens stay in memory, refresh tokens stay in rotating HttpOnly/SameSite cookies, and refresh/logout invalidate the prior admin JWT immediately. |
 
 ## Current Decisions Addendum - 2026-07-12
 
@@ -48,7 +50,7 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Make conversation identity the provider relationship context, not one request. | Accepted and implemented | `PLAN` is unique by `weddingPlanId + providerId`; `ACCOUNT` is unique by `accountRequesterUserId + providerId`. Every QuoteRequest is linked to exactly one conversation and multiple requests share its timeline. |
-| Derive conversation authorization live from plan/provider relations. | Accepted and implemented | Plan owners, explicit `SharedMember.canManageProviders` members, the account requester, and the linked provider account are authorized by current rows on every REST/Socket operation. `ConversationParticipant` stores only personal state and is never an authority source. |
+| Derive conversation authorization live from plan/provider relations. | Accepted and implemented | Plan owners, explicit `SharedMember.canManageProviders` members, the account requester, and the linked provider account are authorized by current rows on every REST/Socket operation. Role defaults initialize the stored provider flag, but its current boolean value is authoritative across provider APIs and conversations. `ConversationParticipant` stores only personal state and is never an authority source. |
 | Keep quote lifecycle updates as system events, separate from human messages. | Accepted and implemented | `ConversationEvent` stores idempotent request/offer events without price or contact data. Offer expiry is derived from `validUntil`; unread counts include human messages only. |
 
 ## Current Decisions Addendum - 2026-07-15
@@ -68,6 +70,14 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Create one planning cost when a provider offer is accepted. | Accepted and implemented in source | Offer acceptance and `WeddingCost` creation are one serializable, idempotent transaction keyed by unique `quoteOfferId`. The cost starts unpaid, uses the plan currency and provider/service context, and falls back to `أخرى` only when no logical budget-category match exists. This creates no payment, payment schedule, task, booking, settlement, or payment-processing state. |
+
+## Current Decisions Addendum - 2026-07-24
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Fail closed on weak production JWT secrets and serialize authentication attempt ceilings at the database row. | Accepted and implemented in source | Production startup rejects missing, placeholder, short, repetitive, or low-entropy JWT secrets without exposing them. OTP comparison, failed attempts, exhaustion, and consumption are committed under one row lock; password attempts reserve admission under a row-locking upsert before credential comparison so concurrent replicas cannot bypass the configured ceiling. |
+| Serialize every quote decision with one request-first lock order and live permissions. | Accepted and implemented in source | Accept, reject, provider update, and requester cancel lock QuoteRequest before QuoteOffer, re-read the current state, and use an expected-state write. Acceptance also locks and rechecks provider plus money authority inside the same transaction, so revocation or another terminal decision cannot leave cost/link rows attached to a non-accepted offer. |
+| Make conversation revocation transactional and reactivation explicit. | Accepted and implemented in source | Send and mark-read recheck live authority plus the active participant under locks in one serializable transaction. Sending and reading never clear `revokedAt`; only an explicit provider-management grant may reactivate a participant. A provider joins only through its own access, so customer reads preserve the truthful `providerJoined: false` read-only state. |
 
 ## Initial Project Decisions
 

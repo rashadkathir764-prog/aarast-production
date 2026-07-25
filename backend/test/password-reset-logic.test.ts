@@ -126,6 +126,8 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
               otp.consumedAt === where.consumedAt,
           );
       },
+      findUnique: async ({ where }: any) =>
+        otps.find((otp) => otp.id === where.id) ?? null,
       update: async ({ where, data }: any) => {
         const otp = otps.find((item) => item.id === where.id);
         assert.ok(otp);

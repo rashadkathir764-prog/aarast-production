@@ -3,6 +3,7 @@ import { AuthSessionScope } from '@prisma/client';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveJwtSessionScope } from './access-token-scope';
 import { AuthenticatedUser } from './authenticated-user.interface';
 import { JwtPayload } from './jwt-payload.interface';
 import { toAuthenticatedUser } from './safe-user';
@@ -19,14 +20,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
+    const sessionScope = resolveJwtSessionScope(payload);
+    if (!sessionScope) {
+      throw new UnauthorizedException('Session is invalid or expired');
+    }
+    const isAdminSession = sessionScope === 'admin';
     const [user, adminSession] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: payload.sub },
       }),
-      payload.amr === 'admin_mfa' && payload.sid
+      isAdminSession
         ? this.prisma.refreshToken.findFirst({
             where: {
-              id: payload.sid,
+              id: payload.sid!,
               userId: payload.sub,
               scope: AuthSessionScope.ADMIN,
               revokedAt: null,
@@ -41,14 +47,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       !user ||
       user.status === 'DISABLED' ||
       !user.phoneVerifiedAt ||
-      (payload.amr === 'admin_mfa' && !adminSession)
+      (isAdminSession && !adminSession)
     ) {
       throw new UnauthorizedException('User not found, disabled, or unverified');
     }
 
     return {
-      ...toAuthenticatedUser(user, payload.amr === 'admin_mfa'),
-      adminMfa: payload.amr === 'admin_mfa',
+      ...toAuthenticatedUser(user, isAdminSession),
+      adminMfa: isAdminSession,
+      sessionScope,
     };
   }
 }

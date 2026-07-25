@@ -46,4 +46,10 @@ describe('admin RBAC and audit UI contract', () => {
     );
     expect(notificationsSource).toContain('AdminPermission.NOTIFICATIONS_WRITE');
   });
+
+  it('does not offer admin-account status actions to delegated administrators', () => {
+    expect(usersSource).toContain("currentAdmin?.adminRole === 'SUPER_ADMIN'");
+    expect(usersSource).toContain("user.role !== 'ADMIN'");
+    expect(usersSource).toContain('user.id === currentAdmin?.id');
+  });
 });

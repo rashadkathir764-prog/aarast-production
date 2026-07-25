@@ -22,7 +22,10 @@ import {
   otpVerificationsTotal,
 } from "../common/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../common/prisma/serializable-transaction";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDto } from "./dto/register.dto";
 import { CompleteRegistrationDto } from "./dto/complete-registration.dto";
@@ -482,7 +485,7 @@ export class AuthService {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const realm: LoginThrottleRealm =
       requiredRole === UserRole.ADMIN ? "admin" : "application";
-    await this.loginThrottle.assertAllowed(phone, realm);
+    await this.loginThrottle.reserveAttempt(phone, realm);
 
     // Prefer the canonical normalized row before consulting legacy variants.
     // A pre-normalization database may still contain both `7xxxxxxxx` and
@@ -513,7 +516,6 @@ export class AuthService {
       user.status === "DISABLED" ||
       (requiredRole !== undefined && user.role !== requiredRole)
     ) {
-      await this.loginThrottle.recordFailure(phone, realm);
       throw authError(
         HttpStatus.UNAUTHORIZED,
         AuthErrorCode.INVALID_CREDENTIALS,
@@ -620,7 +622,7 @@ export class AuthService {
         accessToken: this.signToken(
           existing.user.id,
           existing.user.phone,
-          requiredRole === UserRole.ADMIN,
+          requiredRole === UserRole.ADMIN ? "admin" : "application",
           adminSessionId,
         ),
         refreshToken: nextToken,
@@ -638,10 +640,13 @@ export class AuthService {
     return this.refresh({ refreshToken }, UserRole.ADMIN);
   }
 
-  async logoutRefreshToken(refreshToken: string): Promise<{ revoked: number }> {
+  async logoutAdminRefreshToken(
+    refreshToken: string,
+  ): Promise<{ revoked: number }> {
     const result = await this.prisma.refreshToken.updateMany({
       where: {
         tokenHash: hashRefreshToken(refreshToken),
+        scope: AuthSessionScope.ADMIN,
         revokedAt: null,
       },
       data: { revokedAt: new Date() },
@@ -1268,7 +1273,7 @@ export class AuthService {
       accessToken: this.signToken(
         user.id,
         user.phone,
-        adminMfa,
+        adminMfa ? "admin" : "application",
         adminMfa ? refreshSession.id : undefined,
       ),
       refreshToken,
@@ -1320,28 +1325,24 @@ export class AuthService {
   private signToken(
     userId: string,
     phone: string | null,
-    adminMfa = false,
+    scope: JwtPayload["scope"],
     adminSessionId?: string,
   ): string {
+    if (
+      (scope === "admin" && !adminSessionId) ||
+      (scope === "application" && adminSessionId !== undefined)
+    ) {
+      throw new Error("Access-token scope and session are inconsistent");
+    }
     const payload: JwtPayload = {
       sub: userId,
       phone,
-      ...(adminMfa && adminSessionId
+      scope,
+      ...(scope === "admin"
         ? { amr: "admin_mfa" as const, sid: adminSessionId }
         : {}),
     };
     return this.jwtService.sign(payload);
-  }
-
-  private async recordFailedOtpAttempt(otp: OtpCode, now: Date): Promise<void> {
-    const attempts = otp.attempts + 1;
-    await this.prisma.otpCode.updateMany({
-      where: { id: otp.id, consumedAt: null, expiresAt: { gt: now } },
-      data: {
-        attempts: { increment: 1 },
-        ...(attempts >= otp.maxAttempts ? { consumedAt: now } : {}),
-      },
-    });
   }
 
   private async replaceActiveOtp(
@@ -1414,32 +1415,103 @@ export class AuthService {
       otpVerificationsTotal.inc({ outcome: "failure" });
       throw this.otpInvalid();
     }
-    if (
-      !otp ||
-      otp.phone !== phone ||
-      otp.purpose !== purpose ||
-      otp.consumedAt ||
-      otp.expiresAt <= now ||
-      otp.attempts >= otp.maxAttempts
-    ) {
-      if (otp && !otp.consumedAt) {
-        await this.prisma.otpCode.updateMany({
-          where: { id: otp.id, consumedAt: null },
-          data: { consumedAt: now },
-        });
+    if (!otp) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw this.otpInvalid();
+    }
+
+    let result:
+      | { outcome: "verified"; otp: OtpCode }
+      | { outcome: "invalid" };
+    try {
+      result = await runRetryableTransaction(
+        this.prisma,
+        async (tx) => {
+          const locked = await tx.otpCode.updateMany({
+            where: { id: otp.id },
+            data: { updatedAt: now },
+          });
+          if (locked.count !== 1) return { outcome: "invalid" as const };
+
+          const current = await tx.otpCode.findUnique({
+            where: { id: otp.id },
+          });
+          if (
+            !current ||
+            current.phone !== phone ||
+            current.purpose !== purpose ||
+            current.consumedAt ||
+            current.expiresAt <= now ||
+            current.attempts >= current.maxAttempts
+          ) {
+            if (current && !current.consumedAt) {
+              await tx.otpCode.updateMany({
+                where: { id: current.id, consumedAt: null },
+                data: { consumedAt: now },
+              });
+            }
+            return { outcome: "invalid" as const };
+          }
+
+          const matches = await bcryptjs.compare(code, current.codeHash);
+          if (!matches) {
+            const nextAttempts = current.attempts + 1;
+            await tx.otpCode.updateMany({
+              where: {
+                id: current.id,
+                consumedAt: null,
+                expiresAt: { gt: now },
+                attempts: { lt: current.maxAttempts },
+              },
+              data: {
+                attempts: { increment: 1 },
+                ...(nextAttempts >= current.maxAttempts
+                  ? { consumedAt: now }
+                  : {}),
+              },
+            });
+            return { outcome: "invalid" as const };
+          }
+
+          const consumed = await tx.otpCode.updateMany({
+            where: {
+              id: current.id,
+              consumedAt: null,
+              expiresAt: { gt: now },
+              attempts: { lt: current.maxAttempts },
+            },
+            data: { consumedAt: now },
+          });
+          if (consumed.count !== 1) return { outcome: "invalid" as const };
+
+          return {
+            outcome: "verified" as const,
+            otp: {
+              ...current,
+              consumedAt: now,
+              updatedAt: now,
+            },
+          };
+        },
+        { maxAttempts: 4 },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        otpVerificationsTotal.inc({ outcome: "failure" });
+        throw this.otpInvalid();
       }
+      throw error;
+    }
+
+    if (result.outcome === "invalid") {
       otpVerificationsTotal.inc({ outcome: "failure" });
       throw this.otpInvalid();
     }
 
-    const matches = await bcryptjs.compare(code, otp.codeHash);
-    if (!matches) {
-      await this.recordFailedOtpAttempt(otp, now);
-      otpVerificationsTotal.inc({ outcome: "failure" });
-      throw this.otpInvalid();
-    }
-
-    return otp;
+    return result.otp;
   }
 
   private async consumeOtpRecord(
@@ -1447,6 +1519,8 @@ export class AuthService {
     otp: OtpCode,
     now: Date,
   ): Promise<void> {
+    if (otp.consumedAt) return;
+
     const consumed = await client.otpCode.updateMany({
       where: {
         id: otp.id,

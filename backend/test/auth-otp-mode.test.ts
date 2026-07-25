@@ -4,9 +4,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { OtpPurpose, Prisma } from '@prisma/client';
 import { AuthService } from '../src/auth/auth.service';
+import { getJwtSecret } from '../src/auth/jwt-secret';
+import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
 import { otpDeliveryOutcomesTotal } from '../src/common/observability/metrics';
+import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
 const safeOtpUnavailableMessage = 'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';
+const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 
 async function otpDeliveryMetricValue(purpose: OtpPurpose, outcome: string): Promise<number> {
   const metric = await otpDeliveryOutcomesTotal.get();
@@ -110,6 +114,8 @@ function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise
               otp.consumedAt === where.consumedAt,
           );
       },
+      findUnique: async ({ where }: any) =>
+        otps.find((otp) => otp.id === where.id) ?? null,
       update: async ({ where, data }: any) => {
         const otp = otps.find((item) => item.id === where.id);
         assert.ok(otp);
@@ -643,6 +649,66 @@ test('exhausted OTP write retries return the stable availability contract', asyn
         isOtpDeliveryUnavailable,
       );
       assert.equal(attempts, 3);
+    },
+  );
+});
+
+test('production JWT secret rejects weak values without disclosing them', async () => {
+  for (const weakSecret of [
+    'short-but-not-placeholder',
+    'a'.repeat(64),
+    'replace-with-strong-jwt-access-secret',
+    'replace-with-at-least-32-random-characters',
+  ]) {
+    await withEnv(
+      {
+        JWT_SECRET: weakSecret,
+        NODE_ENV: 'production',
+      },
+      async () => {
+        assert.throws(
+          () => getJwtSecret(),
+          (error: Error) => {
+            assert.doesNotMatch(error.message, new RegExp(weakSecret));
+            return true;
+          },
+        );
+      },
+    );
+  }
+});
+
+test('production JWT secret accepts a high-entropy value', async () => {
+  await withEnv(
+    {
+      JWT_SECRET: strongRuntimeJwtSecret,
+      NODE_ENV: 'production',
+    },
+    async () => {
+      assert.equal(
+        getJwtSecret(),
+        process.env.JWT_SECRET,
+      );
+    },
+  );
+});
+
+test('production runtime fails before boot on a weak JWT secret', () => {
+  const weakSecret = 'ab'.repeat(32);
+  assert.throws(
+    () =>
+      validateRuntimeEnvironment({
+        DATABASE_URL: 'postgresql://runtime.invalid/aarast',
+        JWT_SECRET: weakSecret,
+        NODE_ENV: 'production',
+        AUTH_OTP_MODE: 'disabled',
+        AUTH_LOGIN_THROTTLE_PEPPER:
+          'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
+      }),
+    (error: Error) => {
+      assert.doesNotMatch(error.message, new RegExp(weakSecret));
+      assert.match(error.message, /JWT_SECRET/);
+      return true;
     },
   );
 });

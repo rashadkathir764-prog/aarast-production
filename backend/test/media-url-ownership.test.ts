@@ -14,9 +14,9 @@ import {
 import { UsersService } from "../src/users/users.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 import { validateRuntimeEnvironment } from "../src/common/config/runtime-environment";
+import { createStrongRuntimeJwtSecret } from "./support/runtime-secrets";
 
-const strongRuntimeJwtSecret =
-  "Y7uQ4nD9pL2xV8mR5cK1sF6hJ3wB0zT4eN9gA2qP7vX5dM8k";
+const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const BASE = "https://cdn.example.test";
 
 test("local HTTP media URLs are accepted only outside production", () => {

@@ -39,6 +39,7 @@ let token = "";
 let adminRefreshCookie = "";
 let smokeCredentials = null;
 let cleanupSmokeAdmin = async () => {};
+let isSmokeAdminPhoneVerified = async () => false;
 
 function check(name, passed, detail = "") {
   checks.push({ name, passed, detail });
@@ -144,6 +145,13 @@ async function createLocalSmokeAdmin() {
       await prisma.user.deleteMany({ where: { id: user.id, phone } });
       await prisma.$disconnect();
     };
+    isSmokeAdminPhoneVerified = async () => {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { phoneVerifiedAt: true },
+      });
+      return Boolean(currentUser?.phoneVerifiedAt);
+    };
 
     return { phone, password, source: "temporary local smoke admin" };
   } catch (error) {
@@ -241,13 +249,13 @@ async function run() {
 
   res = await request("/api/v1/auth/me");
   check(
-    "auth me returns admin user",
-    res.status === 200 && res.body?.role === "ADMIN",
+    "application auth me rejects admin-scoped access token",
+    res.status === 401,
     String(res.status),
   );
   check(
     "admin MFA verifies a pre-MFA administrator phone",
-    Boolean(res.body?.phoneVerifiedAt),
+    await isSmokeAdminPhoneVerified(),
   );
   check("auth me does not expose passwordHash", !hasPasswordHash(res.body));
 

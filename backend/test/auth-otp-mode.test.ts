@@ -7,8 +7,10 @@ import { AuthService } from '../src/auth/auth.service';
 import { getJwtSecret } from '../src/auth/jwt-secret';
 import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
 import { otpDeliveryOutcomesTotal } from '../src/common/observability/metrics';
+import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
 const safeOtpUnavailableMessage = 'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';
+const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 
 async function otpDeliveryMetricValue(purpose: OtpPurpose, outcome: string): Promise<number> {
   const metric = await otpDeliveryOutcomesTotal.get();
@@ -679,8 +681,7 @@ test('production JWT secret rejects weak values without disclosing them', async 
 test('production JWT secret accepts a high-entropy value', async () => {
   await withEnv(
     {
-      JWT_SECRET:
-        'Y7uQ4nD9pL2xV8mR5cK1sF6hJ3wB0zT4eN9gA2qP7vX5dM8k',
+      JWT_SECRET: strongRuntimeJwtSecret,
       NODE_ENV: 'production',
     },
     async () => {

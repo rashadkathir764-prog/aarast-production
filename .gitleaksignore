@@ -1,0 +1,5 @@
+# Reviewed test-only JWT fixture fingerprints from 69846036e7ed1cc7982f3e5363881cdf9d52f894.
+# The static fixture has also been removed from the current test source.
+69846036e7ed1cc7982f3e5363881cdf9d52f894:backend/test/media-url-ownership.test.ts:generic-api-key:18
+69846036e7ed1cc7982f3e5363881cdf9d52f894:backend/test/openwa-otp-channel.test.ts:generic-api-key:11
+69846036e7ed1cc7982f3e5363881cdf9d52f894:backend/test/whatsapp-otp-channel.test.ts:generic-api-key:7

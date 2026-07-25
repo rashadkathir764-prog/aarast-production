@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import { OtpDeliveryUncertainError, WhatsAppOtpChannel } from '../src/auth/otp-channel';
 import { loadWhatsAppOtpConfig } from '../src/auth/whatsapp-otp-config';
 import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
+import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
-const strongRuntimeJwtSecret =
-  'Y7uQ4nD9pL2xV8mR5cK1sF6hJ3wB0zT4eN9gA2qP7vX5dM8k';
+const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const config = {
   apiVersion: 'v23.0',
   phoneNumberId: '123456789',

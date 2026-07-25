@@ -7,6 +7,7 @@ class OtpRequestResult {
     required this.expiresAt,
     required this.delivery,
     this.deliveryStatus = 'PENDING',
+    this.accountSetupRequired = false,
     this.code,
     this.message,
   });
@@ -20,6 +21,7 @@ class OtpRequestResult {
       deliveryStatus:
           json['deliveryStatus']?.toString() ??
           (json['delivery'] == 'LOCAL_DEV' ? 'LOCAL_DEV' : 'PENDING'),
+      accountSetupRequired: json['accountSetupRequired'] == true,
       code: json['code']?.toString(),
       message: json['message']?.toString(),
     );
@@ -30,6 +32,7 @@ class OtpRequestResult {
   final DateTime expiresAt;
   final String delivery;
   final String deliveryStatus;
+  final bool accountSetupRequired;
   final String? code;
   final String? message;
 

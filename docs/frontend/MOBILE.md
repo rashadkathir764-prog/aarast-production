@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-07-23
+Snapshot date: 2026-07-25
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
@@ -73,8 +73,16 @@ conversations, signed image uploads, and rotating refresh sessions.
   link through the hardened transient OpenWA contract. Delivery uncertainty is
   reported honestly and the owner may copy the link as a fallback. A linked
   invite requests OTP only after the bearer and entered phone match the same
-  live pending invitation; successful phone proof accepts the invitation and
-  opens the contributor plan space. The public HTTPS landing and WhatsApp
+  live pending invitation. Successful phone proof resumes the private flow and
+  shows the invitation, role, and permissions without accepting it. The
+  participant must then explicitly accept or reject; only acceptance opens the
+  contributor plan space. When that phone has no application
+  credential, the same invite OTP also creates the contributor account with a
+  name and password chosen by the participant; no random hidden password or
+  second OTP is used. Closing and reopening the app restores the rotating
+  session from secure storage. Explicit logout still revokes the session and
+  routes to password login, where OTP remains an optional login/recovery path.
+  The public HTTPS landing and WhatsApp
   message expose no names, dates, permissions, or plan details before phone
   verification. Android App Link association is part of the public-site image;
   its certificate fingerprint and the physical-device flow must be revalidated

@@ -35,6 +35,7 @@ class AuthController extends ChangeNotifier {
   String? _errorCode;
   OtpRequestResult? _otpRequest;
   bool _sessionExpired = false;
+  bool _loginRequestedAfterLogout = false;
   String? _pendingInviteResumeToken;
   bool _pendingInviteRouteClaimed = false;
 
@@ -52,6 +53,7 @@ class AuthController extends ChangeNotifier {
   /// True right after a mid-session 401 invalidated the session. The UI
   /// redirects to login once, then acknowledges.
   bool get sessionExpired => _sessionExpired;
+  bool get loginRequestedAfterLogout => _loginRequestedAfterLogout;
 
   Future<void> restoreSession() async {
     _status = AuthStatus.checking;
@@ -107,6 +109,7 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
+      _loginRequestedAfterLogout = false;
       unawaited(_offlineSyncService?.syncPendingChanges());
     }, unauthorizedMessage: _safeLoginFailureMessage);
   }
@@ -131,6 +134,7 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
+      _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
         _pendingInviteResumeToken = cleanResumeToken;
         _pendingInviteRouteClaimed = false;
@@ -205,14 +209,24 @@ class AuthController extends ChangeNotifier {
     required String purpose,
     required String code,
     String? resumeInviteToken,
+    String? accountName,
+    String? accountPassword,
   }) async {
     final cleanResumeToken = _validInviteToken(resumeInviteToken);
     return _submit(() async {
-      final response = await _authRepository.verifyOtp(
-        phone: phone.trim(),
-        purpose: purpose,
-        code: code,
-      );
+      final response = cleanResumeToken == null
+          ? await _authRepository.verifyOtp(
+              phone: phone.trim(),
+              purpose: purpose,
+              code: code,
+            )
+          : await _authRepository.verifyInviteOtp(
+              token: cleanResumeToken,
+              phone: phone.trim(),
+              code: code,
+              name: accountName,
+              password: accountPassword,
+            );
       if (response.user != null) {
         _user = response.user;
         _authRepository.bindClientSession(response.user!.id);
@@ -221,6 +235,7 @@ class AuthController extends ChangeNotifier {
       }
       if (response.accessToken != null) {
         _status = AuthStatus.authenticated;
+        _loginRequestedAfterLogout = false;
         if (purpose == 'LOGIN' && cleanResumeToken != null) {
           _pendingInviteResumeToken = cleanResumeToken;
           _pendingInviteRouteClaimed = false;
@@ -239,6 +254,12 @@ class AuthController extends ChangeNotifier {
     if (!hasPendingInviteResume) return null;
     _pendingInviteRouteClaimed = true;
     return _pendingInviteResumeToken;
+  }
+
+  bool claimLoginAfterLogout() {
+    if (!_loginRequestedAfterLogout) return false;
+    _loginRequestedAfterLogout = false;
+    return true;
   }
 
   /// Allows only the route carrying the same private token to resume. A stale
@@ -289,6 +310,7 @@ class AuthController extends ChangeNotifier {
   Future<void> logout() async {
     _authRepository.bindClientSession(null);
     _clearPendingInviteResume();
+    _loginRequestedAfterLogout = true;
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -435,6 +457,8 @@ class AuthController extends ChangeNotifier {
         'تم التحقق من الرقم، لكن الحساب معطل حاليًا. تواصل مع الدعم.',
       'INVITE_NOT_FOUND_FOR_PHONE' =>
         'لا توجد دعوة فعّالة مرتبطة بهذا الرقم. تأكد من الرقم أو اطلب دعوة جديدة.',
+      'INVITE_ACCOUNT_SETUP_REQUIRED' =>
+        'أنشئ اسمًا وكلمة مرور لحساب المساهم ثم أعد تأكيد الرمز نفسه.',
       _ => null,
     };
   }

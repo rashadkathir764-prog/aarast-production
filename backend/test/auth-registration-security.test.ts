@@ -1,15 +1,16 @@
-import 'reflect-metadata';
+import "reflect-metadata";
 
-import assert from 'node:assert/strict';
-import { test } from 'node:test';
-import { ValidationPipe } from '@nestjs/common';
-import { OtpPurpose, Prisma } from '@prisma/client';
-import * as bcryptjs from 'bcryptjs';
-import { AuthService } from '../src/auth/auth.service';
-import { RegisterDto } from '../src/auth/dto/register.dto';
-import { JwtStrategy } from '../src/auth/jwt.strategy';
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { test } from "node:test";
+import { ValidationPipe } from "@nestjs/common";
+import { OtpPurpose, Prisma } from "@prisma/client";
+import * as bcryptjs from "bcryptjs";
+import { AuthService } from "../src/auth/auth.service";
+import { RegisterDto } from "../src/auth/dto/register.dto";
+import { JwtStrategy } from "../src/auth/jwt.strategy";
 
-const { registerVerified } = require('../scripts/smoke/verified-registration');
+const { registerVerified } = require("../scripts/smoke/verified-registration");
 
 function createHarness() {
   const otps: any[] = [];
@@ -71,13 +72,13 @@ function createHarness() {
     },
     user: {
       findFirst: async ({ where }: any) => {
-        lookupEvents.push('user');
+        lookupEvents.push("user");
         const clauses: any[] = where.OR ?? [where];
         return (
           users.find((user) =>
             clauses.some(
               (clause) =>
-                (typeof clause.phone === 'string'
+                (typeof clause.phone === "string"
                   ? clause.phone === user.phone
                   : clause.phone?.equals === user.phone ||
                     clause.phone?.in?.includes(user.phone)) ||
@@ -95,16 +96,16 @@ function createHarness() {
         const now = new Date();
         const user = {
           id: `user-${++userSequence}`,
-          role: 'USER',
+          role: "USER",
           adminRole: null,
-          appRole: 'WEDDING_USER',
-          status: 'ACTIVE',
+          appRole: "WEDDING_USER",
+          status: "ACTIVE",
           appPasswordHash: null,
           appName: null,
           appEmail: null,
           appAvatarUrl: null,
           avatarUrl: null,
-          locale: 'ar',
+          locale: "ar",
           activeWeddingPlanId: null,
           onboardingPath: null,
           persona: null,
@@ -153,12 +154,21 @@ function createHarness() {
     },
     planInvite: {
       findFirst: async ({ where }: any) => {
-        if (!planInvite || planInvite.normalizedPhone !== where.normalizedPhone) {
+        if (
+          !planInvite ||
+          planInvite.normalizedPhone !== where.normalizedPhone
+        ) {
           return null;
         }
-        if (where.acceptedAt === null && planInvite.acceptedAt !== null) return null;
-        if (where.declinedAt === null && planInvite.declinedAt !== null) return null;
-        if (where.revokedAt === null && planInvite.revokedAt !== null) return null;
+        if (where.tokenHash && planInvite.tokenHash !== where.tokenHash) {
+          return null;
+        }
+        if (where.acceptedAt === null && planInvite.acceptedAt !== null)
+          return null;
+        if (where.declinedAt === null && planInvite.declinedAt !== null)
+          return null;
+        if (where.revokedAt === null && planInvite.revokedAt !== null)
+          return null;
         if (where.expiresAt?.gt && planInvite.expiresAt <= where.expiresAt.gt) {
           return null;
         }
@@ -191,13 +201,17 @@ function createHarness() {
     signedPayloads,
     prisma,
     lookupEvents,
-    addUser: async (phone: string, verified: boolean, email: string | null = null) =>
+    addUser: async (
+      phone: string,
+      verified: boolean,
+      email: string | null = null,
+    ) =>
       prisma.user.create({
         data: {
-          name: 'Existing User',
+          name: "Existing User",
           phone,
           email,
-          passwordHash: await bcryptjs.hash('secret123', 4),
+          passwordHash: await bcryptjs.hash("secret123", 4),
           phoneVerifiedAt: verified ? new Date() : null,
           lastLoginAt: null,
         },
@@ -214,9 +228,9 @@ async function withDevOtp(action: () => Promise<void>) {
     code: process.env.AUTH_DEV_OTP_CODE,
     nodeEnv: process.env.NODE_ENV,
   };
-  process.env.AUTH_OTP_MODE = 'dev';
-  process.env.AUTH_DEV_OTP_CODE = '123456';
-  process.env.NODE_ENV = 'test';
+  process.env.AUTH_OTP_MODE = "dev";
+  process.env.AUTH_DEV_OTP_CODE = "123456";
+  process.env.NODE_ENV = "test";
   try {
     await action();
   } finally {
@@ -229,7 +243,7 @@ async function withDevOtp(action: () => Promise<void>) {
   }
 }
 
-test('registration accepts only phone-owned fields and rejects an email claim', async () => {
+test("registration accepts only phone-owned fields and rejects an email claim", async () => {
   const pipe = new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
@@ -240,77 +254,77 @@ test('registration accepts only phone-owned fields and rejects an email claim', 
     () =>
       pipe.transform(
         {
-          name: 'New User',
-          phone: '777123456',
-          password: 'secret123',
-          email: 'unverified@example.com',
+          name: "New User",
+          phone: "777123456",
+          password: "secret123",
+          email: "unverified@example.com",
         },
-        { type: 'body', metatype: RegisterDto },
+        { type: "body", metatype: RegisterDto },
       ),
     (error: any) =>
       error
         .getResponse?.()
-        .message?.includes('property email should not exist') === true,
+        .message?.includes("property email should not exist") === true,
   );
 });
 
-test('registration stays pending and sessionless until the REGISTER OTP is consumed', async () => {
+test("registration stays pending and sessionless until the REGISTER OTP is consumed", async () => {
   await withDevOtp(async () => {
     const { service, users, refreshTokens } = createHarness();
     const pending = await service.startRegistration({
-      name: 'New User',
-      phone: '777123456',
+      name: "New User",
+      phone: "777123456",
     });
 
-    assert.equal('registrationPending' in pending, true);
+    assert.equal("registrationPending" in pending, true);
     assert.equal(users.length, 0);
     assert.equal(refreshTokens.length, 0);
 
     await assert.rejects(
       () =>
         service.completeRegistration({
-          name: 'New User',
-          phone: '777123456',
-          password: 'secret123',
-          otpCode: '999999',
+          name: "New User",
+          phone: "777123456",
+          password: "secret123",
+          otpCode: "999999",
         }),
       /OTP code is invalid or expired/,
     );
-    assert.equal(users.length, 0, 'an attacker must not pre-claim the phone');
+    assert.equal(users.length, 0, "an attacker must not pre-claim the phone");
     assert.equal(refreshTokens.length, 0);
 
     const completed = await service.completeRegistration({
-      name: 'New User',
-      phone: '777123456',
-      password: 'secret123',
-      otpCode: '123456',
+      name: "New User",
+      phone: "777123456",
+      password: "secret123",
+      otpCode: "123456",
     });
-    assert.equal('accessToken' in completed, true);
+    assert.equal("accessToken" in completed, true);
     assert.ok(users[0].phoneVerifiedAt);
     assert.equal(refreshTokens.length, 1);
   });
 });
 
-test('correct password exposes only the verification challenge and LOGIN OTP recovers the legacy account', async () => {
+test("correct password exposes only the verification challenge and LOGIN OTP recovers the legacy account", async () => {
   await withDevOtp(async () => {
     const { service, refreshTokens, addUser } = createHarness();
-    const legacy = await addUser('+967777123456', false);
+    const legacy = await addUser("+967777123456", false);
     await assert.rejects(
-      () => service.login({ phone: '777123456', password: 'secret123' }),
+      () => service.login({ phone: "777123456", password: "secret123" }),
       (error: any) =>
         error.getStatus?.() === 401 &&
-        error.getResponse?.().code === 'PHONE_VERIFICATION_REQUIRED',
+        error.getResponse?.().code === "PHONE_VERIFICATION_REQUIRED",
     );
     assert.equal(refreshTokens.length, 0);
 
     await service.requestOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
     });
     const recovered = await service.verifyOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
-      code: '123456',
+      code: "123456",
     });
 
     assert.ok(legacy.phoneVerifiedAt);
@@ -321,27 +335,27 @@ test('correct password exposes only the verification challenge and LOGIN OTP rec
   });
 });
 
-test('an admin needs a separate application password for a wedding-app bearer', async () => {
+test("an admin needs a separate application password for a wedding-app bearer", async () => {
   await withDevOtp(async () => {
     const { service, refreshTokens, addUser } = createHarness();
-    const admin = await addUser('+967777123456', true);
-    admin.role = 'ADMIN';
-    admin.adminRole = 'SUPER_ADMIN';
+    const admin = await addUser("+967777123456", true);
+    admin.role = "ADMIN";
+    admin.adminRole = "SUPER_ADMIN";
 
     await assert.rejects(
       () =>
         service.login({
-          phone: '777123456',
-          password: 'secret123',
+          phone: "777123456",
+          password: "secret123",
         }),
       /Invalid credentials/,
     );
     assert.equal(refreshTokens.length, 0);
 
-    admin.appPasswordHash = await bcryptjs.hash('application-secret', 4);
+    admin.appPasswordHash = await bcryptjs.hash("application-secret", 4);
     const response = await service.login({
-      phone: '777123456',
-      password: 'application-secret',
+      phone: "777123456",
+      password: "application-secret",
     });
     assert.equal(response.user.adminRole, null);
     assert.deepEqual(response.user.adminPermissions, []);
@@ -350,7 +364,7 @@ test('an admin needs a separate application password for a wedding-app bearer', 
   });
 });
 
-test('general OTP login gives an admin only a standard wedding-app session', async () => {
+test("general OTP login gives an admin only a standard wedding-app session", async () => {
   await withDevOtp(async () => {
     const { service, refreshTokens, signedPayloads, addUser } = createHarness();
     const admin = await addUser('+967777123456', true);
@@ -360,21 +374,21 @@ test('general OTP login gives an admin only a standard wedding-app session', asy
     admin.appName = 'Wedding App Admin';
 
     await service.requestOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
     });
 
     const response = await service.verifyOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
-      code: '123456',
+      code: "123456",
     });
 
     assert.ok(response.accessToken);
     assert.ok(response.refreshToken);
     assert.equal(response.user?.adminRole, null);
-    assert.equal(response.user?.role, 'USER');
-    assert.equal(response.user?.name, 'Wedding App Admin');
+    assert.equal(response.user?.role, "USER");
+    assert.equal(response.user?.name, "Wedding App Admin");
     assert.deepEqual(response.user?.adminPermissions, []);
     assert.match(response.refreshToken, /^aarast_app_/);
     assert.equal(refreshTokens.length, 1);
@@ -384,37 +398,37 @@ test('general OTP login gives an admin only a standard wedding-app session', asy
   });
 });
 
-test('password login prefers the canonical phone row over a legacy duplicate', async () => {
+test("password login prefers the canonical phone row over a legacy duplicate", async () => {
   await withDevOtp(async () => {
     const { service, users, addUser } = createHarness();
-    const legacy = await addUser('777123456', true);
-    legacy.passwordHash = await bcryptjs.hash('different-password', 4);
-    await addUser('+967777123456', true);
+    const legacy = await addUser("777123456", true);
+    legacy.passwordHash = await bcryptjs.hash("different-password", 4);
+    await addUser("+967777123456", true);
 
     const response = await service.login({
-      phone: '777123456',
-      password: 'secret123',
+      phone: "777123456",
+      password: "secret123",
     });
 
-    assert.equal('accessToken' in response, true);
+    assert.equal("accessToken" in response, true);
     assert.equal(users.length, 2);
   });
 });
 
-test('OTP login prefers the canonical phone row over a legacy duplicate', async () => {
+test("OTP login prefers the canonical phone row over a legacy duplicate", async () => {
   await withDevOtp(async () => {
     const { service, refreshTokens, addUser } = createHarness();
-    const legacy = await addUser('777123456', true);
-    const canonical = await addUser('+967777123456', true);
+    const legacy = await addUser("777123456", true);
+    const canonical = await addUser("+967777123456", true);
 
     await service.requestOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
     });
     const response = await service.verifyOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
-      code: '123456',
+      code: "123456",
     });
 
     assert.equal(response.user?.id, canonical.id);
@@ -423,33 +437,33 @@ test('OTP login prefers the canonical phone row over a legacy duplicate', async 
   });
 });
 
-test('registration start does not disclose an existing phone', async () => {
+test("registration start does not disclose an existing phone", async () => {
   await withDevOtp(async () => {
     const { service, addUser } = createHarness();
-    await addUser('+967777123456', true);
+    await addUser("+967777123456", true);
     const response = await service.startRegistration({
-      name: 'Probe',
-      phone: '777123456',
+      name: "Probe",
+      phone: "777123456",
     });
     assert.equal(response.registrationPending, true);
     assert.equal(response.purpose, OtpPurpose.REGISTER);
   });
 });
 
-test('invalid registration OTP does not disclose whether the phone exists', async () => {
+test("invalid registration OTP does not disclose whether the phone exists", async () => {
   await withDevOtp(async () => {
     const scenarios = [
       {
-        existingPhone: '+967777123456',
-        attemptedPhone: '777123456',
+        existingPhone: "+967777123456",
+        attemptedPhone: "777123456",
       },
       {
-        existingPhone: '+967733333333',
-        attemptedPhone: '777123456',
+        existingPhone: "+967733333333",
+        attemptedPhone: "777123456",
       },
       {
         existingPhone: null,
-        attemptedPhone: '777123456',
+        attemptedPhone: "777123456",
       },
     ];
 
@@ -460,48 +474,48 @@ test('invalid registration OTP does not disclose whether the phone exists', asyn
         await addUser(scenario.existingPhone, true);
       }
       await service.startRegistration({
-        name: 'Probe',
+        name: "Probe",
         phone: scenario.attemptedPhone,
       });
 
       try {
         await service.completeRegistration({
-          name: 'Probe',
+          name: "Probe",
           phone: scenario.attemptedPhone,
-          password: 'secret123',
-          otpCode: '999999',
+          password: "secret123",
+          otpCode: "999999",
         });
-        assert.fail('invalid OTP must be rejected');
+        assert.fail("invalid OTP must be rejected");
       } catch (error: any) {
         errors.push({ status: error.getStatus(), message: error.message });
       }
     }
 
     assert.deepEqual(errors, [
-      { status: 400, message: 'OTP code is invalid or expired' },
-      { status: 400, message: 'OTP code is invalid or expired' },
-      { status: 400, message: 'OTP code is invalid or expired' },
+      { status: 400, message: "OTP code is invalid or expired" },
+      { status: 400, message: "OTP code is invalid or expired" },
+      { status: 400, message: "OTP code is invalid or expired" },
     ]);
   });
 });
 
-test('registration verifies OTP before checking a phone conflict', async () => {
+test("registration verifies OTP before checking a phone conflict", async () => {
   await withDevOtp(async () => {
     const { service, addUser, lookupEvents } = createHarness();
-    await addUser('+967777123456', true);
+    await addUser("+967777123456", true);
     await service.startRegistration({
-      name: 'Probe',
-      phone: '777123456',
+      name: "Probe",
+      phone: "777123456",
     });
     lookupEvents.length = 0;
 
     await assert.rejects(
       () =>
         service.completeRegistration({
-          name: 'Probe',
-          phone: '777123456',
-          password: 'secret123',
-          otpCode: '999999',
+          name: "Probe",
+          phone: "777123456",
+          password: "secret123",
+          otpCode: "999999",
         }),
       /OTP code is invalid or expired/,
     );
@@ -509,157 +523,160 @@ test('registration verifies OTP before checking a phone conflict', async () => {
     assert.deepEqual(
       lookupEvents,
       [],
-      'identifier lookup must not run until the phone OTP is valid',
+      "identifier lookup must not run until the phone OTP is valid",
     );
 
     await assert.rejects(
       () =>
         service.completeRegistration({
-          name: 'Probe',
-          phone: '777123456',
-          password: 'secret123',
-          otpCode: '123456',
+          name: "Probe",
+          phone: "777123456",
+          password: "secret123",
+          otpCode: "123456",
         }),
       /An account already exists for this phone/,
     );
     assert.deepEqual(
       lookupEvents,
-      ['user'],
-      'identifier conflicts are checked only after valid phone proof',
+      ["user"],
+      "identifier conflicts are checked only after valid phone proof",
     );
   });
 });
 
-test('a valid REGISTER OTP claims an unverified legacy account without replacing its identity', async () => {
+test("a valid REGISTER OTP claims an unverified legacy account without replacing its identity", async () => {
   await withDevOtp(async () => {
     const { service, users, refreshTokens, addUser } = createHarness();
-    const legacy = await addUser('+967777123456', false);
-    legacy.role = 'PROVIDER';
-    legacy.providerProfile = { id: 'provider-profile-1' };
+    const legacy = await addUser("+967777123456", false);
+    legacy.role = "PROVIDER";
+    legacy.providerProfile = { id: "provider-profile-1" };
     const originalId = legacy.id;
 
     await service.startRegistration({
-      name: 'Recovered Provider',
-      phone: '777123456',
+      name: "Recovered Provider",
+      phone: "777123456",
     });
     const response = await service.completeRegistration({
-      name: 'Recovered Provider',
-      phone: '777123456',
-      password: 'new-application-password',
-      otpCode: '123456',
+      name: "Recovered Provider",
+      phone: "777123456",
+      password: "new-application-password",
+      otpCode: "123456",
     });
 
     assert.equal(users.length, 1);
     assert.equal(response.user.id, originalId);
-    assert.equal(response.user.role, 'PROVIDER');
-    assert.equal(legacy.providerProfile.id, 'provider-profile-1');
-    assert.equal(legacy.name, 'Recovered Provider');
+    assert.equal(response.user.role, "PROVIDER");
+    assert.equal(legacy.providerProfile.id, "provider-profile-1");
+    assert.equal(legacy.name, "Recovered Provider");
     assert.ok(legacy.phoneVerifiedAt);
     assert.ok(
-      await bcryptjs.compare(
-        'new-application-password',
-        legacy.passwordHash,
-      ),
+      await bcryptjs.compare("new-application-password", legacy.passwordHash),
     );
     assert.equal(refreshTokens.length, 1);
   });
 });
 
-test('an admin can enroll a separate app password without changing admin credentials', async () => {
+test("an admin can enroll a separate app password without changing admin credentials", async () => {
   await withDevOtp(async () => {
     const { service, users, refreshTokens, addUser } = createHarness();
-    const admin = await addUser('+967777123456', true);
-    admin.role = 'ADMIN';
-    admin.adminRole = 'SUPER_ADMIN';
+    const admin = await addUser("+967777123456", true);
+    admin.role = "ADMIN";
+    admin.adminRole = "SUPER_ADMIN";
     const originalAdminHash = admin.passwordHash;
     const originalName = admin.name;
 
     await service.startRegistration({
-      name: 'Wedding App Name',
-      phone: '777123456',
+      name: "Wedding App Name",
+      phone: "777123456",
     });
     const response = await service.completeRegistration({
-      name: 'Wedding App Name',
-      phone: '777123456',
-      password: 'application-password',
-      otpCode: '123456',
+      name: "Wedding App Name",
+      phone: "777123456",
+      password: "application-password",
+      otpCode: "123456",
     });
 
     assert.equal(users.length, 1);
     assert.equal(admin.passwordHash, originalAdminHash);
     assert.equal(admin.name, originalName);
-    assert.equal(admin.appName, 'Wedding App Name');
+    assert.equal(admin.appName, "Wedding App Name");
     assert.ok(
-      await bcryptjs.compare('application-password', admin.appPasswordHash),
+      await bcryptjs.compare("application-password", admin.appPasswordHash),
     );
     assert.equal(response.user.adminRole, null);
-    assert.equal(response.user.role, 'USER');
-    assert.equal(response.user.name, 'Wedding App Name');
+    assert.equal(response.user.role, "USER");
+    assert.equal(response.user.name, "Wedding App Name");
     assert.deepEqual(response.user.adminPermissions, []);
     assert.match(response.refreshToken, /^aarast_app_/);
     assert.equal(refreshTokens.length, 1);
   });
 });
 
-test('an admin OTP cannot open the consumer app before explicit app enrollment', async () => {
+test("an admin OTP cannot open the consumer app before explicit app enrollment", async () => {
   await withDevOtp(async () => {
     const { service, addUser, refreshTokens } = createHarness();
-    const admin = await addUser('+967777123456', true);
-    admin.role = 'ADMIN';
-    admin.adminRole = 'SUPER_ADMIN';
+    const admin = await addUser("+967777123456", true);
+    admin.role = "ADMIN";
+    admin.adminRole = "SUPER_ADMIN";
 
     await service.requestOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
     });
     await assert.rejects(
       () =>
         service.verifyOtp({
-          phone: '777123456',
+          phone: "777123456",
           purpose: OtpPurpose.LOGIN,
-          code: '123456',
+          code: "123456",
         }),
       (error: any) =>
-        error.getResponse?.().code === 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
+        error.getResponse?.().code === "ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF",
     );
     assert.equal(refreshTokens.length, 0);
   });
 });
 
-test('one OTP can create at most one concurrent LOGIN session', async () => {
+test("one OTP can create at most one concurrent LOGIN session", async () => {
   await withDevOtp(async () => {
     const { service, refreshTokens, addUser } = createHarness();
-    await addUser('+967777123456', false);
+    await addUser("+967777123456", false);
     await service.requestOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
     });
 
     const attempts = await Promise.allSettled([
       service.verifyOtp({
-        phone: '777123456',
+        phone: "777123456",
         purpose: OtpPurpose.LOGIN,
-        code: '123456',
+        code: "123456",
       }),
       service.verifyOtp({
-        phone: '777123456',
+        phone: "777123456",
         purpose: OtpPurpose.LOGIN,
-        code: '123456',
+        code: "123456",
       }),
     ]);
 
-    assert.equal(attempts.filter((result) => result.status === 'fulfilled').length, 1);
-    assert.equal(attempts.filter((result) => result.status === 'rejected').length, 1);
+    assert.equal(
+      attempts.filter((result) => result.status === "fulfilled").length,
+      1,
+    );
+    assert.equal(
+      attempts.filter((result) => result.status === "rejected").length,
+      1,
+    );
     assert.equal(refreshTokens.length, 1);
   });
 });
 
-test('LOGIN OTP provisions an invited participant only from a live pending invite', async () => {
+test("general LOGIN OTP never creates an invited participant account", async () => {
   await withDevOtp(async () => {
     const { service, users, setPlanInvite } = createHarness();
     setPlanInvite({
-      id: 'invite-active',
-      normalizedPhone: '+967777123456',
+      id: "invite-active",
+      normalizedPhone: "+967777123456",
       acceptedAt: null,
       declinedAt: null,
       revokedAt: null,
@@ -667,47 +684,147 @@ test('LOGIN OTP provisions an invited participant only from a live pending invit
     });
 
     await service.requestOtp({
-      phone: '777123456',
+      phone: "777123456",
       purpose: OtpPurpose.LOGIN,
     });
-    const result = await service.verifyOtp({
-      phone: '777123456',
-      purpose: OtpPurpose.LOGIN,
-      code: '123456',
-    });
-
-    assert.equal('accessToken' in result, true);
-    assert.equal(users.length, 1);
+    await assert.rejects(
+      () =>
+        service.verifyOtp({
+          phone: "777123456",
+          purpose: OtpPurpose.LOGIN,
+          code: "123456",
+        }),
+      /No account exists for this verified phone/,
+    );
+    assert.equal(users.length, 0);
   });
 });
 
-test('historical invites cannot create a new participant account', async () => {
+test("private invite OTP creates a participant with their chosen password and one session", async () => {
+  await withDevOtp(async () => {
+    const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+    const { service, users, refreshTokens, setPlanInvite } = createHarness();
+    setPlanInvite({
+      id: "invite-active",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.requestOtp({
+      phone: "777123456",
+      purpose: OtpPurpose.LOGIN,
+    });
+    const result = await service.verifyInviteOtp({
+      token,
+      phone: "777123456",
+      code: "123456",
+      name: "المساهم أحمد",
+      password: "contributor-secret",
+    });
+
+    assert.equal(result.user?.name, "المساهم أحمد");
+    assert.equal(users.length, 1);
+    assert.ok(
+      await bcryptjs.compare("contributor-secret", users[0].passwordHash),
+    );
+    assert.equal(refreshTokens.length, 1);
+    assert.match(result.refreshToken ?? "", /^aarast_app_/);
+  });
+});
+
+test("private invite setup can reuse the same unconsumed OTP after credentials are requested", async () => {
+  await withDevOtp(async () => {
+    const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+    const { service, users, otps, setPlanInvite } = createHarness();
+    setPlanInvite({
+      id: "invite-active",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.requestOtp({
+      phone: "777123456",
+      purpose: OtpPurpose.LOGIN,
+    });
+    await assert.rejects(
+      () =>
+        service.verifyInviteOtp({
+          token,
+          phone: "777123456",
+          code: "123456",
+        }),
+      (error: any) =>
+        error.getResponse?.().code === "INVITE_ACCOUNT_SETUP_REQUIRED",
+    );
+    assert.equal(otps[0].consumedAt, null);
+
+    await service.verifyInviteOtp({
+      token,
+      phone: "777123456",
+      code: "123456",
+      name: "المساهم أحمد",
+      password: "contributor-secret",
+    });
+    assert.equal(users.length, 1);
+    assert.ok(otps[0].consumedAt);
+  });
+});
+
+test("historical invites cannot create a new participant account", async () => {
   await withDevOtp(async () => {
     const historicalStates = [
-      { acceptedAt: new Date(), declinedAt: null, revokedAt: null, expiresAt: new Date(Date.now() + 60_000) },
-      { acceptedAt: null, declinedAt: new Date(), revokedAt: null, expiresAt: new Date(Date.now() + 60_000) },
-      { acceptedAt: null, declinedAt: null, revokedAt: new Date(), expiresAt: new Date(Date.now() + 60_000) },
-      { acceptedAt: null, declinedAt: null, revokedAt: null, expiresAt: new Date(Date.now() - 60_000) },
+      {
+        acceptedAt: new Date(),
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+      {
+        acceptedAt: null,
+        declinedAt: new Date(),
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+      {
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+      {
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: new Date(Date.now() - 60_000),
+      },
     ];
 
     for (const [index, state] of historicalStates.entries()) {
       const { service, users, setPlanInvite } = createHarness();
       setPlanInvite({
         id: `invite-historical-${index}`,
-        normalizedPhone: '+967777123456',
+        normalizedPhone: "+967777123456",
         ...state,
       });
       await service.requestOtp({
-        phone: '777123456',
+        phone: "777123456",
         purpose: OtpPurpose.LOGIN,
       });
 
       await assert.rejects(
         () =>
           service.verifyOtp({
-            phone: '777123456',
+            phone: "777123456",
             purpose: OtpPurpose.LOGIN,
-            code: '123456',
+            code: "123456",
           }),
         /No account exists for this verified phone/,
       );
@@ -716,15 +833,15 @@ test('historical invites cannot create a new participant account', async () => {
   });
 });
 
-test('an old JWT cannot access protected routes for an unverified account', async () => {
+test("an old JWT cannot access protected routes for an unverified account", async () => {
   const previousSecret = process.env.JWT_SECRET;
-  process.env.JWT_SECRET = 'test-jwt-secret-with-sufficient-length';
+  process.env.JWT_SECRET = "test-jwt-secret-with-sufficient-length";
   try {
     const strategy = new JwtStrategy({
       user: {
         findUnique: async () => ({
-          id: 'legacy-user',
-          status: 'ACTIVE',
+          id: "legacy-user",
+          status: "ACTIVE",
           phoneVerifiedAt: null,
         }),
       },
@@ -744,7 +861,7 @@ test('an old JWT cannot access protected routes for an unverified account', asyn
   }
 });
 
-test('verified registration smoke never sends an unverified password in the initial request', async () => {
+test("verified registration smoke never sends an unverified password in the initial request", async () => {
   const calls: Array<{ path: string; body: Record<string, unknown> }> = [];
   const request = async (
     _method: string,
@@ -752,55 +869,55 @@ test('verified registration smoke never sends an unverified password in the init
     body: Record<string, unknown>,
   ) => {
     calls.push({ path, body });
-    if (path === '/api/v1/auth/register') {
+    if (path === "/api/v1/auth/register") {
       return {
         status: 201,
-        body: { registrationPending: true, code: '123456' },
+        body: { registrationPending: true, code: "123456" },
       };
     }
-    return { status: 201, body: { accessToken: 'token', user: {} } };
+    return { status: 201, body: { accessToken: "token", user: {} } };
   };
 
   await registerVerified(request, {
-    name: 'Smoke User',
-    phone: '+967777123456',
-    password: 'SmokePassword123!',
+    name: "Smoke User",
+    phone: "+967777123456",
+    password: "SmokePassword123!",
   });
 
   assert.deepEqual(calls[0], {
-    path: '/api/v1/auth/register',
-    body: { name: 'Smoke User', phone: '+967777123456' },
+    path: "/api/v1/auth/register",
+    body: { name: "Smoke User", phone: "+967777123456" },
   });
-  assert.equal(calls[1].path, '/api/v1/auth/register/complete');
-  assert.equal(calls[1].body.password, 'SmokePassword123!');
-  assert.equal(calls[1].body.otpCode, '123456');
+  assert.equal(calls[1].path, "/api/v1/auth/register/complete");
+  assert.equal(calls[1].body.password, "SmokePassword123!");
+  assert.equal(calls[1].body.otpCode, "123456");
 });
 
-test('concurrent OTP serialization loss returns a stable invalid-code response instead of HTTP 500', async () => {
+test("concurrent OTP serialization loss returns a stable invalid-code response instead of HTTP 500", async () => {
   await withDevOtp(async () => {
     const { service, prisma, addUser } = createHarness();
-    await addUser('+967777123456', true);
+    await addUser("+967777123456", true);
     await service.requestOtp({
-      phone: '+967777123456',
+      phone: "+967777123456",
       purpose: OtpPurpose.LOGIN,
     });
     prisma.$transaction = async () => {
-      throw new Prisma.PrismaClientKnownRequestError(
-        'serialization conflict',
-        { code: 'P2034', clientVersion: 'test' },
-      );
+      throw new Prisma.PrismaClientKnownRequestError("serialization conflict", {
+        code: "P2034",
+        clientVersion: "test",
+      });
     };
 
     await assert.rejects(
       () =>
         service.verifyOtp({
-          phone: '+967777123456',
+          phone: "+967777123456",
           purpose: OtpPurpose.LOGIN,
-          code: '123456',
+          code: "123456",
         }),
       (error: any) =>
         error?.getStatus?.() === 400 &&
-        error?.getResponse?.()?.code === 'OTP_INVALID_OR_EXPIRED',
+        error?.getResponse?.()?.code === "OTP_INVALID_OR_EXPIRED",
     );
   });
 });

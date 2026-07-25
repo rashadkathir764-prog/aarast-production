@@ -15,7 +15,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import {
   otpDeliveryOutcomesTotal,
   otpRequestsTotal,
@@ -104,6 +104,14 @@ export interface OtpVerifyResponse {
   refreshTokenExpiresAt?: Date;
 }
 
+export interface InviteOtpVerifyInput {
+  token: string;
+  phone: string;
+  code: string;
+  name?: string;
+  password?: string;
+}
+
 export interface AdminLoginPendingResponse {
   mfaRequired: true;
   challengeToken: string;
@@ -129,6 +137,10 @@ type PasswordResetResult =
   | { reset: true; userId: string }
   | { error: ReturnType<typeof authError> };
 
+type InviteOtpVerificationResult =
+  | { auth: AuthResponse }
+  | { error: ReturnType<typeof authError> };
+
 @Injectable()
 export class AuthService {
   private static readonly otpDeliveryUncertainMessage =
@@ -151,10 +163,13 @@ export class AuthService {
     context: OtpDispatchContext = {},
   ): Promise<RegistrationPendingResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
-    const otp = await this.requestOtp({
-      phone,
-      purpose: OtpPurpose.REGISTER,
-    }, context);
+    const otp = await this.requestOtp(
+      {
+        phone,
+        purpose: OtpPurpose.REGISTER,
+      },
+      context,
+    );
     return { registrationPending: true, ...otp };
   }
 
@@ -615,10 +630,7 @@ export class AuthService {
         requiredRole === UserRole.ADMIN ? replacement.id : undefined;
 
       return {
-        user: toSafeUser(
-          existing.user,
-          requiredRole === UserRole.ADMIN,
-        ),
+        user: toSafeUser(existing.user, requiredRole === UserRole.ADMIN),
         accessToken: this.signToken(
           existing.user.id,
           existing.user.phone,
@@ -826,38 +838,38 @@ export class AuthService {
     const result = await this.prisma
       .$transaction(
         async (tx) => {
-        await this.consumeOtpRecord(tx, otp, now);
-        let user = await this.findUserByCanonicalPhone(tx, phone);
+          await this.consumeOtpRecord(tx, otp, now);
+          let user = await this.findUserByCanonicalPhone(tx, phone);
 
-        if (user?.status === "DISABLED") {
-          return { error: this.otpInvalid() };
-        }
+          if (user?.status === "DISABLED") {
+            return { error: this.otpInvalid() };
+          }
 
-        if (
-          user?.role === UserRole.ADMIN &&
-          purpose === OtpPurpose.LOGIN &&
-          !user.appPasswordHash
-        ) {
-          return {
-            error: authError(
-              HttpStatus.NOT_FOUND,
-              AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
-              "No application account exists for this verified phone",
-            ),
-          };
-        }
+          if (
+            user?.role === UserRole.ADMIN &&
+            purpose === OtpPurpose.LOGIN &&
+            !user.appPasswordHash
+          ) {
+            return {
+              error: authError(
+                HttpStatus.NOT_FOUND,
+                AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
+                "No application account exists for this verified phone",
+              ),
+            };
+          }
 
-        if (!user && purpose === OtpPurpose.LOGIN) {
-          const invite = await tx.planInvite.findFirst({
-            where: {
-              normalizedPhone: phone,
-              acceptedAt: null,
-              declinedAt: null,
-              revokedAt: null,
-              expiresAt: { gt: now },
-            },
-          });
-          if (!invite) {
+          if (user) {
+            user = await tx.user.update({
+              where: { id: user.id },
+              data: {
+                phoneVerifiedAt: user.phoneVerifiedAt ?? now,
+                ...(purpose === OtpPurpose.LOGIN ? { lastLoginAt: now } : {}),
+              },
+            });
+          }
+
+          if (!user) {
             return {
               error: authError(
                 HttpStatus.NOT_FOUND,
@@ -866,45 +878,14 @@ export class AuthService {
               ),
             };
           }
-          user = await tx.user.create({
-            data: {
-              name: "مشارك أعرست",
-              phone,
-              passwordHash: await bcryptjs.hash(
-                randomBytes(24).toString("hex"),
-                10,
-              ),
-              phoneVerifiedAt: now,
-              lastLoginAt: now,
-            },
-          });
-        } else if (user) {
-          user = await tx.user.update({
-            where: { id: user.id },
-            data: {
-              phoneVerifiedAt: user.phoneVerifiedAt ?? now,
-              ...(purpose === OtpPurpose.LOGIN ? { lastLoginAt: now } : {}),
-            },
-          });
-        }
 
-        if (!user) {
           return {
-            error: authError(
-              HttpStatus.NOT_FOUND,
-              AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
-              "No account exists for this verified phone",
-            ),
+            user,
+            auth:
+              purpose === OtpPurpose.LOGIN
+                ? await this.createAuthResponse(user, false, tx)
+                : undefined,
           };
-        }
-
-        return {
-          user,
-          auth:
-            purpose === OtpPurpose.LOGIN
-              ? await this.createAuthResponse(user, false, tx)
-              : undefined,
-        };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       )
@@ -943,6 +924,212 @@ export class AuthService {
     };
   }
 
+  async verifyInviteOtp(
+    input: InviteOtpVerifyInput,
+  ): Promise<OtpVerifyResponse> {
+    const cleanToken = input.token.trim();
+    if (!/^[A-Za-z0-9_-]{43}$/.test(cleanToken)) {
+      throw this.inviteNotFoundForPhone();
+    }
+
+    const phone = PhoneNormalizer.normalizeRequired(input.phone);
+    const code = this.requiredText(input.code, "code");
+    const name = input.name?.trim() ?? "";
+    const password = input.password ?? "";
+    const hasAccountSetup = name.length > 0 && password.length > 0;
+    const now = new Date();
+    const tokenHash = createHash("sha256").update(cleanToken).digest("hex");
+    const pendingInvite = await this.prisma.planInvite.findFirst({
+      where: {
+        tokenHash,
+        normalizedPhone: phone,
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      select: { id: true },
+    });
+    if (!pendingInvite) {
+      throw this.inviteNotFoundForPhone();
+    }
+
+    const existingUser = await this.findUserByCanonicalPhone(
+      this.prisma,
+      phone,
+    );
+    const accountSetupRequired =
+      !existingUser ||
+      (!existingUser.phoneVerifiedAt &&
+        existingUser.role !== UserRole.ADMIN) ||
+      (existingUser.role === UserRole.ADMIN && !existingUser.appPasswordHash);
+    if (accountSetupRequired && !hasAccountSetup) {
+      throw authError(
+        HttpStatus.CONFLICT,
+        AuthErrorCode.INVITE_ACCOUNT_SETUP_REQUIRED,
+        "Create an application password to continue this invitation",
+      );
+    }
+
+    const otp = await this.assertOtpCodeMatches(
+      phone,
+      OtpPurpose.LOGIN,
+      code,
+      now,
+    );
+    const passwordHash = hasAccountSetup
+      ? await bcryptjs.hash(password, 10)
+      : null;
+
+    let result: InviteOtpVerificationResult;
+    try {
+      result = await this.prisma.$transaction(
+        async (tx) => {
+          const invite = await tx.planInvite.findFirst({
+            where: {
+              tokenHash,
+              normalizedPhone: phone,
+              acceptedAt: null,
+              declinedAt: null,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            select: { id: true },
+          });
+          if (!invite) {
+            return { error: this.inviteNotFoundForPhone() };
+          }
+
+          let user = await this.findUserByCanonicalPhone(tx, phone);
+          const accountSetupRequired =
+            !user ||
+            (!user.phoneVerifiedAt && user.role !== UserRole.ADMIN) ||
+            (user.role === UserRole.ADMIN && !user.appPasswordHash);
+          if (accountSetupRequired && (!hasAccountSetup || !passwordHash)) {
+            return {
+              error: authError(
+                HttpStatus.CONFLICT,
+                AuthErrorCode.INVITE_ACCOUNT_SETUP_REQUIRED,
+                "Create an application password to continue this invitation",
+              ),
+            };
+          }
+
+          await this.consumeOtpRecord(tx, otp, now);
+
+          if (user?.status === "DISABLED") {
+            return {
+              error: authError(
+                HttpStatus.FORBIDDEN,
+                AuthErrorCode.ACCOUNT_DISABLED_AFTER_PHONE_PROOF,
+                "This account is disabled",
+              ),
+            };
+          }
+
+          if (!user) {
+            user = await tx.user.create({
+              data: {
+                name,
+                phone,
+                email: null,
+                passwordHash: passwordHash!,
+                phoneVerifiedAt: now,
+                lastLoginAt: now,
+              },
+            });
+          } else if (user.role === UserRole.ADMIN && !user.appPasswordHash) {
+            const claimed = await tx.user.updateMany({
+              where: {
+                id: user.id,
+                role: UserRole.ADMIN,
+                status: "ACTIVE",
+                appPasswordHash: null,
+              },
+              data: {
+                appPasswordHash: passwordHash!,
+                appName: name,
+                appEmail: null,
+                appAvatarUrl: null,
+                phone,
+                phoneVerifiedAt: user.phoneVerifiedAt ?? now,
+                lastLoginAt: now,
+              },
+            });
+            if (claimed.count !== 1) {
+              return {
+                error: authError(
+                  HttpStatus.CONFLICT,
+                  AuthErrorCode.ADMIN_APP_PASSWORD_ALREADY_SET,
+                  "The application password is already configured",
+                ),
+              };
+            }
+            user = await tx.user.findUniqueOrThrow({
+              where: { id: user.id },
+            });
+          } else if (!user.phoneVerifiedAt) {
+            user = await tx.user.update({
+              where: { id: user.id },
+              data: {
+                name,
+                phone,
+                passwordHash: passwordHash!,
+                phoneVerifiedAt: now,
+                lastLoginAt: now,
+              },
+            });
+          } else {
+            user = await tx.user.update({
+              where: { id: user.id },
+              data: { lastLoginAt: now },
+            });
+          }
+
+          return {
+            auth: await this.createAuthResponse(user, false, tx),
+          };
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        otpVerificationsTotal.inc({ outcome: "failure" });
+        throw this.otpInvalid();
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw authError(
+          HttpStatus.CONFLICT,
+          AuthErrorCode.ACCOUNT_ALREADY_EXISTS,
+          "An account already exists for this phone",
+        );
+      }
+      throw error;
+    }
+
+    if ("error" in result) {
+      otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
+      throw result.error;
+    }
+
+    otpVerificationsTotal.inc({ outcome: "success" });
+    return {
+      verified: true,
+      phone,
+      purpose: OtpPurpose.LOGIN,
+      user: result.auth.user,
+      accessToken: result.auth.accessToken,
+      refreshToken: result.auth.refreshToken,
+      refreshTokenExpiresAt: result.auth.refreshTokenExpiresAt,
+    };
+  }
+
   /**
    * Issues a RESET_PASSWORD OTP. Never reveals whether the phone belongs to
    * an account: the OTP is created for any well-formed phone, and only the
@@ -952,10 +1139,13 @@ export class AuthService {
     dto: PasswordResetRequestDto,
     context: OtpDispatchContext = {},
   ): Promise<OtpRequestResponse> {
-    return this.requestOtp({
-      phone: dto.phone,
-      purpose: OtpPurpose.RESET_PASSWORD,
-    }, context);
+    return this.requestOtp(
+      {
+        phone: dto.phone,
+        purpose: OtpPurpose.RESET_PASSWORD,
+      },
+      context,
+    );
   }
 
   /**
@@ -1121,11 +1311,10 @@ export class AuthService {
     dto: AdminPasswordResetConfirmDto,
   ): Promise<{ reset: true }> {
     const now = new Date();
-    const challenge =
-      await this.prisma.adminPasswordResetChallenge.findUnique({
-        where: { tokenHash: hashRefreshToken(dto.challengeToken) },
-        include: { user: true, otp: true },
-      });
+    const challenge = await this.prisma.adminPasswordResetChallenge.findUnique({
+      where: { tokenHash: hashRefreshToken(dto.challengeToken) },
+      include: { user: true, otp: true },
+    });
     if (
       !challenge ||
       challenge.consumedAt ||
@@ -1214,10 +1403,7 @@ export class AuthService {
             where: {
               phone: challenge.user!.phone!,
               purpose: {
-                in: [
-                  OtpPurpose.ADMIN_LOGIN,
-                  OtpPurpose.ADMIN_RESET_PASSWORD,
-                ],
+                in: [OtpPurpose.ADMIN_LOGIN, OtpPurpose.ADMIN_RESET_PASSWORD],
               },
               consumedAt: null,
             },
@@ -1262,9 +1448,7 @@ export class AuthService {
       data: {
         userId: user.id,
         tokenHash: hashRefreshToken(refreshToken),
-        scope: adminMfa
-          ? AuthSessionScope.ADMIN
-          : AuthSessionScope.APPLICATION,
+        scope: adminMfa ? AuthSessionScope.ADMIN : AuthSessionScope.APPLICATION,
         expiresAt: refreshTokenExpiresAt,
       },
     });
@@ -1297,6 +1481,14 @@ export class AuthService {
       HttpStatus.BAD_REQUEST,
       AuthErrorCode.OTP_INVALID_OR_EXPIRED,
       "OTP code is invalid or expired",
+    );
+  }
+
+  private inviteNotFoundForPhone() {
+    return authError(
+      HttpStatus.NOT_FOUND,
+      AuthErrorCode.INVITE_NOT_FOUND_FOR_PHONE,
+      "No active invitation matches this phone",
     );
   }
 
@@ -1395,13 +1587,7 @@ export class AuthService {
       orderBy: { createdAt: "desc" },
     });
 
-    return this.assertSpecificOtpCodeMatches(
-      otp,
-      phone,
-      purpose,
-      code,
-      now,
-    );
+    return this.assertSpecificOtpCodeMatches(otp, phone, purpose, code, now);
   }
 
   private async assertSpecificOtpCodeMatches(

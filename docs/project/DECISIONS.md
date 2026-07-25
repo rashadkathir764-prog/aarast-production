@@ -63,7 +63,7 @@
 
 | Decision | Status | Rationale |
 | --- | --- | --- |
-| Send participant invitation links from Aarast and bind access to token plus verified phone. | Accepted and implemented in source | Invite creation remains pending until the recipient proves the exact invited phone. The backend sends a generic private link through the hardened transient OpenWA contract, reports uncertain delivery honestly, sends OTP only after token-phone matching, and the mobile client accepts and opens the shared plan after successful OTP. Manual `wa.me` composition was removed so the owner is not responsible for delivering the link. |
+| Send participant invitation links from Aarast and bind access to token plus verified phone. | Accepted and implemented in source | Invite creation remains pending until the recipient proves the exact invited phone. The backend sends a generic private link through the hardened transient OpenWA contract, reports uncertain delivery honestly, and sends OTP only after token-phone matching. A first-time contributor creates a real application password with that same verified invite OTP; no hidden random password or second registration OTP is allowed. Verification only reveals the invitation, role, and permissions; the participant must explicitly accept or reject before any membership is created or the shared plan opens. Manual `wa.me` composition was removed so the owner is not responsible for delivering the link. |
 
 ## Current Decisions Addendum - 2026-07-20
 

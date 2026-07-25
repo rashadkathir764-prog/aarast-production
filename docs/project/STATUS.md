@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-23
+Snapshot date: 2026-07-25
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -212,8 +212,15 @@ the backend sends its generic private HTTPS link and returns an explicit
 device-delivered, uncertain, or unavailable result. A link-specific public gate
 matches the raw
 token and canonical phone before dispatching OTP and exposes no plan details on
-mismatch. After successful OTP, the mobile link flow atomically accepts the
-invite and opens the contributor plan center. Android App Link association is
+mismatch. After successful OTP, the mobile link flow resumes at an explicit
+decision screen that shows the invitation, role, permissions, and separate
+accept and reject actions. Verification alone creates no membership; only an
+explicit acceptance opens the contributor plan center. A first-time contributor chooses
+their application name and password while completing that same invite OTP; the
+backend no longer creates an inaccessible random password or requires a second
+registration code. The resulting rotating session is stored securely, while an
+explicit logout revokes it and returns the rebuilt Flutter account boundary to
+password login. Android App Link association is
 generated for the current signed MVP APK; Google Play signing will require its
 store certificate fingerprint before rollout.
 

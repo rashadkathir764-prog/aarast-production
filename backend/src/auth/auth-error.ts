@@ -9,12 +9,12 @@ export const AuthErrorCode = {
   ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF: 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
   ACCOUNT_DISABLED_AFTER_PHONE_PROOF: 'ACCOUNT_DISABLED_AFTER_PHONE_PROOF',
   INVITE_NOT_FOUND_FOR_PHONE: 'INVITE_NOT_FOUND_FOR_PHONE',
+  INVITE_ACCOUNT_SETUP_REQUIRED: 'INVITE_ACCOUNT_SETUP_REQUIRED',
   ADMIN_RESET_INVALID_OR_EXPIRED: 'ADMIN_RESET_INVALID_OR_EXPIRED',
   OTP_DELIVERY_UNAVAILABLE: 'OTP_DELIVERY_UNAVAILABLE',
 } as const;
 
-export type AuthErrorCode =
-  (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
+export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
 
 export function authError(
   statusCode: HttpStatus,

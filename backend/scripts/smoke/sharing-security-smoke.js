@@ -206,6 +206,72 @@ async function run() {
     !JSON.stringify(inviteNotification?.data ?? {}).includes(rawToken),
   );
 
+  const firstTimePhone = `+96774${suffix}`;
+  const firstTimePassword = "FirstInvite123!";
+  const firstTimeInvite = await request(
+    "POST",
+    `/api/v1/wedding-plans/${plan.body.id}/invites`,
+    {
+      name: "First Invite Contributor",
+      phone: firstTimePhone,
+      role: "VIEWER",
+    },
+    owner.token,
+  );
+  check(
+    "owner can invite a contributor without an existing account",
+    firstTimeInvite.status === 201 &&
+      typeof firstTimeInvite.body?.token === "string",
+  );
+  const firstTimeOtp = await request(
+    "POST",
+    `/api/v1/invites/${firstTimeInvite.body.token}/request-otp`,
+    { phone: firstTimePhone },
+  );
+  const firstTimeCode =
+    process.env.SMOKE_OTP_CODE ?? firstTimeOtp.body?.code;
+  check(
+    "private invite OTP explicitly requires one-time account setup",
+    firstTimeOtp.status === 201 &&
+      firstTimeOtp.body?.accountSetupRequired === true &&
+      typeof firstTimeCode === "string",
+  );
+  const firstTimeSession = await request(
+    "POST",
+    `/api/v1/invites/${firstTimeInvite.body.token}/verify-otp`,
+    {
+      phone: firstTimePhone,
+      code: firstTimeCode,
+      name: "First Invite Contributor",
+      password: firstTimePassword,
+    },
+  );
+  check(
+    "the same private OTP creates a durable contributor session",
+    firstTimeSession.status === 201 &&
+      typeof firstTimeSession.body?.accessToken === "string" &&
+      typeof firstTimeSession.body?.refreshToken === "string",
+  );
+  const firstTimeLogin = await request("POST", "/api/v1/auth/login", {
+    phone: firstTimePhone,
+    password: firstTimePassword,
+  });
+  check(
+    "the contributor can return later with phone and chosen password",
+    firstTimeLogin.status === 200 &&
+      firstTimeLogin.body?.user?.id === firstTimeSession.body?.user?.id,
+  );
+  const firstTimeAccepted = await request(
+    "POST",
+    `/api/v1/invites/${firstTimeInvite.body.token}/accept`,
+    null,
+    firstTimeSession.body?.accessToken,
+  );
+  check(
+    "the new contributor session accepts its exact invitation",
+    firstTimeAccepted.status === 201,
+  );
+
   const wrongPreview = await request(
     "GET",
     `/api/v1/invites/${rawToken}`,

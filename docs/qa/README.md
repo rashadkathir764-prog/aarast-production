@@ -123,11 +123,14 @@ stores are empty.
 Participant invitation tests must also prove that create/reissue uses only the
 hardened transient endpoint, the WhatsApp text contains one private HTTPS link
 and no plan details, delivery uncertainty is not reported as success, a
-token-phone mismatch sends no OTP, and a matching phone can verify, accept, and
-open the contributor plan without creating an owner plan. Opening a private
+token-phone mismatch sends no OTP, and a matching phone can verify and review
+the invitation without creating membership or an owner plan. Tests must prove
+that no accept/decline call occurs before a visible user decision, then cover
+both explicit rejection and explicit acceptance followed by opening the
+contributor plan. Opening a private
 link while another account is signed in must not query the token as that
 account; after OTP changes the account boundary, the in-memory token must resume
-through acceptance to the contributor plan.
+at the same explicit decision screen.
 Invite delivery coverage must also prove that the stored delivery status and
 attempt time survive list refresh, every status obeys the server-provided retry
 window, rapid reissue returns the stable 429 contract, and a late completion

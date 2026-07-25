@@ -132,6 +132,26 @@ class AuthRepository {
     return response;
   }
 
+  Future<OtpVerifyResult> verifyInviteOtp({
+    required String token,
+    required String phone,
+    required String code,
+    String? name,
+    String? password,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    final json = await _apiClient
+        .postJson('/api/v1/invites/${Uri.encodeComponent(token)}/verify-otp', {
+          'phone': normalizedPhone,
+          'code': code,
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+          if (password != null && password.isNotEmpty) 'password': password,
+        });
+    final response = OtpVerifyResult.fromJson(json);
+    await _saveOtpSession(response);
+    return response;
+  }
+
   /// يطلب رمز استعادة كلمة المرور. الخادم لا يكشف وجود الحساب من عدمه.
   Future<OtpRequestResult> requestPasswordReset({required String phone}) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
@@ -182,6 +202,20 @@ class AuthRepository {
   }
 
   SafeUser? readCachedUser() => _authStorage.readUser();
+
+  Future<void> _saveOtpSession(OtpVerifyResult response) async {
+    if (response.accessToken != null &&
+        response.refreshToken != null &&
+        response.user != null) {
+      await _authStorage.saveSession(
+        accessToken: response.accessToken!,
+        refreshToken: response.refreshToken!,
+        user: response.user!,
+      );
+    } else if (response.user != null) {
+      await _authStorage.saveUser(response.user!);
+    }
+  }
 
   Future<SafeUser> updateAvatar({
     required Uint8List bytes,

@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-24.
+Current documentation snapshot: 2026-07-25.
 
 Source status:
 
@@ -1066,9 +1066,24 @@ and without dispatching an OTP. A private token link always starts verification
 for the invited phone, even when the device still has another application
 account signed in; it must not query the token through that stale account. After
 OTP verification the application session is replaced by the verified invitee,
-the exact token flow resumes in memory, and the client may accept the invite and
-enter the shared plan. The server still performs the normal verified-phone and
-atomic pending-invite claim checks.
+the exact token flow resumes in memory, and the client must display the invite,
+role, and permission snapshot with explicit accept and decline actions.
+Verification itself never accepts the invitation or creates membership. Only an
+explicit authenticated accept request may enter the shared plan, and the server
+still performs the normal verified-phone and atomic pending-invite claim checks.
+
+After the token and phone match, the request response includes
+`accountSetupRequired`. It is `true` only when the invited phone still needs an
+application credential. The client then collects the contributor name and a
+6-to-72-byte password before calling
+`POST /api/v1/invites/:token/verify-otp` with `{ phone, code, name, password }`.
+That verification is bound again to the exact live token and phone. It consumes
+the same `LOGIN` OTP, creates or claims the application account with the
+participant's chosen password, and returns the normal access/refresh session;
+no second registration OTP is sent. Existing verified application accounts
+send only `{ phone, code }` and receive a normal login session. General
+`POST /api/v1/auth/otp/verify` never creates an account merely because another
+pending invitation exists.
 
 Create shared member request:
 
@@ -1113,7 +1128,9 @@ own current ceiling; role-implied permissions are included in that comparison.
 The owner cannot add themselves as a shared member, unknown phone numbers are
 rejected without auto-creating users, and duplicate members are rejected.
 
-Invite routes support explicit acceptance flows. They do not create chat or broad social collaboration features.
+Invite routes support explicit acceptance and decline flows. OTP verification
+must not call either action implicitly. They do not create chat or broad social
+collaboration features.
 Phone and user-id invitations require the authenticated account's verified
 phone. Email-only invitations are rejected until verified-email ownership is
 implemented; an unverified email string is never treated as identity proof.
@@ -1686,6 +1703,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/invites/:token/accept` | `sharing.acceptInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/decline` | `sharing.declineInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/request-otp` | `sharing.requestOtp` |  |
+| POST | `/api/v1/invites/:token/verify-otp` | `sharing.verifyOtp` |  |
 | GET | `/api/v1/invites/mine` | `sharing.findMyInvites` | 🔒 |
 | GET | `/api/v1/me` | `me.me` | 🔒 |
 | GET | `/api/v1/me/favorite-providers` | `marketplace.findMyFavoriteProviders` | 🔒 |

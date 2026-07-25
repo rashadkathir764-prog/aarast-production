@@ -83,16 +83,26 @@ class AarastAuthFlowRedirector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ({bool sessionExpired, bool hasPendingInvite}) flow;
+    ({
+      bool sessionExpired,
+      bool hasPendingInvite,
+      bool loginRequestedAfterLogout,
+    })
+    flow;
     try {
       flow = context
           .select<
             AuthController,
-            ({bool sessionExpired, bool hasPendingInvite})
+            ({
+              bool sessionExpired,
+              bool hasPendingInvite,
+              bool loginRequestedAfterLogout,
+            })
           >(
             (controller) => (
               sessionExpired: controller.sessionExpired,
               hasPendingInvite: controller.hasPendingInviteResume,
+              loginRequestedAfterLogout: controller.loginRequestedAfterLogout,
             ),
           );
     } on ProviderNotFoundException {
@@ -104,6 +114,13 @@ class AarastAuthFlowRedirector extends StatelessWidget {
         if (!context.mounted) return;
         context.read<AuthController>().acknowledgeSessionExpiry();
         router.go(AppRouter.login);
+      });
+    } else if (flow.loginRequestedAfterLogout) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        if (context.read<AuthController>().claimLoginAfterLogout()) {
+          router.go(AppRouter.login);
+        }
       });
     } else if (flow.hasPendingInvite) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,7 @@ import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/widgets/auth_wedding_widgets.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 
@@ -33,12 +35,16 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
 
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
+  final _accountNameController = TextEditingController();
+  final _accountPasswordController = TextEditingController();
 
   _InviteAccessStep _step = _InviteAccessStep.phone;
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
   bool _isVerifying = false;
   String? _otpNoticeMessage;
   bool _otpDeliveryConfirmed = false;
+  bool _accountSetupRequired = false;
+  bool _obscureAccountPassword = true;
   PlanInvite? _openedInvite;
   Timer? _resendTimer;
   int _resendSeconds = 0;
@@ -76,6 +82,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     _resendTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
+    _accountNameController.dispose();
+    _accountPasswordController.dispose();
     super.dispose();
   }
 
@@ -99,6 +107,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
+      _accountSetupRequired = token != null && result.accountSetupRequired;
     });
     _startResendCooldown();
   }
@@ -120,18 +129,39 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final auth = context.read<AuthController>();
     final previousUserId = auth.user?.id;
     final token = _token;
+    final accountName = _accountNameController.text.trim();
+    final accountPassword = _accountPasswordController.text;
+    if (_accountSetupRequired) {
+      if (accountName.isEmpty) {
+        _showError('أدخل اسم المساهم لإنشاء الحساب.');
+        return;
+      }
+      if (accountPassword.length < 6) {
+        _showError('كلمة المرور يجب أن تكون 6 أحرف على الأقل.');
+        return;
+      }
+      if (utf8.encode(accountPassword).length > 72) {
+        _showError('كلمة المرور طويلة جدًا. استخدم 72 بايت كحد أقصى.');
+        return;
+      }
+    }
     setState(() => _isVerifying = true);
     final success = await auth.verifyOtp(
       phone: _phoneController.text.trim(),
       purpose: _otpPurpose,
       code: code,
       resumeInviteToken: token,
+      accountName: _accountSetupRequired ? accountName : null,
+      accountPassword: _accountSetupRequired ? accountPassword : null,
     );
     if (!mounted) return;
     if (!success) {
       setState(() {
         _isVerifying = false;
         _otpFieldState = AarastOtpFieldState.error;
+        if (auth.errorCode == 'INVITE_ACCOUNT_SETUP_REQUIRED') {
+          _accountSetupRequired = true;
+        }
       });
       return;
     }
@@ -163,49 +193,35 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     await provider.loadMyInvites(token: _token);
     if (!mounted) return;
     final linkedInvite = _token == null ? null : provider.selectedInvite;
-    if (linkedInvite != null &&
-        await _enterLinkedInvite(provider, linkedInvite)) {
+    if (linkedInvite?.isAccepted == true &&
+        await _enterAcceptedLinkedInvite(provider, linkedInvite!)) {
       return;
     }
     setState(() {
       _isVerifying = false;
       _step = _InviteAccessStep.invites;
-      _openedInvite = provider.selectedInvite;
+      _openedInvite = linkedInvite ?? provider.selectedInvite;
     });
   }
 
-  Future<bool> _enterLinkedInvite(
+  Future<bool> _enterAcceptedLinkedInvite(
     SharingProvider provider,
     PlanInvite invite,
   ) async {
-    var resolvedInvite = invite;
+    if (!invite.isAccepted) return false;
+
+    await provider.loadSharedPlans();
+    if (!mounted) return false;
+
     SharedMember? member;
-    if (invite.isPending) {
-      final accepted = await provider.respondToInvite(
-        invite.token,
-        accept: true,
-      );
-      if (!mounted || !accepted) return false;
-      resolvedInvite = provider.selectedInvite ?? invite;
-      member = provider.acceptedInviteMember;
-    } else if (invite.isAccepted) {
-      await provider.loadSharedPlans();
-      if (!mounted) return false;
-      for (final plan in provider.sharedPlans) {
-        if (plan.id == invite.weddingPlanId) {
-          member = plan.sharedMember;
-          break;
-        }
+    for (final plan in provider.sharedPlans) {
+      if (plan.id == invite.weddingPlanId) {
+        member = plan.sharedMember;
+        break;
       }
-    } else {
-      return false;
     }
 
-    if (!resolvedInvite.isAccepted) return false;
-    context.go(
-      AppRouter.planCenter(resolvedInvite.weddingPlanId),
-      extra: member,
-    );
+    context.go(AppRouter.planCenter(invite.weddingPlanId), extra: member);
     return true;
   }
 
@@ -223,6 +239,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final auth = context.read<AuthController>();
     if (auth.errorMessage != null) auth.clearError();
     _otpController.clear();
+    _accountNameController.clear();
+    _accountPasswordController.clear();
     setState(() {
       _openedInvite = null;
       _otpFieldState = AarastOtpFieldState.idle;
@@ -230,6 +248,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _resendSeconds = 0;
       _otpNoticeMessage = null;
       _otpDeliveryConfirmed = false;
+      _accountSetupRequired = false;
+      _obscureAccountPassword = true;
       _step = _InviteAccessStep.phone;
     });
   }
@@ -335,7 +355,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final subtitle = switch (_step) {
       _InviteAccessStep.phone => 'أدخل الرقم الذي وصلت إليه الدعوة.',
       _InviteAccessStep.otp => 'أدخل رمز التحقق قبل عرض الدعوات.',
-      _InviteAccessStep.invites => 'اختر الدعوة ثم ادخل للخطة بصلاحياتك.',
+      _InviteAccessStep.invites => 'راجع الدعوة ثم اختر قبولها أو رفضها.',
     };
 
     return AarastPageScaffold(
@@ -356,17 +376,24 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
               ),
               _InviteAccessStep.otp => _OtpStep(
                 controller: _otpController,
+                accountNameController: _accountNameController,
+                accountPasswordController: _accountPasswordController,
                 phone: _phoneController.text.trim(),
                 state: _otpFieldState,
                 resendSeconds: _resendSeconds,
                 otpNoticeMessage: _otpNoticeMessage,
                 deliveryConfirmed: _otpDeliveryConfirmed,
+                accountSetupRequired: _accountSetupRequired,
+                obscureAccountPassword: _obscureAccountPassword,
+                onToggleAccountPassword: () => setState(
+                  () => _obscureAccountPassword = !_obscureAccountPassword,
+                ),
                 onCodeChanged: _onOtpChanged,
                 onVerify: _verifyOtp,
                 onResend: _resendOtp,
                 onChangePhone: _returnToPhone,
                 onCreateAppAccount: _openRegistration,
-                autoJoin: _token != null,
+                reviewInviteAfterVerification: _token != null,
               ),
               _InviteAccessStep.invites => _InvitesStep(
                 openedInvite: _openedInvite,
@@ -682,6 +709,8 @@ class _PrivacyLine extends StatelessWidget {
 class _OtpStep extends StatelessWidget {
   const _OtpStep({
     required this.controller,
+    required this.accountNameController,
+    required this.accountPasswordController,
     required this.phone,
     required this.state,
     required this.resendSeconds,
@@ -690,12 +719,17 @@ class _OtpStep extends StatelessWidget {
     required this.onResend,
     required this.onChangePhone,
     required this.onCreateAppAccount,
-    required this.autoJoin,
+    required this.reviewInviteAfterVerification,
     required this.deliveryConfirmed,
+    required this.accountSetupRequired,
+    required this.obscureAccountPassword,
+    required this.onToggleAccountPassword,
     this.otpNoticeMessage,
   });
 
   final TextEditingController controller;
+  final TextEditingController accountNameController;
+  final TextEditingController accountPasswordController;
   final String phone;
   final AarastOtpFieldState state;
   final int resendSeconds;
@@ -704,8 +738,11 @@ class _OtpStep extends StatelessWidget {
   final VoidCallback onResend;
   final VoidCallback onChangePhone;
   final VoidCallback onCreateAppAccount;
-  final bool autoJoin;
+  final bool reviewInviteAfterVerification;
   final bool deliveryConfirmed;
+  final bool accountSetupRequired;
+  final bool obscureAccountPassword;
+  final VoidCallback onToggleAccountPassword;
   final String? otpNoticeMessage;
 
   @override
@@ -742,12 +779,41 @@ class _OtpStep extends StatelessWidget {
                 ? Duration.zero
                 : const Duration(milliseconds: 280),
             child: state == AarastOtpFieldState.success
-                ? const AarastOtpSuccessPanel(
-                    subtitle: 'تم توثيق رقمك — جارٍ فتح مساحة المساهمة.',
+                ? AarastOtpSuccessPanel(
+                    subtitle: reviewInviteAfterVerification
+                        ? 'تم توثيق رقمك — جارٍ عرض الدعوة لتختار قبولها أو رفضها.'
+                        : 'تم توثيق رقمك — جارٍ عرض دعواتك.',
                   )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (accountSetupRequired) ...[
+                        const _InviteAccountSetupNotice(),
+                        const SizedBox(height: 14),
+                        AuthTextField(
+                          key: const ValueKey('invite-account-name-field'),
+                          controller: accountNameController,
+                          label: 'اسم المساهم',
+                          hint: 'الاسم الذي سيظهر داخل الخطة',
+                          icon: LucideIcons.user,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        AuthTextField(
+                          key: const ValueKey('invite-account-password-field'),
+                          controller: accountPasswordController,
+                          label: 'كلمة المرور',
+                          hint: '6 أحرف على الأقل',
+                          icon: LucideIcons.lock,
+                          obscureText: obscureAccountPassword,
+                          textInputAction: TextInputAction.next,
+                          suffixIcon: AuthObscureToggle(
+                            obscured: obscureAccountPassword,
+                            onPressed: onToggleAccountPassword,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                      ],
                       const _FieldLabel('رمز التحقق'),
                       AarastOtpField(
                         controller: controller,
@@ -772,8 +838,8 @@ class _OtpStep extends StatelessWidget {
                       else
                         AarastButton(
                           key: const Key('invite-verify-otp-button'),
-                          label: autoJoin
-                              ? 'تأكيد الرمز والانضمام'
+                          label: reviewInviteAfterVerification
+                              ? 'تأكيد الرمز ومراجعة الدعوة'
                               : 'تأكيد الرمز',
                           icon: LucideIcons.checkCircle2,
                           isLoading: auth.isSubmitting,
@@ -1437,6 +1503,52 @@ class _NoInviteState extends StatelessWidget {
           onPressed: () => context.go(AppRouter.welcome),
         ),
       ],
+    );
+  }
+}
+
+class _InviteAccountSetupNotice extends StatelessWidget {
+  const _InviteAccountSetupNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.goldSoft,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(LucideIcons.keyRound, size: 20, color: AppTheme.goldDeep),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'أنشئ حساب المساهم مرة واحدة',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.deepBurgundy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'اختر اسمًا وكلمة مرور. بعد ذلك يمكنك الدخول مباشرة دون طلب رمز تحقق في كل مرة.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    height: 1.4,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

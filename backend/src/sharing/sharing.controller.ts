@@ -16,6 +16,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";
+import { VerifyInviteOtpDto } from "./dto/verify-invite-otp.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
 import { InviteAccessService } from "./invite-access.service";
 import { SharingService } from "./sharing.service";
@@ -31,6 +32,11 @@ export class ApiV1InviteAccessController {
     @Req() request: Request,
   ) {
     return this.inviteAccess.requestOtp(token, dto, { ip: request.ip });
+  }
+
+  @Post(":token/verify-otp")
+  verifyOtp(@Param("token") token: string, @Body() dto: VerifyInviteOtpDto) {
+    return this.inviteAccess.verifyOtp(token, dto);
   }
 }
 

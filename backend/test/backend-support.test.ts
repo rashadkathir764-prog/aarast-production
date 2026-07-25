@@ -173,18 +173,16 @@ test("rejects oversized structured location values", () => {
   );
 });
 
-test("validates app role and wedding persona profile values", async () => {
+test("validates wedding persona profile values while appRole stays server-owned", async () => {
   const valid = plainToInstance(UpdateProfileDto, {
-    appRole: "WEDDING_USER",
     persona: "BRIDE",
   });
   assert.equal((await validate(valid)).length, 0);
 
   const invalid = plainToInstance(UpdateProfileDto, {
-    appRole: "RANDOM_ROLE",
     persona: "RANDOM_PERSONA",
   });
-  assert.ok((await validate(invalid)).length >= 2);
+  assert.equal((await validate(invalid)).length, 1);
 });
 
 test("uses Riyadh calendar-day boundaries independently of server timezone", () => {

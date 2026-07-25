@@ -9,7 +9,7 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 
 | Entity | Purpose |
 | --- | --- |
-| User | Represents a person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. Current roles include `USER`, `ADMIN`, and `PROVIDER`; provider flows are implemented as planning/reference and quote-lead flows, not paid marketplace or confirmed booking flows. |
+| User | Represents one person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. `role`/`appRole` are legacy account-mode fields and are not sufficient to discover or authorize an active product context. Owner contexts derive from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and provider contexts from `Provider.userId`. |
 | Provider | Represents a vendor or business that offers wedding-related services. |
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
 | Category | Groups services into discoverable wedding-service categories. |
@@ -69,6 +69,15 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
+- Available account contexts are a derived API projection, not a new database
+  entity. No role-membership or active-context table is required for the first
+  backend phase.
+- `User.activeWeddingPlanId` records only an explicit plan selection. If that
+  plan is missing, archived, or inaccessible, active-plan reads return null and
+  never choose another accessible plan automatically.
+- `appRole` is not mutable through the public profile route and is not a source
+  of context authorization. Provider application/profile operations remain the
+  trusted owner of provider identity state.
 - Financial data such as budgets, allocations, costs, payments, and payment
   schedules is private by default.
 - Confirmed cost is the sum of non-cancelled WeddingCost totals. Paid is the net

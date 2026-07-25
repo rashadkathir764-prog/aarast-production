@@ -121,11 +121,11 @@ async function run() {
     const res = await request(
       'PATCH',
       '/api/v1/users/me',
-      { appRole: 'WEDDING_USER', persona: 'BRIDE' },
+      { persona: 'BRIDE' },
       owner.token,
     );
-    check('valid app role/persona update - HTTP 200', res.status === 200);
-    check('profile returns app role', res.body?.appRole === 'WEDDING_USER');
+    check('valid persona update - HTTP 200', res.status === 200);
+    check('profile keeps server-owned app role', res.body?.appRole === 'WEDDING_USER');
     check('profile returns persona', res.body?.persona === 'BRIDE');
   }
 
@@ -247,7 +247,34 @@ async function run() {
       { appRole: 'PROVIDER' },
       owner.token,
     );
-    check('profile can store provider app role', res.body?.appRole === 'PROVIDER');
+    check('public profile cannot switch app role', res.status === 400);
+  }
+
+  {
+    const res = await request('GET', '/api/v1/me', null, owner.token);
+    check('rejected profile update keeps app role unchanged', res.body?.appRole === 'WEDDING_USER');
+  }
+
+  {
+    const res = await request('GET', '/api/v1/contexts', null, owner.token);
+    const ownerContext = Array.isArray(res.body)
+      ? res.body.find((item) => item?.contextKey === `plan:${planId}:owner`)
+      : null;
+    check('available contexts - HTTP 200', res.status === 200);
+    check('available contexts include the owned plan', ownerContext?.role === 'OWNER');
+    check('owner context exposes trusted permissions', ownerContext?.permissions?.canManageMoney === true);
+  }
+
+  {
+    const res = await request(
+      'POST',
+      '/api/v1/contexts/validate',
+      { contextKey: `plan:${planId}:owner` },
+      owner.token,
+    );
+    check('owned context validation - HTTP 201', res.status === 201);
+    check('owned context validation returns canonical key', res.body?.contextKey === `plan:${planId}:owner`);
+    check('owned context validation returns server plan title', res.body?.displayName === 'Structured Location Plan');
   }
 
   {
@@ -260,7 +287,7 @@ async function run() {
       },
       owner.token,
     );
-    check('provider app role does not block wedding plan flow', res.status === 201);
+    check('rejected app role update does not block wedding plan flow', res.status === 201);
     legacyPlanId = res.body?.id;
   }
 
@@ -330,6 +357,30 @@ async function run() {
     check('participant invite phone normalization - HTTP 201', res.status === 201);
     check('participant invite stores canonical phone', res.body?.phone === INVITEE_PHONE);
     check('participant invite links registered user', res.body?.inviteeUserId === invitee.user?.id);
+  }
+
+  {
+    const res = await request(
+      'PATCH',
+      `/api/v1/wedding-plans/${legacyPlanId}/archive`,
+      null,
+      owner.token,
+    );
+    check('archive active plan - HTTP 200', res.status === 200);
+  }
+
+  {
+    const res = await request(
+      'GET',
+      '/api/v1/wedding-plans/active',
+      null,
+      owner.token,
+    );
+    check('invalid active plan returns HTTP 200', res.status === 200);
+    check(
+      'invalid active plan returns no body/null without fallback',
+      res.body === null || res.body === '',
+    );
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

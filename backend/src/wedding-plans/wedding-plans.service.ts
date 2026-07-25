@@ -181,17 +181,7 @@ export class WeddingPlansService {
       }
     }
 
-    const fallbackPlan = await this.prisma.weddingPlan.findFirst({
-      where: {
-        ...this.accessiblePlansWhere(currentUser.id),
-        status: WeddingPlanStatus.PLANNING,
-      },
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    });
-
-    return fallbackPlan
-      ? this.toReadableResponse(fallbackPlan, currentUser)
-      : null;
+    return null;
   }
 
   async findOne(

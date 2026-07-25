@@ -145,7 +145,6 @@ export class UsersService {
           ...(dto.locale !== undefined
             ? { locale: this.requiredText(dto.locale, "locale") }
             : {}),
-          ...(dto.appRole !== undefined ? { appRole: dto.appRole } : {}),
           ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
         },
       });

@@ -290,6 +290,11 @@ Additional current auth/profile routes:
 - `GET /api/v1/me`
 
 OTP/profile routes are account and settings helpers. They do not add payment, booking, financing, AI, or chat behavior.
+`PATCH /api/v1/users/me` accepts profile fields such as name, email, avatar,
+locale, and persona. It does not accept `appRole`; role/context discovery is
+server-owned and a supplied `appRole` is rejected by the global validation
+pipe. Provider application creation remains the trusted operation that owns
+provider-profile state.
 
 `REGISTER` codes are completed only through `POST /api/v1/auth/register/complete`;
 the generic verify endpoint cannot consume a registration code without the
@@ -373,6 +378,113 @@ client updates its cached safe user only after both the upload and profile
 update succeed. Media storage credentials remain server-side and are never
 returned to the client.
 
+## Account Contexts
+
+Protected routes:
+
+- `GET /api/v1/contexts`
+- `POST /api/v1/contexts/validate`
+
+Contexts are navigation metadata, not authorization grants. The backend derives
+them live from `WeddingPlan.ownerUserId`, `SharedMember`, and `Provider.userId`;
+it does not use `User.role` or `User.appRole` alone and does not trust a client
+supplied plan, provider, role, or permissions object.
+
+`GET /api/v1/contexts` returns a bounded array. Planning plans are available;
+archived plans remain discoverable with `isAvailable: false` so a client can
+explain why a prior selection is no longer usable.
+
+Owner example:
+
+```json
+{
+  "contextKey": "plan:clx123:owner",
+  "role": "OWNER",
+  "weddingPlanId": "clx123",
+  "providerId": null,
+  "displayName": "خطة زفاف محمد",
+  "permissions": {
+    "canViewPlan": true,
+    "canEditPlan": true,
+    "canManageTasks": true,
+    "canManageGuests": true,
+    "canManageProviders": true,
+    "canInviteMembers": true,
+    "canViewMoney": true,
+    "canManageMoney": true,
+    "canManageProviderProfile": false
+  },
+  "isAvailable": true,
+  "unavailableReason": null
+}
+```
+
+Contributor example:
+
+```json
+{
+  "contextKey": "plan:clx456:contributor",
+  "role": "CONTRIBUTOR",
+  "weddingPlanId": "clx456",
+  "providerId": null,
+  "displayName": "خطة زفاف أحمد",
+  "permissions": {
+    "canViewPlan": true,
+    "canEditPlan": false,
+    "canManageTasks": true,
+    "canManageGuests": true,
+    "canManageProviders": false,
+    "canInviteMembers": false,
+    "canViewMoney": false,
+    "canManageMoney": false,
+    "canManageProviderProfile": false
+  },
+  "isAvailable": true,
+  "unavailableReason": null
+}
+```
+
+Provider example:
+
+```json
+{
+  "contextKey": "provider:7c5301cb-0194-4f44-bb62-18dc9025bb52",
+  "role": "PROVIDER",
+  "weddingPlanId": null,
+  "providerId": "7c5301cb-0194-4f44-bb62-18dc9025bb52",
+  "displayName": "قاعة السعادة",
+  "permissions": {
+    "canViewPlan": false,
+    "canEditPlan": false,
+    "canManageTasks": false,
+    "canManageGuests": false,
+    "canManageProviders": false,
+    "canInviteMembers": false,
+    "canViewMoney": false,
+    "canManageMoney": false,
+    "canManageProviderProfile": true
+  },
+  "isAvailable": true,
+  "unavailableReason": null
+}
+```
+
+Validation request:
+
+```json
+{
+  "contextKey": "plan:clx456:contributor"
+}
+```
+
+Success returns the same canonical context rebuilt from current database rows.
+Malformed keys return `400` with `INVALID_CONTEXT_KEY`; a syntactically valid
+but inaccessible plan/provider returns privacy-preserving `404` with
+`CONTEXT_NOT_FOUND`; an archived context returns `409` with
+`CONTEXT_UNAVAILABLE` and `unavailableReason: "PLAN_ARCHIVED"`.
+Validation never replaces route-level `PermissionService`, provider ownership,
+conversation authorization, or other domain checks.
+
 ## Wedding Plans
 
 Protected routes:
@@ -420,6 +532,11 @@ Response:
 Creating a WeddingPlan makes it the authenticated user's active plan. Selecting
 an existing plan should use `POST /api/v1/wedding-plans/:id/set-active`
 before opening plan-scoped dashboards.
+`GET /api/v1/wedding-plans/active` returns the explicitly selected planning
+plan with HTTP `200`. If the stored plan was deleted, archived, or is no
+longer accessible, the response has no selected-plan body (Nest/Express
+serializes the service `null` as an empty `200` body, which the mobile client
+maps to `null`); it never selects another accessible plan as a fallback.
 
 Shared members can read basic plan info. Updating or archiving requires owner access or manager-style sharing permission.
 
@@ -1522,6 +1639,8 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/budget-categories/:id` | `budget-categories.remove` | 🔒 |
 | PATCH | `/api/v1/budget-categories/:id` | `budget-categories.update` | 🔒 |
 | GET | `/api/v1/cities` | `marketplace.findCities` |  |
+| GET | `/api/v1/contexts` | `contexts.list` | 🔒 |
+| POST | `/api/v1/contexts/validate` | `contexts.validate` | 🔒 |
 | GET | `/api/v1/conversations` | `conversations.list` | 🔒 |
 | GET | `/api/v1/conversations/:id` | `conversations.get` | 🔒 |
 | GET | `/api/v1/conversations/:id/attachments/:attachmentId/download` | `conversations.downloadAttachment` | 🔒 |

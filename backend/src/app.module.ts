@@ -31,6 +31,7 @@ import { GuestsModule } from "./guests/guests.module";
 import { ConversationsModule } from "./conversations/conversations.module";
 import { MediaModule } from "./media/media.module";
 import { OutboxModule } from "./outbox/outbox.module";
+import { ContextsModule } from "./contexts/contexts.module";
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { OutboxModule } from "./outbox/outbox.module";
     AdminModule,
     ConversationsModule,
     MediaModule,
+    ContextsModule,
   ],
   controllers: [HealthController, MetricsController],
   providers: [

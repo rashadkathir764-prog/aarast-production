@@ -79,6 +79,13 @@
 | Serialize every quote decision with one request-first lock order and live permissions. | Accepted and implemented in source | Accept, reject, provider update, and requester cancel lock QuoteRequest before QuoteOffer, re-read the current state, and use an expected-state write. Acceptance also locks and rechecks provider plus money authority inside the same transaction, so revocation or another terminal decision cannot leave cost/link rows attached to a non-accepted offer. |
 | Make conversation revocation transactional and reactivation explicit. | Accepted and implemented in source | Send and mark-read recheck live authority plus the active participant under locks in one serializable transaction. Sending and reading never clear `revokedAt`; only an explicit provider-management grant may reactivate a participant. A provider joins only through its own access, so customer reads preserve the truthful `providerJoined: false` read-only state. |
 
+## Current Decisions Addendum - 2026-07-25
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Derive account contexts from current ownership and membership rows. | Accepted and implemented in backend source | One authenticated User may expose owner contexts from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and one provider context from `Provider.userId`. `User.role` and `appRole` are not sufficient context authority, no role-membership table is added, and every validation rebuilds permissions from current database rows. |
+| Never replace an invalid active plan automatically. | Accepted and implemented in backend source | `GET /api/v1/wedding-plans/active` returns the explicitly selected accessible planning plan or null. Deleted, archived, or revoked selections never fall back to a different plan; the future Flutter context selector owns the next explicit choice. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

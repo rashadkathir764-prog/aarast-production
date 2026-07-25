@@ -21,11 +21,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+String _testInviteToken() => List.filled(43, 'a').join();
+
 void main() {
   test(
     'private invite resume tokens are validated, memory-only, and one-shot',
     () async {
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
 
@@ -72,7 +74,7 @@ void main() {
   test(
     'completed app registration preserves a valid private invite for the new account boundary',
     () async {
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnRegister = true;
 
@@ -118,7 +120,7 @@ void main() {
         ),
         isTrue,
       );
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       await _pumpBoundaryLinkedInviteScreen(
         tester,
         harness,
@@ -336,7 +338,7 @@ void main() {
   testWidgets(
     'a private invite survives an account switch and waits for explicit acceptance',
     (tester) async {
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
       expect(
@@ -404,7 +406,7 @@ void main() {
   testWidgets(
     'an invite accepted on another session opens without duplicate acceptance',
     (tester) async {
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
       expect(
@@ -445,7 +447,7 @@ void main() {
   testWidgets('new app registration resumes at the explicit invite decision', (
     tester,
   ) async {
-    const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+    final token = _testInviteToken();
     final harness = await _authHarness();
     harness.repository.authenticateOnRegister = true;
     final sharingApi = _FakeSharingApi(
@@ -491,7 +493,7 @@ void main() {
   testWidgets(
     'a private invite link verifies its phone even when another account is signed in',
     (tester) async {
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
       expect(
@@ -520,7 +522,7 @@ void main() {
   testWidgets('a private invite link rejects a non-invited phone before OTP', (
     tester,
   ) async {
-    const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+    final token = _testInviteToken();
     final harness = await _authHarness();
     harness.repository.failInviteRequest = true;
     await _pumpLinkedInviteScreen(
@@ -553,7 +555,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.inviteAccountSetupRequired = true;
       harness.repository.authenticateOnVerify = true;

@@ -3,3 +3,16 @@
 69846036e7ed1cc7982f3e5363881cdf9d52f894:backend/test/media-url-ownership.test.ts:generic-api-key:18
 69846036e7ed1cc7982f3e5363881cdf9d52f894:backend/test/openwa-otp-channel.test.ts:generic-api-key:11
 69846036e7ed1cc7982f3e5363881cdf9d52f894:backend/test/whatsapp-otp-channel.test.ts:generic-api-key:7
+
+# Reviewed private-invite token fixtures from 436d0da1671913fbc049e4ea769361e0c937f09d.
+# The static fixture has been removed from the current test source.
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/auth-registration-security.test.ts:generic-api-key:705
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/auth-registration-security.test.ts:generic-api-key:741
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:58
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:87
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:191
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:205
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:256
+436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:288
+436d0da1671913fbc049e4ea769361e0c937f09d:mobile/test/features/sharing/invite_access_screen_test.dart:generic-api-key:121
+436d0da1671913fbc049e4ea769361e0c937f09d:mobile/test/features/sharing/invite_access_screen_test.dart:generic-api-key:448

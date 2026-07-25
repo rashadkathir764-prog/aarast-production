@@ -14,6 +14,7 @@ import {
 
 const originalEnvironment = { ...process.env };
 const originalFetch = globalThis.fetch;
+const TEST_INVITE_TOKEN = "a".repeat(43);
 
 async function invitationDeliveryMetricValue(outcome: string): Promise<number> {
   const metric = await invitationDeliveryOutcomesTotal.get();
@@ -55,7 +56,7 @@ test("Aarast sends an invite through only the hardened transient OpenWA route", 
   }) as typeof fetch;
 
   const deliveredBefore = await invitationDeliveryMetricValue("delivered");
-  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const token = TEST_INVITE_TOKEN;
   const result = await new InvitationDeliveryService().deliver(
     "+967777123456",
     token,
@@ -84,7 +85,7 @@ test("invite delivery maps explicit OpenWA outcomes without false success", asyn
   process.env.OPENWA_BASE_URL = "http://openwa:2785";
   process.env.OPENWA_SESSION_ID = "aarast-otp";
   process.env.OPENWA_API_KEY = "a-secure-openwa-api-key-for-tests-only";
-  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const token = TEST_INVITE_TOKEN;
   const rejectedBefore = await invitationDeliveryMetricValue("rejected");
   const uncertainBefore = await invitationDeliveryMetricValue("uncertain");
 
@@ -173,7 +174,7 @@ test("invite delivery records a bounded not-attempted outcome without private la
 
   const result = await new InvitationDeliveryService().deliver(
     null,
-    "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789",
+    TEST_INVITE_TOKEN,
   );
 
   assert.deepEqual(result, { channel: "WHATSAPP", status: "UNAVAILABLE" });
@@ -188,7 +189,7 @@ test("invite delivery records a bounded not-attempted outcome without private la
 });
 
 test("invite message is generic, private, and rejects an unsafe public origin", () => {
-  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const token = TEST_INVITE_TOKEN;
   const message = buildInvitationMessage(token);
   assert.match(message, /تحقق من رقم هاتفك/);
   assert.doesNotMatch(message, /\+967|777123456/);
@@ -202,7 +203,7 @@ test("invite message is generic, private, and rejects an unsafe public origin", 
 });
 
 test("invite OTP is sent only when the bearer token and canonical phone match", async () => {
-  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const token = TEST_INVITE_TOKEN;
   const expectedHash = createHash("sha256").update(token).digest("hex");
   const authCalls: Array<Record<string, unknown>> = [];
   const service = new InviteAccessService(
@@ -253,7 +254,7 @@ test("invite OTP is sent only when the bearer token and canonical phone match", 
 });
 
 test("invite OTP verification stays bound to the exact private token", async () => {
-  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const token = TEST_INVITE_TOKEN;
   const verifyCalls: Array<Record<string, unknown>> = [];
   const service = new InviteAccessService(
     {} as any,
@@ -285,7 +286,7 @@ test("invite OTP verification stays bound to the exact private token", async () 
 });
 
 test("invite OTP never dispatches for accepted, declined, cancelled, or expired links", async () => {
-  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const token = TEST_INVITE_TOKEN;
   const expectedHash = createHash("sha256").update(token).digest("hex");
   const activeExpiry = new Date(Date.now() + 60_000);
   const terminalRows = [

@@ -11,6 +11,7 @@ import { RegisterDto } from "../src/auth/dto/register.dto";
 import { JwtStrategy } from "../src/auth/jwt.strategy";
 
 const { registerVerified } = require("../scripts/smoke/verified-registration");
+const TEST_INVITE_TOKEN = "a".repeat(43);
 
 function createHarness() {
   const otps: any[] = [];
@@ -702,7 +703,7 @@ test("general LOGIN OTP never creates an invited participant account", async () 
 
 test("private invite OTP creates a participant with their chosen password and one session", async () => {
   await withDevOtp(async () => {
-    const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+    const token = TEST_INVITE_TOKEN;
     const { service, users, refreshTokens, setPlanInvite } = createHarness();
     setPlanInvite({
       id: "invite-active",
@@ -738,7 +739,7 @@ test("private invite OTP creates a participant with their chosen password and on
 
 test("private invite setup can reuse the same unconsumed OTP after credentials are requested", async () => {
   await withDevOtp(async () => {
-    const token = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+    const token = TEST_INVITE_TOKEN;
     const { service, users, otps, setPlanInvite } = createHarness();
     setPlanInvite({
       id: "invite-active",

@@ -26,10 +26,18 @@ String? resolveNotificationRouteTarget(AarastNotification notification) {
   final originalTarget = _nonEmpty(notification.routeTarget);
   if (notification.entityType == 'quote_request' &&
       _isLegacyRequesterQuoteTarget(originalTarget)) {
-    final quoteId = _nonEmpty(
-      notification.entityId ?? notification.data?['quoteRequestId'],
-    );
+    final data = notification.data;
+    final quoteId = _nonEmpty(notification.entityId ?? data?['quoteRequestId']);
     if (quoteId != null && _safeRouteId.hasMatch(quoteId)) {
+      final planId = _nonEmpty(
+        notification.weddingPlanId ?? data?['weddingPlanId'],
+      );
+      if (planId != null && _safeRouteId.hasMatch(planId)) {
+        return Uri(
+          path: '/wedding-plans/$planId/providers',
+          queryParameters: {'quoteId': quoteId},
+        ).toString();
+      }
       return Uri(
         path: '/providers',
         queryParameters: {'quoteId': quoteId},

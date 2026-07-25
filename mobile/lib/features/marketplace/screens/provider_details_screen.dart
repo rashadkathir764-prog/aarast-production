@@ -249,8 +249,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       return;
     }
     final planId = quote.weddingPlanId ?? widget.weddingPlanId;
-    if (quote.status == 'ACCEPTED' && planId != null && planId.isNotEmpty) {
-      context.push('/wedding-plans/$planId/providers?quoteId=${quote.id}');
+    if (planId != null && planId.isNotEmpty) {
+      context.push(AppRouter.planProviders(planId, quoteId: quote.id));
       return;
     }
     context.push('${AppRouter.providerMarketplace}?quoteId=${quote.id}');

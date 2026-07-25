@@ -59,6 +59,8 @@ class MarketplaceProvider {
     required this.isFeatured,
     this.city,
     this.cityId,
+    this.primaryCategory,
+    this.primaryCategoryId,
     this.phone,
     this.whatsapp,
     this.email,
@@ -67,6 +69,7 @@ class MarketplaceProvider {
     this.logoUrl,
     this.coverUrl,
     this.services = const [],
+    this.serviceSummary,
   });
 
   factory MarketplaceProvider.fromJson(Map<String, dynamic> json) {
@@ -74,6 +77,11 @@ class MarketplaceProvider {
       id: json['id'].toString(),
       cityId: json['cityId']?.toString(),
       city: _mapOrNull(json['city'], MarketplaceCity.fromJson),
+      primaryCategoryId: json['primaryCategoryId']?.toString(),
+      primaryCategory: _mapOrNull(
+        json['primaryCategory'],
+        ProviderCategory.fromJson,
+      ),
       businessName: json['businessName']?.toString() ?? '',
       ownerName: json['ownerName']?.toString() ?? '',
       phone: json['phone']?.toString(),
@@ -87,12 +95,18 @@ class MarketplaceProvider {
       ratingAverage: _doubleOrZero(json['ratingAverage']),
       ratingCount: _intOrZero(json['ratingCount']),
       services: _listFromJson(json['services'], MarketplaceService.fromJson),
+      serviceSummary: _mapOrNull(
+        json['serviceSummary'],
+        MarketplaceProviderServiceSummary.fromJson,
+      ),
     );
   }
 
   final String id;
   final String? cityId;
   final MarketplaceCity? city;
+  final String? primaryCategoryId;
+  final ProviderCategory? primaryCategory;
   final String businessName;
   final String ownerName;
   final String? phone;
@@ -106,6 +120,44 @@ class MarketplaceProvider {
   final double ratingAverage;
   final int ratingCount;
   final List<MarketplaceService> services;
+  final MarketplaceProviderServiceSummary? serviceSummary;
+}
+
+class MarketplaceProviderServiceSummary {
+  const MarketplaceProviderServiceSummary({
+    required this.activeCount,
+    this.titles = const [],
+    this.categories = const [],
+    this.minPrice,
+    this.maxPrice,
+    this.currency,
+  });
+
+  factory MarketplaceProviderServiceSummary.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    final titlesValue = json['titles'];
+    return MarketplaceProviderServiceSummary(
+      activeCount: _intOrZero(json['activeCount']),
+      titles: titlesValue is List
+          ? titlesValue
+                .map((item) => item?.toString().trim() ?? '')
+                .where((item) => item.isNotEmpty)
+                .toList(growable: false)
+          : const [],
+      categories: _listFromJson(json['categories'], ProviderCategory.fromJson),
+      minPrice: json['minPrice']?.toString(),
+      maxPrice: json['maxPrice']?.toString(),
+      currency: json['currency']?.toString(),
+    );
+  }
+
+  final int activeCount;
+  final List<String> titles;
+  final List<ProviderCategory> categories;
+  final String? minPrice;
+  final String? maxPrice;
+  final String? currency;
 }
 
 class ProviderSummary {

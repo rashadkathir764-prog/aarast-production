@@ -231,7 +231,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                       location: _weddingLocation,
                     ),
                     action: OutlinedButton.icon(
-                      onPressed: provider.clearFilters,
+                      onPressed: () => _clearMarketplaceFilters(provider),
                       icon: const Icon(LucideIcons.slidersHorizontal),
                       label: const Text('مسح الفلاتر'),
                     ),
@@ -266,7 +266,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   ],
                   _ResultsHeader(
                     count: provider.totalProviders,
-                    location: _weddingLocation,
+                    cityLabel: _selectedCityName(provider),
                   ),
                   const SizedBox(height: 12),
                   for (final item in provider.providers) ...[
@@ -328,6 +328,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     if (!_scrollController.hasClients) return;
     if (_scrollController.position.extentAfter > 500) return;
     context.read<ProviderMarketplaceProvider>().loadMoreProviders();
+  }
+
+  Future<void> _clearMarketplaceFilters(
+    ProviderMarketplaceProvider marketplace,
+  ) async {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    await marketplace.clearFilters();
   }
 
   Future<void> _loadWeddingLocationContext({

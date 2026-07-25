@@ -37,7 +37,10 @@ class ProviderDetailsView extends StatelessWidget {
     final heroImage = _heroImageUrl(provider, serviceImages);
     final galleryImages = _allPhotoUrls(heroImage, serviceImages);
     final photoCount = galleryImages.length;
-    final category = _providerCategory(services);
+    final primaryCategory = provider.primaryCategory?.nameAr.trim();
+    final category = primaryCategory?.isNotEmpty == true
+        ? primaryCategory
+        : _providerCategory(services);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 10),
@@ -127,8 +130,12 @@ class _ProviderHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasPublishedMedia =
+        imageUrl?.trim().isNotEmpty == true ||
+        logoUrl?.trim().isNotEmpty == true;
     return SizedBox(
-      height: 342,
+      key: const Key('provider-details-hero'),
+      height: hasPublishedMedia ? 342 : 250,
       child: Stack(
         fit: StackFit.expand,
         children: [

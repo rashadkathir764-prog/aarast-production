@@ -13,13 +13,13 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final offersReceived = _offersReceivedCount(quotes);
     final acceptedProviders = _acceptedProviderCount(quotes);
-    final sentRequests = _sentRequestsCount(quotes);
+    final requests = _requestCount(quotes);
+    final actionableOffers = _actionableOfferCount(quotes);
 
     Widget title() => Expanded(
       child: Text(
-        'الموردون والعروض',
+        'الموردون',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(
@@ -100,15 +100,15 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
             child: Row(
               children: [
                 _MiniStat(
-                  key: const Key('quote-stat-sent'),
-                  label: 'طلبات مرسلة',
-                  value: sentRequests.toString(),
+                  key: const Key('quote-stat-requests'),
+                  label: 'طلباتك',
+                  value: requests.toString(),
                   color: AppTheme.muted,
                 ),
                 _MiniStat(
-                  key: const Key('quote-stat-received'),
-                  label: 'عروض وصلت',
-                  value: offersReceived.toString(),
+                  key: const Key('quote-stat-actionable'),
+                  label: 'تحتاج قرار',
+                  value: actionableOffers.toString(),
                   color: AppTheme.gold,
                 ),
                 _MiniStat(
@@ -126,44 +126,8 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
               ],
             ),
           ),
-        ] else ...[
-          const SizedBox(height: 12),
-          const _PublicBrowseNote(),
         ],
       ],
-    );
-  }
-}
-
-class _PublicBrowseNote extends StatelessWidget {
-  const _PublicBrowseNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.ivory.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.eye, color: AppTheme.gold, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'التصفح مفتوح للجميع. إرسال طلب عرض ومتابعة الردود يحتاج حسابًا محفوظًا.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -274,26 +238,32 @@ class _FilterChips extends StatelessWidget {
 
     return SizedBox(
       height: 38,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero,
-        physics: const BouncingScrollPhysics(),
+      child: Row(
         children: [
-          AarastFilterPill(
-            label: 'الكل',
-            selected: selectedCategory == null,
-            onTap: () => provider.setCategory(null),
-          ),
-          for (final category in categories) ...[
-            const SizedBox(width: 8),
-            AarastFilterPill(
-              label: category.nameAr,
-              selected: selectedCategory == category.id,
-              onTap: () => provider.setCategory(category.id),
-            ),
-          ],
-          const SizedBox(width: 8),
           _CityFilterChip(provider: provider),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.zero,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                AarastFilterPill(
+                  label: 'الكل',
+                  selected: selectedCategory == null,
+                  onTap: () => provider.setCategory(null),
+                ),
+                for (final category in categories) ...[
+                  const SizedBox(width: 8),
+                  AarastFilterPill(
+                    label: category.nameAr,
+                    selected: selectedCategory == category.id,
+                    onTap: () => provider.setCategory(category.id),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -84,6 +84,17 @@ export class MarketplaceQuery {
           { ownerName: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
+          {
+            services: {
+              some: {
+                isActive: true,
+                OR: [
+                  { title: { contains: search, mode: "insensitive" } },
+                  { description: { contains: search, mode: "insensitive" } },
+                ],
+              },
+            },
+          },
         ],
       });
     }
@@ -295,6 +306,68 @@ export class MarketplacePresenter {
             })),
           }
         : {}),
+    };
+  }
+
+  static toProviderListResponse(
+    provider: Provider & {
+      city?: City | null;
+      primaryCategory?: ProviderCategory | null;
+      servicePreviews: (Pick<
+        ProviderService,
+        "title" | "basePrice" | "currency"
+      > & {
+        category: ProviderCategory;
+      })[];
+    },
+  ) {
+    const prices = provider.servicePreviews
+      .map((service) => service.basePrice)
+      .filter((price): price is Prisma.Decimal => price !== null);
+    const currencies = new Set(
+      provider.servicePreviews
+        .filter((service) => service.basePrice !== null)
+        .map((service) => service.currency),
+    );
+    const commonCurrency =
+      prices.length > 0 && currencies.size === 1
+        ? currencies.values().next().value
+        : null;
+    let minPrice: Prisma.Decimal | null = null;
+    let maxPrice: Prisma.Decimal | null = null;
+    if (commonCurrency) {
+      for (const price of prices) {
+        if (minPrice === null || price.lessThan(minPrice)) minPrice = price;
+        if (maxPrice === null || price.greaterThan(maxPrice)) maxPrice = price;
+      }
+    }
+    const categories = [
+      ...new Map(
+        provider.servicePreviews.map((service) => [
+          service.category.id,
+          service.category,
+        ]),
+      ).values(),
+    ];
+
+    return {
+      ...this.toProviderResponse(provider),
+      serviceSummary: {
+        activeCount: provider.servicePreviews.length,
+        titles: [
+          ...new Set(
+            provider.servicePreviews
+              .map((service) => service.title.trim())
+              .filter(Boolean),
+          ),
+        ],
+        categories: categories.map((category) =>
+          this.toCategoryResponse(category),
+        ),
+        minPrice: minPrice?.toString() ?? null,
+        maxPrice: maxPrice?.toString() ?? null,
+        currency: commonCurrency ?? null,
+      },
     };
   }
 

@@ -1,9 +1,5 @@
 part of 'provider_marketplace_screen.dart';
 
-int _offersReceivedCount(List<QuoteRequest> quotes) {
-  return quotes.where((quote) => quote.offers.isNotEmpty).length;
-}
-
 int _acceptedProviderCount(List<QuoteRequest> quotes) {
   return quotes
       .where(
@@ -13,13 +9,13 @@ int _acceptedProviderCount(List<QuoteRequest> quotes) {
       .length;
 }
 
-int _sentRequestsCount(List<QuoteRequest> quotes) {
-  return quotes
-      .where((quote) => quote.status == 'SENT' || quote.status == 'VIEWED')
-      .length;
+int _requestCount(List<QuoteRequest> quotes) => quotes.length;
+
+int _actionableOfferCount(List<QuoteRequest> quotes) {
+  return quotes.where((quote) => quote.canAcceptOrReject).length;
 }
 
-/// ترتيب كرت "عروض وصلتك": ما يحتاج قرارًا أولًا، ثم المنتظر، ثم المقبول.
+/// ترتيب كرت "طلباتك وعروضك": ما يحتاج قرارًا أولًا، ثم المنتظر، ثم المقبول.
 List<QuoteRequest> _inboxQuotes(
   List<QuoteRequest> quotes, {
   String? prioritizedQuoteId,
@@ -58,6 +54,15 @@ String? _activeCategoryName(ProviderMarketplaceProvider provider) {
   if (id == null) return null;
   for (final category in provider.categories) {
     if (category.id == id) return category.nameAr;
+  }
+  return null;
+}
+
+String? _selectedCityName(ProviderMarketplaceProvider provider) {
+  final id = provider.cityId;
+  if (id == null) return null;
+  for (final city in provider.cities) {
+    if (city.id == id) return city.nameAr;
   }
   return null;
 }

@@ -150,7 +150,7 @@ void main() {
 
     await _pump(tester, state);
 
-    expect(find.text('عروض وصلتك'), findsOneWidget);
+    expect(find.text('طلباتك وعروضك'), findsOneWidget);
     expect(find.text('أهم ما يحتاج قرار الآن'), findsNothing);
     expect(find.text('طلبات العروض والردود'), findsNothing);
     expect(find.text('فتح مركز الخطة'), findsNothing);
@@ -171,6 +171,23 @@ void main() {
     // تصريف مؤقّت توست النجاح حتى لا يبقى Timer معلقًا.
     await tester.pump(const Duration(seconds: 8));
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('waiting request is not presented as a received offer', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequests: [_waitingQuote('quote-waiting')],
+    );
+
+    await _pump(tester, state, initialQuoteId: 'quote-waiting');
+
+    expect(find.text('طلباتك وعروضك'), findsOneWidget);
+    expect(find.text('بانتظار رد المورد'), findsOneWidget);
+    expect(find.text('قبول'), findsNothing);
+    expect(find.text('رفض'), findsNothing);
+    expect(find.byKey(const Key('quote-accept-quote-waiting')), findsNothing);
+    expect(find.byKey(const Key('quote-reject-quote-waiting')), findsNothing);
   });
 
   testWidgets('accepting an offer reloads Money with the automatic cost', (
@@ -326,15 +343,15 @@ void main() {
 
       expect(
         find.descendant(
-          of: find.byKey(const Key('quote-stat-sent')),
-          matching: find.text('1'),
+          of: find.byKey(const Key('quote-stat-requests')),
+          matching: find.text('5'),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
-          of: find.byKey(const Key('quote-stat-received')),
-          matching: find.text('2'),
+          of: find.byKey(const Key('quote-stat-actionable')),
+          matching: find.text('1'),
         ),
         findsOneWidget,
       );
@@ -379,7 +396,7 @@ void main() {
       await _pump(tester, state, initialQuoteId: 'quote-1');
 
       expect(state.directlyLoadedQuoteIds, ['quote-1']);
-      expect(find.text('عروض وصلتك'), findsOneWidget);
+      expect(find.text('طلباتك وعروضك'), findsOneWidget);
       expect(
         find.byKey(const Key('quote-offer-details-quote-1')),
         findsOneWidget,
@@ -432,30 +449,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('received offer card keeps the approved compact visual', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(420, 900);
-    addTearDown(() {
-      tester.view.resetDevicePixelRatio();
-      tester.view.resetPhysicalSize();
-    });
-    final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
+  testWidgets(
+    'received offer card keeps the approved compact visual',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(420, 900);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+      final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
 
-    await _pump(tester, state);
-    final card = find.byKey(const Key('received-offer-quote-1'));
-    await tester.scrollUntilVisible(
-      card,
-      180,
-      scrollable: find.byType(Scrollable).first,
-    );
+      await _pump(tester, state);
+      final card = find.byKey(const Key('received-offer-quote-1'));
+      await tester.scrollUntilVisible(
+        card,
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
 
-    await expectLater(
-      card,
-      matchesGoldenFile('goldens/provider_received_offer.png'),
-    );
-  }, tags: const ['golden']);
+      await expectLater(
+        card,
+        matchesGoldenFile('goldens/provider_received_offer.png'),
+      );
+    },
+    tags: const ['golden'],
+  );
 }
 
 Future<void> _pump(

@@ -73,23 +73,47 @@ void main() {
     );
   });
 
-  test('legacy requester quote notifications stay out of plan center', () {
+  test(
+    'plan quote notifications open the actionable offer in plan providers',
+    () {
+      final notification = AarastNotification(
+        id: 'notification-quote',
+        userId: 'user-1',
+        weddingPlanId: 'plan-1',
+        type: 'QUOTE_OFFER_RECEIVED',
+        title: 'offer',
+        body: 'offer received',
+        entityType: 'quote_request',
+        entityId: 'quote-123',
+        routeTarget: '/wedding-plans/plan-1/plan-center',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      expect(
+        resolveNotificationRouteTarget(notification),
+        '/wedding-plans/plan-1/providers?quoteId=quote-123',
+      );
+    },
+  );
+
+  test('account quote notifications keep the global marketplace fallback', () {
     final notification = AarastNotification(
-      id: 'notification-quote',
+      id: 'notification-account-quote',
       userId: 'user-1',
       type: 'QUOTE_OFFER_RECEIVED',
       title: 'offer',
       body: 'offer received',
       entityType: 'quote_request',
-      entityId: 'quote-123',
-      routeTarget: '/wedding-plans/plan-1/plan-center',
+      entityId: 'quote-account',
+      routeTarget: '/providers/provider-1',
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
 
     expect(
       resolveNotificationRouteTarget(notification),
-      '/providers?quoteId=quote-123',
+      '/providers?quoteId=quote-account',
     );
   });
 

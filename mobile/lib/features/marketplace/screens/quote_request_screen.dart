@@ -480,12 +480,20 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
     if (!mounted) return;
     if (success) {
+      final createdQuote = marketplace.lastCreatedQuote;
+      final planId =
+          createdQuote?.weddingPlanId?.trim() ?? _weddingPlanId?.trim();
       AarastToast.showSuccess(context, 'تم إرسال طلب عرض السعر بنجاح');
-      if (context.canPop()) {
-        context.pop(true);
-      } else {
-        context.go(AppRouter.providerDetails(widget.providerId));
+      if (planId != null && planId.isNotEmpty) {
+        context.go(AppRouter.planProviders(planId, quoteId: createdQuote?.id));
+        return;
       }
+      final quoteId = createdQuote?.id.trim();
+      context.go(
+        quoteId == null || quoteId.isEmpty
+            ? AppRouter.providerDetails(widget.providerId)
+            : '${AppRouter.providerMarketplace}?quoteId=${Uri.encodeQueryComponent(quoteId)}',
+      );
     }
   }
 

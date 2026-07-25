@@ -49,7 +49,12 @@ void main() {
 
     expect(find.text('لا توجد خدمات منشورة'), findsOneWidget);
     expect(find.text('لا توجد باقات منشورة حاليًا.'), findsOneWidget);
+    expect(find.text('القاعات'), findsWidgets);
     expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
+      250,
+    );
     expect(find.textContaining('لا توجد صور منشورة'), findsOneWidget);
     final reviewsEmpty = find.text('لا توجد تقييمات بعد.');
     await tester.scrollUntilVisible(
@@ -109,6 +114,10 @@ void main() {
       expect(find.textContaining('معرض الصور 1'), findsOneWidget);
       expect(find.text('معرض الصور'), findsOneWidget);
       expect(find.text('عرض الكل'), findsNothing);
+      expect(
+        tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
+        342,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -170,6 +179,7 @@ const _provider = MarketplaceProvider(
   ratingCount: 12,
   isFeatured: true,
   city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
+  primaryCategory: ProviderCategory(id: 'cat-1', nameAr: 'القاعات'),
   description: 'قاعة مناسبة للمناسبات العائلية.',
 );
 

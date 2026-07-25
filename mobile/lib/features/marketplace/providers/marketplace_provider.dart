@@ -48,6 +48,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   List<QuoteRequest> _quoteRequests = const [];
   final Set<String> _providerQuoteContextsLoading = {};
   QuoteRequest? _existingActiveQuote;
+  QuoteRequest? _lastCreatedQuote;
   String? _quoteAttemptSignature;
   String? _quoteAttemptId;
   Future<void>? _referenceDataLoadInFlight;
@@ -79,6 +80,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   bool get isLoadingMore => _isLoadingMore;
   String? get loadMoreErrorMessage => _loadMoreErrorMessage;
   QuoteRequest? get existingActiveQuote => _existingActiveQuote;
+  QuoteRequest? get lastCreatedQuote => _lastCreatedQuote;
 
   MarketplaceProvider? providerDetails(String id) => _details[id];
   List<MarketplaceService> servicesFor(String id) => _services[id] ?? const [];
@@ -101,9 +103,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   }) {
     final planId = _normalizedOrNull(weddingPlanId);
     return quotesForProvider(providerId)
-        .where(
-          (quote) => planId == null || quote.weddingPlanId == planId,
-        )
+        .where((quote) => planId == null || quote.weddingPlanId == planId)
         .toList(growable: false);
   }
 
@@ -418,6 +418,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     _errorMessage = null;
     _quoteSubmitErrorMessage = null;
     _noticeMessage = null;
+    _lastCreatedQuote = null;
     notifyListeners();
 
     try {
@@ -461,6 +462,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
       _quoteAttemptSignature = null;
       _quoteAttemptId = null;
       _existingActiveQuote = null;
+      _lastCreatedQuote = quote;
       return true;
     } on ApiException catch (error) {
       _quoteSubmitErrorMessage = marketplaceErrorMessage(error.message);

@@ -232,7 +232,7 @@ class _LocationContextCard extends StatelessWidget {
   }
 }
 
-/// كرت "عروض وصلتك" — دمج "أهم ما يحتاج قرار" و"طلبات العروض" في كرت واحد
+/// كرت متابعة موحّد يفرّق بوضوح بين الطلب المنتظر والعرض القابل للقرار.
 /// فاعل: السعر والمحادثة والقبول/الرفض كلها هنا، بلا تنقّل إجباري لمركز الخطة.
 class _OffersInboxCard extends StatelessWidget {
   const _OffersInboxCard({
@@ -261,21 +261,34 @@ class _OffersInboxCard extends StatelessWidget {
     final needsDecision = quotes
         .where((quote) => quote.canAcceptOrReject)
         .length;
+    final prioritizedId = initialQuoteId?.trim();
+    final hasPrioritizedQuote =
+        prioritizedId != null &&
+        prioritizedId.isNotEmpty &&
+        visible.any((quote) => quote.id == prioritizedId);
+    final initiallyExpanded =
+        needsDecision > 0 || hasPrioritizedQuote || visible.length == 1;
 
     return AarastCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       color: AppTheme.surface,
       border: Border.all(color: AppTheme.border),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: ValueKey(
+            'quote-inbox-$needsDecision-${visible.length}-$prioritizedId',
+          ),
+          initiallyExpanded: initiallyExpanded,
+          maintainState: true,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 12),
+          leading: const Icon(LucideIcons.mailOpen, color: AppTheme.burgundy),
+          title: Row(
             children: [
-              const Icon(LucideIcons.mailOpen, color: AppTheme.burgundy),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'عروض وصلتك',
+                  'طلباتك وعروضك',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
@@ -290,30 +303,30 @@ class _OffersInboxCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'راجع السعر وحادث المورد واقبل أو ارفض — كل القرار من هنا.',
+          subtitle: Text(
+            needsDecision > 0
+                ? 'راجع العرض ثم اقبله أو ارفضه من هنا.'
+                : 'لا يوجد عرض لاتخاذ قرار الآن؛ الطلبات بانتظار رد المورد.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AppTheme.muted,
               fontWeight: FontWeight.w700,
-              height: 1.45,
+              height: 1.35,
             ),
           ),
-          for (var index = 0; index < visible.length; index += 1) ...[
-            if (index == 0)
-              const SizedBox(height: 10)
-            else
-              const Divider(height: 22, color: AppTheme.border),
-            _OfferQuoteTile(
-              quote: visible[index],
-              isSubmitting: isSubmitting,
-              onAccept: () => onAccept(visible[index]),
-              onReject: () => onReject(visible[index]),
-              onViewCost: () => onViewCost(visible[index]),
-              onCreateNew: () => onCreateNew(visible[index]),
-            ),
+          children: [
+            for (var index = 0; index < visible.length; index += 1) ...[
+              if (index > 0) const Divider(height: 22, color: AppTheme.border),
+              _OfferQuoteTile(
+                quote: visible[index],
+                isSubmitting: isSubmitting,
+                onAccept: () => onAccept(visible[index]),
+                onReject: () => onReject(visible[index]),
+                onViewCost: () => onViewCost(visible[index]),
+                onCreateNew: () => onCreateNew(visible[index]),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1009,15 +1022,15 @@ class _OfferFactCard extends StatelessWidget {
 }
 
 class _ResultsHeader extends StatelessWidget {
-  const _ResultsHeader({required this.count, required this.location});
+  const _ResultsHeader({required this.count, required this.cityLabel});
 
   final int count;
-  final WeddingLocationDraft? location;
+  final String? cityLabel;
 
   @override
   Widget build(BuildContext context) {
-    final title = location?.hasRequiredLocation == true
-        ? 'موردون ضمن مدينة ${location!.shortLabel}'
+    final title = cityLabel?.trim().isNotEmpty == true
+        ? 'موردون في ${cityLabel!.trim()}'
         : 'الموردون المتاحون';
     return Row(
       children: [
@@ -1054,9 +1067,21 @@ class _ProviderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = provider.services.isEmpty ? null : provider.services.first;
-    final category = service?.category?.nameAr.trim();
+    final primaryCategory = provider.primaryCategory?.nameAr.trim();
+    final summaryCategories = provider.serviceSummary?.categories;
+    final summaryCategory =
+        summaryCategories == null || summaryCategories.isEmpty
+        ? null
+        : summaryCategories.first.nameAr.trim();
+    final category = primaryCategory?.isNotEmpty == true
+        ? primaryCategory
+        : summaryCategory?.isNotEmpty == true
+        ? summaryCategory
+        : service?.category?.nameAr.trim();
     final location = _providerLocationLabel(provider);
-    final price = _moneyValueOrNull(service?.basePrice);
+    final price =
+        _moneyValueOrNull(provider.serviceSummary?.minPrice) ??
+        _moneyValueOrNull(service?.basePrice);
     final budgetStatus = budgetIntent == null
         ? null
         : _serviceBudgetStatus(budgetIntent!, price);
@@ -1071,7 +1096,7 @@ class _ProviderCard extends StatelessWidget {
       ratingCount: provider.ratingCount,
       categoryLabel: category,
       locationLabel: location,
-      priceLabel: _providerPriceRangeLabel(provider.services),
+      priceLabel: _providerPriceRangeLabel(provider),
       imageUrl: _providerImageUrl(provider),
       budgetStatusLabel: budgetStatus == null
           ? null
@@ -1101,18 +1126,31 @@ String? _providerImageUrl(MarketplaceProvider provider) {
 }
 
 /// نطاق أسعار المورد المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.
-String? _providerPriceRangeLabel(List<MarketplaceService> services) {
+String? _providerPriceRangeLabel(MarketplaceProvider provider) {
+  final summary = provider.serviceSummary;
+  final summaryMin = _moneyValueOrNull(summary?.minPrice);
+  final summaryMax = _moneyValueOrNull(summary?.maxPrice);
+  if (summaryMin != null && summaryMax != null) {
+    final unit = currencyLabelAr(summary?.currency);
+    if (summaryMin == summaryMax) return '${_formatMoney(summaryMin)} $unit';
+    return '${_formatMoney(summaryMin)} - ${_formatMoney(summaryMax)} $unit';
+  }
+
   double? min;
   double? max;
   String? currency;
-  for (final service in services) {
+  for (final service in provider.services) {
     final price = _moneyValueOrNull(service.basePrice);
     if (price == null) continue;
     currency ??= service.currency;
     min = min == null ? price : (price < min ? price : min);
     max = max == null ? price : (price > max ? price : max);
   }
-  if (min == null || max == null) return null;
+  if (min == null || max == null) {
+    final hasServices =
+        (summary?.activeCount ?? 0) > 0 || provider.services.isNotEmpty;
+    return hasServices ? 'السعر عبر طلب عرض' : null;
+  }
   final unit = currencyLabelAr(currency);
   if (min == max) return '${_formatMoney(min)} $unit';
   return '${_formatMoney(min)} - ${_formatMoney(max)} $unit';

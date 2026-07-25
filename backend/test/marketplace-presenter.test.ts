@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
-import { MarketplaceQuery } from "../src/marketplace/marketplace.presenter";
+import { Prisma } from "@prisma/client";
+import {
+  MarketplacePresenter,
+  MarketplaceQuery,
+} from "../src/marketplace/marketplace.presenter";
 
 test("marketplace pagination is bounded and rejects invalid values", () => {
   assert.deepEqual(MarketplaceQuery.parsePagination(), {
@@ -36,8 +40,12 @@ test("provider and service filters keep canonical active-only constraints", () =
   });
   assert.equal(providers.pagination.skip, 10);
   assert.ok(Array.isArray(providers.where.AND));
-  assert.match(JSON.stringify(providers.where), /ACTIVE/);
-  assert.match(JSON.stringify(providers.where), /قاعة/);
+  const providerWhere = JSON.stringify(providers.where);
+  assert.match(providerWhere, /ACTIVE/);
+  assert.match(providerWhere, /قاعة/);
+  assert.match(providerWhere, /services/);
+  assert.match(providerWhere, /title/);
+  assert.match(providerWhere, /description/);
 
   const services = MarketplaceQuery.serviceSearch({
     minPrice: "100",
@@ -47,6 +55,76 @@ test("provider and service filters keep canonical active-only constraints", () =
   assert.equal(services.where.isActive, true);
   assert.deepEqual(services.where.basePrice, { gte: "100", lte: "500" });
   assert.match(JSON.stringify(services.where), /تصوير/);
+});
+
+test("provider list response keeps category and active service summary", () => {
+  const category = {
+    id: "category-1",
+    nameAr: "التصوير",
+    nameEn: "Photography",
+    slug: "photography",
+    icon: null,
+    isActive: true,
+    sortOrder: 1,
+  };
+  const response = MarketplacePresenter.toProviderListResponse({
+    id: "provider-1",
+    cityId: null,
+    primaryCategoryId: category.id,
+    businessName: "استديو وعد",
+    ownerName: "وعد",
+    phone: null,
+    whatsapp: null,
+    email: null,
+    description: null,
+    address: null,
+    latitude: null,
+    longitude: null,
+    logoUrl: null,
+    coverUrl: null,
+    status: "ACTIVE",
+    isFeatured: false,
+    ratingAverage: new Prisma.Decimal("0"),
+    ratingCount: 0,
+    createdAt: new Date("2026-07-25T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-25T00:00:00.000Z"),
+    city: null,
+    primaryCategory: category,
+    servicePreviews: [
+      {
+        title: "تصوير فوتوغرافي",
+        basePrice: new Prisma.Decimal("250000"),
+        currency: "YER",
+        category,
+      },
+      {
+        title: "فيديو الزفاف",
+        basePrice: new Prisma.Decimal("400000"),
+        currency: "YER",
+        category,
+      },
+    ],
+  } as never);
+
+  assert.equal(response.primaryCategory?.nameAr, "التصوير");
+  assert.deepEqual(response.serviceSummary, {
+    activeCount: 2,
+    titles: ["تصوير فوتوغرافي", "فيديو الزفاف"],
+    categories: [
+      {
+        id: "category-1",
+        nameAr: "التصوير",
+        nameEn: "Photography",
+        slug: "photography",
+        icon: null,
+        isActive: true,
+        sortOrder: 1,
+      },
+    ],
+    minPrice: "250000",
+    maxPrice: "400000",
+    currency: "YER",
+  });
 });
 
 test("marketplace service keeps Prisma orchestration outside pure presenters", () => {

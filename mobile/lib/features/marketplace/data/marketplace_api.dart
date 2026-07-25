@@ -556,21 +556,36 @@ class MarketplaceApi {
       if (categoryId != null && categoryId.trim().isNotEmpty) {
         final primary = provider['primaryCategoryId']?.toString();
         final services = provider['services'];
+        final serviceSummary = provider['serviceSummary'];
+        final summaryCategories = serviceSummary is Map
+            ? serviceSummary['categories']
+            : null;
         final hasServiceCategory =
-            services is List &&
-            services.whereType<Map>().any(
-              (service) => service['categoryId']?.toString() == categoryId,
-            );
+            (services is List &&
+                services.whereType<Map>().any(
+                  (service) => service['categoryId']?.toString() == categoryId,
+                )) ||
+            (summaryCategories is List &&
+                summaryCategories.whereType<Map>().any(
+                  (category) => category['id']?.toString() == categoryId,
+                ));
         if (primary != categoryId && !hasServiceCategory) {
           return false;
         }
       }
       if (query == null || query.isEmpty) return true;
+      final primaryCategory = provider['primaryCategory'];
+      final serviceSummary = provider['serviceSummary'];
+      final serviceTitles = serviceSummary is Map
+          ? serviceSummary['titles']
+          : null;
       final haystack = [
         provider['businessName'],
         provider['ownerName'],
         provider['description'],
         provider['address'],
+        if (primaryCategory is Map) primaryCategory['nameAr'],
+        if (serviceTitles is List) ...serviceTitles,
       ].whereType<Object>().join(' ').toLowerCase();
       return haystack.contains(query);
     }).toList();

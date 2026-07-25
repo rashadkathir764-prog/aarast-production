@@ -1207,6 +1207,20 @@ reactivates, or deletes admin-managed catalog rows. Both reference endpoints
 return active rows only; clients must expose loading, empty/error, and retry
 states instead of rendering enabled selectors with no options.
 
+`GET /api/v1/providers` keeps the paginated provider card contract compact but
+complete enough for discovery. Every item includes `primaryCategory` plus a
+`serviceSummary` built only from active services:
+
+- `activeCount`
+- `titles`
+- unique `categories`
+- `minPrice`, `maxPrice`, and `currency` when all published prices use one
+  currency; mixed or absent prices remain `null`
+
+Provider search matches the provider identity/address fields and active service
+title/description. The summary does not replace the full service contract from
+`GET /api/v1/providers/:id/services`.
+
 Authenticated user routes:
 
 - `POST /api/v1/providers/:id/favorite`

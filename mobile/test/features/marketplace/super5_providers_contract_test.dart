@@ -21,6 +21,42 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('provider list contract keeps category and service summary', () {
+    final provider = MarketplaceProvider.fromJson({
+      'id': 'provider-1',
+      'businessName': 'استديو وعد',
+      'ownerName': 'وعد',
+      'ratingAverage': '0',
+      'ratingCount': 0,
+      'isFeatured': false,
+      'primaryCategoryId': 'cat-photo',
+      'primaryCategory': {
+        'id': 'cat-photo',
+        'nameAr': 'التصوير',
+        'slug': 'photography',
+      },
+      'serviceSummary': {
+        'activeCount': 2,
+        'titles': ['تصوير فوتوغرافي', 'فيديو الزفاف'],
+        'categories': [
+          {'id': 'cat-photo', 'nameAr': 'التصوير', 'slug': 'photography'},
+        ],
+        'minPrice': '250000',
+        'maxPrice': '400000',
+        'currency': 'YER',
+      },
+    });
+
+    expect(provider.primaryCategory?.nameAr, 'التصوير');
+    expect(provider.serviceSummary?.activeCount, 2);
+    expect(provider.serviceSummary?.titles, [
+      'تصوير فوتوغرافي',
+      'فيديو الزفاف',
+    ]);
+    expect(provider.serviceSummary?.minPrice, '250000');
+    expect(provider.serviceSummary?.maxPrice, '400000');
+  });
+
   test(
     'user conversation inbox route stays authenticated and quote scoped',
     () {
@@ -109,15 +145,13 @@ void main() {
       await _pumpMarketplace(tester, state);
 
       expect(state.lastIncludeAccountData, isFalse);
-      expect(find.text('الموردون والعروض'), findsOneWidget);
+      expect(find.text('الموردون'), findsOneWidget);
       expect(
-        find.text(
-          'التصفح مفتوح للجميع. إرسال طلب عرض ومتابعة الردود يحتاج حسابًا محفوظًا.',
-        ),
+        find.text('طلبات العروض ومتابعتها تحتاج تسجيل دخول'),
         findsOneWidget,
       );
-      expect(find.text('طلبات مرسلة'), findsNothing);
-      expect(find.text('عروض وصلت'), findsNothing);
+      expect(find.text('طلباتك'), findsNothing);
+      expect(find.text('تحتاج قرار'), findsNothing);
       expect(find.text('عروض مقبولة'), findsNothing);
       await tester.scrollUntilVisible(
         find.text('قاعة السلام'),
@@ -138,6 +172,47 @@ void main() {
     },
   );
 
+  testWidgets(
+    'provider card uses list summary when full services are not loaded',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        providers: [
+          MarketplaceProvider.fromJson({
+            'id': 'provider-summary',
+            'businessName': 'استديو وعد',
+            'ownerName': 'وعد',
+            'ratingAverage': '0',
+            'ratingCount': 0,
+            'isFeatured': false,
+            'primaryCategoryId': 'cat-photo',
+            'primaryCategory': {'id': 'cat-photo', 'nameAr': 'التصوير'},
+            'serviceSummary': {
+              'activeCount': 2,
+              'titles': ['تصوير فوتوغرافي', 'فيديو الزفاف'],
+              'categories': [
+                {'id': 'cat-photo', 'nameAr': 'التصوير'},
+              ],
+              'minPrice': '250000',
+              'maxPrice': '400000',
+              'currency': 'YER',
+            },
+          }),
+        ],
+      );
+
+      await _pumpMarketplace(tester, state);
+      await tester.scrollUntilVisible(
+        find.text('استديو وعد'),
+        320,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(find.text('التصوير'), findsOneWidget);
+      expect(find.text('250,000 - 400,000 ر.ي'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Super 5 empty states stay honest without invented data', (
     tester,
   ) async {
@@ -154,6 +229,29 @@ void main() {
     expect(find.textContaining('أفضل'), findsNothing);
     expect(find.textContaining('قريب'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('clearing filters also clears the visible search text', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(search: 'قاعة');
+
+    await _pumpMarketplace(tester, state);
+    expect(find.text('قاعة'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('مسح الفلاتر'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('مسح الفلاتر'));
+    await tester.pumpAndSettle();
+
+    expect(state.search, isEmpty);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      '',
+    );
   });
 
   testWidgets('budget matched services explain why they are suggested', (
@@ -495,6 +593,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     List<MarketplaceService> budgetMatchedServices = const [],
     bool isLoadingMore = false,
     bool hasMoreProviders = false,
+    String search = '',
   }) : providersData = providers,
        categoriesData = categories,
        quoteRequestsData = quoteRequests,
@@ -502,6 +601,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
        budgetMatchedServicesData = budgetMatchedServices,
        isLoadingMoreData = isLoadingMore,
        hasMoreProvidersData = hasMoreProviders,
+       _search = search,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<MarketplaceProvider> providersData;
@@ -515,6 +615,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   bool _includeAccountData = true;
   bool? lastIncludeAccountData;
   String? _categoryId;
+  String _search;
 
   @override
   bool get isLoading => false;
@@ -523,7 +624,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   String? get errorMessage => null;
 
   @override
-  String get search => '';
+  String get search => _search;
 
   @override
   String? get cityId => null;
@@ -585,10 +686,17 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   Future<void> setCity(String? id) async {}
 
   @override
-  Future<void> setSearch(String value) async {}
+  Future<void> setSearch(String value) async {
+    _search = value;
+    notifyListeners();
+  }
 
   @override
-  Future<void> clearFilters() async {}
+  Future<void> clearFilters() async {
+    _search = '';
+    _categoryId = null;
+    notifyListeners();
+  }
 
   @override
   Future<void> loadMoreProviders() async {}

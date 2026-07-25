@@ -50,6 +50,21 @@ void main() {
       expect(detailsViewSource, contains('class _ProviderHero'));
       expect(favoritesSource, contains('_FavoriteProvidersHero'));
     });
+
+    test('plan providers route forwards a quote deep-link context', () {
+      final routerSource = _readSource('lib/core/routing/app_router.dart');
+      final routeStart = routerSource.indexOf(
+        "path: '/wedding-plans/:id/providers'",
+      );
+      expect(routeStart, greaterThanOrEqualTo(0));
+      final routeEnd = routerSource.indexOf('),', routeStart);
+      final routeSource = routerSource.substring(routeStart, routeEnd);
+
+      expect(
+        routeSource,
+        contains("initialQuoteId: state.uri.queryParameters['quoteId']"),
+      );
+    });
   });
 
   group('Phase B provider screens rendering', () {
@@ -195,6 +210,53 @@ void main() {
       expect(find.text('quote-chat-${quote.id}'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'provider details review action opens the offer in its plan context',
+      (tester) async {
+        _setTallView(tester);
+        final quote = _quote(
+          status: 'RESPONDED',
+          offers: const [QuoteOffer(id: 'offer-live', status: 'PENDING')],
+        );
+        final marketplace = _FakeMarketplaceProvider(quotes: [quote]);
+        final router = GoRouter(
+          initialLocation: '/providers/$_providerId?weddingPlanId=plan-1',
+          routes: [
+            GoRoute(
+              path: '/providers/:id',
+              builder: (_, state) => ProviderDetailsScreen(
+                providerId: _providerId,
+                weddingPlanId: state.uri.queryParameters['weddingPlanId'],
+              ),
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/providers',
+              builder: (_, state) => Scaffold(
+                body: Text(
+                  'offer-route:${state.pathParameters['id']}:'
+                  '${state.uri.queryParameters['quoteId']}',
+                ),
+              ),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+            value: marketplace,
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('مراجعة العرض'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('offer-route:plan-1:${quote.id}'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('favorite providers keep comparison copy and currency labels', (
       tester,

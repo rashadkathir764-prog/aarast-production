@@ -256,8 +256,15 @@ class AppRouter {
     return '/wedding-plans/$id/guests/add';
   }
 
-  static String planProviders(String id) {
-    return '/wedding-plans/$id/providers';
+  static String planProviders(String id, {String? quoteId}) {
+    final normalizedQuoteId = quoteId?.trim();
+    if (normalizedQuoteId == null || normalizedQuoteId.isEmpty) {
+      return '/wedding-plans/$id/providers';
+    }
+    return Uri(
+      path: '/wedding-plans/$id/providers',
+      queryParameters: {'quoteId': normalizedQuoteId},
+    ).toString();
   }
 
   static String planNotifications(String id) {
@@ -745,6 +752,7 @@ class AppRouter {
                   embedded: state.uri.queryParameters['view'] != 'contributor',
                   weddingPlanId: id,
                   initialBudgetIntent: budgetIntent,
+                  initialQuoteId: state.uri.queryParameters['quoteId'],
                 );
               },
             ),

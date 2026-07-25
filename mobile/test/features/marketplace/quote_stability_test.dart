@@ -60,6 +60,7 @@ void main() {
         true,
       );
       expect(api.keys[0], api.keys[1]);
+      expect(provider.lastCreatedQuote?.id, 'quote-2');
 
       expect(
         await provider.createQuoteRequest(
@@ -69,6 +70,7 @@ void main() {
         true,
       );
       expect(api.keys[2], isNot(api.keys[1]));
+      expect(provider.lastCreatedQuote?.id, 'quote-3');
     },
   );
 
@@ -82,6 +84,7 @@ void main() {
     );
 
     expect(ok, false);
+    expect(provider.lastCreatedQuote, isNull);
     expect(provider.existingActiveQuote?.id, 'quote-existing');
     expect(provider.quoteSubmitErrorMessage, contains('الطلب الحالي'));
   });

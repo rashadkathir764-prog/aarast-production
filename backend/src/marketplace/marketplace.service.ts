@@ -97,12 +97,18 @@ export class MarketplaceService {
 
   async findProviders(query: ListProvidersQueryDto) {
     const { pagination, where } = MarketplaceQuery.providerSearch(query);
-
     const [total, providers] = await this.prisma.$transaction([
       this.prisma.provider.count({ where }),
       this.prisma.provider.findMany({
         where,
-        include: { city: true, primaryCategory: true },
+        include: {
+          city: true,
+          primaryCategory: true,
+          services: {
+            where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+            select: { title: true, basePrice: true, currency: true, category: true },
+          },
+        },
         orderBy: [
           { isFeatured: "desc" },
           { ratingAverage: "desc" },
@@ -112,10 +118,12 @@ export class MarketplaceService {
         take: pagination.limit,
       }),
     ]);
-
     return MarketplaceQuery.paginate(
-      providers.map((provider) =>
-        MarketplacePresenter.toProviderResponse(provider),
+      providers.map(({ services, ...provider }) =>
+        MarketplacePresenter.toProviderListResponse({
+          ...provider,
+          servicePreviews: services,
+        }),
       ),
       total,
       pagination,

@@ -111,6 +111,7 @@ async function ensureFixture() {
     (await prisma.provider.create({
       data: {
         cityId: city.id,
+        primaryCategoryId: category.id,
         businessName: 'مزود سموك للسوق',
         phone,
         whatsapp: phone,
@@ -124,6 +125,7 @@ async function ensureFixture() {
     where: { id: provider.id },
     data: {
       cityId: city.id,
+      primaryCategoryId: category.id,
       status: ProviderStatus.ACTIVE,
       isFeatured: true,
     },
@@ -218,7 +220,17 @@ async function run() {
     check('GET /api/v1/providers - HTTP 200', res.status === 200);
     check('providers response is paginated', Array.isArray(res.body?.items));
     check('providers include active fixture', res.body?.items?.some((provider) => provider.id === fixture.provider.id));
+    const provider = res.body?.items?.find((item) => item.id === fixture.provider.id);
+    check('provider list includes primary category', provider?.primaryCategory?.id === fixture.category.id);
+    check('provider list includes active service summary', provider?.serviceSummary?.activeCount >= 1 && provider.serviceSummary.titles?.includes('خدمة سموك للسوق'));
+    check('provider list includes published price range', provider?.serviceSummary?.minPrice === '100000' && provider?.serviceSummary?.maxPrice === '100000');
     check('providers response does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('GET', `/api/v1/providers?search=${encodeURIComponent('خدمة سموك للسوق')}`);
+    check('provider search by active service - HTTP 200', res.status === 200);
+    check('provider search by active service finds fixture', res.body?.items?.some((provider) => provider.id === fixture.provider.id));
   }
 
   {

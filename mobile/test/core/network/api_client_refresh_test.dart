@@ -24,6 +24,66 @@ void main() {
     expect(adapter.calls, 2);
   });
 
+  test(
+    'GET /api/v1/auth/me refreshes once and retries with the new access token',
+    () async {
+      var token = 'old-access';
+      var refreshCalls = 0;
+      final adapter = _RefreshAdapter();
+      final client = ApiClient(tokenProvider: () async => token);
+      client.dio.httpClientAdapter = adapter;
+      client.refreshSession = () async {
+        refreshCalls += 1;
+        token = 'new-access';
+        return true;
+      };
+
+      final result = await client.getJson('/api/v1/auth/me');
+
+      expect(result['ok'], true);
+      expect(refreshCalls, 1);
+      expect(adapter.calls, 2);
+    },
+  );
+
+  test('POST /api/v1/auth/refresh never triggers session refresh', () async {
+    var refreshCalls = 0;
+    final adapter = _RefreshAdapter();
+    final client = ApiClient(tokenProvider: () async => 'old-access');
+    client.dio.httpClientAdapter = adapter;
+    client.refreshSession = () async {
+      refreshCalls += 1;
+      return true;
+    };
+
+    await expectLater(
+      client.postJson('/api/v1/auth/refresh', const {}),
+      throwsA(isA<ApiException>()),
+    );
+
+    expect(refreshCalls, 0);
+    expect(adapter.calls, 1);
+  });
+
+  test('POST /api/v1/auth/login never triggers session refresh', () async {
+    var refreshCalls = 0;
+    final adapter = _RefreshAdapter();
+    final client = ApiClient(tokenProvider: () async => 'old-access');
+    client.dio.httpClientAdapter = adapter;
+    client.refreshSession = () async {
+      refreshCalls += 1;
+      return true;
+    };
+
+    await expectLater(
+      client.postJson('/api/v1/auth/login', const {}),
+      throwsA(isA<ApiException>()),
+    );
+
+    expect(refreshCalls, 0);
+    expect(adapter.calls, 1);
+  });
+
   test('signed byte uploads do not send the app bearer token', () async {
     final uploadDio = Dio();
     final adapter = _CaptureUploadAdapter();

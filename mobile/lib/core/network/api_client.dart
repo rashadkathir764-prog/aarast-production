@@ -72,9 +72,9 @@ class ApiClient {
             handler.next(error);
             return;
           }
-          // A 401 outside the auth endpoints means the session token is no
-          // longer valid — every screen would otherwise keep failing with
-          // misleading errors until app restart.
+          // A 401 outside the auth endpoints, or from the read-only session
+          // restore endpoint, means the access token may need one refresh.
+          // Auth mutations remain excluded to prevent refresh loops.
           if (_canRefresh(error)) {
             try {
               final refreshed = await _refreshOnce();
@@ -136,9 +136,13 @@ class ApiClient {
   }
 
   bool _canRefresh(DioException error) {
+    final request = error.requestOptions;
+    final isSessionRestoreRequest =
+        request.method.toUpperCase() == 'GET' &&
+        request.path == '/api/v1/auth/me';
     return error.response?.statusCode == 401 &&
-        !error.requestOptions.path.startsWith('/api/v1/auth') &&
-        error.requestOptions.extra[_refreshRetryKey] != true &&
+        (!request.path.startsWith('/api/v1/auth') || isSessionRestoreRequest) &&
+        request.extra[_refreshRetryKey] != true &&
         refreshSession != null;
   }
 

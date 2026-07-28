@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
@@ -188,7 +189,12 @@ class _OtpScreenState extends State<OtpScreen> {
       );
       if (!mounted) return;
       if (applied) {
+        final accountContexts = context.read<AccountContextController>();
         await auth.refreshCurrentUser();
+        if (!mounted) return;
+        await accountContexts.refresh(
+          activeWeddingPlanId: auth.user?.activeWeddingPlanId,
+        );
         if (!mounted) return;
         context.go(AppRouter.providerApplyStatus);
         return;
@@ -200,10 +206,7 @@ class _OtpScreenState extends State<OtpScreen> {
       );
     }
 
-    final defaultLocation = auth.user?.isProviderAccount == true
-        ? AppRouter.providerDashboard
-        : AppRouter.home;
-    context.go(widget.successLocation ?? defaultLocation);
+    context.go(widget.successLocation ?? AppRouter.home);
   }
 
   void _goBack() {

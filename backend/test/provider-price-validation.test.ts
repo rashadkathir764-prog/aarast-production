@@ -72,7 +72,13 @@ test("all provider-facing price fields share the central optional-money contract
     "utf8",
   );
   const adminSource = readFileSync(
-    join(__dirname, "..", "src", "admin", "admin.service.ts"),
+    join(
+      __dirname,
+      "..",
+      "src",
+      "admin",
+      "admin-mutation-executor.ts",
+    ),
     "utf8",
   );
   const marketplaceSource = readFileSync(

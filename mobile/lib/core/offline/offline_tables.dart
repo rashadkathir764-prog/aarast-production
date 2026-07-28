@@ -39,6 +39,18 @@
     cachedFavoriteProviders,
   ];
 
+  static const planScopedCacheTables = [
+    cachedWeddingPlans,
+    cachedPlanMembers,
+    cachedGuests,
+    cachedTasks,
+    cachedBudgetCategories,
+    cachedCosts,
+    cachedCostPayments,
+    cachedPaymentSchedules,
+    cachedBookings,
+  ];
+
   static String? tableForEntityType(String entityType) {
     return switch (entityType) {
       'user' => currentUserProfile,

@@ -13,7 +13,7 @@ export class OutboxDispatcher {
       case OutboxEventTypes.conversationMessageAvailable: {
         const conversationId = requiredText(payload, 'conversationId');
         const messageId = requiredText(payload, 'messageId');
-        this.realtime.messageAvailable(conversationId, {
+        await this.realtime.dispatchMessageAvailable(conversationId, {
           conversationId,
           messageId,
         });
@@ -32,22 +32,66 @@ export class OutboxDispatcher {
             ? { eventId: payload.eventId }
             : {}),
         };
-        if (activityKind === 'EVENT') {
-          this.realtime.event(conversationId, activity);
-        }
-        this.realtime.activityAvailable(conversationId, activity);
+        await this.realtime.dispatchActivityAvailable(
+          conversationId,
+          activity,
+          activityKind === 'EVENT',
+        );
         return;
       }
       case OutboxEventTypes.notificationCreated: {
         const userId = requiredText(payload, 'userId');
         const notificationId = requiredText(payload, 'notificationId');
-        this.realtime.notificationAvailable(userId, { notificationId });
+        await this.realtime.dispatchNotificationAvailable(userId, {
+          notificationId,
+        });
+        return;
+      }
+      case OutboxEventTypes.conversationAccessRevoked: {
+        const userId = requiredText(payload, 'userId');
+        const conversationIds = requiredTextArray(
+          payload,
+          'conversationIds',
+        );
+        await this.realtime.dispatchConversationAccessRevoked(
+          userId,
+          conversationIds,
+        );
+        return;
+      }
+      case OutboxEventTypes.userSessionsRevoked: {
+        await this.realtime.dispatchUserSessionsRevoked(
+          requiredText(payload, 'userId'),
+        );
+        return;
+      }
+      case OutboxEventTypes.sessionRevoked: {
+        await this.realtime.dispatchSessionRevoked(
+          requiredText(payload, 'sessionId'),
+        );
         return;
       }
       default:
         throw new Error('UnsupportedOutboxEventType');
     }
   }
+}
+
+function requiredTextArray(
+  value: Prisma.JsonObject,
+  key: string,
+): string[] {
+  const values = value[key];
+  if (
+    !Array.isArray(values) ||
+    values.length === 0 ||
+    values.some(
+      (item) => typeof item !== 'string' || item.trim().length === 0,
+    )
+  ) {
+    throw new Error('InvalidOutboxPayload');
+  }
+  return [...new Set(values.map((item) => (item as string).trim()))].sort();
 }
 
 function jsonObject(value: Prisma.JsonValue): Prisma.JsonObject {

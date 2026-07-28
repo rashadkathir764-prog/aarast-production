@@ -3,27 +3,26 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
+  Prisma,
   WeddingTask,
   WeddingTaskChecklistItem,
   WeddingTaskPriority,
   WeddingTaskStatus,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { ListQueryDto, pageArgs } from '../common/pagination/list-query.dto';
-import {
-  endOfRiyadhDay,
-  startOfRiyadhDay,
-} from '../common/time/business-day';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { PermissionService } from '../sharing/permission.service';
-import { AssignTaskDto } from './dto/assign-task.dto';
-import { CreateChecklistItemDto } from './dto/create-checklist-item.dto';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ListQueryDto, pageArgs } from "../common/pagination/list-query.dto";
+import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { PermissionService } from "../sharing/permission.service";
+import { AssignTaskDto } from "./dto/assign-task.dto";
+import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
+import { UpdateTaskDto } from "./dto/update-task.dto";
 
 export interface TaskResponse {
   id: string;
@@ -91,23 +90,28 @@ export class TasksService {
     weddingPlanId: string,
     dto: CreateTaskDto,
   ): Promise<TaskResponse> {
-    await this.permissions.assertTaskManageable(weddingPlanId, currentUser);
-
-    const task = await this.prisma.weddingTask.create({
-      data: {
+    const task = await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertTaskManageableInTransaction(
+        tx,
         weddingPlanId,
-        assigneeUserId: null,
-        responsibleName: this.optionalText(dto.responsibleName),
-        responsiblePhone: this.optionalText(dto.responsiblePhone),
-        responsibleSource: this.optionalText(dto.responsibleSource),
-        title: this.requiredText(dto.title, 'title'),
-        description: this.optionalText(dto.description),
-        dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
-        taskCategory: this.optionalText(dto.taskCategory),
-        reminderAt: this.optionalDate(dto.reminderAt, 'reminderAt'),
-        status: dto.status ?? WeddingTaskStatus.TODO,
-        priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
-      },
+        currentUser,
+      );
+      return tx.weddingTask.create({
+        data: {
+          weddingPlanId,
+          assigneeUserId: null,
+          responsibleName: this.optionalText(dto.responsibleName),
+          responsiblePhone: this.optionalText(dto.responsiblePhone),
+          responsibleSource: this.optionalText(dto.responsibleSource),
+          title: this.requiredText(dto.title, "title"),
+          description: this.optionalText(dto.description),
+          dueDate: this.optionalDate(dto.dueDate, "dueDate"),
+          taskCategory: this.optionalText(dto.taskCategory),
+          reminderAt: this.optionalDate(dto.reminderAt, "reminderAt"),
+          status: dto.status ?? WeddingTaskStatus.TODO,
+          priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
+        },
+      });
     });
     await this.notifyTaskDueBestEffort(task);
 
@@ -127,7 +131,7 @@ export class TasksService {
 
     const tasks = await this.prisma.weddingTask.findMany({
       where: { weddingPlanId },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       ...pageArgs(query),
     });
 
@@ -152,31 +156,37 @@ export class TasksService {
     dto: UpdateTaskDto,
   ): Promise<TaskResponse> {
     const existing = await this.findTaskOrThrow(id);
-    await this.permissions.assertTaskManageable(existing.weddingPlanId, currentUser);
-
     const manualResponsibility = this.manualResponsibilityUpdate(dto);
-    const task = await this.prisma.weddingTask.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined
-          ? { title: this.requiredText(dto.title, 'title') }
-          : {}),
-        ...(dto.description !== undefined
-          ? { description: this.optionalText(dto.description) }
-          : {}),
-        ...(dto.dueDate !== undefined
-          ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
-          : {}),
-        ...(dto.taskCategory !== undefined
-          ? { taskCategory: this.optionalText(dto.taskCategory) }
-          : {}),
-        ...manualResponsibility,
-        ...(dto.reminderAt !== undefined
-          ? { reminderAt: this.optionalDate(dto.reminderAt, 'reminderAt') }
-          : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
-      },
+    const task = await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertTaskManageableInTransaction(
+        tx,
+        existing.weddingPlanId,
+        currentUser,
+      );
+      await this.findTaskInTransactionOrThrow(tx, id, existing.weddingPlanId);
+      return tx.weddingTask.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined
+            ? { title: this.requiredText(dto.title, "title") }
+            : {}),
+          ...(dto.description !== undefined
+            ? { description: this.optionalText(dto.description) }
+            : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
+            : {}),
+          ...(dto.taskCategory !== undefined
+            ? { taskCategory: this.optionalText(dto.taskCategory) }
+            : {}),
+          ...manualResponsibility,
+          ...(dto.reminderAt !== undefined
+            ? { reminderAt: this.optionalDate(dto.reminderAt, "reminderAt") }
+            : {}),
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
+        },
+      });
     });
     await this.notifyTaskDueBestEffort(task);
 
@@ -189,25 +199,36 @@ export class TasksService {
     dto: AssignTaskDto,
   ): Promise<TaskResponse> {
     const existing = await this.findTaskOrThrow(id);
-    await this.permissions.assertTaskManageable(existing.weddingPlanId, currentUser);
     const assigneeUserId = this.optionalText(dto.assigneeUserId);
 
-    if (assigneeUserId) {
-      await this.assertAssigneeBelongsToPlan(existing.weddingPlanId, assigneeUserId);
-    }
-
-    const task = await this.prisma.weddingTask.update({
-      where: { id },
-      data: {
-        assigneeUserId,
-        ...(assigneeUserId
-          ? {
-              responsibleName: null,
-              responsiblePhone: null,
-              responsibleSource: null,
-            }
-          : {}),
-      },
+    const task = await runSerializableTransaction(this.prisma, async (tx) => {
+      const context = await this.permissions.assertTaskManageableInTransaction(
+        tx,
+        existing.weddingPlanId,
+        currentUser,
+      );
+      if (assigneeUserId) {
+        await this.assertAssigneeBelongsToPlanInTransaction(
+          tx,
+          context.plan.ownerUserId,
+          existing.weddingPlanId,
+          assigneeUserId,
+        );
+      }
+      await this.findTaskInTransactionOrThrow(tx, id, existing.weddingPlanId);
+      return tx.weddingTask.update({
+        where: { id },
+        data: {
+          assigneeUserId,
+          ...(assigneeUserId
+            ? {
+                responsibleName: null,
+                responsiblePhone: null,
+                responsibleSource: null,
+              }
+            : {}),
+        },
+      });
     });
 
     return this.toResponse(task);
@@ -219,15 +240,21 @@ export class TasksService {
     dto: CreateChecklistItemDto,
   ): Promise<ChecklistItemResponse> {
     const task = await this.findTaskOrThrow(taskId);
-    await this.permissions.assertTaskManageable(task.weddingPlanId, currentUser);
-
-    const item = await this.prisma.weddingTaskChecklistItem.create({
-      data: {
-        taskId,
-        title: this.requiredText(dto.title, 'title'),
-        isDone: dto.isDone ?? false,
-        sortOrder: dto.sortOrder ?? 0,
-      },
+    const item = await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertTaskManageableInTransaction(
+        tx,
+        task.weddingPlanId,
+        currentUser,
+      );
+      await this.findTaskInTransactionOrThrow(tx, taskId, task.weddingPlanId);
+      return tx.weddingTaskChecklistItem.create({
+        data: {
+          taskId,
+          title: this.requiredText(dto.title, "title"),
+          isDone: dto.isDone ?? false,
+          sortOrder: dto.sortOrder ?? 0,
+        },
+      });
     });
 
     return this.toChecklistItemResponse(item);
@@ -240,21 +267,34 @@ export class TasksService {
     dto: UpdateChecklistItemDto,
   ): Promise<ChecklistItemResponse> {
     const item = await this.findChecklistItemOrThrow(taskId, itemId);
-    await this.permissions.assertTaskManageable(
-      item.task.weddingPlanId,
-      currentUser,
-    );
-
-    const updated = await this.prisma.weddingTaskChecklistItem.update({
-      where: { id: itemId },
-      data: {
-        ...(dto.title !== undefined
-          ? { title: this.requiredText(dto.title, 'title') }
-          : {}),
-        ...(dto.isDone !== undefined ? { isDone: dto.isDone } : {}),
-        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+    const updated = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        await this.permissions.assertTaskManageableInTransaction(
+          tx,
+          item.task.weddingPlanId,
+          currentUser,
+        );
+        await this.findTaskInTransactionOrThrow(
+          tx,
+          taskId,
+          item.task.weddingPlanId,
+        );
+        await this.findChecklistItemInTransactionOrThrow(tx, taskId, itemId);
+        return tx.weddingTaskChecklistItem.update({
+          where: { id: itemId },
+          data: {
+            ...(dto.title !== undefined
+              ? { title: this.requiredText(dto.title, "title") }
+              : {}),
+            ...(dto.isDone !== undefined ? { isDone: dto.isDone } : {}),
+            ...(dto.sortOrder !== undefined
+              ? { sortOrder: dto.sortOrder }
+              : {}),
+          },
+        });
       },
-    });
+    );
 
     return this.toChecklistItemResponse(updated);
   }
@@ -265,11 +305,20 @@ export class TasksService {
     itemId: string,
   ): Promise<{ id: string; deleted: true }> {
     const item = await this.findChecklistItemOrThrow(taskId, itemId);
-    await this.permissions.assertTaskManageable(
-      item.task.weddingPlanId,
-      currentUser,
-    );
-    await this.prisma.weddingTaskChecklistItem.delete({ where: { id: itemId } });
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertTaskManageableInTransaction(
+        tx,
+        item.task.weddingPlanId,
+        currentUser,
+      );
+      await this.findTaskInTransactionOrThrow(
+        tx,
+        taskId,
+        item.task.weddingPlanId,
+      );
+      await this.findChecklistItemInTransactionOrThrow(tx, taskId, itemId);
+      await tx.weddingTaskChecklistItem.delete({ where: { id: itemId } });
+    });
     return { id: itemId, deleted: true };
   }
 
@@ -355,18 +404,23 @@ export class TasksService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findTaskOrThrow(id);
-    await this.permissions.assertTaskManageable(existing.weddingPlanId, currentUser);
-    await this.prisma.weddingTask.delete({ where: { id } });
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertTaskManageableInTransaction(
+        tx,
+        existing.weddingPlanId,
+        currentUser,
+      );
+      await this.findTaskInTransactionOrThrow(tx, id, existing.weddingPlanId);
+      await tx.weddingTask.delete({ where: { id } });
+    });
     return { id, deleted: true };
   }
 
-  private async findTaskOrThrow(
-    id: string,
-  ): Promise<WeddingTask> {
+  private async findTaskOrThrow(id: string): Promise<WeddingTask> {
     const task = await this.prisma.weddingTask.findUnique({ where: { id } });
 
     if (!task) {
-      throw new NotFoundException('Task not found');
+      throw new NotFoundException("Task not found");
     }
 
     return task;
@@ -382,24 +436,80 @@ export class TasksService {
     });
 
     if (!item) {
-      throw new NotFoundException('Checklist item not found');
+      throw new NotFoundException("Checklist item not found");
     }
 
     return item;
   }
 
-  private async assertAssigneeBelongsToPlan(
+  private async findTaskInTransactionOrThrow(
+    tx: Prisma.TransactionClient,
+    id: string,
+    weddingPlanId: string,
+  ): Promise<WeddingTask> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingTask"
+        WHERE "id" = ${id}
+          AND "weddingPlanId" = ${weddingPlanId}
+        FOR UPDATE
+      `,
+    );
+    if (locked.length !== 1) {
+      throw new NotFoundException("Task not found");
+    }
+    const task = await tx.weddingTask.findUnique({ where: { id } });
+    if (!task) {
+      throw new NotFoundException("Task not found");
+    }
+    return task;
+  }
+
+  private async findChecklistItemInTransactionOrThrow(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    itemId: string,
+  ): Promise<WeddingTaskChecklistItem> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingTaskChecklistItem"
+        WHERE "id" = ${itemId}
+          AND "taskId" = ${taskId}
+        FOR UPDATE
+      `,
+    );
+    if (locked.length !== 1) {
+      throw new NotFoundException("Checklist item not found");
+    }
+    const item = await tx.weddingTaskChecklistItem.findUnique({
+      where: { id: itemId },
+    });
+    if (!item) {
+      throw new NotFoundException("Checklist item not found");
+    }
+    return item;
+  }
+
+  private async assertAssigneeBelongsToPlanInTransaction(
+    tx: Prisma.TransactionClient,
+    planOwnerUserId: string,
     weddingPlanId: string,
     assigneeUserId: string,
   ): Promise<void> {
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-      select: { ownerUserId: true },
-    });
+    if (planOwnerUserId === assigneeUserId) return;
 
-    if (plan?.ownerUserId === assigneeUserId) return;
-
-    const member = await this.prisma.sharedMember.findUnique({
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "SharedMember"
+        WHERE "weddingPlanId" = ${weddingPlanId}
+          AND "userId" = ${assigneeUserId}
+        FOR SHARE
+      `,
+    );
+    const member = await tx.sharedMember.findUnique({
       where: {
         weddingPlanId_userId: {
           weddingPlanId,
@@ -409,7 +519,7 @@ export class TasksService {
     });
 
     if (!member) {
-      throw new BadRequestException('assigneeUserId must belong to the plan');
+      throw new BadRequestException("assigneeUserId must belong to the plan");
     }
   }
 
@@ -418,7 +528,7 @@ export class TasksService {
       await this.notifications.notifyTaskDue(task);
     } catch (error) {
       this.logger.warn(
-        `Deferred task reminder repair for task ${task.id}: ${error instanceof Error ? error.name : 'UnknownError'}`,
+        `Deferred task reminder repair for task ${task.id}: ${error instanceof Error ? error.name : "UnknownError"}`,
       );
     }
   }
@@ -437,7 +547,10 @@ export class TasksService {
     return trimmed || null;
   }
 
-  private optionalDate(value: string | null | undefined, field: string): Date | null {
+  private optionalDate(
+    value: string | null | undefined,
+    field: string,
+  ): Date | null {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -481,9 +594,7 @@ export class TasksService {
       weddingPlanId: task.weddingPlanId,
       assigneeUserId: task.assigneeUserId,
       responsibleName: task.responsibleName,
-      responsiblePhone: includeResponsiblePhone
-        ? task.responsiblePhone
-        : null,
+      responsiblePhone: includeResponsiblePhone ? task.responsiblePhone : null,
       responsibleSource: task.responsibleSource,
       title: task.title,
       description: task.description,

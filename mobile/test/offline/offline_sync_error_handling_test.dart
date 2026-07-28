@@ -131,6 +131,48 @@ void main() {
     final rows = await database.pendingSyncItems();
     expect(rows, isEmpty);
     expect(service.state, SyncState.syncError);
+    expect(service.blockedCount, 1);
+
+    final restartedService = _service(
+      database,
+      _ScriptedAdapter([(_) => _ok('{}')]),
+    );
+    await restartedService.refreshStatus();
+
+    expect(restartedService.state, SyncState.syncError);
+    expect(restartedService.blockedCount, 1);
+    expect(restartedService.pendingCount, 0);
+    expect(
+      restartedService.lastError,
+      contains('title should not be empty'),
+    );
+  });
+
+  test('manual recovery requeues blocked work and syncs it once', () async {
+    final database = await _freshDb();
+    await database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/wedding-plans/plan-1/tasks',
+      method: 'POST',
+      payload: {'title': 'مهمة مصححة'},
+      localEntityId: 'local-task-1',
+    );
+    final adapter = _ScriptedAdapter([
+      (_) => _status(400, '{"message":"invalid task"}'),
+      (_) => _ok('{"id":"remote-task-1"}'),
+    ]);
+    final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
+    await service.syncPendingChanges();
+    expect(service.blockedCount, 1);
+
+    await service.retryBlockedChanges();
+
+    expect(adapter.received, hasLength(2));
+    expect(service.blockedCount, 0);
+    expect(service.pendingCount, 0);
+    expect(service.state, SyncState.synced);
   });
 
   test(

@@ -209,9 +209,11 @@ class JsonLocalDatabase implements LocalDatabase {
     required Map<String, dynamic> payload,
     String? localEntityId,
     bool replacePendingForEntity = false,
+    bool replaceAllPendingForEntity = false,
     String? clientRequestId,
+    DateTime? queueCreatedAt,
   }) async {
-    final now = nextSyncQueueTimestamp();
+    final now = queueCreatedAt ?? nextSyncQueueTimestamp();
     final normalizedRequestId = clientRequestId?.trim();
     if (clientRequestId != null && normalizedRequestId!.isEmpty) {
       throw ArgumentError.value(
@@ -234,7 +236,14 @@ class JsonLocalDatabase implements LocalDatabase {
       updatedAt: now,
     );
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
-    if (replacePendingForEntity) {
+    if (replaceAllPendingForEntity) {
+      rows.removeWhere(
+        (row) =>
+            row['entityType'] == entityType &&
+            row['localEntityId'] == localEntityId &&
+            row['status'] != SyncQueueItem.synced,
+      );
+    } else if (replacePendingForEntity) {
       rows.removeWhere(
         (row) =>
             row['entityType'] == entityType &&
@@ -245,6 +254,52 @@ class JsonLocalDatabase implements LocalDatabase {
     rows.add(item.toRow());
     await _writeList(_tableKey(OfflineTables.syncQueue), rows);
     return item;
+  }
+
+  @override
+  Future<void> discardLocalEntity({
+    required String table,
+    required String entityType,
+    required String entityId,
+  }) async {
+    final cachedRows = _readList(_tableKey(table))
+      ..removeWhere((row) => row['id'] == entityId);
+    final queueRows = _readList(_tableKey(OfflineTables.syncQueue))
+      ..removeWhere(
+        (row) =>
+            row['entityType'] == entityType &&
+            row['localEntityId'] == entityId &&
+            row['status'] != SyncQueueItem.synced,
+      );
+    await _writeList(_tableKey(table), cachedRows);
+    await _writeList(_tableKey(OfflineTables.syncQueue), queueRows);
+  }
+
+  @override
+  Future<void> deletePlanGraph(String planId) async {
+    if (planId.trim().isEmpty) return;
+    for (final table in OfflineTables.planScopedCacheTables) {
+      final rows = _readList(_tableKey(table));
+      rows.removeWhere(
+        (row) => table == OfflineTables.cachedWeddingPlans
+            ? row['id']?.toString() == planId
+            : row['planId']?.toString() == planId,
+      );
+      await _writeList(_tableKey(table), rows);
+    }
+
+    final queueRows = _readList(_tableKey(OfflineTables.syncQueue))
+      ..removeWhere(
+        (row) =>
+            row['endpoint']?.toString().contains(planId) == true ||
+            row['payloadJson']?.toString().contains(planId) == true ||
+            row['localEntityId']?.toString() == planId,
+      );
+    await _writeList(_tableKey(OfflineTables.syncQueue), queueRows);
+
+    final meta = _readMap(_metaKey)
+      ..removeWhere((key, _) => key.contains(planId));
+    await _writeMap(_metaKey, meta);
   }
 
   @override
@@ -261,6 +316,18 @@ class JsonLocalDatabase implements LocalDatabase {
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return pending;
+  }
+
+  @override
+  Future<List<SyncQueueItem>> blockedSyncItems() async {
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    final blocked =
+        rows
+            .where((row) => row['status'] == SyncQueueItem.blocked)
+            .map(SyncQueueItem.fromRow)
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return blocked;
   }
 
   @override
@@ -290,6 +357,25 @@ class JsonLocalDatabase implements LocalDatabase {
       }
     }
     await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+  }
+
+  @override
+  Future<int> requeueBlockedSyncItems() async {
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    final now = DateTime.now().toIso8601String();
+    var count = 0;
+    for (final row in rows) {
+      if (row['status'] != SyncQueueItem.blocked) continue;
+      row['status'] = SyncQueueItem.queued;
+      row['retryCount'] = 0;
+      row['lastError'] = null;
+      row['updatedAt'] = now;
+      count += 1;
+    }
+    if (count > 0) {
+      await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+    }
+    return count;
   }
 
   @override

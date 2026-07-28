@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS build
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY src ./src
 
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.29-alpine-slim@sha256:c9366b8c560169b101ca0e5422ed063b20779e6454c2326b9c9704225c9b0c08 AS runtime
 
 ARG AARAST_GIT_REVISION=development-unversioned
 
@@ -35,13 +35,18 @@ RUN if [ "$AARAST_GIT_REVISION" != "development-unversioned" ]; then \
       esac; \
     fi
 
+RUN apk upgrade --no-cache
+
 LABEL org.opencontainers.image.revision="${AARAST_GIT_REVISION}"
 
 # Placed under templates/ so the image entrypoint runs envsubst on it,
 # injecting ${API_ORIGIN} into the CSP connect-src at container start.
 COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY scripts/runtime-config-guard.sh /usr/local/bin/aarast-runtime-config-guard
+RUN chmod 0555 /usr/local/bin/aarast-runtime-config-guard
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+ENTRYPOINT ["/usr/local/bin/aarast-runtime-config-guard"]
 CMD ["nginx", "-g", "daemon off;"]

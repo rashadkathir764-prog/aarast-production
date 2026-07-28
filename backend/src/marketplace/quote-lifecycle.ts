@@ -7,19 +7,47 @@ export async function lockQuoteRequestTransitionRow(
   tx: Prisma.TransactionClient,
   quoteRequestId: string,
 ): Promise<boolean> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>(
+  const conversations = await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`
+      SELECT conversation."id"
+      FROM "Conversation" conversation
+      INNER JOIN "QuoteRequest" request
+        ON request."conversationId" = conversation."id"
+      WHERE request."id" = ${quoteRequestId}
+      FOR UPDATE OF conversation
+    `,
+  );
+  if (conversations.length !== 1) return false;
+
+  const requests = await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${quoteRequestId} FOR UPDATE`,
   );
-  return rows.length === 1;
+  return requests.length === 1;
 }
 
 export async function lockQuoteOfferTransitionRows(
   tx: Prisma.TransactionClient,
   quoteOfferId: string,
 ): Promise<{ quoteRequestId: string } | null> {
-  // Every quote transition takes the request row first and the offer row
-  // second. One global order prevents accept/reject/update/cancel from
-  // deadlocking each other while the final state is re-read under both locks.
+  // Conversation events update the shared conversation row. Lock it before
+  // request/offer rows so quote transitions match account deletion and cannot
+  // deadlock as QuoteRequest -> Conversation versus Conversation -> QuoteRequest.
+  const conversations = await tx.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`
+      SELECT conversation."id"
+      FROM "Conversation" conversation
+      INNER JOIN "QuoteRequest" request
+        ON request."conversationId" = conversation."id"
+      INNER JOIN "QuoteOffer" offer
+        ON offer."quoteRequestId" = request."id"
+      WHERE offer."id" = ${quoteOfferId}
+      FOR UPDATE OF conversation
+    `,
+  );
+  if (conversations.length !== 1) return null;
+
+  // Every quote transition then takes the request row and the offer row in
+  // that order. The final state is always re-read under all three locks.
   const requests = await tx.$queryRaw<Array<{ quoteRequestId: string }>>(
     Prisma.sql`
       SELECT qr."id" AS "quoteRequestId"

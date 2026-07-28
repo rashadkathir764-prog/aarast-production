@@ -7,6 +7,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/account_contexts/widgets/wedding_plan_context_gate.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/chat/screens/quote_conversation_entry_screen.dart';
 import '../../features/chat/widgets/conversation_list_view.dart';
@@ -307,7 +308,7 @@ class AppRouter {
         ),
         GoRoute(
           path: guestOnboardingPreview,
-          redirect: (context, state) => welcome,
+          redirect: (context, state) => guestOnboardingRedirect(flags),
           builder: (context, state) => const SmartWelcomeScreen(),
         ),
         GoRoute(
@@ -428,6 +429,7 @@ class AppRouter {
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
             providerAccountRequired: true,
+            providerProfileManageRequired: true,
             child: const EditProviderProfileScreen(),
           ),
         ),
@@ -437,6 +439,7 @@ class AppRouter {
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
             providerAccountRequired: true,
+            providerOperationsRequired: true,
             child: const AddProviderServiceScreen(),
           ),
         ),
@@ -446,6 +449,7 @@ class AppRouter {
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
             providerAccountRequired: true,
+            providerOperationsRequired: true,
             child: const AddProviderPackageScreen(),
           ),
         ),
@@ -512,7 +516,10 @@ class AppRouter {
         ShellRoute(
           builder: (context, state, child) {
             final id = state.pathParameters['id'] ?? '';
-            return WeddingPlanShell(weddingPlanId: id, child: child);
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              child: WeddingPlanShell(weddingPlanId: id, child: child),
+            );
           },
           routes: [
             GoRoute(

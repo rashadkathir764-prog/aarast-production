@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  Provider,
+  ProviderStatus,
   SharedMember,
   WeddingPlan,
   WeddingPlanStatus,
@@ -12,9 +14,18 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  providerAccessPolicy,
+  ProviderAccessCapabilities,
+  ProviderAccessMode,
+} from "../provider-dashboard/provider-access-policy";
+import {
   PermissionService,
   PlanAccessContext,
 } from "../sharing/permission.service";
+import {
+  canonicalPlanContextKey,
+  canonicalProviderContextKey,
+} from "./context-key";
 
 export enum AvailableContextRole {
   OWNER = "OWNER",
@@ -35,6 +46,8 @@ export interface AvailableContextPermissions {
 }
 
 export type ContextUnavailableReason = "PLAN_ARCHIVED";
+export type ContextLifecycle = WeddingPlanStatus | ProviderStatus;
+export type ContextAccessMode = ProviderAccessMode;
 
 export interface AvailableContext {
   contextKey: string;
@@ -42,6 +55,9 @@ export interface AvailableContext {
   weddingPlanId: string | null;
   providerId: string | null;
   displayName: string;
+  lifecycle: ContextLifecycle;
+  accessMode: ContextAccessMode;
+  capabilities: ProviderAccessCapabilities;
   permissions: AvailableContextPermissions;
   isAvailable: boolean;
   unavailableReason: ContextUnavailableReason | null;
@@ -104,16 +120,7 @@ export class ContextsService {
     }
 
     if (provider) {
-      contexts.push({
-        contextKey: this.providerContextKey(provider.id),
-        role: AvailableContextRole.PROVIDER,
-        weddingPlanId: null,
-        providerId: provider.id,
-        displayName: provider.businessName,
-        permissions: this.providerPermissions(),
-        isAvailable: true,
-        unavailableReason: null,
-      });
+      contexts.push(this.providerContext(provider));
     }
 
     return contexts;
@@ -168,16 +175,7 @@ export class ContextsService {
         },
       });
       if (provider) {
-        context = {
-          contextKey: this.providerContextKey(provider.id),
-          role: AvailableContextRole.PROVIDER,
-          weddingPlanId: null,
-          providerId: provider.id,
-          displayName: provider.businessName,
-          permissions: this.providerPermissions(),
-          isAvailable: true,
-          unavailableReason: null,
-        };
+        context = this.providerContext(provider);
       }
     }
 
@@ -211,6 +209,18 @@ export class ContextsService {
       sharedMember,
     };
     const isAvailable = plan.status === WeddingPlanStatus.PLANNING;
+    const canEditPlan =
+      isAvailable && this.permissions.canManagePlan(access);
+    const canManageTasks =
+      isAvailable && this.permissions.canManageTasks(access);
+    const canManageGuests =
+      isAvailable && this.permissions.canManageGuests(access);
+    const canManageProviders =
+      isAvailable && this.permissions.canManageProviders(access);
+    const canInviteMembers =
+      isAvailable && this.permissions.canManageMembers(access);
+    const canManageMoney =
+      isAvailable && this.permissions.canManageMoney(access);
 
     return {
       contextKey: this.planContextKey(plan.id, role),
@@ -218,15 +228,22 @@ export class ContextsService {
       weddingPlanId: plan.id,
       providerId: null,
       displayName: plan.title,
+      lifecycle: plan.status,
+      accessMode: isAvailable ? "FULL" : "READ_ONLY",
+      capabilities: {
+        canViewProviderProfile: false,
+        canManageProviderProfile: false,
+        canUseProviderOperations: false,
+      },
       permissions: {
         canViewPlan: true,
-        canEditPlan: this.permissions.canManagePlan(access),
-        canManageTasks: this.permissions.canManageTasks(access),
-        canManageGuests: this.permissions.canManageGuests(access),
-        canManageProviders: this.permissions.canManageProviders(access),
-        canInviteMembers: this.permissions.canManageMembers(access),
+        canEditPlan,
+        canManageTasks,
+        canManageGuests,
+        canManageProviders,
+        canInviteMembers,
         canViewMoney: this.permissions.canViewMoney(access),
-        canManageMoney: this.permissions.canManageMoney(access),
+        canManageMoney,
         canManageProviderProfile: false,
       },
       isAvailable,
@@ -234,7 +251,28 @@ export class ContextsService {
     };
   }
 
-  private providerPermissions(): AvailableContextPermissions {
+  private providerContext(provider: Provider): AvailableContext {
+    const policy = providerAccessPolicy(provider);
+    return {
+      contextKey: this.providerContextKey(provider.id),
+      role: AvailableContextRole.PROVIDER,
+      weddingPlanId: null,
+      providerId: provider.id,
+      displayName: provider.businessName,
+      lifecycle: provider.status,
+      accessMode: policy.accessMode,
+      capabilities: policy.capabilities,
+      permissions: this.providerPermissions(
+        policy.capabilities.canManageProviderProfile,
+      ),
+      isAvailable: true,
+      unavailableReason: null,
+    };
+  }
+
+  private providerPermissions(
+    canManageProviderProfile: boolean,
+  ): AvailableContextPermissions {
     return {
       canViewPlan: false,
       canEditPlan: false,
@@ -244,7 +282,7 @@ export class ContextsService {
       canInviteMembers: false,
       canViewMoney: false,
       canManageMoney: false,
-      canManageProviderProfile: true,
+      canManageProviderProfile,
     };
   }
 
@@ -292,11 +330,11 @@ export class ContextsService {
   ): string {
     const suffix =
       role === AvailableContextRole.OWNER ? "owner" : "contributor";
-    return `plan:${weddingPlanId}:${suffix}`;
+    return canonicalPlanContextKey(weddingPlanId, suffix);
   }
 
   private providerContextKey(providerId: string): string {
-    return `provider:${providerId}`;
+    return canonicalProviderContextKey(providerId);
   }
 
   private sortPlans<T extends WeddingPlan>(plans: T[]): T[] {

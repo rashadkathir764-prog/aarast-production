@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
@@ -41,6 +42,66 @@ void main() {
     expect(find.text('سجّل الدخول لإدارة الإعدادات'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'signed-in settings expose only real notification preferences at 320px RTL',
+    (tester) async {
+      final fakeApi = _FakeSettingsApi();
+      await tester.binding.setSurfaceSize(const Size(320, 820));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await _pumpSignedInSettings(tester, fakeApi);
+
+      expect(find.byType(Switch), findsNWidgets(3));
+      expect(
+        find.byKey(const Key('settings-task-reminders-switch')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('settings-payment-reminders-switch')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('settings-provider-messages-switch')),
+        findsOneWidget,
+      );
+      expect(find.text('التنبيهات المهمة'), findsNothing);
+      expect(find.text('واتساب'), findsNothing);
+      expect(find.text('رسائل SMS'), findsNothing);
+      expect(find.text('البريد الإلكتروني'), findsNothing);
+      expect(find.text('تنبيهات داخل التطبيق'), findsOneWidget);
+      expect(find.textContaining('غير متاحة حالياً'), findsOneWidget);
+
+      for (final key in const [
+        Key('settings-task-reminders-switch'),
+        Key('settings-payment-reminders-switch'),
+        Key('settings-provider-messages-switch'),
+      ]) {
+        await tester.ensureVisible(find.byKey(key));
+        await tester.tap(
+          find.descendant(of: find.byKey(key), matching: find.byType(Switch)),
+        );
+        await tester.pump();
+      }
+
+      final saveButton = find.text('حفظ الإعدادات');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      expect(fakeApi.updateSettingsCalls, 1);
+      expect(fakeApi.lastUpdatePayload, {
+        'taskRemindersEnabled': false,
+        'paymentRemindersEnabled': false,
+        'providerMessagesEnabled': false,
+      });
+      expect(fakeApi.lastUpdatePayload, isNot(contains('pushEnabled')));
+      expect(fakeApi.lastUpdatePayload, isNot(contains('smsEnabled')));
+      expect(fakeApi.lastUpdatePayload, isNot(contains('whatsappEnabled')));
+      expect(fakeApi.lastUpdatePayload, isNot(contains('emailEnabled')));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 Future<void> _pumpSettings(
@@ -70,11 +131,49 @@ Future<void> _pumpSettings(
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpSignedInSettings(
+  WidgetTester tester,
+  _FakeSettingsApi fakeApi,
+) async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final authStorage = AuthStorage(preferences);
+  await authStorage.saveSession(
+    accessToken: 'settings-test-token',
+    user: _SignedInAuthRepository.user,
+  );
+  final authRepository = _SignedInAuthRepository(authStorage);
+  final authController = AuthController(authRepository);
+  await authController.restoreSession();
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<AuthStorage>.value(value: authStorage),
+        Provider<AuthRepository>.value(value: authRepository),
+        ChangeNotifierProvider<AuthController>.value(value: authController),
+        ChangeNotifierProvider<SettingsProvider>(
+          create: (_) => SettingsProvider(fakeApi),
+        ),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: const Directionality(
+          textDirection: TextDirection.rtl,
+          child: SettingsScreen(),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 class _FakeSettingsApi extends SettingsApi {
   _FakeSettingsApi() : super(ApiClient(tokenProvider: () async => null));
 
   int getSettingsCalls = 0;
   int updateSettingsCalls = 0;
+  Map<String, dynamic>? lastUpdatePayload;
 
   @override
   Future<UserSettings> getSettings() async {
@@ -82,7 +181,7 @@ class _FakeSettingsApi extends SettingsApi {
     return UserSettings(
       id: 'settings-1',
       userId: 'user-1',
-      pushEnabled: true,
+      pushEnabled: false,
       whatsappEnabled: false,
       emailEnabled: false,
       smsEnabled: false,
@@ -97,6 +196,32 @@ class _FakeSettingsApi extends SettingsApi {
   @override
   Future<UserSettings> updateSettings(UserSettings settings) async {
     updateSettingsCalls += 1;
+    lastUpdatePayload = settings.toUpdateJson();
     return settings;
   }
+}
+
+class _SignedInAuthRepository extends AuthRepository {
+  _SignedInAuthRepository(AuthStorage storage)
+    : super(
+        ApiClient(tokenProvider: () async => 'settings-test-token'),
+        storage,
+      );
+
+  static const user = SafeUser(
+    id: 'user-1',
+    name: 'مستخدم الإعدادات',
+    phone: '+967777000000',
+    role: 'USER',
+    status: 'ACTIVE',
+  );
+
+  @override
+  Future<String?> readAccessToken() async => 'settings-test-token';
+
+  @override
+  SafeUser? readCachedUser() => user;
+
+  @override
+  Future<SafeUser> me() async => user;
 }

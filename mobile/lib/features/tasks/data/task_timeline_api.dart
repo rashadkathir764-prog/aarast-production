@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/offline/sync_queue.dart';
 import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
@@ -190,6 +191,17 @@ class TaskTimelineApi {
         payload: payload,
         localEntityId: localId,
       );
+      if (_hasValue(assigneeUserId)) {
+        await _offline.database.enqueueSync(
+          entityType: 'task',
+          operation: 'assign',
+          endpoint: '/api/v1/tasks/$localId/assign',
+          method: 'PATCH',
+          payload: {'assigneeUserId': assigneeUserId!.trim()},
+          localEntityId: localId,
+          replacePendingForEntity: true,
+        );
+      }
       await _offline.refreshStatus();
       return WeddingTask.fromJson(localJson);
     }
@@ -268,8 +280,15 @@ class TaskTimelineApi {
         operation: 'update',
         endpoint: '/api/v1/tasks/$id',
         method: 'PATCH',
-        payload: data,
+        payload: await _mergedQueuedTaskPayload(
+          id: id,
+          operation: 'update',
+          data: data,
+        ),
         localEntityId: id,
+        replacePendingForEntity: true,
+        clientRequestId: await _queuedTaskRequestId(id, 'update'),
+        queueCreatedAt: await _queuedTaskCreatedAt(id, 'update'),
       );
       await _offline.refreshStatus();
       return WeddingTask.fromJson(localJson);
@@ -277,6 +296,15 @@ class TaskTimelineApi {
   }
 
   Future<void> deleteTask(String id) async {
+    if (id.startsWith('local-task-')) {
+      await _offline?.database.discardLocalEntity(
+        table: OfflineTables.cachedTasks,
+        entityType: 'task',
+        entityId: id,
+      );
+      await _offline?.refreshStatus();
+      return;
+    }
     try {
       await _apiClient.deleteJson('/api/v1/tasks/$id');
       await _offline?.syncPendingChanges();
@@ -301,6 +329,7 @@ class TaskTimelineApi {
         method: 'DELETE',
         payload: const {},
         localEntityId: id,
+        replaceAllPendingForEntity: true,
       );
       await _offline.refreshStatus();
     }
@@ -431,6 +460,111 @@ class TaskTimelineApi {
     return WeddingTask.fromJson(localJson);
   }
 
+  Future<void> _coalesceLocalTaskWrites({
+    required String id,
+    required Map<String, dynamic> localJson,
+    required Map<String, dynamic> data,
+  }) async {
+    final database = _offline?.database;
+    if (database == null) return;
+    final create = await _queuedTaskItem(id, 'create');
+    if (create == null) return;
+    await database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: create.endpoint,
+      method: create.method,
+      payload: _taskCreatePayloadFromLocal(localJson),
+      localEntityId: id,
+      replacePendingForEntity: true,
+      clientRequestId: create.id,
+      queueCreatedAt: create.createdAt,
+    );
+
+    if (data.containsKey('assigneeUserId')) {
+      final existingAssign = await _queuedTaskItem(id, 'assign');
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'assign',
+        endpoint: '/api/v1/tasks/$id/assign',
+        method: 'PATCH',
+        payload: {'assigneeUserId': _trimmedOrNull(data['assigneeUserId']?.toString())},
+        localEntityId: id,
+        replacePendingForEntity: true,
+        clientRequestId: existingAssign?.id,
+        queueCreatedAt: existingAssign?.createdAt,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> _mergedQueuedTaskPayload({
+    required String id,
+    required String operation,
+    required Map<String, dynamic> data,
+  }) async {
+    final items = await _queuedTaskItems(id, operation);
+    return {
+      for (final item in items) ...item.payload,
+      ...data,
+    };
+  }
+
+  Future<String?> _queuedTaskRequestId(String id, String operation) async {
+    return (await _queuedTaskItem(id, operation))?.id;
+  }
+
+  Future<DateTime?> _queuedTaskCreatedAt(String id, String operation) async {
+    return (await _queuedTaskItem(id, operation))?.createdAt;
+  }
+
+  Future<SyncQueueItem?> _queuedTaskItem(String id, String operation) async {
+    final items = await _queuedTaskItems(id, operation);
+    return items.isEmpty ? null : items.first;
+  }
+
+  Future<List<SyncQueueItem>> _queuedTaskItems(
+    String id,
+    String operation,
+  ) async {
+    final database = _offline?.database;
+    if (database == null) return const [];
+    final items = [
+      ...await database.pendingSyncItems(),
+      ...await database.blockedSyncItems(),
+    ];
+    return items
+        .where(
+          (item) =>
+              item.entityType == 'task' &&
+              item.localEntityId == id &&
+              item.operation == operation,
+        )
+        .toList()
+      ..sort((left, right) => left.createdAt.compareTo(right.createdAt));
+  }
+
+  Map<String, dynamic> _taskCreatePayloadFromLocal(
+    Map<String, dynamic> localJson,
+  ) {
+    return {
+      'title': localJson['title']?.toString().trim() ?? '',
+      'status': localJson['status']?.toString() ?? 'TODO',
+      'priority': localJson['priority']?.toString() ?? 'MEDIUM',
+      if (_hasValue(localJson['description']?.toString()))
+        'description': localJson['description'].toString().trim(),
+      if (localJson['dueDate'] != null)
+        'dueDate': localJson['dueDate'].toString(),
+      if (_hasValue(localJson['taskCategory']?.toString()))
+        'taskCategory': localJson['taskCategory'].toString().trim(),
+      if (_hasValue(localJson['responsibleName']?.toString()))
+        'responsibleName': localJson['responsibleName'].toString().trim(),
+      if (_hasValue(localJson['responsiblePhone']?.toString()))
+        'responsiblePhone': localJson['responsiblePhone'].toString().trim(),
+      if (_hasValue(localJson['responsibleSource']?.toString()))
+        'responsibleSource': localJson['responsibleSource'].toString().trim(),
+    };
+  }
+
   Future<WeddingTask> _updateLocalTask({
     required String id,
     required Map<String, dynamic> data,
@@ -453,6 +587,7 @@ class TaskTimelineApi {
       json: localJson,
       dirty: true,
     );
+    await _coalesceLocalTaskWrites(id: id, localJson: localJson, data: data);
     await _offline?.refreshStatus();
     return WeddingTask.fromJson(localJson);
   }

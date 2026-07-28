@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { afterEach, test } from "node:test";
 import { HttpException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { AuthErrorCode } from "../src/auth/auth-error";
 import { invitationDeliveryOutcomesTotal } from "../src/common/observability/metrics";
 import { InviteAccessService } from "../src/sharing/invite-access.service";
@@ -205,7 +206,12 @@ test("invite message is generic, private, and rejects an unsafe public origin", 
 test("invite OTP is sent only when the bearer token and canonical phone match", async () => {
   const token = TEST_INVITE_TOKEN;
   const expectedHash = createHash("sha256").update(token).digest("hex");
-  const authCalls: Array<Record<string, unknown>> = [];
+  const authCalls: Array<{
+    phone: string;
+    planInviteId: string;
+    expectedTokenHash: string;
+    context: Record<string, unknown>;
+  }> = [];
   const service = new InviteAccessService(
     {
       planInvite: {
@@ -220,8 +226,13 @@ test("invite OTP is sent only when the bearer token and canonical phone match", 
       },
     } as any,
     {
-      requestOtp: async (dto: Record<string, unknown>) => {
-        authCalls.push(dto);
+      requestInviteOtp: async (
+        phone: string,
+        planInviteId: string,
+        expectedTokenHash: string,
+        context: Record<string, unknown>,
+      ) => {
+        authCalls.push({ phone, planInviteId, expectedTokenHash, context });
         return { delivery: "WHATSAPP" };
       },
     } as any,
@@ -238,7 +249,9 @@ test("invite OTP is sent only when the bearer token and canonical phone match", 
   });
   assert.equal(authCalls.length, 1);
   assert.equal(authCalls[0].phone, "+967777123456");
-  assert.equal(authCalls[0].purpose, "LOGIN");
+  assert.equal(authCalls[0].planInviteId, "invite-1");
+  assert.equal(authCalls[0].expectedTokenHash, expectedHash);
+  assert.deepEqual(authCalls[0].context, { ip: "127.0.0.1" });
 
   await assert.rejects(
     () =>
@@ -251,6 +264,59 @@ test("invite OTP is sent only when the bearer token and canonical phone match", 
     },
   );
   assert.equal(authCalls.length, 1);
+});
+
+test("invite deletion during OTP issuance returns the private not-found contract", async () => {
+  const token = TEST_INVITE_TOKEN;
+  const expectedHash = createHash("sha256").update(token).digest("hex");
+  const service = new InviteAccessService(
+    {
+      planInvite: {
+        findFirst: async ({ where }: any) =>
+          where.tokenHash === expectedHash &&
+          where.normalizedPhone === "+967777123456"
+            ? { id: "invite-deleted-during-issue" }
+            : null,
+      },
+      user: {
+        findFirst: async () => null,
+      },
+    } as any,
+    {
+      requestInviteOtp: async () => {
+        throw new Prisma.PrismaClientKnownRequestError(
+          "private foreign-key detail",
+          {
+            code: "P2003",
+            clientVersion: "test",
+          },
+        );
+      },
+    } as any,
+  );
+
+  await assert.rejects(
+    () =>
+      service.requestOtp(
+        token,
+        { phone: "777 123 456" },
+        { ip: "127.0.0.1" },
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof HttpException);
+      assert.equal(error.getStatus(), 404);
+      const response = error.getResponse() as {
+        code?: string;
+        message?: string;
+      };
+      assert.equal(response.code, AuthErrorCode.INVITE_NOT_FOUND_FOR_PHONE);
+      assert.doesNotMatch(
+        JSON.stringify(response),
+        /P2003|foreign-key|invite-deleted-during-issue/,
+      );
+      return true;
+    },
+  );
 });
 
 test("invite OTP verification stays bound to the exact private token", async () => {
@@ -342,7 +408,7 @@ test("invite OTP never dispatches for accepted, declined, cancelled, or expired 
         },
       } as any,
       {
-        requestOtp: async () => {
+        requestInviteOtp: async () => {
           authCalls += 1;
           return { delivery: "WHATSAPP" };
         },

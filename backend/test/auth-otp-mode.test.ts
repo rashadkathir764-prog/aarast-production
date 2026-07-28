@@ -3,7 +3,11 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { OtpPurpose, Prisma } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { AuthService } from '../src/auth/auth.service';
+import { RequestOtpDto } from '../src/auth/dto/request-otp.dto';
+import { VerifyOtpDto } from '../src/auth/dto/verify-otp.dto';
 import { getJwtSecret } from '../src/auth/jwt-secret';
 import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
 import { otpDeliveryOutcomesTotal } from '../src/common/observability/metrics';
@@ -135,7 +139,12 @@ function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise
         Object.assign(verifiedUser, data);
         return verifiedUser;
       },
+      findUnique: async ({ where }: any) =>
+        where.id === verifiedUser.id ? verifiedUser : null,
     },
+    $queryRaw: async () => [
+      { id: verifiedUser.id, status: verifiedUser.status },
+    ],
     $transaction: async (action: any) => action(prisma),
   };
   const jwtService = { sign: () => 'test-token' };
@@ -190,6 +199,55 @@ test('dev OTP request succeeds without a WhatsApp provider', async () => {
       assert.equal(response.code, '123456');
       assert.equal(response.message, 'رمز التحقق مؤقت للتجربة المحلية: 123456');
       assert.ok(response.expiresAt instanceof Date);
+    },
+  );
+});
+
+test('internal invite OTP purpose is unavailable through the general OTP DTOs', async () => {
+  const requestErrors = await validate(
+    plainToInstance(RequestOtpDto, {
+      phone: '777123456',
+      purpose: 'INVITE_ACCESS',
+    }),
+  );
+  const verifyErrors = await validate(
+    plainToInstance(VerifyOtpDto, {
+      phone: '777123456',
+      purpose: 'INVITE_ACCESS',
+      code: '123456',
+    }),
+  );
+
+  assert.ok(requestErrors.some((error) => error.property === 'purpose'));
+  assert.ok(verifyErrors.some((error) => error.property === 'purpose'));
+});
+
+test('general AuthService OTP methods reject the internal invite purpose', async () => {
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'dev',
+      AUTH_DEV_OTP_CODE: '123456',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      const service = createService();
+      await assert.rejects(
+        () =>
+          service.requestOtp({
+            phone: '777123456',
+            purpose: OtpPurpose.INVITE_ACCESS,
+          }),
+        /Unsupported OTP purpose/,
+      );
+      await assert.rejects(
+        () =>
+          service.verifyOtp({
+            phone: '777123456',
+            purpose: OtpPurpose.INVITE_ACCESS,
+            code: '123456',
+          }),
+        /Unsupported OTP purpose/,
+      );
     },
   );
 });

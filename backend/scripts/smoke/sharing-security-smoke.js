@@ -83,6 +83,10 @@ async function run() {
   const manager = await register("Security Manager", `+96771${suffix}`);
   const target = await register("Security Target", `+96772${suffix}`);
   const outsider = await register("Security Outsider", `+96773${suffix}`);
+  const staleInviteTarget = await register(
+    "Security Stale Invite Target",
+    `+96775${suffix}`,
+  );
 
   const plan = await request(
     "POST",
@@ -91,6 +95,173 @@ async function run() {
     owner.token,
   );
   check("owner creates security plan", plan.status === 201);
+
+  const staleHighAuthorityInvite = await request(
+    "POST",
+    `/api/v1/wedding-plans/${plan.body.id}/invites`,
+    {
+      userId: staleInviteTarget.user.id,
+      role: "MANAGER",
+      canViewMoney: true,
+      canManageMoney: true,
+      canManageProviders: true,
+    },
+    owner.token,
+  );
+  check(
+    "owner creates a high-authority invite before membership exists",
+    staleHighAuthorityInvite.status === 201 &&
+      staleHighAuthorityInvite.body?.role === "MANAGER" &&
+      staleHighAuthorityInvite.body?.canViewMoney === true &&
+      staleHighAuthorityInvite.body?.canManageMoney === true &&
+      staleHighAuthorityInvite.body?.canManageProviders === true &&
+      typeof staleHighAuthorityInvite.body?.token === "string",
+  );
+
+  const participationCity = await prisma.city.create({
+    data: {
+      nameAr: `Sharing participation ${suffix}`,
+      nameEn: `Sharing participation ${suffix}`,
+      countryCode: "YE",
+      isActive: true,
+    },
+  });
+  const participationProvider = await prisma.provider.create({
+    data: {
+      cityId: participationCity.id,
+      businessName: `Sharing participation provider ${suffix}`,
+      phone: `+96776${suffix}`,
+      status: "ACTIVE",
+    },
+  });
+  const participationConversation = await prisma.conversation.create({
+    data: {
+      scope: "PLAN",
+      weddingPlanId: plan.body.id,
+      providerId: participationProvider.id,
+      createdByUserId: owner.user.id,
+    },
+  });
+
+  const staleTargetMemberCreate = await request(
+    "POST",
+    `/api/v1/wedding-plans/${plan.body.id}/members`,
+    {
+      userId: staleInviteTarget.user.id,
+      role: "MANAGER",
+      canViewMoney: true,
+      canManageMoney: true,
+      canManageProviders: true,
+    },
+    owner.token,
+  );
+  check(
+    "newer high-authority membership opens provider participation",
+    staleTargetMemberCreate.status === 201 &&
+      staleTargetMemberCreate.body?.canViewMoney === true &&
+      staleTargetMemberCreate.body?.canManageMoney === true &&
+      staleTargetMemberCreate.body?.canManageProviders === true,
+  );
+  const activeParticipation =
+    await prisma.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: participationConversation.id,
+          userId: staleInviteTarget.user.id,
+        },
+      },
+    });
+  check(
+    "high-authority membership creates active provider participation",
+    typeof activeParticipation?.id === "string" &&
+      activeParticipation.revokedAt === null,
+  );
+
+  const staleTargetViewerUpdate = await request(
+    "PATCH",
+    `/api/v1/wedding-plans/${plan.body.id}/members/${staleTargetMemberCreate.body.id}`,
+    {
+      role: "VIEWER",
+      canViewMoney: false,
+      canManageMoney: false,
+      canManageProviders: false,
+    },
+    owner.token,
+  );
+  check(
+    "newer membership update removes money and provider authority",
+    staleTargetViewerUpdate.status === 200 &&
+      staleTargetViewerUpdate.body?.role === "VIEWER" &&
+      staleTargetViewerUpdate.body?.canViewMoney === false &&
+      staleTargetViewerUpdate.body?.canManageMoney === false &&
+      staleTargetViewerUpdate.body?.canManageProviders === false,
+  );
+  const viewerMemberBeforeStaleAccept = await prisma.sharedMember.findUnique({
+    where: { id: staleTargetMemberCreate.body.id },
+  });
+  const revokedParticipationBeforeStaleAccept =
+    await prisma.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: participationConversation.id,
+          userId: staleInviteTarget.user.id,
+        },
+      },
+    });
+  check(
+    "viewer downgrade revokes provider participation before invite acceptance",
+    typeof revokedParticipationBeforeStaleAccept?.id === "string" &&
+      revokedParticipationBeforeStaleAccept.revokedAt instanceof Date,
+  );
+
+  const staleHighAuthorityAccept = await request(
+    "POST",
+    `/api/v1/invites/${staleHighAuthorityInvite.body.token}/accept`,
+    null,
+    staleInviteTarget.token,
+  );
+  check(
+    "target accepts the older high-authority invite",
+    staleHighAuthorityAccept.status === 201,
+  );
+  const viewerMemberAfterStaleAccept = await prisma.sharedMember.findUnique({
+    where: { id: staleTargetMemberCreate.body.id },
+  });
+  check(
+    "older invite does not overwrite the newer viewer membership",
+    viewerMemberAfterStaleAccept?.id === viewerMemberBeforeStaleAccept?.id &&
+      viewerMemberAfterStaleAccept?.role === "VIEWER" &&
+      viewerMemberAfterStaleAccept?.canViewMoney === false &&
+      viewerMemberAfterStaleAccept?.canManageMoney === false &&
+      viewerMemberAfterStaleAccept?.canManageProviders === false &&
+      viewerMemberAfterStaleAccept?.updatedAt.getTime() ===
+        viewerMemberBeforeStaleAccept?.updatedAt.getTime(),
+  );
+  check(
+    "invite acceptance returns the preserved viewer authority",
+    staleHighAuthorityAccept.body?.member?.id ===
+      viewerMemberBeforeStaleAccept?.id &&
+      staleHighAuthorityAccept.body?.member?.role === "VIEWER" &&
+      staleHighAuthorityAccept.body?.member?.canViewMoney === false &&
+      staleHighAuthorityAccept.body?.member?.canManageMoney === false &&
+      staleHighAuthorityAccept.body?.member?.canManageProviders === false,
+  );
+  const revokedParticipationAfterStaleAccept =
+    await prisma.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: participationConversation.id,
+          userId: staleInviteTarget.user.id,
+        },
+      },
+    });
+  check(
+    "older invite does not reopen revoked provider participation",
+    revokedParticipationAfterStaleAccept?.id ===
+      revokedParticipationBeforeStaleAccept?.id &&
+      revokedParticipationAfterStaleAccept?.revokedAt?.getTime() ===
+        revokedParticipationBeforeStaleAccept?.revokedAt?.getTime(),
+  );
 
   const managerMember = await request(
     "POST",

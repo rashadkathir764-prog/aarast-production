@@ -212,6 +212,7 @@ class MemorySharingPrisma {
       }
       return await operation({
         __transaction: true,
+        user: this.user,
         sharedMember: this.sharedMember,
         planInvite: {
           findFirst: async ({ where }: any) => this.findFirstInvite(where),
@@ -421,7 +422,10 @@ function deferred<T>() {
 function inviteHarness(
   options: {
     notificationFailure?: Error;
-    delivery?: () => Promise<{
+    delivery?: (
+      phone: string | null,
+      token: string,
+    ) => Promise<{
       channel: "WHATSAPP";
       status: "DELIVERED" | "UNCERTAIN" | "UNAVAILABLE";
     }>;
@@ -438,6 +442,7 @@ function inviteHarness(
   };
   let transactionalAccess = currentAccess;
   const permissionService = new PermissionService({} as any);
+  (permissionService as any).assertPlanReadable = async () => currentAccess;
   (permissionService as any).assertMemberManageable = async () => currentAccess;
   (permissionService as any).assertMemberManageableInTransaction = async () => {
     if (!permissionService.canManageMembers(transactionalAccess)) {
@@ -895,6 +900,71 @@ test("an old delivery completion cannot overwrite a newer rotated token attempt"
   );
 });
 
+test("cancelling during external delivery supersedes finalization and never re-presents the raw bearer", async () => {
+  const deliveryStarted = deferred<void>();
+  const deliveryFinished = deferred<{
+    channel: "WHATSAPP";
+    status: "DELIVERED";
+  }>();
+  let deliveredToken: string | null = null;
+  let deliveryCalls = 0;
+  const harness = inviteHarness({
+    delivery: async (_phone, token) => {
+      deliveryCalls += 1;
+      deliveredToken = token;
+      deliveryStarted.resolve();
+      return deliveryFinished.promise;
+    },
+  });
+
+  const creating = harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+  });
+  await deliveryStarted.promise;
+
+  const pending = harness.db.invites[0];
+  assert.ok(pending);
+  const cancelled = await harness.service.cancelInvite(
+    harness.owner,
+    "plan-1",
+    pending.id,
+  );
+  assert.equal(cancelled.status, "CANCELLED");
+  assert.equal(cancelled.token, pending.id);
+
+  deliveryFinished.resolve({
+    channel: "WHATSAPP",
+    status: "DELIVERED",
+  });
+  await assert.rejects(creating, (error: unknown) => {
+    assert.ok(error instanceof HttpException);
+    assert.equal(error.getStatus(), 409);
+    assert.equal(
+      (error.getResponse() as Record<string, unknown>).code,
+      "INVITE_DELIVERY_ATTEMPT_SUPERSEDED",
+    );
+    return true;
+  });
+
+  assert.equal(deliveryCalls, 1);
+  assert.match(deliveredToken ?? "", /^[A-Za-z0-9_-]{43}$/);
+  assert.ok(pending.revokedAt instanceof Date);
+  assert.equal(
+    pending.deliveryStatus,
+    PlanInviteDeliveryStatus.PENDING,
+    "a terminal invite must not be finalized by the stale delivery attempt",
+  );
+  const terminalResponse = (harness.service as any).toInviteResponse(
+    pending,
+    deliveredToken,
+  );
+  assert.equal(
+    terminalResponse.token,
+    pending.id,
+    "a terminal invite response must never expose the raw bearer",
+  );
+});
+
 test("cancelling an invite claims only the still-pending row", async () => {
   const harness = inviteHarness();
   const created = await harness.service.createInvite(harness.owner, "plan-1", {
@@ -959,6 +1029,158 @@ test("raw invite claims stay bound to the current token fingerprint", () => {
   assert.deepEqual(
     (harness.service as any).inviteClaimTokenFilter(invite, invite.id),
     {},
+  );
+});
+
+test("accepting a stale invite preserves a newer membership and does not restore provider or finance access", async () => {
+  const harness = inviteHarness();
+  harness.target.activeWeddingPlanId = "already-selected-plan";
+  const created = await harness.service.createInvite(
+    harness.owner,
+    "plan-1",
+    {
+      phone: harness.target.phone!,
+      role: SharedMemberRole.FINANCE_MANAGER,
+      canViewMoney: true,
+      canManageProviders: true,
+      canManageMoney: true,
+    },
+  );
+  const storedInvite = harness.db.invites[0];
+  const newerMembershipAt = new Date(storedInvite.updatedAt.getTime() + 1_000);
+  let currentMembership = {
+    id: "member-newer-than-invite",
+    weddingPlanId: "plan-1",
+    userId: harness.target.id,
+    role: SharedMemberRole.VIEWER,
+    canViewMoney: false,
+    canEditPlan: false,
+    canManageTasks: false,
+    canManageGuests: false,
+    canManageProviders: false,
+    canInviteMembers: false,
+    canManageMoney: false,
+    receiveNotifications: true,
+    createdAt: newerMembershipAt,
+    updatedAt: newerMembershipAt,
+    user: harness.target,
+  };
+  let providerParticipationWrites = 0;
+
+  (harness.db as any).$transaction = async (
+    operation: (tx: Record<string, any>) => Promise<any>,
+    options: Record<string, unknown> = {},
+  ) => {
+    harness.db.transactionOptions.push(options);
+    return operation({
+      __transaction: true,
+      $queryRaw: async (query: any) => {
+        const sql = Array.isArray(query?.strings)
+          ? query.strings.join(" ")
+          : String(query);
+        if (sql.includes('FROM "User"')) {
+          return [harness.owner, harness.target].map(({ id, status }) => ({
+            id,
+            status,
+          }));
+        }
+        if (sql.includes('FROM "PlanInvite"')) {
+          return [{ id: storedInvite.id }];
+        }
+        return [{ id: "plan-1" }];
+      },
+      weddingPlan: {
+        findUnique: async () => harness.db.plan,
+      },
+      planInvite: {
+        findFirst: harness.db.planInvite.findFirst,
+        findUnique: harness.db.planInvite.findUnique,
+        updateMany: async ({ where, data }: any) =>
+          harness.db.planInvite.updateMany({
+            where: {
+              weddingPlanId: storedInvite.weddingPlanId,
+              ...where,
+            },
+            data,
+          }),
+      },
+      sharedMember: {
+        findUnique: async () => currentMembership,
+        upsert: async ({ update }: any) => {
+          currentMembership = {
+            ...currentMembership,
+            ...update,
+            updatedAt: new Date(),
+            user: harness.target,
+          };
+          return currentMembership;
+        },
+      },
+      conversation: {
+        findMany: async () => [
+          {
+            id: "conversation-for-newer-member",
+            provider: { userId: "provider-user" },
+            weddingPlan: { ownerUserId: harness.owner.id },
+          },
+        ],
+      },
+      conversationParticipant: {
+        updateMany: async () => {
+          providerParticipationWrites += 1;
+          return { count: 1 };
+        },
+        createMany: async () => {
+          providerParticipationWrites += 1;
+          return { count: 1 };
+        },
+      },
+    });
+  };
+
+  const accepted = await harness.service.acceptInvite(
+    harness.target,
+    created.id,
+  );
+  const expectedMembership = {
+    role: SharedMemberRole.VIEWER,
+    canViewMoney: false,
+    canManageProviders: false,
+    canManageMoney: false,
+  };
+
+  assert.deepEqual(
+    {
+      returned: {
+        role: accepted.member.role,
+        canViewMoney: accepted.member.canViewMoney,
+        canManageProviders: accepted.member.canManageProviders,
+        canManageMoney: accepted.member.canManageMoney,
+      },
+      stored: {
+        role: currentMembership.role,
+        canViewMoney: currentMembership.canViewMoney,
+        canManageProviders: currentMembership.canManageProviders,
+        canManageMoney: currentMembership.canManageMoney,
+      },
+      providerParticipationWrites,
+    },
+    {
+      returned: expectedMembership,
+      stored: expectedMembership,
+      providerParticipationWrites: 0,
+    },
+    "the newer membership must remain authoritative over the stale invite snapshot",
+  );
+  assert.equal(
+    (accepted as any).contextKey,
+    "plan:plan-1:contributor",
+    "invite acceptance must return the canonical additive context key",
+  );
+  assert.equal(
+    harness.target.activeWeddingPlanId,
+    "already-selected-plan",
+    "invite acceptance must not replace an already selected plan",
   );
 });
 

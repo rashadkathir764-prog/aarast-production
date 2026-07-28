@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   PermissionService,
@@ -57,6 +58,7 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async getHome(currentUser: AuthenticatedUser) {
@@ -105,6 +107,14 @@ export class DashboardService {
     const endOfToday = this.endOfToday(today);
     const dueSoonEnd = new Date(endOfToday.getTime() + 7 * 86_400_000);
     const canViewMoney = this.permissions.canViewMoney(context);
+    const notificationVisibility =
+      await this.notifications.visibilityWhereForUser(currentUser.id);
+    const notificationWhere = {
+      userId: currentUser.id,
+      weddingPlanId,
+      archivedAt: null,
+      ...(notificationVisibility ? { AND: notificationVisibility } : {}),
+    };
 
     const [
       costs,
@@ -294,36 +304,26 @@ export class DashboardService {
       }),
       this.prisma.notification.count({
         where: {
-          userId: currentUser.id,
-          weddingPlanId,
+          ...notificationWhere,
           readAt: null,
-          archivedAt: null,
         },
       }),
       this.prisma.notification.count({
         where: {
-          userId: currentUser.id,
-          weddingPlanId,
-          archivedAt: null,
+          ...notificationWhere,
           priority: {
             in: [NotificationPriority.HIGH, NotificationPriority.URGENT],
           },
         },
       }),
       this.prisma.notification.findMany({
-        where: {
-          userId: currentUser.id,
-          weddingPlanId,
-          archivedAt: null,
-        },
+        where: notificationWhere,
         orderBy: { createdAt: "desc" },
         take: 3,
       }),
       this.prisma.notification.findFirst({
         where: {
-          userId: currentUser.id,
-          weddingPlanId,
-          archivedAt: null,
+          ...notificationWhere,
           priority: {
             in: [NotificationPriority.URGENT, NotificationPriority.HIGH],
           },

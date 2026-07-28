@@ -1,15 +1,14 @@
 # Aarast monitoring stack: Prometheus + Alertmanager + Grafana.
 #
-# Deploy next to the app compose (deploy/dokploy). It reaches the backend
-# over the shared external network, so set MONITORING_APP_NETWORK to the
-# network the backend joined (for Dokploy that is `dokploy-network`).
+# Deploy next to the app compose (deploy/dokploy). Both stacks must use the
+# same explicitly created private AARAST_MONITORING_NETWORK.
 #
 # Secrets: put the backend METRICS_TOKEN in ./secrets/metrics_token
 # (single line, no quotes). The file is git-ignored.
 
 services:
   prometheus:
-    image: prom/prometheus:v2.53.0
+    image: prom/prometheus:v2.53.0@sha256:075b1ba2c4ebb04bc3a6ab86c06ec8d8099f8fda1c96ef6d104d9bb1def1d8bc
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -28,10 +27,10 @@ services:
           memory: 512M
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.27.0@sha256:e13b6ed5cb929eeaee733479dce55e10eb3bc2e9c4586c705a4e8da41e5eacf5
     restart: unless-stopped
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${ALERTMANAGER_CONFIG_FILE:?ALERTMANAGER_CONFIG_FILE is required}:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     networks:
       - monitoring
@@ -41,7 +40,7 @@ services:
           memory: 128M
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:11.1.0@sha256:079600c9517b678c10cda6006b4487d3174512fd4c6cface37df7822756ed7a5
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
@@ -52,7 +51,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "${GRAFANA_PORT:-3200}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3200}:3000"
     networks:
       - monitoring
     deploy:
@@ -69,4 +68,4 @@ networks:
   monitoring:
   app:
     external: true
-    name: ${MONITORING_APP_NETWORK:-dokploy-network}
+    name: ${AARAST_MONITORING_NETWORK:?AARAST_MONITORING_NETWORK is required}

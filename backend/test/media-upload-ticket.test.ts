@@ -4,7 +4,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { HttpException, HttpStatus } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+} from "@nestjs/common";
 import { MediaUploadStatus } from "@prisma/client";
 import { MediaUploadCleanupScheduler } from "../src/media/media-upload-cleanup.scheduler";
 import { MediaUploadTicketService } from "../src/media/media-upload-ticket.service";
@@ -126,7 +130,13 @@ function ticketHarness() {
     $transaction: async (operation: any) =>
       operation({
         mediaUploadTicket,
-        $queryRaw: async () => {
+        $queryRaw: async (query: any) => {
+          const text = Array.isArray(query)
+            ? query.join("")
+            : (query?.strings?.join("") ?? "");
+          if (text.includes('FROM "User"')) {
+            return [{ id: "u1", status: "ACTIVE" }];
+          }
           advisoryLocks += 1;
           return [{ locked: true }];
         },
@@ -161,7 +171,9 @@ test("rolling daily upload count is enforced before another ticket is created", 
   const service = new MediaUploadTicketService({
     $transaction: async (operation: any) =>
       operation({
-        $queryRaw: async () => [{ locked: true }],
+        $queryRaw: async () => [
+          { locked: true, id: "u1", status: "ACTIVE" },
+        ],
         mediaUploadTicket: {
           count: async () =>
             MediaUploadTicketService.maximumUploadsPerRollingDay,
@@ -194,7 +206,9 @@ test("rolling daily declared-byte quota is enforced even below the count cap", a
   const service = new MediaUploadTicketService({
     $transaction: async (operation: any) =>
       operation({
-        $queryRaw: async () => [{ locked: true }],
+        $queryRaw: async () => [
+          { locked: true, id: "u1", status: "ACTIVE" },
+        ],
         mediaUploadTicket: {
           count: async () => 1,
           aggregate: async () => ({
@@ -224,6 +238,94 @@ test("rolling daily declared-byte quota is enforced even below the count cap", a
       error.getStatus() === HttpStatus.TOO_MANY_REQUESTS,
   );
   assert.equal(creates, 0);
+});
+
+test("a disabled account cannot reserve a new media upload", async () => {
+  let creates = 0;
+  const service = new MediaUploadTicketService({
+    $transaction: async (operation: any) =>
+      operation({
+        $queryRaw: async () => [
+          { locked: true, id: "u1", status: "DISABLED" },
+        ],
+        mediaUploadTicket: {
+          count: async () => 0,
+          aggregate: async () => ({ _sum: { declaredByteSize: 0 } }),
+          create: async () => {
+            creates += 1;
+          },
+        },
+      }),
+  } as any);
+
+  await assert.rejects(
+    () =>
+      service.reserveUpload({
+        key: "user-avatar/u1/550e8400-e29b-41d4-a716-446655440000.webp",
+        userId: "u1",
+        purpose: "user-avatar",
+        contentType: "image/webp",
+        declaredByteSize: 1,
+      }),
+    NotFoundException,
+  );
+  assert.equal(creates, 0);
+});
+
+test("a disabled account cannot claim an upload for verification", async () => {
+  const key =
+    "chat-image/u1/550e8400-e29b-41d4-a716-446655440000.webp";
+  let transactionCalls = 0;
+  let ticketReads = 0;
+  let ticketWrites = 0;
+  const lockOrder: string[] = [];
+  const mediaUploadTicket = {
+    findUnique: async () => {
+      ticketReads += 1;
+      return {
+        userId: "u1",
+        purpose: "chat-image",
+        status: MediaUploadStatus.PENDING,
+        expiresAt: new Date(Date.now() + 60_000),
+      };
+    },
+    updateMany: async () => {
+      ticketWrites += 1;
+      return { count: 1 };
+    },
+  };
+  const service = new MediaUploadTicketService({
+    mediaUploadTicket,
+    $transaction: async (operation: any) => {
+      transactionCalls += 1;
+      return operation({
+        mediaUploadTicket,
+        $queryRaw: async (query: any) => {
+          const text = Array.isArray(query)
+            ? query.join("")
+            : (query?.strings?.join("") ?? "");
+          if (text.includes("pg_advisory_xact_lock")) {
+            lockOrder.push("account");
+            return [{ locked: true }];
+          }
+          if (text.includes('FROM "User"')) {
+            lockOrder.push("user");
+            return [{ id: "u1", status: "DISABLED" }];
+          }
+          throw new Error(`Unexpected lock query: ${text}`);
+        },
+      });
+    },
+  } as any);
+
+  await assert.rejects(
+    () => service.claimForVerification(key, "u1", "chat-image"),
+    NotFoundException,
+  );
+  assert.equal(transactionCalls, 1);
+  assert.deepEqual(lockOrder, ["account", "user"]);
+  assert.equal(ticketReads, 0);
+  assert.equal(ticketWrites, 0);
 });
 
 test("verification claim, verified state and consumption are explicit", async () => {

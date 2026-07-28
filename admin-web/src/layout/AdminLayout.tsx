@@ -10,8 +10,11 @@ export function AdminLayout() {
   const navigate = useNavigate();
 
   async function handleLogout() {
-    await logout();
-    navigate('/login', { replace: true });
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
   }
 
   return (

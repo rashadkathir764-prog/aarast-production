@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import {
+  AdminRole,
   NotificationPriority,
   NotificationType,
   Prisma,
@@ -250,7 +251,22 @@ test('admin service and review mappers preserve public shape and review privacy'
 
 test('admin cannot reassign a service whose media belongs to another provider', async () => {
   let updateCalls = 0;
-  const service = new AdminService({
+  const prisma: any = {
+    $queryRaw: async (query: { strings?: readonly string[] }) => {
+      const sql = query.strings?.join('') ?? '';
+      if (sql.includes('FROM "User"')) {
+        return [{
+          id: 'admin-1',
+          role: UserRole.ADMIN,
+          adminRole: AdminRole.OPERATIONS,
+          status: UserStatus.ACTIVE,
+        }];
+      }
+      if (sql.includes('FROM "Provider"')) {
+        return [{ id: 'provider-a' }];
+      }
+      return [];
+    },
     providerService: {
       findUnique: async () => ({
         ...serviceFixture(),
@@ -264,10 +280,21 @@ test('admin cannot reassign a service whose media belongs to another provider', 
     provider: {
       findUnique: async () => ({ id: 'provider-b' }),
     },
-  } as never, { disconnectUser: () => undefined } as never);
+  };
+  prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
+    operation(prisma);
+  const service = new AdminService(
+    prisma as never,
+    { disconnectUser: () => undefined } as never,
+  );
 
   await assert.rejects(
-    () => service.updateService('service-1', { providerId: 'provider-b' }),
+    () =>
+      service.updateService(
+        { id: 'admin-1' } as any,
+        'service-1',
+        { providerId: 'provider-b' },
+      ),
     BadRequestException,
   );
   assert.equal(updateCalls, 0);

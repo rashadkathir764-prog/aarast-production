@@ -15,12 +15,17 @@ import { runSerializableTransaction } from "../common/prisma/serializable-transa
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { assertProviderOperational } from "../provider-dashboard/provider-access-policy";
 import { PermissionService } from "../sharing/permission.service";
 import { weddingCostResponseInclude } from "../wedding-costs/wedding-cost.presenter";
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
 } from "./quote-lifecycle";
+import {
+  assertProviderAccountUnchanged,
+  lockMarketplaceMutationUsers,
+} from "./marketplace-write-locks";
 import {
   findLogicalBudgetCategory,
   findOtherBudgetCategory,
@@ -47,6 +52,55 @@ export async function acceptQuoteOfferInTransaction(
 ) {
   const { id, weddingPlanId } = input;
   return runSerializableTransaction(prisma, async (tx) => {
+    const offerSeed = await tx.quoteOffer.findUnique({
+      where: { id },
+      select: {
+        providerId: true,
+        provider: { select: { userId: true } },
+        quoteRequest: {
+          select: {
+            userId: true,
+            weddingPlanId: true,
+            weddingPlan: { select: { ownerUserId: true } },
+          },
+        },
+      },
+    });
+    if (!offerSeed) {
+      throw new NotFoundException("Quote offer not found");
+    }
+    if (offerSeed.quoteRequest.weddingPlanId !== weddingPlanId) {
+      throw new BadRequestException(
+        "Quote offer is not linked to this wedding plan",
+      );
+    }
+    const lockedUserIds = await lockMarketplaceMutationUsers(
+      tx,
+      input.currentUser.id,
+      [
+        offerSeed.quoteRequest.userId,
+        offerSeed.quoteRequest.weddingPlan?.ownerUserId,
+        offerSeed.provider.userId,
+      ],
+    );
+    await permissions.assertProviderAndMoneyManageableInTransaction(
+      tx,
+      weddingPlanId,
+      input.currentUser,
+    );
+
+    const providerLock = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "Provider"
+        WHERE "id" = ${offerSeed.providerId}
+        FOR SHARE
+      `,
+    );
+    if (providerLock.length !== 1) {
+      throw new NotFoundException("Provider not found");
+    }
+
     const locked = await lockQuoteOfferTransitionRows(tx, id);
     if (!locked) {
       throw new NotFoundException("Quote offer not found");
@@ -62,10 +116,26 @@ export async function acceptQuoteOfferInTransaction(
           },
         },
         provider: { select: { businessName: true, userId: true } },
+        providerLinks: { where: { weddingPlanId } },
         weddingCosts: { include: weddingCostResponseInclude },
       },
     });
     if (!current) throw new NotFoundException("Quote offer not found");
+    if (
+      current.providerId !== offerSeed.providerId ||
+      current.quoteRequest.userId !== offerSeed.quoteRequest.userId ||
+      current.quoteRequest.weddingPlanId !==
+        offerSeed.quoteRequest.weddingPlanId
+    ) {
+      throw new ConflictException(
+        "Quote offer context changed concurrently; retry the request",
+      );
+    }
+    assertProviderAccountUnchanged(
+      current.provider,
+      offerSeed.provider.userId,
+      lockedUserIds,
+    );
 
     const plan = current.quoteRequest.weddingPlan;
     if (!plan || plan.id !== weddingPlanId) {
@@ -73,11 +143,6 @@ export async function acceptQuoteOfferInTransaction(
         "Quote offer is not linked to this wedding plan",
       );
     }
-    await permissions.assertProviderAndMoneyManageableInTransaction(
-      tx,
-      weddingPlanId,
-      input.currentUser,
-    );
     if (
       current.status !== QuoteOfferStatus.PENDING &&
       current.status !== QuoteOfferStatus.ACCEPTED
@@ -99,7 +164,10 @@ export async function acceptQuoteOfferInTransaction(
         "requester",
       );
       if (current.validUntil && current.validUntil.getTime() < Date.now()) {
-        throw new ConflictException("Quote offer has expired");
+        throw new ConflictException({
+          code: "QUOTE_OFFER_EXPIRED",
+          message: "انتهت صلاحية عرض السعر. أنشئ طلبًا جديدًا للمتابعة.",
+        });
       }
     }
     if (!current.amount || !current.amount.isPositive()) {
@@ -112,6 +180,33 @@ export async function acceptQuoteOfferInTransaction(
         "Quote offer currency must match the wedding plan currency",
       );
     }
+
+    if (!acceptedNow) {
+      const cost = current.weddingCosts[0] ?? null;
+      const link = current.providerLinks[0] ?? null;
+      if (
+        !cost ||
+        !link ||
+        cost.weddingPlanId !== weddingPlanId ||
+        cost.providerId !== current.providerId ||
+        link.weddingPlanId !== weddingPlanId ||
+        link.providerId !== current.providerId ||
+        link.quoteRequestId !== current.quoteRequestId ||
+        link.quoteOfferId !== current.id
+      ) {
+        throw new ConflictException("Accepted quote state is incomplete");
+      }
+      return { offer: current, cost, link, acceptedNow: false };
+    }
+
+    const provider = await tx.provider.findUnique({
+      where: { id: current.providerId },
+      select: { status: true },
+    });
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+    assertProviderOperational(provider);
 
     let cost = current.weddingCosts[0] ?? null;
     if (!cost) {
@@ -185,6 +280,7 @@ export async function acceptQuoteOfferInTransaction(
             },
           },
           provider: { select: { businessName: true, userId: true } },
+          providerLinks: { where: { weddingPlanId } },
           weddingCosts: { include: weddingCostResponseInclude },
         },
       });

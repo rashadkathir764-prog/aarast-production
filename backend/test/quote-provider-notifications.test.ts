@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { acceptQuoteOfferInTransaction } from "../src/marketplace/quote-offer-acceptance";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 
 // عقد المرحلة الأولى: المورد طرف في الصفقة ويجب أن يُنبَّه عند وصول طلب جديد
@@ -92,6 +93,24 @@ const quoteRow = (providerUserId: string | null) => ({
   providerLinks: [],
 });
 
+function rawSqlText(query: unknown): string {
+  const strings = (query as { strings?: readonly string[] } | null)?.strings;
+  return strings ? strings.join(" ") : String(query);
+}
+
+function marketplaceUserLockRows(
+  query: unknown,
+  providerUserId: string | null = PROVIDER_USER_ID,
+) {
+  if (!rawSqlText(query).includes('FROM "User"')) return null;
+  return [
+    { id: requester.id, status: "ACTIVE" },
+    ...(providerUserId
+      ? [{ id: providerUserId, status: "ACTIVE" }]
+      : []),
+  ];
+}
+
 function capture() {
   const sent: any[] = [];
   const notifications = {
@@ -127,10 +146,11 @@ test("a new quote request notifies the provider account too", async () => {
     provider: { findFirst: async () => providerRow(PROVIDER_USER_ID) },
     $transaction: async (fn: any) =>
       fn({
-        $queryRaw: async () => [{ id: "conversation-1" }],
+        $queryRaw: async (query: unknown) =>
+          marketplaceUserLockRows(query) ?? [{ id: "conversation-1" }],
         provider: {
           findFirst: async () => providerRow(PROVIDER_USER_ID),
-          findUnique: async () => ({ userId: PROVIDER_USER_ID }),
+          findUnique: async () => providerRow(PROVIDER_USER_ID),
         },
         conversationParticipant: { createMany: async () => ({ count: 2 }) },
         ...eventTxFields(),
@@ -162,6 +182,16 @@ test("a new quote request notifies the provider account too", async () => {
   assert.equal(toProvider.priority, "HIGH");
   assert.equal(toProvider.routeTarget, "/provider/dashboard");
   assert.equal(
+    toProvider.body.includes(quoteRow(PROVIDER_USER_ID).contactName),
+    false,
+    "provider alerts must not persist requester PII outside the protected quote",
+  );
+  assert.equal(
+    toProvider.body.includes(quoteRow(PROVIDER_USER_ID).contactPhone),
+    false,
+    "provider alerts must not persist requester phone data",
+  );
+  assert.equal(
     toProvider.weddingPlanId,
     undefined,
     "provider is not a plan member — no plan scoping leaks",
@@ -178,10 +208,11 @@ test("a provider without a linked user account is skipped silently", async () =>
     provider: { findFirst: async () => providerRow(null) },
     $transaction: async (fn: any) =>
       fn({
-        $queryRaw: async () => [{ id: "conversation-1" }],
+        $queryRaw: async (query: unknown) =>
+          marketplaceUserLockRows(query, null) ?? [{ id: "conversation-1" }],
         provider: {
           findFirst: async () => providerRow(null),
-          findUnique: async () => ({ userId: null }),
+          findUnique: async () => providerRow(null),
         },
         conversationParticipant: { createMany: async () => ({ count: 1 }) },
         ...eventTxFields(),
@@ -220,8 +251,26 @@ test("provider rejection notifies the requester with the exact quote route", asy
   };
   const tx = {
     ...eventTxFields(),
-    $queryRaw: async () => [{ id: QUOTE_ID }],
+    $queryRaw: async (query: unknown) => {
+      const sql = rawSqlText(query);
+      if (sql.includes('FROM "User"')) {
+        return [
+          { id: PROVIDER_USER_ID, status: "ACTIVE" },
+          { id: requester.id, status: "ACTIVE" },
+        ].sort((left, right) => left.id.localeCompare(right.id));
+      }
+      if (sql.includes('FROM "Provider"')) return [{ id: PROVIDER_ID }];
+      if (sql.includes('FROM "Conversation"')) {
+        return [{ id: existing.conversationId }];
+      }
+      if (sql.includes('FROM "QuoteRequest"')) return [{ id: QUOTE_ID }];
+      return [];
+    },
+    provider: {
+      findUnique: async () => providerRow(PROVIDER_USER_ID),
+    },
     quoteRequest: {
+      findUnique: async () => existing,
       findFirst: async () => existing,
       updateMany: async () => ({ count: 1 }),
       findUniqueOrThrow: async () => updated,
@@ -274,6 +323,9 @@ function acceptanceHarness({
   let createdCost: any = null;
   let costCreates = 0;
   let fallbackCreates = 0;
+  let linkWrites = 0;
+  let providerStatus = "ACTIVE";
+  let providerStatusReads = 0;
   let providerPermissionChecks = 0;
   let moneyPermissionChecks = 0;
   const now = new Date("2026-07-20T00:00:00.000Z");
@@ -321,6 +373,7 @@ function acceptanceHarness({
       userId: PROVIDER_USER_ID,
     },
     weddingCosts: createdCost == null ? [] : [createdCost],
+    providerLinks: linkWrites === 0 ? [] : [link],
   });
   const link = {
     id: "66666666-6666-4666-8666-666666666666",
@@ -333,9 +386,10 @@ function acceptanceHarness({
     updatedAt: now,
   };
   const tx = {
-    $queryRaw: async () => [
-      { id: OFFER_ID, quoteRequestId: QUOTE_ID },
-    ],
+    $queryRaw: async (query: unknown) =>
+      marketplaceUserLockRows(query) ?? [
+        { id: OFFER_ID, quoteRequestId: QUOTE_ID },
+      ],
     quoteOffer: {
       findUnique: async () => richOffer(),
       findUniqueOrThrow: async () => richOffer(),
@@ -355,6 +409,12 @@ function acceptanceHarness({
           return { count: 1 };
         }
         return { count: 0 };
+      },
+    },
+    provider: {
+      findUnique: async () => {
+        providerStatusReads += 1;
+        return { status: providerStatus };
       },
     },
     budgetCategory: {
@@ -389,7 +449,12 @@ function acceptanceHarness({
         return createdCost;
       },
     },
-    planProviderLink: { upsert: async () => link },
+    planProviderLink: {
+      upsert: async () => {
+        linkWrites += 1;
+        return link;
+      },
+    },
     ...eventTxFields(),
   };
   const prisma = {
@@ -451,6 +516,15 @@ function acceptanceHarness({
     get fallbackCreates() {
       return fallbackCreates;
     },
+    get linkWrites() {
+      return linkWrites;
+    },
+    get providerStatusReads() {
+      return providerStatusReads;
+    },
+    setProviderStatus(status: string) {
+      providerStatus = status;
+    },
     get providerPermissionChecks() {
       return providerPermissionChecks;
     },
@@ -466,6 +540,160 @@ function acceptanceHarness({
   };
 }
 
+const acceptedReplayCost = {
+  id: "accepted-cost",
+  weddingPlanId: PLAN_ID,
+  providerId: PROVIDER_ID,
+  quoteOfferId: OFFER_ID,
+};
+
+const acceptedReplayLink = {
+  id: "accepted-link",
+  weddingPlanId: PLAN_ID,
+  providerId: PROVIDER_ID,
+  quoteRequestId: QUOTE_ID,
+  quoteOfferId: OFFER_ID,
+  status: "ACTIVE",
+};
+
+function acceptedReplayIntegrityHarness({
+  weddingCosts,
+  providerLinks,
+}: {
+  weddingCosts: any[];
+  providerLinks: any[];
+}) {
+  let businessWrites = 0;
+  let providerStatusReads = 0;
+  let lockCalls = 0;
+  const writeAttempt = async () => {
+    businessWrites += 1;
+    throw new Error("accepted replay attempted a business write");
+  };
+  const currentOffer = {
+    id: OFFER_ID,
+    quoteRequestId: QUOTE_ID,
+    providerId: PROVIDER_ID,
+    title: null,
+    message: null,
+    amount: new Prisma.Decimal("250000"),
+    currency: "YER",
+    validUntil: null,
+    status: "ACCEPTED",
+    createdAt: new Date("2026-07-20T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-20T00:00:00.000Z"),
+    quoteRequest: {
+      id: QUOTE_ID,
+      userId: requester.id,
+      weddingPlanId: PLAN_ID,
+      conversationId: "conversation-1",
+      status: "ACCEPTED",
+      weddingPlan: { id: PLAN_ID, currency: "YER" },
+      service: null,
+    },
+    provider: {
+      businessName: "Accepted Provider",
+      userId: PROVIDER_USER_ID,
+    },
+    weddingCosts,
+    providerLinks,
+  };
+  const tx = {
+    $queryRaw: async (query: unknown) => {
+      const userRows = marketplaceUserLockRows(query);
+      if (userRows) return userRows;
+      lockCalls += 1;
+      return [{ id: OFFER_ID, quoteRequestId: QUOTE_ID }];
+    },
+    quoteOffer: {
+      findUnique: async () => currentOffer,
+      findUniqueOrThrow: async () => currentOffer,
+      findMany: async () => [],
+      updateMany: writeAttempt,
+    },
+    quoteRequest: { updateMany: writeAttempt },
+    provider: {
+      findUnique: async () => {
+        providerStatusReads += 1;
+        return { status: "ACTIVE" };
+      },
+    },
+    budgetCategory: {
+      findMany: async () => [],
+      upsert: writeAttempt,
+    },
+    weddingCost: { create: writeAttempt },
+    planProviderLink: { upsert: writeAttempt },
+    conversationEvent: {
+      createMany: writeAttempt,
+      findUniqueOrThrow: async () => ({ id: "event-1" }),
+    },
+    conversation: { update: writeAttempt },
+    outboxEvent: { create: writeAttempt },
+  };
+  const execute = () =>
+    acceptQuoteOfferInTransaction(
+      {
+        $transaction: async (operation: (client: any) => Promise<unknown>) =>
+          operation(tx),
+      } as any,
+      {
+        assertProviderAndMoneyManageableInTransaction: async () => ({}),
+      } as any,
+      {
+        createNotificationInTransaction: writeAttempt,
+      } as any,
+      {
+        id: OFFER_ID,
+        weddingPlanId: PLAN_ID,
+        currentUser: requester,
+      },
+    );
+
+  return {
+    execute,
+    get businessWrites() {
+      return businessWrites;
+    },
+    get providerStatusReads() {
+      return providerStatusReads;
+    },
+    get lockCalls() {
+      return lockCalls;
+    },
+  };
+}
+
+async function expectCorruptAcceptedReplayRejected(
+  label: string,
+  harness: ReturnType<typeof acceptedReplayIntegrityHarness>,
+) {
+  await assert.rejects(harness.execute(), (error: unknown) => {
+    const responseError = error as {
+      getStatus?: () => number;
+      message?: string;
+    };
+    assert.equal(responseError.getStatus?.(), 409, label);
+    assert.match(
+      responseError.message ?? "",
+      /Accepted quote state is incomplete/,
+      label,
+    );
+    return true;
+  });
+  assert.equal(harness.businessWrites, 0, `${label}: business writes`);
+  assert.equal(
+    harness.providerStatusReads,
+    0,
+    `${label}: provider status reads`,
+  );
+  assert.equal(
+    harness.lockCalls,
+    4,
+    `${label}: provider, conversation, request, and offer row locks`,
+  );
+}
+
 test("accepting an offer atomically creates one linked cost and is idempotent", async () => {
   const harness = acceptanceHarness({
     categories: [
@@ -479,6 +707,7 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
   });
 
   const result = await harness.service.acceptQuoteOffer(requester, OFFER_ID);
+  harness.setProviderStatus("SUSPENDED");
   const replay = await harness.service.acceptQuoteOffer(requester, OFFER_ID);
 
   assert.equal(result.automaticCostCreated, true);
@@ -488,6 +717,16 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
     harness.costCreates,
     1,
     "network replay must not duplicate cost",
+  );
+  assert.equal(
+    harness.linkWrites,
+    1,
+    "historical replay must not rewrite the provider link",
+  );
+  assert.equal(
+    harness.providerStatusReads,
+    1,
+    "historical replay must not become a new provider operation",
   );
   assert.equal(
     harness.fallbackCreates,
@@ -526,6 +765,74 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
     toProvider.dedupeKey.includes(OFFER_ID),
     "dedupe is per accepted offer",
   );
+});
+
+test("accepted-offer replay rejects missing or mismatched wedding cost without writes", async () => {
+  const cases = [
+    { label: "missing cost", weddingCosts: [] },
+    {
+      label: "cost from another wedding plan",
+      weddingCosts: [
+        { ...acceptedReplayCost, weddingPlanId: "another-plan-id" },
+      ],
+    },
+    {
+      label: "cost from another provider",
+      weddingCosts: [
+        { ...acceptedReplayCost, providerId: "another-provider-id" },
+      ],
+    },
+  ];
+
+  for (const scenario of cases) {
+    await expectCorruptAcceptedReplayRejected(
+      scenario.label,
+      acceptedReplayIntegrityHarness({
+        weddingCosts: scenario.weddingCosts,
+        providerLinks: [acceptedReplayLink],
+      }),
+    );
+  }
+});
+
+test("accepted-offer replay rejects missing or mismatched provider link without writes", async () => {
+  const cases = [
+    { label: "missing link", providerLinks: [] },
+    {
+      label: "link from another wedding plan",
+      providerLinks: [
+        { ...acceptedReplayLink, weddingPlanId: "another-plan-id" },
+      ],
+    },
+    {
+      label: "link from another provider",
+      providerLinks: [
+        { ...acceptedReplayLink, providerId: "another-provider-id" },
+      ],
+    },
+    {
+      label: "link from another quote request",
+      providerLinks: [
+        { ...acceptedReplayLink, quoteRequestId: "another-quote-id" },
+      ],
+    },
+    {
+      label: "link from another quote offer",
+      providerLinks: [
+        { ...acceptedReplayLink, quoteOfferId: "another-offer-id" },
+      ],
+    },
+  ];
+
+  for (const scenario of cases) {
+    await expectCorruptAcceptedReplayRejected(
+      scenario.label,
+      acceptedReplayIntegrityHarness({
+        weddingCosts: [acceptedReplayCost],
+        providerLinks: scenario.providerLinks,
+      }),
+    );
+  }
 });
 
 test("accepting an unmatched provider service creates and uses the other category", async () => {
@@ -579,19 +886,22 @@ test("rejecting an offer notifies the provider rather than the requester", async
     status: "PENDING",
     createdAt: new Date(),
     updatedAt: new Date(),
+    provider: providerRow(PROVIDER_USER_ID),
     quoteRequest: {
       id: QUOTE_ID,
       userId: requester.id,
       weddingPlanId: PLAN_ID,
       conversationId: "conversation-1",
       status: "RESPONDED",
+      weddingPlan: { ownerUserId: requester.id },
     },
   };
   const tx = {
     ...eventTxFields(),
-    $queryRaw: async () => [
-      { id: OFFER_ID, quoteRequestId: QUOTE_ID },
-    ],
+    $queryRaw: async (query: unknown) =>
+      marketplaceUserLockRows(query) ?? [
+        { id: OFFER_ID, quoteRequestId: QUOTE_ID },
+      ],
     quoteOffer: {
       findUnique: async () => offerRow,
       updateMany: async () => ({ count: 1 }),
@@ -601,7 +911,9 @@ test("rejecting an offer notifies the provider rather than the requester", async
       }),
     },
     quoteRequest: { updateMany: async () => ({ count: 1 }) },
-    provider: { findUnique: async () => ({ userId: PROVIDER_USER_ID }) },
+    provider: {
+      findUnique: async () => providerRow(PROVIDER_USER_ID),
+    },
   };
   const prisma = {
     quoteOffer: { findUnique: async () => offerRow },
@@ -635,19 +947,22 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
     providerId: PROVIDER_ID,
     status: "PENDING",
     validUntil: null,
+    provider: providerRow(null),
     quoteRequest: {
       id: QUOTE_ID,
       userId: requester.id,
       weddingPlanId: PLAN_ID,
       conversationId: "conversation-1",
       status: "RESPONDED",
+      weddingPlan: { ownerUserId: requester.id },
     },
   };
   const tx = {
     ...eventTxFields(),
-    $queryRaw: async () => [
-      { id: OFFER_ID, quoteRequestId: QUOTE_ID },
-    ],
+    $queryRaw: async (query: unknown) =>
+      marketplaceUserLockRows(query, null) ?? [
+        { id: OFFER_ID, quoteRequestId: QUOTE_ID },
+      ],
     quoteOffer: {
       findUnique: async () => offerRow,
       updateMany: async () => ({ count: 1 }),
@@ -657,7 +972,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
       }),
     },
     quoteRequest: { updateMany: async () => ({ count: 1 }) },
-    provider: { findUnique: async () => ({ userId: null }) },
+    provider: { findUnique: async () => providerRow(null) },
   };
   const service = new MarketplaceService(
     {
@@ -703,12 +1018,34 @@ test("a received provider offer opens its exact marketplace quote", async () => 
   };
   const tx = {
     ...eventTxFields(),
-    $queryRaw: async () => [{ id: QUOTE_ID }],
+    $queryRaw: async (query: unknown) => {
+      const sql = rawSqlText(query);
+      if (sql.includes('FROM "User"')) {
+        return [
+          { id: PROVIDER_USER_ID, status: "ACTIVE" },
+          { id: requester.id, status: "ACTIVE" },
+        ].sort((left, right) => left.id.localeCompare(right.id));
+      }
+      if (sql.includes('FROM "WeddingPlan"')) return [{ id: PLAN_ID }];
+      if (sql.includes('FROM "Provider"')) return [{ id: PROVIDER_ID }];
+      if (sql.includes('FROM "Conversation"')) {
+        return [{ id: quote.conversationId }];
+      }
+      if (sql.includes('FROM "QuoteRequest"')) return [{ id: QUOTE_ID }];
+      return [];
+    },
+    provider: {
+      findUnique: async () => provider,
+    },
+    weddingPlan: {
+      findUnique: async () => ({ status: "PLANNING" }),
+    },
     quoteOffer: {
       findFirst: async () => null,
       create: async () => createdOffer,
     },
     quoteRequest: {
+      findUnique: async () => quote,
       findFirst: async () => quote,
       update: async () => ({}),
     },

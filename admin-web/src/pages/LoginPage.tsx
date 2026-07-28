@@ -5,6 +5,7 @@ import {
   requestAdminPasswordReset,
   type OtpDeliveryStatus,
 } from '../api/auth';
+import { safeAdminReturnPath } from '../auth/admin-return-path';
 import { useAuth } from '../auth/AuthProvider';
 import { FormField } from '../components/FormField';
 
@@ -54,8 +55,9 @@ export function LoginPage() {
   const [retryRemaining, setRetryRemaining] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from
-    ?.pathname;
+  const returnPath = safeAdminReturnPath(
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname,
+  );
 
   useEffect(() => {
     if (recoveryStep !== 'confirm' || retryRemaining <= 0) return undefined;
@@ -66,7 +68,7 @@ export function LoginPage() {
     return () => window.clearTimeout(timeout);
   }, [recoveryStep, retryRemaining]);
 
-  if (user) return <Navigate to={from ?? '/'} replace />;
+  if (user) return <Navigate to={returnPath} replace />;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -83,7 +85,7 @@ export function LoginPage() {
       setLoginNotice(null);
       if (challenge) {
         await verifyMfa(code);
-        navigate(from ?? '/', { replace: true });
+        navigate(returnPath, { replace: true });
       } else {
         await login(phone.trim(), password);
         setPassword('');

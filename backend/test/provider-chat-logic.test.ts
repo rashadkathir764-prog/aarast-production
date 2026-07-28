@@ -87,6 +87,7 @@ test('authorization uses live plan ownership and explicit canManageProviders', (
   assert.match(service, /if \(!member\?\.canManageProviders\) return null/);
   assert.match(service, /revokedAt: new Date\(\)/);
   assert.match(service, /assertActiveAccessInTransaction/);
+  assert.match(service, /FROM "Provider"[\s\S]*FOR SHARE/);
   assert.match(service, /FROM "SharedMember"[\s\S]*FOR SHARE/);
   assert.match(service, /PROVIDER_NOT_JOINED/);
   assert.match(service, /customerSideBlockedAt/);

@@ -2,7 +2,7 @@ name: aarast-production
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     container_name: aarast-postgres-prod
     restart: unless-stopped
     environment:
@@ -25,7 +25,7 @@ services:
       - aarast_internal
 
   postgres-roles:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     container_name: aarast-postgres-roles-prod
     restart: "no"
     depends_on:
@@ -71,7 +71,7 @@ services:
       - aarast_internal
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     container_name: aarast-redis-prod
     restart: unless-stopped
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
@@ -89,7 +89,7 @@ services:
       - aarast_internal
 
   media:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     container_name: aarast-media-prod
     restart: unless-stopped
     command: server /data
@@ -124,7 +124,7 @@ services:
       - aarast_internal
 
   media-init:
-    image: minio/mc:RELEASE.2025-07-21T05-28-08Z
+    image: minio/mc:RELEASE.2025-07-21T05-28-08Z@sha256:fb8f773eac8ef9d6da0486d5dec2f42f219358bcb8de579d1623d518c9ebd4cc
     container_name: aarast-media-init-prod
     depends_on:
       media:
@@ -147,7 +147,7 @@ services:
       - aarast_internal
 
   postgres-backup:
-    image: prodrigestivill/postgres-backup-local:16
+    image: prodrigestivill/postgres-backup-local:16@sha256:a0103fbce0c48ccc7693ddbb2a2bfa733048db845354f635efef9e4566de185d
     container_name: aarast-postgres-backup-prod
     restart: unless-stopped
     depends_on:
@@ -215,7 +215,7 @@ services:
       AARAST_DB_EXPECTED_ROLE: ${AARAST_DB_RUNTIME_USER:?AARAST_DB_RUNTIME_USER is required}
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_ACCESS_SECRET}
-      CORS_ORIGINS: ${CORS_ORIGINS}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       READINESS_REQUIRE_REDIS: ${READINESS_REQUIRE_REDIS:-true}
       READINESS_REQUIRE_MEDIA: ${READINESS_REQUIRE_MEDIA:-true}
@@ -281,6 +281,7 @@ services:
     networks:
       - aarast_internal
       - aarast_otp_transport
+      - aarast_monitoring
 
   admin-web:
     image: ${AARAST_ADMIN_WEB_IMAGE_ID:?AARAST_ADMIN_WEB_IMAGE_ID is required}
@@ -289,6 +290,8 @@ services:
     restart: unless-stopped
     environment:
       API_ORIGIN: ${VITE_API_BASE_URL:-https://aarast-api.shadowgardn.com}
+      ADMIN_PUBLIC_ORIGIN: ${ADMIN_PUBLIC_ORIGIN:?ADMIN_PUBLIC_ORIGIN is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
     depends_on:
       backend:
         condition: service_healthy
@@ -326,3 +329,6 @@ networks:
   aarast_otp_transport:
     external: true
     name: ${OPENWA_DOCKER_NETWORK:-aarast_otp_staging_transport}
+  aarast_monitoring:
+    external: true
+    name: ${AARAST_MONITORING_NETWORK:?AARAST_MONITORING_NETWORK is required}

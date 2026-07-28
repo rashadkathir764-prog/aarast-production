@@ -14,6 +14,10 @@ import {
   MoneyBudgetCategoryDto,
   ReplaceMoneyBudgetDto,
 } from "./dto/replace-money-budget.dto";
+import {
+  buildMoneySummaryInTransaction,
+  MoneySummaryResult,
+} from "./money-summary.service";
 
 export interface MoneyBudgetCategoryResult {
   id: string;
@@ -26,6 +30,7 @@ export interface MoneyBudgetCategoryResult {
 }
 
 export interface MoneyBudgetReplaceResult {
+  summary: MoneySummaryResult;
   categories: MoneyBudgetCategoryResult[];
   idMap: Record<string, string>;
 }
@@ -42,7 +47,6 @@ export class MoneyBudgetService {
     weddingPlanId: string,
     dto: ReplaceMoneyBudgetDto,
   ): Promise<MoneyBudgetReplaceResult> {
-    await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
     const totalBudget = this.totalBudget(dto.totalBudget);
     const currency = this.currency(dto.currency);
     const categories = dto.categories.map((item) => this.category(item));
@@ -63,104 +67,115 @@ export class MoneyBudgetService {
     }
 
     try {
-      return await runSerializableTransaction(
-        this.prisma,
-        async (tx) => {
-          const plan = await this.lockPlan(tx, weddingPlanId);
-          const costsCount = await tx.weddingCost.count({
-            where: { weddingPlanId },
-          });
-          if (costsCount > 0 && currency !== plan.currency.toUpperCase()) {
-            throw new ConflictException(
-              "Currency cannot be changed after the first cost is created",
+      return await runSerializableTransaction(this.prisma, async (tx) => {
+        const context =
+          await this.permissions.assertMoneyManageableForUpdateInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const costsCount = await tx.weddingCost.count({
+          where: { weddingPlanId },
+        });
+        if (
+          costsCount > 0 &&
+          currency !== context.plan.currency.toUpperCase()
+        ) {
+          throw new ConflictException(
+            "Currency cannot be changed after the first cost is created",
+          );
+        }
+
+        const existing = await tx.budgetCategory.findMany({
+          where: { weddingPlanId },
+          include: { _count: { select: { weddingCosts: true } } },
+        });
+        const existingById = new Map(existing.map((item) => [item.id, item]));
+        const submittedIds = new Set(
+          categories.flatMap((item) => (item.id ? [item.id] : [])),
+        );
+        for (const item of categories) {
+          if (item.id && !existingById.has(item.id)) {
+            throw new BadRequestException(
+              "Every category id must belong to this wedding plan",
             );
           }
+        }
+        const idMap: Record<string, string> = {};
+        const omitted = existing.filter((item) => !submittedIds.has(item.id));
+        const usedOmitted = omitted.find(
+          (item) => item._count.weddingCosts > 0,
+        );
+        if (usedOmitted) {
+          throw new ConflictException(
+            `Category "${usedOmitted.name}" has costs and cannot be omitted`,
+          );
+        }
+        if (omitted.length > 0) {
+          await tx.budgetCategory.deleteMany({
+            where: { id: { in: omitted.map((item) => item.id) } },
+          });
+        }
 
-          const existing = await tx.budgetCategory.findMany({
-            where: { weddingPlanId },
-            include: { _count: { select: { weddingCosts: true } } },
+        // Temporary unique keys allow atomic name swaps such as Hall <-> Dress.
+        const existingSubmitted = categories.filter(
+          (item): item is typeof item & { id: string } => Boolean(item.id),
+        );
+        for (const item of existingSubmitted) {
+          await tx.budgetCategory.update({
+            where: { id: item.id },
+            data: { normalizedName: `__money_budget_rekey__${item.id}` },
           });
-          const existingById = new Map(existing.map((item) => [item.id, item]));
-          const submittedIds = new Set(
-            categories.flatMap((item) => (item.id ? [item.id] : [])),
-          );
-          for (const item of categories) {
-            if (item.id && !existingById.has(item.id)) {
-              throw new BadRequestException(
-                "Every category id must belong to this wedding plan",
-              );
-            }
-          }
-          const idMap: Record<string, string> = {};
-          const omitted = existing.filter((item) => !submittedIds.has(item.id));
-          const usedOmitted = omitted.find(
-            (item) => item._count.weddingCosts > 0,
-          );
-          if (usedOmitted) {
-            throw new ConflictException(
-              `Category "${usedOmitted.name}" has costs and cannot be omitted`,
-            );
-          }
-          if (omitted.length > 0) {
-            await tx.budgetCategory.deleteMany({
-              where: { id: { in: omitted.map((item) => item.id) } },
-            });
-          }
-
-          // Temporary unique keys allow atomic name swaps such as Hall <-> Dress.
-          const existingSubmitted = categories.filter(
-            (item): item is typeof item & { id: string } => Boolean(item.id),
-          );
-          for (const item of existingSubmitted) {
-            await tx.budgetCategory.update({
-              where: { id: item.id },
-              data: { normalizedName: `__money_budget_rekey__${item.id}` },
-            });
-          }
-          for (const item of existingSubmitted) {
-            await tx.budgetCategory.update({
-              where: { id: item.id },
-              data: {
-                name: item.name,
-                normalizedName: item.normalizedName,
-                allocatedAmount: item.allocatedAmount,
-              },
-            });
-          }
-          for (const item of categories.filter((category) => !category.id)) {
-            const created = await tx.budgetCategory.create({
-              data: {
-                weddingPlanId,
-                name: item.name,
-                normalizedName: item.normalizedName,
-                allocatedAmount: item.allocatedAmount,
-              },
-            });
-            idMap[item.clientId!] = created.id;
-          }
-          await tx.weddingPlan.update({
-            where: { id: weddingPlanId },
-            data: { estimatedBudget: totalBudget, currency },
+        }
+        for (const item of existingSubmitted) {
+          await tx.budgetCategory.update({
+            where: { id: item.id },
+            data: {
+              name: item.name,
+              normalizedName: item.normalizedName,
+              allocatedAmount: item.allocatedAmount,
+            },
           });
-          const savedCategories = await tx.budgetCategory.findMany({
-            where: { weddingPlanId },
-            include: { _count: { select: { weddingCosts: true } } },
-            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        }
+        for (const item of categories.filter((category) => !category.id)) {
+          const created = await tx.budgetCategory.create({
+            data: {
+              weddingPlanId,
+              name: item.name,
+              normalizedName: item.normalizedName,
+              allocatedAmount: item.allocatedAmount,
+            },
           });
-          return {
-            categories: savedCategories.map((category) => ({
-              id: category.id,
-              weddingPlanId: category.weddingPlanId,
-              name: category.name,
-              allocatedAmount: category.allocatedAmount?.toString() ?? null,
-              costsCount: category._count.weddingCosts,
-              createdAt: category.createdAt,
-              updatedAt: category.updatedAt,
-            })),
-            idMap,
-          };
-        },
-      );
+          idMap[item.clientId!] = created.id;
+        }
+        await tx.weddingPlan.update({
+          where: { id: weddingPlanId },
+          data: { estimatedBudget: totalBudget, currency },
+        });
+        const savedCategories = await tx.budgetCategory.findMany({
+          where: { weddingPlanId },
+          include: { _count: { select: { weddingCosts: true } } },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        });
+        const summary = await buildMoneySummaryInTransaction(
+          tx,
+          this.permissions,
+          context,
+        );
+        return {
+          summary,
+          categories: savedCategories.map((category) => ({
+            id: category.id,
+            weddingPlanId: category.weddingPlanId,
+            name: category.name,
+            allocatedAmount: category.allocatedAmount?.toString() ?? null,
+            costsCount: category._count.weddingCosts,
+            createdAt: category.createdAt,
+            updatedAt: category.updatedAt,
+          })),
+          idMap,
+        };
+      });
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -181,15 +196,6 @@ export class MoneyBudgetService {
       }
       throw error;
     }
-  }
-
-  private async lockPlan(tx: Prisma.TransactionClient, id: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "WeddingPlan" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (rows.length === 0)
-      throw new NotFoundException("Wedding plan not found");
-    return tx.weddingPlan.findUniqueOrThrow({ where: { id } });
   }
 
   private totalBudget(value: string | number | null | undefined) {

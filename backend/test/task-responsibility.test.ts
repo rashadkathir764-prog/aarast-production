@@ -2,10 +2,7 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  WeddingTaskPriority,
-  WeddingTaskStatus,
-} from "@prisma/client";
+import { WeddingTaskPriority, WeddingTaskStatus } from "@prisma/client";
 import { TasksService } from "../src/tasks/tasks.service";
 
 const now = new Date("2026-07-11T00:00:00.000Z");
@@ -33,7 +30,7 @@ function task(overrides: Record<string, unknown> = {}) {
 
 test("account task creation persists optional manual responsibility", async () => {
   let createdData: Record<string, unknown> | undefined;
-  const prisma = {
+  const prisma: any = {
     weddingTask: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         createdData = data;
@@ -41,10 +38,18 @@ test("account task creation persists optional manual responsibility", async () =
       },
     },
   };
-  const permissions = { assertTaskManageable: async () => undefined };
-  const service = new TasksService(prisma as any, permissions as any, {
-    notifyTaskDue: async () => undefined,
-  } as any);
+  prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
+    operation(prisma);
+  const permissions = {
+    assertTaskManageableInTransaction: async () => undefined,
+  };
+  const service = new TasksService(
+    prisma as any,
+    permissions as any,
+    {
+      notifyTaskDue: async () => undefined,
+    } as any,
+  );
 
   const result = await service.create({ id: "user-1" } as any, "plan-1", {
     title: "تأكيد القاعة",
@@ -63,7 +68,7 @@ test("account task creation persists optional manual responsibility", async () =
 
 test("assigning a plan participant clears manual responsibility", async () => {
   let updatedData: Record<string, unknown> | undefined;
-  const prisma = {
+  const prisma: any = {
     weddingTask: {
       findUnique: async () => task({ responsibleName: "محمد" }),
       update: async ({ data }: { data: Record<string, unknown> }) => {
@@ -73,17 +78,26 @@ test("assigning a plan participant clears manual responsibility", async () => {
     },
     weddingPlan: { findUnique: async () => ({ ownerUserId: "user-1" }) },
     sharedMember: { findUnique: async () => null },
+    $queryRaw: async () => [{ id: "task-1" }],
   };
-  const permissions = { assertTaskManageable: async () => undefined };
-  const service = new TasksService(prisma as any, permissions as any, {
-    notifyTaskDue: async () => undefined,
-  } as any);
-
-  await service.assign(
-    { id: "user-1" } as any,
-    "task-1",
-    { assigneeUserId: "user-1" },
+  prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
+    operation(prisma);
+  const permissions = {
+    assertTaskManageableInTransaction: async () => ({
+      plan: { ownerUserId: "user-1" },
+    }),
+  };
+  const service = new TasksService(
+    prisma as any,
+    permissions as any,
+    {
+      notifyTaskDue: async () => undefined,
+    } as any,
   );
+
+  await service.assign({ id: "user-1" } as any, "task-1", {
+    assigneeUserId: "user-1",
+  });
 
   assert.deepEqual(updatedData, {
     assigneeUserId: "user-1",
@@ -112,9 +126,13 @@ test("read-only plan members never receive a manual responsible phone", async ()
     }),
     canManageTasks: () => false,
   };
-  const service = new TasksService(prisma as any, permissions as any, {
-    notifyTaskDue: async () => undefined,
-  } as any);
+  const service = new TasksService(
+    prisma as any,
+    permissions as any,
+    {
+      notifyTaskDue: async () => undefined,
+    } as any,
+  );
 
   const [result] = await service.findForPlan(
     { id: "viewer-1" } as any,

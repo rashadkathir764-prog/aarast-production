@@ -227,7 +227,7 @@ class _NotificationSettingsCard extends StatelessWidget {
     return AarastCard(
       color: AppTheme.ivory,
       border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -236,49 +236,46 @@ class _NotificationSettingsCard extends StatelessWidget {
             title: 'تفضيلات التنبيهات',
             compact: true,
           ),
-          const _GroupLabel('داخل التطبيق'),
-          _SwitchRow(
-            title: 'التنبيهات المهمة',
-            value: settings.pushEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(pushEnabled: value)),
+          const _GroupLabel('طريقة وصول التنبيهات'),
+          _DeliveryStatusRow(
+            key: const Key('settings-in-app-delivery-status'),
+            icon: LucideIcons.checkCircle,
+            title: 'تنبيهات داخل التطبيق',
+            body: settings.channelCapabilities.inAppAvailable
+                ? 'متاحة دائماً داخل صندوق التنبيهات.'
+                : 'غير متاحة حالياً.',
+            available: settings.channelCapabilities.inAppAvailable,
           ),
+          _DeliveryStatusRow(
+            key: const Key('settings-external-delivery-status'),
+            icon: LucideIcons.info,
+            title: 'قنوات خارج التطبيق',
+            body: settings.channelCapabilities.externalDeliverySupported
+                ? 'تتوفر بعض القنوات حسب حالة الخدمة.'
+                : 'إشعارات الجهاز والرسائل النصية وواتساب والبريد الإلكتروني غير متاحة حالياً.',
+            available: settings.channelCapabilities.externalDeliverySupported,
+          ),
+          const _GroupLabel('ما الذي تريد متابعته'),
           _SwitchRow(
+            key: const Key('settings-task-reminders-switch'),
             title: 'تذكير المهام',
             value: settings.taskRemindersEnabled,
             onChanged: (value) =>
                 onChanged(settings.copyWith(taskRemindersEnabled: value)),
           ),
           _SwitchRow(
+            key: const Key('settings-payment-reminders-switch'),
             title: 'تذكير مواعيد الدفع',
             value: settings.paymentRemindersEnabled,
             onChanged: (value) =>
                 onChanged(settings.copyWith(paymentRemindersEnabled: value)),
           ),
           _SwitchRow(
+            key: const Key('settings-provider-messages-switch'),
             title: 'رسائل الموردين وعروض الأسعار',
             value: settings.providerMessagesEnabled,
             onChanged: (value) =>
                 onChanged(settings.copyWith(providerMessagesEnabled: value)),
-          ),
-          const _GroupLabel('قنوات خارجية · عند توفرها'),
-          _SwitchRow(
-            title: 'واتساب',
-            value: settings.whatsappEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(whatsappEnabled: value)),
-          ),
-          _SwitchRow(
-            title: 'رسائل SMS',
-            value: settings.smsEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(smsEnabled: value)),
-          ),
-          _SwitchRow(
-            title: 'البريد الإلكتروني',
-            value: settings.emailEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(emailEnabled: value)),
           ),
         ],
       ),
@@ -301,6 +298,67 @@ class _GroupLabel extends StatelessWidget {
           color: AppTheme.muted,
           fontWeight: FontWeight.w800,
         ),
+      ),
+    );
+  }
+}
+
+class _DeliveryStatusRow extends StatelessWidget {
+  const _DeliveryStatusRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.available,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool available;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = available ? AppTheme.success : AppTheme.muted;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(0, 8, 0, 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  body,
+                  textAlign: TextAlign.start,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.muted,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -340,6 +398,7 @@ class _StaticPreferencesCard extends StatelessWidget {
 
 class _SwitchRow extends StatelessWidget {
   const _SwitchRow({
+    super.key,
     required this.title,
     required this.value,
     required this.onChanged,
@@ -356,7 +415,8 @@ class _SwitchRow extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            maxLines: 1,
+            textAlign: TextAlign.start,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppTheme.ink,

@@ -8,7 +8,7 @@ type TopbarProps = {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { user } = useAuth();
-  const avatarUrl = 'https://ui-avatars.com/api/?name=Admin&background=4A1525&color=ffffff&size=100';
+  const avatarInitial = (user?.name?.trim().charAt(0) || 'A').toUpperCase();
 
   return (
     <header
@@ -61,17 +61,24 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           </span>
         </div>
 
-        <img
-          src={avatarUrl}
-          alt="Admin avatar"
+        <div
+          role="img"
+          aria-label="Admin avatar"
           style={{
             width: '38px',
             height: '38px',
             borderRadius: '50%',
-            objectFit: 'cover',
+            display: 'grid',
+            placeItems: 'center',
+            background: '#4A1525',
+            color: '#ffffff',
+            fontSize: '16px',
+            fontWeight: 700,
             border: '1px solid #EFECE6',
           }}
-        />
+        >
+          {avatarInitial}
+        </div>
       </div>
     </header>
   );

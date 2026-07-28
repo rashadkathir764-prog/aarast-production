@@ -35,6 +35,8 @@ export function ReviewsPage() {
   const [providers, setProviders] = useState<ProviderApplication[]>([]);
   const [reviews, setReviews] = useState<ProviderReview[]>([]);
   const [providerId, setProviderId] = useState('');
+  const [providerSearch, setProviderSearch] = useState('');
+  const [providerSearchQuery, setProviderSearchQuery] = useState('');
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -53,7 +55,7 @@ export function ReviewsPage() {
     try {
       const [reviewPage, providerPage] = await Promise.all([
         getReviews({ search, providerId, status, page, limit: 20 }),
-        getProviders({ limit: 100 }),
+        getProviders({ search: providerSearchQuery, page: 1, limit: 20 }),
       ]);
       if (page > reviewPage.totalPages) {
         setPage(reviewPage.totalPages);
@@ -76,7 +78,7 @@ export function ReviewsPage() {
 
   useEffect(() => {
     load();
-  }, [providerId, status, page]);
+  }, [providerId, status, page, providerSearchQuery]);
 
   function submitSearch() {
     if (page === 1) void load();
@@ -84,13 +86,23 @@ export function ReviewsPage() {
   }
 
   async function setReviewStatus(review: ProviderReview, nextStatus: string) {
-    await updateReviewStatus(review.id, nextStatus);
-    await load();
+    setError(null);
+    try {
+      await updateReviewStatus(review.id, nextStatus);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة التقييم.');
+    }
   }
 
   async function hide(review: ProviderReview) {
-    await hideReview(review.id);
-    await load();
+    setError(null);
+    try {
+      await hideReview(review.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر إخفاء التقييم.');
+    }
   }
 
   if (isLoading) return <LoadingState title="جاري تحميل التقييمات" />;
@@ -129,6 +141,16 @@ export function ReviewsPage() {
             onChange={setSearch}
             onSubmit={submitSearch}
             placeholder="بحث بالعميل أو المورد أو التعليق"
+          />
+          <SearchInput
+            value={providerSearch}
+            onChange={setProviderSearch}
+            onSubmit={() => {
+              setProviderSearchQuery(providerSearch);
+              setProviderId('');
+              setPage(1);
+            }}
+            placeholder="بحث المورد للاختيار"
           />
           <FilterSelect
             label="الحالة"

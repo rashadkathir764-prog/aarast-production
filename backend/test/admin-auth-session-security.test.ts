@@ -4,10 +4,16 @@ import { test } from "node:test";
 import { join } from "node:path";
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { OtpPurpose, UserRole } from "@prisma/client";
+import * as bcryptjs from "bcryptjs";
 import { AdminGuard } from "../src/admin/admin.guard";
+import { AuthService } from "../src/auth/auth.service";
 import { JwtAuthGuard } from "../src/auth/jwt-auth.guard";
 import { resolveJwtSessionScope } from "../src/auth/access-token-scope";
+import {
+  createOpaqueTokenValue,
+  hashRefreshToken,
+} from "../src/auth/refresh-token-policy";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
@@ -45,7 +51,8 @@ test("admin MFA can securely verify a pre-MFA administrator phone", () => {
   );
 
   assert.match(startBlock, /allowUnverifiedPhone:\s*true/);
-  assert.match(completeBlock, /assertSpecificOtpCodeMatches/);
+  assert.match(completeBlock, /claimOtpCodeInTransaction/);
+  assert.match(completeBlock, /runSerializableTransaction/);
   assert.match(
     completeBlock,
     /phoneVerifiedAt:\s*challenge\.user\.phoneVerifiedAt\s*\?\?\s*now/,
@@ -122,8 +129,17 @@ test("access-token scope is explicit, non-contradictory, and enforced by product
       sub: "user",
       phone: null,
       scope: "application",
+      sid: "application-session",
     }),
     "application",
+  );
+  assert.equal(
+    resolveJwtSessionScope({
+      sub: "user",
+      phone: null,
+      scope: "application",
+    }),
+    null,
   );
   assert.equal(
     resolveJwtSessionScope({
@@ -217,7 +233,8 @@ test("application and administrator sessions are persisted and revoked by scope"
     service,
     /logoutAdminRefreshToken[\s\S]*scope:\s*AuthSessionScope\.ADMIN/,
   );
-  assert.match(strategy, /scope:\s*AuthSessionScope\.ADMIN/);
+  assert.match(strategy, /AuthSessionScope\.ADMIN/);
+  assert.match(strategy, /AuthSessionScope\.APPLICATION/);
 });
 
 test("public OTP cannot mint or invalidate an administrator MFA code", () => {
@@ -228,17 +245,198 @@ test("public OTP cannot mint or invalidate an administrator MFA code", () => {
   assert.doesNotMatch(verifyDto, /OtpPurpose\.ADMIN_LOGIN/);
 });
 
-test("admin access JWTs are bound to a live revocable server session", () => {
+test("all access JWTs are bound to a live revocable server session", () => {
   const payload = read("src/auth/jwt-payload.interface.ts");
   const service = read("src/auth/auth.service.ts");
   const strategy = read("src/auth/jwt.strategy.ts");
 
   assert.match(payload, /sid\?: string/);
   assert.match(payload, /scope: JwtSessionScope/);
-  assert.match(service, /sid: adminSessionId/);
-  assert.match(service, /requiredRole === UserRole\.ADMIN \? replacement\.id/);
+  assert.match(service, /sid: sessionId/);
+  assert.match(service, /replacement\.id/);
   assert.match(strategy, /payload\.sid/);
   assert.match(strategy, /refreshToken\.findFirst/);
+  assert.match(strategy, /AuthSessionScope\.APPLICATION/);
+  assert.match(strategy, /AuthSessionScope\.ADMIN/);
   assert.match(strategy, /revokedAt: null/);
   assert.match(strategy, /expiresAt: \{ gt: new Date\(\) \}/);
+});
+
+test("admin login completion rollback preserves OTP and follows canonical lock order", async () => {
+  const now = new Date();
+  const challengeToken = createOpaqueTokenValue();
+  const admin: any = {
+    id: "admin-lock-order",
+    name: "Administrator",
+    phone: "+967777123456",
+    email: null,
+    passwordHash: "unused",
+    appPasswordHash: null,
+    appName: null,
+    appEmail: null,
+    appAvatarUrl: null,
+    role: "ADMIN",
+    adminRole: "SUPER_ADMIN",
+    appRole: "WEDDING_USER",
+    status: "ACTIVE",
+    phoneVerifiedAt: now,
+    lastLoginAt: null,
+    avatarUrl: null,
+    locale: "ar",
+    activeWeddingPlanId: null,
+    onboardingPath: null,
+    persona: null,
+    onboardingCompletedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const otp: any = {
+    id: "otp-admin-login",
+    phone: admin.phone,
+    purpose: OtpPurpose.ADMIN_LOGIN,
+    codeHash: await bcryptjs.hash("654321", 4),
+    expiresAt: new Date(now.getTime() + 60_000),
+    consumedAt: null,
+    attempts: 0,
+    maxAttempts: 5,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const challenge: any = {
+    id: "challenge-admin-login",
+    userId: admin.id,
+    otpId: otp.id,
+    tokenHash: hashRefreshToken(challengeToken),
+    expiresAt: new Date(now.getTime() + 60_000),
+    consumedAt: null,
+    createdAt: now,
+  };
+  const refreshTokens: any[] = [];
+  const lockOrder: string[] = [];
+  let failRefreshCreate = true;
+
+  const prisma: any = {
+    user: {
+      updateMany: async ({ where, data }: any) => {
+        if (
+          where.id !== admin.id ||
+          where.role !== admin.role ||
+          where.status !== admin.status
+        ) {
+          return { count: 0 };
+        }
+        Object.assign(admin, data);
+        return { count: 1 };
+      },
+      findUniqueOrThrow: async () => admin,
+    },
+    otpCode: {
+      findUnique: async ({ where }: any) =>
+        where.id === otp.id ? otp : null,
+      updateMany: async ({ where, data }: any) => {
+        if (where.id !== otp.id) return { count: 0 };
+        if (where.consumedAt === null && otp.consumedAt !== null) {
+          return { count: 0 };
+        }
+        if (data.updatedAt) lockOrder.push("OtpCode");
+        if (data.attempts?.increment) {
+          otp.attempts += data.attempts.increment;
+        }
+        Object.assign(otp, { ...data, attempts: otp.attempts });
+        return { count: 1 };
+      },
+    },
+    adminLoginChallenge: {
+      findUnique: async ({ where }: any) => {
+        if (
+          where.tokenHash !== challenge.tokenHash &&
+          where.id !== challenge.id
+        ) {
+          return null;
+        }
+        return {
+          ...challenge,
+          user: admin,
+          otp,
+        };
+      },
+      updateMany: async ({ where, data }: any) => {
+        if (
+          where.id !== challenge.id ||
+          (where.consumedAt === null && challenge.consumedAt !== null)
+        ) {
+          return { count: 0 };
+        }
+        Object.assign(challenge, data);
+        return { count: 1 };
+      },
+    },
+    refreshToken: {
+      create: async ({ data }: any) => {
+        lockOrder.push("RefreshToken");
+        if (failRefreshCreate) {
+          failRefreshCreate = false;
+          throw new Error("simulated admin session failure");
+        }
+        const stored = { id: "admin-session", ...data };
+        refreshTokens.push(stored);
+        return stored;
+      },
+    },
+    $queryRaw: async (query: any) => {
+      const sql = query?.strings?.join(" ") ?? "";
+      if (sql.includes('FROM "User"')) {
+        lockOrder.push("User");
+        return [{ id: admin.id, status: admin.status }];
+      }
+      if (sql.includes('FROM "AdminLoginChallenge"')) {
+        lockOrder.push("AdminLoginChallenge");
+      }
+      return [];
+    },
+    $transaction: async (operation: (tx: any) => Promise<unknown>) => {
+      const adminSnapshot = structuredClone(admin);
+      const otpSnapshot = structuredClone(otp);
+      const challengeSnapshot = structuredClone(challenge);
+      const refreshSnapshot = structuredClone(refreshTokens);
+      try {
+        return await operation(prisma);
+      } catch (error) {
+        Object.assign(admin, adminSnapshot);
+        Object.assign(otp, otpSnapshot);
+        Object.assign(challenge, challengeSnapshot);
+        refreshTokens.splice(0, refreshTokens.length, ...refreshSnapshot);
+        throw error;
+      }
+    },
+  };
+  const service = new AuthService(
+    prisma,
+    { sign: () => "admin-access-token" } as any,
+    {} as any,
+    { consume: async () => undefined } as any,
+    {
+      disconnectUser: () => undefined,
+      disconnectSession: () => undefined,
+    } as any,
+  );
+
+  await assert.rejects(
+    () => service.completeAdminLogin(challengeToken, "654321"),
+    /simulated admin session failure/,
+  );
+  assert.equal(otp.consumedAt, null);
+  assert.equal(challenge.consumedAt, null);
+  assert.equal(refreshTokens.length, 0);
+  assert.deepEqual(lockOrder.slice(0, 4), [
+    "User",
+    "AdminLoginChallenge",
+    "OtpCode",
+    "RefreshToken",
+  ]);
+
+  const auth = await service.completeAdminLogin(challengeToken, "654321");
+  assert.equal(auth.accessToken, "admin-access-token");
+  assert.ok(otp.consumedAt);
+  assert.ok(challenge.consumedAt);
 });

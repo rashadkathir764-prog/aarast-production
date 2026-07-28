@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 
 const backendRoot = join(__dirname, '..');
+const backendTestPreflight = [
+  'test/legacy-finance-removal.test.ts',
+  'test/canonical-api-routes.test.ts',
+  'test/admin-app-identity.test.ts',
+  'test/invite-delivery.test.ts',
+  'test/phase0-guards.test.ts',
+];
 const sourceGuard = require('../scripts/smoke/phase0-source-guard.js');
 const cleanliness = require('../scripts/smoke/phase0-git-cleanliness.js');
 const fixtures = require('./support/phase0-postgres-support.js');
@@ -27,6 +35,162 @@ test('official mutating commands reject chained, prefixed, suffixed, and piped r
     'smoke:auth': runner,
     'load:test': 'node scripts/smoke/run-isolated-smoke.js --load-test',
   }));
+});
+
+test('backend unit tests delegate discovery to the exact guarded runner command', () => {
+  const backendPackage = JSON.parse(
+    readFileSync(join(backendRoot, 'package.json'), 'utf8'),
+  );
+  const runnerCommand = 'node scripts/run-tests-with-artifact-guard.js';
+  assert.equal(backendPackage.scripts.test, runnerCommand);
+  assert.doesNotThrow(() =>
+    sourceGuard.assertBackendTestRunnerContract(backendPackage.scripts),
+  );
+  for (const command of [
+    `${runnerCommand} test/extra.test.ts`,
+    `${runnerCommand} --next-batch test/extra.test.ts`,
+    `${runnerCommand} && node unsafe.js`,
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertBackendTestRunnerContract({
+        ...backendPackage.scripts,
+        test: command,
+      }),
+      /exact protected-artifact runner command/i,
+    );
+  }
+  assert.throws(
+    () =>
+      sourceGuard.assertBackendTestRunnerContract({
+        ...backendPackage.scripts,
+        posttest: 'node scripts/smoke/phase0-git-cleanliness.js',
+      }),
+    /inside the guarded test process/,
+  );
+});
+
+test('source guard rejects duplicate, dropped, extra, or reordered backend test batches', () => {
+  assert.equal(typeof sourceGuard.assertBackendTestBatches, 'function');
+  const repositoryTests = [
+    ...backendTestPreflight,
+    'test/ordinary.test.ts',
+    'test/عربي name.test.ts',
+  ];
+  const validBatches = [
+    backendTestPreflight,
+    ['test/ordinary.test.ts', 'test/عربي name.test.ts'],
+  ];
+  assert.doesNotThrow(() =>
+    sourceGuard.assertBackendTestBatches(validBatches, repositoryTests),
+  );
+
+  for (const batches of [
+    [backendTestPreflight, ['test/ordinary.test.ts', 'test/ordinary.test.ts', 'test/عربي name.test.ts']],
+    [backendTestPreflight, ['test/ordinary.test.ts']],
+    [backendTestPreflight, ['test/ordinary.test.ts', 'test/عربي name.test.ts', 'test/extra.test.ts']],
+    [[backendTestPreflight[1], backendTestPreflight[0], ...backendTestPreflight.slice(2)], validBatches[1]],
+  ]) {
+    assert.throws(
+      () => sourceGuard.assertBackendTestBatches(batches, repositoryTests),
+      /preflight|exactly once|duplicate/i,
+    );
+  }
+});
+
+test('guarded test runner discovers every top-level TypeScript test from the filesystem', () => {
+  const runnerPath = join(
+    backendRoot,
+    'scripts',
+    'run-tests-with-artifact-guard.js',
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      '-e',
+      `const runner = require(${JSON.stringify(runnerPath)}); process.stdout.write(JSON.stringify(runner.discoverTopLevelTestFiles()));`,
+    ],
+    {
+      cwd: backendRoot,
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+
+  const expected = readdirSync(join(backendRoot, 'test'), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.test.ts'))
+    .map((entry) => `test/${entry.name}`)
+    .sort();
+  assert.deepEqual(JSON.parse(result.stdout), expected);
+});
+
+test('guarded test runner preserves raw special-character filenames in two deterministic batches', () => {
+  const runnerPath = join(
+    backendRoot,
+    'scripts',
+    'run-tests-with-artifact-guard.js',
+  );
+  const inventory = [
+    'test/space name.test.ts',
+    backendTestPreflight[2],
+    'test/عربي.test.ts',
+    backendTestPreflight[0],
+    'test/quote"name.test.ts',
+    backendTestPreflight[4],
+    'test/line\nbreak.test.ts',
+    backendTestPreflight[1],
+    backendTestPreflight[3],
+  ];
+  const result = spawnSync(
+    process.execPath,
+    [
+      '-e',
+      [
+        `const runner = require(${JSON.stringify(runnerPath)});`,
+        `const inventory = ${JSON.stringify(inventory)};`,
+        'process.stdout.write(JSON.stringify(runner.buildTestBatches(inventory)));',
+      ].join(' '),
+    ],
+    {
+      cwd: backendRoot,
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    backendTestPreflight,
+    [
+      'test/line\nbreak.test.ts',
+      'test/quote"name.test.ts',
+      'test/space name.test.ts',
+      'test/عربي.test.ts',
+    ],
+  ]);
+});
+
+test('guarded test runner rejects command-line test file arguments', () => {
+  const runnerPath = join(
+    backendRoot,
+    'scripts',
+    'run-tests-with-artifact-guard.js',
+  );
+  const result = spawnSync(
+    process.execPath,
+    [runnerPath, 'test/not-configurable.test.ts'],
+    {
+      cwd: backendRoot,
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+    },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /does not accept command-line test files/i);
 });
 
 test('source guard inventories official TypeScript, ESM, and CommonJS smoke/load/admin sources', () => {
@@ -525,6 +689,54 @@ test('cleanliness protection includes all tracked fixture and golden filename pa
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/fixtures/custom-output.txt'), true);
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/fixtures/managed-fixture.ts'), true);
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/scripts/smoke/phase0-fixtures-smoke.js'), false);
+});
+
+test('git artifact inventory preserves Unicode, spaces, quotes, and newlines with NUL framing', () => {
+  assert.equal(typeof cleanliness.gitFilePaths, 'function');
+  const expected = [
+    'backend/test/fixtures/عربي.json',
+    'backend/test/fixtures/space name.json',
+    'backend/test/fixtures/quote"name.json',
+    'backend/test/fixtures/line\nbreak.json',
+  ];
+  const calls: string[][] = [];
+
+  const paths = cleanliness.gitFilePaths(
+    ['--cached', '--others', '--exclude-standard'],
+    (args: string[]) => {
+      calls.push(args);
+      return `${expected.join('\0')}\0`;
+    },
+  );
+
+  assert.deepEqual(calls, [[
+    'ls-files',
+    '-z',
+    '--cached',
+    '--others',
+    '--exclude-standard',
+  ]]);
+  assert.deepEqual(paths, expected);
+});
+
+test('cleanliness snapshots report only artifacts changed during the test run', () => {
+  assert.deepEqual(
+    cleanliness.changedProtectedArtifactSnapshots(
+      {
+        'backend/test/fixtures/a.json': 'hash-a',
+        'mobile/test/goldens/a.png': 'hash-b',
+      },
+      {
+        'backend/test/fixtures/a.json': 'hash-a',
+        'mobile/test/goldens/a.png': 'hash-c',
+        'mobile/test/goldens/new.png': 'hash-d',
+      },
+    ),
+    [
+      'mobile/test/goldens/a.png',
+      'mobile/test/goldens/new.png',
+    ],
+  );
 });
 
 test('isolated fixture smoke checks every dependent output table after cleanup', () => {

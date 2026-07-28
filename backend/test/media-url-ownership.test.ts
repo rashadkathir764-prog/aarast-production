@@ -92,8 +92,7 @@ test("production requires an explicit client-reachable signed media endpoint", (
         READINESS_REQUIRE_MEDIA: "true",
         AARAST_MEDIA_ENDPOINT: "https://media.internal.example.test",
         AARAST_MEDIA_BUCKET: "aarast-media",
-        AARAST_MEDIA_PUBLIC_BASE_URL:
-          "https://cdn.example.test/aarast-media",
+        AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
       }),
     /AARAST_MEDIA_SIGNED_ENDPOINT/,
   );
@@ -234,14 +233,21 @@ test("profile update rejects an external avatar and stores an owned one", async 
         findUnique: async () => null,
       },
       $transaction: async (operation: any) =>
-        operation({ user: txUser }),
+        operation({
+          $queryRaw: async () => [{ id: "u1", status: "ACTIVE" }],
+          user: txUser,
+        }),
     };
-    const svc = new UsersService(prisma as any, {} as any, {
-      verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
-        normalizeOwnedMediaUrl(value, purpose, current.id),
-      scheduleTargetDeletion: async () => undefined,
-      consumePublicMediaUrl: async () => undefined,
-    } as any);
+    const svc = new UsersService(
+      prisma as any,
+      {} as any,
+      {
+        verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
+          normalizeOwnedMediaUrl(value, purpose, current.id),
+        scheduleTargetDeletion: async () => undefined,
+        consumePublicMediaUrl: async () => undefined,
+      } as any,
+    );
     const current = { id: "u1" } as any;
 
     await assert.rejects(
@@ -265,8 +271,15 @@ test("profile update rejects an external avatar and stores an owned one", async 
 test("service image creation rejects an external URL before persisting", async () => {
   await withMediaBase(async () => {
     const prisma = {
+      provider: {
+        findUnique: async () => ({
+          id: "provider-1",
+          userId: "u1",
+          status: "ACTIVE",
+        }),
+      },
       providerService: {
-        findFirst: async () => ({ id: "svc", provider: { userId: "u1" } }),
+        findFirst: async () => ({ id: "svc", providerId: "provider-1" }),
       },
       providerServiceImage: {
         create: async () => {
@@ -274,10 +287,14 @@ test("service image creation rejects an external URL before persisting", async (
         },
       },
     };
-    const svc = new ProviderDashboardService(prisma as any, {} as any, {
-      verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
-        normalizeOwnedMediaUrl(value, purpose, current.id),
-    } as any);
+    const svc = new ProviderDashboardService(
+      prisma as any,
+      {} as any,
+      {
+        verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
+          normalizeOwnedMediaUrl(value, purpose, current.id),
+      } as any,
+    );
     const serviceId = "11111111-1111-4111-8111-111111111111";
 
     await assert.rejects(

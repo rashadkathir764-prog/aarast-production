@@ -1,4 +1,7 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/active_wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
@@ -7,6 +10,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('onboarding and dashboard API integration', () {
@@ -83,6 +87,59 @@ void main() {
         final activePlan = await api.getActiveWeddingPlan();
 
         expect(activePlan, isNull);
+      },
+    );
+
+    test(
+      'getActiveWeddingPlan restores the persisted plan after an offline cold start',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final database = JsonLocalDatabase(preferences);
+        await database.initialize();
+        final storage = AuthStorage(preferences);
+        final connectedClient = _client(
+          (_) => _activePlanJson(id: 'plan-cached', title: 'Cached plan'),
+        );
+        final connectedOffline = OfflineSyncService(
+          database: database,
+          apiClient: connectedClient,
+        );
+        await WeddingPlansApi(
+          connectedClient,
+          offline: connectedOffline,
+          authStorage: storage,
+        ).getActiveWeddingPlan();
+        expect(storage.readActivePlanId(), 'plan-cached');
+
+        final offlineClient = ApiClient(tokenProvider: () async => 'token');
+        offlineClient.dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  type: DioExceptionType.connectionError,
+                ),
+              );
+            },
+          ),
+        );
+        final offline = OfflineSyncService(
+          database: database,
+          apiClient: offlineClient,
+        );
+        final api = WeddingPlansApi(
+          offlineClient,
+          offline: offline,
+          authStorage: storage,
+        );
+
+        final activePlan = await api.getActiveWeddingPlan();
+
+        expect(activePlan?.id, 'plan-cached');
+        expect(activePlan?.title, 'Cached plan');
+        expect(offline.state.name, 'offline');
       },
     );
 

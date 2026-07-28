@@ -26,4 +26,13 @@ describe('admin list pagination contract', () => {
       expect(source).toContain('totalPages={pagination.totalPages}');
     });
   }
+
+  it('uses server-side provider search instead of a fixed 100-row lookup', () => {
+    expect(servicesSource).toContain('providerSearchQuery');
+    expect(reviewsSource).toContain('providerSearchQuery');
+    expect(servicesSource).not.toContain('getProviders({ limit: 100 })');
+    expect(reviewsSource).not.toContain('getProviders({ limit: 100 })');
+    expect(servicesSource).toContain('search: providerSearchQuery');
+    expect(reviewsSource).toContain('search: providerSearchQuery');
+  });
 });

@@ -624,14 +624,14 @@ async function upsertGuestGroup(weddingPlanId: string) {
 
 async function upsertGuest(weddingPlanId: string, groupId: string) {
   const existing = await prisma.guest.findFirst({
-    where: { weddingPlanId, normalizedPhone: '700999004' },
+    where: { weddingPlanId, normalizedPhone: '+967700999004' },
   });
   const data = {
     groupId,
     name: 'Backend Completion Guest',
     normalizedName: 'backend completion guest',
     phone: '+967700999004',
-    normalizedPhone: '700999004',
+    normalizedPhone: '+967700999004',
     side: GuestSide.FAMILY,
     status: GuestStatus.CONFIRMED,
     invitationStatus: GuestInvitationStatus.SENT,

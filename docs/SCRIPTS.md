@@ -9,14 +9,14 @@
 | `admin-web` | `npm run smoke:honesty` | `node scripts/source-honesty-smoke.mjs` |
 | `admin-web` | `npm run smoke:routes` | `npm run build && node scripts/route-smoke.mjs` |
 | `admin-web` | `npm run test` | `vitest run` |
+| `admin-web` | `npm run test:container-config` | `node --test scripts/runtime-config-guard.contract.mjs` |
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |
 | `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json --noEmit` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |
 | `backend` | `npm run load:test` | `node scripts/smoke/run-isolated-smoke.js --load-test` |
-| `backend` | `npm run posttest` | `node scripts/smoke/phase0-git-cleanliness.js` |
-| `backend` | `npm run pretest` | `node scripts/smoke/phase0-source-guard.js && node --test -r ts-node/register test/legacy-finance-removal.test.ts test/canonical-api-routes.test.ts test/admin-app-identity.test.ts test/invite-delivery.test.ts test/phase0-guards.test.ts` |
+| `backend` | `npm run pretest` | `node scripts/smoke/phase0-source-guard.js` |
 | `backend` | `npm run prisma:generate` | `prisma generate` |
 | `backend` | `npm run prod:bootstrap-marketplace` | `node scripts/prod/bootstrap-marketplace.cjs` |
 | `backend` | `npm run prod:provision-admin` | `node scripts/prod/provision-admin.cjs` |
@@ -31,6 +31,7 @@
 | `backend` | `npm run smoke:conversation-unification` | `node scripts/smoke/run-isolated-smoke.js conversation-unification-smoke.js` |
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/run-isolated-smoke.js dashboard-summary-smoke.js` |
 | `backend` | `npm run smoke:financial-ledger-concurrency` | `node scripts/smoke/run-isolated-smoke.js financial-ledger-concurrency-smoke.js` |
+| `backend` | `npm run smoke:guest-phone-migration` | `node scripts/smoke/run-isolated-smoke.js --guest-phone-migration` |
 | `backend` | `npm run smoke:guests` | `node scripts/smoke/run-isolated-smoke.js guests-smoke.js` |
 | `backend` | `npm run smoke:guests-apis` | `node scripts/smoke/run-isolated-smoke.js guests-apis-smoke.js` |
 | `backend` | `npm run smoke:health` | `node scripts/smoke/run-isolated-smoke.js health-smoke.js` |
@@ -45,11 +46,23 @@
 | `backend` | `npm run smoke:otp-profile` | `node scripts/smoke/run-isolated-smoke.js otp-profile-smoke.js` |
 | `backend` | `npm run smoke:phase0-fixtures` | `node scripts/smoke/run-isolated-smoke.js phase0-fixtures-smoke.js` |
 | `backend` | `npm run smoke:phase1-identity` | `node scripts/smoke/run-isolated-smoke.js phase1-identity-smoke.ts` |
+| `backend` | `npm run smoke:phase2-admin-mutation-authorization` | `node scripts/smoke/run-isolated-smoke.js phase2-admin-mutation-authorization-smoke.ts` |
+| `backend` | `npm run smoke:phase2-auth-lifecycle-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-auth-lifecycle-concurrency-smoke.ts` |
 | `backend` | `npm run smoke:phase2-auth-retention` | `node scripts/smoke/run-isolated-smoke.js phase2-auth-retention-smoke.ts` |
 | `backend` | `npm run smoke:phase2-conversation-revocation` | `node scripts/smoke/run-isolated-smoke.js phase2-conversation-revocation-smoke.ts` |
 | `backend` | `npm run smoke:phase2-idempotency-reconciliation` | `node scripts/smoke/run-isolated-smoke.js phase2-idempotency-reconciliation-smoke.ts` |
+| `backend` | `npm run smoke:phase2-marketplace-write-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-marketplace-write-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase2-media-verification-lifecycle` | `node scripts/smoke/run-isolated-smoke.js phase2-media-verification-lifecycle-smoke.ts` |
+| `backend` | `npm run smoke:phase2-money-authorization-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-money-authorization-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase2-notification-authorization-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-notification-authorization-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase2-notification-preferences` | `node scripts/smoke/run-isolated-smoke.js phase2-notification-preferences-smoke.ts` |
+| `backend` | `npm run smoke:phase2-plan-permission-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-plan-permission-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase2-provider-dashboard-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-provider-dashboard-concurrency-smoke.ts` |
 | `backend` | `npm run smoke:phase2-provider-rating-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-provider-rating-concurrency-smoke.ts` |
 | `backend` | `npm run smoke:phase2-quote-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-quote-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase2-sharing-permission-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-sharing-permission-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase2-task-guest-permission-concurrency` | `node scripts/smoke/run-isolated-smoke.js phase2-task-guest-permission-concurrency-smoke.ts` |
+| `backend` | `npm run smoke:phase3-context-transition` | `node scripts/smoke/run-isolated-smoke.js phase3-context-transition-smoke.ts` |
 | `backend` | `npm run smoke:private-chat-media` | `node scripts/smoke/run-isolated-smoke.js private-chat-media-smoke.js` |
 | `backend` | `npm run smoke:provider-dashboard` | `node scripts/smoke/run-isolated-smoke.js provider-dashboard-smoke.js` |
 | `backend` | `npm run smoke:providers-quotes` | `node scripts/smoke/run-isolated-smoke.js providers-quotes-smoke.js` |
@@ -64,4 +77,4 @@
 | `backend` | `npm run smoke:wedding-plan` | `node scripts/smoke/run-isolated-smoke.js wedding-plan-smoke.js` |
 | `backend` | `npm run start` | `node dist/main.js` |
 | `backend` | `npm run start:dev` | `node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts` |
-| `backend` | `npm run test` | `node --test -r ts-node/register test/task-responsibility.test.ts test/backend-support.test.ts test/health-readiness.test.ts test/scheduler-lock.test.ts test/outbox-logic.test.ts test/admin-auth-session-security.test.ts test/admin-password-recovery.test.ts test/auth-challenge-cleanup.test.ts test/auth-password-policy.test.ts test/admin-rbac-audit.test.ts test/admin-audit-interceptor.test.ts test/admin-presenter.test.ts test/admin-provisioning-script.test.ts test/auth-otp-mode.test.ts test/auth-registration-security.test.ts test/smoke-isolation.test.ts test/login-throttle.test.ts test/otp-dispatch-quota.test.ts test/otp-controller-context.test.ts test/whatsapp-otp-channel.test.ts test/openwa-otp-channel.test.ts test/openwa-credential-file.test.ts test/request-target-redaction.test.ts test/privacy-contract.test.ts test/sharing-permission-ceiling.test.ts test/auth-refresh-wiring.test.ts test/contexts.test.ts test/quote-lifecycle.test.ts test/quote-stability.test.ts test/marketplace-presenter.test.ts test/provider-rating-atomicity.test.ts test/provider-price-validation.test.ts test/cors-preflight.test.ts test/provider-chat-logic.test.ts test/conversation-pagination.test.ts test/media-upload-logic.test.ts test/media-upload-ticket.test.ts test/private-chat-media.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/notification-reminders-scheduler.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/dashboard-summary-presenter.test.ts test/financial-integrity.test.ts test/financial-ledger.test.ts test/idempotency-interceptor.test.ts test/idempotency-reconciliation.test.ts test/quote-guest-visibility.test.ts test/quote-provider-notifications.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts test/websocket-session-hardening.test.ts` |
+| `backend` | `npm run test` | `node scripts/run-tests-with-artifact-guard.js` |

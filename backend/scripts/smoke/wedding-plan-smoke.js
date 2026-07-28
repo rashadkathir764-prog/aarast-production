@@ -143,6 +143,34 @@ async function run() {
   }
 
   {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}`, null, accessToken);
+    check('archived plan remains readable - HTTP 200', res.status === 200);
+    check('archived plan read preserves ARCHIVED status', res.body?.status === 'ARCHIVED');
+    check('archived plan read preserves the last title', res.body?.title === 'Updated Smoke Wedding Plan');
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/set-active`, null, accessToken);
+    check('archived plan cannot become active - HTTP 409', res.status === 409);
+    check('set-active uses PLAN_ARCHIVED_READ_ONLY', res.body?.code === 'PLAN_ARCHIVED_READ_ONLY');
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${planId}`, {
+      title: 'Archived plan mutation must not persist',
+    }, accessToken);
+    check('archived plan update is denied - HTTP 409', res.status === 409);
+    check('archived plan update uses PLAN_ARCHIVED_READ_ONLY', res.body?.code === 'PLAN_ARCHIVED_READ_ONLY');
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}`, null, accessToken);
+    check('archived plan remains readable after denied writes - HTTP 200', res.status === 200);
+    check('denied archived update writes nothing', res.body?.title === 'Updated Smoke Wedding Plan');
+    check('denied set-active preserves ARCHIVED status', res.body?.status === 'ARCHIVED');
+  }
+
+  {
     const res = await request('GET', '/api/v1/wedding-plans/my');
     check('GET /api/v1/wedding-plans/my without token returns 401', res.status === 401);
   }

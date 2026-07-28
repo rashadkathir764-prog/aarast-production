@@ -44,12 +44,17 @@ export function UserDetailsPage() {
 
   async function toggleUserStatus() {
     if (!user) return;
-    if (user.status === 'ACTIVE') {
-      await disableUser(user.id);
-    } else {
-      await activateUser(user.id);
+    setError(null);
+    try {
+      if (user.status === 'ACTIVE') {
+        await disableUser(user.id);
+      } else {
+        await activateUser(user.id);
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الحساب.');
     }
-    await load();
   }
 
   if (isLoading) return <LoadingState title="جاري تحميل تفاصيل المستخدم" />;

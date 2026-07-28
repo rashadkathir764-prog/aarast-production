@@ -43,6 +43,8 @@ export function ServicesPage() {
   const [cities, setCities] = useState<City[]>([]);
   const [categories, setCategories] = useState<ProviderCategory[]>([]);
   const [search, setSearch] = useState('');
+  const [providerSearch, setProviderSearch] = useState('');
+  const [providerSearchQuery, setProviderSearchQuery] = useState('');
   const [status, setStatus] = useState('');
   const [cityId, setCityId] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -69,7 +71,11 @@ export function ServicesPage() {
     try {
       const [services, providerPage, cityList, categoryList] = await Promise.all([
         getServices({ search, status, cityId, categoryId, page, limit: 20 }),
-        getProviders({ limit: 100 }),
+        getProviders({
+          search: providerSearchQuery,
+          page: 1,
+          limit: 20,
+        }),
         getCities(),
         getCategories(),
       ]);
@@ -96,7 +102,7 @@ export function ServicesPage() {
 
   useEffect(() => {
     load();
-  }, [status, cityId, categoryId, page]);
+  }, [status, cityId, categoryId, page, providerSearchQuery]);
 
   function submitSearch() {
     if (page === 1) void load();
@@ -106,6 +112,7 @@ export function ServicesPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setIsSaving(true);
+    setError(null);
     try {
       await createService({
         providerId: form.providerId,
@@ -117,19 +124,31 @@ export function ServicesPage() {
       });
       setForm({ providerId: '', categoryId: '', title: '', basePrice: '' });
       await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر حفظ الخدمة.');
     } finally {
       setIsSaving(false);
     }
   }
 
   async function toggleActive(service: ProviderService) {
-    await updateService(service.id, { isActive: !service.isActive });
-    await load();
+    setError(null);
+    try {
+      await updateService(service.id, { isActive: !service.isActive });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الخدمة.');
+    }
   }
 
   async function toggleFeatured(service: ProviderService) {
-    await updateService(service.id, { isFeatured: !service.isFeatured });
-    await load();
+    setError(null);
+    try {
+      await updateService(service.id, { isFeatured: !service.isFeatured });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر تحديث تمييز الخدمة.');
+    }
   }
 
   if (isLoading) return <LoadingState title="جاري تحميل خدمات الموردين" />;
@@ -194,6 +213,29 @@ export function ServicesPage() {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="form-field">
+            <span>بحث المورد</span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                value={providerSearch}
+                onChange={(event) => setProviderSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    setProviderSearchQuery(providerSearch);
+                  }
+                }}
+                placeholder="اكتب اسم المورد أو هاتفه"
+              />
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => setProviderSearchQuery(providerSearch)}
+              >
+                بحث
+              </button>
+            </div>
           </label>
           <FormField
             label="اسم الخدمة"

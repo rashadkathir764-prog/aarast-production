@@ -25,20 +25,27 @@ export function ConfirmDialog({
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function closeDialog() {
     if (isSubmitting) return;
     setOpen(false);
     setNote('');
+    setError(null);
   }
 
   async function submit() {
     if (needsNote && !note.trim()) return;
     setIsSubmitting(true);
+    setError(null);
     try {
       await onConfirm(note.trim());
       setOpen(false);
       setNote('');
+    } catch (value) {
+      setError(
+        value instanceof Error ? value.message : 'تعذر تنفيذ الإجراء الإداري.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -74,6 +81,11 @@ export function ConfirmDialog({
                       rows={4}
                     />
                   </label>
+                ) : null}
+                {error ? (
+                  <p className="inline-error" role="alert">
+                    {error}
+                  </p>
                 ) : null}
                 <div className="dialog-actions">
                   <button

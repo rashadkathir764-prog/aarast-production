@@ -39,6 +39,7 @@ void main() {
       sessionStart,
     );
     for (final provider in [
+      'AccountContextController(',
       'WeddingPlansProvider(',
       'DashboardSummaryProvider(',
       'HomeDashboardProvider(',
@@ -62,6 +63,21 @@ void main() {
     final sessionWiring = source.substring(sessionStart);
     expect(sessionWiring, contains("identity: 'account:"));
     expect(sessionWiring, contains('sessionUserId: sessionUserId'));
+    expect(
+      sessionWiring,
+      matches(
+        RegExp(
+          'ChangeNotifierProxyProvider<\\s*WeddingPlansProvider,\\s*AccountContextController\\s*>',
+        ),
+      ),
+      reason:
+          'account contexts must be recreated inside the authenticated account boundary',
+    );
+    expect(
+      sessionWiring,
+      contains('activeWeddingPlanId: activeWeddingPlanId'),
+      reason: 'the initial context fallback must use the live authenticated user',
+    );
     for (final provider in [
       'DashboardSummaryProvider',
       'HomeDashboardProvider',
@@ -75,10 +91,11 @@ void main() {
         sessionWiring,
         matches(
           RegExp(
-            'ChangeNotifierProxyProvider<\\s*WeddingPlansProvider,\\s*$provider\\s*>',
+            'ChangeNotifierProxyProvider<\\s*AccountContextController,\\s*$provider\\s*>',
           ),
         ),
-        reason: '$provider must be replaced when the selected plan changes',
+        reason:
+            '$provider must be replaced from the selected account context, not legacy plan state',
       );
     }
 

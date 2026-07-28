@@ -18,6 +18,11 @@ const requester = {
 const providerId = "11111111-1111-4111-8111-111111111111";
 const quoteId = "22222222-2222-4222-8222-222222222222";
 
+function rawSqlText(query: unknown): string {
+  const strings = (query as { strings?: readonly string[] } | null)?.strings;
+  return strings ? strings.join(" ") : String(query);
+}
+
 function creationHarness(
   options: {
     existingStatus?: QuoteRequestStatus;
@@ -206,22 +211,62 @@ test("validUntil derives expiry without changing persisted status", () => {
 });
 
 test("backend rejects acceptance of an expired pending offer", async () => {
+  const providerUserId = "provider-user";
+  const weddingPlanId = "44444444-4444-4444-8444-444444444444";
   const offer = {
     id: "33333333-3333-4333-8333-333333333333",
     quoteRequestId: quoteId,
     providerId,
+    title: null,
+    message: null,
+    amount: new Prisma.Decimal("100"),
+    currency: "YER",
     status: "PENDING",
     validUntil: new Date("2020-01-01T00:00:00Z"),
+    provider: {
+      businessName: "Provider",
+      userId: providerUserId,
+    },
     quoteRequest: {
       id: quoteId,
       userId: requester.id,
-      weddingPlanId: "44444444-4444-4444-8444-444444444444",
+      weddingPlanId,
+      conversationId: "conversation-1",
       status: "RESPONDED",
+      weddingPlan: {
+        id: weddingPlanId,
+        ownerUserId: requester.id,
+        currency: "YER",
+      },
+      service: null,
     },
+    weddingCosts: [],
+    providerLinks: [],
+  };
+  const tx = {
+    $queryRaw: async (query: unknown) => {
+      if (rawSqlText(query).includes('FROM "User"')) {
+        return [
+          { id: requester.id, status: "ACTIVE" },
+          { id: providerUserId, status: "ACTIVE" },
+        ];
+      }
+      return [{ id: offer.id, quoteRequestId: quoteId }];
+    },
+    quoteOffer: { findUnique: async () => offer },
   };
   const service = new MarketplaceService(
-    { quoteOffer: { findUnique: async () => offer } } as any,
-    { assertPlanReadable: async () => ({}) } as any,
+    {
+      quoteOffer: { findUnique: async () => offer },
+      $transaction: async (operation: (client: any) => Promise<unknown>) =>
+        operation(tx),
+    } as any,
+    {
+      assertPlanReadable: async () => ({}),
+      assertProviderManageable: async () => ({}),
+      assertMoneyManageable: async () => ({}),
+      assertProviderAndMoneyManageableInTransaction: async () => ({}),
+    } as any,
     {} as any,
   );
   await assert.rejects(
@@ -250,10 +295,29 @@ test("concurrent provider submissions create exactly one offer", async () => {
     id: providerId,
     userId: "provider-user",
     businessName: "Provider",
+    status: "ACTIVE",
   };
   const tx = {
-    $queryRaw: async () => [{ id: quoteId }],
+    $queryRaw: async (query: unknown) => {
+      const sql = rawSqlText(query);
+      if (sql.includes('FROM "User"')) {
+        return [
+          { id: requester.id, status: "ACTIVE" },
+          { id: provider.userId, status: "ACTIVE" },
+        ].sort((left, right) => left.id.localeCompare(right.id));
+      }
+      if (sql.includes('FROM "Provider"')) return [{ id: providerId }];
+      if (sql.includes('FROM "Conversation"')) {
+        return [{ id: quote().conversationId }];
+      }
+      if (sql.includes('FROM "QuoteRequest"')) return [{ id: quoteId }];
+      return [];
+    },
+    provider: {
+      findUnique: async () => provider,
+    },
     quoteRequest: {
+      findUnique: async () => quote(),
       findFirst: async () => quote(),
       update: async () => {
         quoteStatus = QuoteRequestStatus.RESPONDED;

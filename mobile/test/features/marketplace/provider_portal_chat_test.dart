@@ -95,13 +95,13 @@ void main() {
     },
   );
 
-  test('home entry sends provider accounts to the provider portal', () {
+  test('home entry stays account-context driven instead of legacy role driven', () {
     final source = File(
       'lib/features/home/screens/dashboard_entry_screen.dart',
     ).readAsStringSync();
 
-    expect(source, contains('auth.user?.isProviderAccount == true'));
-    expect(source, contains('ProviderPortalScreen'));
+    expect(source, isNot(contains('isProviderAccount')));
+    expect(source, isNot(contains('ProviderPortalScreen')));
     expect(source, contains('MainShell'));
   });
 

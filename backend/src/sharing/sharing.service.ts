@@ -17,6 +17,7 @@ import {
   SharedMember,
   SharedMemberRole,
   User,
+  UserStatus,
   WeddingPlan,
 } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
@@ -24,8 +25,10 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { invitationDeliveryPersistenceFailuresTotal } from "../common/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { canonicalPlanContextKey } from "../contexts/context-key";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { NotificationsService } from "../notifications/notifications.service";
+import { enqueueConversationAccessRevoked } from "../outbox/realtime-revocation";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   ApplicationNameSource,
@@ -33,6 +36,7 @@ import {
   applicationNameFields,
   toApplicationUserContact,
 } from "../users/application-user-identity";
+import { lockUserLifecycleRowsInTransaction } from "../users/user-lifecycle-lock";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
@@ -40,7 +44,11 @@ import {
   InvitationDeliveryResult,
   InvitationDeliveryService,
 } from "./invitation-delivery.service";
-import { PermissionService, PlanAccessContext } from "./permission.service";
+import {
+  assertWeddingPlanWritable,
+  PermissionService,
+  PlanAccessContext,
+} from "./permission.service";
 import {
   PlanPermissionFlags,
   rolePermissionDefaults,
@@ -225,14 +233,20 @@ export class SharingService {
           tx,
           weddingPlanId,
           currentUser,
+          [userId],
         );
-      this.assertPermissionCeiling(
-        transactionalAccess,
-        role,
-        permissionData,
-      );
+      this.assertPermissionCeiling(transactionalAccess, role, permissionData);
+      const lockedTarget = await tx.user.findUnique({
+        where: { id: userId },
+        select: { status: true },
+      });
+      if (!lockedTarget || lockedTarget.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException("userId must reference an active user");
+      }
       if (userId === transactionalAccess.plan.ownerUserId) {
-        throw new BadRequestException("Owner cannot be added as a shared member");
+        throw new BadRequestException(
+          "Owner cannot be added as a shared member",
+        );
       }
       const duplicate = await tx.sharedMember.findUnique({
         where: { weddingPlanId_userId: { weddingPlanId, userId } },
@@ -355,8 +369,20 @@ export class SharingService {
             tx,
             weddingPlanId,
             currentUser,
-          );
+            target.user ? [target.user.id] : [],
+        );
         this.assertPermissionCeiling(transactionalAccess, role, permissionData);
+        if (target.user) {
+          const lockedTarget = await tx.user.findUnique({
+            where: { id: target.user.id },
+            select: { status: true },
+          });
+          if (!lockedTarget || lockedTarget.status !== UserStatus.ACTIVE) {
+            throw new BadRequestException(
+              "userId must reference an active user",
+            );
+          }
+        }
         if (target.user?.id === transactionalAccess.plan.ownerUserId) {
           throw new BadRequestException(
             "Owner cannot be invited to own wedding plan",
@@ -493,10 +519,13 @@ export class SharingService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<PlanInviteResponse[]> {
-    const access = await this.permissions.assertMemberManageable(
+    const access = await this.permissions.assertPlanReadable(
       weddingPlanId,
       currentUser,
     );
+    if (!this.permissions.canManageMembers(access)) {
+      throw new NotFoundException("Wedding plan not found");
+    }
     const invites = await this.prisma.planInvite.findMany({
       where: {
         weddingPlanId,
@@ -673,12 +702,78 @@ export class SharingService {
   async acceptInvite(
     currentUser: AuthenticatedUser,
     token: string,
-  ): Promise<{ invite: PlanInviteResponse; member: SharedMemberResponse }> {
-    const invite = await this.findInviteByTokenOrThrow(token);
-    this.assertInviteCanBeAccepted(invite, currentUser);
+  ): Promise<{
+    invite: PlanInviteResponse;
+    member: SharedMemberResponse;
+    contextKey: string;
+  }> {
+    const resolvedInvite = await this.findInviteByTokenOrThrow(token);
 
     const acceptedAt = new Date();
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const planSeed = await tx.weddingPlan.findUnique({
+        where: { id: resolvedInvite.weddingPlanId },
+        select: { ownerUserId: true },
+      });
+      if (!planSeed) {
+        throw new NotFoundException("Wedding plan not found");
+      }
+      const lifecycleUsers = await lockUserLifecycleRowsInTransaction(tx, [
+        currentUser.id,
+        resolvedInvite.inviterUserId,
+        planSeed.ownerUserId,
+      ]);
+      const actor = lifecycleUsers.find((user) => user.id === currentUser.id);
+      if (
+        !actor ||
+        actor.status !== UserStatus.ACTIVE ||
+        !lifecycleUsers.some(
+          (user) => user.id === resolvedInvite.inviterUserId,
+        ) ||
+        !lifecycleUsers.some((user) => user.id === planSeed.ownerUserId)
+      ) {
+        throw new NotFoundException("Invite not found");
+      }
+      const lockedPlan = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "WeddingPlan"
+          WHERE "id" = ${resolvedInvite.weddingPlanId}
+          FOR SHARE
+        `,
+      );
+      if (lockedPlan.length !== 1) {
+        throw new NotFoundException("Wedding plan not found");
+      }
+      const plan = await tx.weddingPlan.findUnique({
+        where: { id: resolvedInvite.weddingPlanId },
+        select: { ownerUserId: true, status: true },
+      });
+      if (!plan || plan.ownerUserId !== planSeed.ownerUserId) {
+        throw new NotFoundException("Wedding plan not found");
+      }
+      assertWeddingPlanWritable(plan);
+
+      const lockedInvite = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "PlanInvite"
+          WHERE "id" = ${resolvedInvite.id}
+          FOR UPDATE
+        `,
+      );
+      if (lockedInvite.length !== 1) {
+        throw new ConflictException("Invite is no longer pending");
+      }
+      const invite = await tx.planInvite.findUnique({
+        where: { id: resolvedInvite.id },
+        include: this.inviteIncludes(),
+      });
+      if (!invite) {
+        throw new ConflictException("Invite is no longer pending");
+      }
+      this.assertInviteCanBeAccepted(invite, currentUser);
+
       const claimed = await tx.planInvite.updateMany({
         where: {
           id: invite.id,
@@ -704,17 +799,7 @@ export class SharingService {
             userId: currentUser.id,
           },
         },
-        update: {
-          role: invite.role,
-          canViewMoney: invite.canViewMoney,
-          canEditPlan: invite.canEditPlan,
-          canManageTasks: invite.canManageTasks,
-          canManageGuests: invite.canManageGuests,
-          canManageProviders: invite.canManageProviders,
-          canInviteMembers: invite.canInviteMembers,
-          canManageMoney: invite.canManageMoney,
-          receiveNotifications: invite.receiveNotifications,
-        },
+        update: {},
         create: {
           weddingPlanId: invite.weddingPlanId,
           userId: currentUser.id,
@@ -775,6 +860,10 @@ export class SharingService {
     return {
       invite: this.toInviteResponse(result.acceptedInvite),
       member: this.toMemberResponse(result.member),
+      contextKey: canonicalPlanContextKey(
+        result.acceptedInvite.weddingPlanId,
+        "contributor",
+      ),
     };
   }
 
@@ -786,49 +875,113 @@ export class SharingService {
     this.assertInviteCanBeAccepted(invite, currentUser);
 
     const declinedAt = new Date();
-    const declined = await this.prisma.$transaction(async (tx) => {
-      const claimed = await tx.planInvite.updateMany({
-        where: {
-          id: invite.id,
-          ...this.inviteClaimTokenFilter(invite, token),
-          acceptedAt: null,
-          declinedAt: null,
-          revokedAt: null,
-          expiresAt: { gt: declinedAt },
-        },
-        data: {
-          declinedAt,
-          inviteeUserId: currentUser.id,
-        },
-      });
-      if (claimed.count !== 1) {
-        throw new ConflictException("Invite is no longer pending");
-      }
-      const updated = await tx.planInvite.findUnique({
-        where: { id: invite.id },
-        include: this.inviteIncludes(),
-      });
-      if (!updated) {
-        throw new ConflictException("Invite is no longer pending");
-      }
+    const declined = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const planSeed = await tx.weddingPlan.findUnique({
+          where: { id: invite.weddingPlanId },
+          select: { ownerUserId: true },
+        });
+        if (!planSeed) {
+          throw new NotFoundException("Wedding plan not found");
+        }
+        const lifecycleUsers = await lockUserLifecycleRowsInTransaction(tx, [
+          currentUser.id,
+          invite.inviterUserId,
+          planSeed.ownerUserId,
+        ]);
+        const actor = lifecycleUsers.find((user) => user.id === currentUser.id);
+        if (
+          !actor ||
+          actor.status !== UserStatus.ACTIVE ||
+          !lifecycleUsers.some((user) => user.id === invite.inviterUserId) ||
+          !lifecycleUsers.some((user) => user.id === planSeed.ownerUserId)
+        ) {
+          throw new NotFoundException("Invite not found");
+        }
+        const lockedPlan = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+          SELECT "id"
+          FROM "WeddingPlan"
+          WHERE "id" = ${invite.weddingPlanId}
+          FOR SHARE
+        `,
+        );
+        if (lockedPlan.length !== 1) {
+          throw new NotFoundException("Wedding plan not found");
+        }
+        const lockedPlanState = await tx.weddingPlan.findUnique({
+          where: { id: invite.weddingPlanId },
+          select: { ownerUserId: true },
+        });
+        if (
+          !lockedPlanState ||
+          lockedPlanState.ownerUserId !== planSeed.ownerUserId
+        ) {
+          throw new NotFoundException("Wedding plan not found");
+        }
+        const lockedInvite = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+          SELECT "id"
+          FROM "PlanInvite"
+          WHERE "id" = ${invite.id}
+          FOR UPDATE
+        `,
+        );
+        if (lockedInvite.length !== 1) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+        const currentInvite = await tx.planInvite.findUnique({
+          where: { id: invite.id },
+          include: this.inviteIncludes(),
+        });
+        if (!currentInvite) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+        this.assertInviteCanBeAccepted(currentInvite, currentUser);
+        const claimed = await tx.planInvite.updateMany({
+          where: {
+            id: currentInvite.id,
+            ...this.inviteClaimTokenFilter(currentInvite, token),
+            acceptedAt: null,
+            declinedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: declinedAt },
+          },
+          data: {
+            declinedAt,
+            inviteeUserId: currentUser.id,
+          },
+        });
+        if (claimed.count !== 1) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+        const updated = await tx.planInvite.findUnique({
+          where: { id: currentInvite.id },
+          include: this.inviteIncludes(),
+        });
+        if (!updated) {
+          throw new ConflictException("Invite is no longer pending");
+        }
 
-      await this.notifications.createNotificationInTransaction(tx, {
-        userId: invite.inviterUserId,
-        weddingPlanId: invite.weddingPlanId,
-        type: NotificationType.SHARING_INVITE_DECLINED,
-        title: "تم رفض الدعوة",
-        body: `${currentUser.name} رفض دعوة المشاركة في خطة الزفاف.`,
-        entityType: "plan_invite",
-        entityId: invite.id,
-        routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
-        data: {
-          inviteId: invite.id,
-          weddingPlanId: invite.weddingPlanId,
-        },
-        dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:declined`,
-      });
-      return updated;
-    });
+        await this.notifications.createNotificationInTransaction(tx, {
+          userId: currentInvite.inviterUserId,
+          weddingPlanId: currentInvite.weddingPlanId,
+          type: NotificationType.SHARING_INVITE_DECLINED,
+          title: "تم رفض الدعوة",
+          body: `${currentUser.name} رفض دعوة المشاركة في خطة الزفاف.`,
+          entityType: "plan_invite",
+          entityId: currentInvite.id,
+          routeTarget: `/wedding-plans/${currentInvite.weddingPlanId}/sharing`,
+          data: {
+            inviteId: currentInvite.id,
+            weddingPlanId: currentInvite.weddingPlanId,
+          },
+          dedupeKey: `${currentInvite.inviterUserId}:plan-invite:${currentInvite.id}:declined`,
+        });
+        return updated;
+      },
+    );
 
     return this.toInviteResponse(declined);
   }
@@ -839,41 +992,63 @@ export class SharingService {
     memberId: string,
     dto: UpdateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
-    const access = await this.permissions.assertMemberManageable(
-      weddingPlanId,
-      currentUser,
-    );
     this.assertNotOwnerMemberId(memberId);
+    const targetSeed = await this.prisma.sharedMember.findFirst({
+      where: { id: memberId, weddingPlanId },
+      select: { userId: true },
+    });
+    if (!targetSeed) {
+      throw new NotFoundException("Shared member not found");
+    }
 
-    const existing = await this.findMemberForPlanOrThrow(
-      weddingPlanId,
-      memberId,
-    );
-    this.assertPermissionCeiling(
-      access,
-      existing.role,
-      this.permissionFlagsForRecord(existing),
-    );
-    const role = this.assignableRole(dto.role ?? existing.role);
-    const permissionData = this.permissionDataForUpdate(existing, dto, role);
-    this.assertPermissionCeiling(access, role, permissionData);
-    const hadFinancialAccess = this.permissions.canViewMoney({
-      plan: access.plan,
-      isOwner: false,
-      sharedMember: existing,
-    });
-    const nextRecord = { ...existing, role, ...permissionData };
-    const keepsFinancialAccess = this.permissions.canViewMoney({
-      plan: access.plan,
-      isOwner: false,
-      sharedMember: nextRecord,
-    });
-    const hadProviderConversationAccess = existing.canManageProviders;
-    const keepsProviderConversationAccess = nextRecord.canManageProviders;
-    const gainsProviderConversationAccess =
-      !hadProviderConversationAccess && keepsProviderConversationAccess;
-    let revokedConversationIds: string[] = [];
-    const member = await this.prisma.$transaction(async (tx) => {
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const access = await this.permissions.assertMemberManageableInTransaction(
+        tx,
+        weddingPlanId,
+        currentUser,
+        [targetSeed.userId],
+      );
+      const targetLock = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "SharedMember"
+          WHERE "id" = ${memberId}
+            AND "weddingPlanId" = ${weddingPlanId}
+          FOR UPDATE
+        `,
+      );
+      if (targetLock.length !== 1) {
+        throw new NotFoundException("Shared member not found");
+      }
+      const existing = await tx.sharedMember.findFirst({
+        where: { id: memberId, weddingPlanId },
+      });
+      if (!existing || existing.userId !== targetSeed.userId) {
+        throw new NotFoundException("Shared member not found");
+      }
+      this.assertPermissionCeiling(
+        access,
+        existing.role,
+        this.permissionFlagsForRecord(existing),
+      );
+      const role = this.assignableRole(dto.role ?? existing.role);
+      const permissionData = this.permissionDataForUpdate(existing, dto, role);
+      this.assertPermissionCeiling(access, role, permissionData);
+      const hadFinancialAccess = this.permissions.canViewMoney({
+        plan: access.plan,
+        isOwner: false,
+        sharedMember: existing,
+      });
+      const nextRecord = { ...existing, role, ...permissionData };
+      const keepsFinancialAccess = this.permissions.canViewMoney({
+        plan: access.plan,
+        isOwner: false,
+        sharedMember: nextRecord,
+      });
+      const hadProviderConversationAccess = existing.canManageProviders;
+      const keepsProviderConversationAccess = nextRecord.canManageProviders;
+      const gainsProviderConversationAccess =
+        !hadProviderConversationAccess && keepsProviderConversationAccess;
       const updated = await tx.sharedMember.update({
         where: { id: existing.id },
         data: {
@@ -893,6 +1068,7 @@ export class SharingService {
           weddingPlanId,
         );
       }
+      let revokedConversationIds: string[] = [];
       if (hadProviderConversationAccess && !keepsProviderConversationAccess) {
         revokedConversationIds =
           await this.setProviderConversationParticipation(
@@ -909,17 +1085,26 @@ export class SharingService {
           true,
         );
       }
-      return updated;
-    });
-
-    if (revokedConversationIds.length > 0) {
-      this.realtime?.revokeConversationAccess(
+      await enqueueConversationAccessRevoked(
+        tx,
         existing.userId,
         revokedConversationIds,
       );
+      return {
+        member: updated,
+        affectedUserId: existing.userId,
+        revokedConversationIds,
+      };
+    });
+
+    if (result.revokedConversationIds.length > 0) {
+      this.realtime?.revokeConversationAccess(
+        result.affectedUserId,
+        result.revokedConversationIds,
+      );
     }
 
-    return this.toMemberResponse(member);
+    return this.toMemberResponse(result.member);
   }
 
   async removeMemberFromPlan(
@@ -927,47 +1112,81 @@ export class SharingService {
     weddingPlanId: string,
     memberId: string,
   ): Promise<{ id: string; deleted: true }> {
-    const access = await this.permissions.assertMemberManageable(
-      weddingPlanId,
-      currentUser,
-    );
-    const plan = access.plan;
-    if (this.isOwnerMemberId(memberId) || memberId === plan.ownerUserId) {
+    if (this.isOwnerMemberId(memberId)) {
       throw new BadRequestException("Last owner cannot be removed");
     }
+    const targetSeed = await this.prisma.sharedMember.findFirst({
+      where: { id: memberId, weddingPlanId },
+      select: { userId: true },
+    });
+    if (!targetSeed) {
+      throw new NotFoundException("Shared member not found");
+    }
 
-    const existing = await this.findMemberForPlanOrThrow(
-      weddingPlanId,
-      memberId,
-    );
-    this.assertPermissionCeiling(
-      access,
-      existing.role,
-      this.permissionFlagsForRecord(existing),
-    );
-    let revokedConversationIds: string[] = [];
-    await this.prisma.$transaction(async (tx) => {
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const access = await this.permissions.assertMemberManageableInTransaction(
+        tx,
+        weddingPlanId,
+        currentUser,
+        [targetSeed.userId],
+      );
+      if (memberId === access.plan.ownerUserId) {
+        throw new BadRequestException("Last owner cannot be removed");
+      }
+      const targetLock = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "SharedMember"
+          WHERE "id" = ${memberId}
+            AND "weddingPlanId" = ${weddingPlanId}
+          FOR UPDATE
+        `,
+      );
+      if (targetLock.length !== 1) {
+        throw new NotFoundException("Shared member not found");
+      }
+      const existing = await tx.sharedMember.findFirst({
+        where: { id: memberId, weddingPlanId },
+      });
+      if (!existing || existing.userId !== targetSeed.userId) {
+        throw new NotFoundException("Shared member not found");
+      }
+      this.assertPermissionCeiling(
+        access,
+        existing.role,
+        this.permissionFlagsForRecord(existing),
+      );
       await tx.sharedMember.delete({ where: { id: existing.id } });
-      revokedConversationIds =
+      const revokedConversationIds =
         await this.setProviderConversationParticipation(
           tx,
           weddingPlanId,
           existing.userId,
           false,
         );
+      await enqueueConversationAccessRevoked(
+        tx,
+        existing.userId,
+        revokedConversationIds,
+      );
       await this.notifications.purgeMoneyForMember(
         tx,
         existing.userId,
         weddingPlanId,
       );
-    });
-    if (revokedConversationIds.length > 0) {
-      this.realtime?.revokeConversationAccess(
-        existing.userId,
+      return {
+        id: existing.id,
+        affectedUserId: existing.userId,
         revokedConversationIds,
+      };
+    });
+    if (result.revokedConversationIds.length > 0) {
+      this.realtime?.revokeConversationAccess(
+        result.affectedUserId,
+        result.revokedConversationIds,
       );
     }
-    return { id: existing.id, deleted: true };
+    return { id: result.id, deleted: true };
   }
 
   async permissionsForCurrentUser(
@@ -1153,6 +1372,7 @@ export class SharingService {
     delivery: InvitationDeliveryResult,
   ): Promise<PlanInviteWithRelations> {
     return runSerializableTransaction(this.prisma, async (tx) => {
+      const finalizedAt = new Date();
       const stored = await tx.planInvite.updateMany({
         where: {
           id: attempt.inviteId,
@@ -1160,6 +1380,10 @@ export class SharingService {
           tokenHash: attempt.tokenHash,
           deliveryAttemptedAt: attempt.attemptedAt,
           deliveryStatus: PlanInviteDeliveryStatus.PENDING,
+          acceptedAt: null,
+          declinedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: finalizedAt },
         },
         data: {
           deliveryStatus: this.toStoredDeliveryStatus(delivery.status),
@@ -1655,10 +1879,12 @@ export class SharingService {
     invite: PlanInviteWithRelations,
     presentedToken?: string,
   ): PlanInviteResponse {
+    const status = this.inviteStatus(invite);
     return {
       id: invite.id,
       weddingPlanId: invite.weddingPlanId,
-      token: presentedToken ?? invite.id,
+      token:
+        presentedToken && status === "PENDING" ? presentedToken : invite.id,
       name: invite.name,
       phone: invite.phone,
       normalizedPhone: invite.normalizedPhone,
@@ -1674,7 +1900,7 @@ export class SharingService {
       canInviteMembers: invite.canInviteMembers,
       canManageMoney: invite.canManageMoney,
       receiveNotifications: invite.receiveNotifications,
-      status: this.inviteStatus(invite),
+      status,
       expiresAt: invite.expiresAt,
       acceptedAt: invite.acceptedAt,
       declinedAt: invite.declinedAt,

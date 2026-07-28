@@ -7,9 +7,20 @@ export const apiBaseUrl =
   fallbackBaseUrl;
 
 let adminAccessToken: string | null = null;
+type AdminSessionExpiredHandler = () => void;
+
+let sessionExpiredHandler: AdminSessionExpiredHandler | null = null;
+let sessionExpiryNotified = false;
+
+export function setAdminSessionExpiredHandler(
+  handler: AdminSessionExpiredHandler | null,
+): void {
+  sessionExpiredHandler = handler;
+}
 
 export function setAdminAccessToken(token: string): void {
   adminAccessToken = token;
+  sessionExpiryNotified = false;
 }
 
 export function getAdminAccessToken(): string | null {
@@ -60,11 +71,26 @@ export async function apiRequest<T>(
     options.auth !== false &&
     hadAccessToken
   ) {
-    await refreshAdminAccessToken();
+    try {
+      await refreshAdminAccessToken();
+    } catch (error) {
+      notifyAdminSessionExpired();
+      throw error;
+    }
     response = await send(path, options, requestId);
+    if (response.status === 401) {
+      notifyAdminSessionExpired();
+    }
   }
 
   return parseResponse<T>(response);
+}
+
+function notifyAdminSessionExpired(): void {
+  if (sessionExpiryNotified) return;
+  sessionExpiryNotified = true;
+  clearAdminAccessToken();
+  sessionExpiredHandler?.();
 }
 
 export async function refreshAdminAccessToken<TUser = unknown>(): Promise<

@@ -1,6 +1,9 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -195,6 +198,10 @@ void main() {
         status: 'ACTIVE',
       ),
     );
+    final accountContexts = await _accountContexts(
+      authStorage,
+      [_context(AccountContextRole.owner)],
+    );
     final router = GoRouter(
       initialLocation: AppRouter.providerDashboard,
       routes: [
@@ -223,6 +230,9 @@ void main() {
           Provider<AuthStorage>.value(value: authStorage),
           Provider<AuthRepository>.value(value: authRepository),
           ChangeNotifierProvider<AuthController>.value(value: authController),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: accountContexts,
+          ),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -237,7 +247,7 @@ void main() {
   });
 
   testWidgets(
-    'provider dashboard opens for an authenticated provider account',
+    'provider dashboard opens from the selected active provider context',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
@@ -249,10 +259,14 @@ void main() {
         user: const SafeUser(
           id: 'provider-user',
           name: 'Provider User',
-          role: 'PROVIDER',
-          appRole: 'PROVIDER',
+          role: 'USER',
+          appRole: 'WEDDING_USER',
           status: 'ACTIVE',
         ),
+      );
+      final accountContexts = await _accountContexts(
+        authStorage,
+        [_context(AccountContextRole.provider)],
       );
       final router = GoRouter(
         initialLocation: AppRouter.providerDashboard,
@@ -274,6 +288,9 @@ void main() {
             Provider<AuthStorage>.value(value: authStorage),
             Provider<AuthRepository>.value(value: authRepository),
             ChangeNotifierProvider<AuthController>.value(value: authController),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: accountContexts,
+            ),
           ],
           child: MaterialApp.router(routerConfig: router),
         ),
@@ -285,6 +302,129 @@ void main() {
         find.byKey(const Key('provider-account-required-gate')),
         findsNothing,
       );
+    },
+  );
+
+  testWidgets(
+    'legacy provider role cannot open provider dashboard without a live context',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final authStorage = AuthStorage(preferences);
+      final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+      final authRepository = AuthRepository(apiClient, authStorage);
+      final authController = _AuthenticatedAuthController(
+        authRepository,
+        user: const SafeUser(
+          id: 'legacy-provider-user',
+          name: 'Legacy Provider',
+          role: 'PROVIDER',
+          appRole: 'PROVIDER',
+          status: 'ACTIVE',
+        ),
+      );
+      final accountContexts = await _accountContexts(authStorage, const []);
+      final router = GoRouter(
+        initialLocation: AppRouter.providerDashboard,
+        routes: [
+          GoRoute(
+            path: AppRouter.providerDashboard,
+            builder: (context, state) => ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              providerAccountRequired: true,
+              child: const Text('provider-dashboard-opened'),
+            ),
+          ),
+          GoRoute(
+            path: AppRouter.providerApply,
+            builder: (context, state) => const Text('apply'),
+          ),
+          GoRoute(
+            path: AppRouter.home,
+            builder: (context, state) => const Text('home'),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: authStorage),
+            Provider<AuthRepository>.value(value: authRepository),
+            ChangeNotifierProvider<AuthController>.value(value: authController),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: accountContexts,
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('provider-account-required-gate')),
+        findsOneWidget,
+      );
+      expect(find.text('provider-dashboard-opened'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'pending provider context cannot open operational provider routes',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final authStorage = AuthStorage(preferences);
+      final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+      final authRepository = AuthRepository(apiClient, authStorage);
+      final authController = _AuthenticatedAuthController(authRepository);
+      final accountContexts = await _accountContexts(
+        authStorage,
+        [_context(AccountContextRole.provider, lifecycle: 'PENDING')],
+      );
+      final router = GoRouter(
+        initialLocation: AppRouter.providerServiceNew,
+        routes: [
+          GoRoute(
+            path: AppRouter.providerServiceNew,
+            builder: (context, state) => ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              providerAccountRequired: true,
+              providerOperationsRequired: true,
+              child: const Text('service-form-opened'),
+            ),
+          ),
+          GoRoute(
+            path: AppRouter.providerApply,
+            builder: (context, state) => const Text('apply'),
+          ),
+          GoRoute(
+            path: AppRouter.home,
+            builder: (context, state) => const Text('home'),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: authStorage),
+            Provider<AuthRepository>.value(value: authRepository),
+            ChangeNotifierProvider<AuthController>.value(value: authController),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: accountContexts,
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('provider-account-required-gate')),
+        findsOneWidget,
+      );
+      expect(find.text('service-form-opened'), findsNothing);
     },
   );
 }
@@ -300,4 +440,77 @@ class _AuthenticatedAuthController extends AuthController {
 
   @override
   SafeUser? get user => _user;
+}
+
+Future<AccountContextController> _accountContexts(
+  AuthStorage storage,
+  List<AccountContext> contexts,
+) async {
+  final controller = AccountContextController(
+    contextsApi: _StaticContextsGateway(contexts),
+    authStorage: storage,
+    setActiveWeddingPlan: (_) async {},
+  );
+  await controller.refresh();
+  return controller;
+}
+
+class _StaticContextsGateway implements AccountContextsGateway {
+  const _StaticContextsGateway(this.contexts);
+
+  final List<AccountContext> contexts;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => contexts;
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async {
+    return contexts.firstWhere(
+      (context) => context.contextKey == contextKey,
+    );
+  }
+}
+
+AccountContext _context(
+  AccountContextRole role, {
+  String lifecycle = 'ACTIVE',
+}) {
+  final isProvider = role == AccountContextRole.provider;
+  final planId = isProvider ? null : 'plan-1';
+  final providerId = isProvider ? 'provider-1' : null;
+  final providerCanManage =
+      isProvider && lifecycle != 'SUSPENDED' && lifecycle != 'REJECTED';
+  final providerCanOperate = isProvider && lifecycle == 'ACTIVE';
+  final accessMode = isProvider && lifecycle != 'ACTIVE'
+      ? 'LIMITED'
+      : 'FULL';
+  return AccountContext.fromJson({
+    'contextKey': isProvider
+        ? 'provider:$providerId'
+        : 'plan:$planId:${role == AccountContextRole.owner ? 'owner' : 'contributor'}',
+    'role': role.name.toUpperCase(),
+    'weddingPlanId': planId,
+    'providerId': providerId,
+    'displayName': isProvider ? 'مزود الاختبار' : 'خطة الاختبار',
+    'lifecycle': isProvider ? lifecycle : 'PLANNING',
+    'accessMode': accessMode,
+    'capabilities': {
+      'canViewProviderProfile': isProvider,
+      'canManageProviderProfile': providerCanManage,
+      'canUseProviderOperations': providerCanOperate,
+    },
+    'permissions': {
+      'canViewPlan': !isProvider,
+      'canEditPlan': !isProvider,
+      'canManageTasks': !isProvider,
+      'canManageGuests': !isProvider,
+      'canManageProviders': !isProvider,
+      'canInviteMembers': !isProvider,
+      'canViewMoney': !isProvider,
+      'canManageMoney': !isProvider,
+      'canManageProviderProfile': providerCanManage,
+    },
+    'isAvailable': true,
+    'unavailableReason': null,
+  });
 }

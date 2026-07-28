@@ -133,10 +133,6 @@ export class WeddingCostsService {
     weddingPlanId: string,
     dto: CreateWeddingCostDto,
   ): Promise<WeddingCostResponse> {
-    await this.permissions.assertMoneyManageable(
-      weddingPlanId,
-      currentUser,
-    );
     const totalAmount = this.positiveAmount(dto.totalAmount, "totalAmount");
     const initialPayment = this.optionalAmount(
       dto.initialPaymentAmount,
@@ -149,52 +145,58 @@ export class WeddingCostsService {
     }
 
     try {
-      const cost = await runSerializableTransaction(
-        this.prisma,
-        async (tx) => {
-          const plan = await this.lockPlan(tx, weddingPlanId);
-          await this.assertCategory(tx, dto.budgetCategoryId, weddingPlanId);
-          const counterparty = await this.normalizeCounterparty(tx, {
+      const cost = await runSerializableTransaction(this.prisma, async (tx) => {
+        const context =
+          await this.permissions.assertMoneyManageableInTransaction(
+            tx,
             weddingPlanId,
-            planCurrency: plan.currency,
+            currentUser,
+          );
+        await this.lockCounterpartyReferences(tx, {
+          providerIds: [dto.providerId],
+          quoteOfferIds: [dto.quoteOfferId],
+        });
+        await this.assertCategory(tx, dto.budgetCategoryId, weddingPlanId);
+        const counterparty = await this.normalizeCounterparty(tx, {
+          weddingPlanId,
+          planCurrency: context.plan.currency,
+          totalAmount,
+          providerId: dto.providerId,
+          quoteOfferId: dto.quoteOfferId,
+          partyName: dto.partyName,
+          partyPhone: dto.partyPhone,
+        });
+        const created = await tx.weddingCost.create({
+          data: {
+            weddingPlanId,
+            budgetCategoryId: dto.budgetCategoryId.trim(),
+            ...counterparty,
+            title: this.requiredText(dto.title, "title"),
             totalAmount,
-            providerId: dto.providerId,
-            quoteOfferId: dto.quoteOfferId,
-            partyName: dto.partyName,
-            partyPhone: dto.partyPhone,
-          });
-          const created = await tx.weddingCost.create({
+            paidAmount: initialPayment,
+            agreementDate: this.optionalDate(
+              dto.agreementDate,
+              "agreementDate",
+            ),
+            status: this.deriveStatus(totalAmount, initialPayment),
+            note: this.optionalText(dto.note),
+          },
+        });
+        if (initialPayment.gt(0)) {
+          await tx.costPayment.create({
             data: {
-              weddingPlanId,
-              budgetCategoryId: dto.budgetCategoryId.trim(),
-              ...counterparty,
-              title: this.requiredText(dto.title, "title"),
-              totalAmount,
-              paidAmount: initialPayment,
-              agreementDate: this.optionalDate(
-                dto.agreementDate,
-                "agreementDate",
-              ),
-              status: this.deriveStatus(totalAmount, initialPayment),
-              note: this.optionalText(dto.note),
+              weddingCostId: created.id,
+              amount: initialPayment,
+              paidAt: created.agreementDate ?? new Date(),
+              note: "دفعة أولى",
             },
           });
-          if (initialPayment.gt(0)) {
-            await tx.costPayment.create({
-              data: {
-                weddingCostId: created.id,
-                amount: initialPayment,
-                paidAt: created.agreementDate ?? new Date(),
-                note: "دفعة أولى",
-              },
-            });
-          }
-          return tx.weddingCost.findUniqueOrThrow({
-            where: { id: created.id },
-            include: weddingCostResponseInclude,
-          });
-        },
-      );
+        }
+        return tx.weddingCost.findUniqueOrThrow({
+          where: { id: created.id },
+          include: weddingCostResponseInclude,
+        });
+      });
       if (initialPayment.gt(0)) paymentsRecordedTotal.inc();
       return toWeddingCostResponse(cost);
     } catch (error) {
@@ -270,81 +272,113 @@ export class WeddingCostsService {
     dto: UpdateWeddingCostDto,
   ): Promise<WeddingCostResponse> {
     const current = await this.costOrThrow(id);
-    const access = await this.permissions.assertMoneyManageable(
-      current.weddingPlanId,
-      currentUser,
-    );
-    if (current.status === WeddingCostStatus.CANCELLED) {
-      throw new ConflictException("Cancelled costs cannot be edited");
-    }
 
     try {
-      return await runSerializableTransaction(
-        this.prisma,
-        async (tx) => {
-          const locked = await this.lockCost(tx, id);
-          if (locked.status === WeddingCostStatus.CANCELLED) {
-            throw new ConflictException("Cancelled costs cannot be edited");
-          }
-          const totalAmount =
-            dto.totalAmount === undefined
-              ? locked.totalAmount
-              : this.positiveAmount(dto.totalAmount, "totalAmount");
-          if (totalAmount.lt(locked.paidAmount)) {
-            throw new BadRequestException(
-              "totalAmount cannot be less than paidAmount",
-            );
-          }
-          const budgetCategoryId =
-            dto.budgetCategoryId === undefined
-              ? locked.budgetCategoryId
-              : dto.budgetCategoryId.trim();
-          await this.assertCategory(tx, budgetCategoryId, locked.weddingPlanId);
-          const counterparty = await this.normalizeCounterparty(tx, {
-            weddingPlanId: locked.weddingPlanId,
-            planCurrency: access.plan.currency,
+      return await runSerializableTransaction(this.prisma, async (tx) => {
+        const context =
+          await this.permissions.assertMoneyManageableInTransaction(
+            tx,
+            current.weddingPlanId,
+            currentUser,
+          );
+        const snapshot = await tx.weddingCost.findUnique({ where: { id } });
+        if (
+          !snapshot ||
+          snapshot.weddingPlanId !== current.weddingPlanId
+        ) {
+          throw new NotFoundException("Wedding cost not found");
+        }
+        const targetProviderId =
+          dto.providerId === undefined ? snapshot.providerId : dto.providerId;
+        const targetQuoteOfferId =
+          dto.quoteOfferId === undefined
+            ? snapshot.quoteOfferId
+            : dto.quoteOfferId;
+        await this.lockCounterpartyReferences(tx, {
+          providerIds: [snapshot.providerId, targetProviderId],
+          quoteOfferIds: [snapshot.quoteOfferId, targetQuoteOfferId],
+        });
+        const targetBudgetCategoryId =
+          dto.budgetCategoryId === undefined
+            ? snapshot.budgetCategoryId
+            : dto.budgetCategoryId.trim();
+        await this.assertCategory(
+          tx,
+          targetBudgetCategoryId,
+          snapshot.weddingPlanId,
+          [snapshot.budgetCategoryId],
+        );
+        const locked = await this.lockCost(tx, id);
+        if (
+          locked.weddingPlanId !== snapshot.weddingPlanId ||
+          locked.budgetCategoryId !== snapshot.budgetCategoryId ||
+          locked.providerId !== snapshot.providerId ||
+          locked.quoteOfferId !== snapshot.quoteOfferId
+        ) {
+          throw new ConflictException(
+            "Wedding cost references changed concurrently; retry the request",
+          );
+        }
+        if (locked.status === WeddingCostStatus.CANCELLED) {
+          throw new ConflictException("Cancelled costs cannot be edited");
+        }
+        const totalAmount =
+          dto.totalAmount === undefined
+            ? locked.totalAmount
+            : this.positiveAmount(dto.totalAmount, "totalAmount");
+        if (totalAmount.lt(locked.paidAmount)) {
+          throw new BadRequestException(
+            "totalAmount cannot be less than paidAmount",
+          );
+        }
+        const budgetCategoryId =
+          dto.budgetCategoryId === undefined
+            ? locked.budgetCategoryId
+            : dto.budgetCategoryId.trim();
+        const counterparty = await this.normalizeCounterparty(tx, {
+          weddingPlanId: locked.weddingPlanId,
+          planCurrency: context.plan.currency,
+          totalAmount,
+          providerId:
+            dto.providerId === undefined ? locked.providerId : dto.providerId,
+          quoteOfferId:
+            dto.quoteOfferId === undefined
+              ? locked.quoteOfferId
+              : dto.quoteOfferId,
+          partyName:
+            dto.partyName === undefined ? locked.partyName : dto.partyName,
+          partyPhone:
+            dto.partyPhone === undefined ? locked.partyPhone : dto.partyPhone,
+          currentCostId: id,
+        });
+        const status = this.deriveStatus(totalAmount, locked.paidAmount);
+        const updated = await tx.weddingCost.update({
+          where: { id },
+          data: {
+            budgetCategoryId,
+            ...counterparty,
+            ...(dto.title === undefined
+              ? {}
+              : { title: this.requiredText(dto.title, "title") }),
             totalAmount,
-            providerId:
-              dto.providerId === undefined ? locked.providerId : dto.providerId,
-            quoteOfferId:
-              dto.quoteOfferId === undefined
-                ? locked.quoteOfferId
-                : dto.quoteOfferId,
-            partyName:
-              dto.partyName === undefined ? locked.partyName : dto.partyName,
-            partyPhone:
-              dto.partyPhone === undefined ? locked.partyPhone : dto.partyPhone,
-            currentCostId: id,
-          });
-          const status = this.deriveStatus(totalAmount, locked.paidAmount);
-          const updated = await tx.weddingCost.update({
-            where: { id },
-            data: {
-              budgetCategoryId,
-              ...counterparty,
-              ...(dto.title === undefined
-                ? {}
-                : { title: this.requiredText(dto.title, "title") }),
-              totalAmount,
-              status,
-              ...(dto.agreementDate === undefined
-                ? {}
-                : {
-                    agreementDate: this.optionalDate(
-                      dto.agreementDate,
-                      "agreementDate",
-                    ),
-                  }),
-              ...(dto.note === undefined
-                ? {}
-                : { note: this.optionalText(dto.note) }),
-            },
-            include: weddingCostResponseInclude,
-          });
-          await this.cancelPendingSchedulesWhenPaid(tx, id, status);
-          return toWeddingCostResponse(updated);
-        },
-      );
+            status,
+            ...(dto.agreementDate === undefined
+              ? {}
+              : {
+                  agreementDate: this.optionalDate(
+                    dto.agreementDate,
+                    "agreementDate",
+                  ),
+                }),
+            ...(dto.note === undefined
+              ? {}
+              : { note: this.optionalText(dto.note) }),
+          },
+          include: weddingCostResponseInclude,
+        });
+        await this.cancelPendingSchedulesWhenPaid(tx, id, status);
+        return toWeddingCostResponse(updated);
+      });
     } catch (error) {
       this.rethrowKnownPrismaError(error);
     }
@@ -355,11 +389,12 @@ export class WeddingCostsService {
     id: string,
   ): Promise<{ deleted: true }> {
     const current = await this.costOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingPlanId,
-      currentUser,
-    );
-    await this.prisma.$transaction(async (tx) => {
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingPlanId,
+        currentUser,
+      );
       const locked = await this.lockCost(tx, id);
       const paymentsCount = await tx.costPayment.count({
         where: { weddingCostId: id },
@@ -379,11 +414,12 @@ export class WeddingCostsService {
     id: string,
   ): Promise<WeddingCostResponse> {
     const current = await this.costOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingPlanId,
-      currentUser,
-    );
-    return this.prisma.$transaction(async (tx) => {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingPlanId,
+        currentUser,
+      );
       const locked = await this.lockCost(tx, id);
       if (locked.status === WeddingCostStatus.CANCELLED) {
         return toWeddingCostResponse(
@@ -417,14 +453,15 @@ export class WeddingCostsService {
     dto: CreateCostPaymentDto,
   ): Promise<CostPaymentResponse> {
     const current = await this.costOrThrow(costId);
-    await this.permissions.assertMoneyManageable(
-      current.weddingPlanId,
-      currentUser,
-    );
-    const amount = this.positiveAmount(dto.amount, "amount");
     const response = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
+        await this.permissions.assertMoneyManageableInTransaction(
+          tx,
+          current.weddingPlanId,
+          currentUser,
+        );
+        const amount = this.positiveAmount(dto.amount, "amount");
         const cost = await this.lockCost(tx, costId);
         this.assertCostPayable(cost.status);
         const remaining = cost.totalAmount.minus(cost.paidAmount);
@@ -522,57 +559,55 @@ export class WeddingCostsService {
     dto: ReverseCostPaymentDto,
   ): Promise<CostPaymentResponse> {
     const current = await this.paymentOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingCost.weddingPlanId,
-      currentUser,
-    );
-    return runSerializableTransaction(
-      this.prisma,
-      async (tx) => {
-        const cost = await this.lockCost(tx, current.weddingCostId);
-        await this.lockPayment(tx, id);
-        const payment = await tx.costPayment.findUnique({
-          where: { id },
-          include: paymentInclude,
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingCost.weddingPlanId,
+        currentUser,
+      );
+      const cost = await this.lockCost(tx, current.weddingCostId);
+      await this.lockPayment(tx, id);
+      const payment = await tx.costPayment.findUnique({
+        where: { id },
+        include: paymentInclude,
+      });
+      if (!payment) throw new NotFoundException("Cost payment not found");
+      if (payment.entryType !== CostPaymentType.PAYMENT) {
+        throw new ConflictException("A reversal entry cannot be reversed");
+      }
+      if (payment.reversedBy) {
+        throw new ConflictException("Payment has already been reversed");
+      }
+      if (payment.amount.gt(cost.paidAmount)) {
+        throw new ConflictException("Payment ledger is inconsistent");
+      }
+      const paidAmount = cost.paidAmount.minus(payment.amount);
+      const reversal = await tx.costPayment.create({
+        data: {
+          weddingCostId: cost.id,
+          amount: payment.amount,
+          entryType: CostPaymentType.REVERSAL,
+          paidAt: new Date(),
+          reversalOfId: payment.id,
+          note: this.requiredText(dto.reason, "reason"),
+        },
+        include: paymentInclude,
+      });
+      await tx.weddingCost.update({
+        where: { id: cost.id },
+        data: {
+          paidAmount,
+          status: this.deriveStatus(cost.totalAmount, paidAmount),
+        },
+      });
+      if (payment.paymentScheduleId) {
+        await tx.paymentSchedule.update({
+          where: { id: payment.paymentScheduleId },
+          data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
         });
-        if (!payment) throw new NotFoundException("Cost payment not found");
-        if (payment.entryType !== CostPaymentType.PAYMENT) {
-          throw new ConflictException("A reversal entry cannot be reversed");
-        }
-        if (payment.reversedBy) {
-          throw new ConflictException("Payment has already been reversed");
-        }
-        if (payment.amount.gt(cost.paidAmount)) {
-          throw new ConflictException("Payment ledger is inconsistent");
-        }
-        const paidAmount = cost.paidAmount.minus(payment.amount);
-        const reversal = await tx.costPayment.create({
-          data: {
-            weddingCostId: cost.id,
-            amount: payment.amount,
-            entryType: CostPaymentType.REVERSAL,
-            paidAt: new Date(),
-            reversalOfId: payment.id,
-            note: this.requiredText(dto.reason, "reason"),
-          },
-          include: paymentInclude,
-        });
-        await tx.weddingCost.update({
-          where: { id: cost.id },
-          data: {
-            paidAmount,
-            status: this.deriveStatus(cost.totalAmount, paidAmount),
-          },
-        });
-        if (payment.paymentScheduleId) {
-          await tx.paymentSchedule.update({
-            where: { id: payment.paymentScheduleId },
-            data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
-          });
-        }
-        return this.paymentResponse(reversal);
-      },
-    );
+      }
+      return this.paymentResponse(reversal);
+    });
   }
 
   async createSchedule(
@@ -581,33 +616,31 @@ export class WeddingCostsService {
     dto: CreatePaymentScheduleDto,
   ): Promise<PaymentScheduleResponse> {
     const current = await this.costOrThrow(costId);
-    await this.permissions.assertMoneyManageable(
-      current.weddingPlanId,
-      currentUser,
-    );
-    const amount = this.positiveAmount(dto.amount, "amount");
-    return runSerializableTransaction(
-      this.prisma,
-      async (tx) => {
-        const cost = await this.lockCost(tx, costId);
-        this.assertCostPayable(cost.status);
-        if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
-          throw new BadRequestException(
-            "Payment schedule amount cannot exceed the remaining cost",
-          );
-        }
-        const schedule = await tx.paymentSchedule.create({
-          data: {
-            weddingCostId: costId,
-            amount,
-            dueDate: this.requiredDate(dto.dueDate, "dueDate"),
-            note: this.optionalText(dto.note),
-          },
-          include: scheduleInclude,
-        });
-        return this.scheduleResponse(schedule);
-      },
-    );
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingPlanId,
+        currentUser,
+      );
+      const amount = this.positiveAmount(dto.amount, "amount");
+      const cost = await this.lockCost(tx, costId);
+      this.assertCostPayable(cost.status);
+      if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
+        throw new BadRequestException(
+          "Payment schedule amount cannot exceed the remaining cost",
+        );
+      }
+      const schedule = await tx.paymentSchedule.create({
+        data: {
+          weddingCostId: costId,
+          amount,
+          dueDate: this.requiredDate(dto.dueDate, "dueDate"),
+          note: this.optionalText(dto.note),
+        },
+        include: scheduleInclude,
+      });
+      return this.scheduleResponse(schedule);
+    });
   }
 
   async listSchedulesForCost(
@@ -653,57 +686,55 @@ export class WeddingCostsService {
     dto: UpdatePaymentScheduleDto,
   ): Promise<PaymentScheduleResponse> {
     const current = await this.scheduleOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingCost.weddingPlanId,
-      currentUser,
-    );
-    return runSerializableTransaction(
-      this.prisma,
-      async (tx) => {
-        const cost = await this.lockCost(tx, current.weddingCostId);
-        await this.lockSchedule(tx, id);
-        const schedule = await tx.paymentSchedule.findUniqueOrThrow({
-          where: { id },
-        });
-        if (schedule.status !== PaymentScheduleStatus.PENDING) {
-          throw new ConflictException(
-            "Only pending payment schedules can be edited",
-          );
-        }
-        const paymentHistory = await tx.costPayment.count({
-          where: { paymentScheduleId: id },
-        });
-        if (paymentHistory > 0 && dto.amount !== undefined) {
-          throw new ConflictException(
-            "The amount of a payment schedule with ledger history cannot be changed",
-          );
-        }
-        const amount =
-          dto.amount === undefined
-            ? schedule.amount
-            : this.positiveAmount(dto.amount, "amount");
-        this.assertCostPayable(cost.status);
-        if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
-          throw new BadRequestException(
-            "Payment schedule amount cannot exceed the remaining cost",
-          );
-        }
-        const updated = await tx.paymentSchedule.update({
-          where: { id },
-          data: {
-            amount,
-            ...(dto.dueDate === undefined
-              ? {}
-              : { dueDate: this.requiredDate(dto.dueDate, "dueDate") }),
-            ...(dto.note === undefined
-              ? {}
-              : { note: this.optionalText(dto.note) }),
-          },
-          include: scheduleInclude,
-        });
-        return this.scheduleResponse(updated);
-      },
-    );
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingCost.weddingPlanId,
+        currentUser,
+      );
+      const cost = await this.lockCost(tx, current.weddingCostId);
+      await this.lockSchedule(tx, id);
+      const schedule = await tx.paymentSchedule.findUniqueOrThrow({
+        where: { id },
+      });
+      if (schedule.status !== PaymentScheduleStatus.PENDING) {
+        throw new ConflictException(
+          "Only pending payment schedules can be edited",
+        );
+      }
+      const paymentHistory = await tx.costPayment.count({
+        where: { paymentScheduleId: id },
+      });
+      if (paymentHistory > 0 && dto.amount !== undefined) {
+        throw new ConflictException(
+          "The amount of a payment schedule with ledger history cannot be changed",
+        );
+      }
+      const amount =
+        dto.amount === undefined
+          ? schedule.amount
+          : this.positiveAmount(dto.amount, "amount");
+      this.assertCostPayable(cost.status);
+      if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
+        throw new BadRequestException(
+          "Payment schedule amount cannot exceed the remaining cost",
+        );
+      }
+      const updated = await tx.paymentSchedule.update({
+        where: { id },
+        data: {
+          amount,
+          ...(dto.dueDate === undefined
+            ? {}
+            : { dueDate: this.requiredDate(dto.dueDate, "dueDate") }),
+          ...(dto.note === undefined
+            ? {}
+            : { note: this.optionalText(dto.note) }),
+        },
+        include: scheduleInclude,
+      });
+      return this.scheduleResponse(updated);
+    });
   }
 
   async deleteSchedule(
@@ -711,11 +742,12 @@ export class WeddingCostsService {
     id: string,
   ): Promise<{ deleted: true }> {
     const current = await this.scheduleOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingCost.weddingPlanId,
-      currentUser,
-    );
-    await this.prisma.$transaction(async (tx) => {
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingCost.weddingPlanId,
+        currentUser,
+      );
       await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
       const schedule = await tx.paymentSchedule.findUniqueOrThrow({
@@ -744,11 +776,12 @@ export class WeddingCostsService {
     id: string,
   ): Promise<PaymentScheduleResponse> {
     const current = await this.scheduleOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingCost.weddingPlanId,
-      currentUser,
-    );
     return runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingCost.weddingPlanId,
+        currentUser,
+      );
       await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
       const schedule = await tx.paymentSchedule.findUniqueOrThrow({
@@ -795,101 +828,98 @@ export class WeddingCostsService {
     dto: PayPaymentScheduleDto,
   ): Promise<SchedulePaymentResponse> {
     const current = await this.scheduleOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      current.weddingCost.weddingPlanId,
-      currentUser,
-    );
-    const result = await runSerializableTransaction(
-      this.prisma,
-      async (tx) => {
-        const cost = await this.lockCost(tx, current.weddingCostId);
-        await this.lockSchedule(tx, id);
-        const schedule = await tx.paymentSchedule.findUnique({ where: { id } });
-        if (!schedule)
-          throw new NotFoundException("Payment schedule not found");
-        if (schedule.status === PaymentScheduleStatus.PAID) {
-          const existing = await tx.costPayment.findFirst({
-            where: {
-              paymentScheduleId: id,
-              entryType: CostPaymentType.PAYMENT,
-              reversedBy: null,
-            },
-            include: paymentInclude,
-            orderBy: { createdAt: "desc" },
-          });
-          if (!existing)
-            throw new ConflictException(
-              "Payment schedule ledger is inconsistent",
-            );
-          const paidSchedule = await tx.paymentSchedule.findUniqueOrThrow({
-            where: { id },
-            include: scheduleInclude,
-          });
-          return {
-            payment: this.paymentResponse(existing),
-            schedule: this.scheduleResponse(paidSchedule),
-            created: false,
-          };
-        }
-        if (schedule.status !== PaymentScheduleStatus.PENDING) {
-          throw new ConflictException(
-            "Cancelled payment schedules cannot be paid",
-          );
-        }
-        const activePayment = await tx.costPayment.findFirst({
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        current.weddingCost.weddingPlanId,
+        currentUser,
+      );
+      const cost = await this.lockCost(tx, current.weddingCostId);
+      await this.lockSchedule(tx, id);
+      const schedule = await tx.paymentSchedule.findUnique({ where: { id } });
+      if (!schedule) throw new NotFoundException("Payment schedule not found");
+      if (schedule.status === PaymentScheduleStatus.PAID) {
+        const existing = await tx.costPayment.findFirst({
           where: {
             paymentScheduleId: id,
             entryType: CostPaymentType.PAYMENT,
             reversedBy: null,
           },
-          select: { id: true },
-        });
-        if (activePayment) {
-          throw new ConflictException(
-            "Payment schedule already has an active payment",
-          );
-        }
-        this.assertCostPayable(cost.status);
-        const remaining = cost.totalAmount.minus(cost.paidAmount);
-        if (schedule.amount.gt(remaining)) {
-          throw new BadRequestException(
-            "Scheduled payment exceeds the remaining cost",
-          );
-        }
-        const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
-        const payment = await tx.costPayment.create({
-          data: {
-            weddingCostId: cost.id,
-            paymentScheduleId: schedule.id,
-            amount: schedule.amount,
-            paidAt,
-            method: this.optionalText(dto.method),
-            note: this.optionalText(dto.note) ?? schedule.note,
-          },
           include: paymentInclude,
+          orderBy: { createdAt: "desc" },
         });
-        const paidSchedule = await tx.paymentSchedule.update({
+        if (!existing)
+          throw new ConflictException(
+            "Payment schedule ledger is inconsistent",
+          );
+        const paidSchedule = await tx.paymentSchedule.findUniqueOrThrow({
           where: { id },
-          data: { status: PaymentScheduleStatus.PAID, paidAt },
           include: scheduleInclude,
         });
-        const paidAmount = cost.paidAmount.plus(schedule.amount);
-        const status = this.deriveStatus(cost.totalAmount, paidAmount);
-        await tx.weddingCost.update({
-          where: { id: cost.id },
-          data: {
-            paidAmount,
-            status,
-          },
-        });
-        await this.cancelPendingSchedulesWhenPaid(tx, cost.id, status);
         return {
-          payment: this.paymentResponse(payment),
+          payment: this.paymentResponse(existing),
           schedule: this.scheduleResponse(paidSchedule),
-          created: true,
+          created: false,
         };
-      },
-    );
+      }
+      if (schedule.status !== PaymentScheduleStatus.PENDING) {
+        throw new ConflictException(
+          "Cancelled payment schedules cannot be paid",
+        );
+      }
+      const activePayment = await tx.costPayment.findFirst({
+        where: {
+          paymentScheduleId: id,
+          entryType: CostPaymentType.PAYMENT,
+          reversedBy: null,
+        },
+        select: { id: true },
+      });
+      if (activePayment) {
+        throw new ConflictException(
+          "Payment schedule already has an active payment",
+        );
+      }
+      this.assertCostPayable(cost.status);
+      const remaining = cost.totalAmount.minus(cost.paidAmount);
+      if (schedule.amount.gt(remaining)) {
+        throw new BadRequestException(
+          "Scheduled payment exceeds the remaining cost",
+        );
+      }
+      const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
+      const payment = await tx.costPayment.create({
+        data: {
+          weddingCostId: cost.id,
+          paymentScheduleId: schedule.id,
+          amount: schedule.amount,
+          paidAt,
+          method: this.optionalText(dto.method),
+          note: this.optionalText(dto.note) ?? schedule.note,
+        },
+        include: paymentInclude,
+      });
+      const paidSchedule = await tx.paymentSchedule.update({
+        where: { id },
+        data: { status: PaymentScheduleStatus.PAID, paidAt },
+        include: scheduleInclude,
+      });
+      const paidAmount = cost.paidAmount.plus(schedule.amount);
+      const status = this.deriveStatus(cost.totalAmount, paidAmount);
+      await tx.weddingCost.update({
+        where: { id: cost.id },
+        data: {
+          paidAmount,
+          status,
+        },
+      });
+      await this.cancelPendingSchedulesWhenPaid(tx, cost.id, status);
+      return {
+        payment: this.paymentResponse(payment),
+        schedule: this.scheduleResponse(paidSchedule),
+        created: true,
+      };
+    });
     if (result.created) paymentsRecordedTotal.inc();
     return { payment: result.payment, schedule: result.schedule };
   }
@@ -972,21 +1002,95 @@ export class WeddingCostsService {
     return { providerId, quoteOfferId, partyName, partyPhone };
   }
 
-  private async lockPlan(tx: Tx, id: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "WeddingPlan" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (rows.length === 0)
-      throw new NotFoundException("Wedding plan not found");
-    return tx.weddingPlan.findUniqueOrThrow({ where: { id } });
+  private async lockCounterpartyReferences(
+    tx: Tx,
+    input: {
+      providerIds: Array<string | null | undefined>;
+      quoteOfferIds: Array<string | null | undefined>;
+    },
+  ) {
+    const quoteOfferIds = [
+      ...new Set(
+        input.quoteOfferIds
+          .map((id) => this.optionalText(id))
+          .filter((id): id is string => id !== null),
+      ),
+    ].sort();
+    const discoveredOffers =
+      quoteOfferIds.length === 0
+        ? []
+        : await tx.quoteOffer.findMany({
+            where: { id: { in: quoteOfferIds } },
+            select: { id: true, providerId: true },
+          });
+    const providerIds = [
+      ...new Set(
+        [
+          ...input.providerIds.map((id) => this.optionalText(id)),
+          ...discoveredOffers.map((offer) => offer.providerId),
+        ].filter((id): id is string => id !== null),
+      ),
+    ].sort();
+
+    if (providerIds.length > 0) {
+      await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "Provider"
+          WHERE "id" IN (${Prisma.join(providerIds)})
+          ORDER BY "id" ASC
+          FOR SHARE
+        `,
+      );
+    }
+    if (quoteOfferIds.length > 0) {
+      const lockedOffers = await tx.$queryRaw<
+        Array<{ id: string; providerId: string }>
+      >(
+        Prisma.sql`
+          SELECT "id", "providerId"
+          FROM "QuoteOffer"
+          WHERE "id" IN (${Prisma.join(quoteOfferIds)})
+          ORDER BY "id" ASC
+          FOR UPDATE
+        `,
+      );
+      const lockedProviderByOffer = new Map(
+        lockedOffers.map((offer) => [offer.id, offer.providerId]),
+      );
+      for (const discovered of discoveredOffers) {
+        if (
+          lockedProviderByOffer.get(discovered.id) !== discovered.providerId
+        ) {
+          throw new ConflictException(
+            "Quote offer references changed concurrently; retry the request",
+          );
+        }
+      }
+    }
   }
 
-  private async assertCategory(tx: Tx, id: string, weddingPlanId: string) {
-    const category = await tx.budgetCategory.findFirst({
-      where: { id: id.trim(), weddingPlanId },
-      select: { id: true },
-    });
-    if (!category)
+  private async assertCategory(
+    tx: Tx,
+    id: string,
+    weddingPlanId: string,
+    additionalIds: string[] = [],
+  ) {
+    const normalizedId = id.trim();
+    const orderedIds = [
+      ...new Set([normalizedId, ...additionalIds.map((item) => item.trim())]),
+    ].sort();
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "BudgetCategory"
+        WHERE "id" IN (${Prisma.join(orderedIds)})
+          AND "weddingPlanId" = ${weddingPlanId}
+        ORDER BY "id" ASC
+        FOR SHARE
+      `,
+    );
+    if (!rows.some((row) => row.id === normalizedId))
       throw new BadRequestException(
         "budgetCategoryId is invalid for this plan",
       );

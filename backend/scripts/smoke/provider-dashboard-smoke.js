@@ -17,7 +17,12 @@ const {
 configureSmokeDatabaseUrl();
 
 const http = require('http');
-const { PrismaClient, ProviderStatus } = require('@prisma/client');
+const {
+  NotificationPriority,
+  NotificationType,
+  PrismaClient,
+  ProviderStatus,
+} = require('@prisma/client');
 const { uploadVerifiedImage } = require('./verified-media-upload');
 
 const prisma = new PrismaClient();
@@ -63,9 +68,13 @@ function request(method, path, body, token) {
         });
         res.on('end', () => {
           try {
-            resolve({ status: res.statusCode, body: JSON.parse(data) });
+            resolve({
+              status: res.statusCode,
+              body: JSON.parse(data),
+              headers: res.headers,
+            });
           } catch {
-            resolve({ status: res.statusCode, body: data });
+            resolve({ status: res.statusCode, body: data, headers: res.headers });
           }
         });
       },
@@ -138,8 +147,11 @@ async function run() {
   let imageId = null;
   let packageId = null;
   let quoteId = null;
+  let conversationId = null;
   let offerId = null;
   let reviewId = null;
+  let providerQuoteNotificationId = null;
+  let generalNotificationId = null;
 
   {
     const res = await register('Provider Smoke User', PROVIDER_PHONE);
@@ -180,6 +192,37 @@ async function run() {
     check('PATCH /api/v1/provider/me/profile - HTTP 200', res.status === 200);
     check('provider ownerName updated', res.body?.ownerName === 'مالك سموك');
   }
+
+  {
+    const res = await request('GET', '/api/v1/provider/me/summary', null, providerToken);
+    check('PENDING provider summary is denied - HTTP 403', res.status === 403);
+    check('PENDING provider summary uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+  }
+
+  {
+    const res = await request('GET', '/api/v1/provider/me/services', null, providerToken);
+    check('PENDING provider services are denied - HTTP 403', res.status === 403);
+    check('PENDING provider services use PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+  }
+
+  {
+    const res = await request('POST', '/api/v1/provider/me/services', {
+      categoryId: reference.category.id,
+      title: 'Pending provider service must not persist',
+      basePrice: '125000',
+    }, providerToken);
+    check('PENDING provider service create is denied - HTTP 403', res.status === 403);
+    check('PENDING provider service create uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+    check(
+      'PENDING provider service create writes nothing',
+      await prisma.providerService.count({ where: { providerId } }) === 0,
+    );
+  }
+
+  await prisma.provider.update({
+    where: { id: providerId },
+    data: { status: ProviderStatus.ACTIVE },
+  });
 
   {
     const res = await request('GET', '/api/v1/provider/me/summary', null, providerToken);
@@ -327,11 +370,6 @@ async function run() {
     check('package title updated', res.body?.title === 'باقة لوحة المزود المحدثة');
   }
 
-  await prisma.provider.update({
-    where: { id: providerId },
-    data: { status: ProviderStatus.ACTIVE },
-  });
-
   {
     const res = await register('Provider Customer Smoke User', CUSTOMER_PHONE);
     check('customer register - HTTP 201', res.status === 201);
@@ -348,6 +386,91 @@ async function run() {
     check('customer creates quote for provider - HTTP 201', res.status === 201);
     check('quote providerId matches', res.body?.providerId === providerId);
     quoteId = res.body?.id;
+    const storedQuote = quoteId
+      ? await prisma.quoteRequest.findUnique({
+          where: { id: quoteId },
+          select: { conversationId: true },
+        })
+      : null;
+    conversationId = storedQuote?.conversationId ?? null;
+    check(
+      'quote has a durable provider conversation',
+      typeof conversationId === 'string',
+    );
+  }
+
+  {
+    const providerQuoteNotification = await prisma.notification.findFirst({
+      where: {
+        userId: providerUserId,
+        entityType: 'quote_request',
+        entityId: quoteId,
+        routeTarget: '/provider/dashboard',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    check(
+      'active provider receives the quote notification',
+      typeof providerQuoteNotification?.id === 'string',
+    );
+    check(
+      'provider quote notification is explicitly provider-scoped',
+      providerQuoteNotification?.data?.recipientAudience === 'PROVIDER',
+    );
+    const serializedProviderQuoteNotification = JSON.stringify(
+      providerQuoteNotification ?? {},
+    );
+    check(
+      'provider quote notification does not duplicate customer name',
+      !serializedProviderQuoteNotification.includes(
+        'Provider Customer Smoke User',
+      ),
+    );
+    check(
+      'provider quote notification does not duplicate customer phone',
+      !serializedProviderQuoteNotification.includes(CUSTOMER_PHONE),
+    );
+    check(
+      'provider quote notification does not duplicate quote message',
+      !serializedProviderQuoteNotification.includes(
+        'Provider dashboard quote smoke',
+      ),
+    );
+    providerQuoteNotificationId = providerQuoteNotification?.id ?? null;
+
+    const generalNotification = await prisma.notification.create({
+      data: {
+        userId: providerUserId,
+        type: NotificationType.GENERAL,
+        priority: NotificationPriority.NORMAL,
+        title: 'Provider multi-context smoke',
+        body: 'This account notification must survive provider suspension.',
+        dedupeKey: `${providerUserId}:provider-dashboard-general:${suffix}`,
+      },
+    });
+    generalNotificationId = generalNotification.id;
+  }
+
+  {
+    const res = await request(
+      'GET',
+      '/api/v1/notifications?limit=50',
+      null,
+      providerToken,
+    );
+    check('ACTIVE provider notifications - HTTP 200', res.status === 200);
+    check(
+      'ACTIVE provider notification list includes quote alert',
+      res.body?.items?.some(
+        (notification) => notification.id === providerQuoteNotificationId,
+      ) === true,
+    );
+    check(
+      'ACTIVE provider notification list includes general account alert',
+      res.body?.items?.some(
+        (notification) => notification.id === generalNotificationId,
+      ) === true,
+    );
   }
 
   {
@@ -433,6 +556,142 @@ async function run() {
     const res = await request('DELETE', `/api/v1/provider/me/services/${serviceId}`, null, providerToken);
     check('DELETE /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
     check('service deactivated', res.body?.isActive === false);
+  }
+
+  await prisma.provider.update({
+    where: { id: providerId },
+    data: { status: ProviderStatus.SUSPENDED },
+  });
+
+  {
+    const res = await request('GET', '/api/v1/provider/me/profile', null, providerToken);
+    check('SUSPENDED provider profile remains readable - HTTP 200', res.status === 200);
+    check('SUSPENDED provider profile exposes current status', res.body?.status === 'SUSPENDED');
+  }
+
+  {
+    const res = await request('PATCH', '/api/v1/provider/me/profile', {
+      ownerName: 'Suspended provider must not update',
+    }, providerToken);
+    check('SUSPENDED provider profile update is denied - HTTP 403', res.status === 403);
+    check(
+      'SUSPENDED provider profile update uses PROVIDER_PROFILE_READ_ONLY',
+      res.body?.code === 'PROVIDER_PROFILE_READ_ONLY',
+    );
+  }
+
+  {
+    const res = await request('GET', '/api/v1/provider/me/summary', null, providerToken);
+    check('SUSPENDED provider summary is denied - HTTP 403', res.status === 403);
+    check('SUSPENDED provider summary uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+  }
+
+  {
+    const res = await request('GET', '/api/v1/provider/me/quote-requests', null, providerToken);
+    check('SUSPENDED provider quote data is denied - HTTP 403', res.status === 403);
+    check('SUSPENDED provider quote data uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+  }
+
+  {
+    const res = await request(
+      'GET',
+      '/api/v1/notifications?limit=50',
+      null,
+      providerToken,
+    );
+    check('SUSPENDED provider notification list - HTTP 200', res.status === 200);
+    check(
+      'notification inbox disables shared/browser caching',
+      res.headers?.['cache-control'] === 'private, no-store',
+    );
+    check(
+      'SUSPENDED provider notification list hides provider quote alert',
+      res.body?.items?.every(
+        (notification) => notification.id !== providerQuoteNotificationId,
+      ) === true,
+    );
+    check(
+      'SUSPENDED provider notification list preserves general account alert',
+      res.body?.items?.some(
+        (notification) => notification.id === generalNotificationId,
+      ) === true,
+    );
+  }
+
+  if (providerQuoteNotificationId) {
+    const res = await request(
+      'GET',
+      `/api/v1/notifications/${providerQuoteNotificationId}`,
+      null,
+      providerToken,
+    );
+    check(
+      'SUSPENDED provider cannot open hidden quote notification - HTTP 403',
+      res.status === 403,
+    );
+    check(
+      'hidden provider quote notification uses PROVIDER_NOT_ACTIVE',
+      res.body?.code === 'PROVIDER_NOT_ACTIVE',
+    );
+  }
+
+  {
+    const res = await request(
+      'PATCH',
+      '/api/v1/notifications/read-all',
+      null,
+      providerToken,
+    );
+    check('SUSPENDED provider mark visible notifications read - HTTP 200', res.status === 200);
+    const [providerQuoteNotification, generalNotification] = await Promise.all([
+      providerQuoteNotificationId
+        ? prisma.notification.findUnique({
+            where: { id: providerQuoteNotificationId },
+          })
+        : null,
+      generalNotificationId
+        ? prisma.notification.findUnique({ where: { id: generalNotificationId } })
+        : null,
+    ]);
+    check(
+      'bulk read does not mutate hidden provider quote notification',
+      providerQuoteNotification?.readAt === null,
+    );
+    check(
+      'bulk read still mutates visible general account notification',
+      generalNotification?.readAt instanceof Date,
+    );
+  }
+
+  if (conversationId) {
+    const listRes = await request(
+      'GET',
+      '/api/v1/conversations',
+      null,
+      providerToken,
+    );
+    check('SUSPENDED provider conversation list - HTTP 200', listRes.status === 200);
+    check(
+      'SUSPENDED provider inbox excludes provider-side conversation',
+      listRes.body?.items?.every(
+        (conversation) => conversation.id !== conversationId,
+      ) === true,
+    );
+
+    const directRes = await request(
+      'GET',
+      `/api/v1/conversations/${conversationId}`,
+      null,
+      providerToken,
+    );
+    check(
+      'SUSPENDED provider direct conversation read - HTTP 403',
+      directRes.status === 403,
+    );
+    check(
+      'SUSPENDED provider direct conversation uses PROVIDER_NOT_ACTIVE',
+      directRes.body?.code === 'PROVIDER_NOT_ACTIVE',
+    );
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

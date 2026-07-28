@@ -16,6 +16,8 @@ import 'core/session/session_scoped_change_notifier.dart';
 import 'core/storage/auth_storage.dart';
 import 'core/storage/token_vault.dart';
 import 'core/storage/sensitive_value_vault.dart';
+import 'features/account_contexts/data/account_contexts_api.dart';
+import 'features/account_contexts/providers/account_context_controller.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
 import 'features/chat/data/chat_api.dart';
@@ -72,10 +74,12 @@ Future<void> main() async {
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();
   final authRepository = AuthRepository(apiClient, authStorage);
+  final accountContextsApi = AccountContextsApi(apiClient);
   apiClient.refreshSession = authRepository.refreshSession;
   final weddingPlansApi = WeddingPlansApi(
     apiClient,
     offline: offlineSyncService,
+    authStorage: authStorage,
   );
   final financeApi = FinanceApi(
     apiClient,
@@ -150,6 +154,7 @@ Future<void> main() async {
       ],
       child: _AarastSessionProviders(
         authStorage: authStorage,
+        accountContextsApi: accountContextsApi,
         weddingPlansApi: weddingPlansApi,
         financeApi: financeApi,
         taskTimelineApi: taskTimelineApi,
@@ -213,6 +218,7 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
 class _AarastSessionProviders extends StatelessWidget {
   const _AarastSessionProviders({
     required this.authStorage,
+    required this.accountContextsApi,
     required this.weddingPlansApi,
     required this.financeApi,
     required this.taskTimelineApi,
@@ -227,6 +233,7 @@ class _AarastSessionProviders extends StatelessWidget {
   });
 
   final AuthStorage authStorage;
+  final AccountContextsApi accountContextsApi;
   final WeddingPlansApi weddingPlansApi;
   final FinanceApi financeApi;
   final TaskTimelineApi taskTimelineApi;
@@ -244,12 +251,30 @@ class _AarastSessionProviders extends StatelessWidget {
     final sessionUserId = context.select<AuthController, String?>(
       (auth) => auth.user?.id,
     );
+    final activeWeddingPlanId = context.select<AuthController, String?>(
+      (auth) => auth.user?.activeWeddingPlanId,
+    );
     return AarastSessionBoundary(
       identity: 'account:${sessionUserId ?? 'guest'}',
       builder: (_) => MultiProvider(
         providers: [
           ChangeNotifierProvider(
             create: (_) => WeddingPlansProvider(weddingPlansApi),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            AccountContextController
+          >(
+            create: (providerContext) => _createAccountContextController(
+              providerContext.read<WeddingPlansProvider>(),
+              activeWeddingPlanId: activeWeddingPlanId,
+              shouldRefresh: sessionUserId != null,
+            ),
+            update: (_, _, current) =>
+                current ??
+                (throw StateError(
+                  'AccountContextController must be created in-session',
+                )),
           ),
           ChangeNotifierProvider(create: (_) => SettingsProvider(settingsApi)),
           ChangeNotifierProvider(
@@ -264,21 +289,21 @@ class _AarastSessionProviders extends StatelessWidget {
             ),
           ),
           ChangeNotifierProxyProvider<
-            WeddingPlansProvider,
+            AccountContextController,
             DashboardSummaryProvider
           >(
             create: (_) => _bindPlanScope(
               DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
               _unselectedPlanScope,
             ),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
             ),
           ),
           ChangeNotifierProxyProvider<
-            WeddingPlansProvider,
+            AccountContextController,
             HomeDashboardProvider
           >(
             create: (_) => _bindPlanScope(
@@ -288,71 +313,80 @@ class _AarastSessionProviders extends StatelessWidget {
               ),
               _unselectedPlanScope,
             ),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => HomeDashboardProvider(
                 weddingPlansApi: weddingPlansApi,
                 sharingApi: sharingApi,
               ),
             ),
           ),
-          ChangeNotifierProxyProvider<WeddingPlansProvider, FinanceProvider>(
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            FinanceProvider
+          >(
             create: (_) => _bindPlanScope(
               FinanceProvider(financeApi, permissionsApi: sharingApi),
               _unselectedPlanScope,
             ),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => FinanceProvider(financeApi, permissionsApi: sharingApi),
             ),
           ),
           ChangeNotifierProxyProvider<
-            WeddingPlansProvider,
+            AccountContextController,
             TaskTimelineProvider
           >(
             create: (_) => _bindPlanScope(
               TaskTimelineProvider(taskTimelineApi),
               _unselectedPlanScope,
             ),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => TaskTimelineProvider(taskTimelineApi),
             ),
           ),
-          ChangeNotifierProxyProvider<WeddingPlansProvider, SharingProvider>(
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            SharingProvider
+          >(
             create: (_) => _bindPlanScope(
               SharingProvider(sharingApi),
               _unselectedPlanScope,
             ),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => SharingProvider(sharingApi),
             ),
           ),
           ChangeNotifierProxyProvider<
-            WeddingPlansProvider,
+            AccountContextController,
             NotificationsProvider
           >(
             create: (_) => _bindPlanScope(
               NotificationsProvider(notificationsApi),
               _unselectedPlanScope,
             ),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => NotificationsProvider(notificationsApi),
             ),
           ),
-          ChangeNotifierProxyProvider<WeddingPlansProvider, GuestsProvider>(
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            GuestsProvider
+          >(
             create: (_) =>
                 _bindPlanScope(GuestsProvider(guestsApi), _unselectedPlanScope),
-            update: (_, plans, current) => _forPlanScope(
+            update: (_, accountContexts, current) => _forPlanScope(
               current,
-              _planScope(plans),
+              _planScope(accountContexts),
               () => GuestsProvider(guestsApi),
             ),
           ),
@@ -364,12 +398,41 @@ class _AarastSessionProviders extends StatelessWidget {
       ),
     );
   }
+
+  AccountContextController _createAccountContextController(
+    WeddingPlansProvider plans, {
+    required String? activeWeddingPlanId,
+    required bool shouldRefresh,
+  }) {
+    final controller = AccountContextController(
+      contextsApi: accountContextsApi,
+      authStorage: authStorage,
+      readActiveWeddingPlanId: () async {
+        return (await weddingPlansApi.getActiveWeddingPlan())?.id;
+      },
+      setActiveWeddingPlan: (planId) async {
+        final active = await plans.setActiveWeddingPlan(planId);
+        if (active == null) {
+          throw const ApiException(
+            'تعذر تأكيد الخطة النشطة.',
+            isNetworkFailure: true,
+          );
+        }
+      },
+    );
+    if (shouldRefresh) {
+      unawaited(
+        controller.refresh(activeWeddingPlanId: activeWeddingPlanId),
+      );
+    }
+    return controller;
+  }
 }
 
 const _unselectedPlanScope = 'plan:unselected';
 
-String _planScope(WeddingPlansProvider plans) {
-  final planId = plans.selectedPlan?.id ?? plans.activePlan?.id;
+String _planScope(AccountContextController accountContexts) {
+  final planId = accountContexts.selectedContext?.weddingPlanId;
   return planId == null ? _unselectedPlanScope : 'plan:$planId';
 }
 

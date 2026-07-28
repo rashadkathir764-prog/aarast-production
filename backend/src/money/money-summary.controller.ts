@@ -34,7 +34,7 @@ export class MoneySummaryController {
       dto,
     );
     return {
-      summary: await this.moneySummaryService.getSummary(currentUser, planId),
+      summary: result.summary,
       categories: result.categories,
       idMap: result.idMap,
     };

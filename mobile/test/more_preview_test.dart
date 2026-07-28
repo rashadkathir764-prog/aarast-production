@@ -344,8 +344,8 @@ class _FakeSettingsApi extends SettingsApi {
     return UserSettings(
       id: 'settings-1',
       userId: 'user-1',
-      pushEnabled: true,
-      whatsappEnabled: true,
+      pushEnabled: false,
+      whatsappEnabled: false,
       emailEnabled: false,
       smsEnabled: false,
       taskRemindersEnabled: true,

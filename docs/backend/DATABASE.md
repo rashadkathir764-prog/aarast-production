@@ -2,7 +2,7 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
+Current documentation snapshot: 2026-07-26. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
@@ -23,8 +23,8 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | Entity | Purpose |
 | --- | --- |
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
-| Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. |
-| OutboxEvent | Durable PostgreSQL queue for notification-created and conversation-message-available events. Domain rows and events commit together; workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. |
+| Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. New provider-audience quote/chat alerts store generic text and explicit audience metadata instead of requester/sender contact identity. |
+| OutboxEvent | Durable PostgreSQL queue for conversation message/activity availability, notification availability, conversation-access revocation, all-user-session revocation, and one-session revocation. Domain/session rows and their events commit together. Workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. Strict realtime dispatch is processed only after the adapter action resolves; unavailable or rejected delivery remains retryable. |
 | BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`. A positive allocation requires a non-null general budget, and total allocations may not exceed it. |
 | WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. It has no due-date field; payment timing belongs only to `PaymentSchedule.dueDate`. |
 | CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
@@ -32,8 +32,8 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 | Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. `canViewMoney` controls all money reads and `canManageMoney` controls money writes; task, guest, provider, and member-management permissions remain separate. |
-| PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. |
-| Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
+| PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. Invite-access OTP rows reference the exact invitation through `OtpCode.planInviteId` and cascade when it is deleted. |
+| Guest | Implemented for WeddingPlan guest management. A database unique constraint permits at most one non-null `normalizedPhone` per WeddingPlan regardless of display name; null phones remain repeatable. Stored `phone` and `normalizedPhone` are the same canonical value, enforced by a database CHECK. Migration `20260726030000_enforce_unique_guest_phone` fails closed for historical conflicts instead of merging or deleting private guest data. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
 | QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. Lifecycle mutations lock this row first, re-read its state, and update only from the expected prior state. |
 | QuoteOffer | Implemented for provider responses to quote requests. Lifecycle mutations lock the parent QuoteRequest and then the offer in one serializable transaction, so a losing accept/reject/update/cancel race cannot overwrite the winner. Accepting a plan-scoped offer rechecks provider and money permissions in that transaction and atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
@@ -43,7 +43,7 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 
 | Entity | Purpose |
 | --- | --- |
-| RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation, replacement tracking, and persisted `APPLICATION`/`ADMIN` scope. |
+| RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation, replacement-chain tracking, and persisted `APPLICATION`/`ADMIN` scope. Every access JWT carries the current row id as `sid`; authorization requires that exact row to remain live for the same user and scope. |
 | AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login, bound by `otpId` to the exact private `ADMIN_LOGIN` OTP. It never stores the raw challenge or OTP. |
 | AdminPasswordResetChallenge | Hashed, short-lived, one-time administrator password-recovery challenge bound to one exact OTP. It stores a token hash and HMAC phone digest, not the raw token or phone, and is invalidated on retry, expiry, failure ceiling, or success. |
 | LoginThrottle | Durable cross-replica password-attempt admission window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Each request reserves a slot under the row lock before password comparison; five admitted attempts lock one realm for fifteen minutes. Successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
@@ -69,6 +69,19 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
+- Account contexts are derived at read time from `WeddingPlan.ownerUserId`,
+  `SharedMember`, and `Provider.userId`; there is no context table, migration,
+  or backfill. One account may therefore be an owner, contributor, and provider
+  simultaneously. `WeddingPlan.status` and `Provider.status` supply live
+  lifecycle truth. `User.role`, `User.appRole`, and `User.onboardingPath`
+  remain compatibility metadata only and are not context authority.
+- `PLANNING` plans are active contexts. `ARCHIVED` plans remain discoverable as
+  historical read-only contexts and cannot validate as an active selection.
+  Provider profile/operation capabilities use the canonical provider access
+  policy: `ACTIVE` is operational; `PENDING` and `NEEDS_CHANGES` allow profile
+  edits only; `SUSPENDED` and `REJECTED` expose read-only profile/status.
+- Invite acceptance creates or preserves `SharedMember`, returns the canonical
+  contributor context key, and does not write `User.activeWeddingPlanId`.
 - Available account contexts are a derived API projection, not a new database
   entity. No role-membership or active-context table is required for the first
   backend phase.
@@ -93,6 +106,36 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 - SharedMember permissions are implemented as a backend slice; financial
   endpoints must not expose money data without `canViewMoney`, and every
   mutation requires `canManageMoney`.
+- WeddingPlan update/archive authorization is serialized with the write:
+  `WeddingPlan FOR UPDATE` precedes the acting non-owner's
+  `SharedMember FOR SHARE`. Active-plan selection uses `User FOR UPDATE`, then
+  `WeddingPlan FOR SHARE`, then the applicable `SharedMember FOR SHARE`, so
+  account deletion, membership removal, and selection use one stable order.
+- Delegated member/invite administration uses retryable `SERIALIZABLE`
+  transactions ordered as `WeddingPlan FOR SHARE`, acting
+  `SharedMember FOR SHARE`, then the target row. Member update/removal take
+  `SharedMember(target) FOR UPDATE`; invitation state transitions use
+  conditional writes against their expected live state. Permission and
+  lifecycle checks, authority ceilings, writes, and dependent cleanup share the
+  same transaction.
+- Task mutations use retryable `SERIALIZABLE` transactions ordered as
+  `WeddingPlan FOR SHARE`, acting `SharedMember FOR SHARE`, applicable assignee
+  `SharedMember FOR SHARE`, `WeddingTask FOR UPDATE`, then checklist row
+  `FOR UPDATE` where applicable.
+- Guest and GuestGroup mutations use retryable `SERIALIZABLE` transactions
+  ordered as `WeddingPlan FOR SHARE`, acting `SharedMember FOR SHARE`,
+  referenced `GuestGroup FOR SHARE`, then the target guest/group `FOR UPDATE`
+  where applicable. Bulk guest creation is one atomic transaction, and
+  `(weddingPlanId, normalizedPhone)` is the database-enforced concurrency
+  invariant.
+- All fifteen canonical financial mutations recheck lifecycle and authority in
+  retryable `SERIALIZABLE` transactions. Budget/category replacement takes
+  `WeddingPlan FOR UPDATE` before category rows. Cost create/update orders
+  referenced `Provider` rows, `QuoteOffer` rows, `BudgetCategory` rows, then
+  `WeddingCost`; payment and schedule writes order the plan/member gate before
+  `WeddingCost` and child ledger/reminder rows. The money summary permission
+  decision and data use one `REPEATABLE READ` snapshot, while a budget-write
+  response summary is built inside the mutation transaction itself.
 - Marketplace entities support planning and quote/lead context; they must not replace the financial planning core.
 - No payment processing, deposit, confirmed booking, loan, credit, or financing
   data should be added until explicitly approved in a later phase.
@@ -104,12 +147,21 @@ Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 The backend now includes the approved provider-reference and quote-lead foundation:
 
 - `OtpCode` for local, Meta WhatsApp, or temporary hardened OpenWA OTP
-  request/verify flows, storing only
-  hashed codes. A partial unique index permits one unconsumed code per
-  phone/purpose. Verification takes a row lock and commits comparison outcome,
-  bounded failure count, terminal exhaustion, or one-time consumption in one
-  retryable transaction so concurrent attempts cannot exceed the stored
-  ceiling or both succeed.
+  request/verify flows, storing only hashed codes. General purposes use one
+  unconsumed row per `(phone, purpose)` with `planInviteId IS NULL`.
+  `INVITE_ACCESS` uses a non-null `planInviteId` and one unconsumed row per
+  `(phone, purpose, planInviteId)`, so a login code and multiple live
+  invitations for one phone remain isolated. The invitation foreign key
+  cascades on deletion. Migration
+  `20260726040000_isolate_invite_access_otps` installs the enum value, relation,
+  and both partial unique indexes. Migration
+  `20260726041000_enforce_invite_otp_context` adds
+  `OtpCode_invite_access_context_check`: `INVITE_ACCESS` requires a non-null
+  `planInviteId`, while every other purpose requires it to be null.
+  Verification takes a row lock and commits comparison outcome, bounded failure
+  count, terminal exhaustion, or one-time consumption in one retryable
+  transaction so concurrent attempts cannot exceed the stored ceiling or both
+  succeed.
 - `LoginThrottle` replaces process-local password counters with a PostgreSQL
   row-locked attempt-admission window shared by all replicas. A forced `upsert`
   acquires the subject row and reserves the attempt before password comparison,
@@ -132,14 +184,29 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `AdminLoginChallenge` binds a successful admin password check to one private
   `ADMIN_LOGIN`
   OTP for at most ten minutes. Deployment revokes legacy admin refresh rows;
-  new admin access JWTs are bound to the live refresh-session row so rotation
-  and logout invalidate access immediately.
+  every application and administrator access JWT is now bound through `sid` to
+  its live refresh-session row, so rotation and logout invalidate the prior
+  access token immediately.
 - `AdminPasswordResetChallenge` separates administrator recovery from general
   application password reset. An administrator may use one phone identity in
   both products, but the app password and browser-admin password remain
   independent and neither recovery route can overwrite the other.
 - Refresh rows persist their application/administrator scope; logout, reset,
   rotation, and token-family compromise revocation stay inside that scope.
+  Rotation locks one replacement chain. Any reuse of a revoked or replaced
+  token, including an immediate duplicate request, revokes active descendants
+  in that family only. Independent login families and the other realm remain
+  unaffected. Logout presented with an older token follows the chain to its
+  live descendant. A cycle or traversal beyond the 4,096-row family limit makes
+  the chain incomplete. One bounded recursive CTE retrieves at most 4,097 rows
+  and locks the traversed token rows through one `FOR UPDATE` query rather than
+  one lock query per generation. An incomplete family fails closed by revoking
+  every active refresh row for the same user and scope. This realm-wide
+  fallback remains isolated between `APPLICATION` and `ADMIN`; normal replay
+  does not revoke independent login families.
+  Application session revocations also enqueue `SESSION_REVOKED` or
+  `USER_SESSIONS_REVOKED` in the same transaction for durable cross-replica
+  Chat disconnect.
 - Terminal refresh sessions have bounded security retention: revoked rows are
   removed 30 days after `revokedAt`, while unrevoked expired rows are removed
   30 days after `expiresAt`. The same hourly advisory-lock cleanup guarantees
@@ -147,8 +214,22 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - Expired OTP and authentication challenge rows are retained for one day and
   then removed by a distinct advisory-lock cleanup job.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
-- `NotificationPreference` for safe default account settings.
-- `Notification` for persisted task, payment-schedule, sharing, and quote alerts with deduplication.
+- `NotificationPreference` stores three effective content preferences for task,
+  payment, and provider/quote/chat notifications. In-app delivery is always
+  available and is not a stored toggle. When no preference row exists, the
+  three content categories default to enabled. Legacy push, SMS, WhatsApp, and
+  email booleans are forced to `false`; migration
+  `20260726020000_disable_unsupported_notification_channels` scrubs old `true`
+  values and changes the push default to `false`. Settings writes and
+  preference-aware notification creation serialize through the owning `User`
+  row so a committed disable cannot be followed by a notification decided from
+  stale state.
+- `Notification` for persisted task, payment-schedule, sharing, and quote alerts
+  with deduplication. Migration
+  `20260726010000_scrub_notification_contact_pii` rewrites historical
+  provider-portal quote-request bodies and conversation-message alert bodies to
+  generic text. Contact identity remains in the permission-checked
+  quote/conversation records; the migration does not log the former values.
 - `IdempotencyKey` for client-generated request idempotency on mutating
   endpoints (offline-queue replays return the original response instead of
   duplicating financial records). Each key is bound to a SHA-256 fingerprint of
@@ -165,6 +246,12 @@ The backend now includes the approved provider-reference and quote-lead foundati
   migration `20260710140000_redact_legacy_idempotency_paths` removes legacy
   invite bearer values and query strings.
 - `Guest` and `GuestGroup` for saved WeddingPlan guest lists and grouping.
+  Migration `20260726030000_enforce_unique_guest_phone` takes a bounded
+  exclusive lock, canonicalizes accepted historical forms into both phone
+  columns, and installs `Guest_weddingPlanId_normalizedPhone_key` plus
+  `Guest_phone_normalizedPhone_match_check`. It aborts transactionally with
+  generic non-PII errors on an orphaned normalized value, unparseable source
+  value, or canonical duplicate; no guest is merged or deleted.
 - `City` and `ProviderCategory` for Yemen-first marketplace filters. Fresh
   databases receive an additive baseline catalog from migration
   `20260714100000_seed_provider_reference_catalog`; existing admin-managed rows
@@ -219,8 +306,8 @@ rewrite as permission to restore a removed live model.
 | `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 16 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
-| `PlanInvite` | 29 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
-| `OtpCode` | 12 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt` |
+| `PlanInvite` | 30 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
+| `OtpCode` | 14 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt`, `planInviteId` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |

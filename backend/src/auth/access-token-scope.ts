@@ -9,7 +9,8 @@ export function resolveJwtSessionScope(
   if (
     payload.scope === 'application' &&
     payload.amr === undefined &&
-    payload.sid === undefined
+    typeof payload.sid === 'string' &&
+    payload.sid.length > 0
   ) {
     return 'application';
   }

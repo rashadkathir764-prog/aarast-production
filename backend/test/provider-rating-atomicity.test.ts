@@ -150,7 +150,7 @@ test("concurrent review creation cannot leave a stale provider rating cache", as
 
 test("every product review mutation uses the shared locked aggregate boundary", () => {
   const marketplace = source("marketplace/marketplace.service.ts");
-  const admin = source("admin/admin.service.ts");
+  const admin = source("admin/admin-mutation-executor.ts");
   const accountDeletion = source("users/users.service.ts");
   const aggregate = source("marketplace/provider-review-rating.ts");
 
@@ -158,7 +158,9 @@ test("every product review mutation uses the shared locked aggregate boundary", 
     (marketplace.match(/runProviderReviewMutation\(/g) ?? []).length,
     3,
   );
-  assert.equal((admin.match(/runProviderReviewMutation\(/g) ?? []).length, 2);
+  assert.equal((admin.match(/lockProviderRatingRows\(/g) ?? []).length, 2);
+  assert.equal((admin.match(/refreshProviderRating\(/g) ?? []).length, 2);
+  assert.equal((admin.match(/AdminPermission\.REVIEWS_WRITE/g) ?? []).length, 2);
   assert.doesNotMatch(marketplace, /recalculateProviderRating/);
   assert.doesNotMatch(admin, /recalculateProviderRating/);
   assert.match(aggregate, /runSerializableTransaction/);

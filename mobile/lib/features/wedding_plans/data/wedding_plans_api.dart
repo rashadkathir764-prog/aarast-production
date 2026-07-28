@@ -4,17 +4,23 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/storage/auth_storage.dart';
 import '../models/active_wedding_plan.dart';
 import '../models/dashboard_summary.dart';
 import '../models/onboarding_complete.dart';
 import '../models/wedding_plan.dart';
 
 class WeddingPlansApi {
-  const WeddingPlansApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  const WeddingPlansApi(
+    this._apiClient, {
+    OfflineSyncService? offline,
+    AuthStorage? authStorage,
+  }) : _offline = offline,
+       _authStorage = authStorage;
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
+  final AuthStorage? _authStorage;
 
   Future<OnboardingCompleteResponse> completeOnboarding(
     OnboardingCompleteRequest request,
@@ -24,11 +30,7 @@ class WeddingPlansApi {
       request.toJson(),
     );
     final response = OnboardingCompleteResponse.fromJson(json);
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedWeddingPlans,
-      json: _activePlanToCacheJson(response.activeWeddingPlan),
-    );
-    await _offline?.refreshStatus();
+    await _cacheActivePlan(response.activeWeddingPlan);
     return response;
   }
 
@@ -42,11 +44,7 @@ class WeddingPlansApi {
       payload,
     );
     final response = OnboardingCompleteResponse.fromJson(json);
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedWeddingPlans,
-      json: _activePlanToCacheJson(response.activeWeddingPlan),
-    );
-    await _offline?.refreshStatus();
+    await _cacheActivePlan(response.activeWeddingPlan);
     return response;
   }
 
@@ -56,17 +54,32 @@ class WeddingPlansApi {
         '/api/v1/wedding-plans/active',
       );
       final data = response.data;
-      if (data == null) return null;
+      if (data == null) {
+        await _authStorage?.clearActivePlanId();
+        return null;
+      }
       final json = _asJsonMap(data);
       final plan = ActiveWeddingPlan.fromJson(json);
-      await _offline?.database.saveCachedItem(
-        table: OfflineTables.cachedWeddingPlans,
-        json: _activePlanToCacheJson(plan),
-      );
-      await _offline?.refreshStatus();
+      await _cacheActivePlan(plan);
       return plan;
     } on DioException catch (error) {
-      throw ApiException.fromDio(error);
+      final apiError = ApiException.fromDio(error);
+      if (!CachePolicy.shouldUseCache(apiError) ||
+          _offline == null ||
+          _authStorage == null) {
+        throw apiError;
+      }
+      await _offline.noteNetworkFailure(apiError.message);
+      final activePlanId = _authStorage.readActivePlanId();
+      if (activePlanId == null || activePlanId.isEmpty) throw apiError;
+      final cached = await _offline.database.readCachedItem(
+        table: OfflineTables.cachedWeddingPlans,
+        id: activePlanId,
+      );
+      if (cached == null) throw apiError;
+      final plan = ActiveWeddingPlan.fromJson(cached);
+      if (plan.status == 'ARCHIVED') throw apiError;
+      return plan;
     }
   }
 
@@ -140,6 +153,7 @@ class WeddingPlansApi {
         table: OfflineTables.cachedWeddingPlans,
         json: json,
       );
+      await _authStorage?.saveActivePlanId(json['id'].toString());
       await _offline?.syncPendingChanges();
       return WeddingPlan.fromJson(json);
     } on Object catch (error) {
@@ -184,11 +198,7 @@ class WeddingPlansApi {
       {},
     );
     final plan = ActiveWeddingPlan.fromJson(json);
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedWeddingPlans,
-      json: _activePlanToCacheJson(plan),
-    );
-    await _offline?.refreshStatus();
+    await _cacheActivePlan(plan);
     return plan;
   }
 
@@ -246,6 +256,9 @@ class WeddingPlansApi {
       table: OfflineTables.cachedWeddingPlans,
       json: json,
     );
+    if (_authStorage?.readActivePlanId() == id) {
+      await _authStorage?.clearActivePlanId();
+    }
     return WeddingPlan.fromJson(json);
   }
 
@@ -275,12 +288,26 @@ class WeddingPlansApi {
         'location': plan.location,
       if (plan.weddingDate != null)
         'weddingDate': plan.weddingDate!.toIso8601String(),
+      'priorities': plan.priorities,
       if (plan.estimatedBudget != null) 'estimatedBudget': plan.estimatedBudget,
       'currency': plan.currency,
+      if (plan.onboardingPath != null) 'onboardingPath': plan.onboardingPath,
+      if (plan.persona != null) 'persona': plan.persona,
+      if (plan.onboardingCompletedAt != null)
+        'onboardingCompletedAt': plan.onboardingCompletedAt!.toIso8601String(),
       'status': plan.status,
       'createdAt': plan.createdAt.toIso8601String(),
       'updatedAt': plan.updatedAt.toIso8601String(),
     };
+  }
+
+  Future<void> _cacheActivePlan(ActiveWeddingPlan plan) async {
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: _activePlanToCacheJson(plan),
+    );
+    await _authStorage?.saveActivePlanId(plan.id);
+    await _offline?.refreshStatus();
   }
 
   Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(

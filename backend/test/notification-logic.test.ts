@@ -2,7 +2,12 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Notification, NotificationPriority, NotificationType } from '@prisma/client';
+import {
+  Notification,
+  NotificationPriority,
+  NotificationType,
+  UserStatus,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../src/auth/authenticated-user.interface';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { OutboxService } from '../src/outbox/outbox.service';
@@ -76,18 +81,43 @@ function createHarness() {
         .slice(skip, skip + take),
   };
   const outboxEvent = { create: async () => ({ id: 'outbox-1' }) };
+  const provider = { findUnique: async () => null };
+  const conversation = { findUnique: async () => null };
+  const notificationPreference = { findUnique: async () => null };
+  const queryRaw = async (query: any) => {
+    const sql = Array.isArray(query?.strings)
+      ? query.strings.join(' ')
+      : String(query);
+    return sql.includes('FROM "User"')
+      ? [{ id: user.id, status: UserStatus.ACTIVE }]
+      : [{ id: user.id }];
+  };
   const prisma = {
     notification,
+    notificationPreference,
     outboxEvent,
+    provider,
+    conversation,
     $transaction: async (operation: unknown) =>
       Array.isArray(operation)
         ? Promise.all(operation)
         : (
             operation as (tx: {
+              $queryRaw: typeof queryRaw;
               notification: typeof notification;
+              notificationPreference: typeof notificationPreference;
               outboxEvent: typeof outboxEvent;
+              provider: typeof provider;
+              conversation: typeof conversation;
             }) => unknown
-          )({ notification, outboxEvent }),
+          )({
+            $queryRaw: queryRaw,
+            notification,
+            notificationPreference,
+            outboxEvent,
+            provider,
+            conversation,
+          }),
   } as unknown as PrismaService;
   const permissions = {} as PermissionService;
   return {
@@ -111,6 +141,7 @@ test('notification creation preserves priority, entity, and route metadata', asy
     dedupeKey: 'quote-1-received',
   });
 
+  assert.ok(created);
   assert.equal(created.priority, NotificationPriority.HIGH);
   assert.equal(created.entityType, 'quote_request');
   assert.equal(created.entityId, 'quote-1');
@@ -167,8 +198,55 @@ test('transaction-scoped notification creation reuses the caller transaction', a
     dedupeKey: 'invite-accepted',
   });
 
+  assert.ok(created);
   assert.equal(created.id, 'notification-invite');
   assert.equal(outboxRows, 1);
+});
+
+test('disabled provider-message preference suppresses quote notifications and outbox work', async () => {
+  let notificationRows = 0;
+  let outboxRows = 0;
+  const client = {
+    $queryRaw: async () => [{ id: user.id }],
+    notificationPreference: {
+      findUnique: async () => ({
+        taskRemindersEnabled: true,
+        paymentRemindersEnabled: true,
+        providerMessagesEnabled: false,
+      }),
+    },
+    notification: {
+      create: async () => {
+        notificationRows += 1;
+        throw new Error('disabled preference must prevent notification creation');
+      },
+    },
+    outboxEvent: {
+      create: async () => {
+        outboxRows += 1;
+        throw new Error('disabled preference must prevent outbox creation');
+      },
+    },
+  };
+  const service = new NotificationsService(
+    {} as PrismaService,
+    {} as PermissionService,
+    new OutboxService(),
+  );
+
+  const created = await service.createNotificationInTransaction(
+    client as any,
+    {
+      userId: user.id,
+      type: NotificationType.QUOTE_OFFER_RECEIVED,
+      title: 'Quote received',
+      body: 'A provider offer arrived.',
+    },
+  );
+
+  assert.equal(created, null);
+  assert.equal(notificationRows, 0);
+  assert.equal(outboxRows, 0);
 });
 
 test('notification dedupe returns the existing event', async () => {
@@ -183,6 +261,8 @@ test('notification dedupe returns the existing event', async () => {
 
   const first = await service.createNotification(input);
   const second = await service.createNotification(input);
+  assert.ok(first);
+  assert.ok(second);
   assert.equal(second.id, first.id);
   assert.equal(records.size, 1);
 });
@@ -196,6 +276,7 @@ test('archive marks the notification read and removes it from the active inbox',
     body: 'Event body',
   });
 
+  assert.ok(created);
   const archived = await service.archive(user, created.id);
   assert.ok(archived.archivedAt);
   assert.ok(archived.readAt);
@@ -248,7 +329,22 @@ test('scheduled reminders respect notification and financial permissions', async
     ],
   };
   const tx = {
-    $queryRaw: async () => [{ locked: true }],
+    $queryRaw: async (query: any) => {
+      const sql = Array.isArray(query?.strings)
+        ? query.strings.join(' ')
+        : String(query);
+      if (sql.includes('pg_try_advisory_xact_lock')) {
+        return [{ locked: true }];
+      }
+      if (sql.includes('FROM "User"')) {
+        return [
+          { id: 'owner-1', status: UserStatus.ACTIVE },
+          { id: 'finance-member', status: UserStatus.ACTIVE },
+          { id: 'task-only-member', status: UserStatus.ACTIVE },
+        ];
+      }
+      return [{ id: plan.id }];
+    },
     weddingPlan: { findMany: async () => [plan] },
     weddingTask: {
       findMany: async () => [
@@ -278,6 +374,22 @@ test('scheduled reminders respect notification and financial permissions', async
         },
       ],
     },
+    notificationPreference: {
+      findMany: async () => [
+        {
+          userId: 'owner-1',
+          taskRemindersEnabled: false,
+          paymentRemindersEnabled: true,
+          providerMessagesEnabled: true,
+        },
+        {
+          userId: 'finance-member',
+          taskRemindersEnabled: true,
+          paymentRemindersEnabled: false,
+          providerMessagesEnabled: true,
+        },
+      ],
+    },
     notification: {
       createManyAndReturn: async ({ data }: { data: Array<Record<string, unknown>> }) => {
         captured.push(...data);
@@ -301,10 +413,24 @@ test('scheduled reminders respect notification and financial permissions', async
   const service = new NotificationsService(prisma, permissions, new OutboxService());
 
   const created = await service.generateDueNotifications();
-  assert.equal(created, 5);
-  assert.equal(outboxRows, 5);
-  assert.equal(captured.filter((row) => row.entityType === 'task').length, 3);
-  assert.equal(captured.filter((row) => row.entityType === 'payment_schedule').length, 2);
+  assert.equal(created, 3);
+  assert.equal(outboxRows, 3);
+  assert.equal(captured.filter((row) => row.entityType === 'task').length, 2);
+  assert.equal(captured.filter((row) => row.entityType === 'payment_schedule').length, 1);
+  assert.equal(
+    captured.some(
+      (row) => row.entityType === 'task' && row.userId === 'owner-1',
+    ),
+    false,
+  );
+  assert.equal(
+    captured.some(
+      (row) =>
+        row.entityType === 'payment_schedule' &&
+        row.userId === 'finance-member',
+    ),
+    false,
+  );
   assert.equal(
     captured.some(
       (row) => row.entityType === 'payment_schedule' && row.userId === 'task-only-member',
@@ -314,18 +440,12 @@ test('scheduled reminders respect notification and financial permissions', async
   const ownerSchedule = captured.find(
     (row) => row.entityType === 'payment_schedule' && row.userId === 'owner-1',
   );
-  const memberSchedule = captured.find(
-    (row) => row.entityType === 'payment_schedule' && row.userId === 'finance-member',
-  );
   assert.ok(ownerSchedule);
-  assert.ok(memberSchedule);
   assert.match(String(ownerSchedule.body), /100/);
   assert.equal(
     ownerSchedule.routeTarget,
     '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
   );
-  assert.doesNotMatch(String(memberSchedule.body), /100|Cost|Private/);
-  assert.equal(Object.prototype.hasOwnProperty.call(memberSchedule.data, 'partyName'), false);
 });
 
 test('revoking financial access purges stored financial notifications atomically', async () => {
@@ -347,7 +467,9 @@ test('revoking financial access purges stored financial notifications atomically
   };
   let purgedInTransaction = false;
   const tx = {
+    $queryRaw: async () => [{ id: existing.id }],
     sharedMember: {
+      findFirst: async () => existing,
       update: async ({ data }: { data: Record<string, unknown> }) => ({
         ...existing,
         ...data,
@@ -362,7 +484,7 @@ test('revoking financial access purges stored financial notifications atomically
     $transaction: async (operation: (client: typeof tx) => unknown) => operation(tx),
   } as unknown as PrismaService;
   const permissions = {
-    assertMemberManageable: async () => ({
+    assertMemberManageableInTransaction: async () => ({
       plan: { id: 'plan-1', ownerUserId: 'owner-1' },
       isOwner: true,
       sharedMember: null,

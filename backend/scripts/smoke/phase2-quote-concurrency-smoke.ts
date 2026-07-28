@@ -7,6 +7,7 @@ import {
   QuoteOfferStatus,
   QuoteRequestStatus,
   SharedMemberRole,
+  WeddingPlanStatus,
 } from '@prisma/client';
 import { MarketplaceService } from '../../src/marketplace/marketplace.service';
 import { PermissionService } from '../../src/sharing/permission.service';
@@ -105,6 +106,105 @@ async function holdOfferLock(offerId: string): Promise<{
       if (!releasedOnce) {
         releasedOnce = true;
         released.resolve();
+      }
+      await transaction;
+    },
+  };
+}
+
+async function holdProviderLock(providerId: string): Promise<{
+  release: () => Promise<void>;
+}> {
+  const acquired = deferred();
+  const released = deferred();
+  let releasedOnce = false;
+  const transaction = prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "Provider" WHERE "id" = ${providerId} FOR UPDATE`,
+      );
+      acquired.resolve();
+      await released.promise;
+    },
+    { timeout: 20_000 },
+  );
+  await acquired.promise;
+  return {
+    release: async () => {
+      if (!releasedOnce) {
+        releasedOnce = true;
+        released.resolve();
+      }
+      await transaction;
+    },
+  };
+}
+
+async function assertOfferRowIsNotLocked(offerId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "QuoteOffer" WHERE "id" = ${offerId} FOR UPDATE NOWAIT`,
+    );
+  });
+}
+
+async function holdUncommittedPlanArchive(planId: string): Promise<{
+  commit: () => Promise<void>;
+}> {
+  const archived = deferred();
+  const commitRequested = deferred();
+  let committedOnce = false;
+  const transaction = prisma.$transaction(
+    async (tx) => {
+      await tx.weddingPlan.update({
+        where: { id: planId },
+        data: { status: WeddingPlanStatus.ARCHIVED },
+      });
+      archived.resolve();
+      await commitRequested.promise;
+    },
+    { timeout: 20_000 },
+  );
+  await archived.promise;
+  return {
+    commit: async () => {
+      if (!committedOnce) {
+        committedOnce = true;
+        commitRequested.resolve();
+      }
+      await transaction;
+    },
+  };
+}
+
+async function holdUncommittedPermissionRevocation(
+  sharedMemberId: string,
+): Promise<{ commit: () => Promise<void> }> {
+  const revoked = deferred();
+  const commitRequested = deferred();
+  let committedOnce = false;
+  const transaction = prisma.$transaction(
+    async (tx) => {
+      await tx.sharedMember.update({
+        where: { id: sharedMemberId },
+        data: {
+          role: SharedMemberRole.VIEWER,
+          canManageProviders: false,
+          canViewMoney: false,
+          canManageMoney: false,
+        },
+      });
+      revoked.resolve();
+      await commitRequested.promise;
+    },
+    { timeout: 20_000 },
+  );
+  await revoked.promise;
+  return {
+    commit: async () => {
+      if (!committedOnce) {
+        committedOnce = true;
+        commitRequested.resolve();
       }
       await transaction;
     },
@@ -272,24 +372,20 @@ async function assertPermissionRevocationWinsBeforeAcceptance(): Promise<void> {
       });
       const { service, permissionChecked } =
         marketplaceWithPermissionSignal();
-      const blocker = await holdOfferLock(fixture.offer.id);
+      const revocation = await holdUncommittedPermissionRevocation(
+        fixture.sharedMember.id,
+      );
       const accept = service.acceptQuoteOffer(
         authenticatedUser(fixture.member),
         fixture.offer.id,
       );
       try {
         await permissionChecked;
-        await waitForBlockedMutation(accept, 'accept');
-        await prisma.sharedMember.update({
-          where: { id: fixture.sharedMember.id },
-          data: {
-            role: SharedMemberRole.VIEWER,
-            canManageProviders: false,
-            canViewMoney: false,
-            canManageMoney: false,
-          },
-        });
-        await blocker.release();
+        await waitForBlockedMutation(
+          accept,
+          'accept while permission revocation is uncommitted',
+        );
+        await revocation.commit();
 
         const result = await Promise.allSettled([accept]);
         assert.equal(
@@ -314,7 +410,71 @@ async function assertPermissionRevocationWinsBeforeAcceptance(): Promise<void> {
         });
         assert.equal(offer.status, QuoteOfferStatus.PENDING);
       } finally {
-        await blocker.release();
+        await revocation.commit();
+      }
+    },
+  );
+}
+
+async function assertArchiveWinsBeforeAcceptance(): Promise<void> {
+  await withFixture(
+    (environment) => createQuoteDecisionFixture(prisma, environment),
+    async (fixture) => {
+      const { service, permissionChecked } =
+        marketplaceWithPermissionSignal();
+      const archive = await holdUncommittedPlanArchive(fixture.plan.id);
+      const accept = service.acceptQuoteOffer(
+        authenticatedUser(fixture.owner),
+        fixture.offer.id,
+      );
+      try {
+        await permissionChecked;
+        await waitForBlockedMutation(
+          accept,
+          'accept while plan archive is uncommitted',
+        );
+        await archive.commit();
+
+        const [result] = await Promise.allSettled([accept]);
+        assert.equal(
+          result?.status,
+          'rejected',
+          'archive commit must reject the waiting acceptance',
+        );
+        if (result?.status === 'rejected') {
+          const response = (
+            result.reason as { getResponse?: () => unknown }
+          ).getResponse?.();
+          assert.equal(
+            typeof response === 'object' && response !== null
+              ? (response as { code?: unknown }).code
+              : undefined,
+            'PLAN_ARCHIVED_READ_ONLY',
+          );
+        }
+
+        const [offer, quote, costCount, linkCount] =
+          await prisma.$transaction([
+            prisma.quoteOffer.findUniqueOrThrow({
+              where: { id: fixture.offer.id },
+            }),
+            prisma.quoteRequest.findUniqueOrThrow({
+              where: { id: fixture.quoteRequest.id },
+            }),
+            prisma.weddingCost.count({
+              where: { quoteOfferId: fixture.offer.id },
+            }),
+            prisma.planProviderLink.count({
+              where: { quoteOfferId: fixture.offer.id },
+            }),
+          ]);
+        assert.equal(costCount, 0);
+        assert.equal(linkCount, 0);
+        assert.equal(offer.status, QuoteOfferStatus.PENDING);
+        assert.equal(quote.status, QuoteRequestStatus.RESPONDED);
+      } finally {
+        await archive.commit();
+        await Promise.allSettled([accept]);
       }
     },
   );
@@ -357,16 +517,46 @@ async function assertAcceptWinsCancelRace(): Promise<void> {
   );
 }
 
+async function assertProviderLockPrecedesOfferAcceptance(): Promise<void> {
+  await withFixture(
+    (environment) => createQuoteDecisionFixture(prisma, environment),
+    async (fixture) => {
+      const { service } = marketplaceWithPermissionSignal();
+      const providerBlocker = await holdProviderLock(fixture.provider.id);
+      const accept = service.acceptQuoteOffer(
+        authenticatedUser(fixture.owner),
+        fixture.offer.id,
+      );
+      try {
+        await waitForBlockedMutation(
+          accept,
+          'accept while provider row is locked',
+        );
+        await assertOfferRowIsNotLocked(fixture.offer.id);
+        await providerBlocker.release();
+        const result = await accept;
+        assert.equal(result.offer.status, QuoteOfferStatus.ACCEPTED);
+        await assertAcceptedGraph(fixture, '100');
+      } finally {
+        await providerBlocker.release();
+        await Promise.allSettled([accept]);
+      }
+    },
+  );
+}
+
 async function main(): Promise<void> {
   try {
     for (let iteration = 0; iteration < repetitions; iteration += 1) {
+      await assertProviderLockPrecedesOfferAcceptance();
       await assertAcceptWinsRejectRace();
       await assertAcceptWinsUpdateRace();
       await assertAcceptWinsCancelRace();
       await assertPermissionRevocationWinsBeforeAcceptance();
+      await assertArchiveWinsBeforeAcceptance();
     }
     console.log(
-      `PASS - Phase 2 quote decisions are serialized and permission revocation fails closed (${repetitions} repetition(s)).`,
+      `PASS - Phase 2 quote decisions are serialized and permission/lifecycle revocation fails closed (${repetitions} repetition(s)).`,
     );
   } finally {
     await prisma.$disconnect();

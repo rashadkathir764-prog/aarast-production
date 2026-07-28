@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { ValidationPipe } from "@nestjs/common";
 import { OtpPurpose, Prisma } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
+import { AuthErrorCode } from "../src/auth/auth-error";
 import { AuthService } from "../src/auth/auth.service";
 import { RegisterDto } from "../src/auth/dto/register.dto";
 import { JwtStrategy } from "../src/auth/jwt.strategy";
@@ -21,7 +22,8 @@ function createHarness() {
   const lookupEvents: string[] = [];
   let otpSequence = 0;
   let userSequence = 0;
-  let planInvite: any = null;
+  let planInvites: any[] = [];
+  let failNextRefreshCreate = false;
 
   const prisma: any = {
     otpCode: {
@@ -32,6 +34,8 @@ function createHarness() {
             (where.id === undefined || otp.id === where.id) &&
             (where.phone === undefined || otp.phone === where.phone) &&
             (where.purpose === undefined || otp.purpose === where.purpose) &&
+            (where.planInviteId === undefined ||
+              otp.planInviteId === where.planInviteId) &&
             (where.consumedAt === undefined ||
               otp.consumedAt === where.consumedAt) &&
             (where.expiresAt?.gt === undefined ||
@@ -52,6 +56,7 @@ function createHarness() {
           id: `otp-${++otpSequence}`,
           attempts: 0,
           consumedAt: null,
+          planInviteId: data.planInviteId ?? null,
           createdAt: new Date(Date.now() + otpSequence),
           updatedAt: new Date(),
           ...data,
@@ -66,6 +71,8 @@ function createHarness() {
             (otp) =>
               otp.phone === where.phone &&
               otp.purpose === where.purpose &&
+              (where.planInviteId === undefined ||
+                otp.planInviteId === where.planInviteId) &&
               otp.consumedAt === where.consumedAt,
           ) ?? null,
       findUnique: async ({ where }: any) =>
@@ -93,6 +100,8 @@ function createHarness() {
         assert.ok(user);
         return user;
       },
+      findUnique: async ({ where }: any) =>
+        users.find((candidate) => candidate.id === where.id) ?? null,
       create: async ({ data }: any) => {
         const now = new Date();
         const user = {
@@ -133,10 +142,15 @@ function createHarness() {
             where.role?.in?.includes(user.role);
           const matches =
             (where.id === undefined || where.id === user.id) &&
+            (where.phone === undefined || where.phone === user.phone) &&
             roleMatches &&
             (where.status === undefined || where.status === user.status) &&
             (where.phoneVerifiedAt === undefined ||
-              where.phoneVerifiedAt === user.phoneVerifiedAt) &&
+              (where.phoneVerifiedAt?.not === null
+                ? user.phoneVerifiedAt !== null
+                : where.phoneVerifiedAt === user.phoneVerifiedAt)) &&
+            (where.passwordHash === undefined ||
+              where.passwordHash === user.passwordHash) &&
             (where.appPasswordHash === undefined ||
               where.appPasswordHash === user.appPasswordHash);
           if (!matches) continue;
@@ -148,35 +162,72 @@ function createHarness() {
     },
     refreshToken: {
       create: async ({ data }: any) => {
+        if (failNextRefreshCreate) {
+          failNextRefreshCreate = false;
+          throw new Error("simulated refresh session failure");
+        }
         const token = { id: `refresh-${refreshTokens.length + 1}`, ...data };
         refreshTokens.push(token);
         return token;
       },
     },
     planInvite: {
-      findFirst: async ({ where }: any) => {
-        if (
-          !planInvite ||
-          planInvite.normalizedPhone !== where.normalizedPhone
-        ) {
-          return null;
-        }
-        if (where.tokenHash && planInvite.tokenHash !== where.tokenHash) {
-          return null;
-        }
-        if (where.acceptedAt === null && planInvite.acceptedAt !== null)
-          return null;
-        if (where.declinedAt === null && planInvite.declinedAt !== null)
-          return null;
-        if (where.revokedAt === null && planInvite.revokedAt !== null)
-          return null;
-        if (where.expiresAt?.gt && planInvite.expiresAt <= where.expiresAt.gt) {
-          return null;
-        }
-        return planInvite;
-      },
+      findFirst: async ({ where }: any) =>
+        planInvites.find((planInvite) => {
+          if (where.id && planInvite.id !== where.id) return false;
+          if (
+            where.normalizedPhone &&
+            planInvite.normalizedPhone !== where.normalizedPhone
+          ) {
+            return false;
+          }
+          if (where.tokenHash && planInvite.tokenHash !== where.tokenHash) {
+            return false;
+          }
+          if (where.acceptedAt === null && planInvite.acceptedAt !== null) {
+            return false;
+          }
+          if (where.declinedAt === null && planInvite.declinedAt !== null) {
+            return false;
+          }
+          if (where.revokedAt === null && planInvite.revokedAt !== null) {
+            return false;
+          }
+          if (
+            where.expiresAt?.gt &&
+            planInvite.expiresAt <= where.expiresAt.gt
+          ) {
+            return false;
+          }
+          return true;
+        }) ?? null,
     },
-    $transaction: async (action: any) => action(prisma),
+    $queryRaw: async (query: any) => {
+      const sql = String(query?.sql ?? query?.text ?? "");
+      if (sql.includes('"PlanInvite"')) {
+        const inviteId = query?.values?.[0];
+        return planInvites
+          .filter((invite) => invite.id === inviteId)
+          .map((invite) => ({ id: invite.id }));
+      }
+      return users.map((user) => ({ id: user.id, status: user.status }));
+    },
+    $transaction: async (action: any) => {
+      const rollbackEnabled = failNextRefreshCreate;
+      if (!rollbackEnabled) return action(prisma);
+
+      const otpSnapshot = structuredClone(otps);
+      const userSnapshot = structuredClone(users);
+      const refreshSnapshot = structuredClone(refreshTokens);
+      try {
+        return await action(prisma);
+      } catch (error) {
+        otps.splice(0, otps.length, ...otpSnapshot);
+        users.splice(0, users.length, ...userSnapshot);
+        refreshTokens.splice(0, refreshTokens.length, ...refreshSnapshot);
+        throw error;
+      }
+    },
   };
 
   return {
@@ -194,7 +245,10 @@ function createHarness() {
         clear: async () => undefined,
       } as any,
       { consume: async () => undefined } as any,
-      { disconnectUser: () => undefined } as any,
+      {
+        disconnectUser: () => undefined,
+        disconnectSession: () => undefined,
+      } as any,
     ),
     users,
     otps,
@@ -218,7 +272,13 @@ function createHarness() {
         },
       }),
     setPlanInvite: (value: any) => {
-      planInvite = value;
+      planInvites = [value];
+    },
+    setPlanInvites: (values: any[]) => {
+      planInvites = values;
+    },
+    failNextRefreshCreate: () => {
+      failNextRefreshCreate = true;
     },
   };
 }
@@ -303,6 +363,147 @@ test("registration stays pending and sessionless until the REGISTER OTP is consu
     assert.equal("accessToken" in completed, true);
     assert.ok(users[0].phoneVerifiedAt);
     assert.equal(refreshTokens.length, 1);
+  });
+});
+
+test("registration rollback preserves its OTP when session creation fails", async () => {
+  await withDevOtp(async () => {
+    const harness = createHarness();
+    await harness.service.startRegistration({
+      name: "Retry User",
+      phone: "777123456",
+    });
+    harness.failNextRefreshCreate();
+
+    await assert.rejects(
+      () =>
+        harness.service.completeRegistration({
+          name: "Retry User",
+          phone: "777123456",
+          password: "secret123",
+          otpCode: "123456",
+        }),
+      /simulated refresh session failure/,
+    );
+    assert.equal(harness.otps[0].consumedAt, null);
+    assert.equal(harness.users.length, 0);
+
+    const completed = await harness.service.completeRegistration({
+      name: "Retry User",
+      phone: "777123456",
+      password: "secret123",
+      otpCode: "123456",
+    });
+    assert.ok(completed.accessToken);
+  });
+});
+
+test("OTP login rollback preserves its OTP when session creation fails", async () => {
+  await withDevOtp(async () => {
+    const harness = createHarness();
+    await harness.addUser("+967777123456", true);
+    await harness.service.requestOtp({
+      phone: "777123456",
+      purpose: OtpPurpose.LOGIN,
+    });
+    harness.failNextRefreshCreate();
+
+    await assert.rejects(
+      () =>
+        harness.service.verifyOtp({
+          phone: "777123456",
+          purpose: OtpPurpose.LOGIN,
+          code: "123456",
+        }),
+      /simulated refresh session failure/,
+    );
+    assert.equal(harness.otps[0].consumedAt, null);
+    assert.equal(harness.refreshTokens.length, 0);
+
+    const verified = await harness.service.verifyOtp({
+      phone: "777123456",
+      purpose: OtpPurpose.LOGIN,
+      code: "123456",
+    });
+    assert.ok(verified.accessToken);
+  });
+});
+
+test("invite OTP rollback preserves its OTP when session creation fails", async () => {
+  await withDevOtp(async () => {
+    const harness = createHarness();
+    await harness.addUser("+967777123456", true);
+    harness.setPlanInvite({
+      id: "invite-rollback",
+      tokenHash: createHash("sha256")
+        .update(TEST_INVITE_TOKEN)
+        .digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    await harness.service.requestInviteOtp(
+      "+967777123456",
+      "invite-rollback",
+      createHash("sha256").update(TEST_INVITE_TOKEN).digest("hex"),
+    );
+    harness.failNextRefreshCreate();
+
+    await assert.rejects(
+      () =>
+        harness.service.verifyInviteOtp({
+          token: TEST_INVITE_TOKEN,
+          phone: "777123456",
+          code: "123456",
+        }),
+      /simulated refresh session failure/,
+    );
+    assert.equal(harness.otps[0].consumedAt, null);
+    assert.equal(harness.refreshTokens.length, 0);
+
+    const verified = await harness.service.verifyInviteOtp({
+      token: TEST_INVITE_TOKEN,
+      phone: "777123456",
+      code: "123456",
+    });
+    assert.ok(verified.accessToken);
+  });
+});
+
+test("invite OTP issuance rejects an expected token hash invalidated by reissue", async () => {
+  await withDevOtp(async () => {
+    const oldTokenHash = createHash("sha256")
+      .update("e".repeat(43))
+      .digest("hex");
+    const { service, otps, setPlanInvite } = createHarness();
+    setPlanInvite({
+      id: "invite-reissued",
+      tokenHash: createHash("sha256")
+        .update("f".repeat(43))
+        .digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await assert.rejects(
+      () =>
+        service.requestInviteOtp(
+          "+967777123456",
+          "invite-reissued",
+          oldTokenHash,
+          { ip: "127.0.0.1" },
+        ),
+      (error: any) =>
+        error?.getStatus?.() === 404 &&
+        error?.getResponse?.().code ===
+          AuthErrorCode.INVITE_NOT_FOUND_FOR_PHONE,
+    );
+    assert.equal(otps.length, 0, "a rotated bearer must not create an OTP");
   });
 });
 
@@ -395,7 +596,7 @@ test("general OTP login gives an admin only a standard wedding-app session", asy
     assert.equal(refreshTokens.length, 1);
     assert.equal(signedPayloads[0]?.scope, 'application');
     assert.equal(signedPayloads[0]?.amr, undefined);
-    assert.equal(signedPayloads[0]?.sid, undefined);
+    assert.equal(signedPayloads[0]?.sid, refreshTokens[0]?.id);
   });
 });
 
@@ -413,6 +614,137 @@ test("password login prefers the canonical phone row over a legacy duplicate", a
 
     assert.equal("accessToken" in response, true);
     assert.equal(users.length, 2);
+  });
+});
+
+test("password login cannot create a session after a password reset wins the transaction boundary", async () => {
+  await withDevOtp(async () => {
+    const { service, addUser, prisma, refreshTokens } = createHarness();
+    const user = await addUser("+967777123456", true);
+    const resetHash = await bcryptjs.hash("new-password", 4);
+    const findFirst = prisma.user.findFirst;
+    prisma.user.findFirst = async (args: any) => {
+      const found = await findFirst(args);
+      return found ? { ...found } : null;
+    };
+    const transaction = prisma.$transaction;
+    prisma.$transaction = async (action: any) => {
+      user.passwordHash = resetHash;
+      return transaction(action);
+    };
+
+    await assert.rejects(
+      () =>
+        service.login({
+          phone: "777123456",
+          password: "secret123",
+        }),
+      /Invalid credentials/,
+    );
+    assert.equal(refreshTokens.length, 0);
+  });
+});
+
+test("password login cannot create a session after account disable wins the transaction boundary", async () => {
+  await withDevOtp(async () => {
+    const { service, addUser, prisma, refreshTokens } = createHarness();
+    const user = await addUser("+967777123456", true);
+    const transaction = prisma.$transaction;
+    prisma.$transaction = async (action: any) => {
+      user.status = "DISABLED";
+      return transaction(action);
+    };
+
+    await assert.rejects(
+      () =>
+        service.login({
+          phone: "777123456",
+          password: "secret123",
+        }),
+      /Invalid credentials/,
+    );
+    assert.equal(refreshTokens.length, 0);
+  });
+});
+
+test("admin password reset cannot leave an old-password MFA challenge", async () => {
+  await withDevOtp(async () => {
+    const { service, addUser, prisma } = createHarness();
+    const admin = await addUser("+967777123456", true);
+    admin.role = "ADMIN";
+    admin.adminRole = "SUPER_ADMIN";
+    admin.passwordHash = await bcryptjs.hash("old-admin-password", 4);
+
+    // Prisma returns detached records. Preserve that property in this race
+    // harness so changing the stored credential cannot mutate the snapshot
+    // that passed bcrypt verification.
+    const findFirst = prisma.user.findFirst;
+    prisma.user.findFirst = async (args: any) => {
+      const found = await findFirst(args);
+      return found ? { ...found } : null;
+    };
+    prisma.user.findUnique = async ({ where }: any) =>
+      where.id === admin.id ? admin : null;
+    prisma.$queryRaw = async () => [
+      { id: admin.id, status: admin.status },
+    ];
+    prisma.otpCode.findUniqueOrThrow = async () => ({ consumedAt: null });
+    let createdChallenges = 0;
+    prisma.adminLoginChallenge = {
+      updateMany: async () => ({ count: 0 }),
+      create: async () => {
+        createdChallenges += 1;
+        return {};
+      },
+    };
+    (service as any).issueOtp = async () => ({
+      otpId: "otp-admin-race",
+      phone: admin.phone,
+      purpose: OtpPurpose.ADMIN_LOGIN,
+      expiresAt: new Date(Date.now() + 60_000),
+      delivery: "LOCAL",
+      deliveryStatus: "DELIVERED",
+    });
+
+    const resetHash = await bcryptjs.hash("new-admin-password", 12);
+    const update = prisma.user.update;
+    prisma.user.update = async (args: any) => {
+      if (args.where.id === admin.id && args.data.passwordHash) {
+        admin.passwordHash = resetHash;
+      }
+      const updated = await update(args);
+      return { ...updated };
+    };
+    const updateMany = prisma.user.updateMany;
+    prisma.user.updateMany = async (args: any) => {
+      if (
+        args.where.id === admin.id &&
+        args.where.passwordHash !== undefined &&
+        args.data.passwordHash
+      ) {
+        admin.passwordHash = resetHash;
+      }
+      return updateMany(args);
+    };
+
+    await assert.rejects(
+      () =>
+        service.startAdminLogin({
+          phone: "777123456",
+          password: "old-admin-password",
+        }),
+      /Invalid credentials/,
+    );
+    assert.equal(
+      createdChallenges,
+      0,
+      "the stale password must not mint an MFA challenge",
+    );
+    assert.equal(
+      admin.passwordHash,
+      resetHash,
+      "legacy hash upgrade must not overwrite the concurrently reset password",
+    );
   });
 });
 
@@ -715,10 +1047,11 @@ test("private invite OTP creates a participant with their chosen password and on
       expiresAt: new Date(Date.now() + 60_000),
     });
 
-    await service.requestOtp({
-      phone: "777123456",
-      purpose: OtpPurpose.LOGIN,
-    });
+    await service.requestInviteOtp(
+      "+967777123456",
+      "invite-active",
+      createHash("sha256").update(token).digest("hex"),
+    );
     const result = await service.verifyInviteOtp({
       token,
       phone: "777123456",
@@ -751,10 +1084,11 @@ test("private invite setup can reuse the same unconsumed OTP after credentials a
       expiresAt: new Date(Date.now() + 60_000),
     });
 
-    await service.requestOtp({
-      phone: "777123456",
-      purpose: OtpPurpose.LOGIN,
-    });
+    await service.requestInviteOtp(
+      "+967777123456",
+      "invite-active",
+      createHash("sha256").update(token).digest("hex"),
+    );
     await assert.rejects(
       () =>
         service.verifyInviteOtp({
@@ -776,6 +1110,211 @@ test("private invite setup can reuse the same unconsumed OTP after credentials a
     });
     assert.equal(users.length, 1);
     assert.ok(otps[0].consumedAt);
+  });
+});
+
+test("invite OTP replacement never consumes a general LOGIN OTP and vice versa", async () => {
+  await withDevOtp(async () => {
+    const { service, otps, setPlanInvite } = createHarness();
+    setPlanInvite({
+      id: "invite-isolated",
+      tokenHash: createHash("sha256").update(TEST_INVITE_TOKEN).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.requestOtp({
+      phone: "777123456",
+      purpose: OtpPurpose.LOGIN,
+    });
+    await service.requestInviteOtp(
+      "+967777123456",
+      "invite-isolated",
+      createHash("sha256").update(TEST_INVITE_TOKEN).digest("hex"),
+    );
+
+    const firstLogin = otps.find(
+      (otp) => otp.purpose === OtpPurpose.LOGIN,
+    );
+    const firstInvite = otps.find(
+      (otp) => otp.purpose === "INVITE_ACCESS",
+    );
+    assert.equal(firstLogin?.consumedAt, null);
+    assert.equal(firstLogin?.planInviteId, null);
+    assert.equal(firstInvite?.consumedAt, null);
+    assert.equal(firstInvite?.planInviteId, "invite-isolated");
+
+    await service.requestOtp({
+      phone: "777123456",
+      purpose: OtpPurpose.LOGIN,
+    });
+    assert.ok(firstLogin?.consumedAt);
+    assert.equal(
+      firstInvite?.consumedAt,
+      null,
+      "normal LOGIN replacement must not consume invite access",
+    );
+
+    const currentLogin = [...otps]
+      .reverse()
+      .find(
+        (otp) =>
+          otp.purpose === OtpPurpose.LOGIN && otp.consumedAt === null,
+      );
+    await service.requestInviteOtp(
+      "+967777123456",
+      "invite-isolated",
+      createHash("sha256").update(TEST_INVITE_TOKEN).digest("hex"),
+    );
+    assert.ok(firstInvite?.consumedAt);
+    assert.equal(
+      currentLogin?.consumedAt,
+      null,
+      "invite replacement must not consume normal LOGIN",
+    );
+  });
+});
+
+test("same-phone invitations keep independent OTP generations", async () => {
+  await withDevOtp(async () => {
+    const tokenA = "a".repeat(43);
+    const tokenB = "b".repeat(43);
+    const inviteA = {
+      id: "invite-a",
+      tokenHash: createHash("sha256").update(tokenA).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+    const inviteB = {
+      ...inviteA,
+      id: "invite-b",
+      tokenHash: createHash("sha256").update(tokenB).digest("hex"),
+    };
+    const { service, otps, setPlanInvites } = createHarness();
+    setPlanInvites([inviteA, inviteB]);
+
+    await service.requestInviteOtp(
+      "+967777123456",
+      inviteA.id,
+      inviteA.tokenHash,
+    );
+    await service.requestInviteOtp(
+      "+967777123456",
+      inviteB.id,
+      inviteB.tokenHash,
+    );
+    const firstA = otps.find((otp) => otp.planInviteId === inviteA.id);
+    const firstB = otps.find((otp) => otp.planInviteId === inviteB.id);
+    assert.equal(firstA?.consumedAt, null);
+    assert.equal(firstB?.consumedAt, null);
+
+    await service.requestInviteOtp(
+      "+967777123456",
+      inviteA.id,
+      inviteA.tokenHash,
+    );
+    assert.ok(firstA?.consumedAt);
+    assert.equal(
+      firstB?.consumedAt,
+      null,
+      "reissuing invite A must not cancel invite B",
+    );
+  });
+});
+
+test("invite tokens cannot cross-use another invite OTP and cancellation makes its OTP unusable", async () => {
+  await withDevOtp(async () => {
+    const tokenA = "c".repeat(43);
+    const tokenB = "d".repeat(43);
+    const inviteA = {
+      id: "invite-token-a",
+      tokenHash: createHash("sha256").update(tokenA).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null as Date | null,
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+    const inviteB = {
+      ...inviteA,
+      id: "invite-token-b",
+      tokenHash: createHash("sha256").update(tokenB).digest("hex"),
+    };
+    const {
+      service,
+      otps,
+      refreshTokens,
+      addUser,
+      setPlanInvites,
+    } = createHarness();
+    await addUser("+967777123456", true);
+    setPlanInvites([inviteA, inviteB]);
+
+    await service.requestInviteOtp(
+      "+967777123456",
+      inviteA.id,
+      inviteA.tokenHash,
+    );
+    await service.requestInviteOtp(
+      "+967777123456",
+      inviteB.id,
+      inviteB.tokenHash,
+    );
+    const otpA = otps.find((otp) => otp.planInviteId === inviteA.id);
+    const otpB = otps.find((otp) => otp.planInviteId === inviteB.id);
+    assert.ok(otpA);
+    assert.ok(otpB);
+    otpA.codeHash = await bcryptjs.hash("111111", 4);
+    otpB.codeHash = await bcryptjs.hash("222222", 4);
+
+    await assert.rejects(
+      () =>
+        service.verifyInviteOtp({
+          token: tokenB,
+          phone: "777123456",
+          code: "111111",
+        }),
+      (error: any) =>
+        error.getResponse?.().code === "OTP_INVALID_OR_EXPIRED",
+    );
+    assert.equal(otpA.consumedAt, null);
+    assert.equal(otpB.consumedAt, null);
+    assert.equal(otpB.attempts, 1);
+    assert.equal(refreshTokens.length, 0);
+
+    const verifiedB = await service.verifyInviteOtp({
+      token: tokenB,
+      phone: "777123456",
+      code: "222222",
+    });
+    assert.equal(verifiedB.purpose, "INVITE_ACCESS");
+    assert.ok(otpB.consumedAt);
+    assert.equal(otpA.consumedAt, null);
+    assert.equal(refreshTokens.length, 1);
+
+    inviteA.revokedAt = new Date();
+    await assert.rejects(
+      () =>
+        service.verifyInviteOtp({
+          token: tokenA,
+          phone: "777123456",
+          code: "111111",
+        }),
+      (error: any) =>
+        error.getResponse?.().code === "INVITE_NOT_FOUND_FOR_PHONE",
+    );
+    assert.equal(
+      otpA.consumedAt,
+      null,
+      "a cancelled invitation OTP may remain stored but must be unreachable",
+    );
+    assert.equal(refreshTokens.length, 1);
   });
 });
 
@@ -846,6 +1385,9 @@ test("an old JWT cannot access protected routes for an unverified account", asyn
           phoneVerifiedAt: null,
         }),
       },
+      refreshToken: {
+        findFirst: async () => ({ id: "application-session" }),
+      },
     } as any);
     await assert.rejects(
       () =>
@@ -853,6 +1395,7 @@ test("an old JWT cannot access protected routes for an unverified account", asyn
           sub: 'legacy-user',
           phone: '+967777123456',
           scope: 'application',
+          sid: 'application-session',
         }),
       /unverified/,
     );

@@ -38,7 +38,10 @@ function userFixture(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function createHarness(candidate: StoredUser | null) {
+function createHarness(
+  candidate: StoredUser | null,
+  options?: { failAdminRefreshRevocationOnce?: boolean },
+) {
   const users = candidate ? [candidate] : [];
   const otps: any[] = [];
   const resetChallenges: any[] = [];
@@ -60,8 +63,11 @@ function createHarness(candidate: StoredUser | null) {
     },
   ];
   const loginThrottles = [{ subjectHash: 'placeholder' }];
+  const lockOrder: string[] = [];
   let otpSequence = 0;
   let challengeSequence = 0;
+  let failAdminRefreshRevocation =
+    options?.failAdminRefreshRevocationOnce === true;
 
   const prisma: any = {
     user: {
@@ -107,6 +113,7 @@ function createHarness(candidate: StoredUser | null) {
           if (where.attempts?.lt !== undefined && otp.attempts >= where.attempts.lt) {
             continue;
           }
+          if (data.updatedAt) lockOrder.push('OtpCode');
           if (data.attempts?.increment) otp.attempts += data.attempts.increment;
           Object.assign(otp, { ...data, attempts: otp.attempts });
           count += 1;
@@ -156,7 +163,8 @@ function createHarness(candidate: StoredUser | null) {
       },
       findUnique: async ({ where }: any) => {
         const challenge = resetChallenges.find(
-          (item) => item.tokenHash === where.tokenHash,
+          (item) =>
+            item.tokenHash === where.tokenHash || item.id === where.id,
         );
         if (!challenge) return null;
         return {
@@ -208,6 +216,13 @@ function createHarness(candidate: StoredUser | null) {
     },
     refreshToken: {
       updateMany: async ({ where, data }: any) => {
+        if (
+          failAdminRefreshRevocation &&
+          where.scope === AuthSessionScope.ADMIN
+        ) {
+          failAdminRefreshRevocation = false;
+          throw new Error('simulated admin refresh revocation failure');
+        }
         let count = 0;
         for (const token of refreshTokens) {
           if (token.userId !== where.userId) continue;
@@ -238,7 +253,49 @@ function createHarness(candidate: StoredUser | null) {
         return { count };
       },
     },
-    $transaction: async (action: any) => action(prisma),
+    $queryRaw: async (query: any) => {
+      const sql = query?.strings?.join(' ') ?? '';
+      if (sql.includes('FROM "User"')) {
+        lockOrder.push('User');
+        return users.map((user) => ({ id: user.id, status: user.status }));
+      }
+      if (sql.includes('FROM "AdminLoginChallenge"')) {
+        lockOrder.push('AdminLoginChallenge');
+      } else if (sql.includes('FROM "AdminPasswordResetChallenge"')) {
+        lockOrder.push('AdminPasswordResetChallenge');
+      } else if (sql.includes('FROM "RefreshToken"')) {
+        lockOrder.push('RefreshToken');
+      }
+      return [];
+    },
+    $transaction: async (action: any) => {
+      if (!options?.failAdminRefreshRevocationOnce) return action(prisma);
+
+      const usersSnapshot = structuredClone(users);
+      const otpsSnapshot = structuredClone(otps);
+      const resetsSnapshot = structuredClone(resetChallenges);
+      const loginsSnapshot = structuredClone(adminLoginChallenges);
+      const tokensSnapshot = structuredClone(refreshTokens);
+      const throttlesSnapshot = structuredClone(loginThrottles);
+      try {
+        return await action(prisma);
+      } catch (error) {
+        for (const snapshot of usersSnapshot) {
+          const stored = users.find((item) => item.id === snapshot.id);
+          if (stored) Object.assign(stored, snapshot);
+        }
+        otps.splice(0, otps.length, ...otpsSnapshot);
+        resetChallenges.splice(0, resetChallenges.length, ...resetsSnapshot);
+        adminLoginChallenges.splice(
+          0,
+          adminLoginChallenges.length,
+          ...loginsSnapshot,
+        );
+        refreshTokens.splice(0, refreshTokens.length, ...tokensSnapshot);
+        loginThrottles.splice(0, loginThrottles.length, ...throttlesSnapshot);
+        throw error;
+      }
+    },
   };
 
   const service = new AuthService(
@@ -256,6 +313,7 @@ function createHarness(candidate: StoredUser | null) {
     refreshTokens,
     adminLoginChallenges,
     loginThrottles,
+    lockOrder,
   };
 }
 
@@ -326,6 +384,7 @@ test('admin recovery changes only the admin password and revokes every admin ses
     const pending = await harness.service.requestAdminPasswordReset({
       phone: '777123456',
     });
+    harness.lockOrder.length = 0;
 
     const result = await harness.service.confirmAdminPasswordReset({
       challengeToken: pending.challengeToken,
@@ -349,6 +408,13 @@ test('admin recovery changes only the admin password and revokes every admin ses
     assert.ok(harness.adminLoginChallenges.every((item) => item.consumedAt));
     assert.ok(harness.otps.every((otp) => otp.consumedAt));
     assert.equal(harness.loginThrottles.length, 0);
+    assert.deepEqual(harness.lockOrder.slice(0, 5), [
+      'User',
+      'AdminLoginChallenge',
+      'AdminPasswordResetChallenge',
+      'OtpCode',
+      'RefreshToken',
+    ]);
 
     await assert.rejects(
       () =>
@@ -359,6 +425,50 @@ test('admin recovery changes only the admin password and revokes every admin ses
         }),
       (error: any) => error.getResponse?.().code === 'ADMIN_RESET_INVALID_OR_EXPIRED',
     );
+  });
+});
+
+test('admin reset rollback keeps its OTP and challenge reusable', async () => {
+  await withOtpEnv('dev', async () => {
+    const admin = userFixture();
+    const originalPasswordHash = admin.passwordHash;
+    const harness = createHarness(admin, {
+      failAdminRefreshRevocationOnce: true,
+    });
+    const pending = await harness.service.requestAdminPasswordReset({
+      phone: '777123456',
+    });
+    harness.lockOrder.length = 0;
+
+    await assert.rejects(
+      () =>
+        harness.service.confirmAdminPasswordReset({
+          challengeToken: pending.challengeToken,
+          code: '123456',
+          newPassword: 'Retryable-admin-password-2026',
+        }),
+      /simulated admin refresh revocation failure/,
+    );
+
+    assert.equal(admin.passwordHash, originalPasswordHash);
+    assert.equal(harness.otps[0].consumedAt, null);
+    assert.equal(harness.resetChallenges[0].consumedAt, null);
+    assert.ok(harness.refreshTokens.every((token) => token.revokedAt === null));
+    assert.deepEqual(harness.lockOrder.slice(0, 5), [
+      'User',
+      'AdminLoginChallenge',
+      'AdminPasswordResetChallenge',
+      'OtpCode',
+      'RefreshToken',
+    ]);
+
+    const result = await harness.service.confirmAdminPasswordReset({
+      challengeToken: pending.challengeToken,
+      code: '123456',
+      newPassword: 'Retryable-admin-password-2026',
+    });
+    assert.deepEqual(result, { reset: true });
+    assert.ok(harness.otps[0].consumedAt);
   });
 });
 

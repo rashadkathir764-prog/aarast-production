@@ -4,26 +4,42 @@
 const { existsSync, readFileSync, readdirSync } = require('fs');
 const { join, resolve } = require('path');
 const ts = require('typescript');
+const backendTestRunner = require('../run-tests-with-artifact-guard');
 
 const backendRoot = resolve(__dirname, '..', '..');
 const repositoryRoot = resolve(backendRoot, '..');
 const managedRunner = 'scripts/smoke/run-isolated-smoke.js';
 const externalOpenwaCommand = 'node scripts/smoke/openwa-otp-smoke.js';
+const guardedBackendTestRunner =
+  'node scripts/run-tests-with-artifact-guard.js';
 const sourceExtensions = new Set(['.js', '.ts', '.mjs', '.cjs']);
 const allowedDirectDatabaseClients = new Map([
   'admin-web/scripts/admin-runtime-smoke.mjs',
   'backend/scripts/smoke/account-deletion-smoke.ts',
   'backend/scripts/smoke/backend-completion-smoke.js',
   'backend/scripts/smoke/conversation-unification-smoke.js',
+  'backend/scripts/smoke/guest-phone-migration-smoke.js',
   'backend/scripts/smoke/marketplace-smoke.js',
   'backend/scripts/smoke/notifications-apis-smoke.js',
   'backend/scripts/smoke/phase0-fixtures-smoke.js',
   'backend/scripts/smoke/phase1-identity-smoke.ts',
+  'backend/scripts/smoke/phase2-admin-mutation-authorization-smoke.ts',
+  'backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts',
   'backend/scripts/smoke/phase2-auth-retention-smoke.ts',
-  'backend/scripts/smoke/phase2-idempotency-reconciliation-smoke.ts',
-  'backend/scripts/smoke/phase2-provider-rating-concurrency-smoke.ts',
   'backend/scripts/smoke/phase2-conversation-revocation-smoke.ts',
+  'backend/scripts/smoke/phase2-idempotency-reconciliation-smoke.ts',
+  'backend/scripts/smoke/phase2-marketplace-write-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-media-verification-lifecycle-smoke.ts',
+  'backend/scripts/smoke/phase2-money-authorization-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-notification-authorization-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-notification-preferences-smoke.ts',
+  'backend/scripts/smoke/phase2-plan-permission-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-provider-dashboard-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-provider-rating-concurrency-smoke.ts',
   'backend/scripts/smoke/phase2-quote-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-sharing-permission-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase2-task-guest-permission-concurrency-smoke.ts',
+  'backend/scripts/smoke/phase3-context-transition-smoke.ts',
   'backend/scripts/smoke/private-chat-media-smoke.js',
   'backend/scripts/smoke/provider-dashboard-smoke.js',
   'backend/scripts/smoke/providers-quotes-smoke.js',
@@ -89,13 +105,26 @@ const managedCommandArguments = new Map([
   ['smoke:ux-c4-c7', 'ux-c4-c7-smoke.js'],
   ['smoke:backend-completion', 'backend-completion-smoke.js'],
   ['smoke:account-deletion', 'account-deletion-smoke.ts'],
+  ['smoke:guest-phone-migration', '--guest-phone-migration'],
   ['smoke:phase0-fixtures', 'phase0-fixtures-smoke.js'],
   ['smoke:phase1-identity', 'phase1-identity-smoke.ts'],
+  ['smoke:phase2-admin-mutation-authorization', 'phase2-admin-mutation-authorization-smoke.ts'],
+  ['smoke:phase2-auth-lifecycle-concurrency', 'phase2-auth-lifecycle-concurrency-smoke.ts'],
   ['smoke:phase2-auth-retention', 'phase2-auth-retention-smoke.ts'],
   ['smoke:phase2-idempotency-reconciliation', 'phase2-idempotency-reconciliation-smoke.ts'],
+  ['smoke:phase2-marketplace-write-concurrency', 'phase2-marketplace-write-concurrency-smoke.ts'],
+  ['smoke:phase2-media-verification-lifecycle', 'phase2-media-verification-lifecycle-smoke.ts'],
+  ['smoke:phase2-money-authorization-concurrency', 'phase2-money-authorization-concurrency-smoke.ts'],
+  ['smoke:phase2-notification-authorization-concurrency', 'phase2-notification-authorization-concurrency-smoke.ts'],
+  ['smoke:phase2-notification-preferences', 'phase2-notification-preferences-smoke.ts'],
+  ['smoke:phase2-plan-permission-concurrency', 'phase2-plan-permission-concurrency-smoke.ts'],
+  ['smoke:phase2-provider-dashboard-concurrency', 'phase2-provider-dashboard-concurrency-smoke.ts'],
   ['smoke:phase2-provider-rating-concurrency', 'phase2-provider-rating-concurrency-smoke.ts'],
   ['smoke:phase2-conversation-revocation', 'phase2-conversation-revocation-smoke.ts'],
   ['smoke:phase2-quote-concurrency', 'phase2-quote-concurrency-smoke.ts'],
+  ['smoke:phase2-sharing-permission-concurrency', 'phase2-sharing-permission-concurrency-smoke.ts'],
+  ['smoke:phase2-task-guest-permission-concurrency', 'phase2-task-guest-permission-concurrency-smoke.ts'],
+  ['smoke:phase3-context-transition', 'phase3-context-transition-smoke.ts'],
   ['smoke:all', 'all-smoke.js'],
   ['load:test', '--load-test'],
 ]);
@@ -117,6 +146,80 @@ function assertOfficialMutatingScriptsUseManagedRunner(scripts) {
     if (!expected || command !== expected) {
       throw new Error(`${name} must use the exact managed command without a prefix, suffix, pipeline, or extra argument.`);
     }
+  }
+}
+
+function assertBackendTestRunnerContract(scripts) {
+  if (scripts.pretest !== 'node scripts/smoke/phase0-source-guard.js') {
+    throw new Error('Backend pretest must run the source guard exactly once.');
+  }
+  if (Object.hasOwn(scripts, 'posttest')) {
+    throw new Error(
+      'Backend artifact cleanliness must run inside the guarded test process, not as a Git-dirty posttest.',
+    );
+  }
+
+  if (scripts.test !== guardedBackendTestRunner) {
+    throw new Error(
+      'Backend tests must use the exact protected-artifact runner command without test file arguments.',
+    );
+  }
+
+  const repositoryTests = readdirSync(join(backendRoot, 'test'), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.test.ts'))
+    .map((entry) => `test/${entry.name}`)
+    .sort();
+  assertBackendTestBatches(
+    backendTestRunner.buildTestBatches(),
+    repositoryTests,
+  );
+}
+
+function assertBackendTestBatches(testBatches, repositoryTests) {
+  if (
+    !Array.isArray(testBatches) ||
+    testBatches.length !== 2 ||
+    testBatches.some((batch) => !Array.isArray(batch))
+  ) {
+    throw new Error(
+      'Backend tests must preserve one preflight batch and one main batch.',
+    );
+  }
+
+  const [preflight, main] = testBatches;
+  const expectedPreflight = [
+    'test/legacy-finance-removal.test.ts',
+    'test/canonical-api-routes.test.ts',
+    'test/admin-app-identity.test.ts',
+    'test/invite-delivery.test.ts',
+    'test/phase0-guards.test.ts',
+  ];
+  if (
+    preflight.length !== expectedPreflight.length ||
+    preflight.some((file, index) => file !== expectedPreflight[index])
+  ) {
+    throw new Error('Backend test preflight files or ordering changed.');
+  }
+
+  const testFiles = [...preflight, ...main];
+  if (main.length === 0) {
+    throw new Error('Backend main test batch must not be empty.');
+  }
+  if (new Set(testFiles).size !== testFiles.length) {
+    throw new Error('Backend guarded test batches contain a duplicate test file.');
+  }
+
+  const configuredTests = [...testFiles].sort();
+  const expectedTests = [...repositoryTests].sort();
+  if (
+    expectedTests.length !== configuredTests.length ||
+    expectedTests.some((file, index) => file !== configuredTests[index])
+  ) {
+    throw new Error(
+      'Backend guarded test command must include every top-level test file exactly once.',
+    );
   }
 }
 
@@ -948,6 +1051,7 @@ function assertExternalOpenwaSmokeContract(command, source) {
 function main() {
   const backendPackage = readJson(join(backendRoot, 'package.json'));
   const adminPackage = readJson(join(repositoryRoot, 'admin-web', 'package.json'));
+  assertBackendTestRunnerContract(backendPackage.scripts);
   assertOfficialMutatingScriptsUseManagedRunner(backendPackage.scripts);
   assertExternalOpenwaSmokeContract(
     backendPackage.scripts['smoke:openwa-otp'],
@@ -970,6 +1074,8 @@ function main() {
 if (require.main === module) main();
 
 module.exports = {
+  assertBackendTestBatches,
+  assertBackendTestRunnerContract,
   assertExternalOpenwaSmokeContract,
   assertNoUnsafeDatabaseTargets,
   assertEntrypointDatabaseContract,

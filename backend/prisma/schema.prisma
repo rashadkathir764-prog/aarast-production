@@ -123,6 +123,7 @@ enum SharedMemberRole {
 enum OtpPurpose {
   REGISTER
   LOGIN
+  INVITE_ACCESS
   ADMIN_LOGIN
   VERIFY_PHONE
   RESET_PASSWORD
@@ -639,6 +640,7 @@ model PlanInvite {
   weddingPlan          WeddingPlan              @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   inviter              User                     @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
   invitee              User?                    @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+  otpCodes              OtpCode[]
 
   @@index([weddingPlanId, createdAt])
   @@index([inviteeUserId, acceptedAt])
@@ -661,15 +663,18 @@ model OtpCode {
   updatedAt                   DateTime                     @updatedAt
   adminLoginChallenge         AdminLoginChallenge?
   adminPasswordResetChallenge AdminPasswordResetChallenge?
+  planInviteId                String?
+  planInvite                  PlanInvite?                  @relation(fields: [planInviteId], references: [id], onDelete: Cascade)
 
   @@index([phone, purpose, consumedAt])
   @@index([phone, purpose, expiresAt])
+  @@index([planInviteId, purpose, consumedAt])
 }
 
 model NotificationPreference {
   id                      String   @id @default(uuid())
   userId                  String   @unique
-  pushEnabled             Boolean  @default(true)
+  pushEnabled             Boolean  @default(false)
   smsEnabled              Boolean  @default(false)
   whatsappEnabled         Boolean  @default(false)
   emailEnabled            Boolean  @default(false)
@@ -748,7 +753,7 @@ model Guest {
   weddingPlan      WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   group            GuestGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
-  @@unique([weddingPlanId, normalizedName, normalizedPhone])
+  @@unique([weddingPlanId, normalizedPhone])
   @@index([weddingPlanId, status])
   @@index([weddingPlanId, invitationStatus])
   @@index([weddingPlanId, attendanceStatus])

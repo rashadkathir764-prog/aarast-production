@@ -19,6 +19,7 @@ import {
   requiredMoneyAmount,
 } from "../src/common/validation/money";
 import { MoneyBudgetService } from "../src/money/money-budget.service";
+import { MoneySummaryController } from "../src/money/money-summary.controller";
 import { MoneySummaryService } from "../src/money/money-summary.service";
 import { ReplaceMoneyBudgetDto } from "../src/money/dto/replace-money-budget.dto";
 import {
@@ -47,10 +48,7 @@ test("money validation accepts bounded amounts and rejects unsafe values", () =>
   }
 
   const budget = new MoneyBudgetService({} as any, {} as any);
-  assert.throws(
-    () => (budget as any).totalBudget([]),
-    BadRequestException,
-  );
+  assert.throws(() => (budget as any).totalBudget([]), BadRequestException);
   assert.throws(
     () =>
       (budget as any).category({
@@ -84,7 +82,11 @@ test("money-budget rejects ambiguous categories and impossible allocations befor
       throw new Error("must not run");
     },
   };
-  const permissions = { assertMoneyManageable: async () => ({}) };
+  const permissions = {
+    assertMoneyManageableForUpdateInTransaction: async () => ({
+      plan: { currency: "YER" },
+    }),
+  };
   const service = new MoneyBudgetService(prisma as any, permissions as any);
   const user = { id: "user-1" } as any;
 
@@ -148,13 +150,27 @@ test("money budget accepts an empty category list but still protects categories 
   };
   const deletedIds: string[][] = [];
   let categoryReads = 0;
+  const transactionEvents: string[] = [];
   const tx = {
     $queryRaw: async () => [{ id: "plan-1" }],
     weddingPlan: {
+      findUnique: async () => {
+        transactionEvents.push("summary-plan");
+        return {
+          id: "plan-1",
+          estimatedBudget: new Prisma.Decimal("1000"),
+          currency: "YER",
+        };
+      },
       findUniqueOrThrow: async () => ({ id: "plan-1", currency: "YER" }),
-      update: async () => ({}),
+      update: async () => {
+        transactionEvents.push("budget-update");
+        return {};
+      },
     },
-    weddingCost: { count: async () => 0 },
+    weddingCost: { count: async () => 0, findMany: async () => [] },
+    costPayment: { findMany: async () => [] },
+    paymentSchedule: { findMany: async () => [] },
     budgetCategory: {
       findMany: async () => {
         categoryReads += 1;
@@ -175,7 +191,15 @@ test("money budget accepts an empty category list but still protects categories 
   const prisma = {
     $transaction: async (operation: (client: any) => unknown) => operation(tx),
   };
-  const permissions = { assertMoneyManageable: async () => ({}) };
+  const permissions = {
+    assertMoneyManageableForUpdateInTransaction: async () => ({
+      plan: { id: "plan-1", currency: "YER" },
+      isOwner: true,
+      sharedMember: null,
+    }),
+    canViewMoney: () => true,
+    canManageMoney: () => true,
+  };
   const service = new MoneyBudgetService(prisma as any, permissions as any);
   const cleared = await service.replace(
     { id: "owner-1" } as any,
@@ -183,6 +207,11 @@ test("money budget accepts an empty category list but still protects categories 
     dto,
   );
   assert.deepEqual(cleared.categories, []);
+  assert.equal(cleared.summary.budget.total, "1000");
+  assert.ok(
+    transactionEvents.indexOf("budget-update") <
+      transactionEvents.indexOf("summary-plan"),
+  );
   assert.deepEqual(deletedIds, [["cat-unused"]]);
 
   const usedTx = {
@@ -244,6 +273,7 @@ test("quote service categories match budget categories logically and preserve th
 test("an accepted quote offer cannot be linked to a second cost", async () => {
   const service = new WeddingCostsService({} as any, {} as any);
   const tx = {
+    $queryRaw: async () => [{ id: "locked-reference" }],
     quoteOffer: {
       findUnique: async () => ({
         id: "offer-1",
@@ -255,6 +285,9 @@ test("an accepted quote offer cannot be linked to a second cost", async () => {
         provider: { status: "ACTIVE" },
         weddingCosts: [{ id: "cost-existing" }],
       }),
+    },
+    provider: {
+      findUnique: async () => ({ id: "provider-1", status: "ACTIVE" }),
     },
   };
 
@@ -333,7 +366,9 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
     weddingCost: { findUnique: async () => cost },
     $transaction: async (operation: (client: any) => unknown) => operation(tx),
   };
-  const permissions = { assertMoneyManageable: async () => ({}) };
+  const permissions = {
+    assertMoneyManageableInTransaction: async () => ({}),
+  };
 
   const result = await new WeddingCostsService(
     prisma as any,
@@ -404,7 +439,9 @@ test("each payment reminder is bounded by the current remaining cost without res
     weddingCost: { findUnique: async () => cost },
     $transaction: async (operation: (client: any) => unknown) => operation(tx),
   };
-  const permissions = { assertMoneyManageable: async () => ({}) };
+  const permissions = {
+    assertMoneyManageableInTransaction: async () => ({}),
+  };
   const service = new WeddingCostsService(prisma as any, permissions as any);
 
   const created = await service.createSchedule(
@@ -481,7 +518,9 @@ test("money summary uses cost totals and the net append-only ledger exactly once
     },
   };
   const permissions = {
-    assertMoneyReadable: async () => ({
+    assertMoneyReadableInTransaction: async (tx: unknown) => {
+      assert.equal(tx, snapshot);
+      return {
       plan: {
         id: "plan-1",
         estimatedBudget: new Prisma.Decimal("9999"),
@@ -489,7 +528,8 @@ test("money summary uses cost totals and the net append-only ledger exactly once
       },
       isOwner: true,
       sharedMember: null,
-    }),
+      };
+    },
     canViewMoney: () => true,
     canManageMoney: () => true,
   };
@@ -544,11 +584,14 @@ test("payment schedule warnings expose counts without adding overlapping reminde
       operation(snapshot),
   };
   const permissions = {
-    assertMoneyReadable: async () => ({
-      plan: { estimatedBudget: null, currency: "YER" },
+    assertMoneyReadableInTransaction: async (tx: unknown) => {
+      assert.equal(tx, snapshot);
+      return {
+      plan: { id: "plan-1", estimatedBudget: null, currency: "YER" },
       isOwner: true,
       sharedMember: null,
-    }),
+      };
+    },
     canViewMoney: () => true,
     canManageMoney: () => true,
   };
@@ -575,16 +618,24 @@ test("payment schedule warnings expose counts without adding overlapping reminde
 
 test("money access remains fail-closed when the plan is not visible", async () => {
   let transactions = 0;
+  let moneyReads = 0;
   const permissions = {
-    assertMoneyReadable: async () => {
+    assertMoneyReadableInTransaction: async () => {
       throw new NotFoundException("Wedding plan not found");
     },
   };
   const service = new MoneySummaryService(
     {
-      $transaction: async () => {
+      $transaction: async (operation: (tx: unknown) => unknown) => {
         transactions += 1;
-        throw new Error("transaction must not start before access is granted");
+        return operation({
+          weddingPlan: {
+            findUnique: async () => {
+              moneyReads += 1;
+              return null;
+            },
+          },
+        });
       },
     } as any,
     permissions as any,
@@ -593,7 +644,8 @@ test("money access remains fail-closed when the plan is not visible", async () =
     () => service.getSummary({ id: "outsider" } as any, "plan-1"),
     NotFoundException,
   );
-  assert.equal(transactions, 0);
+  assert.equal(transactions, 1);
+  assert.equal(moneyReads, 0);
 });
 
 test("money summary fails closed if the plan disappears before its snapshot is read", async () => {
@@ -605,8 +657,12 @@ test("money summary fails closed if the plan disappears before its snapshot is r
     paymentSchedule: { findMany: async () => [] },
   };
   const permissions = {
-    assertMoneyReadable: async () => ({
-      plan: { estimatedBudget: new Prisma.Decimal("1000"), currency: "YER" },
+    assertMoneyReadableInTransaction: async () => ({
+      plan: {
+        id: "plan-1",
+        estimatedBudget: new Prisma.Decimal("1000"),
+        currency: "YER",
+      },
       isOwner: true,
       sharedMember: null,
     }),
@@ -623,4 +679,37 @@ test("money summary fails closed if the plan disappears before its snapshot is r
     () => service.getSummary({ id: "owner-1" } as any, "plan-1"),
     NotFoundException,
   );
+});
+
+test("money-budget returns the summary committed by its own transaction without a second read", async () => {
+  let secondSummaryReads = 0;
+  const committedSummary = { weddingPlanId: "plan-1", budget: { total: "1000" } };
+  const controller = new MoneySummaryController(
+    {
+      getSummary: async () => {
+        secondSummaryReads += 1;
+        throw new Error("PUT must not perform a post-commit summary read");
+      },
+    } as any,
+    {
+      replace: async () => ({
+        summary: committedSummary,
+        categories: [],
+        idMap: {},
+      }),
+    } as any,
+  );
+
+  const response = await controller.replaceMoneyBudget(
+    { id: "owner-1" } as any,
+    "plan-1",
+    {
+      totalBudget: "1000",
+      currency: "YER",
+      categories: [],
+    },
+  );
+
+  assert.equal(response.summary, committedSummary);
+  assert.equal(secondSummaryReads, 0);
 });

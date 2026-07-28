@@ -20,6 +20,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   List<WeddingPlan> _plans = const [];
   WeddingPlan? _selectedPlan;
   ActiveWeddingPlan? _activePlan;
+  int _selectionGeneration = 0;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -33,13 +34,16 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       !_isLoading && _errorMessage == null && _activePlan == null;
 
   Future<void> loadActiveWeddingPlan() async {
+    final generation = ++_selectionGeneration;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _activePlan = await _api.getActiveWeddingPlan();
-      _selectedPlan = _activePlan?.toWeddingPlan();
+      final activePlan = await _api.getActiveWeddingPlan();
+      if (generation != _selectionGeneration || isSessionDisposed) return;
+      _activePlan = activePlan;
+      _selectedPlan = activePlan?.toWeddingPlan();
       if (_selectedPlan != null) {
         _plans = [
           _selectedPlan!,
@@ -47,9 +51,13 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
         ];
       }
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _errorMessage = error.message;
+      }
     } catch (_) {
-      _errorMessage = 'تعذر تحميل الخطة الحالية.';
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _errorMessage = 'تعذر تحميل الخطة الحالية.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -74,16 +82,23 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<void> loadWeddingPlan(String id) async {
+    final generation = ++_selectionGeneration;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _selectedPlan = await _api.getWeddingPlan(id);
+      final plan = await _api.getWeddingPlan(id);
+      if (generation != _selectionGeneration || isSessionDisposed) return;
+      _selectedPlan = plan;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _errorMessage = error.message;
+      }
     } catch (_) {
-      _errorMessage = 'تعذر تحميل خطة الزفاف.';
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _errorMessage = 'تعذر تحميل خطة الزفاف.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -132,6 +147,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<ActiveWeddingPlan?> setActiveWeddingPlan(String id) async {
+    final generation = ++_selectionGeneration;
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
@@ -139,16 +155,21 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
 
     try {
       final active = await _api.setActiveWeddingPlan(id);
+      if (generation != _selectionGeneration || isSessionDisposed) return null;
       _activePlan = active;
       final plan = active.toWeddingPlan();
       _selectedPlan = plan;
       _plans = [plan, ..._plans.where((item) => item.id != plan.id)];
       return active;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _errorMessage = error.message;
+      }
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر فتح الخطة المختارة.';
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _errorMessage = 'تعذر فتح الخطة المختارة.';
+      }
       return null;
     } finally {
       _isSubmitting = false;

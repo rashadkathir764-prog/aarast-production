@@ -5,9 +5,12 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  AdminRole,
   PrismaClient,
   ProviderStatus,
   ReviewStatus,
+  UserRole,
+  UserStatus,
 } from "@prisma/client";
 import { AdminService } from "../../src/admin/admin.service";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
@@ -65,6 +68,15 @@ async function main(): Promise<void> {
     ),
   );
   const [owner, ...reviewers] = users;
+  const adminActor = await prisma.user.create({
+    data: {
+      name: `${labelPrefix} moderator`,
+      passwordHash: passwordHash("moderator"),
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      adminRole: AdminRole.MODERATOR,
+    },
+  });
   const marketplace = new MarketplaceService(
     prisma as any,
     {} as any,
@@ -154,7 +166,10 @@ async function main(): Promise<void> {
       await assertExactAggregate(provider.id);
 
       await Promise.all([
-        admin.hideReview(byUserId.get(reviewers[0].id)!.id),
+        admin.hideReview(
+          adminActor as any,
+          byUserId.get(reviewers[0].id)!.id,
+        ),
         marketplace.updateReview(
           reviewers[1] as any,
           byUserId.get(reviewers[1].id)!.id,
@@ -173,9 +188,13 @@ async function main(): Promise<void> {
       await assertExactAggregate(provider.id);
 
       await Promise.all([
-        admin.updateReviewStatus(byUserId.get(reviewers[0].id)!.id, {
-          status: ReviewStatus.PUBLISHED,
-        }),
+        admin.updateReviewStatus(
+          adminActor as any,
+          byUserId.get(reviewers[0].id)!.id,
+          {
+            status: ReviewStatus.PUBLISHED,
+          },
+        ),
         marketplace.updateReview(
           reviewers[1] as any,
           byUserId.get(reviewers[1].id)!.id,

@@ -16,6 +16,11 @@ import {
 } from "./quote-lifecycle";
 import { requesterRejectedOfferNotification } from "./quote-notifications";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import {
+  assertProviderAccountUnchanged,
+  lockMarketplaceMutationUsers,
+  lockMarketplaceProvider,
+} from "./marketplace-write-locks";
 
 interface RejectQuoteOfferInput {
   id: string;
@@ -31,6 +36,48 @@ export async function rejectQuoteOfferInTransaction(
   const { id, currentUser } = input;
 
   return runSerializableTransaction(prisma, async (tx) => {
+    const seed = await tx.quoteOffer.findUnique({
+      where: { id },
+      select: {
+        providerId: true,
+        provider: { select: { userId: true } },
+        quoteRequest: {
+          select: {
+            userId: true,
+            weddingPlanId: true,
+            weddingPlan: { select: { ownerUserId: true } },
+          },
+        },
+      },
+    });
+    if (!seed) {
+      throw new NotFoundException("Quote offer not found");
+    }
+    const lockedUserIds = await lockMarketplaceMutationUsers(
+      tx,
+      currentUser.id,
+      [
+        seed.quoteRequest.userId,
+        seed.quoteRequest.weddingPlan?.ownerUserId,
+        seed.provider.userId,
+      ],
+    );
+    if (seed.quoteRequest.weddingPlanId) {
+      await permissions.assertProviderManageableInTransaction(
+        tx,
+        seed.quoteRequest.weddingPlanId,
+        currentUser,
+      );
+    } else if (seed.quoteRequest.userId !== currentUser.id) {
+      throw new NotFoundException("Quote offer not found");
+    }
+    const provider = await lockMarketplaceProvider(tx, seed.providerId);
+    assertProviderAccountUnchanged(
+      provider,
+      seed.provider.userId,
+      lockedUserIds,
+    );
+
     const locked = await lockQuoteOfferTransitionRows(tx, id);
     if (!locked) {
       throw new NotFoundException("Quote offer not found");
@@ -43,6 +90,16 @@ export async function rejectQuoteOfferInTransaction(
     if (!current) {
       throw new NotFoundException("Quote offer not found");
     }
+    if (
+      current.providerId !== seed.providerId ||
+      current.quoteRequest.userId !== seed.quoteRequest.userId ||
+      current.quoteRequest.weddingPlanId !==
+        seed.quoteRequest.weddingPlanId
+    ) {
+      throw new ConflictException(
+        "Quote offer context changed concurrently; retry the request",
+      );
+    }
     if (isQuoteOfferExpired(current)) {
       throw new ConflictException({
         code: "QUOTE_OFFER_EXPIRED",
@@ -51,16 +108,6 @@ export async function rejectQuoteOfferInTransaction(
     }
     if (current.status !== QuoteOfferStatus.PENDING) {
       throw new ConflictException("Quote offer is not pending");
-    }
-
-    if (current.quoteRequest.weddingPlanId) {
-      await permissions.assertProviderManageableInTransaction(
-        tx,
-        current.quoteRequest.weddingPlanId,
-        currentUser,
-      );
-    } else if (current.quoteRequest.userId !== currentUser.id) {
-      throw new NotFoundException("Quote offer not found");
     }
 
     assertQuoteRequestTransition(

@@ -15,6 +15,7 @@ import {
   restoreAdminSession,
   startAdminLogin,
 } from '../api/auth';
+import { setAdminSessionExpiredHandler } from '../api/client';
 
 type AuthContextValue = {
   user: AdminUser | null;
@@ -34,6 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<AdminLoginChallenge | null>(null);
+
+  useEffect(() => {
+    setAdminSessionExpiredHandler(() => {
+      setUser(null);
+      setChallenge(null);
+      setError('انتهت جلسة الإدارة. سجّل الدخول مرة أخرى.');
+      setIsLoading(false);
+    });
+
+    return () => {
+      setAdminSessionExpiredHandler(null);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;

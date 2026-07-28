@@ -1,41 +1,40 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AdminRole, Prisma, UserRole, UserStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AdminPermission } from '../common/admin/admin-permissions';
+import { authorizeAdminMutationActor } from './admin-mutation-gate';
 
 export async function authorizeAdminUserStatusChange(
   tx: Prisma.TransactionClient,
   currentUser: AuthenticatedUser,
   targetId: string,
 ) {
-  const [actor, target] = await Promise.all([
-    tx.user.findUnique({
-      where: { id: currentUser.id },
-      select: {
-        id: true,
-        role: true,
-        adminRole: true,
-        status: true,
-      },
-    }),
-    tx.user.findUnique({
-      where: { id: targetId },
-      select: {
-        id: true,
-        role: true,
-        adminRole: true,
-        status: true,
-      },
-    }),
-  ]);
+  const actor = await authorizeAdminMutationActor(
+    tx,
+    currentUser,
+    AdminPermission.USERS_WRITE,
+  );
+  const targetRows =
+    targetId === actor.id
+      ? [actor]
+      : await tx.$queryRaw<
+          Array<{
+            id: string;
+            role: UserRole;
+            adminRole: AdminRole | null;
+            status: UserStatus;
+          }>
+        >(
+          Prisma.sql`
+            SELECT "id", "role", "adminRole", "status"
+            FROM "User"
+            WHERE "id" = ${targetId}
+            FOR UPDATE
+          `,
+        );
+  const target = targetRows[0];
   if (!target) {
     throw new NotFoundException('User not found');
-  }
-  if (
-    !actor ||
-    actor.role !== UserRole.ADMIN ||
-    actor.status !== UserStatus.ACTIVE
-  ) {
-    throw new ForbiddenException('Admin access is required');
   }
   if (
     target.role === UserRole.ADMIN &&

@@ -4,6 +4,7 @@ import {
   apiRequest,
   clearAdminAccessToken,
   getAdminAccessToken,
+  setAdminSessionExpiredHandler,
   setAdminAccessToken,
 } from './client';
 
@@ -13,6 +14,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
   clearAdminAccessToken();
+  setAdminSessionExpiredHandler(null);
   localStorage.clear();
 });
 
@@ -114,6 +116,55 @@ describe('apiRequest', () => {
   it('returns null for an empty body', async () => {
     fetchMock.mockResolvedValueOnce(response(200, ''));
     await expect(apiRequest('/x')).resolves.toBeNull();
+  });
+
+  it('notifies the authenticated UI once when concurrent refresh fails', async () => {
+    setAdminAccessToken('expired');
+    const onExpired = vi.fn();
+    setAdminSessionExpiredHandler(onExpired);
+    fetchMock
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockResolvedValueOnce(response(401, '{"message":"refresh expired"}'));
+
+    await expect(
+      Promise.allSettled([
+        apiRequest('/admin/users'),
+        apiRequest('/admin/providers'),
+      ]),
+    ).resolves.toEqual([
+      expect.objectContaining({ status: 'rejected' }),
+      expect.objectContaining({ status: 'rejected' }),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(getAdminAccessToken()).toBeNull();
+  });
+
+  it('notifies expiry when the retry itself still returns 401', async () => {
+    setAdminAccessToken('expired');
+    const onExpired = vi.fn();
+    setAdminSessionExpiredHandler(onExpired);
+    fetchMock
+      .mockResolvedValueOnce(response(401, '{"message":"expired"}'))
+      .mockResolvedValueOnce(
+        response(
+          200,
+          JSON.stringify({
+            user: { id: 'a1', role: 'ADMIN' },
+            accessToken: 'fresh',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(response(401, '{"message":"still expired"}'));
+
+    await expect(apiRequest('/admin/users')).rejects.toMatchObject({
+      status: 401,
+    });
+
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(getAdminAccessToken()).toBeNull();
   });
 
   it('throws ApiError with status and array-message first element', async () => {

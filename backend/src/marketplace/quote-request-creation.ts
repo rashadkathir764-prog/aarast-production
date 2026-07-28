@@ -6,6 +6,7 @@ import {
   QuoteOfferStatus,
   QuoteRequestStatus,
 } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import {
   ensureConversationContext,
@@ -13,7 +14,16 @@ import {
 } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
 import { MARKETPLACE_QUOTE_INCLUDE } from "./marketplace.contracts";
+import {
+  assertMarketplaceProviderActive,
+  assertProviderAccountUnchanged,
+  lockActiveMarketplaceCity,
+  lockActiveProviderService,
+  lockMarketplaceMutationUsers,
+  lockMarketplaceProvider,
+} from "./marketplace-write-locks";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import {
   quoteSubmittedProviderNotification,
@@ -23,13 +33,18 @@ import {
 interface CreateQuoteRequestTransactionInput {
   data: Omit<Prisma.QuoteRequestUncheckedCreateInput, "conversationId">;
   requesterId: string;
-  contactName: string;
+}
+
+export interface QuoteRequestMutationGuard {
+  currentUser: AuthenticatedUser;
+  permissions: PermissionService;
 }
 
 export function createQuoteRequestInTransaction(
   prisma: PrismaService,
   notifications: NotificationsService,
   input: CreateQuoteRequestTransactionInput,
+  guard?: QuoteRequestMutationGuard,
 ) {
   const providerId = input.data.providerId;
   const weddingPlanId = input.data.weddingPlanId ?? null;
@@ -38,17 +53,74 @@ export function createQuoteRequestInTransaction(
   const cityId = input.data.cityId ?? null;
 
   return runSerializableTransaction(prisma, async (tx) => {
+    const providerSeed = guard
+      ? await tx.provider.findUnique({
+          where: { id: providerId },
+          select: { userId: true },
+        })
+      : null;
+    const planSeed =
+      guard && weddingPlanId
+        ? await tx.weddingPlan.findUnique({
+            where: { id: weddingPlanId },
+            select: { ownerUserId: true },
+          })
+        : null;
+
+    if (weddingPlanId && !guard) {
+      throw new Error("QuoteRequestMutationGuardRequired");
+    }
+
+    if (guard) {
+      const lockedUserIds = await lockMarketplaceMutationUsers(
+        tx,
+        guard.currentUser.id,
+        [providerSeed?.userId, planSeed?.ownerUserId],
+      );
+      if (weddingPlanId) {
+        await guard.permissions.assertProviderManageableInTransaction(
+          tx,
+          weddingPlanId,
+          guard.currentUser,
+        );
+      }
+      const provider = await lockMarketplaceProvider(tx, providerId, "UPDATE");
+      assertProviderAccountUnchanged(
+        provider,
+        providerSeed?.userId ?? null,
+        lockedUserIds,
+      );
+      assertMarketplaceProviderActive(provider);
+      if (serviceId) {
+        await lockActiveProviderService(tx, serviceId, providerId);
+      }
+      if (cityId) {
+        await lockActiveMarketplaceCity(tx, cityId);
+      }
+    } else {
+      // Kept only for the isolated plan-less domain harness. Production calls
+      // always provide the guard above and take User -> Plan -> Provider locks.
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "Provider" WHERE "id" = ${providerId} FOR UPDATE`,
+      );
+      const activeProvider = await tx.provider.findFirst({
+        where: { id: providerId, status: ProviderStatus.ACTIVE },
+      });
+      if (!activeProvider) throw new NotFoundException("Provider not found");
+    }
+
+    // The conversation is both the parent of the request and the row updated
+    // by its first lifecycle event. It must precede QuoteRequest in the global
+    // account-deletion lock order.
+    const conversation = await ensureConversationContext(tx, {
+      requesterUserId: input.requesterId,
+      providerId,
+      weddingPlanId,
+    });
+
     // Logical identity: requester + provider + plan + service (including
     // null) + event date + city. Message, budget, contact and guest details
     // describe the same active lead and cannot bypass this domain guard.
-    await tx.$queryRaw(
-      Prisma.sql`SELECT "id" FROM "Provider" WHERE "id" = ${providerId} FOR UPDATE`,
-    );
-    const activeProvider = await tx.provider.findFirst({
-      where: { id: providerId, status: ProviderStatus.ACTIVE },
-    });
-    if (!activeProvider) throw new NotFoundException("Provider not found");
-
     const existing = await tx.quoteRequest.findFirst({
       where: {
         userId: input.requesterId,
@@ -89,11 +161,6 @@ export function createQuoteRequestInTransaction(
       });
     }
 
-    const conversation = await ensureConversationContext(tx, {
-      requesterUserId: input.requesterId,
-      providerId,
-      weddingPlanId,
-    });
     const quote = await tx.quoteRequest.create({
       data: { ...input.data, conversationId: conversation.id },
       include: MARKETPLACE_QUOTE_INCLUDE,
@@ -125,7 +192,6 @@ export function createQuoteRequestInTransaction(
           providerUserId,
           quoteId: quote.id,
           providerId: quote.providerId,
-          contactName: input.contactName,
         }),
       );
     }

@@ -23,6 +23,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   SyncState _state = SyncState.synced;
   int _pendingCount = 0;
+  int _blockedCount = 0;
   DateTime? _lastSyncedAt;
   String? _lastError;
   Set<String> _pendingEntityKeys = const {};
@@ -31,14 +32,17 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   SyncState get state => _state;
   int get pendingCount => _pendingCount;
+  int get blockedCount => _blockedCount;
+  int get unsyncedCount => _pendingCount + _blockedCount;
   DateTime? get lastSyncedAt => _lastSyncedAt;
   String? get lastError => _lastError;
   bool get isSyncing => _state == SyncState.syncing;
-  bool get hasPendingChanges => _pendingCount > 0;
+  bool get hasPendingChanges => unsyncedCount > 0;
 
   SyncStatusSnapshot get snapshot => SyncStatusSnapshot(
     state: _state,
     pendingCount: _pendingCount,
+    blockedCount: _blockedCount,
     lastSyncedAt: _lastSyncedAt,
     lastError: _lastError,
   );
@@ -55,6 +59,11 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> refreshStatus() async {
     _pendingCount = await database.pendingSyncCount();
     _pendingEntityKeys = await database.pendingEntityKeys();
+    final blockedItems = await database.blockedSyncItems();
+    _blockedCount = blockedItems.length;
+    if (_blockedCount > 0 && (_lastError == null || _lastError!.isEmpty)) {
+      _lastError = blockedItems.first.lastError;
+    }
     final lastSyncedRaw = await database.getMeta(_lastSyncedAtKey);
     _lastSyncedAt = lastSyncedRaw == null
         ? null
@@ -64,11 +73,13 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     // items are excluded from that count). Only a fresh sync attempt clears
     // it — otherwise a permanently rejected write would flip back to a
     // false "synced".
-    if (_state != SyncState.syncing &&
-        _state != SyncState.offline &&
-        _state != SyncState.syncError) {
-      _state = _pendingCount > 0
-          ? SyncState.hasPendingChanges
+    if (_state != SyncState.syncing && _state != SyncState.offline) {
+      _state = _blockedCount > 0
+          ? SyncState.syncError
+          : _pendingCount > 0
+          ? (_state == SyncState.syncError
+                ? SyncState.syncError
+                : SyncState.hasPendingChanges)
           : SyncState.synced;
     }
     notifyListeners();
@@ -95,6 +106,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     _state = SyncState.synced;
     _lastError = null;
     _lastSyncedAt = null;
+    _blockedCount = 0;
     await refreshStatus();
   }
 
@@ -144,6 +156,14 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       final items = await database.pendingSyncItems();
       if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) return;
       if (items.isEmpty) {
+        final blockedItems = await database.blockedSyncItems();
+        if (blockedItems.isNotEmpty) {
+          _blockedCount = blockedItems.length;
+          _state = SyncState.syncError;
+          _lastError = blockedItems.first.lastError;
+          await refreshStatus();
+          return;
+        }
         _state = SyncState.synced;
         _lastError = null;
         await _markSyncedNow();
@@ -241,6 +261,20 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         unawaited(syncPendingChanges());
       }
     }
+  }
+
+  Future<void> retryBlockedChanges() async {
+    if (_syncInFlight) return;
+    final requeued = await database.requeueBlockedSyncItems();
+    if (requeued == 0) {
+      await refreshStatus();
+      return;
+    }
+    _blockedCount = 0;
+    _state = SyncState.hasPendingChanges;
+    _lastError = null;
+    await refreshStatus();
+    await syncPendingChanges();
   }
 
   bool _isCurrentSession(int generation, String ownerUserId) {

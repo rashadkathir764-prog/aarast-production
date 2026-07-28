@@ -74,9 +74,9 @@ class OfflineStatusBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (service.pendingCount > 0) ...[
+                if (service.unsyncedCount > 0) ...[
                   const SizedBox(width: 8),
-                  _CountPill(count: service.pendingCount, color: color),
+                  _CountPill(count: service.unsyncedCount, color: color),
                 ],
               ],
             ),
@@ -137,7 +137,11 @@ class OfflineSyncNowTile extends StatelessWidget {
     if (service == null) return const SizedBox.shrink();
 
     return ListTile(
-      onTap: service.isSyncing ? null : service.syncPendingChanges,
+      onTap: service.isSyncing
+          ? null
+          : service.blockedCount > 0
+          ? service.retryBlockedChanges
+          : service.syncPendingChanges,
       leading: Container(
         width: 50,
         height: 50,
@@ -151,14 +155,16 @@ class OfflineSyncNowTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        'مزامنة الآن',
+        service.blockedCount > 0 ? 'إعادة محاولة المزامنة' : 'مزامنة الآن',
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           color: AppTheme.ink,
           fontWeight: FontWeight.w900,
         ),
       ),
       subtitle: Text(
-        service.pendingCount > 0
+        service.blockedCount > 0
+            ? 'توجد تغييرات لم يقبلها الخادم: ${service.blockedCount}'
+            : service.pendingCount > 0
             ? 'بانتظار المزامنة: ${service.pendingCount}'
             : 'تمت المزامنة بنجاح',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(

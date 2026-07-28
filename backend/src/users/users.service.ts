@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import {
   MediaUploadStatus,
@@ -15,7 +16,9 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
+import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { MediaStorageService } from "../media/media-storage.service";
+import { enqueueUserSessionsRevoked } from "../outbox/realtime-revocation";
 import {
   lockProviderRatingRows,
   refreshProviderRating,
@@ -28,6 +31,7 @@ import {
 } from "./application-user-identity";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
+import { assertActiveMutationActorForUpdateInTransaction } from "./user-lifecycle-lock";
 
 export interface NotificationPreferenceResponse {
   id: string;
@@ -39,9 +43,40 @@ export interface NotificationPreferenceResponse {
   taskRemindersEnabled: boolean;
   paymentRemindersEnabled: boolean;
   providerMessagesEnabled: boolean;
+  channelCapabilities: NotificationChannelCapabilitiesResponse;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface NotificationChannelCapabilityResponse {
+  supported: boolean;
+  configurable: boolean;
+  enabled: boolean;
+}
+
+export interface NotificationChannelCapabilitiesResponse {
+  inApp: NotificationChannelCapabilityResponse;
+  push: NotificationChannelCapabilityResponse;
+  sms: NotificationChannelCapabilityResponse;
+  whatsapp: NotificationChannelCapabilityResponse;
+  email: NotificationChannelCapabilityResponse;
+}
+
+const NOTIFICATION_CHANNEL_CAPABILITIES: NotificationChannelCapabilitiesResponse =
+  {
+    inApp: { supported: true, configurable: false, enabled: true },
+    push: { supported: false, configurable: false, enabled: false },
+    sms: { supported: false, configurable: false, enabled: false },
+    whatsapp: { supported: false, configurable: false, enabled: false },
+    email: { supported: false, configurable: false, enabled: false },
+  };
+
+const UNSUPPORTED_NOTIFICATION_CHANNELS = [
+  ["pushEnabled", "push"],
+  ["smsEnabled", "sms"],
+  ["whatsappEnabled", "whatsapp"],
+  ["emailEnabled", "email"],
+] as const;
 
 /// Deliberately minimal: lookup exists only so a plan owner can confirm a
 /// member before inviting. No avatar and no extra profile data — phone
@@ -59,6 +94,8 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly permissionService: PermissionService,
     private readonly mediaStorage: MediaStorageService,
+    @Optional()
+    private readonly realtime?: ConversationRealtimePublisher,
   ) {}
 
   async updateMe(
@@ -75,80 +112,85 @@ export class UsersService {
           )
         : undefined;
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.user.findUniqueOrThrow({
-        where: { id: currentUser.id },
-        select: {
-          role: true,
-          avatarUrl: true,
-          appAvatarUrl: true,
-        },
-      });
-      const applicationAdmin =
-        existing.role === UserRole.ADMIN && currentUser.adminMfa !== true;
-      if (email) {
-        const duplicateEmail = await tx.user.findFirst({
-          where: {
-            id: { not: currentUser.id },
-            OR: [{ email }, { appEmail: email }],
+    const user = await runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        await assertActiveMutationActorForUpdateInTransaction(
+          tx,
+          currentUser.id,
+        );
+        const existing = await tx.user.findUniqueOrThrow({
+          where: { id: currentUser.id },
+          select: {
+            role: true,
+            avatarUrl: true,
+            appAvatarUrl: true,
           },
-          select: { id: true },
         });
-        if (duplicateEmail) {
-          throw new ConflictException("Email is already registered");
+        const applicationAdmin =
+          existing.role === UserRole.ADMIN && currentUser.adminMfa !== true;
+        if (email) {
+          const duplicateEmail = await tx.user.findFirst({
+            where: {
+              id: { not: currentUser.id },
+              OR: [{ email }, { appEmail: email }],
+            },
+            select: { id: true },
+          });
+          if (duplicateEmail) {
+            throw new ConflictException("Email is already registered");
+          }
         }
-      }
-      const currentAvatar = applicationAdmin
-        ? existing.appAvatarUrl
-        : existing.avatarUrl;
-      const avatarTarget = {
-        type: applicationAdmin
-          ? ("USER_APP_AVATAR" as const)
-          : ("USER_AVATAR" as const),
-        id: currentUser.id,
-      };
-      const avatarChanged =
-        dto.avatarUrl !== undefined && avatarUrl !== currentAvatar;
-      if (avatarChanged) {
-        await this.mediaStorage.scheduleTargetDeletion(
-          avatarTarget,
-          tx,
-        );
-      }
-      if (avatarChanged && avatarUrl) {
-        await this.mediaStorage.consumePublicMediaUrl(
-          currentUser,
-          avatarUrl,
-          "user-avatar",
-          avatarTarget,
-          tx,
-        );
-      }
-      return tx.user.update({
-        where: { id: currentUser.id },
-        data: {
-          ...(dto.name !== undefined
-            ? applicationAdmin
-              ? { appName: this.requiredText(dto.name, "name") }
-              : { name: this.requiredText(dto.name, "name") }
-            : {}),
-          ...(dto.email !== undefined
-            ? applicationAdmin
-              ? { appEmail: email }
-              : { email }
-            : {}),
-          ...(dto.avatarUrl !== undefined
-            ? applicationAdmin
-              ? { appAvatarUrl: avatarUrl }
-              : { avatarUrl }
-            : {}),
-          ...(dto.locale !== undefined
-            ? { locale: this.requiredText(dto.locale, "locale") }
-            : {}),
-          ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
-        },
-      });
-    });
+        const currentAvatar = applicationAdmin
+          ? existing.appAvatarUrl
+          : existing.avatarUrl;
+        const avatarTarget = {
+          type: applicationAdmin
+            ? ("USER_APP_AVATAR" as const)
+            : ("USER_AVATAR" as const),
+          id: currentUser.id,
+        };
+        const avatarChanged =
+          dto.avatarUrl !== undefined && avatarUrl !== currentAvatar;
+        if (avatarChanged) {
+          await this.mediaStorage.scheduleTargetDeletion(avatarTarget, tx);
+        }
+        if (avatarChanged && avatarUrl) {
+          await this.mediaStorage.consumePublicMediaUrl(
+            currentUser,
+            avatarUrl,
+            "user-avatar",
+            avatarTarget,
+            tx,
+          );
+        }
+        return tx.user.update({
+          where: { id: currentUser.id },
+          data: {
+            ...(dto.name !== undefined
+              ? applicationAdmin
+                ? { appName: this.requiredText(dto.name, "name") }
+                : { name: this.requiredText(dto.name, "name") }
+              : {}),
+            ...(dto.email !== undefined
+              ? applicationAdmin
+                ? { appEmail: email }
+                : { email }
+              : {}),
+            ...(dto.avatarUrl !== undefined
+              ? applicationAdmin
+                ? { appAvatarUrl: avatarUrl }
+                : { avatarUrl }
+              : {}),
+            ...(dto.locale !== undefined
+              ? { locale: this.requiredText(dto.locale, "locale") }
+              : {}),
+            ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     return toSafeUser(user);
   }
@@ -322,9 +364,7 @@ export class UsersService {
             Prisma.sql`"conversationId" IN (${Prisma.join(conversationIds)})`,
           );
         }
-        const quoteRequestsToDelete = await tx.$queryRaw<
-          Array<{ id: string }>
-        >(
+        const quoteRequestsToDelete = await tx.$queryRaw<Array<{ id: string }>>(
           Prisma.sql`
             SELECT "id"
             FROM "QuoteRequest"
@@ -462,6 +502,7 @@ export class UsersService {
         // Finally the user. Cascades refresh tokens, memberships, personal
         // conversation state/messages, and any remaining requester rows;
         // SetNulls actor/creator fields in other owners' contexts.
+        await enqueueUserSessionsRevoked(tx, userId);
         await tx.user.delete({ where: { id: userId } });
       },
       {
@@ -470,6 +511,9 @@ export class UsersService {
       },
     );
 
+    // The account no longer exists, so every authenticated realtime channel
+    // must be severed immediately instead of surviving until token expiry.
+    this.realtime?.disconnectUser(userId);
     return { deleted: true };
   }
 
@@ -504,10 +548,13 @@ export class UsersService {
   async getSettings(
     currentUser: AuthenticatedUser,
   ): Promise<NotificationPreferenceResponse> {
-    const settings = await this.prisma.notificationPreference.upsert({
-      where: { userId: currentUser.id },
-      update: {},
-      create: { userId: currentUser.id },
+    const settings = await runRetryableTransaction(this.prisma, async (tx) => {
+      await this.lockNotificationSettingsUser(tx, currentUser.id);
+      return tx.notificationPreference.upsert({
+        where: { userId: currentUser.id },
+        update: {},
+        create: { userId: currentUser.id },
+      });
     });
 
     return this.toSettingsResponse(settings);
@@ -517,16 +564,60 @@ export class UsersService {
     currentUser: AuthenticatedUser,
     dto: UpdateSettingsDto,
   ): Promise<NotificationPreferenceResponse> {
-    const settings = await this.prisma.notificationPreference.upsert({
-      where: { userId: currentUser.id },
-      create: {
-        userId: currentUser.id,
-        ...dto,
-      },
-      update: dto,
+    for (const [field, channel] of UNSUPPORTED_NOTIFICATION_CHANNELS) {
+      if (dto[field] === true) {
+        throw new BadRequestException({
+          code: "NOTIFICATION_CHANNEL_UNSUPPORTED",
+          channel,
+          message: `The ${channel} notification channel is not available`,
+        });
+      }
+    }
+    const update = {
+      pushEnabled: false,
+      smsEnabled: false,
+      whatsappEnabled: false,
+      emailEnabled: false,
+      ...(dto.taskRemindersEnabled !== undefined
+        ? { taskRemindersEnabled: dto.taskRemindersEnabled }
+        : {}),
+      ...(dto.paymentRemindersEnabled !== undefined
+        ? { paymentRemindersEnabled: dto.paymentRemindersEnabled }
+        : {}),
+      ...(dto.providerMessagesEnabled !== undefined
+        ? { providerMessagesEnabled: dto.providerMessagesEnabled }
+        : {}),
+    };
+    const settings = await runRetryableTransaction(this.prisma, async (tx) => {
+      await this.lockNotificationSettingsUser(tx, currentUser.id);
+      return tx.notificationPreference.upsert({
+        where: { userId: currentUser.id },
+        create: {
+          userId: currentUser.id,
+          ...update,
+        },
+        update,
+      });
     });
 
     return this.toSettingsResponse(settings);
+  }
+
+  private async lockNotificationSettingsUser(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    const users = await tx.$queryRaw<Array<{ id: string; status: string }>>(
+      Prisma.sql`
+        SELECT "id", "status"
+        FROM "User"
+        WHERE "id" = ${userId}
+        FOR UPDATE
+      `,
+    );
+    if (users.length !== 1 || users[0]?.status !== "ACTIVE") {
+      throw new NotFoundException("User not found");
+    }
   }
 
   private requiredText(
@@ -552,13 +643,14 @@ export class UsersService {
     return {
       id: settings.id,
       userId: settings.userId,
-      pushEnabled: settings.pushEnabled,
-      smsEnabled: settings.smsEnabled,
-      whatsappEnabled: settings.whatsappEnabled,
-      emailEnabled: settings.emailEnabled,
+      pushEnabled: false,
+      smsEnabled: false,
+      whatsappEnabled: false,
+      emailEnabled: false,
       taskRemindersEnabled: settings.taskRemindersEnabled,
       paymentRemindersEnabled: settings.paymentRemindersEnabled,
       providerMessagesEnabled: settings.providerMessagesEnabled,
+      channelCapabilities: NOTIFICATION_CHANNEL_CAPABILITIES,
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     };

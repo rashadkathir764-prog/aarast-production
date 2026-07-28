@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-26
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -42,6 +42,7 @@ changing behavior.
 - `docs/project/STATUS.md`
 - `docs/project/DECISIONS.md`
 - `docs/project/RELEASE_PLAN.md`
+- `docs/project/REMEDIATION_EXECUTION_PLAN.md`
 
 ### Backend
 
@@ -99,6 +100,7 @@ changing behavior.
 | Current status | `docs/project/STATUS.md` |
 | Decisions | `docs/project/DECISIONS.md` |
 | Release plan | `docs/project/RELEASE_PLAN.md` |
+| Current code-derived remediation execution | `docs/project/REMEDIATION_EXECUTION_PLAN.md` |
 | Backend overview | `docs/backend/README.md` |
 | Backend routes | `docs/backend/API_CONTRACT.md` |
 | Database model intent | `docs/backend/DATABASE.md` |
@@ -134,11 +136,15 @@ changing behavior.
 Run this before accepting documentation changes:
 
 ```powershell
+node .\scripts\docs-sync.mjs
 node .\scripts\docs-sync.mjs --check
 node .\scripts\docs-verify.mjs
 git diff --check
 ```
 
-`docs-sync --check` detects generated-table drift. `docs-verify` checks route,
-migration, snapshot, and link references. `git diff --check` catches whitespace
-errors. These commands inspect current source but do not change it.
+Run `docs-sync.mjs` once after package, schema, or route changes stabilize to
+refresh the generated references. Its `--check` mode is the acceptance gate for
+remaining generated-table drift. `docs-verify` checks route, migration,
+snapshot, and link references. `git diff --check` catches whitespace errors.
+Only the first command updates generated Markdown; the remaining commands are
+read-only.

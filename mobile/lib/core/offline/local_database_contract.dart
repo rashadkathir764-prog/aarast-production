@@ -54,15 +54,35 @@ abstract class LocalDatabase {
     required Map<String, dynamic> payload,
     String? localEntityId,
     bool replacePendingForEntity = false,
+    bool replaceAllPendingForEntity = false,
     String? clientRequestId,
+    DateTime? queueCreatedAt,
   });
 
   Future<List<SyncQueueItem>> pendingSyncItems();
+
+  Future<List<SyncQueueItem>> blockedSyncItems();
 
   Future<void> markSyncItemFailed(String id, String error);
 
   /// Marks an item as permanently rejected so it is never auto-replayed.
   Future<void> markSyncItemBlocked(String id, String error);
+
+  /// Explicitly requeues permanently blocked work after the user requests a
+  /// retry. Automatic sync must never replay blocked items.
+  Future<int> requeueBlockedSyncItems();
+
+  /// Removes a local-only entity and every unsynced operation for it. Mobile
+  /// implementations must perform this as one transaction.
+  Future<void> discardLocalEntity({
+    required String table,
+    required String entityType,
+    required String entityId,
+  });
+
+  /// Deletes one guest/account plan graph while preserving user and other
+  /// plan cache rows.
+  Future<void> deletePlanGraph(String planId);
 
   Future<void> markSyncItemSynced(String id);
 

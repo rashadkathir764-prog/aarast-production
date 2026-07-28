@@ -210,6 +210,7 @@ async function cleanupQuoteFixtureGraph(prisma, fixture) {
     await tx.quoteRequest.deleteMany({ where: { id: fixture.quoteRequest.id } });
     await tx.conversationParticipant.deleteMany({ where: { conversationId: fixture.conversation.id } });
     await tx.conversation.deleteMany({ where: { id: fixture.conversation.id } });
+    await tx.planInvite.deleteMany({ where: { weddingPlanId: fixture.plan.id } });
     await tx.sharedMember.deleteMany({ where: { weddingPlanId: fixture.plan.id } });
     await tx.budgetCategory.deleteMany({ where: { weddingPlanId: fixture.plan.id } });
     await tx.weddingPlan.deleteMany({ where: { id: fixture.plan.id } });

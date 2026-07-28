@@ -99,18 +99,33 @@ export function NotificationsPage() {
   }
 
   async function markRead(notification: AdminNotification) {
-    await markAdminNotificationRead(notification.id);
-    await load();
+    setError(null);
+    try {
+      await markAdminNotificationRead(notification.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر تعليم الإشعار كمقروء.');
+    }
   }
 
   async function archive(notification: AdminNotification) {
-    await archiveAdminNotification(notification.id);
-    await load();
+    setError(null);
+    try {
+      await archiveAdminNotification(notification.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر أرشفة الإشعار.');
+    }
   }
 
   async function remove(notification: AdminNotification) {
-    await deleteAdminNotification(notification.id);
-    await load();
+    setError(null);
+    try {
+      await deleteAdminNotification(notification.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر حذف الإشعار.');
+    }
   }
 
   if (isLoading) return <LoadingState title="جاري تحميل سجل الإشعارات" />;

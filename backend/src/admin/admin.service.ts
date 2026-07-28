@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,11 +19,18 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import {
+  AdminPermission,
+  hasAdminPermission,
+} from '../common/admin/admin-permissions';
 import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
-import { optionalMoneyAmount } from '../common/validation/money';
+import {
+  enqueueConversationAccessRevoked,
+  enqueueUserSessionsRevoked,
+} from '../outbox/realtime-revocation';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
-import { runProviderReviewMutation } from '../marketplace/provider-review-rating';
+import { AdminMutationExecutor } from './admin-mutation-executor';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
@@ -54,10 +62,14 @@ interface Pagination {
 
 @Injectable()
 export class AdminService {
+  private readonly mutations: AdminMutationExecutor;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: ConversationRealtimePublisher,
-  ) {}
+  ) {
+    this.mutations = new AdminMutationExecutor(prisma);
+  }
 
   async getDashboardStats() {
     const [
@@ -170,73 +182,23 @@ export class AdminService {
     );
   }
 
-  async createService(dto: AdminServiceDto) {
-    const providerId = this.requiredText(dto.providerId, 'providerId');
-    const categoryId = this.requiredText(dto.categoryId, 'categoryId');
-    await this.findProviderOrThrow(providerId);
-    await this.findCategoryOrThrow(categoryId);
-    if (dto.cityId) await this.findCityOrThrow(dto.cityId);
-
-    const service = await this.prisma.providerService.create({
-      data: {
-        providerId,
-        categoryId,
-        title: this.requiredText(dto.title, 'title'),
-        description: this.optionalText(dto.description),
-        basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice'),
-        priceUnit: this.optionalText(dto.priceUnit),
-        currency: this.optionalText(dto.currency) ?? 'YER',
-        cityId: this.optionalText(dto.cityId),
-        isActive: dto.isActive ?? true,
-        isFeatured: dto.isFeatured ?? false,
-      },
-      include: this.adminServiceInclude(),
-    });
-
-    return toAdminServiceResponse(service);
+  async createService(
+    currentUser: AuthenticatedUser,
+    dto: AdminServiceDto,
+  ) {
+    return this.mutations.createService(currentUser, dto);
   }
 
-  async updateService(id: string, dto: AdminServiceDto) {
-    const existing = await this.findServiceOrThrow(id);
-    if (dto.providerId !== undefined) {
-      const providerId = this.requiredText(dto.providerId, 'providerId');
-      if (providerId !== existing.providerId) {
-        throw new BadRequestException('providerId cannot be changed after a service is created');
-      }
-    }
-    if (dto.categoryId !== undefined) {
-      await this.findCategoryOrThrow(this.requiredText(dto.categoryId, 'categoryId'));
-    }
-    if (dto.cityId) await this.findCityOrThrow(dto.cityId);
-
-    const service = await this.prisma.providerService.update({
-      where: { id },
-      data: {
-        ...(dto.categoryId !== undefined ? { categoryId: this.requiredText(dto.categoryId, 'categoryId') } : {}),
-        ...(dto.title !== undefined ? { title: this.requiredText(dto.title, 'title') } : {}),
-        ...(dto.description !== undefined ? { description: this.optionalText(dto.description) } : {}),
-        ...(dto.basePrice !== undefined ? { basePrice: optionalMoneyAmount(dto.basePrice, 'basePrice') } : {}),
-        ...(dto.priceUnit !== undefined ? { priceUnit: this.optionalText(dto.priceUnit) } : {}),
-        ...(dto.currency !== undefined ? { currency: this.requiredText(dto.currency, 'currency') } : {}),
-        ...(dto.cityId !== undefined ? { cityId: this.optionalText(dto.cityId) } : {}),
-        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
-      },
-      include: this.adminServiceInclude(),
-    });
-
-    return toAdminServiceResponse(service);
+  async updateService(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminServiceDto,
+  ) {
+    return this.mutations.updateService(currentUser, id, dto);
   }
 
-  async deleteService(id: string) {
-    await this.findServiceOrThrow(id);
-    const service = await this.prisma.providerService.update({
-      where: { id },
-      data: { isActive: false, isFeatured: false },
-      include: this.adminServiceInclude(),
-    });
-
-    return { ...toAdminServiceResponse(service), deleted: false };
+  async deleteService(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.deleteService(currentUser, id);
   }
 
   async listReviews(query: AdminReviewQueryDto) {
@@ -260,41 +222,16 @@ export class AdminService {
     );
   }
 
-  async updateReviewStatus(id: string, dto: AdminReviewStatusDto) {
-    const existing = await this.findReviewOrThrow(id);
-    const status = this.parseReviewStatus(dto.status);
-    return runProviderReviewMutation(
-      this.prisma,
-      existing.providerId,
-      async (tx) => {
-        const current = await tx.providerReview.findUnique({ where: { id } });
-        if (!current) throw new NotFoundException('Review not found');
-        const review = await tx.providerReview.update({
-          where: { id },
-          data: { status },
-          include: this.adminReviewInclude(),
-        });
-        return toAdminReviewResponse(review);
-      },
-    );
+  async updateReviewStatus(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminReviewStatusDto,
+  ) {
+    return this.mutations.updateReviewStatus(currentUser, id, dto);
   }
 
-  async hideReview(id: string) {
-    const existing = await this.findReviewOrThrow(id);
-    return runProviderReviewMutation(
-      this.prisma,
-      existing.providerId,
-      async (tx) => {
-        const current = await tx.providerReview.findUnique({ where: { id } });
-        if (!current) throw new NotFoundException('Review not found');
-        const review = await tx.providerReview.update({
-          where: { id },
-          data: { status: ReviewStatus.HIDDEN },
-          include: this.adminReviewInclude(),
-        });
-        return { ...toAdminReviewResponse(review), deleted: false };
-      },
-    );
+  async hideReview(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.hideReview(currentUser, id);
   }
 
   async listConversationReports(query: AdminConversationReportQueryDto) {
@@ -335,24 +272,16 @@ export class AdminService {
     return this.paginate(reports, total, pagination);
   }
 
-  async updateConversationReportStatus(id: string, dto: AdminConversationReportStatusDto) {
-    const existing = await this.prisma.conversationReport.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-    if (!existing) throw new NotFoundException('Conversation report not found');
-    return this.prisma.conversationReport.update({
-      where: { id },
-      data: { status: this.parseConversationReportStatus(dto.status) },
-      select: {
-        id: true,
-        conversationId: true,
-        reason: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+  async updateConversationReportStatus(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminConversationReportStatusDto,
+  ) {
+    return this.mutations.updateConversationReportStatus(
+      currentUser,
+      id,
+      dto,
+    );
   }
 
   async listNotifications(query: AdminNotificationQueryDto) {
@@ -383,34 +312,16 @@ export class AdminService {
     return { count };
   }
 
-  async markNotificationRead(id: string) {
-    await this.findNotificationOrThrow(id);
-    const notification = await this.prisma.notification.update({
-      where: { id },
-      data: { readAt: new Date() },
-      include: this.adminNotificationInclude(),
-    });
-    return toAdminNotificationResponse(notification);
+  async markNotificationRead(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.markNotificationRead(currentUser, id);
   }
 
-  async archiveNotification(id: string) {
-    const existing = await this.findNotificationOrThrow(id);
-    const now = new Date();
-    const notification = await this.prisma.notification.update({
-      where: { id },
-      data: {
-        archivedAt: now,
-        readAt: existing.readAt ?? now,
-      },
-      include: this.adminNotificationInclude(),
-    });
-    return toAdminNotificationResponse(notification);
+  async archiveNotification(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.archiveNotification(currentUser, id);
   }
 
-  async deleteNotification(id: string) {
-    await this.findNotificationOrThrow(id);
-    await this.prisma.notification.delete({ where: { id } });
-    return { id, deleted: true };
+  async deleteNotification(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.deleteNotification(currentUser, id);
   }
 
   async getReportsOverview(query: AdminReportQueryDto) {
@@ -475,49 +386,23 @@ export class AdminService {
     return categories.map((category) => toCategoryResponse(category));
   }
 
-  async createCategory(dto: AdminCategoryDto) {
-    const category = await this.prisma.providerCategory.create({
-      data: {
-        nameAr: this.requiredText(dto.nameAr, 'nameAr'),
-        nameEn: this.optionalText(dto.nameEn),
-        slug: this.toSlug(dto.slug ?? dto.nameEn ?? dto.nameAr),
-        icon: this.optionalText(dto.icon),
-        isActive: dto.isActive ?? true,
-        sortOrder: dto.sortOrder ?? 0,
-      },
-      include: { _count: { select: { providers: true, services: true } } },
-    });
-
-    return toCategoryResponse(category);
+  async createCategory(
+    currentUser: AuthenticatedUser,
+    dto: AdminCategoryDto,
+  ) {
+    return this.mutations.createCategory(currentUser, dto);
   }
 
-  async updateCategory(id: string, dto: AdminCategoryDto) {
-    await this.findCategoryOrThrow(id);
-    const category = await this.prisma.providerCategory.update({
-      where: { id },
-      data: {
-        ...(dto.nameAr !== undefined ? { nameAr: this.requiredText(dto.nameAr, 'nameAr') } : {}),
-        ...(dto.nameEn !== undefined ? { nameEn: this.optionalText(dto.nameEn) } : {}),
-        ...(dto.slug !== undefined ? { slug: this.toSlug(dto.slug) } : {}),
-        ...(dto.icon !== undefined ? { icon: this.optionalText(dto.icon) } : {}),
-        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
-      },
-      include: { _count: { select: { providers: true, services: true } } },
-    });
-
-    return toCategoryResponse(category);
+  async updateCategory(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminCategoryDto,
+  ) {
+    return this.mutations.updateCategory(currentUser, id, dto);
   }
 
-  async deleteCategory(id: string) {
-    await this.findCategoryOrThrow(id);
-    const category = await this.prisma.providerCategory.update({
-      where: { id },
-      data: { isActive: false },
-      include: { _count: { select: { providers: true, services: true } } },
-    });
-
-    return { ...toCategoryResponse(category), deleted: false };
+  async deleteCategory(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.deleteCategory(currentUser, id);
   }
 
   async listCities() {
@@ -529,47 +414,20 @@ export class AdminService {
     return cities.map((city) => toCityResponse(city));
   }
 
-  async createCity(dto: AdminCityDto) {
-    const city = await this.prisma.city.create({
-      data: {
-        nameAr: this.requiredText(dto.nameAr, 'nameAr'),
-        nameEn: this.optionalText(dto.nameEn),
-        countryCode: this.optionalText(dto.countryCode) ?? 'YE',
-        isActive: dto.isActive ?? true,
-        sortOrder: dto.sortOrder ?? 0,
-      },
-      include: { _count: { select: { providers: true, services: true } } },
-    });
-
-    return toCityResponse(city);
+  async createCity(currentUser: AuthenticatedUser, dto: AdminCityDto) {
+    return this.mutations.createCity(currentUser, dto);
   }
 
-  async updateCity(id: string, dto: AdminCityDto) {
-    await this.findCityOrThrow(id);
-    const city = await this.prisma.city.update({
-      where: { id },
-      data: {
-        ...(dto.nameAr !== undefined ? { nameAr: this.requiredText(dto.nameAr, 'nameAr') } : {}),
-        ...(dto.nameEn !== undefined ? { nameEn: this.optionalText(dto.nameEn) } : {}),
-        ...(dto.countryCode !== undefined ? { countryCode: this.optionalText(dto.countryCode) ?? 'YE' } : {}),
-        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
-      },
-      include: { _count: { select: { providers: true, services: true } } },
-    });
-
-    return toCityResponse(city);
+  async updateCity(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminCityDto,
+  ) {
+    return this.mutations.updateCity(currentUser, id, dto);
   }
 
-  async deleteCity(id: string) {
-    await this.findCityOrThrow(id);
-    const city = await this.prisma.city.update({
-      where: { id },
-      data: { isActive: false },
-      include: { _count: { select: { providers: true, services: true } } },
-    });
-
-    return { ...toCityResponse(city), deleted: false };
+  async deleteCity(currentUser: AuthenticatedUser, id: string) {
+    return this.mutations.deleteCity(currentUser, id);
   }
 
   async listUsers(query: AdminProviderQueryDto) {
@@ -671,6 +529,7 @@ export class AdminService {
         where: { userId: target.id, revokedAt: null },
         data: { revokedAt: now },
       });
+      await enqueueUserSessionsRevoked(tx, target.id);
       return updated;
     });
     // Sessions were just revoked; sever any live realtime channel the now
@@ -685,14 +544,24 @@ export class AdminService {
     status: ProviderStatus,
     reviewNote: string | null,
   ) {
-    const provider = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.provider.findUnique({ where: { id }, select: { userId: true } });
-      if (!existing) {
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const seed = await tx.provider.findUnique({
+        where: { id },
+        select: { userId: true },
+      });
+      if (!seed) {
         throw new NotFoundException('Provider application not found');
       }
-      if (existing.userId === currentUser.id) {
+      if (seed.userId === currentUser.id) {
         throw new BadRequestException('Provider owners cannot review their own application');
       }
+
+      await this.lockProviderReviewUsersInTransaction(
+        tx,
+        currentUser,
+        seed.userId,
+      );
+      await this.lockProviderReviewRowInTransaction(tx, id, seed.userId);
 
       const updated = await tx.provider.update({
         where: { id },
@@ -709,6 +578,7 @@ export class AdminService {
         let promoted = await tx.user.updateMany({
           where: {
             id: updated.userId,
+            status: UserStatus.ACTIVE,
             role: { in: [UserRole.USER, UserRole.PROVIDER] },
           },
           data: {
@@ -720,6 +590,7 @@ export class AdminService {
           promoted = await tx.user.updateMany({
             where: {
               id: updated.userId,
+              status: UserStatus.ACTIVE,
               role: UserRole.ADMIN,
               appPasswordHash: { not: null },
             },
@@ -733,10 +604,101 @@ export class AdminService {
         }
       }
 
-      return updated;
+      const revokedConversationIds =
+        updated.userId && status !== ProviderStatus.ACTIVE
+          ? (
+              await tx.conversation.findMany({
+                where: { providerId: updated.id },
+                orderBy: { id: 'asc' },
+                select: { id: true },
+              })
+            ).map((conversation) => conversation.id)
+          : [];
+      if (updated.userId) {
+        await enqueueConversationAccessRevoked(
+          tx,
+          updated.userId,
+          revokedConversationIds,
+        );
+      }
+
+      return { provider: updated, revokedConversationIds };
     });
+    const { provider, revokedConversationIds } = result;
+
+    if (provider.userId && revokedConversationIds.length > 0) {
+      this.realtime.revokeConversationAccess(
+        provider.userId,
+        revokedConversationIds,
+      );
+    }
 
     return toProviderResponse(provider);
+  }
+
+  private async lockProviderReviewUsersInTransaction(
+    tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
+    providerOwnerUserId: string | null,
+  ): Promise<void> {
+    const userIds = [...new Set(
+      [currentUser.id, providerOwnerUserId].filter(
+        (userId): userId is string => Boolean(userId),
+      ),
+    )].sort();
+    const users = await tx.$queryRaw<
+      Array<{
+        id: string;
+        role: UserRole;
+        adminRole: AdminRole | null;
+        status: UserStatus;
+      }>
+    >(
+      Prisma.sql`
+        SELECT "id", "role", "adminRole", "status"
+        FROM "User"
+        WHERE "id" IN (${Prisma.join(userIds)})
+        ORDER BY "id" ASC
+        FOR UPDATE
+      `,
+    );
+    if (users.length !== userIds.length) {
+      throw new NotFoundException('Provider application not found');
+    }
+    const actor = users.find((user) => user.id === currentUser.id);
+    if (
+      !actor ||
+      actor.role !== UserRole.ADMIN ||
+      actor.status !== UserStatus.ACTIVE ||
+      !hasAdminPermission(actor.adminRole, AdminPermission.PROVIDERS_WRITE)
+    ) {
+      throw new ForbiddenException('Admin permission is required');
+    }
+  }
+
+  private async lockProviderReviewRowInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    expectedOwnerUserId: string | null,
+  ): Promise<void> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "Provider"
+        WHERE "id" = ${providerId}
+        FOR UPDATE
+      `,
+    );
+    if (rows.length !== 1) {
+      throw new NotFoundException('Provider application not found');
+    }
+    const provider = await tx.provider.findUnique({
+      where: { id: providerId },
+      select: { userId: true },
+    });
+    if (!provider || provider.userId !== expectedOwnerUserId) {
+      throw new NotFoundException('Provider application not found');
+    }
   }
 
   private serviceWhere(query: AdminServiceQueryDto): Prisma.ProviderServiceWhereInput {
@@ -841,36 +803,6 @@ export class AdminService {
       user: { select: { id: true, name: true, phone: true } },
       weddingPlan: { select: { id: true, title: true, city: true } },
     } satisfies Prisma.NotificationInclude;
-  }
-
-  private async findProviderOrThrow(id: string) {
-    const provider = await this.prisma.provider.findUnique({ where: { id } });
-    if (!provider) throw new NotFoundException('Provider not found');
-    return provider;
-  }
-
-  private async findServiceOrThrow(id: string) {
-    const service = await this.prisma.providerService.findUnique({
-      where: { id },
-    });
-    if (!service) throw new NotFoundException('Provider service not found');
-    return service;
-  }
-
-  private async findReviewOrThrow(id: string) {
-    const review = await this.prisma.providerReview.findUnique({
-      where: { id },
-    });
-    if (!review) throw new NotFoundException('Review not found');
-    return review;
-  }
-
-  private async findNotificationOrThrow(id: string) {
-    const notification = await this.prisma.notification.findUnique({
-      where: { id },
-    });
-    if (!notification) throw new NotFoundException('Notification not found');
-    return notification;
   }
 
   private async findUserOrThrow(id: string) {
@@ -1085,20 +1017,6 @@ export class AdminService {
           }
         : {}),
     } satisfies Prisma.UserSelect;
-  }
-
-  private async findCategoryOrThrow(id: string) {
-    const category = await this.prisma.providerCategory.findUnique({
-      where: { id },
-    });
-    if (!category) throw new NotFoundException('Provider category not found');
-    return category;
-  }
-
-  private async findCityOrThrow(id: string) {
-    const city = await this.prisma.city.findUnique({ where: { id } });
-    if (!city) throw new NotFoundException('City not found');
-    return city;
   }
 
   private parseProviderStatus(value?: string): ProviderStatus | null {

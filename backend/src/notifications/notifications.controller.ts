@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Query,
@@ -19,6 +20,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
+  @Header("Cache-Control", "private, no-store")
   list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query("weddingPlanId") weddingPlanId?: string,
@@ -38,6 +40,7 @@ export class NotificationsController {
   }
 
   @Get("unread-count")
+  @Header("Cache-Control", "private, no-store")
   unreadCount(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query("weddingPlanId") weddingPlanId?: string,
@@ -46,6 +49,7 @@ export class NotificationsController {
   }
 
   @Get(":id")
+  @Header("Cache-Control", "private, no-store")
   findOne(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("id") id: string,

@@ -6,7 +6,6 @@ import {
 } from "@nestjs/common";
 import {
   City,
-  ConversationEventType,
   FavoriteProvider,
   Prisma,
   Provider,
@@ -18,9 +17,7 @@ import {
   ProviderStatus,
   PlanProviderLink,
   QuoteOffer,
-  QuoteOfferStatus,
   QuoteRequest,
-  QuoteRequestStatus,
   ReviewStatus,
   User,
   WeddingPlan,
@@ -28,7 +25,6 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
-import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -43,15 +39,17 @@ import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
-import {
-  assertQuoteRequestTransition,
-  lockQuoteRequestTransitionRow,
-  quoteLifecycleStatus,
-} from "./quote-lifecycle";
-import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import { quoteLifecycleStatus } from "./quote-lifecycle";
 import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
+import { cancelQuoteRequestInTransaction } from "./quote-request-cancellation";
 import { runProviderReviewMutation } from "./provider-review-rating";
+import {
+  assertMarketplaceProviderActive,
+  assertProviderAccountUnchanged,
+  lockMarketplaceMutationUsers,
+  lockMarketplaceProvider,
+} from "./marketplace-write-locks";
 
 import {
   FULL_QUOTE_VISIBILITY,
@@ -259,32 +257,58 @@ export class MarketplaceService {
   }
 
   async favoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
-    await this.findActiveProviderOrThrow(providerId);
-    const favorite = await this.prisma.favoriteProvider.upsert({
-      where: {
-        userId_providerId: {
-          userId: currentUser.id,
-          providerId,
-        },
+    MarketplaceQuery.assertUuid(providerId, "providerId");
+    const favorite = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const providerSeed = await tx.provider.findUnique({
+          where: { id: providerId },
+          select: { userId: true },
+        });
+        const lockedUserIds = await lockMarketplaceMutationUsers(
+          tx,
+          currentUser.id,
+          [providerSeed?.userId],
+        );
+        const provider = await lockMarketplaceProvider(tx, providerId);
+        assertProviderAccountUnchanged(
+          provider,
+          providerSeed?.userId ?? null,
+          lockedUserIds,
+        );
+        assertMarketplaceProviderActive(provider);
+        return tx.favoriteProvider.upsert({
+          where: {
+            userId_providerId: {
+              userId: currentUser.id,
+              providerId,
+            },
+          },
+          create: {
+            userId: currentUser.id,
+            providerId,
+          },
+          update: {},
+          include: {
+            provider: { include: { city: true, primaryCategory: true } },
+          },
+        });
       },
-      create: {
-        userId: currentUser.id,
-        providerId,
-      },
-      update: {},
-      include: { provider: { include: { city: true, primaryCategory: true } } },
-    });
+    );
 
     return MarketplacePresenter.toFavoriteResponse(favorite);
   }
 
   async unfavoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
     MarketplaceQuery.assertUuid(providerId, "providerId");
-    await this.prisma.favoriteProvider.deleteMany({
-      where: {
-        userId: currentUser.id,
-        providerId,
-      },
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await lockMarketplaceMutationUsers(tx, currentUser.id);
+      await tx.favoriteProvider.deleteMany({
+        where: {
+          userId: currentUser.id,
+          providerId,
+        },
+      });
     });
 
     return { providerId, deleted: true };
@@ -379,7 +403,6 @@ export class MarketplaceService {
       this.notifications,
       {
         requesterId: currentUser.id,
-        contactName,
         data: {
           userId: currentUser.id,
           providerId,
@@ -397,6 +420,10 @@ export class MarketplaceService {
           budgetMax,
         },
       },
+      {
+        currentUser,
+        permissions: this.permissions,
+      },
     );
 
     return MarketplacePresenter.toQuoteResponse(quote);
@@ -407,7 +434,6 @@ export class MarketplaceService {
     weddingPlanId: string,
     dto: CreatePlanQuoteRequestDto,
   ) {
-    await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
     return this.createQuoteRequest(currentUser, dto.providerId, {
       ...dto,
       weddingPlanId,
@@ -469,57 +495,13 @@ export class MarketplaceService {
     id: string,
   ) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const result = await runSerializableTransaction(this.prisma, async (tx) => {
-      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
-        throw new NotFoundException("Quote request not found");
-      }
-      const existing = await tx.quoteRequest.findUnique({
-        where: { id },
-        include: MARKETPLACE_QUOTE_INCLUDE,
-      });
-      if (!existing) {
-        throw new NotFoundException("Quote request not found");
-      }
-      let visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY;
-      if (existing.weddingPlanId) {
-        const context =
-          await this.permissions.assertProviderManageableInTransaction(
-            tx,
-            existing.weddingPlanId,
-            currentUser,
-          );
-        visibility = this.quoteVisibility(context, existing, currentUser);
-      } else if (existing.userId !== currentUser.id) {
-        throw new NotFoundException("Quote request not found");
-      }
-      assertQuoteRequestTransition(
-        existing.status,
-        QuoteRequestStatus.CANCELLED,
-        "requester",
-      );
-      const cancelledAt = new Date();
-      const transition = await tx.quoteRequest.updateMany({
-        where: { id: existing.id, status: existing.status },
-        data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
-      });
-      if (transition.count !== 1) {
-        throw new ConflictException("Quote request cannot be cancelled");
-      }
-      const updated = await tx.quoteRequest.findUniqueOrThrow({
-        where: { id: existing.id },
-        include: MARKETPLACE_QUOTE_INCLUDE,
-      });
-      await recordConversationEvent(tx, {
-        conversationId: existing.conversationId,
-        quoteRequestId: existing.id,
-        actorUserId: currentUser.id,
-        type: ConversationEventType.QUOTE_REQUEST_CANCELLED,
-        occurredAt: cancelledAt,
-        dedupeKey: `quote-request:${existing.id}:cancelled`,
-        data: { status: QuoteRequestStatus.CANCELLED },
-      });
-      return { quote: updated, visibility };
-    });
+    const result = await cancelQuoteRequestInTransaction(
+      this.prisma,
+      this.permissions,
+      currentUser,
+      id,
+      "PLAN_OR_OWNER",
+    );
 
     return MarketplacePresenter.toQuoteResponse(
       result.quote,
@@ -529,21 +511,16 @@ export class MarketplaceService {
 
   async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
     const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
-    if (isQuoteOfferExpired(offer)) {
-      throw new ConflictException({
-        code: "QUOTE_OFFER_EXPIRED",
-        message: "انتهت صلاحية عرض السعر. أنشئ طلبًا جديدًا للمتابعة.",
-      });
-    }
     if (!offer.quoteRequest.weddingPlanId) {
       throw new BadRequestException(
         "Quote offer is not linked to a wedding plan",
       );
     }
     const weddingPlanId = offer.quoteRequest.weddingPlanId;
+    // Fast API guard retained for compatibility. The authoritative check is
+    // repeated under User -> Plan -> SharedMember locks in the transaction.
     await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
     await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
-
     const result = await acceptQuoteOfferInTransaction(
       this.prisma,
       this.permissions,
@@ -589,27 +566,7 @@ export class MarketplaceService {
   }
 
   async rejectQuoteOffer(currentUser: AuthenticatedUser, id: string) {
-    const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
-    if (isQuoteOfferExpired(offer)) {
-      throw new ConflictException({
-        code: "QUOTE_OFFER_EXPIRED",
-        message: "انتهت صلاحية عرض السعر.",
-      });
-    }
-    if (offer.status !== QuoteOfferStatus.PENDING) {
-      throw new ConflictException("Quote offer is not pending");
-    }
-    if (offer.quoteRequest.weddingPlanId) {
-      await this.permissions.assertProviderManageable(
-        offer.quoteRequest.weddingPlanId,
-        currentUser,
-      );
-    }
-    assertQuoteRequestTransition(
-      offer.quoteRequest.status,
-      QuoteRequestStatus.REJECTED,
-      "requester",
-    );
+    await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
 
     const rejected = await rejectQuoteOfferInTransaction(
       this.prisma,
@@ -647,46 +604,14 @@ export class MarketplaceService {
 
   async cancelMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const quote = await runSerializableTransaction(this.prisma, async (tx) => {
-      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
-        throw new NotFoundException("Quote request not found");
-      }
-      const existing = await tx.quoteRequest.findFirst({
-        where: { id, userId: currentUser.id },
-      });
-      if (!existing) {
-        throw new NotFoundException("Quote request not found");
-      }
-      assertQuoteRequestTransition(
-        existing.status,
-        QuoteRequestStatus.CANCELLED,
-        "requester",
-      );
-      const cancelledAt = new Date();
-      const transition = await tx.quoteRequest.updateMany({
-        where: { id, status: existing.status },
-        data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
-      });
-      if (transition.count !== 1) {
-        throw new ConflictException("Quote request cannot be cancelled");
-      }
-      const updated = await tx.quoteRequest.findUniqueOrThrow({
-        where: { id },
-        include: MARKETPLACE_QUOTE_INCLUDE,
-      });
-      await recordConversationEvent(tx, {
-        conversationId: existing.conversationId,
-        quoteRequestId: existing.id,
-        actorUserId: currentUser.id,
-        type: ConversationEventType.QUOTE_REQUEST_CANCELLED,
-        occurredAt: cancelledAt,
-        dedupeKey: `quote-request:${existing.id}:cancelled`,
-        data: { status: QuoteRequestStatus.CANCELLED },
-      });
-      return updated;
-    });
-
-    return MarketplacePresenter.toQuoteResponse(quote);
+    const result = await cancelQuoteRequestInTransaction(
+      this.prisma,
+      this.permissions,
+      currentUser,
+      id,
+      "OWNER_ONLY",
+    );
+    return MarketplacePresenter.toQuoteResponse(result.quote);
   }
 
   async createReview(

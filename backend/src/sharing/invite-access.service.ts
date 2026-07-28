@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
-import { OtpPurpose, UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { createHash } from "node:crypto";
 import { AuthErrorCode, authError } from "../auth/auth-error";
 import { AuthService } from "../auth/auth.service";
@@ -27,10 +27,13 @@ export class InviteAccessService {
       throw this.inviteNotFound();
     }
 
+    const expectedTokenHash = createHash("sha256")
+      .update(cleanToken)
+      .digest("hex");
     const now = new Date();
     const invite = await this.prisma.planInvite.findFirst({
       where: {
-        tokenHash: createHash("sha256").update(cleanToken).digest("hex"),
+        tokenHash: expectedTokenHash,
         normalizedPhone: phone,
         acceptedAt: null,
         declinedAt: null,
@@ -53,10 +56,23 @@ export class InviteAccessService {
       !account ||
       (!account.phoneVerifiedAt && account.role !== UserRole.ADMIN) ||
       (account.role === UserRole.ADMIN && !account.appPasswordHash);
-    const otp = await this.auth.requestOtp(
-      { phone, purpose: OtpPurpose.LOGIN },
-      context,
-    );
+    let otp;
+    try {
+      otp = await this.auth.requestInviteOtp(
+        phone,
+        invite.id,
+        expectedTokenHash,
+        context,
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw this.inviteNotFound();
+      }
+      throw error;
+    }
     return { ...otp, accountSetupRequired };
   }
 

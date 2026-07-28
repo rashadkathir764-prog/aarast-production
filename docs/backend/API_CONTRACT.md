@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-25.
+Current documentation snapshot: 2026-07-26.
 
 Source status:
 
@@ -43,6 +43,12 @@ Health endpoints have distinct orchestration semantics:
   sessions. Every access JWT carries a signed `scope` claim: `application` for
   `/api/v1` product APIs and Chat, or `admin` for `/admin`. Scope-less,
   cross-scope, and contradictory claim combinations are rejected.
+- Every application and administrator access JWT also carries a non-empty
+  signed `sid` equal to its current persisted `RefreshToken.id`. Authorization
+  requires a live, unrevoked, unexpired refresh row matching the JWT `sub`,
+  `scope`, and `sid`; scope-only or sessionless tokens are rejected. Admin
+  tokens additionally require `admin_mfa`, while application tokens must not
+  carry that assurance.
 - Production refuses to start with a missing, placeholder, short, repetitive,
   or low-entropy `JWT_SECRET`. The secret is validated without logging or
   returning its value.
@@ -214,11 +220,34 @@ expire after 30 days and are stored as hashes.
   `application` refresh sessions mint only `scope=application`, and `ADMIN`
   refresh sessions mint only `scope=admin`.
 - `POST /api/v1/auth/refresh` rotates one valid refresh token and returns a new access
-  and refresh pair. Reuse of a revoked/expired token is rejected.
+  and refresh pair. Rotation is serialized across that user, scope, and
+  replacement chain. The replacement access JWT carries the new row id as
+  `sid`, so the prior access token becomes invalid as soon as the old row is
+  revoked.
+- Any reuse of a revoked or replaced refresh token, including an immediate or
+  concurrent duplicate request, is rejected and revokes the still-active
+  descendants in that same user/scope replacement family. Independent login
+  families and the other application/admin realm remain unaffected.
+- If replacement-chain traversal detects a cycle or reaches the maximum depth
+  of 4,096 without proving a terminal row, the family cannot be trusted.
+  Traversal uses one bounded recursive CTE that reads at most `max + 1` rows and
+  locks the traversed `RefreshToken` rows with one `FOR UPDATE` query. Refresh
+  and logout fail closed by revoking every active refresh session for that same
+  user and realm. `APPLICATION` and `ADMIN` remain isolated; an application
+  failure cannot revoke administrator sessions and vice versa. This broader
+  realm revocation is reserved for an incomplete/cyclic family; normal replay
+  still preserves independent login families.
 - `POST /api/v1/auth/logout` revokes the supplied application refresh token;
-  when omitted it revokes all application sessions for that user.
+  when omitted it revokes all application sessions for that user. A supplied
+  older token follows its replacement chain and revokes the live descendant
+  rather than leaving the rotated session active.
 - `POST /api/v1/auth/logout-all` revokes all active application refresh
   sessions. Administrator logout/recovery affects only administrator sessions.
+- Application rotation, logout, reset, disable, and deletion commit
+  `SESSION_REVOKED` or `USER_SESSIONS_REVOKED` outbox events with the
+  authoritative session mutation. Chat sockets are grouped by `sid`; immediate
+  disconnect is best-effort for low latency, while strict outbox dispatch makes
+  revocation durable across backend replicas.
 - A revoked refresh row is retained for 30 days from `revokedAt`; an unrevoked
   expired row is retained for 30 days from `expiresAt`. One hourly
   PostgreSQL-advisory-lock cleanup removes older rows on only one replica. This
@@ -290,6 +319,52 @@ Additional current auth/profile routes:
 - `GET /api/v1/me`
 
 OTP/profile routes are account and settings helpers. They do not add payment, booking, financing, AI, or chat behavior.
+
+The settings response includes the persisted content preferences plus an
+additive `channelCapabilities` object:
+
+```json
+{
+  "pushEnabled": false,
+  "smsEnabled": false,
+  "whatsappEnabled": false,
+  "emailEnabled": false,
+  "taskRemindersEnabled": true,
+  "paymentRemindersEnabled": true,
+  "providerMessagesEnabled": true,
+  "channelCapabilities": {
+    "inApp": { "supported": true, "configurable": false, "enabled": true },
+    "push": { "supported": false, "configurable": false, "enabled": false },
+    "sms": { "supported": false, "configurable": false, "enabled": false },
+    "whatsapp": { "supported": false, "configurable": false, "enabled": false },
+    "email": { "supported": false, "configurable": false, "enabled": false }
+  }
+}
+```
+
+The in-app inbox/realtime availability is supported and is not configurable.
+Device push, SMS, WhatsApp, and email notification delivery are not implemented
+notification channels. Their legacy booleans always return `false`; sending
+`false` remains accepted for older clients, while any attempt to set one to
+`true` returns HTTP `400` with code `NOTIFICATION_CHANNEL_UNSUPPORTED` and the
+rejected channel. OTP transport is a separate authentication concern and does
+not make WhatsApp a general notification channel.
+
+The three writable content preferences have direct effects:
+
+- `taskRemindersEnabled` controls immediate and scheduled task reminders.
+- `paymentRemindersEnabled` controls scheduled payment reminders.
+- `providerMessagesEnabled` controls quote-request, quote-offer, quote-decision,
+  and conversation-message notifications.
+
+Missing preference rows keep the three content categories enabled by default.
+General account/sharing notifications and the in-app inbox itself remain
+available. A suppressed content notification creates neither a `Notification`
+row nor a notification-created outbox event. Settings writes lock the recipient
+`User` row `FOR UPDATE`; gated notification creation and the scheduler lock it
+`FOR SHARE` before re-reading the preference. A disable that commits first
+therefore wins deterministically.
+
 `PATCH /api/v1/users/me` accepts profile fields such as name, email, avatar,
 locale, and persona. It does not accept `appRole`; role/context discovery is
 server-owned and a supplied `appRole` is rejected by the global validation
@@ -390,9 +465,26 @@ them live from `WeddingPlan.ownerUserId`, `SharedMember`, and `Provider.userId`;
 it does not use `User.role` or `User.appRole` alone and does not trust a client
 supplied plan, provider, role, or permissions object.
 
-`GET /api/v1/contexts` returns a bounded array. Planning plans are available;
-archived plans remain discoverable with `isAvailable: false` so a client can
-explain why a prior selection is no longer usable.
+`GET /api/v1/contexts` returns every relational context currently accessible
+to the account. Planning plans are available; archived plans remain
+discoverable with `isAvailable: false` so a client can explain why a prior
+selection is no longer usable.
+
+Every context preserves the compatibility fields already consumed by clients
+and adds:
+
+- `lifecycle`: the live `WeddingPlan.status` or `Provider.status`.
+- `accessMode`: `FULL`, `LIMITED`, or `READ_ONLY`. `FULL` means the lifecycle
+  permits the context's normal feature set; it does not grant a route action
+  that the stored fine-grained `permissions` deny. `LIMITED` is the editable
+  provider-profile-only state. `READ_ONLY` is historical plan access or
+  provider profile/status visibility without mutation.
+- `capabilities`: `canViewProviderProfile`, `canManageProviderProfile`, and
+  `canUseProviderOperations`.
+
+`permissions` remains for compatibility and route-specific client decisions.
+For an archived plan, readable historical permissions remain truthful while
+every plan write permission is `false`.
 
 Owner example:
 
@@ -403,6 +495,13 @@ Owner example:
   "weddingPlanId": "clx123",
   "providerId": null,
   "displayName": "خطة زفاف محمد",
+  "lifecycle": "PLANNING",
+  "accessMode": "FULL",
+  "capabilities": {
+    "canViewProviderProfile": false,
+    "canManageProviderProfile": false,
+    "canUseProviderOperations": false
+  },
   "permissions": {
     "canViewPlan": true,
     "canEditPlan": true,
@@ -428,6 +527,13 @@ Contributor example:
   "weddingPlanId": "clx456",
   "providerId": null,
   "displayName": "خطة زفاف أحمد",
+  "lifecycle": "PLANNING",
+  "accessMode": "FULL",
+  "capabilities": {
+    "canViewProviderProfile": false,
+    "canManageProviderProfile": false,
+    "canUseProviderOperations": false
+  },
   "permissions": {
     "canViewPlan": true,
     "canEditPlan": false,
@@ -453,6 +559,13 @@ Provider example:
   "weddingPlanId": null,
   "providerId": "7c5301cb-0194-4f44-bb62-18dc9025bb52",
   "displayName": "قاعة السعادة",
+  "lifecycle": "ACTIVE",
+  "accessMode": "FULL",
+  "capabilities": {
+    "canViewProviderProfile": true,
+    "canManageProviderProfile": true,
+    "canUseProviderOperations": true
+  },
   "permissions": {
     "canViewPlan": false,
     "canEditPlan": false,
@@ -484,6 +597,21 @@ but inaccessible plan/provider returns privacy-preserving `404` with
 `CONTEXT_UNAVAILABLE` and `unavailableReason: "PLAN_ARCHIVED"`.
 Validation never replaces route-level `PermissionService`, provider ownership,
 conversation authorization, or other domain checks.
+
+Provider contexts remain available for profile/status display in all five
+states:
+
+| Provider status | `accessMode` | View profile | Manage profile | Provider operations |
+| --- | --- | --- | --- | --- |
+| `ACTIVE` | `FULL` | yes | yes | yes |
+| `PENDING` | `LIMITED` | yes | yes | no |
+| `NEEDS_CHANGES` | `LIMITED` | yes | yes | no |
+| `SUSPENDED` | `READ_ONLY` | yes | no | no |
+| `REJECTED` | `READ_ONLY` | yes | no | no |
+
+This matrix uses the same provider access policy as the profile and operation
+guards. It is not derived from `User.role`, `User.appRole`, or
+`User.onboardingPath`; those remain compatibility metadata only.
 
 ## Wedding Plans
 
@@ -539,6 +667,42 @@ serializes the service `null` as an empty `200` body, which the mobile client
 maps to `null`); it never selects another accessible plan as a fallback.
 
 Shared members can read basic plan info. Updating or archiving requires owner access or manager-style sharing permission.
+
+An archived WeddingPlan remains readable to users who still have access, but
+its planning graph is read-only. `POST /api/v1/wedding-plans/:id/set-active`
+and plan-scoped writes protected by the plan permission/lifecycle guards return
+HTTP `409` with:
+
+```json
+{
+  "code": "PLAN_ARCHIVED_READ_ONLY",
+  "message": "Archived wedding plans are read-only"
+}
+```
+
+The same denial applies to member/invite mutations, linked quote cancellation
+and provider offer/status mutations, and sending a message in a plan-scoped
+conversation. Historical reads remain available. Personal safety/inbox state
+such as read, mute, block, and report is not treated as a planning-data write.
+
+Plan update and archive now run inside retryable `SERIALIZABLE` transactions.
+They lock `WeddingPlan FOR UPDATE` before re-reading lifecycle state, then lock
+the acting non-owner's `SharedMember` row `FOR SHARE` before checking authority
+and writing. Active-plan selection locks the authenticated `User FOR UPDATE`,
+then locks and rechecks the selected `WeddingPlan` and applicable
+`SharedMember` before storing `activeWeddingPlanId`. A permission revocation,
+membership deletion, or archive that commits first therefore rejects the
+waiting mutation instead of allowing a stale authorization decision.
+
+This concurrent contract is verified for plan update/archive/set-active,
+invitation acceptance, all six member/invite administration mutations, all
+seven task mutations, all seven guest/group mutations, all fifteen financial
+mutations, quote lifecycle writes, plan-conversation state/send, provider
+dashboard writes, marketplace writes, media verification/persistence,
+notification mutations, administrator mutations, and authentication lifecycle
+races. Sixteen named `smoke:phase2-*` gates cover the current inventory. This
+does not claim that every future protected service or any deployed environment
+is complete.
 
 ## Onboarding And Active Plan
 
@@ -604,6 +768,8 @@ route accepts optional `weddingPlanId`. Notifications are always owned by the
 authenticated user. List, count, and mark-all reads never generate records;
 task writes create immediate due reminders and an hourly cross-replica locked
 scheduler idempotently repairs task and payment-schedule reminders.
+Both paths honor the content preferences documented above before persisting a
+notification or outbox row.
 
 Notification response:
 
@@ -658,6 +824,11 @@ The response contains the refreshed `summary`, canonical `categories`, and an
 `idMap` for client-generated category IDs. The backend and offline client must
 never replace null with the sum of category allocations.
 
+The budget write, category replacement, and returned summary use one retryable
+`SERIALIZABLE` transaction. The response is calculated before that transaction
+commits; the endpoint never commits a budget and then performs a separately
+authorized summary read that could falsely return failure after the write.
+
 Protected category routes:
 
 - `POST /api/v1/wedding-plans/:weddingPlanId/budget-categories`
@@ -679,6 +850,16 @@ non-null general budget, and the sum of allocations may not exceed that budget.
 A category referenced by any cost cannot be deleted until those costs are moved
 or removed. All reads require `canViewMoney`; all mutations require
 `canManageMoney`.
+
+All fifteen canonical financial mutation handlers—budget replacement, the
+three category mutations, the six cost/payment entry points, payment reversal,
+and the four payment-schedule mutations—recheck plan lifecycle and current
+money-management authority inside their retryable `SERIALIZABLE` transaction.
+An archive, membership removal, or permission revocation that commits first
+rejects the waiting mutation without a financial write. Cost create/update lock
+referenced providers and quote offers in sorted order before categories and the
+cost row, so provider suspension or deletion cannot leave a newly linked or
+updated cost using stale provider state.
 
 ## Wedding Costs
 
@@ -885,6 +1066,9 @@ as debt or summed money. Callers use the warning type and schedule counts.
 
 Callers without `canViewMoney` receive no private money values; hidden values
 are not converted to zeros. Mutating routes require `canManageMoney`.
+The permission decision and all summary rows are read from the same
+`REPEATABLE READ` transaction snapshot. A budget replacement returns the
+summary built inside its own successful mutation transaction.
 
 Removed prelaunch expense, commitment, financial-payment, and financial-
 installment routes are not aliases and must return `404`.
@@ -919,7 +1103,18 @@ Create request:
 }
 ```
 
-Owners can manage tasks. Shared members can list tasks and can manage tasks only when `canManageTasks` is true or their role is `MANAGER`.
+Owners can manage tasks. Shared task management follows the live
+`PermissionService.canManageTasks` policy: explicit `canManageTasks`, or one of
+`GROOM`, `BRIDE`, `FAMILY`, `MANAGER`, `EDITOR`, `HELPER`, or `CONTRIBUTOR`.
+
+All seven task mutation shapes—create, update, assign, delete, and checklist
+create/update/delete—run inside retryable `SERIALIZABLE` transactions. Lock
+order is `WeddingPlan FOR SHARE`, the acting non-owner's
+`SharedMember FOR SHARE`, an applicable assignee's
+`SharedMember FOR SHARE`, then `WeddingTask FOR UPDATE`; checklist update/delete
+additionally lock the checklist row `FOR UPDATE`. An archive, permission
+revocation, or assignee removal that commits first therefore rejects the waiting
+mutation without a task-side write.
 
 No unversioned task aliases are exposed.
 
@@ -996,6 +1191,20 @@ handle. Accept/decline uses a conditional single-row claim, so concurrent
 requests cannot both consume one invite. Access and error logs replace invite
 path tokens and sensitive query values with redacted placeholders.
 
+Invite acceptance runs in a retryable `SERIALIZABLE` transaction. It locks the
+`WeddingPlan` lifecycle row before the `PlanInvite` row, re-reads both states,
+and then claims the still-live token. An existing `SharedMember` row is
+authoritative and is never overwritten from an older invitation snapshot;
+acceptance creates membership only when none exists. This prevents a stale
+invite from restoring revoked provider or financial permissions and prevents
+acceptance after an archive that commits first.
+
+The acceptance response additively returns
+`contextKey: "plan:<weddingPlanId>:contributor"` alongside the existing
+`invite` and `member` objects. Acceptance does not change
+`User.activeWeddingPlanId`; selecting the accepted context remains a separate
+explicit action.
+
 Creating an invitation runs the live-pending duplicate check, invite insert,
 and optional registered-user notification/outbox write inside one retryable
 `SERIALIZABLE` transaction. A notification failure therefore leaves no invite,
@@ -1059,18 +1268,33 @@ never overwrite or borrow the newer attempt's result; it returns HTTP `409`
 with code `INVITE_DELIVERY_ATTEMPT_SUPERSEDED` and no raw bearer.
 
 `POST /api/v1/invites/:token/request-otp` is public but bearer-and-phone bound.
-It sends a `LOGIN` OTP only when the 43-character raw token fingerprints a live
-pending invitation and the canonical phone matches that exact invitation. A
-mismatch returns stable code `INVITE_NOT_FOUND_FOR_PHONE` without plan details
-and without dispatching an OTP. A private token link always starts verification
-for the invited phone, even when the device still has another application
-account signed in; it must not query the token through that stale account. After
-OTP verification the application session is replaced by the verified invitee,
-the exact token flow resumes in memory, and the client must display the invite,
-role, and permission snapshot with explicit accept and decline actions.
-Verification itself never accepts the invitation or creates membership. Only an
-explicit authenticated accept request may enter the shared plan, and the server
-still performs the normal verified-phone and atomic pending-invite claim checks.
+It issues an internal `INVITE_ACCESS` OTP only when the 43-character raw token
+fingerprints a live pending invitation and the canonical phone matches that
+exact invitation. The OTP row is bound to that `PlanInvite.id` through
+`planInviteId`; it is not a general `LOGIN` code. A mismatch returns stable code
+`INVITE_NOT_FOUND_FOR_PHONE` without plan details and without dispatching an
+OTP. General login and different pending invitations for the same phone keep
+separate active OTP contexts. `INVITE_ACCESS` is intentionally unavailable
+through the public `/api/v1/auth/otp/request` and `/api/v1/auth/otp/verify`
+contract, and those routes reject it. Database constraint
+`OtpCode_invite_access_context_check`, installed by migration
+`20260726041000_enforce_invite_otp_context`, requires `planInviteId` for
+`INVITE_ACCESS` and forbids it for every other purpose.
+
+A private token link always starts verification for the invited phone, even
+when the device still has another application account signed in; it must not
+query the token through that stale account.
+`POST /api/v1/invites/:token/verify-otp` locks and rechecks the same live
+invitation, then consumes only the matching
+`(phone, INVITE_ACCESS, planInviteId)` code. A general login code or a code for
+another invitation cannot complete the flow.
+After OTP verification the application session is replaced by the verified
+invitee, the exact token flow resumes in memory, and the client must display the
+invite, role, and permission snapshot with explicit accept and decline actions.
+Verification itself never accepts the invitation or creates membership. Only
+an explicit authenticated accept request may enter the shared plan, and the
+server still performs the normal verified-phone and atomic pending-invite claim
+checks.
 
 After the token and phone match, the request response includes
 `accountSetupRequired`. It is `true` only when the invited phone still needs an
@@ -1078,12 +1302,12 @@ application credential. The client then collects the contributor name and a
 6-to-72-byte password before calling
 `POST /api/v1/invites/:token/verify-otp` with `{ phone, code, name, password }`.
 That verification is bound again to the exact live token and phone. It consumes
-the same `LOGIN` OTP, creates or claims the application account with the
-participant's chosen password, and returns the normal access/refresh session;
-no second registration OTP is sent. Existing verified application accounts
-send only `{ phone, code }` and receive a normal login session. General
-`POST /api/v1/auth/otp/verify` never creates an account merely because another
-pending invitation exists.
+the same invite-bound `INVITE_ACCESS` OTP, creates or claims the application
+account with the participant's chosen password, and returns the normal
+access/refresh session; no second registration OTP is sent. Existing verified
+application accounts send only `{ phone, code }` and receive a normal login
+session. General `POST /api/v1/auth/otp/verify` never creates an account merely
+because another pending invitation exists.
 
 Create shared member request:
 
@@ -1127,6 +1351,17 @@ members. A non-owner cannot grant any effective role or permission above their
 own current ceiling; role-implied permissions are included in that comparison.
 The owner cannot add themselves as a shared member, unknown phone numbers are
 rejected without auto-creating users, and duplicate members are rejected.
+
+Member creation, invitation creation/cancellation/reissue, member update, and
+member removal all recheck the actor inside a retryable `SERIALIZABLE`
+transaction. Lock order begins with `WeddingPlan FOR SHARE`, followed by the
+acting non-owner's `SharedMember FOR SHARE`. Member update/removal then lock the
+target member `FOR UPDATE`; invitation cancellation/reissue use a conditional
+claim against the expected live invitation state. Delegation ceilings,
+dependent notification/conversation cleanup, and the database mutation commit
+together. Realtime permission-revocation signals are emitted only after commit.
+Consequently, a permission revocation or plan archive that commits first makes
+the waiting operation fail closed and leaves the target unchanged.
 
 Invite routes support explicit acceptance and decline flows. OTP verification
 must not call either action implicitly. They do not create chat or broad social
@@ -1181,7 +1416,35 @@ Guest response:
 }
 ```
 
-Users with readable plan access can list guests. Creating, updating, and deleting guests requires owner or manager access.
+Users with readable plan access can list guests. Guest mutations follow the live
+`PermissionService.canManageGuests` policy: owner access, explicit
+`canManageGuests`, or one of `GROOM`, `BRIDE`, `FAMILY`, `MANAGER`, `EDITOR`, or
+`HELPER`.
+
+All seven guest/group mutation shapes—guest create/bulk/update/delete and group
+create/update/delete—run inside retryable `SERIALIZABLE` transactions. Lock
+order is `WeddingPlan FOR SHARE`, the acting non-owner's
+`SharedMember FOR SHARE`, an applicable referenced `GuestGroup FOR SHARE`, then
+the existing `Guest` or `GuestGroup FOR UPDATE`. Permission and lifecycle state
+remain stable through the write.
+
+Bulk creation accepts from 1 to 200 items and is all-or-nothing: every item is
+created in one transaction, so an invalid or duplicate later item rolls back
+all earlier items. Guest name changes write `name` and `normalizedName`
+together from the locked row; an unrelated update does not rewrite
+`normalizedName`.
+
+A non-null normalized phone identifies at most one guest inside one WeddingPlan,
+regardless of display name. Multiple guests may omit the phone. The service
+performs a friendly duplicate check, while the database unique constraint on
+`(weddingPlanId, normalizedPhone)` is the concurrency authority. Migration
+`20260726030000_enforce_unique_guest_phone` stores `phone` and
+`normalizedPhone` as the same canonical value and installs
+`Guest_phone_normalizedPhone_match_check`, which rejects partial or divergent
+pairs. The migration takes a bounded exclusive table lock, canonicalizes
+accepted historical forms, and aborts transactionally with generic non-PII
+errors on an orphaned normalized value, an unparseable source phone, or a
+canonical duplicate. It never merges or deletes private guest data.
 
 No unversioned guest aliases are exposed.
 
@@ -1289,6 +1552,12 @@ optional service (including `null`), event date, and city; message, budget,
 contact, and guest details do not create a second active lead. `SENT`, `VIEWED`,
 and `RESPONDED` are active, except that a `RESPONDED` cycle whose pending offers
 are all past `validUntil` is effectively closed for starting a new request.
+The provider's new-quote inbox notification is generic and does not persist the
+requester's name or phone in its title, body, or metadata. Contact fields are
+available only through the permission-checked quote contract. Migration
+`20260726010000_scrub_notification_contact_pii` replaces historical
+provider-portal quote-request bodies and conversation-message alert bodies that
+copied requester/sender names with generic text.
 
 Quote-offer responses expose derived `isExpired` and `isActionable` fields.
 Expired pending offers remain historically `PENDING` in storage, cannot be
@@ -1309,10 +1578,19 @@ provider, and creates or returns the single `WeddingCost` identified by the
 unique `quoteOfferId`. The offer amount must be positive and use the plan
 currency. The service category is matched logically against
 `BudgetCategory.normalizedName`; otherwise `أخرى` is reused or created without
-an allocation. Acceptance re-reads both permissions inside the transition
-transaction while holding the relevant shared-member permission row. If
-revocation commits first, acceptance fails and creates no cost or provider
-link.
+an allocation. Acceptance first takes `WeddingPlan FOR SHARE` and re-reads its
+lifecycle state inside the serializable transaction. For a non-owner it then
+locks and re-reads the relevant `SharedMember` permission row before locking
+`QuoteRequest`, `QuoteOffer`, and finally the live `Provider` row. If plan
+archive or permission revocation commits first, acceptance fails and creates
+no cost or provider link. If acceptance takes the lifecycle lock first, archive
+waits until the complete acceptance graph commits. A new acceptance requires
+the locked provider to remain `ACTIVE`. Replaying an already committed
+`ACCEPTED` offer is a historical,
+idempotent read: it returns the existing cost and provider link without
+rewriting either or creating another notification, even if the provider later
+became non-active. Missing or mismatched historical artifacts return a conflict
+instead of being silently repaired by the replay.
 
 The response contains:
 
@@ -1353,6 +1631,36 @@ Provider dashboard routes:
 - `PATCH /api/v1/provider/me/quote-offers/:id`
 - `GET /api/v1/provider/me/reviews`
 
+Provider capabilities are based on the current database status, not a JWT role
+or a hidden UI action:
+
+| Provider status | Read profile/status | Edit profile | Dashboard, catalog management, reviews, quote/customer data, provider-side conversations |
+| --- | --- | --- | --- |
+| `PENDING` | allow | allow | deny |
+| `NEEDS_CHANGES` | allow | allow | deny |
+| `ACTIVE` | allow | allow | allow |
+| `SUSPENDED` | allow | deny | deny |
+| `REJECTED` | allow | deny | deny |
+
+An operational request from a non-active provider returns HTTP `403` with code
+`PROVIDER_NOT_ACTIVE`. A profile mutation in `SUSPENDED` or `REJECTED` returns
+HTTP `403` with code `PROVIDER_PROFILE_READ_ONLY`. Moving a linked provider to
+a non-active status revokes that provider user's current conversation-room
+access after the status transaction commits; every later HTTP/socket
+authorization still rechecks live database state.
+
+Provider-audience quote and chat notifications are filtered before inbox
+pagination, counts, and bulk-read mutation while the provider is non-active.
+Direct access to one hidden provider notification returns
+`PROVIDER_NOT_ACTIVE`; wedding/customer/account notifications for the same user
+remain available. Notification reads send `Cache-Control: private, no-store`.
+New notification metadata records `recipientAudience`, while legacy provider
+quote routes and chat `providerId` metadata remain recognized.
+
+`/api/v1/contexts` and `/api/v1/contexts/validate` expose this same live
+lifecycle/capability matrix additively while retaining the compatibility
+`permissions`, `role`, identifiers, display, and availability fields.
+
 Plan members may read plan quote requests through the plan-scoped route. Budget
 and contact fields remain redacted unless the corresponding money/provider
 permission allows them; quote mutations require provider-management permission,
@@ -1370,7 +1678,9 @@ same transaction, so opening chat never mutates server state.
   conversation linked to that request.
 - `GET /api/v1/conversations` lists the current account's conversations with
   optional `cursor` and `limit` (default 30, maximum 50), returning
-  `{ items, nextCursor }`.
+  `{ items, nextCursor }`. A non-active provider's provider-side entries are
+  excluded at query time, while plan-owner, contributor, and customer-side
+  entries for the same account remain eligible.
 - `GET /api/v1/conversations/:id` returns the exact participant-authorized
   conversation summary, so a direct route does not depend on that conversation
   appearing in the first inbox page.
@@ -1381,15 +1691,27 @@ same transaction, so opening chat never mutates server state.
 - `GET /api/v1/conversations/:id/messages` returns paginated message history.
 - `POST /api/v1/conversations/:id/messages` sends text and approved signed-media
   attachments. Immediately before persistence, one serializable transaction
-  locks the conversation, rechecks the live plan/provider authority and active
-  participant row, and derives recipients from that same locked graph. A
-  permission revocation that commits first therefore rejects the send without
-  creating a message, notification, or outbox event.
+  locks the conversation and active participant row, rechecks current
+  plan/provider authority, and locks an applicable shared-member permission
+  row before deriving recipients. A permission revocation that commits first
+  therefore rejects the send without creating a message, notification, or
+  outbox event.
+- A message remains a valid conversation write when a recipient has disabled
+  `providerMessagesEnabled`, but no chat notification or notification-created
+  outbox event is written for that recipient. Before deciding, notification
+  creation locks the recipient `User` row `FOR SHARE` and re-reads the current
+  preference.
 - `GET /api/v1/conversations/:id/attachments/:attachmentId/download` refreshes a
   private attachment link after rechecking conversation membership.
 - `PATCH /api/v1/conversations/:id/read`, `/mute`, and `/block` update participant
   state. Mark-read never reactivates a revoked participant.
 - `POST /api/v1/conversations/:id/report` creates a moderation report.
+
+Member/provider authority changes that revoke conversation access enqueue
+`CONVERSATION_ACCESS_REVOKED` in the same transaction as the authoritative
+permission or lifecycle mutation. The immediate Socket.IO leave/disconnect is a
+best-effort low-latency path; strict outbox delivery keeps the revocation
+retryable until the realtime adapter completes it.
 
 Conversation summaries include `scope`, optional `weddingPlan`, `provider`,
 `quoteRequestCount`, `latestQuoteRequest`, `lastActivityAt`,
@@ -1420,6 +1742,23 @@ no linked User does not block quote creation; the summary returns
 or sends in the conversation. Customer reads do not falsely join the provider,
 and the conversation remains readable while sending returns the stable
 `PROVIDER_NOT_JOINED` conflict contract.
+
+If the linked provider becomes non-active, provider-side rows disappear from
+the inbox list. Direct provider-side read, join, and send return
+`PROVIDER_NOT_ACTIVE`. This distinction preserves unrelated wedding/customer
+contexts owned by the same account. The customer may still read the historical
+conversation, but its summary reports `canSend: false`. If the linked
+WeddingPlan is archived, authorized historical reads also remain available
+while sending returns `PLAN_ARCHIVED_READ_ONLY`.
+
+The serializable message-send path locks the conversation, then the linked
+`Provider` lifecycle row, followed by the applicable shared-member permission
+and participant rows before creating a message, notification, or outbox event.
+If provider suspension commits first, a provider-side send fails with
+`PROVIDER_NOT_ACTIVE` and produces no durable side effect. The transaction does
+not yet make every conversation-state or marketplace mutation atomic with every
+applicable participant, plan, provider, and account lifecycle row. Those
+remaining boundaries stay explicit `BE-RACE-001` Phase 2 work.
 
 `POST /api/v1/media/uploads/presign` issues short-lived S3-compatible upload
 URLs for approved purposes and declared size/MIME limits. The returned
@@ -1461,7 +1800,7 @@ private-bucket and Socket.IO smoke remain release gates.
 Admin routes are JWT-protected and require admin authorization:
 
 - `POST /api/v1/auth/admin/login` validates the admin password and returns only a
-  short-lived MFA challenge after sending a `LOGIN` OTP.
+  short-lived MFA challenge after sending a private `ADMIN_LOGIN` OTP.
 - `POST /api/v1/auth/admin/login/complete` first consumes the exact OTP through
   the row-locked one-time verifier, then compare-and-set consumes the live
   challenge while issuing the administrator session. It returns a short-lived
@@ -1471,12 +1810,12 @@ Admin routes are JWT-protected and require admin authorization:
 - `POST /api/v1/auth/admin/logout` revokes the server session and clears the cookie.
 
 General password login, general OTP login, and general refresh never mint the
-`scope=admin` plus `admin_mfa` assurance required by `AdminGuard`. Each admin
-access JWT also carries a server-side refresh-session id; refresh or logout
-revokes that row, so the prior access JWT stops working immediately. Admin
-access JWTs cannot authorize `/api/v1` product APIs or Chat, and application
-access JWTs cannot authorize `/admin`. The JSON contract never returns the
-admin refresh token.
+`scope=admin` plus `admin_mfa` assurance required by `AdminGuard`. Admin access
+JWTs use the same mandatory live `sid` binding documented in Common Rules;
+refresh or logout revokes the prior row, so its access JWT stops working
+immediately. Admin access JWTs cannot authorize `/api/v1` product APIs or Chat,
+and application access JWTs cannot authorize `/admin`. The JSON contract never
+returns the admin refresh token.
 
 - `GET /admin/dashboard/stats`
 - `GET /admin/reports/overview`
@@ -1578,10 +1917,12 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
   routes are recorded as `unmatched`, and invalid client request ids are
   replaced with a server-generated UUID.
 - Transactional outbox events are retained through retry and exhausted events
-  remain as `FAILED` dead letters. A cross-replica scheduler removes only
-  `PROCESSED` receipts older than seven days every six hours. Account deletion
-  removes notification/conversation outbox rows owned by that account inside
-  the same database transaction.
+  remain as `FAILED` dead letters. The dispatcher validates each payload and
+  awaits strict realtime delivery; an unavailable adapter or rejected socket
+  action is not marked processed and remains retryable. A cross-replica
+  scheduler removes only `PROCESSED` receipts older than seven days every six
+  hours. Account deletion removes notification/conversation outbox rows owned
+  by that account inside the same database transaction.
 - Access to private resources that the user does not own or cannot access may return a not-found style response.
 - Login with a wrong password returns `401`.
 - An administrator's general application token never carries `admin_mfa` and

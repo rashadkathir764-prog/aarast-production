@@ -43,7 +43,10 @@ type StoredRefreshToken = {
   revokedAt: Date | null;
 };
 
-function createHarness(options?: { user?: Partial<StoredUser> | null }) {
+function createHarness(options?: {
+  user?: Partial<StoredUser> | null;
+  failOutboxOnce?: boolean;
+}) {
   const otps: StoredOtp[] = [];
   const refreshTokens: StoredRefreshToken[] = [
     {
@@ -73,6 +76,7 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
           ...options?.user,
         };
   let sequence = 0;
+  let failOutbox = options?.failOutboxOnce === true;
 
   const prisma = {
     otpCode: {
@@ -141,6 +145,8 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
         const variants: string[] = where?.phone?.in ?? [];
         return variants.includes(user.phone) ? user : null;
       },
+      findUnique: async ({ where }: any) =>
+        user?.id === where.id ? user : null,
       update: ({ where, data }: any) => {
         assert.ok(user);
         assert.equal(where.id, user.id);
@@ -164,8 +170,33 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
         return Promise.resolve({ count });
       },
     },
-    $transaction: async (input: any) =>
-      typeof input === 'function' ? input(prisma) : Promise.all(input),
+    outboxEvent: {
+      create: async () => {
+        if (failOutbox) {
+          failOutbox = false;
+          throw new Error('simulated outbox failure');
+        }
+        return {};
+      },
+    },
+    $queryRaw: async () =>
+      user ? [{ id: user.id, status: user.status }] : [],
+    $transaction: async (input: any) => {
+      if (typeof input !== 'function') return Promise.all(input);
+      if (!options?.failOutboxOnce) return input(prisma);
+
+      const otpSnapshot = structuredClone(otps);
+      const tokenSnapshot = structuredClone(refreshTokens);
+      const userSnapshot = user ? structuredClone(user) : null;
+      try {
+        return await input(prisma);
+      } catch (error) {
+        otps.splice(0, otps.length, ...otpSnapshot);
+        refreshTokens.splice(0, refreshTokens.length, ...tokenSnapshot);
+        if (user && userSnapshot) Object.assign(user, userSnapshot);
+        throw error;
+      }
+    },
   };
 
   const jwtService = { sign: () => 'test-token' };
@@ -176,6 +207,7 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
     disconnectUser: (userId: string) => {
       realtimeDisconnects.push(userId);
     },
+    disconnectSession: () => undefined,
   } as any);
   return { service, otps, refreshTokens, user, realtimeDisconnects };
 }
@@ -248,6 +280,40 @@ test('reset confirm sets the new password and revokes only app sessions', async 
       null,
     );
     assert.ok(otps[0].consumedAt, 'OTP must be consumed after the reset');
+  });
+});
+
+test('password reset rollback keeps the OTP reusable after a downstream failure', async () => {
+  await withDevOtpEnv(async () => {
+    const { service, otps, refreshTokens, user } = createHarness({
+      failOutboxOnce: true,
+    });
+
+    await service.requestPasswordReset({ phone: '777123456' });
+    await assert.rejects(
+      () =>
+        service.confirmPasswordReset({
+          phone: '777123456',
+          code: '123456',
+          newPassword: 'new-secret-after-retry',
+        }),
+      /simulated outbox failure/,
+    );
+
+    assert.equal(otps[0].consumedAt, null);
+    assert.equal(user?.passwordHash, 'old-hash');
+    assert.ok(refreshTokens.every((token) => token.revokedAt === null));
+
+    const response = await service.confirmPasswordReset({
+      phone: '777123456',
+      code: '123456',
+      newPassword: 'new-secret-after-retry',
+    });
+    assert.deepEqual(response, {
+      reset: true,
+      phone: '+967777123456',
+    });
+    assert.ok(otps[0].consumedAt);
   });
 });
 

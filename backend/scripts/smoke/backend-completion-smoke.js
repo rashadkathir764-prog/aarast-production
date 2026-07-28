@@ -352,6 +352,11 @@ async function run() {
     providerId = requireResponseId('POST provider profile', res);
   }
 
+  await prisma.provider.update({
+    where: { id: providerId },
+    data: { status: ProviderStatus.ACTIVE },
+  });
+
   {
     const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
@@ -363,11 +368,6 @@ async function run() {
     check('POST provider service - HTTP 201', res.status === 201);
     serviceId = requireResponseId('POST provider service', res);
   }
-
-  await prisma.provider.update({
-    where: { id: providerId },
-    data: { status: ProviderStatus.ACTIVE },
-  });
 
   {
     const search = encodeURIComponent(PROVIDER_BUSINESS_NAME);

@@ -7,6 +7,7 @@ import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 
 class ProviderAuthGate extends StatelessWidget {
@@ -16,6 +17,8 @@ class ProviderAuthGate extends StatelessWidget {
     this.embedded = false,
     this.registerAsProvider = false,
     this.providerAccountRequired = false,
+    this.providerProfileManageRequired = false,
+    this.providerOperationsRequired = false,
     super.key,
   });
 
@@ -26,6 +29,8 @@ class ProviderAuthGate extends StatelessWidget {
   final bool embedded;
   final bool registerAsProvider;
   final bool providerAccountRequired;
+  final bool providerProfileManageRequired;
+  final bool providerOperationsRequired;
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +43,31 @@ class ProviderAuthGate extends StatelessWidget {
       return const AarastScaffold(child: AarastScreenLoading());
     }
     if (auth.status == AuthStatus.authenticated) {
-      if (!providerAccountRequired || auth.user?.isProviderAccount == true) {
+      if (!providerAccountRequired &&
+          !providerProfileManageRequired &&
+          !providerOperationsRequired) {
         return child;
       }
-      return _ProviderAccountRequiredGate(embedded: embedded);
+      final selectedContext = context
+          .watch<AccountContextController?>()
+          ?.selectedContext;
+      final isProviderContext =
+          selectedContext?.isProvider == true &&
+          selectedContext?.isAvailable == true;
+      final canManageProfile =
+          selectedContext?.capabilities.canManageProviderProfile == true;
+      final canOperate =
+          selectedContext?.capabilities.canUseProviderOperations == true;
+      if (isProviderContext &&
+          (!providerAccountRequired || isProviderContext) &&
+          (!providerProfileManageRequired || canManageProfile) &&
+          (!providerOperationsRequired || canOperate)) {
+        return child;
+      }
+      return _ProviderAccountRequiredGate(
+        embedded: embedded,
+        hasProviderContext: isProviderContext,
+      );
     }
 
     return Directionality(
@@ -144,9 +170,13 @@ class ProviderAuthGate extends StatelessWidget {
 }
 
 class _ProviderAccountRequiredGate extends StatelessWidget {
-  const _ProviderAccountRequiredGate({required this.embedded});
+  const _ProviderAccountRequiredGate({
+    required this.embedded,
+    required this.hasProviderContext,
+  });
 
   final bool embedded;
+  final bool hasProviderContext;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +215,9 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'هذا المسار للمزوّدين فقط',
+                          hasProviderContext
+                              ? 'هذه العملية غير متاحة حاليًا'
+                              : 'هذا المسار للمزوّدين فقط',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
@@ -195,7 +227,9 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'حسابك الحالي حساب تخطيط زفاف. افتح لوحة العريس/العروسة أو قدّم طلب الانضمام كمزوّد.',
+                          hasProviderContext
+                              ? 'حالة مساحة المزود الحالية لا تسمح بهذه العملية. راجع الحالة أو جرّب لاحقًا.'
+                              : 'حسابك الحالي حساب تخطيط زفاف. افتح لوحة العريس/العروسة أو قدّم طلب الانضمام كمزوّد.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(

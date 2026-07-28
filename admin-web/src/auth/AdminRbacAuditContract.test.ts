@@ -12,6 +12,7 @@ import providerHelpersSource from '../pages/providerHelpers.tsx?raw';
 import reviewsSource from '../pages/ReviewsPage.tsx?raw';
 import servicesSource from '../pages/ServicesPage.tsx?raw';
 import usersSource from '../pages/UsersPage.tsx?raw';
+import topbarSource from '../layout/Topbar.tsx?raw';
 
 describe('admin RBAC and audit UI contract', () => {
   it('carries server permissions through the admin session', () => {
@@ -51,5 +52,10 @@ describe('admin RBAC and audit UI contract', () => {
     expect(usersSource).toContain("currentAdmin?.adminRole === 'SUPER_ADMIN'");
     expect(usersSource).toContain("user.role !== 'ADMIN'");
     expect(usersSource).toContain('user.id === currentAdmin?.id');
+  });
+
+  it('keeps the admin avatar local to the CSP policy', () => {
+    expect(topbarSource).not.toContain('ui-avatars.com');
+    expect(topbarSource).toContain('avatarInitial');
   });
 });

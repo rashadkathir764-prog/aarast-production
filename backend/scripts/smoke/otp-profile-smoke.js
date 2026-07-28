@@ -73,6 +73,10 @@ function hasPasswordHash(value) {
   return JSON.stringify(value).includes('passwordHash');
 }
 
+function errorCode(response) {
+  return response.body?.code ?? response.body?.message?.code ?? null;
+}
+
 async function run() {
   console.log('\nOTP + Profile Smoke Report');
   console.log(`Target: ${BASE_URL}`);
@@ -164,20 +168,61 @@ async function run() {
   {
     const res = await request('GET', '/api/v1/users/me/settings', null, token);
     check('GET /api/v1/users/me/settings - HTTP 200', res.status === 200);
-    check('settings default pushEnabled true', res.body?.pushEnabled === true);
-    check('settings default smsEnabled false', res.body?.smsEnabled === false);
+    check('settings default unsupported channels false', (
+      res.body?.pushEnabled === false &&
+      res.body?.smsEnabled === false &&
+      res.body?.whatsappEnabled === false &&
+      res.body?.emailEnabled === false
+    ));
+    check('settings expose in-app delivery as supported and enabled', (
+      res.body?.channelCapabilities?.inApp?.supported === true &&
+      res.body?.channelCapabilities?.inApp?.configurable === false &&
+      res.body?.channelCapabilities?.inApp?.enabled === true
+    ));
+    check('settings expose external delivery channels as unsupported', (
+      ['push', 'sms', 'whatsapp', 'email'].every((channel) => (
+        res.body?.channelCapabilities?.[channel]?.supported === false &&
+        res.body?.channelCapabilities?.[channel]?.configurable === false &&
+        res.body?.channelCapabilities?.[channel]?.enabled === false
+      ))
+    ));
+  }
+
+  for (const field of ['pushEnabled', 'smsEnabled', 'whatsappEnabled', 'emailEnabled']) {
+    const res = await request(
+      'PATCH',
+      '/api/v1/users/me/settings',
+      { [field]: true },
+      token,
+    );
+    check(`unsupported ${field} cannot be enabled`, (
+      res.status === 400 &&
+      errorCode(res) === 'NOTIFICATION_CHANNEL_UNSUPPORTED'
+    ));
   }
 
   {
     const res = await request('PATCH', '/api/v1/users/me/settings', {
-      smsEnabled: true,
-      whatsappEnabled: true,
-      emailEnabled: true,
+      pushEnabled: false,
+      smsEnabled: false,
+      whatsappEnabled: false,
+      emailEnabled: false,
+      taskRemindersEnabled: false,
+      paymentRemindersEnabled: false,
+      providerMessagesEnabled: false,
     }, token);
     check('PATCH /api/v1/users/me/settings - HTTP 200', res.status === 200);
-    check('settings smsEnabled updated', res.body?.smsEnabled === true);
-    check('settings whatsappEnabled updated', res.body?.whatsappEnabled === true);
-    check('settings emailEnabled updated', res.body?.emailEnabled === true);
+    check('legacy unsupported false values remain accepted', (
+      res.body?.pushEnabled === false &&
+      res.body?.smsEnabled === false &&
+      res.body?.whatsappEnabled === false &&
+      res.body?.emailEnabled === false
+    ));
+    check('supported content preferences are updated', (
+      res.body?.taskRemindersEnabled === false &&
+      res.body?.paymentRemindersEnabled === false &&
+      res.body?.providerMessagesEnabled === false
+    ));
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

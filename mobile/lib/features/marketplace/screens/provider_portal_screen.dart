@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
+import '../../account_contexts/widgets/account_context_switcher.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../chat/widgets/conversation_list_view.dart';
 import '../providers/marketplace_provider.dart';
@@ -45,14 +46,21 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
           unreadMessages: unreadMessages,
           onSelected: _openTab,
         ),
-        child: IndexedStack(
-          index: _activeIndex,
+        child: Column(
           children: [
-            ProviderHomeTab(onOpenTab: _openTab),
-            const ProviderRequestsTab(),
-            const ProviderServicesTab(),
-            const ConversationListView(embedded: true),
-            const ProviderProfileTab(),
+            const AccountContextSwitcher(),
+            Expanded(
+              child: IndexedStack(
+                index: _activeIndex,
+                children: [
+                  ProviderHomeTab(onOpenTab: _openTab),
+                  const ProviderRequestsTab(),
+                  const ProviderServicesTab(),
+                  const ConversationListView(embedded: true),
+                  const ProviderProfileTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),

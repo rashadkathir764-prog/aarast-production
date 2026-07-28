@@ -69,15 +69,11 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
       }
       if (text.includes('FROM "Conversation"')) {
         calls.push("lockConversations");
-        return [...(graph.conversationIds ?? [])]
-          .sort()
-          .map((id) => ({ id }));
+        return [...(graph.conversationIds ?? [])].sort().map((id) => ({ id }));
       }
       if (text.includes('FROM "QuoteRequest"')) {
         calls.push("lockQuoteRequests");
-        return [...(graph.quoteRequestIds ?? [])]
-          .sort()
-          .map((id) => ({ id }));
+        return [...(graph.quoteRequestIds ?? [])].sort().map((id) => ({ id }));
       }
       throw new Error(`Unexpected account-deletion lock query: ${text}`);
     },
@@ -122,8 +118,7 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
       },
     },
     chatAttachment: {
-      findMany: async () =>
-        (graph.attachmentIds ?? []).map((id) => ({ id })),
+      findMany: async () => (graph.attachmentIds ?? []).map((id) => ({ id })),
     },
     mediaUploadTicket: {
       updateMany: async () => {
@@ -133,7 +128,13 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
     },
     quoteRequest: del("quoteRequest"),
     conversation: del("conversation"),
-    outboxEvent: del("outboxEvent"),
+    outboxEvent: {
+      ...del("outboxEvent"),
+      create: async () => {
+        calls.push("outboxEvent.create");
+        return {};
+      },
+    },
     idempotencyKey: del("idempotencyKey"),
     otpCode: del("otpCode"),
     user: {
@@ -152,6 +153,7 @@ const serviceFor = (
   mediaStorage: any = {
     scheduleAllOwnedMediaDeletion: async () => [],
   },
+  realtime?: { disconnectUser: (userId: string) => void },
 ) =>
   new UsersService(
     {
@@ -160,6 +162,7 @@ const serviceFor = (
     } as any,
     {} as any,
     mediaStorage,
+    realtime as any,
   );
 
 test("application account deletion can never erase an administrator identity", async () => {
@@ -255,6 +258,11 @@ test("account deletion clears plan children before plans and deletes the user la
   // Non-cascading rows are cleaned explicitly, and the user is deleted last.
   assert.equal(at("provider"), -1);
   assert.ok(at("outboxEvent") >= 0 && at("outboxEvent") < at("user.delete"));
+  assert.ok(
+    at("outboxEvent.create") >= 0 &&
+      at("outboxEvent.create") < at("user.delete"),
+    "the durable realtime revocation is enqueued before the user is deleted",
+  );
   assert.ok(at("idempotencyKey") >= 0);
   assert.ok(at("otpCode") >= 0);
   assert.ok(at("weddingPlan") < at("user.delete"));
@@ -293,10 +301,28 @@ test("account deletion without a phone skips OTP cleanup", async () => {
   assert.equal(calls[calls.length - 1], "user.delete");
 });
 
+test("account deletion disconnects live realtime sessions only after commit", async () => {
+  const { tx, calls } = recordingTx([]);
+  const disconnected: string[] = [];
+  const svc = serviceFor(
+    tx,
+    { scheduleAllOwnedMediaDeletion: async () => [] },
+    { disconnectUser: (userId) => disconnected.push(userId) },
+  );
+
+  await svc.deleteMe({ id: "u1", phone: null } as any);
+
+  assert.equal(calls[calls.length - 1], "user.delete");
+  assert.deepEqual(disconnected, ["u1"]);
+});
+
 test("deleting a provider account purges its quote conversations without touching customer plans", async () => {
   const { tx, calls } = recordingTx([], {
     providerIds: ["provider-owned"],
-    conversationIds: ["customer-plan-conversation-2", "customer-plan-conversation-1"],
+    conversationIds: [
+      "customer-plan-conversation-2",
+      "customer-plan-conversation-1",
+    ],
     quoteRequestIds: ["customer-quote-2", "customer-quote-1"],
   });
   const svc = serviceFor(tx);
@@ -325,10 +351,7 @@ test("deleting a shared member removes only that member's request and preserves 
   const conversationLock = queries.find((query) =>
     query.text.includes('FROM "Conversation"'),
   );
-  assert.match(
-    conversationLock?.text ?? "",
-    /"accountRequesterUserId"\s*=\s*/,
-  );
+  assert.match(conversationLock?.text ?? "", /"accountRequesterUserId"\s*=\s*/);
   assert.doesNotMatch(conversationLock?.text ?? "", /Participant/);
 });
 
@@ -343,15 +366,11 @@ test("account deletion refreshes every surviving provider reviewed by the user",
   const providerLock = queries.find((query) =>
     query.text.includes('FROM "Provider"'),
   );
-  assert.match(
-    providerLock?.text ?? "",
-    /ORDER BY "id" ASC\s+FOR UPDATE/,
-  );
+  assert.match(providerLock?.text ?? "", /ORDER BY "id" ASC\s+FOR UPDATE/);
   assert.deepEqual(providerLock?.values, ["provider-a", "provider-z"]);
   assert.ok(calls.indexOf("lockProviders") < calls.indexOf("providerReview"));
   assert.ok(
-    calls.indexOf("providerReview") <
-      calls.indexOf("refreshProviderRating"),
+    calls.indexOf("providerReview") < calls.indexOf("refreshProviderRating"),
   );
   assert.ok(
     calls.lastIndexOf("refreshProviderRating") < calls.indexOf("user.delete"),

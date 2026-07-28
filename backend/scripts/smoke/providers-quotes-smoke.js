@@ -177,6 +177,25 @@ async function run() {
   {
     const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
+      title: 'Pending provider service must not persist',
+      basePrice: '250000.00',
+    }, providerUser.token);
+    check('PENDING provider service create is denied - HTTP 403', res.status === 403);
+    check('PENDING provider service create uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+    check(
+      'PENDING provider service create writes nothing',
+      await prisma.providerService.count({ where: { providerId } }) === 0,
+    );
+  }
+
+  await prisma.provider.update({
+    where: { id: providerId },
+    data: { status: ProviderStatus.ACTIVE },
+  });
+
+  {
+    const res = await request('POST', '/api/v1/provider/me/services', {
+      categoryId: reference.category.id,
       title: 'Phase8 Service',
       description: 'Phase8 service description',
       basePrice: '250000.00',
@@ -195,11 +214,6 @@ async function run() {
     check('PATCH /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
     check('provider service updated', res.body?.title === 'Phase8 Service Updated');
   }
-
-  await prisma.provider.update({
-    where: { id: providerId },
-    data: { status: ProviderStatus.ACTIVE },
-  });
 
   {
     const res = await request('GET', '/api/v1/provider-categories');

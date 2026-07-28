@@ -37,32 +37,33 @@ export class BudgetCategoriesService {
     weddingPlanId: string,
     dto: CreateBudgetCategoryDto,
   ): Promise<BudgetCategoryResponse> {
-    await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
     const name = this.requiredText(dto.name, "name");
     const allocation = this.optionalAllocation(dto.allocatedAmount);
     try {
-      return await runSerializableTransaction(
-        this.prisma,
-        async (tx) => {
-          const plan = await this.lockPlan(tx, weddingPlanId);
-          await this.assertAllocationFits(
+      return await runSerializableTransaction(this.prisma, async (tx) => {
+        const context =
+          await this.permissions.assertMoneyManageableForUpdateInTransaction(
             tx,
             weddingPlanId,
-            plan.estimatedBudget,
-            allocation,
+            currentUser,
           );
-          const category = await tx.budgetCategory.create({
-            data: {
-              weddingPlanId,
-              name,
-              normalizedName: this.normalizedName(name),
-              allocatedAmount: allocation,
-            },
-            include: { _count: { select: { weddingCosts: true } } },
-          });
-          return this.toResponse(category);
-        },
-      );
+        await this.assertAllocationFits(
+          tx,
+          weddingPlanId,
+          context.plan.estimatedBudget,
+          allocation,
+        );
+        const category = await tx.budgetCategory.create({
+          data: {
+            weddingPlanId,
+            name,
+            normalizedName: this.normalizedName(name),
+            allocatedAmount: allocation,
+          },
+          include: { _count: { select: { weddingCosts: true } } },
+        });
+        return this.toResponse(category);
+      });
     } catch (error) {
       this.rethrowCategoryError(error);
     }
@@ -87,44 +88,44 @@ export class BudgetCategoriesService {
     dto: UpdateBudgetCategoryDto,
   ): Promise<BudgetCategoryResponse> {
     const existing = await this.findCategoryOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      existing.weddingPlanId,
-      currentUser,
-    );
     try {
-      return await runSerializableTransaction(
-        this.prisma,
-        async (tx) => {
-          const plan = await this.lockPlan(tx, existing.weddingPlanId);
-          const locked = await tx.budgetCategory.findUnique({ where: { id } });
-          if (!locked) throw new NotFoundException("Budget category not found");
-          const allocation =
-            dto.allocatedAmount === undefined
-              ? locked.allocatedAmount
-              : this.optionalAllocation(dto.allocatedAmount);
-          await this.assertAllocationFits(
+      return await runSerializableTransaction(this.prisma, async (tx) => {
+        const context =
+          await this.permissions.assertMoneyManageableForUpdateInTransaction(
             tx,
-            locked.weddingPlanId,
-            plan.estimatedBudget,
-            allocation,
-            id,
+            existing.weddingPlanId,
+            currentUser,
           );
-          const name =
-            dto.name === undefined
-              ? locked.name
-              : this.requiredText(dto.name, "name");
-          const category = await tx.budgetCategory.update({
-            where: { id },
-            data: {
-              name,
-              normalizedName: this.normalizedName(name),
-              allocatedAmount: allocation,
-            },
-            include: { _count: { select: { weddingCosts: true } } },
-          });
-          return this.toResponse(category);
-        },
-      );
+        const locked = await tx.budgetCategory.findUnique({ where: { id } });
+        if (!locked || locked.weddingPlanId !== existing.weddingPlanId) {
+          throw new NotFoundException("Budget category not found");
+        }
+        const allocation =
+          dto.allocatedAmount === undefined
+            ? locked.allocatedAmount
+            : this.optionalAllocation(dto.allocatedAmount);
+        await this.assertAllocationFits(
+          tx,
+          locked.weddingPlanId,
+          context.plan.estimatedBudget,
+          allocation,
+          id,
+        );
+        const name =
+          dto.name === undefined
+            ? locked.name
+            : this.requiredText(dto.name, "name");
+        const category = await tx.budgetCategory.update({
+          where: { id },
+          data: {
+            name,
+            normalizedName: this.normalizedName(name),
+            allocatedAmount: allocation,
+          },
+          include: { _count: { select: { weddingCosts: true } } },
+        });
+        return this.toResponse(category);
+      });
     } catch (error) {
       this.rethrowCategoryError(error);
     }
@@ -135,12 +136,16 @@ export class BudgetCategoriesService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const category = await this.findCategoryOrThrow(id);
-    await this.permissions.assertMoneyManageable(
-      category.weddingPlanId,
-      currentUser,
-    );
-    await this.prisma.$transaction(async (tx) => {
-      await this.lockPlan(tx, category.weddingPlanId);
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.permissions.assertMoneyManageableForUpdateInTransaction(
+        tx,
+        category.weddingPlanId,
+        currentUser,
+      );
+      const locked = await tx.budgetCategory.findUnique({ where: { id } });
+      if (!locked || locked.weddingPlanId !== category.weddingPlanId) {
+        throw new NotFoundException("Budget category not found");
+      }
       const costsCount = await tx.weddingCost.count({
         where: { budgetCategoryId: id },
       });
@@ -152,15 +157,6 @@ export class BudgetCategoriesService {
       await tx.budgetCategory.delete({ where: { id } });
     });
     return { id, deleted: true };
-  }
-
-  private async lockPlan(tx: Prisma.TransactionClient, id: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "WeddingPlan" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (rows.length === 0)
-      throw new NotFoundException("Wedding plan not found");
-    return tx.weddingPlan.findUniqueOrThrow({ where: { id } });
   }
 
   private async assertAllocationFits(

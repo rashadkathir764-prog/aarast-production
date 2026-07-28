@@ -6,7 +6,6 @@ import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
-import '../../marketplace/screens/provider_portal_screen.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/data/local_plan_migration.dart';
 import '../../onboarding/screens/local_plan_migration_screen.dart';
@@ -48,9 +47,6 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
       return const AarastScaffold(child: AarastScreenLoading());
     }
     if (auth.status == AuthStatus.authenticated) {
-      if (auth.user?.isProviderAccount == true) {
-        return const ProviderPortalScreen();
-      }
       // A complete guest plan on this device must be offered for migration
       // BEFORE the shell loads — otherwise weeks of local planning are
       // silently stranded.

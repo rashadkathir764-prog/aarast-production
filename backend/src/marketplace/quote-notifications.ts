@@ -1,11 +1,12 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../notifications/notifications.service";
+import { PROVIDER_PORTAL_ROUTE } from "../provider-dashboard/provider-access-policy";
 
 // بناة مدخلات إشعارات دورة عروض الأسعار — نقية بلا Prisma ولا خدمات،
 // حتى يبقى marketplace.service على التنسيق فقط (انظر عقد marketplace-presenter).
 // المبدأ: الطرفان يعلمان دائمًا — لا طلب صامت ولا قبول لا يعرفه المورد.
 
-export const PROVIDER_PORTAL_ROUTE = "/provider/dashboard";
+export { PROVIDER_PORTAL_ROUTE };
 
 export function requesterQuoteRoute(quoteId: string): string {
   return `/providers?quoteId=${encodeURIComponent(quoteId)}`;
@@ -32,6 +33,7 @@ export function quoteSubmittedRequesterNotification(args: {
       quoteRequestId: args.quoteId,
       providerId: args.providerId,
       weddingPlanId: args.weddingPlanId,
+      recipientAudience: "CUSTOMER",
     },
     dedupeKey: `${args.requesterId}:quote-submitted:${args.quoteId}`,
   };
@@ -42,20 +44,20 @@ export function quoteSubmittedProviderNotification(args: {
   providerUserId: string;
   quoteId: string;
   providerId: string;
-  contactName: string;
 }): CreateNotificationInput {
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REQUEST_SUBMITTED,
     priority: NotificationPriority.HIGH,
     title: "طلب عرض سعر جديد",
-    body: `وصلك طلب عرض سعر جديد من ${args.contactName}. افتح بوابة المورد لمراجعته والرد بعرضك.`,
+    body: "وصلك طلب عرض سعر جديد. افتح بوابة المورد لمراجعته والرد بعرضك.",
     entityType: "quote_request",
     entityId: args.quoteId,
     routeTarget: PROVIDER_PORTAL_ROUTE,
     data: {
       quoteRequestId: args.quoteId,
       providerId: args.providerId,
+      recipientAudience: "PROVIDER",
     },
     dedupeKey: `${args.providerUserId}:quote-request-received:${args.quoteId}`,
   };
@@ -82,6 +84,7 @@ export function offerAcceptedRequesterNotification(args: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
       providerId: args.providerId,
+      recipientAudience: "CUSTOMER",
     },
     dedupeKey: `${args.requesterId}:quote-accepted:${args.quoteRequestId}`,
   };
@@ -108,6 +111,7 @@ export function providerRejectedRequestNotification(args: {
       quoteRequestId: args.quoteRequestId,
       providerId: args.providerId,
       status: "REJECTED",
+      recipientAudience: "CUSTOMER",
     },
     dedupeKey: `${args.requesterId}:provider-rejected-quote:${args.quoteRequestId}`,
   };
@@ -133,6 +137,7 @@ export function requesterRejectedOfferNotification(args: {
       quoteOfferId: args.quoteOfferId,
       providerId: args.providerId,
       status: "REJECTED",
+      recipientAudience: "PROVIDER",
     },
     dedupeKey: `${args.providerUserId}:requester-rejected-offer:${args.quoteOfferId}`,
   };
@@ -160,6 +165,7 @@ export function quoteOfferReceivedNotification(args: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
       providerId: args.providerId,
+      recipientAudience: "CUSTOMER",
     },
     dedupeKey: `${args.requesterId}:quote-offer:${args.quoteOfferId}`,
   };
@@ -184,6 +190,7 @@ export function offerAcceptedProviderNotification(args: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
       providerId: args.providerId,
+      recipientAudience: "PROVIDER",
     },
     dedupeKey: `${args.providerUserId}:quote-offer-accepted:${args.quoteOfferId}`,
   };

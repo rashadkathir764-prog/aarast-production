@@ -14,8 +14,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -28,9 +28,35 @@ jobs:
   backend-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: docker build --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" backend
-      - run: docker build --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" --build-arg VITE_API_BASE_URL="https://aarast-api.shadowgardn.com" admin-web
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build --tag "aarast-backend:${GITHUB_SHA}" --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" backend
+      - run: docker build --tag "aarast-admin-web:${GITHUB_SHA}" --build-arg AARAST_GIT_REVISION="${GITHUB_SHA}" --build-arg VITE_API_BASE_URL="https://aarast-api.shadowgardn.com" admin-web
+      - name: Generate candidate-bound CycloneDX SBOMs
+        run: |
+          mkdir -p "${RUNNER_TEMP}/sbom"
+          docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e \
+            image --format cyclonedx "aarast-backend:${GITHUB_SHA}" \
+            > "${RUNNER_TEMP}/sbom/backend-${GITHUB_SHA}.cdx.json"
+          docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e \
+            image --format cyclonedx "aarast-admin-web:${GITHUB_SHA}" \
+            > "${RUNNER_TEMP}/sbom/admin-web-${GITHUB_SHA}.cdx.json"
+      - name: Reject HIGH or CRITICAL candidate vulnerabilities
+        run: |
+          docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e \
+            image --exit-code 1 --severity HIGH,CRITICAL "aarast-backend:${GITHUB_SHA}"
+          docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e \
+            image --exit-code 1 --severity HIGH,CRITICAL "aarast-admin-web:${GITHUB_SHA}"
+      - name: Upload candidate-bound SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: ${{ runner.temp }}/sbom
+          if-no-files-found: error
 
   # Boots the real compiled backend against real Postgres + Redis and runs
   # all registered smoke suites end-to-end — the same command used before releases.
@@ -40,8 +66,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -70,17 +96,19 @@ jobs:
       run:
         working-directory: admin-web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: admin-web/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: npm run typecheck
       - run: npm run build
       - run: npm run smoke:honesty
       - run: npm run smoke:routes
+      - run: npm run test:container-config
 
   mobile:
     runs-on: ubuntu-latest
@@ -88,8 +116,8 @@ jobs:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: "3.41.7"
           channel: stable
@@ -103,8 +131,8 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: node scripts/docs-sync.mjs --check
@@ -116,11 +144,11 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Full history so leaked-then-deleted secrets are still caught.
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
@@ -128,8 +156,8 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: npm audit --audit-level=high

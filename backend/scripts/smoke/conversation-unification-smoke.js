@@ -380,6 +380,29 @@ async function run() {
   check('Provider id exists', typeof providerId === 'string');
   fixture.providerIds.push(providerId);
 
+  const pendingService = await request(
+    'POST',
+    '/api/v1/provider/me/services',
+    {
+      categoryId: category.id,
+      title: `Pending service ${marker}`,
+      basePrice: '200000',
+      priceUnit: 'event',
+      cityId: city.id,
+    },
+    providerUser.token,
+  );
+  check(
+    'PENDING provider cannot create conversation service',
+    pendingService.status === 403 && responseCode(pendingService) === 'PROVIDER_NOT_ACTIVE',
+  );
+  check(
+    'PENDING provider service denial writes nothing',
+    await prisma.providerService.count({ where: { providerId } }) === 0,
+  );
+
+  await prisma.provider.update({ where: { id: providerId }, data: { status: ProviderStatus.ACTIVE } });
+
   const serviceResponses = await Promise.all([1, 2].map((number) => request(
     'POST',
     '/api/v1/provider/me/services',
@@ -397,7 +420,6 @@ async function run() {
     check(`Provider service ${index + 1} id exists`, typeof body?.id === 'string');
     fixture.serviceIds.push(body.id);
   }
-  await prisma.provider.update({ where: { id: providerId }, data: { status: ProviderStatus.ACTIVE } });
 
   const memberCreate = await request('POST', `/api/v1/wedding-plans/${planOneId}/members`, {
     userId: member.user.id,
@@ -450,11 +472,71 @@ async function run() {
   const requestListBody = await expectStatus('Read conversation quote requests', requestList, 200);
   check('Conversation quote request list has two entries', requestListBody.items.length === 2);
 
+  const privateOwnerMessage = `Owner message ${marker}`;
   const ownerMessage = await request('POST', `/api/v1/conversations/${planConversationId}/messages`, {
-    body: `Owner message ${marker}`,
+    body: privateOwnerMessage,
   }, owner.token);
   const ownerMessageBody = await expectStatus('Owner sends conversation message', ownerMessage, 201);
   check('Owner message is persisted', typeof ownerMessageBody?.id === 'string');
+
+  const providerChatNotification = await prisma.notification.findFirst({
+    where: {
+      userId: providerUser.user.id,
+      type: 'CHAT_MESSAGE_RECEIVED',
+      entityType: 'conversation',
+      entityId: planConversationId,
+      data: {
+        path: ['messageId'],
+        equals: ownerMessageBody.id,
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  check(
+    'Owner message creates a durable provider CHAT notification',
+    typeof providerChatNotification?.id === 'string',
+  );
+
+  const activeProviderNotifications = await request(
+    'GET',
+    '/api/v1/notifications?limit=50',
+    null,
+    providerUser.token,
+  );
+  const activeProviderNotificationsBody = await expectStatus(
+    'ACTIVE provider reads notification inbox',
+    activeProviderNotifications,
+    200,
+  );
+  const activeProviderChatNotification = activeProviderNotificationsBody?.items?.find(
+    (notification) => notification.id === providerChatNotification.id,
+  );
+  check(
+    'ACTIVE provider inbox includes the real CHAT notification',
+    typeof activeProviderChatNotification?.id === 'string',
+  );
+  check(
+    'Provider CHAT notification declares PROVIDER recipient audience',
+    activeProviderChatNotification?.data?.recipientAudience === 'PROVIDER',
+  );
+  const providerChatNotificationPayload = JSON.stringify({
+    title: activeProviderChatNotification?.title,
+    body: activeProviderChatNotification?.body,
+    data: activeProviderChatNotification?.data,
+  });
+  check(
+    'Provider CHAT notification omits customer name, phone, and message body',
+    ![
+      owner.user.name,
+      owner.user.phone,
+      privateOwnerMessage,
+    ].some(
+      (privateValue) =>
+        typeof privateValue === 'string' &&
+        privateValue.length > 0 &&
+        providerChatNotificationPayload.includes(privateValue),
+    ),
+  );
 
   const providerConversation = await request('GET', `/api/v1/conversations/${planConversationId}`, null, providerUser.token);
   const providerConversationBody = await expectStatus('Provider reads PLAN conversation', providerConversation, 200);
@@ -730,6 +812,40 @@ async function run() {
   check('Exactly one WeddingCost is linked to offer', evidence.costs.length === 1);
   check('WeddingCost starts with paidAmount zero', evidence.costs[0]?.paidAmount?.toString() === '0');
   check('Offer acceptance did not duplicate PLAN conversation', evidence.conversations.length === 1 && evidence.conversations[0].id === planConversationId);
+
+  await prisma.provider.update({
+    where: { id: providerId },
+    data: { status: ProviderStatus.SUSPENDED },
+  });
+  const suspendedProviderNotifications = await request(
+    'GET',
+    '/api/v1/notifications?limit=50',
+    null,
+    providerUser.token,
+  );
+  const suspendedProviderNotificationsBody = await expectStatus(
+    'SUSPENDED provider reads filtered notification inbox',
+    suspendedProviderNotifications,
+    200,
+  );
+  check(
+    'SUSPENDED provider inbox hides the provider CHAT notification',
+    suspendedProviderNotificationsBody?.items?.every(
+      (notification) => notification.id !== providerChatNotification.id,
+    ) === true,
+  );
+  const suspendedProviderDirectNotification = await request(
+    'GET',
+    `/api/v1/notifications/${providerChatNotification.id}`,
+    null,
+    providerUser.token,
+  );
+  check(
+    'SUSPENDED provider cannot open the hidden CHAT notification',
+    suspendedProviderDirectNotification.status === 403 &&
+      responseCode(suspendedProviderDirectNotification) === 'PROVIDER_NOT_ACTIVE',
+    `HTTP ${suspendedProviderDirectNotification.status}; ${responseCode(suspendedProviderDirectNotification)}`,
+  );
 
   const liveSummary = {
     primaryPlanId: planOneId,

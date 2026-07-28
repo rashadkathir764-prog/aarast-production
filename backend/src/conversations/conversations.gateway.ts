@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { AuthSessionScope } from '@prisma/client';
 import {
   ConnectedSocket,
   MessageBody,
@@ -17,7 +18,11 @@ import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { toAuthenticatedUser } from '../auth/safe-user';
 import { getCorsOrigins } from '../common/config/cors-origins';
 import { PrismaService } from '../prisma/prisma.service';
-import { conversationRoom, userRoom } from './conversation-rooms';
+import {
+  conversationRoom,
+  sessionRoom,
+  userRoom,
+} from './conversation-rooms';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
@@ -25,6 +30,7 @@ import { ConversationRealtimePublisher } from './conversation-realtime.publisher
 type AuthenticatedSocket = Socket & {
   data: {
     user?: AuthenticatedUser;
+    sessionId?: string;
     messageTimestamps?: number[];
     expiryTimer?: NodeJS.Timeout;
   };
@@ -39,7 +45,7 @@ interface SendConversationMessageEvent extends ConversationEvent {
   attachments?: SendMessageDto['attachments'];
 }
 
-export { conversationRoom, userRoom };
+export { conversationRoom, sessionRoom, userRoom };
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -76,12 +82,29 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
       ) {
         throw new Error('Missing required token claims');
       }
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
+      const [user, session] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: payload.sub },
+        }),
+        this.prisma.refreshToken.findFirst({
+          where: {
+            id: payload.sid!,
+            userId: payload.sub,
+            scope: AuthSessionScope.APPLICATION,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        }),
+      ]);
       // Mirror the HTTP JwtStrategy exactly: a disabled or phone-unverified
       // account must never hold a realtime channel either.
-      if (!user || user.status === 'DISABLED' || !user.phoneVerifiedAt) {
+      if (
+        !user ||
+        user.status === 'DISABLED' ||
+        !user.phoneVerifiedAt ||
+        !session
+      ) {
         throw new Error('Ineligible user');
       }
       socket.data.user = {
@@ -89,7 +112,9 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
         adminMfa: false,
         sessionScope: 'application',
       };
+      socket.data.sessionId = payload.sid!;
       await socket.join(userRoom(user.id));
+      await socket.join(sessionRoom(payload.sid!));
       this.scheduleTokenExpiryDisconnect(socket, payload.exp);
       socket.emit('chat:ready', { userId: user.id });
     } catch (error) {
@@ -128,9 +153,20 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() event: ConversationEvent,
   ) {
-    const user = this.socketUser(socket);
+    const user = await this.liveSocketUser(socket);
     await this.conversations.authorize(user, event.conversationId);
-    await socket.join(conversationRoom(event.conversationId));
+    const room = conversationRoom(event.conversationId);
+    await socket.join(room);
+    try {
+      // Authorization can be revoked after the first check but before the
+      // room join. Rechecking after the socket is already present closes that
+      // gap: a revocation before/during join is observed here, while a later
+      // revocation removes the already-joined socket through socketsLeave.
+      await this.conversations.authorize(user, event.conversationId);
+    } catch (error) {
+      await socket.leave(room);
+      throw error;
+    }
     return { conversationId: event.conversationId, joined: true };
   }
 
@@ -139,8 +175,8 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() event: SendConversationMessageEvent,
   ) {
+    const user = await this.liveSocketUser(socket);
     this.assertMessageRate(socket);
-    const user = this.socketUser(socket);
     const message = await this.conversations.send(user, event.conversationId, {
       body: event.body,
       attachments: event.attachments,
@@ -153,7 +189,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() event: ConversationEvent,
   ) {
-    const user = this.socketUser(socket);
+    const user = await this.liveSocketUser(socket);
     const receipt = await this.conversations.markRead(user, event.conversationId);
     return receipt;
   }
@@ -169,6 +205,32 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
   private socketUser(socket: AuthenticatedSocket) {
     const user = socket.data.user;
     if (!user) throw new WsException('Authentication required');
+    return user;
+  }
+
+  private async liveSocketUser(
+    socket: AuthenticatedSocket,
+  ): Promise<AuthenticatedUser> {
+    const user = this.socketUser(socket);
+    const sessionId = socket.data.sessionId;
+    if (!sessionId) {
+      socket.disconnect(true);
+      throw new WsException('Session is invalid or expired');
+    }
+    const session = await this.prisma.refreshToken.findFirst({
+      where: {
+        id: sessionId,
+        userId: user.id,
+        scope: AuthSessionScope.APPLICATION,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    if (!session) {
+      socket.disconnect(true);
+      throw new WsException('Session is invalid or expired');
+    }
     return user;
   }
 

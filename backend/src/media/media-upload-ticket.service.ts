@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { MediaUploadStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertActiveMutationActorForUpdateInTransaction } from '../users/user-lifecycle-lock';
 import { MediaPurpose } from './media-upload-policy';
 
 export interface MediaUploadVerificationClaim {
@@ -48,6 +49,7 @@ export class MediaUploadTicketService {
     const rollingDayStartedAt = new Date(now.getTime() - 24 * 60 * 60 * 1_000);
     await this.prisma.$transaction(async (tx) => {
       await this.lockAccount(tx, input.userId);
+      await assertActiveMutationActorForUpdateInTransaction(tx, input.userId);
       const uploadCount = await tx.mediaUploadTicket.count({
         where: {
           userId: input.userId,
@@ -101,45 +103,57 @@ export class MediaUploadTicketService {
     purpose: MediaPurpose,
   ): Promise<MediaUploadVerificationClaim> {
     const now = new Date();
-    const ticket = await this.prisma.mediaUploadTicket.findUnique({
-      where: { key },
-      select: {
-        userId: true,
-        purpose: true,
-        status: true,
-        expiresAt: true,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      // Account deletion and upload reservation take the same advisory lock
+      // before the User row. Matching that order makes lifecycle changes and
+      // verification claims serialize without a User/account lock inversion.
+      await this.lockAccount(tx, userId);
+      await assertActiveMutationActorForUpdateInTransaction(tx, userId);
+
+      const ticket = await tx.mediaUploadTicket.findUnique({
+        where: { key },
+        select: {
+          userId: true,
+          purpose: true,
+          status: true,
+          expiresAt: true,
+        },
+      });
+      if (!ticket || ticket.userId !== userId || ticket.purpose !== purpose) {
+        throw new BadRequestException('Media upload ticket is invalid');
+      }
+      if (ticket.status === MediaUploadStatus.VERIFIED) {
+        return { alreadyVerified: true };
+      }
+      if (ticket.status === MediaUploadStatus.VERIFYING) {
+        throw new ConflictException(
+          'Media upload verification is in progress',
+        );
+      }
+      if (
+        ticket.status === MediaUploadStatus.DELETE_PENDING ||
+        ticket.status === MediaUploadStatus.DELETED ||
+        ticket.expiresAt.getTime() <= now.getTime()
+      ) {
+        throw new BadRequestException('Media upload ticket has expired');
+      }
+      const claimed = await tx.mediaUploadTicket.updateMany({
+        where: {
+          key,
+          userId,
+          purpose,
+          status: MediaUploadStatus.PENDING,
+          expiresAt: { gt: now },
+        },
+        data: { status: MediaUploadStatus.VERIFYING },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException(
+          'Media upload verification is in progress',
+        );
+      }
+      return { alreadyVerified: false };
     });
-    if (!ticket || ticket.userId !== userId || ticket.purpose !== purpose) {
-      throw new BadRequestException('Media upload ticket is invalid');
-    }
-    if (ticket.status === MediaUploadStatus.VERIFIED) {
-      return { alreadyVerified: true };
-    }
-    if (ticket.status === MediaUploadStatus.VERIFYING) {
-      throw new ConflictException('Media upload verification is in progress');
-    }
-    if (
-      ticket.status === MediaUploadStatus.DELETE_PENDING ||
-      ticket.status === MediaUploadStatus.DELETED ||
-      ticket.expiresAt.getTime() <= now.getTime()
-    ) {
-      throw new BadRequestException('Media upload ticket has expired');
-    }
-    const claimed = await this.prisma.mediaUploadTicket.updateMany({
-      where: {
-        key,
-        userId,
-        purpose,
-        status: MediaUploadStatus.PENDING,
-        expiresAt: { gt: now },
-      },
-      data: { status: MediaUploadStatus.VERIFYING },
-    });
-    if (claimed.count !== 1) {
-      throw new ConflictException('Media upload verification is in progress');
-    }
-    return { alreadyVerified: false };
   }
 
   async markVerified(key: string, verifiedByteSize: number): Promise<void> {

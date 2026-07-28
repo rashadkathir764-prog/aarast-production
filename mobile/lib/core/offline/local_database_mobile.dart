@@ -235,9 +235,11 @@ class SqliteLocalDatabase implements LocalDatabase {
     required Map<String, dynamic> payload,
     String? localEntityId,
     bool replacePendingForEntity = false,
+    bool replaceAllPendingForEntity = false,
     String? clientRequestId,
+    DateTime? queueCreatedAt,
   }) async {
-    final now = nextSyncQueueTimestamp();
+    final now = queueCreatedAt ?? nextSyncQueueTimestamp();
     final normalizedRequestId = clientRequestId?.trim();
     if (clientRequestId != null && normalizedRequestId!.isEmpty) {
       throw ArgumentError.value(
@@ -260,7 +262,16 @@ class SqliteLocalDatabase implements LocalDatabase {
       updatedAt: now,
     );
     await _db.transaction((txn) async {
-      if (replacePendingForEntity) {
+      if (replaceAllPendingForEntity) {
+        await txn.delete(
+          OfflineTables.syncQueue,
+          where:
+              'entityType = ? AND '
+              'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
+              'AND status != ?',
+          whereArgs: [entityType, ?localEntityId, SyncQueueItem.synced],
+        );
+      } else if (replacePendingForEntity) {
         await txn.delete(
           OfflineTables.syncQueue,
           where:
@@ -275,11 +286,65 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> discardLocalEntity({
+    required String table,
+    required String entityType,
+    required String entityId,
+  }) async {
+    await _db.transaction((txn) async {
+      await txn.delete(table, where: 'id = ?', whereArgs: [entityId]);
+      await txn.delete(
+        OfflineTables.syncQueue,
+        where: 'entityType = ? AND localEntityId = ? AND status != ?',
+        whereArgs: [entityType, entityId, SyncQueueItem.synced],
+      );
+    });
+  }
+
+  @override
+  Future<void> deletePlanGraph(String planId) async {
+    if (planId.trim().isEmpty) return;
+    await _db.transaction((txn) async {
+      for (final table in OfflineTables.planScopedCacheTables) {
+        await txn.delete(
+          table,
+          where: table == OfflineTables.cachedWeddingPlans
+              ? 'id = ?'
+              : 'planId = ?',
+          whereArgs: [planId],
+        );
+      }
+      final pattern = '%$planId%';
+      await txn.delete(
+        OfflineTables.syncQueue,
+        where: 'endpoint LIKE ? OR payloadJson LIKE ? OR localEntityId = ?',
+        whereArgs: [pattern, pattern, planId],
+      );
+      await txn.delete(
+        OfflineTables.localMeta,
+        where: 'key LIKE ?',
+        whereArgs: [pattern],
+      );
+    });
+  }
+
+  @override
   Future<List<SyncQueueItem>> pendingSyncItems() async {
     final rows = await _db.query(
       OfflineTables.syncQueue,
       where: 'status != ? AND status != ?',
       whereArgs: [SyncQueueItem.synced, SyncQueueItem.blocked],
+      orderBy: 'createdAt ASC',
+    );
+    return rows.map(SyncQueueItem.fromRow).toList();
+  }
+
+  @override
+  Future<List<SyncQueueItem>> blockedSyncItems() async {
+    final rows = await _db.query(
+      OfflineTables.syncQueue,
+      where: 'status = ?',
+      whereArgs: [SyncQueueItem.blocked],
       orderBy: 'createdAt ASC',
     );
     return rows.map(SyncQueueItem.fromRow).toList();
@@ -319,6 +384,21 @@ class SqliteLocalDatabase implements LocalDatabase {
       },
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  @override
+  Future<int> requeueBlockedSyncItems() {
+    return _db.update(
+      OfflineTables.syncQueue,
+      {
+        'status': SyncQueueItem.queued,
+        'retryCount': 0,
+        'lastError': null,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'status = ?',
+      whereArgs: [SyncQueueItem.blocked],
     );
   }
 

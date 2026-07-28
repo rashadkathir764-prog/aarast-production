@@ -61,7 +61,11 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
 
       await authStorage?.saveActivePlanId(response.activePlanId);
       await widget.migrationService.guestStorage.clearDraft();
-      await offlineSync?.clearLocalData();
+      final guestPlanId = widget.snapshot.draft.guestPlanId;
+      if (guestPlanId != null && guestPlanId.trim().isNotEmpty) {
+        await offlineSync?.database.deletePlanGraph(guestPlanId);
+        await offlineSync?.refreshStatus();
+      }
 
       if (!mounted) return;
       widget.onFinished();
@@ -136,7 +140,18 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     );
 
     if (confirmed != true || !mounted) return;
+    OfflineSyncService? offlineSync;
+    try {
+      offlineSync = context.read<OfflineSyncService>();
+    } on ProviderNotFoundException {
+      offlineSync = null;
+    }
+    final guestPlanId = widget.snapshot.draft.guestPlanId;
     await widget.migrationService.guestStorage.clearDraft();
+    if (guestPlanId != null && guestPlanId.trim().isNotEmpty) {
+      await offlineSync?.database.deletePlanGraph(guestPlanId);
+      await offlineSync?.refreshStatus();
+    }
     if (!mounted) return;
     widget.onFinished();
   }

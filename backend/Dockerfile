@@ -48,6 +48,17 @@ RUN if [ "$AARAST_GIT_REVISION" != "development-unversioned" ]; then \
 LABEL org.opencontainers.image.revision="${AARAST_GIT_REVISION}"
 
 RUN apk add --no-cache openssl
+# The Node base image ships npm 10.9.8, which currently carries vulnerable
+# bundled packages (brace-expansion, picomatch, sigstore, and tar). Keep the
+# runtime toolchain on the fixed npm release used by the supply-chain gate.
+RUN npm install --global npm@12.0.1 --no-fund --no-audit \
+    && mkdir -p /tmp/npm-fix \
+    && npm pack brace-expansion@5.0.8 --pack-destination /tmp/npm-fix --silent \
+    && rm -rf /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
+    && tar -xzf /tmp/npm-fix/brace-expansion-5.0.8.tgz -C /usr/local/lib/node_modules/npm/node_modules \
+    && mv /usr/local/lib/node_modules/npm/node_modules/package /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
+    && rm -rf /tmp/npm-fix \
+    && npm cache clean --force
 
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules

@@ -11,6 +11,7 @@ import {
   ValidationPipe,
 } from "@nestjs/common";
 import {
+  ProviderStatus,
   SharedMemberRole,
   WeddingPlanStatus,
   WeddingPersona,
@@ -89,11 +90,16 @@ function membership(
   };
 }
 
-function provider(id: string, userId = currentUser.id) {
+function provider(
+  id: string,
+  userId = currentUser.id,
+  status: ProviderStatus = ProviderStatus.PENDING,
+) {
   return {
     id,
     userId,
     businessName: `Provider ${id}`,
+    status,
   } as any;
 }
 
@@ -185,6 +191,25 @@ test("contributor-only account exposes current stored permissions", async () => 
   assert.equal(context.permissions.canEditPlan, false);
 });
 
+test("FULL plan access mode never elevates stored contributor permissions", async () => {
+  const { prisma, service } = contextsHarness();
+  prisma.memberships.push(
+    membership(plan("plan-viewer", "owner-2", "Viewer plan")),
+  );
+
+  const [context] = (await service.list(currentUser)) as Array<any>;
+
+  assert.equal(context.lifecycle, WeddingPlanStatus.PLANNING);
+  assert.equal(context.accessMode, "FULL");
+  assert.equal(context.permissions.canViewPlan, true);
+  assert.equal(context.permissions.canEditPlan, false);
+  assert.equal(context.permissions.canManageTasks, false);
+  assert.equal(context.permissions.canManageGuests, false);
+  assert.equal(context.permissions.canManageProviders, false);
+  assert.equal(context.permissions.canInviteMembers, false);
+  assert.equal(context.permissions.canManageMoney, false);
+});
+
 test("provider-only account is derived from Provider.userId, not appRole", async () => {
   const { prisma, service } = contextsHarness();
   prisma.providers.push(provider("provider-1"));
@@ -246,6 +271,125 @@ test("one account can expose owner, contributor, and provider contexts", async (
     AvailableContextRole.CONTRIBUTOR,
     AvailableContextRole.PROVIDER,
   ]);
+});
+
+test("owner, contributor, and provider contexts expose additive lifecycle-aware fields", async () => {
+  const { prisma, service } = contextsHarness();
+  prisma.plans.push(plan("plan-owned", currentUser.id, "Owned"));
+  prisma.memberships.push(
+    membership(plan("plan-member", "owner-2", "Contributed")),
+  );
+  prisma.providers.push(
+    provider("provider-1", currentUser.id, ProviderStatus.ACTIVE),
+  );
+
+  const contexts = (await service.list(currentUser)) as Array<any>;
+
+  assert.deepEqual(
+    contexts.map(({ contextKey, lifecycle, accessMode, capabilities }) => ({
+      contextKey,
+      lifecycle,
+      accessMode,
+      capabilities,
+    })),
+    [
+      {
+        contextKey: "plan:plan-owned:owner",
+        lifecycle: WeddingPlanStatus.PLANNING,
+        accessMode: "FULL",
+        capabilities: {
+          canViewProviderProfile: false,
+          canManageProviderProfile: false,
+          canUseProviderOperations: false,
+        },
+      },
+      {
+        contextKey: "plan:plan-member:contributor",
+        lifecycle: WeddingPlanStatus.PLANNING,
+        accessMode: "FULL",
+        capabilities: {
+          canViewProviderProfile: false,
+          canManageProviderProfile: false,
+          canUseProviderOperations: false,
+        },
+      },
+      {
+        contextKey: "provider:provider-1",
+        lifecycle: ProviderStatus.ACTIVE,
+        accessMode: "FULL",
+        capabilities: {
+          canViewProviderProfile: true,
+          canManageProviderProfile: true,
+          canUseProviderOperations: true,
+        },
+      },
+    ],
+  );
+});
+
+test("every provider lifecycle reports truthful profile and operation capabilities", async () => {
+  const expectations: Record<
+    ProviderStatus,
+    {
+      accessMode: "FULL" | "LIMITED" | "READ_ONLY";
+      canManageProviderProfile: boolean;
+      canUseProviderOperations: boolean;
+    }
+  > = {
+    [ProviderStatus.ACTIVE]: {
+      accessMode: "FULL",
+      canManageProviderProfile: true,
+      canUseProviderOperations: true,
+    },
+    [ProviderStatus.PENDING]: {
+      accessMode: "LIMITED",
+      canManageProviderProfile: true,
+      canUseProviderOperations: false,
+    },
+    [ProviderStatus.NEEDS_CHANGES]: {
+      accessMode: "LIMITED",
+      canManageProviderProfile: true,
+      canUseProviderOperations: false,
+    },
+    [ProviderStatus.SUSPENDED]: {
+      accessMode: "READ_ONLY",
+      canManageProviderProfile: false,
+      canUseProviderOperations: false,
+    },
+    [ProviderStatus.REJECTED]: {
+      accessMode: "READ_ONLY",
+      canManageProviderProfile: false,
+      canUseProviderOperations: false,
+    },
+  };
+
+  for (const status of Object.values(ProviderStatus)) {
+    const { prisma, service } = contextsHarness();
+    prisma.providers.push(provider(`provider-${status}`, currentUser.id, status));
+
+    const [listed] = (await service.list(currentUser)) as Array<any>;
+    const validated = (await service.validate(
+      currentUser,
+      listed.contextKey,
+    )) as any;
+
+    for (const context of [listed, validated]) {
+      assert.equal(context.lifecycle, status);
+      assert.equal(context.accessMode, expectations[status].accessMode);
+      assert.deepEqual(context.capabilities, {
+        canViewProviderProfile: true,
+        canManageProviderProfile:
+          expectations[status].canManageProviderProfile,
+        canUseProviderOperations:
+          expectations[status].canUseProviderOperations,
+      });
+      assert.equal(context.isAvailable, true);
+      assert.equal(
+        context.permissions.canManageProviderProfile,
+        expectations[status].canManageProviderProfile,
+      );
+    }
+  }
 });
 
 test("multiple contributor plans produce distinct canonical contexts", async () => {
@@ -370,10 +514,15 @@ test("archived plans stay discoverable but cannot validate as active contexts", 
     }),
   );
 
-  const [context] = await service.list(currentUser);
+  const [context] = (await service.list(currentUser)) as Array<any>;
 
+  assert.equal(context.lifecycle, WeddingPlanStatus.ARCHIVED);
+  assert.equal(context.accessMode, "READ_ONLY");
   assert.equal(context.isAvailable, false);
   assert.equal(context.unavailableReason, "PLAN_ARCHIVED");
+  assert.equal(context.permissions.canEditPlan, false);
+  assert.equal(context.permissions.canManageTasks, false);
+  assert.equal(context.permissions.canManageMoney, false);
   await assert.rejects(
     service.validate(currentUser, "plan:plan-archived:owner"),
     ConflictException,

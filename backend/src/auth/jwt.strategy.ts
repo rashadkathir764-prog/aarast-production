@@ -25,29 +25,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Session is invalid or expired');
     }
     const isAdminSession = sessionScope === 'admin';
-    const [user, adminSession] = await Promise.all([
+    const expectedSessionScope = isAdminSession
+      ? AuthSessionScope.ADMIN
+      : AuthSessionScope.APPLICATION;
+    const [user, session] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: payload.sub },
       }),
-      isAdminSession
-        ? this.prisma.refreshToken.findFirst({
-            where: {
-              id: payload.sid!,
-              userId: payload.sub,
-              scope: AuthSessionScope.ADMIN,
-              revokedAt: null,
-              expiresAt: { gt: new Date() },
-            },
-            select: { id: true },
-          })
-        : Promise.resolve(null),
+      this.prisma.refreshToken.findFirst({
+        where: {
+          id: payload.sid!,
+          userId: payload.sub,
+          scope: expectedSessionScope,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      }),
     ]);
 
     if (
       !user ||
       user.status === 'DISABLED' ||
       !user.phoneVerifiedAt ||
-      (isAdminSession && !adminSession)
+      !session
     ) {
       throw new UnauthorizedException('User not found, disabled, or unverified');
     }

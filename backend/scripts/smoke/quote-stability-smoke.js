@@ -161,6 +161,11 @@ async function run() {
     const providerId = providerResponse.body?.id;
     if (!providerId) throw new Error('Provider setup failed');
 
+    await prisma.provider.update({
+      where: { id: providerId },
+      data: { status: ProviderStatus.ACTIVE },
+    });
+
     const serviceResponse = await request(
       'POST',
       '/api/v1/provider/me/services',
@@ -177,8 +182,6 @@ async function run() {
     check('isolated provider service is created', serviceResponse.status === 201 && typeof serviceResponse.body?.id === 'string');
     const serviceId = serviceResponse.body?.id;
     if (!serviceId) throw new Error('Provider service setup failed');
-
-    await prisma.provider.update({ where: { id: providerId }, data: { status: ProviderStatus.ACTIVE } });
 
     const planResponse = await request(
       'POST',

@@ -48,9 +48,10 @@ const prisma = new PrismaClient();
 const realtime = { disconnectUser: () => undefined };
 const service = new AdminService(prisma as any, realtime as any);
 const loginThrottle = new LoginThrottleService(prisma as any);
+const jwtService = new JwtService({ secret: process.env.JWT_SECRET });
 const authService = new AuthService(
   prisma as any,
-  {} as any,
+  jwtService,
   loginThrottle,
   { consume: async () => undefined } as any,
   realtime as any,
@@ -204,14 +205,24 @@ async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
       const secret = process.env.JWT_SECRET;
       assert.ok(secret);
       const jwt = new JwtService({ secret });
-      const adminSession = await prisma.refreshToken.create({
-        data: {
-          userId: fixture.actingAdmin.id,
-          tokenHash: `phase1-admin-${fixture.scope}`,
-          scope: AuthSessionScope.ADMIN,
-          expiresAt: new Date(Date.now() + 60_000),
-        },
-      });
+      const [adminSession, applicationSession] = await prisma.$transaction([
+        prisma.refreshToken.create({
+          data: {
+            userId: fixture.actingAdmin.id,
+            tokenHash: `phase1-admin-${fixture.scope}`,
+            scope: AuthSessionScope.ADMIN,
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        }),
+        prisma.refreshToken.create({
+          data: {
+            userId: fixture.actingAdmin.id,
+            tokenHash: `phase1-application-${fixture.scope}`,
+            scope: AuthSessionScope.APPLICATION,
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        }),
+      ]);
       const basePayload = {
         sub: fixture.actingAdmin.id,
         phone: fixture.actingAdmin.phone,
@@ -225,6 +236,7 @@ async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
       const applicationToken = jwt.sign({
         ...basePayload,
         scope: 'application',
+        sid: applicationSession.id,
       });
       const realmLessToken = jwt.sign(basePayload);
       const contradictoryToken = jwt.sign({
@@ -258,16 +270,13 @@ async function assertConcurrentWrongOtpAttemptsRespectCeiling(): Promise<void> {
         where: { id: fixture.otp.id },
         data: { codeHash: await bcryptjs.hash('654321', 4) },
       });
-      const now = new Date();
       const results = await Promise.allSettled(
         Array.from({ length: 20 }, () =>
-          (authService as any).assertSpecificOtpCodeMatches(
-            otp,
-            fixture.user.phone,
-            OtpPurpose.LOGIN,
-            '000000',
-            now,
-          ),
+          authService.verifyOtp({
+            phone: fixture.user.phone,
+            purpose: OtpPurpose.LOGIN,
+            code: '000000',
+          }),
         ),
       );
 
@@ -305,22 +314,17 @@ async function assertCorrectAndWrongOtpRaceHasOneWinner(): Promise<void> {
         where: { id: fixture.otp.id },
         data: { codeHash: await bcryptjs.hash('654321', 4) },
       });
-      const now = new Date();
       const [correct, wrong] = await Promise.allSettled([
-        (authService as any).assertSpecificOtpCodeMatches(
-          otp,
-          fixture.user.phone,
-          OtpPurpose.LOGIN,
-          '654321',
-          now,
-        ),
-        (authService as any).assertSpecificOtpCodeMatches(
-          otp,
-          fixture.user.phone,
-          OtpPurpose.LOGIN,
-          '000000',
-          now,
-        ),
+        authService.verifyOtp({
+          phone: fixture.user.phone,
+          purpose: OtpPurpose.LOGIN,
+          code: '654321',
+        }),
+        authService.verifyOtp({
+          phone: fixture.user.phone,
+          purpose: OtpPurpose.LOGIN,
+          code: '000000',
+        }),
       ]);
 
       assert.equal(correct.status, 'fulfilled');
@@ -333,13 +337,11 @@ async function assertCorrectAndWrongOtpRaceHasOneWinner(): Promise<void> {
       assert.ok(persisted.attempts === 0 || persisted.attempts === 1);
       await assert.rejects(
         () =>
-          (authService as any).assertSpecificOtpCodeMatches(
-            otp,
-            fixture.user.phone,
-            OtpPurpose.LOGIN,
-            '654321',
-            new Date(),
-          ),
+          authService.verifyOtp({
+            phone: fixture.user.phone,
+            purpose: OtpPurpose.LOGIN,
+            code: '654321',
+          }),
         (error: any) => error?.getStatus?.() === 400,
       );
     },

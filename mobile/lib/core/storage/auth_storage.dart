@@ -18,6 +18,7 @@ class AuthStorage {
   static const _refreshTokenKey = 'aarast_refresh_token';
   static const _safeUserKey = 'aarast_safe_user';
   static const _activePlanIdKey = 'aarast_active_plan_id';
+  static const _accountContextKey = 'aarast_account_context_key';
 
   final SharedPreferences _preferences;
 
@@ -123,6 +124,22 @@ class AuthStorage {
     await _preferences.setString(_activePlanIdKey, activePlanId);
   }
 
+  Future<void> clearActivePlanId() async {
+    await _preferences.remove(_activePlanIdKey);
+  }
+
+  String? readAccountContextKey() {
+    return _preferences.getString(_accountContextKey);
+  }
+
+  Future<void> saveAccountContextKey(String contextKey) async {
+    await _preferences.setString(_accountContextKey, contextKey);
+  }
+
+  Future<void> clearAccountContextKey() async {
+    await _preferences.remove(_accountContextKey);
+  }
+
   Future<void> clear() async {
     await _tokenVault?.delete();
     await _tokenVault?.deleteRefresh();
@@ -132,6 +149,7 @@ class AuthStorage {
     await _sensitiveValueVault?.delete(_safeUserKey);
     _cachedUser = null;
     await _preferences.remove(_activePlanIdKey);
+    await _preferences.remove(_accountContextKey);
   }
 
   Future<void> _saveUser(SafeUser user) async {

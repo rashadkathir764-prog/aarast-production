@@ -129,20 +129,30 @@ export class AdminController {
 
   @Post('services')
   @RequireAdminPermission(AdminPermission.SERVICES_WRITE)
-  createService(@Body() dto: AdminServiceDto) {
-    return this.adminService.createService(dto);
+  createService(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: AdminServiceDto,
+  ) {
+    return this.adminService.createService(currentUser, dto);
   }
 
   @Patch('services/:id')
   @RequireAdminPermission(AdminPermission.SERVICES_WRITE)
-  updateService(@Param('id') id: string, @Body() dto: AdminServiceDto) {
-    return this.adminService.updateService(id, dto);
+  updateService(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminServiceDto,
+  ) {
+    return this.adminService.updateService(currentUser, id, dto);
   }
 
   @Delete('services/:id')
   @RequireAdminPermission(AdminPermission.SERVICES_WRITE)
-  deleteService(@Param('id') id: string) {
-    return this.adminService.deleteService(id);
+  deleteService(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.deleteService(currentUser, id);
   }
 
   @Get('reviews')
@@ -154,16 +164,20 @@ export class AdminController {
   @Patch('reviews/:id/status')
   @RequireAdminPermission(AdminPermission.REVIEWS_WRITE)
   updateReviewStatus(
+    @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: AdminReviewStatusDto,
   ) {
-    return this.adminService.updateReviewStatus(id, dto);
+    return this.adminService.updateReviewStatus(currentUser, id, dto);
   }
 
   @Delete('reviews/:id')
   @RequireAdminPermission(AdminPermission.REVIEWS_WRITE)
-  hideReview(@Param('id') id: string) {
-    return this.adminService.hideReview(id);
+  hideReview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.hideReview(currentUser, id);
   }
 
   @Get('conversation-reports')
@@ -175,10 +189,15 @@ export class AdminController {
   @Patch('conversation-reports/:id/status')
   @RequireAdminPermission(AdminPermission.CONVERSATION_REPORTS_WRITE)
   updateConversationReportStatus(
+    @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: AdminConversationReportStatusDto,
   ) {
-    return this.adminService.updateConversationReportStatus(id, dto);
+    return this.adminService.updateConversationReportStatus(
+      currentUser,
+      id,
+      dto,
+    );
   }
 
   @Get('notifications')
@@ -195,20 +214,29 @@ export class AdminController {
 
   @Patch('notifications/:id/read')
   @RequireAdminPermission(AdminPermission.NOTIFICATIONS_WRITE)
-  markNotificationRead(@Param('id') id: string) {
-    return this.adminService.markNotificationRead(id);
+  markNotificationRead(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.markNotificationRead(currentUser, id);
   }
 
   @Patch('notifications/:id/archive')
   @RequireAdminPermission(AdminPermission.NOTIFICATIONS_WRITE)
-  archiveNotification(@Param('id') id: string) {
-    return this.adminService.archiveNotification(id);
+  archiveNotification(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.archiveNotification(currentUser, id);
   }
 
   @Delete('notifications/:id')
   @RequireAdminPermission(AdminPermission.NOTIFICATIONS_WRITE)
-  deleteNotification(@Param('id') id: string) {
-    return this.adminService.deleteNotification(id);
+  deleteNotification(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.deleteNotification(currentUser, id);
   }
 
   @Get('provider-categories')
@@ -219,20 +247,30 @@ export class AdminController {
 
   @Post('provider-categories')
   @RequireAdminPermission(AdminPermission.CATALOG_WRITE)
-  createCategory(@Body() dto: AdminCategoryDto) {
-    return this.adminService.createCategory(dto);
+  createCategory(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: AdminCategoryDto,
+  ) {
+    return this.adminService.createCategory(currentUser, dto);
   }
 
   @Patch('provider-categories/:id')
   @RequireAdminPermission(AdminPermission.CATALOG_WRITE)
-  updateCategory(@Param('id') id: string, @Body() dto: AdminCategoryDto) {
-    return this.adminService.updateCategory(id, dto);
+  updateCategory(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminCategoryDto,
+  ) {
+    return this.adminService.updateCategory(currentUser, id, dto);
   }
 
   @Delete('provider-categories/:id')
   @RequireAdminPermission(AdminPermission.CATALOG_WRITE)
-  deleteCategory(@Param('id') id: string) {
-    return this.adminService.deleteCategory(id);
+  deleteCategory(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.deleteCategory(currentUser, id);
   }
 
   @Get('cities')
@@ -243,20 +281,30 @@ export class AdminController {
 
   @Post('cities')
   @RequireAdminPermission(AdminPermission.CATALOG_WRITE)
-  createCity(@Body() dto: AdminCityDto) {
-    return this.adminService.createCity(dto);
+  createCity(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: AdminCityDto,
+  ) {
+    return this.adminService.createCity(currentUser, dto);
   }
 
   @Patch('cities/:id')
   @RequireAdminPermission(AdminPermission.CATALOG_WRITE)
-  updateCity(@Param('id') id: string, @Body() dto: AdminCityDto) {
-    return this.adminService.updateCity(id, dto);
+  updateCity(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminCityDto,
+  ) {
+    return this.adminService.updateCity(currentUser, id, dto);
   }
 
   @Delete('cities/:id')
   @RequireAdminPermission(AdminPermission.CATALOG_WRITE)
-  deleteCity(@Param('id') id: string) {
-    return this.adminService.deleteCity(id);
+  deleteCity(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.deleteCity(currentUser, id);
   }
 
   @Get('users')

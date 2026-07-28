@@ -22,10 +22,7 @@ import {
   otpVerificationsTotal,
 } from "../common/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import {
-  runRetryableTransaction,
-  runSerializableTransaction,
-} from "../common/prisma/serializable-transaction";
+import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDto } from "./dto/register.dto";
 import { CompleteRegistrationDto } from "./dto/complete-registration.dto";
@@ -68,6 +65,13 @@ import {
   AuthErrorCode,
   otpDeliveryUnavailableError,
 } from "./auth-error";
+import {
+  lockUserLifecycleRowsForUpdateInTransaction,
+} from "../users/user-lifecycle-lock";
+import {
+  enqueueSessionRevoked,
+  enqueueUserSessionsRevoked,
+} from "../outbox/realtime-revocation";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -131,18 +135,44 @@ export interface AdminPasswordResetPendingResponse {
 
 type RegistrationResult =
   | { auth: AuthResponse }
-  | { error: ReturnType<typeof authError> };
+  | { error: ReturnType<typeof authError> }
+  | { otpInvalid: true };
 
 type PasswordResetResult =
   | { reset: true; userId: string }
-  | { error: ReturnType<typeof authError> };
+  | { error: ReturnType<typeof authError> }
+  | { otpInvalid: true };
 
 type InviteOtpVerificationResult =
   | { auth: AuthResponse }
-  | { error: ReturnType<typeof authError> };
+  | { error: ReturnType<typeof authError> }
+  | { otpInvalid: true };
+
+type OtpClaimResult =
+  | { outcome: "verified"; otp: OtpCode }
+  | { outcome: "invalid" };
+
+interface LockedRefreshTokenRow {
+  id: string;
+  userId: string;
+  scope: AuthSessionScope;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  replacedById: string | null;
+}
+
+interface LockedRefreshTokenFamily {
+  rows: LockedRefreshTokenRow[];
+  complete: boolean;
+}
+
+interface LockedRefreshTokenTraversalRow extends LockedRefreshTokenRow {
+  depth: number;
+}
 
 @Injectable()
 export class AuthService {
+  private static readonly maxRefreshFamilyDepth = 4_096;
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   private static readonly dummyPasswordHash =
@@ -179,24 +209,35 @@ export class AuthService {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const phoneVariants = PhoneNormalizer.lookupVariants(phone);
     const now = new Date();
-    const otp = await this.assertOtpCodeMatches(
-      phone,
-      OtpPurpose.REGISTER,
-      dto.otpCode,
-      now,
-    );
     const passwordHash = await bcryptjs.hash(dto.password, 10);
 
     let result: RegistrationResult;
     try {
-      result = await this.prisma.$transaction(
+      result = await runSerializableTransaction(
+        this.prisma,
         async (tx) => {
-          const existing = await this.findUserByCanonicalPhone(
+          const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+            phone,
+            purpose: OtpPurpose.REGISTER,
+            code: dto.otpCode,
+            now,
+          });
+          if (otpClaim.outcome === "invalid") {
+            return { otpInvalid: true as const };
+          }
+          let existing = await this.findUserByCanonicalPhone(
             tx,
             phone,
             phoneVariants,
           );
-          await this.consumeOtpRecord(tx, otp, now);
+          if (existing) {
+            await lockUserLifecycleRowsForUpdateInTransaction(tx, [
+              existing.id,
+            ]);
+            existing = await tx.user.findUnique({
+              where: { id: existing.id },
+            });
+          }
 
           if (existing?.status === "DISABLED") {
             return {
@@ -302,7 +343,6 @@ export class AuthService {
           });
           return { auth: await this.createAuthResponse(user, false, tx) };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (error) {
       if (
@@ -329,6 +369,10 @@ export class AuthService {
       throw error;
     }
 
+    if ("otpInvalid" in result) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw this.otpInvalid();
+    }
     if ("error" in result) {
       // The code was proven and consumed, but the account outcome was
       // rejected (already exists / disabled / no app account). This is a
@@ -342,10 +386,32 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.validatePasswordCredentials(dto);
-    return this.prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const credentialIdentity =
+        user.role === UserRole.ADMIN
+          ? { appPasswordHash: user.appPasswordHash! }
+          : { passwordHash: user.passwordHash! };
+      const loginAt = new Date();
+      const eligible = await tx.user.updateMany({
+        where: {
+          id: user.id,
+          phone: user.phone,
+          role: user.role,
+          status: "ACTIVE",
+          phoneVerifiedAt: { not: null },
+          ...credentialIdentity,
+        },
+        data: { lastLoginAt: loginAt },
+      });
+      if (eligible.count !== 1) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
+      const updatedUser = await tx.user.findUniqueOrThrow({
         where: { id: user.id },
-        data: { lastLoginAt: new Date() },
       });
       return this.createAuthResponse(updatedUser, false, tx);
     });
@@ -374,6 +440,25 @@ export class AuthService {
     );
 
     await runSerializableTransaction(this.prisma, async (tx) => {
+      const lifecycleUsers =
+        await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+      await this.lockAdminLoginChallengesInTransaction(tx, user.id);
+      const currentUser = await tx.user.findUnique({
+        where: { id: user.id },
+      });
+      if (
+        lifecycleUsers[0]?.status !== "ACTIVE" ||
+        !currentUser ||
+        currentUser.role !== UserRole.ADMIN ||
+        currentUser.phone !== user.phone ||
+        currentUser.passwordHash !== user.passwordHash
+      ) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
       const issuedOtp = await tx.otpCode.findUniqueOrThrow({
         where: { id: otp.otpId },
         select: { consumedAt: true },
@@ -411,35 +496,54 @@ export class AuthService {
     code: string,
   ): Promise<AuthResponse> {
     const now = new Date();
-    const challenge = await this.prisma.adminLoginChallenge.findUnique({
+    const challengeSeed = await this.prisma.adminLoginChallenge.findUnique({
       where: { tokenHash: hashRefreshToken(challengeToken) },
-      include: { user: true, otp: true },
+      select: { id: true, userId: true },
     });
-    if (
-      !challenge ||
-      challenge.consumedAt ||
-      challenge.expiresAt <= now ||
-      challenge.user.role !== UserRole.ADMIN ||
-      challenge.user.status === "DISABLED" ||
-      !challenge.user.phone
-    ) {
+    if (!challengeSeed) {
       throw new UnauthorizedException(
         "Admin login challenge is invalid or expired",
       );
     }
 
-    const otp = await this.assertSpecificOtpCodeMatches(
-      challenge.otp,
-      challenge.user.phone,
-      OtpPurpose.ADMIN_LOGIN,
-      code,
-      now,
-    );
-
-    let auth: AuthResponse;
     try {
-      auth = await this.prisma.$transaction(
+      const result = await runSerializableTransaction(
+        this.prisma,
         async (tx) => {
+          await lockUserLifecycleRowsForUpdateInTransaction(tx, [
+            challengeSeed.userId,
+          ]);
+          await this.lockAdminLoginChallengesInTransaction(
+            tx,
+            challengeSeed.userId,
+          );
+          const challenge = await tx.adminLoginChallenge.findUnique({
+            where: { id: challengeSeed.id },
+            include: { user: true, otp: true },
+          });
+          if (
+            !challenge ||
+            challenge.userId !== challengeSeed.userId ||
+            challenge.consumedAt ||
+            challenge.expiresAt <= now ||
+            challenge.user.role !== UserRole.ADMIN ||
+            challenge.user.status === "DISABLED" ||
+            !challenge.user.phone
+          ) {
+            return { challengeInvalid: true as const };
+          }
+
+          const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+            otpId: challenge.otpId,
+            phone: challenge.user.phone,
+            purpose: OtpPurpose.ADMIN_LOGIN,
+            code,
+            now,
+          });
+          if (otpClaim.outcome === "invalid") {
+            return { otpInvalid: true as const };
+          }
+
           const consumedChallenge = await tx.adminLoginChallenge.updateMany({
             where: {
               id: challenge.id,
@@ -454,7 +558,6 @@ export class AuthService {
             );
           }
 
-          await this.consumeOtpRecord(tx, otp, now);
           const eligible = await tx.user.updateMany({
             where: {
               id: challenge.userId,
@@ -472,10 +575,22 @@ export class AuthService {
           const updatedUser = await tx.user.findUniqueOrThrow({
             where: { id: challenge.userId },
           });
-          return this.createAuthResponse(updatedUser, true, tx);
+          return {
+            auth: await this.createAuthResponse(updatedUser, true, tx),
+          };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
+      if ("challengeInvalid" in result) {
+        throw new UnauthorizedException(
+          "Admin login challenge is invalid or expired",
+        );
+      }
+      if ("otpInvalid" in result) {
+        otpVerificationsTotal.inc({ outcome: "failure" });
+        throw this.otpInvalid();
+      }
+      otpVerificationsTotal.inc({ outcome: "success" });
+      return result.auth;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -487,9 +602,6 @@ export class AuthService {
       }
       throw error;
     }
-
-    otpVerificationsTotal.inc({ outcome: "success" });
-    return auth;
   }
 
   private async validatePasswordCredentials(
@@ -546,19 +658,49 @@ export class AuthService {
       );
     }
 
+    let validatedUser = user;
     if (
       realm === "admin" &&
       credentialHash &&
       bcryptjs.getRounds(credentialHash) < 12
     ) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { passwordHash: await bcryptjs.hash(dto.password, 12) },
+      const upgradedPasswordHash = await bcryptjs.hash(dto.password, 12);
+      const upgraded = await this.prisma.user.updateMany({
+        where: {
+          id: user.id,
+          passwordHash: credentialHash,
+          role: UserRole.ADMIN,
+          status: "ACTIVE",
+        },
+        data: { passwordHash: upgradedPasswordHash },
       });
+      if (upgraded.count !== 1) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
+      const current = await this.prisma.user.findUnique({
+        where: { id: user.id },
+      });
+      if (
+        !current ||
+        current.passwordHash !== upgradedPasswordHash ||
+        current.role !== UserRole.ADMIN ||
+        current.status !== "ACTIVE"
+      ) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
+      validatedUser = current;
     }
 
     await this.loginThrottle.clear(phone, realm);
-    return user;
+    return validatedUser;
   }
 
   async refresh(
@@ -577,26 +719,71 @@ export class AuthService {
     const tokenHash = hashRefreshToken(dto.refreshToken);
     const now = new Date();
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.refreshToken.findUnique({
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const seed = await tx.refreshToken.findUnique({
         where: { tokenHash },
-        include: { user: true },
+        select: { id: true, userId: true, scope: true },
       });
-      if (existing?.revokedAt || existing?.replacedById) {
-        await tx.refreshToken.updateMany({
-          where: {
-            userId: existing.userId,
-            scope: existing.scope,
-            revokedAt: null,
-          },
-          data: { revokedAt: now },
-        });
-        return { compromisedRefreshToken: true as const };
+      if (!seed || seed.scope !== sessionScope) {
+        throw new UnauthorizedException("Session is invalid or expired");
       }
+
+      await lockUserLifecycleRowsForUpdateInTransaction(tx, [seed.userId]);
+      const lockedFamily = await this.lockRefreshTokenFamilyInTransaction(
+        tx,
+        seed.id,
+        seed.userId,
+        sessionScope,
+      );
+      if (!lockedFamily.complete) {
+        await this.revokeRefreshScopeInTransaction(
+          tx,
+          seed.userId,
+          sessionScope,
+          now,
+        );
+        return {
+          rejectedRefreshToken: true as const,
+          scope: sessionScope,
+          revokedSessionIds: [] as string[],
+          revokedUserId:
+            sessionScope === AuthSessionScope.APPLICATION ? seed.userId : null,
+        };
+      }
+      const family = lockedFamily.rows;
+      const existingRow = family[0];
+      const existing = existingRow
+        ? await tx.refreshToken.findUnique({
+            where: { id: existingRow.id },
+            include: { user: true },
+          })
+        : null;
       if (
         !existing ||
+        existing.userId !== seed.userId ||
+        existing.scope !== sessionScope
+      ) {
+        throw new UnauthorizedException("Session is invalid or expired");
+      }
+
+      if (existing.revokedAt || existing.replacedById) {
+        const revokedSessionIds = existing.replacedById
+          ? await this.revokeRefreshSessionsInTransaction(
+              tx,
+              family.slice(1),
+              now,
+              existing.scope === AuthSessionScope.APPLICATION,
+            )
+          : [];
+        return {
+          rejectedRefreshToken: true as const,
+          scope: existing.scope,
+          revokedSessionIds,
+          revokedUserId: null,
+        };
+      }
+      if (
         existing.expiresAt <= now ||
-        existing.scope !== sessionScope ||
         existing.user.status === "DISABLED" ||
         !existing.user.phoneVerifiedAt ||
         (requiredRole !== undefined && existing.user.role !== requiredRole)
@@ -625,9 +812,9 @@ export class AuthService {
         where: { id: existing.id },
         data: { replacedById: replacement.id },
       });
-
-      const adminSessionId =
-        requiredRole === UserRole.ADMIN ? replacement.id : undefined;
+      if (sessionScope === AuthSessionScope.APPLICATION) {
+        await enqueueSessionRevoked(tx, existing.id);
+      }
 
       return {
         user: toSafeUser(existing.user, requiredRole === UserRole.ADMIN),
@@ -635,17 +822,31 @@ export class AuthService {
           existing.user.id,
           existing.user.phone,
           requiredRole === UserRole.ADMIN ? "admin" : "application",
-          adminSessionId,
+          replacement.id,
         ),
         refreshToken: nextToken,
         refreshTokenExpiresAt: nextExpiresAt,
+        revokedSessionId: existing.id,
       };
     });
 
-    if ("compromisedRefreshToken" in result) {
+    if ("rejectedRefreshToken" in result) {
+      if (result.scope === AuthSessionScope.APPLICATION) {
+        if (result.revokedUserId) {
+          this.realtime.disconnectUser(result.revokedUserId);
+        } else {
+          for (const sessionId of result.revokedSessionIds) {
+            this.realtime.disconnectSession(sessionId);
+          }
+        }
+      }
       throw new UnauthorizedException("Session is invalid or expired");
     }
-    return result;
+    if (sessionScope === AuthSessionScope.APPLICATION) {
+      this.realtime.disconnectSession(result.revokedSessionId);
+    }
+    const { revokedSessionId: _revokedSessionId, ...auth } = result;
+    return auth;
   }
 
   refreshAdmin(refreshToken: string): Promise<AuthResponse> {
@@ -655,38 +856,331 @@ export class AuthService {
   async logoutAdminRefreshToken(
     refreshToken: string,
   ): Promise<{ revoked: number }> {
-    const result = await this.prisma.refreshToken.updateMany({
-      where: {
-        tokenHash: hashRefreshToken(refreshToken),
-        scope: AuthSessionScope.ADMIN,
-        revokedAt: null,
+    if (!isRefreshTokenForScope(refreshToken, "admin")) {
+      return { revoked: 0 };
+    }
+    const tokenHash = hashRefreshToken(refreshToken);
+    const revokedCount = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const seed = await tx.refreshToken.findUnique({
+          where: { tokenHash },
+          select: { id: true, userId: true, scope: true },
+        });
+        if (!seed || seed.scope !== AuthSessionScope.ADMIN) return 0;
+
+        await lockUserLifecycleRowsForUpdateInTransaction(tx, [seed.userId]);
+        const lockedFamily = await this.lockRefreshTokenFamilyInTransaction(
+          tx,
+          seed.id,
+          seed.userId,
+          AuthSessionScope.ADMIN,
+        );
+        const now = new Date();
+        if (!lockedFamily.complete) {
+          return this.revokeRefreshScopeInTransaction(
+            tx,
+            seed.userId,
+            AuthSessionScope.ADMIN,
+            now,
+          );
+        }
+        const revokedSessionIds =
+          await this.revokeRefreshSessionsInTransaction(
+            tx,
+            lockedFamily.rows,
+            now,
+          );
+        return revokedSessionIds.length;
       },
-      data: { revokedAt: new Date() },
-    });
-    return { revoked: result.count };
+    );
+    return { revoked: revokedCount };
   }
 
   async logout(userId: string, dto: LogoutDto) {
     if (!dto.refreshToken) return this.logoutAll(userId);
-    const result = await this.prisma.refreshToken.updateMany({
-      where: {
-        userId,
-        scope: AuthSessionScope.APPLICATION,
-        tokenHash: hashRefreshToken(dto.refreshToken),
-        revokedAt: null,
+    if (!isRefreshTokenForScope(dto.refreshToken, "application")) {
+      return { revoked: 0 };
+    }
+    const tokenHash = hashRefreshToken(dto.refreshToken);
+    const revocation = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const seed = await tx.refreshToken.findUnique({
+          where: { tokenHash },
+          select: { id: true, userId: true, scope: true },
+        });
+        if (
+          !seed ||
+          seed.userId !== userId ||
+          seed.scope !== AuthSessionScope.APPLICATION
+        ) {
+          return {
+            revokedSessionIds: [] as string[],
+            revokedCount: 0,
+            revokedUser: false,
+          };
+        }
+
+        await lockUserLifecycleRowsForUpdateInTransaction(tx, [userId]);
+        const lockedFamily = await this.lockRefreshTokenFamilyInTransaction(
+          tx,
+          seed.id,
+          userId,
+          AuthSessionScope.APPLICATION,
+        );
+        const now = new Date();
+        if (!lockedFamily.complete) {
+          const revokedCount = await this.revokeRefreshScopeInTransaction(
+            tx,
+            userId,
+            AuthSessionScope.APPLICATION,
+            now,
+          );
+          return {
+            revokedSessionIds: [] as string[],
+            revokedCount,
+            revokedUser: true,
+          };
+        }
+        const revokedSessionIds =
+          await this.revokeRefreshSessionsInTransaction(
+            tx,
+            lockedFamily.rows,
+            now,
+            true,
+          );
+        return {
+          revokedSessionIds,
+          revokedCount: revokedSessionIds.length,
+          revokedUser: false,
+        };
       },
-      data: { revokedAt: new Date() },
+    );
+    if (revocation.revokedUser) {
+      this.realtime.disconnectUser(userId);
+    } else {
+      for (const sessionId of revocation.revokedSessionIds) {
+        this.realtime.disconnectSession(sessionId);
+      }
+    }
+    return { revoked: revocation.revokedCount };
+  }
+
+  private async lockRefreshTokenFamilyInTransaction(
+    tx: Prisma.TransactionClient,
+    startId: string,
+    expectedUserId: string,
+    expectedScope: AuthSessionScope,
+  ): Promise<LockedRefreshTokenFamily> {
+    const traversed = await tx.$queryRaw<LockedRefreshTokenTraversalRow[]>(
+      Prisma.sql`
+        WITH RECURSIVE "RefreshFamily" AS (
+          SELECT
+            token."id",
+            token."userId",
+            token."scope",
+            token."expiresAt",
+            token."revokedAt",
+            token."replacedById",
+            1 AS "depth"
+          FROM "RefreshToken" AS token
+          WHERE token."id" = ${startId}
+
+          UNION ALL
+
+          SELECT
+            replacement."id",
+            replacement."userId",
+            replacement."scope",
+            replacement."expiresAt",
+            replacement."revokedAt",
+            replacement."replacedById",
+            family."depth" + 1
+          FROM "RefreshFamily" AS family
+          JOIN "RefreshToken" AS replacement
+            ON replacement."id" = family."replacedById"
+          WHERE family."depth" <= ${AuthService.maxRefreshFamilyDepth}
+        )
+        SELECT
+          family."id",
+          family."userId",
+          family."scope",
+          family."expiresAt",
+          family."revokedAt",
+          family."replacedById",
+          family."depth"
+        FROM "RefreshFamily" AS family
+        JOIN "RefreshToken" AS locked_token
+          ON locked_token."id" = family."id"
+        ORDER BY family."depth" ASC
+        FOR UPDATE OF locked_token
+      `,
+    );
+
+    const family: LockedRefreshTokenRow[] = [];
+    const visited = new Set<string>();
+    let expectedId: string | null = startId;
+    for (const current of traversed) {
+      if (
+        current.depth !== family.length + 1 ||
+        current.id !== expectedId ||
+        current.userId !== expectedUserId ||
+        current.scope !== expectedScope ||
+        visited.has(current.id) ||
+        family.length >= AuthService.maxRefreshFamilyDepth
+      ) {
+        return { rows: family, complete: false };
+      }
+      visited.add(current.id);
+      family.push(current);
+      expectedId = current.replacedById;
+    }
+    return {
+      rows: family,
+      complete:
+        family.length > 0 &&
+        expectedId === null &&
+        family.length <= AuthService.maxRefreshFamilyDepth,
+    };
+  }
+
+  private async revokeRefreshScopeInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    scope: AuthSessionScope,
+    now: Date,
+  ): Promise<number> {
+    await this.lockRefreshSessionsInTransaction(tx, userId, scope);
+    const revoked = await tx.refreshToken.updateMany({
+      where: { userId, scope, revokedAt: null },
+      data: { revokedAt: now },
     });
-    return { revoked: result.count };
+    if (revoked.count > 0 && scope === AuthSessionScope.APPLICATION) {
+      await enqueueUserSessionsRevoked(tx, userId);
+    }
+    return revoked.count;
+  }
+
+  private async revokeRefreshSessionsInTransaction(
+    tx: Prisma.TransactionClient,
+    sessions: readonly LockedRefreshTokenRow[],
+    now: Date,
+    publishApplicationRevocations = false,
+  ): Promise<string[]> {
+    const revokedSessionIds: string[] = [];
+    for (const session of sessions) {
+      if (session.revokedAt) continue;
+      const revoked = await tx.refreshToken.updateMany({
+        where: {
+          id: session.id,
+          userId: session.userId,
+          scope: session.scope,
+          revokedAt: null,
+        },
+        data: { revokedAt: now },
+      });
+      if (revoked.count !== 1) continue;
+      revokedSessionIds.push(session.id);
+      if (publishApplicationRevocations) {
+        await enqueueSessionRevoked(tx, session.id);
+      }
+    }
+    return revokedSessionIds;
+  }
+
+  private async lockAdminLoginChallengesInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "AdminLoginChallenge"
+        WHERE "userId" = ${userId}
+          AND "consumedAt" IS NULL
+        ORDER BY "id" ASC
+        FOR UPDATE
+      `,
+    );
+  }
+
+  private async lockAdminPasswordResetChallengesInTransaction(
+    tx: Prisma.TransactionClient,
+    input:
+      | { userId: string }
+      | { challengeId: string }
+      | { subjectHash: string },
+  ): Promise<void> {
+    if ("userId" in input) {
+      await tx.$queryRaw(
+        Prisma.sql`
+          SELECT "id"
+          FROM "AdminPasswordResetChallenge"
+          WHERE "userId" = ${input.userId}
+            AND "consumedAt" IS NULL
+          ORDER BY "id" ASC
+          FOR UPDATE
+        `,
+      );
+      return;
+    }
+    if ("subjectHash" in input) {
+      await tx.$queryRaw(
+        Prisma.sql`
+          SELECT "id"
+          FROM "AdminPasswordResetChallenge"
+          WHERE "subjectHash" = ${input.subjectHash}
+            AND "consumedAt" IS NULL
+          ORDER BY "id" ASC
+          FOR UPDATE
+        `,
+      );
+      return;
+    }
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "AdminPasswordResetChallenge"
+        WHERE "id" = ${input.challengeId}
+        FOR UPDATE
+      `,
+    );
+  }
+
+  private async lockRefreshSessionsInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    scope: AuthSessionScope,
+  ): Promise<void> {
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "RefreshToken"
+        WHERE "userId" = ${userId}
+          AND "scope" = ${scope}::"AuthSessionScope"
+          AND "revokedAt" IS NULL
+        ORDER BY "id" ASC
+        FOR UPDATE
+      `,
+    );
   }
 
   async logoutAll(
     userId: string,
     scope: AuthSessionScope = AuthSessionScope.APPLICATION,
   ) {
-    const result = await this.prisma.refreshToken.updateMany({
-      where: { userId, scope, revokedAt: null },
-      data: { revokedAt: new Date() },
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      await lockUserLifecycleRowsForUpdateInTransaction(tx, [userId]);
+      await this.lockRefreshSessionsInTransaction(tx, userId, scope);
+      const revoked = await tx.refreshToken.updateMany({
+        where: { userId, scope, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      if (scope === AuthSessionScope.APPLICATION) {
+        await enqueueUserSessionsRevoked(tx, userId);
+      }
+      return revoked;
     });
     // Chat sockets belong to the application session; only revoking that scope
     // should tear them down (an admin-scope logout must not kill app chat).
@@ -704,7 +1198,8 @@ export class AuthService {
     const purpose = dto.purpose;
     if (
       purpose === OtpPurpose.ADMIN_LOGIN ||
-      purpose === OtpPurpose.ADMIN_RESET_PASSWORD
+      purpose === OtpPurpose.ADMIN_RESET_PASSWORD ||
+      purpose === OtpPurpose.INVITE_ACCESS
     ) {
       throw new BadRequestException("Unsupported OTP purpose");
     }
@@ -716,11 +1211,36 @@ export class AuthService {
     return response;
   }
 
+  async requestInviteOtp(
+    phoneInput: string,
+    planInviteIdInput: string,
+    expectedTokenHashInput: string,
+    context: OtpDispatchContext = {},
+  ): Promise<OtpRequestResponse> {
+    const phone = PhoneNormalizer.normalizeRequired(phoneInput);
+    const planInviteId = planInviteIdInput.trim();
+    const expectedTokenHash = expectedTokenHashInput.trim();
+    if (!planInviteId || !/^[a-f0-9]{64}$/.test(expectedTokenHash)) {
+      throw this.inviteNotFoundForPhone();
+    }
+    const { otpId: _otpId, ...response } = await this.issueOtp(
+      phone,
+      OtpPurpose.INVITE_ACCESS,
+      context,
+      false,
+      planInviteId,
+      expectedTokenHash,
+    );
+    return response;
+  }
+
   private async issueOtp(
     phone: string,
     purpose: OtpPurpose,
     context: OtpDispatchContext = {},
     quotaAlreadyConsumed = false,
+    planInviteId: string | null = null,
+    expectedInviteTokenHash: string | null = null,
   ): Promise<IssuedOtpResponse> {
     const mode = this.getOtpMode();
     let channel: OtpChannel;
@@ -741,13 +1261,17 @@ export class AuthService {
       now.getTime() + this.getOtpExpiryMinutes() * 60 * 1000,
     );
 
-    const otp = await this.replaceActiveOtp({
-      phone,
-      purpose,
-      codeHash,
-      expiresAt,
-      maxAttempts: this.getOtpMaxAttempts(),
-    });
+    const otp = await this.replaceActiveOtp(
+      {
+        phone,
+        purpose,
+        codeHash,
+        expiresAt,
+        maxAttempts: this.getOtpMaxAttempts(),
+        planInviteId,
+      },
+      expectedInviteTokenHash,
+    );
 
     let delivered;
     try {
@@ -824,6 +1348,9 @@ export class AuthService {
     const purpose = dto.purpose;
     const now = new Date();
 
+    if (purpose === OtpPurpose.INVITE_ACCESS) {
+      throw new BadRequestException("Unsupported OTP purpose");
+    }
     if (
       purpose === OtpPurpose.REGISTER ||
       purpose === OtpPurpose.RESET_PASSWORD ||
@@ -834,62 +1361,71 @@ export class AuthService {
       );
     }
 
-    const otp = await this.assertOtpCodeMatches(phone, purpose, code, now);
-    const result = await this.prisma
-      .$transaction(
-        async (tx) => {
-          await this.consumeOtpRecord(tx, otp, now);
-          let user = await this.findUserByCanonicalPhone(tx, phone);
+    const result = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        let user = await this.findUserByCanonicalPhone(tx, phone);
+        if (user) {
+          await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+          user = await tx.user.findUnique({ where: { id: user.id } });
+        }
+        const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+          phone,
+          purpose,
+          code,
+          now,
+        });
+        if (otpClaim.outcome === "invalid") {
+          return { otpInvalid: true as const };
+        }
 
-          if (user?.status === "DISABLED") {
-            return { error: this.otpInvalid() };
-          }
+        if (user?.status === "DISABLED") {
+          return { error: this.otpInvalid() };
+        }
 
-          if (
-            user?.role === UserRole.ADMIN &&
-            purpose === OtpPurpose.LOGIN &&
-            !user.appPasswordHash
-          ) {
-            return {
-              error: authError(
-                HttpStatus.NOT_FOUND,
-                AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
-                "No application account exists for this verified phone",
-              ),
-            };
-          }
-
-          if (user) {
-            user = await tx.user.update({
-              where: { id: user.id },
-              data: {
-                phoneVerifiedAt: user.phoneVerifiedAt ?? now,
-                ...(purpose === OtpPurpose.LOGIN ? { lastLoginAt: now } : {}),
-              },
-            });
-          }
-
-          if (!user) {
-            return {
-              error: authError(
-                HttpStatus.NOT_FOUND,
-                AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
-                "No account exists for this verified phone",
-              ),
-            };
-          }
-
+        if (
+          user?.role === UserRole.ADMIN &&
+          purpose === OtpPurpose.LOGIN &&
+          !user.appPasswordHash
+        ) {
           return {
-            user,
-            auth:
-              purpose === OtpPurpose.LOGIN
-                ? await this.createAuthResponse(user, false, tx)
-                : undefined,
+            error: authError(
+              HttpStatus.NOT_FOUND,
+              AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
+              "No application account exists for this verified phone",
+            ),
           };
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      )
-      .catch((error: unknown) => {
+        }
+
+        if (user) {
+          user = await tx.user.update({
+            where: { id: user.id },
+            data: {
+              phoneVerifiedAt: user.phoneVerifiedAt ?? now,
+              ...(purpose === OtpPurpose.LOGIN ? { lastLoginAt: now } : {}),
+            },
+          });
+        }
+
+        if (!user) {
+          return {
+            error: authError(
+              HttpStatus.NOT_FOUND,
+              AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
+              "No account exists for this verified phone",
+            ),
+          };
+        }
+
+        return {
+          user,
+          auth:
+            purpose === OtpPurpose.LOGIN
+              ? await this.createAuthResponse(user, false, tx)
+              : undefined,
+        };
+      },
+    ).catch((error: unknown) => {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2034"
@@ -899,6 +1435,10 @@ export class AuthService {
         }
         throw error;
       });
+    if ("otpInvalid" in result) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw this.otpInvalid();
+    }
     if ("error" in result) {
       // The code was proven and consumed, but the account outcome was
       // rejected (already exists / disabled / no app account). This is a
@@ -971,22 +1511,31 @@ export class AuthService {
       );
     }
 
-    const otp = await this.assertOtpCodeMatches(
-      phone,
-      OtpPurpose.LOGIN,
-      code,
-      now,
-    );
     const passwordHash = hasAccountSetup
       ? await bcryptjs.hash(password, 10)
       : null;
 
     let result: InviteOtpVerificationResult;
     try {
-      result = await this.prisma.$transaction(
+      result = await runSerializableTransaction(
+        this.prisma,
         async (tx) => {
+          let user = await this.findUserByCanonicalPhone(tx, phone);
+          if (user) {
+            await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+            user = await tx.user.findUnique({ where: { id: user.id } });
+          }
+          const inviteLocked =
+            await this.lockPlanInviteForUpdateInTransaction(
+              tx,
+              pendingInvite.id,
+            );
+          if (!inviteLocked) {
+            return { error: this.inviteNotFoundForPhone() };
+          }
           const invite = await tx.planInvite.findFirst({
             where: {
+              id: pendingInvite.id,
               tokenHash,
               normalizedPhone: phone,
               acceptedAt: null,
@@ -1000,7 +1549,17 @@ export class AuthService {
             return { error: this.inviteNotFoundForPhone() };
           }
 
-          let user = await this.findUserByCanonicalPhone(tx, phone);
+          const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+            phone,
+            purpose: OtpPurpose.INVITE_ACCESS,
+            planInviteId: invite.id,
+            code,
+            now,
+          });
+          if (otpClaim.outcome === "invalid") {
+            return { otpInvalid: true as const };
+          }
+
           const accountSetupRequired =
             !user ||
             (!user.phoneVerifiedAt && user.role !== UserRole.ADMIN) ||
@@ -1014,8 +1573,6 @@ export class AuthService {
               ),
             };
           }
-
-          await this.consumeOtpRecord(tx, otp, now);
 
           if (user?.status === "DISABLED") {
             return {
@@ -1090,7 +1647,6 @@ export class AuthService {
             auth: await this.createAuthResponse(user, false, tx),
           };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (error) {
       if (
@@ -1113,6 +1669,10 @@ export class AuthService {
       throw error;
     }
 
+    if ("otpInvalid" in result) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw this.otpInvalid();
+    }
     if ("error" in result) {
       otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
       throw result.error;
@@ -1122,7 +1682,7 @@ export class AuthService {
     return {
       verified: true,
       phone,
-      purpose: OtpPurpose.LOGIN,
+      purpose: OtpPurpose.INVITE_ACCESS,
       user: result.auth.user,
       accessToken: result.auth.accessToken,
       refreshToken: result.auth.refreshToken,
@@ -1157,22 +1717,28 @@ export class AuthService {
   ): Promise<{ reset: true; phone: string }> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const now = new Date();
-    const otp = await this.assertOtpCodeMatches(
-      phone,
-      OtpPurpose.RESET_PASSWORD,
-      dto.code,
-      now,
-    );
-
     const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
-    const result: PasswordResetResult = await this.prisma.$transaction(
-      async (tx) => {
-        const user = await this.findUserByCanonicalPhone(
+    let result: PasswordResetResult;
+    try {
+      result = await runSerializableTransaction(this.prisma, async (tx) => {
+        let user = await this.findUserByCanonicalPhone(
           tx,
           phone,
           PhoneNormalizer.lookupVariants(phone),
         );
-        await this.consumeOtpRecord(tx, otp, now);
+        if (user) {
+          await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+          user = await tx.user.findUnique({ where: { id: user.id } });
+        }
+        const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+          phone,
+          purpose: OtpPurpose.RESET_PASSWORD,
+          code: dto.code,
+          now,
+        });
+        if (otpClaim.outcome === "invalid") {
+          return { otpInvalid: true as const };
+        }
         if (!user) {
           return {
             error: authError(
@@ -1218,11 +1784,24 @@ export class AuthService {
           },
           data: { revokedAt: now },
         });
+        await enqueueUserSessionsRevoked(tx, user.id);
         return { reset: true as const, userId: user.id };
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        otpVerificationsTotal.inc({ outcome: "failure" });
+        throw this.otpInvalid();
+      }
+      throw error;
+    }
 
+    if ("otpInvalid" in result) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw this.otpInvalid();
+    }
     if ("error" in result) {
       // The code was proven and consumed, but the account outcome was
       // rejected (already exists / disabled / no app account). This is a
@@ -1275,6 +1854,17 @@ export class AuthService {
     );
 
     await runSerializableTransaction(this.prisma, async (tx) => {
+      if (admin) {
+        await lockUserLifecycleRowsForUpdateInTransaction(tx, [admin.id]);
+        await this.lockAdminLoginChallengesInTransaction(tx, admin.id);
+        await this.lockAdminPasswordResetChallengesInTransaction(tx, {
+          userId: admin.id,
+        });
+      } else {
+        await this.lockAdminPasswordResetChallengesInTransaction(tx, {
+          subjectHash,
+        });
+      }
       const issuedOtp = await tx.otpCode.findUniqueOrThrow({
         where: { id: issued.otpId },
         select: { consumedAt: true },
@@ -1311,56 +1901,98 @@ export class AuthService {
     dto: AdminPasswordResetConfirmDto,
   ): Promise<{ reset: true }> {
     const now = new Date();
-    const challenge = await this.prisma.adminPasswordResetChallenge.findUnique({
-      where: { tokenHash: hashRefreshToken(dto.challengeToken) },
-      include: { user: true, otp: true },
-    });
-    if (
-      !challenge ||
-      challenge.consumedAt ||
-      challenge.expiresAt <= now ||
-      challenge.attempts >= challenge.maxAttempts
-    ) {
-      await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
-      if (challenge && !challenge.consumedAt) {
-        await this.recordFailedAdminResetAttempt(challenge.id, now);
-      }
-      throw this.adminResetInvalid();
-    }
-
-    let otp: OtpCode;
-    try {
-      otp = await this.assertSpecificOtpCodeMatches(
-        challenge.otp,
-        challenge.otp.phone,
-        OtpPurpose.ADMIN_RESET_PASSWORD,
-        dto.code,
-        now,
-      );
-    } catch {
-      await this.recordFailedAdminResetAttempt(challenge.id, now);
-      throw this.adminResetInvalid();
-    }
-
-    const eligibleAdmin =
-      challenge.user?.role === UserRole.ADMIN &&
-      challenge.user.status === "ACTIVE" &&
-      challenge.user.phone === challenge.otp.phone;
-    if (!eligibleAdmin) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.adminPasswordResetChallenge.updateMany({
-          where: { id: challenge.id, consumedAt: null },
-          data: { consumedAt: now },
-        });
-        await this.consumeOtpRecord(tx, otp, now);
+    const challengeSeed =
+      await this.prisma.adminPasswordResetChallenge.findUnique({
+        where: { tokenHash: hashRefreshToken(dto.challengeToken) },
+        select: { id: true, userId: true },
       });
+    if (!challengeSeed) {
+      await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
       throw this.adminResetInvalid();
     }
+
     const passwordHash = await bcryptjs.hash(dto.newPassword, 12);
 
     try {
-      await this.prisma.$transaction(
+      const result = await runSerializableTransaction(
+        this.prisma,
         async (tx) => {
+          if (challengeSeed.userId) {
+            await lockUserLifecycleRowsForUpdateInTransaction(tx, [
+              challengeSeed.userId,
+            ]);
+            await this.lockAdminLoginChallengesInTransaction(
+              tx,
+              challengeSeed.userId,
+            );
+            await this.lockAdminPasswordResetChallengesInTransaction(tx, {
+              userId: challengeSeed.userId,
+            });
+          } else {
+            await this.lockAdminPasswordResetChallengesInTransaction(tx, {
+              challengeId: challengeSeed.id,
+            });
+          }
+
+          const challenge =
+            await tx.adminPasswordResetChallenge.findUnique({
+              where: { id: challengeSeed.id },
+              include: { user: true, otp: true },
+            });
+          if (
+            !challenge ||
+            challenge.consumedAt ||
+            challenge.expiresAt <= now ||
+            challenge.attempts >= challenge.maxAttempts
+          ) {
+            if (challenge && !challenge.consumedAt) {
+              await this.recordFailedAdminResetAttemptInTransaction(
+                tx,
+                challenge.id,
+                challenge.maxAttempts,
+                now,
+              );
+            }
+            return {
+              invalid: true as const,
+              otpVerified: false as const,
+              compareDummy: true as const,
+            };
+          }
+
+          const otpClaim = await this.claimOtpCodeInTransaction(tx, {
+            otpId: challenge.otpId,
+            phone: challenge.otp.phone,
+            purpose: OtpPurpose.ADMIN_RESET_PASSWORD,
+            code: dto.code,
+            now,
+          });
+          if (otpClaim.outcome === "invalid") {
+            await this.recordFailedAdminResetAttemptInTransaction(
+              tx,
+              challenge.id,
+              challenge.maxAttempts,
+              now,
+            );
+            return {
+              invalid: true as const,
+              otpVerified: false as const,
+              compareDummy: false as const,
+            };
+          }
+
+          const eligibleAdmin =
+            challenge.user?.role === UserRole.ADMIN &&
+            challenge.user.status === "ACTIVE" &&
+            challenge.user.phone === challenge.otp.phone;
+          if (!eligibleAdmin) {
+            await tx.adminPasswordResetChallenge.updateMany({
+              where: { id: challenge.id, consumedAt: null },
+              data: { consumedAt: now },
+            });
+            return { invalid: true as const, otpVerified: true as const };
+          }
+
           const claimed = await tx.adminPasswordResetChallenge.updateMany({
             where: {
               id: challenge.id,
@@ -1370,8 +2002,15 @@ export class AuthService {
             },
             data: { consumedAt: now },
           });
-          if (claimed.count !== 1) throw this.adminResetInvalid();
-          await this.consumeOtpRecord(tx, otp, now);
+          if (claimed.count !== 1) {
+            return { invalid: true as const, otpVerified: true as const };
+          }
+
+          await this.lockRefreshSessionsInTransaction(
+            tx,
+            challenge.userId!,
+            AuthSessionScope.ADMIN,
+          );
 
           const updated = await tx.user.updateMany({
             where: {
@@ -1381,7 +2020,9 @@ export class AuthService {
             },
             data: { passwordHash },
           });
-          if (updated.count !== 1) throw this.adminResetInvalid();
+          if (updated.count !== 1) {
+            return { invalid: true as const, otpVerified: true as const };
+          }
 
           await tx.refreshToken.updateMany({
             where: {
@@ -1412,9 +2053,18 @@ export class AuthService {
           await tx.loginThrottle.deleteMany({
             where: { subjectHash: challenge.subjectHash },
           });
+          return { reset: true as const };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
+      if ("invalid" in result) {
+        if ("compareDummy" in result && result.compareDummy) {
+          await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
+        }
+        otpVerificationsTotal.inc({
+          outcome: result.otpVerified ? "verified_then_rejected" : "failure",
+        });
+        throw this.adminResetInvalid();
+      }
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1458,7 +2108,7 @@ export class AuthService {
         user.id,
         user.phone,
         adminMfa ? "admin" : "application",
-        adminMfa ? refreshSession.id : undefined,
+        refreshSession.id,
       ),
       refreshToken,
       refreshTokenExpiresAt,
@@ -1500,16 +2150,26 @@ export class AuthService {
     );
   }
 
-  private async recordFailedAdminResetAttempt(
+  private async recordFailedAdminResetAttemptInTransaction(
+    tx: Pick<Prisma.TransactionClient, "adminPasswordResetChallenge">,
     challengeId: string,
+    maxAttempts: number,
     now: Date,
   ): Promise<void> {
-    await this.prisma.adminPasswordResetChallenge.updateMany({
-      where: { id: challengeId, consumedAt: null, attempts: { lt: 5 } },
+    await tx.adminPasswordResetChallenge.updateMany({
+      where: {
+        id: challengeId,
+        consumedAt: null,
+        attempts: { lt: maxAttempts },
+      },
       data: { attempts: { increment: 1 } },
     });
-    await this.prisma.adminPasswordResetChallenge.updateMany({
-      where: { id: challengeId, consumedAt: null, attempts: { gte: 5 } },
+    await tx.adminPasswordResetChallenge.updateMany({
+      where: {
+        id: challengeId,
+        consumedAt: null,
+        attempts: { gte: maxAttempts },
+      },
       data: { consumedAt: now },
     });
   }
@@ -1518,52 +2178,119 @@ export class AuthService {
     userId: string,
     phone: string | null,
     scope: JwtPayload["scope"],
-    adminSessionId?: string,
+    sessionId: string,
   ): string {
-    if (
-      (scope === "admin" && !adminSessionId) ||
-      (scope === "application" && adminSessionId !== undefined)
-    ) {
+    if (!sessionId) {
       throw new Error("Access-token scope and session are inconsistent");
     }
     const payload: JwtPayload = {
       sub: userId,
       phone,
       scope,
-      ...(scope === "admin"
-        ? { amr: "admin_mfa" as const, sid: adminSessionId }
-        : {}),
+      sid: sessionId,
+      ...(scope === "admin" ? { amr: "admin_mfa" as const } : {}),
     };
     return this.jwtService.sign(payload);
+  }
+
+  private async lockPlanInviteForUpdateInTransaction(
+    tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+    planInviteId: string,
+  ): Promise<boolean> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "PlanInvite"
+        WHERE "id" = ${planInviteId}
+        FOR UPDATE
+      `,
+    );
+    return locked.length === 1;
   }
 
   private async replaceActiveOtp(
     data: Pick<
       Prisma.OtpCodeUncheckedCreateInput,
-      "phone" | "purpose" | "codeHash" | "expiresAt" | "maxAttempts"
+      | "phone"
+      | "purpose"
+      | "codeHash"
+      | "expiresAt"
+      | "maxAttempts"
+      | "planInviteId"
     >,
+    expectedInviteTokenHash: string | null = null,
   ): Promise<OtpCode> {
     for (let attempt = 0; attempt < 3; attempt++) {
       const now = new Date();
       try {
         return await this.prisma.$transaction(
           async (tx) => {
+            if (data.planInviteId) {
+              if (!expectedInviteTokenHash) {
+                throw this.inviteNotFoundForPhone();
+              }
+              const inviteLocked =
+                await this.lockPlanInviteForUpdateInTransaction(
+                  tx,
+                  data.planInviteId,
+                );
+              if (!inviteLocked) {
+                throw this.inviteNotFoundForPhone();
+              }
+              const activeInvite = await tx.planInvite.findFirst({
+                where: {
+                  id: data.planInviteId,
+                  tokenHash: expectedInviteTokenHash,
+                  normalizedPhone: data.phone,
+                  acceptedAt: null,
+                  declinedAt: null,
+                  revokedAt: null,
+                  expiresAt: { gt: now },
+                },
+                select: { id: true },
+              });
+              if (!activeInvite) {
+                throw this.inviteNotFoundForPhone();
+              }
+            }
             await tx.otpCode.updateMany({
               where: {
                 phone: data.phone,
                 purpose: data.purpose,
+                planInviteId: data.planInviteId ?? null,
                 consumedAt: null,
               },
               data: { consumedAt: now },
             });
-            return tx.otpCode.create({ data });
+            return tx.otpCode.create({
+              data: {
+                ...data,
+                planInviteId: data.planInviteId ?? null,
+              },
+            });
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
         );
       } catch (error) {
+        if (
+          data.planInviteId &&
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2003"
+        ) {
+          throw this.inviteNotFoundForPhone();
+        }
+        const databaseCode =
+          error instanceof Prisma.PrismaClientKnownRequestError
+            ? String(
+                (error.meta as Record<string, unknown> | undefined)?.code ?? "",
+              )
+            : "";
         const retryable =
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          (error.code === "P2002" || error.code === "P2034");
+          (error.code === "P2002" ||
+            error.code === "P2034" ||
+            (error.code === "P2010" &&
+              (databaseCode === "40001" || databaseCode === "40P01")));
         if (!retryable) {
           throw error;
         }
@@ -1576,150 +2303,100 @@ export class AuthService {
     throw otpDeliveryUnavailableError();
   }
 
-  private async assertOtpCodeMatches(
-    phone: string,
-    purpose: OtpPurpose,
-    code: string,
-    now: Date,
-  ): Promise<OtpCode> {
-    const otp = await this.prisma.otpCode.findFirst({
-      where: { phone, purpose, consumedAt: null },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return this.assertSpecificOtpCodeMatches(otp, phone, purpose, code, now);
-  }
-
-  private async assertSpecificOtpCodeMatches(
-    otp: OtpCode | null | undefined,
-    phone: string,
-    purpose: OtpPurpose,
-    code: string,
-    now: Date,
-  ): Promise<OtpCode> {
+  private async claimOtpCodeInTransaction(
+    tx: Pick<Prisma.TransactionClient, "otpCode">,
+    input: {
+      otpId?: string;
+      phone: string;
+      purpose: OtpPurpose;
+      planInviteId?: string | null;
+      code: string;
+      now: Date;
+    },
+  ): Promise<OtpClaimResult> {
+    const { otpId, phone, purpose, code, now } = input;
+    const planInviteId = input.planInviteId ?? null;
     if (this.getOtpMode() !== "dev" && code === this.getDevOtpCode()) {
-      otpVerificationsTotal.inc({ outcome: "failure" });
-      throw this.otpInvalid();
+      return { outcome: "invalid" };
     }
+    const otp = otpId
+      ? await tx.otpCode.findUnique({ where: { id: otpId } })
+      : await tx.otpCode.findFirst({
+          where: { phone, purpose, planInviteId, consumedAt: null },
+          orderBy: { createdAt: "desc" },
+        });
     if (!otp) {
-      otpVerificationsTotal.inc({ outcome: "failure" });
-      throw this.otpInvalid();
+      return { outcome: "invalid" };
     }
 
-    let result:
-      | { outcome: "verified"; otp: OtpCode }
-      | { outcome: "invalid" };
-    try {
-      result = await runRetryableTransaction(
-        this.prisma,
-        async (tx) => {
-          const locked = await tx.otpCode.updateMany({
-            where: { id: otp.id },
-            data: { updatedAt: now },
-          });
-          if (locked.count !== 1) return { outcome: "invalid" as const };
+    const locked = await tx.otpCode.updateMany({
+      where: { id: otp.id },
+      data: { updatedAt: now },
+    });
+    if (locked.count !== 1) return { outcome: "invalid" };
 
-          const current = await tx.otpCode.findUnique({
-            where: { id: otp.id },
-          });
-          if (
-            !current ||
-            current.phone !== phone ||
-            current.purpose !== purpose ||
-            current.consumedAt ||
-            current.expiresAt <= now ||
-            current.attempts >= current.maxAttempts
-          ) {
-            if (current && !current.consumedAt) {
-              await tx.otpCode.updateMany({
-                where: { id: current.id, consumedAt: null },
-                data: { consumedAt: now },
-              });
-            }
-            return { outcome: "invalid" as const };
-          }
-
-          const matches = await bcryptjs.compare(code, current.codeHash);
-          if (!matches) {
-            const nextAttempts = current.attempts + 1;
-            await tx.otpCode.updateMany({
-              where: {
-                id: current.id,
-                consumedAt: null,
-                expiresAt: { gt: now },
-                attempts: { lt: current.maxAttempts },
-              },
-              data: {
-                attempts: { increment: 1 },
-                ...(nextAttempts >= current.maxAttempts
-                  ? { consumedAt: now }
-                  : {}),
-              },
-            });
-            return { outcome: "invalid" as const };
-          }
-
-          const consumed = await tx.otpCode.updateMany({
-            where: {
-              id: current.id,
-              consumedAt: null,
-              expiresAt: { gt: now },
-              attempts: { lt: current.maxAttempts },
-            },
-            data: { consumedAt: now },
-          });
-          if (consumed.count !== 1) return { outcome: "invalid" as const };
-
-          return {
-            outcome: "verified" as const,
-            otp: {
-              ...current,
-              consumedAt: now,
-              updatedAt: now,
-            },
-          };
-        },
-        { maxAttempts: 4 },
-      );
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2034"
-      ) {
-        otpVerificationsTotal.inc({ outcome: "failure" });
-        throw this.otpInvalid();
+    const current = await tx.otpCode.findUnique({
+      where: { id: otp.id },
+    });
+    if (
+      !current ||
+      current.phone !== phone ||
+      current.purpose !== purpose ||
+      (current.planInviteId ?? null) !== planInviteId
+    ) {
+      return { outcome: "invalid" };
+    }
+    if (
+      current.consumedAt ||
+      current.expiresAt <= now ||
+      current.attempts >= current.maxAttempts
+    ) {
+      if (current && !current.consumedAt) {
+        await tx.otpCode.updateMany({
+          where: { id: current.id, consumedAt: null },
+          data: { consumedAt: now },
+        });
       }
-      throw error;
+      return { outcome: "invalid" };
     }
 
-    if (result.outcome === "invalid") {
-      otpVerificationsTotal.inc({ outcome: "failure" });
-      throw this.otpInvalid();
+    const matches = await bcryptjs.compare(code, current.codeHash);
+    if (!matches) {
+      const nextAttempts = current.attempts + 1;
+      await tx.otpCode.updateMany({
+        where: {
+          id: current.id,
+          consumedAt: null,
+          expiresAt: { gt: now },
+          attempts: { lt: current.maxAttempts },
+        },
+        data: {
+          attempts: { increment: 1 },
+          ...(nextAttempts >= current.maxAttempts ? { consumedAt: now } : {}),
+        },
+      });
+      return { outcome: "invalid" };
     }
 
-    return result.otp;
-  }
-
-  private async consumeOtpRecord(
-    client: Pick<Prisma.TransactionClient, "otpCode">,
-    otp: OtpCode,
-    now: Date,
-  ): Promise<void> {
-    if (otp.consumedAt) return;
-
-    const consumed = await client.otpCode.updateMany({
+    const consumed = await tx.otpCode.updateMany({
       where: {
-        id: otp.id,
+        id: current.id,
         consumedAt: null,
         expiresAt: { gt: now },
-        attempts: { lt: otp.maxAttempts },
+        attempts: { lt: current.maxAttempts },
       },
       data: { consumedAt: now },
     });
-    if (consumed.count !== 1) {
-      otpVerificationsTotal.inc({ outcome: "failure" });
-      throw this.otpInvalid();
-    }
+    if (consumed.count !== 1) return { outcome: "invalid" };
+
+    return {
+      outcome: "verified",
+      otp: {
+        ...current,
+        consumedAt: now,
+        updatedAt: now,
+      },
+    };
   }
 
   private getOtpMode(): "dev" | "whatsapp" | "openwa" | "disabled" {

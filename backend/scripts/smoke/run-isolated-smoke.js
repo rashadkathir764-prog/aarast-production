@@ -555,7 +555,11 @@ async function waitForBackend(child, baseUrl, signal) {
 
 function validateSmokeScripts(values) {
   const scripts = values.length > 0 ? values : ['all-smoke.js'];
-  const externalTargets = new Set(['--admin-runtime', '--load-test']);
+  const externalTargets = new Set([
+    '--admin-runtime',
+    '--guest-phone-migration',
+    '--load-test',
+  ]);
   if (scripts.some((value) => externalTargets.has(value)) && scripts.length !== 1) {
     throw new Error('External managed checks must run in their own isolated lifecycle.');
   }
@@ -681,6 +685,34 @@ async function executeManagedRun(steps) {
   if (cleanupError) throw cleanupError;
 }
 
+async function executeManagedDatabaseRun(steps) {
+  const cleanup = new CleanupStack();
+  let primaryError = null;
+  try {
+    await steps.createDatabase();
+    cleanup.add('PostgreSQL database', steps.dropDatabase);
+    await steps.runSmoke();
+  } catch (error) {
+    primaryError = error;
+  }
+
+  let cleanupError = null;
+  try {
+    await cleanup.run();
+  } catch (error) {
+    cleanupError = error;
+  }
+
+  if (primaryError && cleanupError) {
+    throw new AggregateError(
+      [primaryError, cleanupError],
+      'Managed database smoke failed and cleanup was incomplete.',
+    );
+  }
+  if (primaryError) throw primaryError;
+  if (cleanupError) throw cleanupError;
+}
+
 function errorMessages(error) {
   if (error instanceof AggregateError) {
     return [error.message, ...error.errors.flatMap(errorMessages)];
@@ -716,6 +748,32 @@ async function main(args = process.argv.slice(2)) {
     }
     console.log(`Managed smoke run: ${identity.runId}`);
     console.log(`Isolated database: ${identity.databaseName}`);
+    if (scripts.includes('--guest-phone-migration')) {
+      await executeManagedDatabaseRun({
+        createDatabase: () =>
+          createDatabase(discovery, identity, abortController.signal),
+        dropDatabase: () => dropDatabase(discovery, identity),
+        runSmoke: () =>
+          runInheritedCommand(
+            process.execPath,
+            [
+              '-r',
+              isolationHook,
+              path.join(__dirname, 'guest-phone-migration-smoke.js'),
+            ],
+            {
+              cwd: backendRoot,
+              env: environment,
+              signal: abortController.signal,
+            },
+          ),
+      });
+      if (interruptedBy) {
+        throw new Error(`Managed smoke interrupted by ${interruptedBy}.`);
+      }
+      return;
+    }
+
     console.log(`Isolated backend: ${environment.SMOKE_BASE_URL}`);
 
     await executeManagedRun({
@@ -765,6 +823,7 @@ module.exports = {
   composeEnvironment,
   createRunIdentity,
   errorMessages,
+  executeManagedDatabaseRun,
   executeManagedRun,
   safePostgresIdentifier,
   validateSmokeScripts,

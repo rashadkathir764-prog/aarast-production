@@ -1,4 +1,7 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+} from "@nestjs/common";
 import {
   AppRole,
   BudgetCategory,
@@ -18,14 +21,17 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  assertWeddingPlanWritable,
   PermissionService,
   PlanAccessContext,
 } from "../sharing/permission.service";
+import { assertActiveMutationActorForUpdateInTransaction } from "../users/user-lifecycle-lock";
 import { CreateWeddingPlanDto } from "./dto/create-wedding-plan.dto";
 import { UpdateWeddingPlanDto } from "./dto/update-wedding-plan.dto";
 import {
@@ -100,7 +106,11 @@ export class WeddingPlansService {
     const city =
       this.optionalText(dto.city) ?? cityFromWeddingLocation(location);
 
-    const plan = await this.prisma.$transaction(async (tx) => {
+    const plan = await runSerializableTransaction(this.prisma, async (tx) => {
+      await assertActiveMutationActorForUpdateInTransaction(
+        tx,
+        currentUser.id,
+      );
       const created = await tx.weddingPlan.create({
         data: {
           ownerUserId: currentUser.id,
@@ -197,81 +207,103 @@ export class WeddingPlansService {
     id: string,
     dto: UpdateWeddingPlanDto,
   ): Promise<WeddingPlanResponse> {
-    const context = await this.permissions.assertPlanManageable(
-      id,
-      currentUser,
-    );
-    const location =
-      dto.location !== undefined
-        ? normalizeWeddingLocationInput(
-            dto.location,
-            dto.city ?? context.plan.city,
-          )
-        : null;
-    const city =
-      dto.city !== undefined
-        ? this.optionalText(dto.city)
-        : dto.location !== undefined
-          ? (cityFromWeddingLocation(location) ?? context.plan.city)
-          : undefined;
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const context =
+        await this.permissions.assertPlanManageableForUpdateInTransaction(
+          tx,
+          id,
+          currentUser,
+        );
+      const location =
+        dto.location !== undefined
+          ? normalizeWeddingLocationInput(
+              dto.location,
+              dto.city ?? context.plan.city,
+            )
+          : null;
+      const city =
+        dto.city !== undefined
+          ? this.optionalText(dto.city)
+          : dto.location !== undefined
+            ? (cityFromWeddingLocation(location) ?? context.plan.city)
+            : undefined;
 
-    const plan = await this.prisma.weddingPlan.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined
-          ? { title: this.requiredText(dto.title, "title") }
-          : {}),
-        ...(city !== undefined ? { city } : {}),
-        ...(dto.location !== undefined
-          ? { location: location ?? Prisma.DbNull }
-          : {}),
-        ...(dto.weddingDate !== undefined
-          ? { weddingDate: this.optionalDate(dto.weddingDate) }
-          : {}),
-        ...(dto.priorities !== undefined
-          ? { priorities: this.normalizePriorities(dto.priorities) }
-          : {}),
-        ...(dto.onboardingPath !== undefined
-          ? { onboardingPath: dto.onboardingPath }
-          : {}),
-        ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
-      },
+      const plan = await tx.weddingPlan.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined
+            ? { title: this.requiredText(dto.title, "title") }
+            : {}),
+          ...(city !== undefined ? { city } : {}),
+          ...(dto.location !== undefined
+            ? { location: location ?? Prisma.DbNull }
+            : {}),
+          ...(dto.weddingDate !== undefined
+            ? { weddingDate: this.optionalDate(dto.weddingDate) }
+            : {}),
+          ...(dto.priorities !== undefined
+            ? { priorities: this.normalizePriorities(dto.priorities) }
+            : {}),
+          ...(dto.onboardingPath !== undefined
+            ? { onboardingPath: dto.onboardingPath }
+            : {}),
+          ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
+        },
+      });
+      return { context, plan };
     });
 
-    return this.toResponse(plan, { ...context, plan });
+    return this.toResponse(result.plan, {
+      ...result.context,
+      plan: result.plan,
+    });
   }
 
   async archive(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<WeddingPlanResponse> {
-    const context = await this.permissions.assertPlanManageable(
-      id,
-      currentUser,
-    );
-
-    const plan = await this.prisma.weddingPlan.update({
-      where: { id },
-      data: { status: WeddingPlanStatus.ARCHIVED },
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const context =
+        await this.permissions.assertPlanManageableForUpdateInTransaction(
+          tx,
+          id,
+          currentUser,
+        );
+      const plan = await tx.weddingPlan.update({
+        where: { id },
+        data: { status: WeddingPlanStatus.ARCHIVED },
+      });
+      return { context, plan };
     });
 
-    return this.toResponse(plan, { ...context, plan });
+    return this.toResponse(result.plan, {
+      ...result.context,
+      plan: result.plan,
+    });
   }
 
   async setActive(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<WeddingPlanResponse> {
-    const context = await this.permissions.assertPlanReadable(id, currentUser);
-
-    if (context.plan.status === WeddingPlanStatus.ARCHIVED) {
-      throw new BadRequestException("Archived wedding plans cannot be active");
-    }
-
-    await this.prisma.user.update({
-      where: { id: currentUser.id },
-      data: { activeWeddingPlanId: id },
-    });
+    const context = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const transactionalContext =
+          await this.permissions.assertPlanReadableForUserUpdateInTransaction(
+            tx,
+            id,
+            currentUser,
+          );
+        assertWeddingPlanWritable(transactionalContext.plan);
+        await tx.user.update({
+          where: { id: currentUser.id },
+          data: { activeWeddingPlanId: id },
+        });
+        return transactionalContext;
+      },
+    );
 
     return this.toResponse(context.plan, context);
   }
@@ -292,7 +324,11 @@ export class WeddingPlansService {
     );
     const now = new Date();
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      await assertActiveMutationActorForUpdateInTransaction(
+        tx,
+        currentUser.id,
+      );
       const plan = await tx.weddingPlan.create({
         data: {
           ownerUserId: currentUser.id,
@@ -509,7 +545,11 @@ export class WeddingPlansService {
     );
 
     try {
-      const plan = await this.prisma.$transaction(async (tx) => {
+      const plan = await runSerializableTransaction(this.prisma, async (tx) => {
+        await assertActiveMutationActorForUpdateInTransaction(
+          tx,
+          currentUser.id,
+        );
         const createdPlan = await tx.weddingPlan.create({
           data: {
             ownerUserId: currentUser.id,
@@ -522,9 +562,7 @@ export class WeddingPlansService {
               : {}),
             weddingDate: this.optionalDate(dto.weddingDate),
             priorities: this.normalizePriorities(dto.priorities),
-            estimatedBudget: this.optionalPositiveBudget(
-              dto.estimatedBudget,
-            ),
+            estimatedBudget: this.optionalPositiveBudget(dto.estimatedBudget),
             currency: this.normalizedCurrency(dto.currency),
             onboardingPath: path,
             persona: dto.persona ?? null,
@@ -768,9 +806,7 @@ export class WeddingPlansService {
   private normalizedCurrency(value: string | undefined): string {
     const currency = (value?.trim() || "YER").toUpperCase();
     if (!/^[A-Z]{3}$/.test(currency)) {
-      throw new BadRequestException(
-        "currency must be a three-letter ISO code",
-      );
+      throw new BadRequestException("currency must be a three-letter ISO code");
     }
     return currency;
   }

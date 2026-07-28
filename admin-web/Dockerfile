@@ -16,7 +16,7 @@ COPY src ./src
 
 RUN npm run build
 
-FROM nginx:1.29-alpine-slim@sha256:c9366b8c560169b101ca0e5422ed063b20779e6454c2326b9c9704225c9b0c08 AS runtime
+FROM nginx:1.31-alpine-slim@sha256:45b82ed5f285b90d63df07ba70430fdd8f25624b416617d9e6dc93412b2006dc AS runtime
 
 ARG AARAST_GIT_REVISION=development-unversioned
 

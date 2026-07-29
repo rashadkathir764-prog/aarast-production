@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/diagnostics/context_lifecycle_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
@@ -21,12 +22,18 @@ class AuthController extends ChangeNotifier {
     this._authRepository, {
     OfflineSyncService? offlineSyncService,
     GuestOnboardingStorage? guestOnboardingStorage,
+    Future<void> Function(String userId)? beforeAccountLogout,
+    Future<void> Function(String userId)? clearPushOnSessionEnd,
   }) : _offlineSyncService = offlineSyncService,
-       _guestOnboardingStorage = guestOnboardingStorage;
+       _guestOnboardingStorage = guestOnboardingStorage,
+       _beforeAccountLogout = beforeAccountLogout,
+       _clearPushOnSessionEnd = clearPushOnSessionEnd;
 
   final AuthRepository _authRepository;
   final OfflineSyncService? _offlineSyncService;
   final GuestOnboardingStorage? _guestOnboardingStorage;
+  final Future<void> Function(String userId)? _beforeAccountLogout;
+  final Future<void> Function(String userId)? _clearPushOnSessionEnd;
 
   AuthStatus _status = AuthStatus.checking;
   SafeUser? _user;
@@ -38,6 +45,7 @@ class AuthController extends ChangeNotifier {
   bool _loginRequestedAfterLogout = false;
   String? _pendingInviteResumeToken;
   bool _pendingInviteRouteClaimed = false;
+  int _sessionOperationGeneration = 0;
 
   AuthStatus get status => _status;
   SafeUser? get user => _user;
@@ -56,12 +64,14 @@ class AuthController extends ChangeNotifier {
   bool get loginRequestedAfterLogout => _loginRequestedAfterLogout;
 
   Future<void> restoreSession() async {
+    final operation = ++_sessionOperationGeneration;
     _status = AuthStatus.checking;
     _user = _authRepository.readCachedUser();
     _authRepository.bindClientSession(_user?.id);
     notifyListeners();
 
     final token = await _authRepository.readAccessToken();
+    if (!_isCurrentSessionOperation(operation)) return;
     if (token == null || token.isEmpty) {
       _user = null;
       _authRepository.bindClientSession(null);
@@ -71,19 +81,42 @@ class AuthController extends ChangeNotifier {
     }
 
     try {
-      _user = await _authRepository.me();
+      final restoredUser = await _authRepository.me();
+      if (!_isCurrentSessionOperation(operation)) return;
+      _user = restoredUser;
       if (_user != null) {
         _authRepository.bindClientSession(_user!.id);
         await _offlineSyncService?.ensureCacheOwner(_user!.id);
+        if (!_isCurrentSessionOperation(operation)) return;
         await _offlineSyncService?.cacheCurrentUser(_user!);
+        if (!_isCurrentSessionOperation(operation)) return;
       }
       _status = AuthStatus.authenticated;
+      ContextLifecycleLogger.event(
+        'SESSION_RESTORED',
+        userId: _user?.id,
+        reason: 'server_session_confirmed',
+        source: 'AuthController.restoreSession',
+      );
       unawaited(_offlineSyncService?.syncPendingChanges());
     } on ApiException catch (error) {
+      if (!_isCurrentSessionOperation(operation)) return;
       if (CachePolicy.shouldUseCache(error) && _user != null) {
         _status = AuthStatus.authenticated;
+        ContextLifecycleLogger.event(
+          'SESSION_RESTORED',
+          userId: _user?.id,
+          reason: 'offline_cached_account',
+          source: 'AuthController.restoreSession',
+        );
         await _offlineSyncService?.noteNetworkFailure(error.message);
       } else {
+        final cachedUserId = _user?.id;
+        final clearPush = _clearPushOnSessionEnd;
+        if (cachedUserId != null && clearPush != null) {
+          await clearPush(cachedUserId);
+          if (!_isCurrentSessionOperation(operation)) return;
+        }
         // Drop the in-memory identity before any network or storage cleanup.
         // A slow logout request must never keep the previous account's
         // provider subtree mounted during failed session restoration.
@@ -99,19 +132,24 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<bool> login({required String phone, required String password}) async {
-    return _submit(() async {
+    final operation = ++_sessionOperationGeneration;
+    final success = await _submit(() async {
       final response = await _authRepository.login(
         phone: phone.trim(),
         password: password,
       );
+      if (!_isCurrentSessionOperation(operation)) return;
       _user = response.user;
       _authRepository.bindClientSession(response.user.id);
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
+      if (!_isCurrentSessionOperation(operation)) return;
       await _offlineSyncService?.cacheCurrentUser(response.user);
+      if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       _loginRequestedAfterLogout = false;
       unawaited(_offlineSyncService?.syncPendingChanges());
     }, unauthorizedMessage: _safeLoginFailureMessage);
+    return success && _isCurrentSessionOperation(operation);
   }
 
   Future<bool> register({
@@ -122,17 +160,21 @@ class AuthController extends ChangeNotifier {
     String? resumeInviteToken,
   }) async {
     final cleanResumeToken = _validInviteToken(resumeInviteToken);
-    return _submit(() async {
+    final operation = ++_sessionOperationGeneration;
+    final success = await _submit(() async {
       final response = await _authRepository.register(
         name: name.trim(),
         phone: phone.trim(),
         password: password,
         otpCode: otpCode,
       );
+      if (!_isCurrentSessionOperation(operation)) return;
       _user = response.user;
       _authRepository.bindClientSession(response.user.id);
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
+      if (!_isCurrentSessionOperation(operation)) return;
       await _offlineSyncService?.cacheCurrentUser(response.user);
+      if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
@@ -143,6 +185,7 @@ class AuthController extends ChangeNotifier {
       }
       unawaited(_offlineSyncService?.syncPendingChanges());
     });
+    return success && _isCurrentSessionOperation(operation);
   }
 
   Future<OtpRequestResult?> startRegistration({
@@ -213,7 +256,8 @@ class AuthController extends ChangeNotifier {
     String? accountPassword,
   }) async {
     final cleanResumeToken = _validInviteToken(resumeInviteToken);
-    return _submit(() async {
+    final operation = ++_sessionOperationGeneration;
+    final success = await _submit(() async {
       final response = cleanResumeToken == null
           ? await _authRepository.verifyOtp(
               phone: phone.trim(),
@@ -227,11 +271,14 @@ class AuthController extends ChangeNotifier {
               name: accountName,
               password: accountPassword,
             );
+      if (!_isCurrentSessionOperation(operation)) return;
       if (response.user != null) {
         _user = response.user;
         _authRepository.bindClientSession(response.user!.id);
         await _offlineSyncService?.ensureCacheOwner(response.user!.id);
+        if (!_isCurrentSessionOperation(operation)) return;
         await _offlineSyncService?.cacheCurrentUser(response.user!);
+        if (!_isCurrentSessionOperation(operation)) return;
       }
       if (response.accessToken != null) {
         _status = AuthStatus.authenticated;
@@ -245,6 +292,7 @@ class AuthController extends ChangeNotifier {
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
     });
+    return success && _isCurrentSessionOperation(operation);
   }
 
   /// Returns a verified private invite exactly once to the router that lives
@@ -293,11 +341,15 @@ class AuthController extends ChangeNotifier {
 
   Future<void> refreshCurrentUser() async {
     if (_status != AuthStatus.authenticated) return;
+    final operation = _sessionOperationGeneration;
     try {
-      _user = await _authRepository.me();
+      final refreshedUser = await _authRepository.me();
+      if (!_isCurrentSessionOperation(operation)) return;
+      _user = refreshedUser;
       if (_user != null) {
         _authRepository.bindClientSession(_user!.id);
         await _offlineSyncService?.cacheCurrentUser(_user!);
+        if (!_isCurrentSessionOperation(operation)) return;
       }
       notifyListeners();
     } on ApiException catch (error) {
@@ -308,18 +360,36 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    final operation = ++_sessionOperationGeneration;
+    final outgoingUserId = _user?.id;
+    ContextLifecycleLogger.event(
+      'LOGOUT_ACCOUNT',
+      userId: _user?.id,
+      reason: 'explicit_account_logout',
+      source: 'AuthController.logout',
+    );
+    final beforeLogout = _beforeAccountLogout;
+    if (outgoingUserId != null && beforeLogout != null) {
+      await beforeLogout(outgoingUserId);
+      if (!_isCurrentSessionOperation(operation)) return;
+    }
     _authRepository.bindClientSession(null);
     _clearPendingInviteResume();
     _loginRequestedAfterLogout = true;
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+    // Start repository logout immediately so it captures the outgoing
+    // storage epoch before a replacement login can begin.
+    final repositoryLogout = _authRepository.logout();
     // Privacy hard-rule: shared devices are common in Yemen. Everything
     // financial that this account cached locally must go with the session —
     // cache, queued writes and any onboarding draft tied to this session.
     await _offlineSyncService?.clearLocalData();
-    await _guestOnboardingStorage?.clearDraft();
-    await _authRepository.logout();
+    if (_isCurrentSessionOperation(operation)) {
+      await _guestOnboardingStorage?.clearDraft();
+    }
+    await repositoryLogout;
   }
 
   /// Permanently deletes the account, then tears the local session down the
@@ -327,6 +397,8 @@ class AuthController extends ChangeNotifier {
   /// Returns false with an error message if the server request fails, leaving
   /// the session intact so the user can retry.
   Future<bool> deleteAccount() async {
+    final operation = ++_sessionOperationGeneration;
+    final outgoingUserId = _user?.id;
     try {
       await _authRepository.deleteAccount();
     } on ApiException catch (error) {
@@ -338,6 +410,12 @@ class AuthController extends ChangeNotifier {
       _errorMessage = 'تعذر حذف الحساب. حاول مرة أخرى.';
       notifyListeners();
       return false;
+    }
+    if (!_isCurrentSessionOperation(operation)) return false;
+    final clearPush = _clearPushOnSessionEnd;
+    if (outgoingUserId != null && clearPush != null) {
+      await clearPush(outgoingUserId);
+      if (!_isCurrentSessionOperation(operation)) return false;
     }
     _authRepository.bindClientSession(null);
     _clearPendingInviteResume();
@@ -355,6 +433,19 @@ class AuthController extends ChangeNotifier {
   /// again and `ensureCacheOwner` protects against a different one.
   Future<void> handleSessionExpired() async {
     if (_status != AuthStatus.authenticated) return;
+    final operation = ++_sessionOperationGeneration;
+    final outgoingUserId = _user?.id;
+    ContextLifecycleLogger.event(
+      'UNAUTHORIZED_401',
+      userId: _user?.id,
+      reason: 'confirmed_session_expiry',
+      source: 'AuthController.handleSessionExpired',
+    );
+    final clearPush = _clearPushOnSessionEnd;
+    if (outgoingUserId != null && clearPush != null) {
+      await clearPush(outgoingUserId);
+      if (!_isCurrentSessionOperation(operation)) return;
+    }
     _authRepository.bindClientSession(null);
     _clearPendingInviteResume();
     _user = null;
@@ -388,6 +479,10 @@ class AuthController extends ChangeNotifier {
   void _clearPendingInviteResume() {
     _pendingInviteResumeToken = null;
     _pendingInviteRouteClaimed = false;
+  }
+
+  bool _isCurrentSessionOperation(int generation) {
+    return generation == _sessionOperationGeneration;
   }
 
   Future<bool> _submit(

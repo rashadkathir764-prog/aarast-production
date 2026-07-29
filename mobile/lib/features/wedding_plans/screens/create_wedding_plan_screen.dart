@@ -9,6 +9,8 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
+import '../../account_contexts/models/account_context.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../onboarding/widgets/location_picker_section.dart';
 import '../providers/wedding_plans_provider.dart';
@@ -282,6 +284,30 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       final notice = provider.noticeMessage;
       if (notice != null) {
         AarastToast.showInfo(context, notice);
+      }
+      final accountContexts = context.read<AccountContextController>();
+      await accountContexts.refresh();
+      if (!mounted) return;
+      final matchingContexts = accountContexts.contexts
+          .where(
+            (candidate) =>
+                candidate.isPlan &&
+                candidate.isAvailable &&
+                candidate.role == AccountContextRole.owner &&
+                candidate.weddingPlanId == plan.id,
+          )
+          .toList(growable: false);
+      final target = matchingContexts.isEmpty ? null : matchingContexts.first;
+      final selected =
+          target != null && await accountContexts.select(target.contextKey);
+      if (!mounted) return;
+      if (!selected) {
+        AarastToast.showError(
+          context,
+          accountContexts.errorMessage ??
+              'تعذر تفعيل مسار الخطة الجديدة. ارجع إلى اختيار المسار وحاول مرة أخرى.',
+        );
+        return;
       }
       context.go(AppRouter.weddingPlanDashboard(plan.id));
     }

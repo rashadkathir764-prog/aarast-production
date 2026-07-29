@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -13,7 +14,7 @@ import 'account_context_test_data.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('opens an available deep-linked plan before rendering content', (
+  testWidgets('blocks a different available plan without selecting it', (
     tester,
   ) async {
     final plan1 = accountContext(role: AccountContextRole.owner);
@@ -22,7 +23,8 @@ void main() {
       planId: 'plan-2',
     );
     final harness = await _Harness.create([plan1, plan2]);
-    await harness.controller.refresh(activeWeddingPlanId: plan1.weddingPlanId);
+    await harness.controller.refresh();
+    await harness.controller.select(plan1.contextKey);
     harness.setActiveCalls.clear();
 
     await tester.pumpWidget(
@@ -35,13 +37,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('plan-2-content'), findsOneWidget);
-    expect(harness.controller.selectedContext, plan2);
-    expect(harness.setActiveCalls, ['plan-2']);
+    expect(find.text('plan-2-content'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('wedding-plan-context-mismatch')),
+      findsOneWidget,
+    );
+    expect(harness.controller.selectedContext, plan1);
+    expect(harness.setActiveCalls, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('opens archived history read-only without changing active plan', (
+  testWidgets('blocks an archived route without opening read-only context', (
     tester,
   ) async {
     final plan1 = accountContext(role: AccountContextRole.owner);
@@ -54,7 +60,8 @@ void main() {
       unavailableReason: 'PLAN_ARCHIVED',
     );
     final harness = await _Harness.create([plan1, archived]);
-    await harness.controller.refresh(activeWeddingPlanId: plan1.weddingPlanId);
+    await harness.controller.refresh();
+    await harness.controller.select(plan1.contextKey);
     harness.setActiveCalls.clear();
 
     await tester.pumpWidget(
@@ -67,13 +74,107 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('archived-content'), findsOneWidget);
-    expect(harness.controller.selectedContext, archived);
+    expect(find.text('archived-content'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('wedding-plan-context-mismatch')),
+      findsOneWidget,
+    );
+    expect(harness.controller.selectedContext, plan1);
     expect(harness.setActiveCalls, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('hides content after a context is revoked and lists fallback', (
+  testWidgets('renders only when route matches selectedContext', (
+    tester,
+  ) async {
+    final plan = accountContext(role: AccountContextRole.owner);
+    final harness = await _Harness.create([plan]);
+    await harness.controller.refresh();
+    await harness.controller.select(plan.contextKey);
+    harness.setActiveCalls.clear();
+
+    await tester.pumpWidget(
+      harness.wrap(
+        WeddingPlanContextGate(
+          weddingPlanId: plan.weddingPlanId!,
+          child: const Text('matching-plan-content'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('matching-plan-content'), findsOneWidget);
+    expect(harness.controller.selectedContext, plan);
+    expect(harness.setActiveCalls, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('same-plan contributor cannot render the owner dashboard route', (
+    tester,
+  ) async {
+    final contributor = accountContext(role: AccountContextRole.contributor);
+    final harness = await _Harness.create([contributor]);
+    await harness.controller.refresh();
+    await harness.controller.select(contributor.contextKey);
+
+    await tester.pumpWidget(
+      harness.wrap(
+        WeddingPlanContextGate(
+          weddingPlanId: contributor.weddingPlanId!,
+          requiredAccess: WeddingPlanRouteAccess.ownerDashboard,
+          child: const Text('owner-dashboard-content'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('owner-dashboard-content'), findsNothing);
+    expect(find.text('هذا القسم غير متاح لصلاحيتك'), findsOneWidget);
+    expect(harness.controller.selectedContext, contributor);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('capability guard allows only permissions from selected context', () {
+    final contributor = accountContext(role: AccountContextRole.contributor);
+
+    expect(
+      accountContextAllowsPlanAccess(
+        contributor,
+        WeddingPlanRouteAccess.viewPlan,
+      ),
+      isTrue,
+    );
+    expect(
+      accountContextAllowsPlanAccess(
+        contributor,
+        WeddingPlanRouteAccess.manageTasks,
+      ),
+      isTrue,
+    );
+    expect(
+      accountContextAllowsPlanAccess(
+        contributor,
+        WeddingPlanRouteAccess.viewMoney,
+      ),
+      isFalse,
+    );
+    expect(
+      accountContextAllowsPlanAccess(
+        contributor,
+        WeddingPlanRouteAccess.manageProviders,
+      ),
+      isFalse,
+    );
+    expect(
+      accountContextAllowsPlanAccess(
+        contributor,
+        WeddingPlanRouteAccess.inviteMembers,
+      ),
+      isFalse,
+    );
+  });
+
+  testWidgets('hides content after revocation without choosing a fallback', (
     tester,
   ) async {
     final plan1 = accountContext(role: AccountContextRole.owner);
@@ -82,7 +183,7 @@ void main() {
       planId: 'plan-2',
     );
     final harness = await _Harness.create([plan1, plan2]);
-    await harness.controller.refresh(activeWeddingPlanId: plan1.weddingPlanId);
+    await harness.controller.refresh();
     await harness.controller.select(plan2.contextKey);
 
     await tester.pumpWidget(
@@ -97,12 +198,12 @@ void main() {
     expect(find.text('private-plan-2'), findsOneWidget);
 
     harness.gateway.contexts = [plan1];
-    await harness.controller.refresh(activeWeddingPlanId: plan1.weddingPlanId);
+    await harness.controller.refresh();
     await tester.pumpAndSettle();
 
     expect(find.text('private-plan-2'), findsNothing);
     expect(
-      find.byKey(const ValueKey('wedding-plan-context-unavailable')),
+      find.byKey(const ValueKey('wedding-plan-context-mismatch')),
       findsOneWidget,
     );
     expect(find.textContaining('plan-2'), findsNothing);
@@ -114,7 +215,8 @@ void main() {
   ) async {
     final plan1 = accountContext(role: AccountContextRole.owner);
     final harness = await _Harness.create([plan1]);
-    await harness.controller.refresh(activeWeddingPlanId: plan1.weddingPlanId);
+    await harness.controller.refresh();
+    await harness.controller.select(plan1.contextKey);
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 640);
     addTearDown(tester.view.reset);
@@ -129,18 +231,47 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final gate = find.byKey(
-      const ValueKey('wedding-plan-context-unavailable'),
-    );
+    final gate = find.byKey(const ValueKey('wedding-plan-context-mismatch'));
     expect(gate, findsOneWidget);
     expect(find.text('private-missing'), findsNothing);
     expect(find.textContaining('missing-private-id'), findsNothing);
-    expect(
-      Directionality.of(tester.element(gate)),
-      TextDirection.rtl,
-    );
+    expect(Directionality.of(tester.element(gate)), TextDirection.rtl);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'context load failure shows a clear error instead of a permanent spinner',
+    (tester) async {
+      final harness = await _Harness.create(
+        const [],
+        listError: StateError('contexts unavailable'),
+      );
+
+      await harness.controller.refresh();
+      expect(harness.controller.errorMessage, isNotNull);
+      expect(harness.controller.isRefreshing, isFalse);
+
+      await tester.pumpWidget(
+        harness.wrap(
+          const WeddingPlanContextGate(
+            weddingPlanId: 'plan-unavailable',
+            child: Text('private-content'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('wedding-plan-context-mismatch')),
+        findsOneWidget,
+      );
+      expect(find.text(harness.controller.errorMessage!), findsOneWidget);
+      expect(find.byType(AarastScreenLoading), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('private-content'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _Harness {
@@ -150,10 +281,13 @@ class _Harness {
   final AccountContextController controller;
   final List<String> setActiveCalls;
 
-  static Future<_Harness> create(List<AccountContext> contexts) async {
+  static Future<_Harness> create(
+    List<AccountContext> contexts, {
+    Object? listError,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
-    final gateway = _MutableGateway(contexts);
+    final gateway = _MutableGateway(contexts, listError: listError);
     final calls = <String>[];
     final controller = AccountContextController(
       contextsApi: gateway,
@@ -167,27 +301,27 @@ class _Harness {
     return ChangeNotifierProvider<AccountContextController>.value(
       value: controller,
       child: MaterialApp(
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: child,
-        ),
+        home: Directionality(textDirection: TextDirection.rtl, child: child),
       ),
     );
   }
 }
 
 class _MutableGateway implements AccountContextsGateway {
-  _MutableGateway(this.contexts);
+  _MutableGateway(this.contexts, {this.listError});
 
   List<AccountContext> contexts;
+  final Object? listError;
 
   @override
-  Future<List<AccountContext>> listContexts() async => contexts;
+  Future<List<AccountContext>> listContexts() async {
+    final error = listError;
+    if (error != null) throw error;
+    return contexts;
+  }
 
   @override
   Future<AccountContext> validateContext(String contextKey) async {
-    return contexts.firstWhere(
-      (context) => context.contextKey == contextKey,
-    );
+    return contexts.firstWhere((context) => context.contextKey == contextKey);
   }
 }

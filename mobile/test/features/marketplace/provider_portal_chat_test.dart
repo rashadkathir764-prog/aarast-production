@@ -95,15 +95,18 @@ void main() {
     },
   );
 
-  test('home entry stays account-context driven instead of legacy role driven', () {
-    final source = File(
-      'lib/features/home/screens/dashboard_entry_screen.dart',
-    ).readAsStringSync();
+  test(
+    'home entry stays account-context driven instead of legacy role driven',
+    () {
+      final source = File(
+        'lib/features/home/screens/dashboard_entry_screen.dart',
+      ).readAsStringSync();
 
-    expect(source, isNot(contains('isProviderAccount')));
-    expect(source, isNot(contains('ProviderPortalScreen')));
-    expect(source, contains('MainShell'));
-  });
+      expect(source, isNot(contains('isProviderAccount')));
+      expect(source, isNot(contains('ProviderPortalScreen')));
+      expect(source, contains('AccountContextEntryGate'));
+    },
+  );
 
   test('provider portal keeps the five approved Arabic destinations', () {
     final portalSource = File(

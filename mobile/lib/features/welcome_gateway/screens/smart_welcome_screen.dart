@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
@@ -174,6 +175,15 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     await authStorage?.saveActivePlanId(response.activePlanId);
     await guestStorage.clearDraft();
     if (!mounted) return;
+    try {
+      await context.read<AccountContextController>().refresh(
+        allowInitialSingleContext: true,
+      );
+    } on ProviderNotFoundException {
+      // Lightweight widget previews do not install the authenticated
+      // account-context boundary.
+    }
+    if (!mounted) return;
     context.go(AppRouter.home);
   }
 
@@ -227,10 +237,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                       step: _currentStep,
                       onBack: switch (_currentStep) {
                         _WelcomeStep.pathSelection => null,
-                        _WelcomeStep.roleSelection => () =>
-                          _goTo(_WelcomeStep.pathSelection),
-                        _WelcomeStep.quickSetup => () =>
-                          _goTo(_WelcomeStep.roleSelection),
+                        _WelcomeStep.roleSelection => () => _goTo(
+                          _WelcomeStep.pathSelection,
+                        ),
+                        _WelcomeStep.quickSetup => () => _goTo(
+                          _WelcomeStep.roleSelection,
+                        ),
                       },
                     ),
                   ),
@@ -469,13 +481,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       padding: const EdgeInsets.only(bottom: 6.0, right: 4.0),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: AppTheme.ink,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(color: AppTheme.ink),
       ),
     );
   }
-
 }
 
 class _WelcomeHero extends StatelessWidget {
@@ -496,9 +507,7 @@ class _WelcomeHero extends StatelessWidget {
           children: [
             SizedBox(
               width: 40,
-              child: onBack == null
-                  ? null
-                  : _WelcomeBackButton(onTap: onBack!),
+              child: onBack == null ? null : _WelcomeBackButton(onTap: onBack!),
             ),
             Expanded(
               child: Text(

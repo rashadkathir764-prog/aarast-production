@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
@@ -14,6 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../account_contexts/account_context_test_data.dart';
 
 void main() {
   group('Phase B provider screens premium contract', () {
@@ -130,6 +135,8 @@ void main() {
       tester,
     ) async {
       _setTallView(tester);
+      final account = await _authenticatedPlanContext();
+      addTearDown(account.controller.dispose);
       final cases = <QuoteRequest?, String>{
         null: 'طلب عرض سعر',
         _quote(status: 'SENT'): 'متابعة الطلب الحالي',
@@ -156,8 +163,16 @@ void main() {
           quotes: entry.key == null ? const [] : [entry.key!],
         );
         await tester.pumpWidget(
-          ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-            value: marketplace,
+          MultiProvider(
+            providers: [
+              Provider<AuthStorage>.value(value: account.authStorage),
+              ChangeNotifierProvider<AccountContextController>.value(
+                value: account.controller,
+              ),
+              ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+                value: marketplace,
+              ),
+            ],
             child: const MaterialApp(
               home: ProviderDetailsScreen(
                 providerId: _providerId,
@@ -177,6 +192,8 @@ void main() {
       _setTallView(tester);
       final quote = _quote(status: 'SENT');
       final marketplace = _FakeMarketplaceProvider(quotes: [quote]);
+      final account = await _authenticatedPlanContext();
+      addTearDown(account.controller.dispose);
       final router = GoRouter(
         initialLocation: '/providers/$_providerId',
         routes: [
@@ -197,8 +214,16 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-          value: marketplace,
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: account.authStorage),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: account.controller,
+            ),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: marketplace,
+            ),
+          ],
           child: MaterialApp.router(routerConfig: router),
         ),
       );
@@ -220,6 +245,8 @@ void main() {
           offers: const [QuoteOffer(id: 'offer-live', status: 'PENDING')],
         );
         final marketplace = _FakeMarketplaceProvider(quotes: [quote]);
+        final account = await _authenticatedPlanContext();
+        addTearDown(account.controller.dispose);
         final router = GoRouter(
           initialLocation: '/providers/$_providerId?weddingPlanId=plan-1',
           routes: [
@@ -243,8 +270,16 @@ void main() {
         );
 
         await tester.pumpWidget(
-          ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-            value: marketplace,
+          MultiProvider(
+            providers: [
+              Provider<AuthStorage>.value(value: account.authStorage),
+              ChangeNotifierProvider<AccountContextController>.value(
+                value: account.controller,
+              ),
+              ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+                value: marketplace,
+              ),
+            ],
             child: MaterialApp.router(routerConfig: router),
           ),
         );
@@ -348,6 +383,21 @@ Future<AuthStorage> _authenticatedStorage() async {
     ),
   );
   return storage;
+}
+
+Future<_PlanContextHarness> _authenticatedPlanContext() async {
+  final authStorage = await _authenticatedStorage();
+  final selectedContext = accountContext(
+    role: AccountContextRole.owner,
+    planId: 'plan-1',
+  );
+  final controller = AccountContextController(
+    contextsApi: _StaticContextsGateway(selectedContext),
+    authStorage: authStorage,
+    setActiveWeddingPlan: (_) async {},
+  );
+  await controller.refresh(allowInitialSingleContext: true);
+  return _PlanContextHarness(authStorage, controller);
 }
 
 MarketplaceProvider _provider() {
@@ -467,6 +517,25 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   Future<void> toggleFavorite(String providerId) async {
     toggleFavoriteCallCount += 1;
   }
+}
+
+class _PlanContextHarness {
+  const _PlanContextHarness(this.authStorage, this.controller);
+
+  final AuthStorage authStorage;
+  final AccountContextController controller;
+}
+
+class _StaticContextsGateway implements AccountContextsGateway {
+  const _StaticContextsGateway(this.context);
+
+  final AccountContext context;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => [context];
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async => context;
 }
 
 List<String> _materialIconLines(String source) {

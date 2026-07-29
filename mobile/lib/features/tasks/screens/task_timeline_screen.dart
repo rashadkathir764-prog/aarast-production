@@ -275,9 +275,7 @@ class _TaskTimelineContent extends StatelessWidget {
       onMarkDone: task.isDone
           ? null
           : () => _markDoneWithUndo(context, provider, task),
-      onReopen: task.isDone
-          ? () => _reopenTask(context, provider, task)
-          : null,
+      onReopen: task.isDone ? () => _reopenTask(context, provider, task) : null,
       onEdit: () =>
           context.push(AppRouter.editTask(weddingPlanId, task.id), extra: task),
       onDelete: () => _confirmDelete(context, provider, task),

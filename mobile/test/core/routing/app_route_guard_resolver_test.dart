@@ -35,10 +35,27 @@ void main() {
       );
     });
 
-    test('feature flag guard redirects when feature is disabled', () {
+    test('default push feature flag allows navigation', () {
       expect(
         AppRouteGuardResolver.featureFlagRedirect(
           flags: AppFeatureFlags.defaults,
+          flagName: 'enablePushNotifications',
+          disabledRedirect: '/home',
+        ),
+        isNull,
+      );
+    });
+
+    test('feature flag guard redirects when push is explicitly disabled', () {
+      const flags = AppFeatureFlags(
+        enableGuestFirstOnboarding: true,
+        enableOfflineSync: true,
+        enablePushNotifications: false,
+      );
+
+      expect(
+        AppRouteGuardResolver.featureFlagRedirect(
+          flags: flags,
           flagName: 'enablePushNotifications',
           disabledRedirect: '/home',
         ),

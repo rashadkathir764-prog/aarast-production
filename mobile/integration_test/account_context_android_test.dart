@@ -2,7 +2,7 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
-import 'package:aarast_mobile/features/account_contexts/widgets/account_context_switcher.dart';
+import 'package:aarast_mobile/features/account_contexts/screens/account_context_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -13,7 +13,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'Android context journey switches owner to provider at 320px without overflow',
+    'Android path selection opens provider at 320px without overflow',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 720);
@@ -26,22 +26,21 @@ void main() {
         authStorage: AuthStorage(preferences),
         setActiveWeddingPlan: (_) async {},
       );
-      await controller.refresh(activeWeddingPlanId: 'plan-1');
+      await controller.refresh();
+      expect(controller.selectedContext, isNull);
 
       await tester.pumpWidget(
         MaterialApp(
           home: ChangeNotifierProvider<AccountContextController>.value(
             value: controller,
-            child: const Scaffold(body: AccountContextSwitcher()),
+            child: const AccountContextSelectionScreen(),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('account-context-switcher')));
-      await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const ValueKey('account-context-option-provider:provider-1')),
+        find.byKey(const ValueKey('account-path-option-provider:provider-1')),
       );
       await tester.pumpAndSettle();
 

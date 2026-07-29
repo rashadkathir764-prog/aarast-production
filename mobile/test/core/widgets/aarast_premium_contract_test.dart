@@ -206,6 +206,7 @@ void main() {
       // كل شاشة موجهة في التطبيق — لا شاشة خارج المستوى الفاخر الموحّد.
       // ملفات export الخالصة وقشرة الـ ShellRoute خارج القائمة عمداً.
       const screenFiles = [
+        'lib/features/account_contexts/screens/account_context_selection_screen.dart',
         'lib/features/auth/screens/splash_screen.dart',
         'lib/features/auth/screens/login_screen.dart',
         'lib/features/auth/screens/register_screen.dart',

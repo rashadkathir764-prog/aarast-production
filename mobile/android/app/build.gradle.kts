@@ -99,6 +99,23 @@ fun validateReleaseDartDefines() {
             "AARAST_DEV_BYPASS_LOGIN_GATES must stay disabled in release builds.",
         )
     }
+
+    val requiredFirebaseDefines = listOf(
+        "AARAST_FIREBASE_API_KEY",
+        "AARAST_FIREBASE_APP_ID",
+        "AARAST_FIREBASE_MESSAGING_SENDER_ID",
+        "AARAST_FIREBASE_PROJECT_ID",
+    )
+    val missingFirebaseDefines = requiredFirebaseDefines.filter { key ->
+        defines[key].isNullOrBlank()
+    }
+    if (missingFirebaseDefines.isNotEmpty()) {
+        throw GradleException(
+            "Release builds require Firebase push dart-defines: " +
+                missingFirebaseDefines.joinToString() +
+                ".",
+        )
+    }
 }
 
 val productionApplicationId = "com.aarast.aarast_mobile"
@@ -186,8 +203,21 @@ android {
     }
 
     defaultConfig {
+        val defines = decodedDartDefines()
         applicationId = releaseApplicationId
         manifestPlaceholders["aarastAppLabel"] = releaseAppLabel
+        mapOf(
+            "google_api_key" to "AARAST_FIREBASE_API_KEY",
+            "google_app_id" to "AARAST_FIREBASE_APP_ID",
+            "gcm_defaultSenderId" to
+                "AARAST_FIREBASE_MESSAGING_SENDER_ID",
+            "project_id" to "AARAST_FIREBASE_PROJECT_ID",
+        ).forEach { (resourceName, defineName) ->
+            defines[defineName]
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+                ?.let { value -> resValue("string", resourceName, value) }
+        }
         // flutter_secure_storage requires API 23+ (Android Keystore).
         minSdk = maxOf(23, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion

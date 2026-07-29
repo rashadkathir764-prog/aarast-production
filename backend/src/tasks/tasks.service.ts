@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  NotificationPriority,
+  NotificationType,
   Prisma,
   WeddingTask,
   WeddingTaskChecklistItem,
@@ -207,16 +209,20 @@ export class TasksService {
         existing.weddingPlanId,
         currentUser,
       );
-      if (assigneeUserId) {
-        await this.assertAssigneeBelongsToPlanInTransaction(
-          tx,
-          context.plan.ownerUserId,
-          existing.weddingPlanId,
-          assigneeUserId,
-        );
-      }
-      await this.findTaskInTransactionOrThrow(tx, id, existing.weddingPlanId);
-      return tx.weddingTask.update({
+      const assigneeReceivesNotifications = assigneeUserId
+        ? await this.assertAssigneeBelongsToPlanInTransaction(
+            tx,
+            context.plan.ownerUserId,
+            existing.weddingPlanId,
+            assigneeUserId,
+          )
+        : false;
+      const currentTask = await this.findTaskInTransactionOrThrow(
+        tx,
+        id,
+        existing.weddingPlanId,
+      );
+      const updated = await tx.weddingTask.update({
         where: { id },
         data: {
           assigneeUserId,
@@ -229,6 +235,33 @@ export class TasksService {
             : {}),
         },
       });
+      if (
+        assigneeUserId &&
+        assigneeReceivesNotifications &&
+        assigneeUserId !== currentUser.id &&
+        assigneeUserId !== currentTask.assigneeUserId
+      ) {
+        await this.notifications.createNotificationInTransaction(tx, {
+          userId: assigneeUserId,
+          weddingPlanId: updated.weddingPlanId,
+          type: NotificationType.TASK_ASSIGNED,
+          priority:
+            updated.priority === WeddingTaskPriority.URGENT
+              ? NotificationPriority.HIGH
+              : NotificationPriority.NORMAL,
+          title: "مهمة جديدة",
+          body: `تم إسناد مهمة «${updated.title}» إليك.`,
+          entityType: "task",
+          entityId: updated.id,
+          routeTarget: `/wedding-plans/${updated.weddingPlanId}/tasks`,
+          data: {
+            taskId: updated.id,
+            weddingPlanId: updated.weddingPlanId,
+          },
+          dedupeKey: `task-assigned:${updated.id}:${assigneeUserId}:${updated.updatedAt.toISOString()}`,
+        });
+      }
+      return updated;
     });
 
     return this.toResponse(task);
@@ -497,8 +530,8 @@ export class TasksService {
     planOwnerUserId: string,
     weddingPlanId: string,
     assigneeUserId: string,
-  ): Promise<void> {
-    if (planOwnerUserId === assigneeUserId) return;
+  ): Promise<boolean> {
+    if (planOwnerUserId === assigneeUserId) return true;
 
     await tx.$queryRaw(
       Prisma.sql`
@@ -521,6 +554,7 @@ export class TasksService {
     if (!member) {
       throw new BadRequestException("assigneeUserId must belong to the plan");
     }
+    return member.receiveNotifications;
   }
 
   private async notifyTaskDueBestEffort(task: WeddingTask): Promise<void> {

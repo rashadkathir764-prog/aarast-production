@@ -65,14 +65,13 @@ export interface NotificationChannelCapabilitiesResponse {
 const NOTIFICATION_CHANNEL_CAPABILITIES: NotificationChannelCapabilitiesResponse =
   {
     inApp: { supported: true, configurable: false, enabled: true },
-    push: { supported: false, configurable: false, enabled: false },
+    push: { supported: true, configurable: false, enabled: false },
     sms: { supported: false, configurable: false, enabled: false },
     whatsapp: { supported: false, configurable: false, enabled: false },
     email: { supported: false, configurable: false, enabled: false },
   };
 
 const UNSUPPORTED_NOTIFICATION_CHANNELS = [
-  ["pushEnabled", "push"],
   ["smsEnabled", "sms"],
   ["whatsappEnabled", "whatsapp"],
   ["emailEnabled", "email"],
@@ -564,6 +563,14 @@ export class UsersService {
     currentUser: AuthenticatedUser,
     dto: UpdateSettingsDto,
   ): Promise<NotificationPreferenceResponse> {
+    if (dto.pushEnabled === true) {
+      throw new BadRequestException({
+        code: "NOTIFICATION_CHANNEL_DEVICE_MANAGED",
+        channel: "push",
+        message:
+          "Push notifications are managed by the device notification permission",
+      });
+    }
     for (const [field, channel] of UNSUPPORTED_NOTIFICATION_CHANNELS) {
       if (dto[field] === true) {
         throw new BadRequestException({
@@ -574,7 +581,6 @@ export class UsersService {
       }
     }
     const update = {
-      pushEnabled: false,
       smsEnabled: false,
       whatsappEnabled: false,
       emailEnabled: false,
@@ -643,14 +649,20 @@ export class UsersService {
     return {
       id: settings.id,
       userId: settings.userId,
-      pushEnabled: false,
+      pushEnabled: settings.pushEnabled,
       smsEnabled: false,
       whatsappEnabled: false,
       emailEnabled: false,
       taskRemindersEnabled: settings.taskRemindersEnabled,
       paymentRemindersEnabled: settings.paymentRemindersEnabled,
       providerMessagesEnabled: settings.providerMessagesEnabled,
-      channelCapabilities: NOTIFICATION_CHANNEL_CAPABILITIES,
+      channelCapabilities: {
+        ...NOTIFICATION_CHANNEL_CAPABILITIES,
+        push: {
+          ...NOTIFICATION_CHANNEL_CAPABILITIES.push,
+          enabled: settings.pushEnabled,
+        },
+      },
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     };

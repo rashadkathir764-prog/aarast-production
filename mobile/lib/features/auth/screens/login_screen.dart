@@ -225,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      context.go(_safeResumeLocation(context) ?? AppRouter.home);
+      context.go(AppRouter.authenticatedEntry(_safeResumeLocation(context)));
       return;
     }
 

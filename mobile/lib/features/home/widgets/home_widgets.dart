@@ -398,9 +398,9 @@ class HomeNoPlanWelcome extends StatelessWidget {
             ),
             child: Text(
               'عرض كل الخطط',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
         ],

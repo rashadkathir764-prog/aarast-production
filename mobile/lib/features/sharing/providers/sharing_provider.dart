@@ -33,6 +33,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   SharedUserLookup? _lookupUser;
   PlanInvite? _selectedInvite;
   SharedMember? _acceptedInviteMember;
+  String? _acceptedInviteContextKey;
   final Map<String, Future<PlanInvite?>> _reissueFlights = {};
   int _memberLoadGeneration = 0;
   String? _memberLoadWeddingPlanId;
@@ -53,6 +54,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   SharedUserLookup? get lookupUser => _lookupUser;
   PlanInvite? get selectedInvite => _selectedInvite;
   SharedMember? get acceptedInviteMember => _acceptedInviteMember;
+  String? get acceptedInviteContextKey => _acceptedInviteContextKey;
 
   PlanInvite? inviteById(String id) {
     for (final invite in _invites) {
@@ -408,6 +410,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     _errorMessage = null;
     _selectedInvite = null;
     _acceptedInviteMember = null;
+    _acceptedInviteContextKey = null;
     notifyListeners();
     try {
       final cleanToken = token?.trim();
@@ -434,6 +437,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     _myInvites = const [];
     _selectedInvite = null;
     _acceptedInviteMember = null;
+    _acceptedInviteContextKey = null;
     _errorMessage = null;
     notifyListeners();
   }
@@ -447,9 +451,11 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         final result = await _api.acceptInvite(token);
         _selectedInvite = result.invite;
         _acceptedInviteMember = result.member;
+        _acceptedInviteContextKey = result.contextKey;
       } else {
         _selectedInvite = await _api.declineInvite(token);
         _acceptedInviteMember = null;
+        _acceptedInviteContextKey = null;
       }
       _myInvites = [
         for (final invite in _myInvites)

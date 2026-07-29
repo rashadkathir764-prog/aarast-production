@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../account_contexts/models/account_context.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
@@ -105,16 +107,12 @@ class WeddingPlanShell extends StatelessWidget {
     final currentIndex = _calculateSelectedIndex(context);
     final routeState = GoRouterState.of(context);
     final location = routeState.uri.path;
-    final dashboard = context.watch<DashboardSummaryProvider?>();
-    final activeSummary = dashboard?.summary?.planId == weddingPlanId
-        ? dashboard?.summary
-        : null;
+    final selected = context.watch<AccountContextController>().selectedContext;
     final contributorView =
-        routeState.uri.queryParameters['view'] == 'contributor' ||
-        (activeSummary != null && !activeSummary.permissions.isOwner);
+        selected?.role == AccountContextRole.contributor &&
+        selected?.weddingPlanId == weddingPlanId;
 
-    // المساهم يدخل الأقسام من مساحة واحدة. إبقاء شريط الخطة الخماسي هنا
-    // يصنع تطبيقًا ثانيًا داخليًا ويعرض له وجهات قد لا يملك صلاحيتها.
+    // The selected account context is the only authority for shell shape.
     if (contributorView) return child;
 
     final finance = context.watch<FinanceProvider?>();

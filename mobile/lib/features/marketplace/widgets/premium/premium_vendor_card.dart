@@ -167,9 +167,7 @@ class PremiumVendorCard extends StatelessWidget {
                                   AarastDesignTokens.radiusMd,
                                 ),
                               ),
-                              textStyle: Theme.of(
-                                context,
-                              ).textTheme.labelLarge,
+                              textStyle: Theme.of(context).textTheme.labelLarge,
                             ),
                             child: const Text('عرض التفاصيل'),
                           ),
@@ -387,9 +385,9 @@ class _LocationLabel extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AarastDesignTokens.muted,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: AarastDesignTokens.muted),
           ),
         ),
       ],

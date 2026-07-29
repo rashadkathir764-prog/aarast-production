@@ -332,7 +332,9 @@ class _SharingContent extends StatelessWidget {
                 ? null
                 : () {
                     provider.selectMember(member);
-                    context.push(AppRouter.editSharedMember(member.id));
+                    context.push(
+                      AppRouter.editSharedMember(weddingPlanId, member.id),
+                    );
                   },
           ),
       ]),

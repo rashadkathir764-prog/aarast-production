@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,6 +12,7 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/storage/token_vault.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 
@@ -206,6 +210,147 @@ void main() {
       expect(vault.stored, isNull);
       expect(await storage.readAccessToken(), isNull);
     });
+
+    test('a delayed logout cannot clear a newer login session', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      await storage.saveSession(
+        accessToken: 'old-access',
+        refreshToken: 'old-refresh',
+        user: _user('old-user'),
+      );
+      final logoutStarted = Completer<void>();
+      final releaseLogout = Completer<void>();
+      final client = ApiClient(tokenProvider: storage.readAccessToken);
+      client.dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            if (options.path == '/api/v1/auth/logout') {
+              logoutStarted.complete();
+              await releaseLogout.future;
+              handler.resolve(
+                Response<Object?>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: const {'revoked': 1},
+                ),
+              );
+              return;
+            }
+            if (options.path == '/api/v1/auth/login') {
+              handler.resolve(
+                Response<Object?>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'accessToken': 'new-access',
+                    'refreshToken': 'new-refresh',
+                    'refreshTokenExpiresAt': '2026-08-29T00:00:00.000Z',
+                    'user': {
+                      'id': 'new-user',
+                      'name': 'New User',
+                      'phone': '+967777123456',
+                      'role': 'USER',
+                      'status': 'ACTIVE',
+                    },
+                  },
+                ),
+              );
+              return;
+            }
+            handler.next(options);
+          },
+        ),
+      );
+      final repository = AuthRepository(client, storage);
+
+      final oldLogout = repository.logout();
+      await logoutStarted.future;
+      await repository.login(phone: '777123456', password: 'new-password');
+      releaseLogout.complete();
+      await oldLogout;
+
+      expect(await storage.readAccessToken(), 'new-access');
+      expect(await storage.readRefreshToken(), 'new-refresh');
+      expect(storage.readUser()?.id, 'new-user');
+    });
+
+    test('a delayed refresh cannot overwrite a newer login session', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      await storage.saveSession(
+        accessToken: 'old-access',
+        refreshToken: 'old-refresh',
+        user: _user('old-user'),
+      );
+      final refreshStarted = Completer<void>();
+      final releaseRefresh = Completer<void>();
+      final client = ApiClient(tokenProvider: storage.readAccessToken);
+      client.dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            if (options.path == '/api/v1/auth/refresh') {
+              refreshStarted.complete();
+              await releaseRefresh.future;
+              handler.resolve(
+                Response<Object?>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'accessToken': 'stale-refreshed-access',
+                    'refreshToken': 'stale-refreshed-refresh',
+                    'refreshTokenExpiresAt': '2026-08-29T00:00:00.000Z',
+                    'user': {
+                      'id': 'old-user',
+                      'name': 'Old User',
+                      'phone': '+967700000000',
+                      'role': 'USER',
+                      'status': 'ACTIVE',
+                    },
+                  },
+                ),
+              );
+              return;
+            }
+            if (options.path == '/api/v1/auth/login') {
+              handler.resolve(
+                Response<Object?>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'accessToken': 'new-access',
+                    'refreshToken': 'new-refresh',
+                    'refreshTokenExpiresAt': '2026-08-29T00:00:00.000Z',
+                    'user': {
+                      'id': 'new-user',
+                      'name': 'New User',
+                      'phone': '+967777123456',
+                      'role': 'USER',
+                      'status': 'ACTIVE',
+                    },
+                  },
+                ),
+              );
+              return;
+            }
+            handler.next(options);
+          },
+        ),
+      );
+      final repository = AuthRepository(client, storage);
+
+      final oldRefresh = repository.refreshSession();
+      await refreshStarted.future;
+      await repository.login(phone: '777123456', password: 'new-password');
+      releaseRefresh.complete();
+
+      expect(await oldRefresh, isFalse);
+      expect(await storage.readAccessToken(), 'new-access');
+      expect(await storage.readRefreshToken(), 'new-refresh');
+      expect(storage.readUser()?.id, 'new-user');
+    });
   });
 
   group('Local cache privacy across accounts', () {
@@ -280,6 +425,26 @@ void main() {
       );
       expect(rows, hasLength(1));
     });
+
+    test('clearPlanContext removes only the exited plan graph', () async {
+      final service = await buildService();
+      await service.ensureCacheOwner('user-a');
+      await service.database.saveCachedItem(
+        table: OfflineTables.cachedWeddingPlans,
+        json: {'id': 'plan-a', 'title': 'Plan A'},
+      );
+      await service.database.saveCachedItem(
+        table: OfflineTables.cachedWeddingPlans,
+        json: {'id': 'plan-b', 'title': 'Plan B'},
+      );
+
+      await service.clearPlanContext('plan-a');
+
+      final rows = await service.database.readCachedList(
+        table: OfflineTables.cachedWeddingPlans,
+      );
+      expect(rows.map((row) => row['id']), ['plan-b']);
+    });
   });
 
   test(
@@ -342,6 +507,52 @@ void main() {
       expect(controller.user, isNull);
     },
   );
+
+  test('an old push-aware logout cannot erase a newer login', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final storage = AuthStorage(preferences);
+    final firstUser = SafeUser.fromJson({
+      'id': 'user-a',
+      'name': 'User A',
+      'role': 'USER',
+      'status': 'ACTIVE',
+    });
+    final secondUser = SafeUser.fromJson({
+      'id': 'user-b',
+      'name': 'User B',
+      'role': 'USER',
+      'status': 'ACTIVE',
+    });
+    final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+    final repository = _ConcurrentReloginRepository(
+      apiClient,
+      storage,
+      firstUser,
+      secondUser,
+    );
+    final pushCleanup = Completer<void>();
+    final controller = AuthController(
+      repository,
+      beforeAccountLogout: (_) => pushCleanup.future,
+    );
+
+    await controller.restoreSession();
+    final oldLogout = controller.logout();
+    expect(controller.user?.id, 'user-a');
+
+    expect(
+      await controller.login(phone: '+967700000002', password: 'secret'),
+      isTrue,
+    );
+    expect(controller.user?.id, 'user-b');
+    pushCleanup.complete();
+    await oldLogout;
+
+    expect(controller.status, AuthStatus.authenticated);
+    expect(controller.user?.id, 'user-b');
+    expect(repository.logoutCalled, isFalse);
+  });
 }
 
 class _DelayedLogoutRepository extends AuthRepository {
@@ -383,5 +594,24 @@ class _FailedRestoreRepository extends _DelayedLogoutRepository {
   @override
   Future<SafeUser> me() async {
     throw const ApiException('expired', statusCode: 401);
+  }
+}
+
+class _ConcurrentReloginRepository extends _DelayedLogoutRepository {
+  _ConcurrentReloginRepository(
+    super.apiClient,
+    super.authStorage,
+    super.cachedUser,
+    this.loginUser,
+  );
+
+  final SafeUser loginUser;
+
+  @override
+  Future<AuthResponse> login({
+    required String phone,
+    required String password,
+  }) async {
+    return AuthResponse(accessToken: 'new-token', user: loginUser);
   }
 }

@@ -26,22 +26,19 @@ void main() {
         final harness = await _Harness.create(
           contexts: [plan1, plan2],
           serverActivePlanId: plan1.weddingPlanId,
+          persistedContextKey: plan1.contextKey,
           onSetActive: (planId) {
             if (planId == plan2.weddingPlanId) return pendingPlan2.future;
             return Future<void>.value();
           },
         );
-        await harness.controller.refresh(
-          activeWeddingPlanId: plan1.weddingPlanId,
-        );
+        await harness.controller.refresh();
 
         final selection = harness.controller.select(plan2.contextKey);
         await _flush();
         expect(harness.serverActivePlanId, plan2.weddingPlanId);
 
-        final refresh = harness.controller.refresh(
-          activeWeddingPlanId: plan1.weddingPlanId,
-        );
+        final refresh = harness.controller.refresh();
         pendingPlan2.complete();
         expect(await selection, isFalse);
         await refresh;
@@ -58,7 +55,7 @@ void main() {
     );
 
     test(
-      'provider selection superseding pending set-active preserves the prior active plan',
+      'provider selection superseding pending set-active clears local plan state',
       () async {
         final plan1 = accountContext(role: AccountContextRole.owner);
         final plan2 = accountContext(
@@ -70,14 +67,13 @@ void main() {
         final harness = await _Harness.create(
           contexts: [plan1, plan2, provider],
           serverActivePlanId: plan1.weddingPlanId,
+          persistedContextKey: plan1.contextKey,
           onSetActive: (planId) {
             if (planId == plan2.weddingPlanId) return pendingPlan2.future;
             return Future<void>.value();
           },
         );
-        await harness.controller.refresh(
-          activeWeddingPlanId: plan1.weddingPlanId,
-        );
+        await harness.controller.refresh();
 
         final stalePlanSelection = harness.controller.select(plan2.contextKey);
         await _flush();
@@ -90,12 +86,9 @@ void main() {
         expect(await providerSelection, isTrue);
         expect(harness.controller.selectedContext, provider);
         expect(harness.storage.readAccountContextKey(), provider.contextKey);
-        expect(harness.storage.readActivePlanId(), plan1.weddingPlanId);
-        expect(harness.serverActivePlanId, plan1.weddingPlanId);
-        expect(harness.setActiveCalls, [
-          plan2.weddingPlanId,
-          plan1.weddingPlanId,
-        ]);
+        expect(harness.storage.readActivePlanId(), isNull);
+        expect(harness.serverActivePlanId, plan2.weddingPlanId);
+        expect(harness.setActiveCalls, [plan2.weddingPlanId]);
       },
     );
 
@@ -109,15 +102,12 @@ void main() {
       final harness = await _Harness.create(
         contexts: [plan1, plan2],
         serverActivePlanId: plan1.weddingPlanId,
+        persistedContextKey: plan1.contextKey,
       );
-      await harness.controller.refresh(
-        activeWeddingPlanId: plan1.weddingPlanId,
-      );
+      await harness.controller.refresh();
       harness.api.onList = () => pendingList.future;
 
-      final staleRefresh = harness.controller.refresh(
-        activeWeddingPlanId: plan1.weddingPlanId,
-      );
+      final staleRefresh = harness.controller.refresh();
       final selection = harness.controller.select(plan2.contextKey);
       expect(await selection, isTrue);
       pendingList.complete([plan1, plan2]);
@@ -138,16 +128,13 @@ void main() {
       final harness = await _Harness.create(
         contexts: [plan1, plan2],
         serverActivePlanId: plan1.weddingPlanId,
+        persistedContextKey: plan1.contextKey,
       );
-      await harness.controller.refresh(
-        activeWeddingPlanId: plan1.weddingPlanId,
-      );
+      await harness.controller.refresh();
       harness.api.onValidate = (_) => pendingValidation.future;
 
       final staleSelection = harness.controller.select(plan2.contextKey);
-      final refresh = harness.controller.refresh(
-        activeWeddingPlanId: plan1.weddingPlanId,
-      );
+      final refresh = harness.controller.refresh();
       await refresh;
       pendingValidation.complete(plan2);
 
@@ -172,7 +159,7 @@ void main() {
       ),
     ]) {
       test(
-        '${failure.statusCode} drops stale authority then relists and falls back generically',
+        '${failure.statusCode} drops stale authority then requires explicit reselection',
         () async {
           final owner = accountContext(role: AccountContextRole.owner);
           final provider = accountContext(role: AccountContextRole.provider);
@@ -186,10 +173,9 @@ void main() {
           final harness = await _Harness.create(
             contexts: [owner, provider],
             serverActivePlanId: owner.weddingPlanId,
+            persistedContextKey: owner.contextKey,
           );
-          await harness.controller.refresh(
-            activeWeddingPlanId: owner.weddingPlanId,
-          );
+          await harness.controller.refresh();
           harness.api.onValidate = (_) async => throw ApiException(
             failure.backendMessage,
             statusCode: failure.statusCode,
@@ -202,11 +188,9 @@ void main() {
           expect(selected, isFalse);
           expect(harness.api.listCalls, 2);
           expect(harness.controller.contexts, [archived, provider]);
-          expect(harness.controller.selectedContext, provider);
-          expect(
-            harness.storage.readAccountContextKey(),
-            provider.contextKey,
-          );
+          expect(harness.controller.selectedContext, isNull);
+          expect(harness.storage.readAccountContextKey(), isNull);
+          expect(harness.controller.needsSelection, isTrue);
           expect(harness.controller.errorMessage, isNull);
           expect(harness.controller.noticeMessage, isNotNull);
           expect(
@@ -237,25 +221,19 @@ void main() {
           final harness = await _Harness.create(
             contexts: [owner],
             serverActivePlanId: owner.weddingPlanId,
+            persistedContextKey: owner.contextKey,
           );
-          await harness.controller.refresh(
-            activeWeddingPlanId: owner.weddingPlanId,
-          );
+          await harness.controller.refresh();
           harness.api.onValidate = (_) async => throw failure;
           harness.api.onList = () async => [owner, provider];
 
-          final selected = await harness.controller.select(
-            provider.contextKey,
-          );
+          final selected = await harness.controller.select(provider.contextKey);
 
           expect(selected, isFalse);
           expect(harness.api.listCalls, 2);
           expect(harness.controller.contexts, [owner, provider]);
           expect(harness.controller.selectedContext, owner);
-          expect(
-            harness.storage.readAccountContextKey(),
-            owner.contextKey,
-          );
+          expect(harness.storage.readAccountContextKey(), owner.contextKey);
           expect(harness.controller.errorMessage, isNotNull);
           expect(
             harness.controller.errorMessage,
@@ -287,9 +265,7 @@ void main() {
           contexts: [owner, archived],
           serverActivePlanId: owner.weddingPlanId,
         );
-        await harness.controller.refresh(
-          activeWeddingPlanId: owner.weddingPlanId,
-        );
+        await harness.controller.refresh();
 
         final opened = await harness.controller.openReadOnlyContext(
           archived.contextKey,
@@ -297,12 +273,9 @@ void main() {
 
         expect(opened, isTrue);
         expect(harness.controller.selectedContext, archived);
-        expect(
-          harness.storage.readAccountContextKey(),
-          archived.contextKey,
-        );
+        expect(harness.storage.readAccountContextKey(), archived.contextKey);
         expect(harness.serverActivePlanId, owner.weddingPlanId);
-        expect(harness.storage.readActivePlanId(), owner.weddingPlanId);
+        expect(harness.storage.readActivePlanId(), isNull);
         expect(harness.setActiveCalls, isEmpty);
       },
     );
@@ -310,7 +283,7 @@ void main() {
     test('refuses a missing or still-writable context as read-only', () async {
       final owner = accountContext(role: AccountContextRole.owner);
       final harness = await _Harness.create(contexts: [owner]);
-      await harness.controller.refresh();
+      await harness.controller.refresh(allowInitialSingleContext: true);
 
       expect(
         await harness.controller.openReadOnlyContext(owner.contextKey),
@@ -340,9 +313,7 @@ void main() {
           serverActivePlanId: plan1.weddingPlanId,
           failActivePlanWrites: 1,
         );
-        await harness.controller.refresh(
-          activeWeddingPlanId: plan1.weddingPlanId,
-        );
+        await harness.controller.refresh();
 
         final selected = await harness.controller.select(plan2.contextKey);
 
@@ -356,23 +327,26 @@ void main() {
   });
 
   group('AccountContextController disposal safety', () {
-    test('dispose invalidates a pending list without notifying later', () async {
-      final owner = accountContext(role: AccountContextRole.owner);
-      final pending = Completer<List<AccountContext>>();
-      final harness = await _Harness.create(contexts: [owner]);
-      harness.api.onList = () => pending.future;
-      var notifications = 0;
-      harness.controller.addListener(() => notifications += 1);
+    test(
+      'dispose invalidates a pending list without notifying later',
+      () async {
+        final owner = accountContext(role: AccountContextRole.owner);
+        final pending = Completer<List<AccountContext>>();
+        final harness = await _Harness.create(contexts: [owner]);
+        harness.api.onList = () => pending.future;
+        var notifications = 0;
+        harness.controller.addListener(() => notifications += 1);
 
-      final refresh = harness.controller.refresh();
-      expect(notifications, 1);
-      harness.controller.dispose();
-      pending.complete([owner]);
+        final refresh = harness.controller.refresh();
+        expect(notifications, 1);
+        harness.controller.dispose();
+        pending.complete([owner]);
 
-      await expectLater(refresh, completes);
-      expect(notifications, 1);
-      expect(harness.controller.selectedContext, isNull);
-    });
+        await expectLater(refresh, completes);
+        expect(notifications, 1);
+        expect(harness.controller.selectedContext, isNull);
+      },
+    );
 
     test(
       'dispose invalidates a pending validation without notifying later',
@@ -381,9 +355,8 @@ void main() {
         final provider = accountContext(role: AccountContextRole.provider);
         final pending = Completer<AccountContext>();
         final harness = await _Harness.create(contexts: [owner, provider]);
-        await harness.controller.refresh(
-          activeWeddingPlanId: owner.weddingPlanId,
-        );
+        await harness.storage.saveAccountContextKey(owner.contextKey);
+        await harness.controller.refresh();
         harness.api.onValidate = (_) => pending.future;
         var notifications = 0;
         harness.controller.addListener(() => notifications += 1);
@@ -411,11 +384,10 @@ void main() {
         final harness = await _Harness.create(
           contexts: [plan1, plan2],
           serverActivePlanId: plan1.weddingPlanId,
+          persistedContextKey: plan1.contextKey,
           onSetActive: (_) => pending.future,
         );
-        await harness.controller.refresh(
-          activeWeddingPlanId: plan1.weddingPlanId,
-        );
+        await harness.controller.refresh();
         var notifications = 0;
         harness.controller.addListener(() => notifications += 1);
 
@@ -457,11 +429,13 @@ class _Harness {
   static Future<_Harness> create({
     required List<AccountContext> contexts,
     String? serverActivePlanId,
+    String? persistedContextKey,
     Future<void> Function(String planId)? onSetActive,
     int failActivePlanWrites = 0,
   }) async {
     SharedPreferences.setMockInitialValues({
       'aarast_active_plan_id': ?serverActivePlanId,
+      'aarast_account_context_key': ?persistedContextKey,
     });
     final preferences = await SharedPreferences.getInstance();
     final storage = _FailOnceAuthStorage(
@@ -493,10 +467,7 @@ class _Harness {
 }
 
 class _FailOnceAuthStorage extends AuthStorage {
-  _FailOnceAuthStorage(
-    super.preferences, {
-    required this.failActivePlanWrites,
-  });
+  _FailOnceAuthStorage(super.preferences, {required this.failActivePlanWrites});
 
   int failActivePlanWrites;
 

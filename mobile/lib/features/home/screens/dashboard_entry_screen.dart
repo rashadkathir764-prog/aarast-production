@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -5,11 +7,12 @@ import 'package:provider/provider.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
+import '../../account_contexts/widgets/account_context_entry_gate.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/data/local_plan_migration.dart';
 import '../../onboarding/screens/local_plan_migration_screen.dart';
-import '../../shell/main_shell.dart';
 import '../../wedding_plans/data/wedding_plans_api.dart';
 import '../data/dashboard_summary_sources.dart';
 import 'local_guest_dashboard_screen.dart';
@@ -67,10 +70,15 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
                 setState(() {
                   _migrationSnapshot = Future.value(null);
                 });
+                unawaited(context.read<AccountContextController>().refresh());
               },
             );
           }
-          return const MainShell();
+          return AccountContextEntryGate(
+            resumeLocation: GoRouterState.of(
+              context,
+            ).uri.queryParameters['resume'],
+          );
         },
       );
     }

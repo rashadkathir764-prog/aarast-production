@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-07-25
+Snapshot date: 2026-07-28
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
@@ -40,8 +40,21 @@ conversations, signed image uploads, and rotating refresh sessions.
   if secure storage cannot be opened; they never fall back to plaintext JSON.
 - The cached safe-user profile and guest-onboarding draft use a separate secure
   storage namespace in production. Legacy SharedPreferences values migrate once
-  and are removed; plan selectors may remain there because they contain no
-  profile, contact, or financial payload.
+  and are removed; the selected account-context key is also stored in the
+  secure namespace. The non-sensitive active-plan preference may remain in
+  SharedPreferences for compatibility.
+- Post-auth entry is centralized: auth/session check -> live account-context
+  fetch -> zero contexts uses the existing onboarding state, one available
+  context is selected automatically, multiple contexts show the standalone
+  Arabic `اختر المسار` screen, and the selected context opens only its matching
+  dashboard. `AccountContextController.selectedContext` is the only shell and
+  route authority. Owner and contributor shells are separate and keyed by
+  `contextKey`. The contributor shell is one `مساحتي` surface without bottom
+  tabs; its task, money, guest, provider, and participant sections are rendered
+  only from the selected context permissions. Its account menu separates
+  workspace exit (back to path choice, session preserved) from full account
+  logout (session cleared, login shown). Dashboard shells do not contain a
+  path/context switcher.
 - Registration keeps the pending draft in navigation memory only. No account
   or local session exists until `REGISTER` OTP completion succeeds; password
   and OTP login remain available for verified or legacy accounts. Registration
@@ -78,8 +91,10 @@ conversations, signed image uploads, and rotating refresh sessions.
   participant must then explicitly accept or reject; only acceptance opens the
   contributor plan space. When that phone has no application
   credential, the same invite OTP also creates the contributor account with a
-  name and password chosen by the participant; no random hidden password or
-  second OTP is used. Closing and reopening the app restores the rotating
+  name, password, and matching confirmation chosen by the participant; no
+  random hidden password or second OTP is used. The response must include the
+  complete access/refresh session before the app treats the user as signed in.
+  Closing and reopening the app restores the rotating
   session from secure storage. Explicit logout still revokes the session and
   routes to password login, where OTP remains an optional login/recovery path.
   The public HTTPS landing and WhatsApp

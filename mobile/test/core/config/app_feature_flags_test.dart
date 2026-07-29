@@ -7,7 +7,7 @@ void main() {
       const flags = AppFeatureFlags.defaults;
 
       expect(flags.enableGuestFirstOnboarding, isTrue);
-      expect(flags.enablePushNotifications, isFalse);
+      expect(flags.enablePushNotifications, isTrue);
       expect(
         flags.toMap().keys,
         containsAll(<String>[
@@ -27,6 +27,7 @@ void main() {
       expect(flags.enableOfflineSync, isTrue);
       expect(flags.enabledFlagNames, contains('enableOfflineSync'));
       expect(flags.enabledFlagNames, contains('enableGuestFirstOnboarding'));
+      expect(flags.enabledFlagNames, contains('enablePushNotifications'));
       expect(flags.isEnabled('unknownFlag'), isFalse);
     });
   });

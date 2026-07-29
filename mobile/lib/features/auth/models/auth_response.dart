@@ -19,20 +19,19 @@ class AuthResponse {
     if (user is! Map) {
       throw const FormatException('Missing user');
     }
-    final normalizedRefreshToken =
-        refreshToken is String && refreshToken.trim().isNotEmpty
-        ? refreshToken
-        : null;
-    final expiresAt = refreshTokenExpiresAt == null
-        ? null
-        : DateTime.tryParse(refreshTokenExpiresAt.toString());
-    if (normalizedRefreshToken != null && expiresAt == null) {
+    if (refreshToken is! String || refreshToken.trim().isEmpty) {
+      throw const FormatException('Missing refreshToken');
+    }
+    final expiresAt = DateTime.tryParse(
+      refreshTokenExpiresAt?.toString() ?? '',
+    );
+    if (expiresAt == null) {
       throw const FormatException('Missing refreshTokenExpiresAt');
     }
 
     return AuthResponse(
       accessToken: accessToken,
-      refreshToken: normalizedRefreshToken,
+      refreshToken: refreshToken,
       refreshTokenExpiresAt: expiresAt,
       user: SafeUser.fromJson(Map<String, dynamic>.from(user)),
     );

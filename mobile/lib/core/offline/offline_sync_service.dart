@@ -29,6 +29,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   Set<String> _pendingEntityKeys = const {};
   int _sessionGeneration = 0;
   String? _cacheOwnerUserId;
+  Future<void> _cacheMutationTail = Future<void>.value();
 
   SyncState get state => _state;
   int get pendingCount => _pendingCount;
@@ -86,10 +87,15 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> cacheCurrentUser(SafeUser user) async {
-    await database.saveCachedItem(
-      table: OfflineTables.currentUserProfile,
-      json: user.toJson(),
-    );
+    final generation = _sessionGeneration;
+    final owner = _cacheOwnerUserId;
+    await _enqueueCacheMutation(() async {
+      if (owner == null || !_isCurrentSession(generation, owner)) return;
+      await database.saveCachedItem(
+        table: OfflineTables.currentUserProfile,
+        json: user.toJson(),
+      );
+    });
   }
 
   /// Wipes every cached row, queued write and local meta, then resets the
@@ -98,7 +104,28 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// stale queued writes never replay under a new user's token.
   Future<void> clearLocalData() async {
     _bindCacheOwner(null);
-    await _wipeLocalState();
+    final generation = _sessionGeneration;
+    await _enqueueCacheMutation(() async {
+      if (generation != _sessionGeneration || _cacheOwnerUserId != null) {
+        return;
+      }
+      await _wipeLocalState();
+    });
+  }
+
+  /// Removes cached rows and queued writes owned by one plan context while
+  /// preserving the authenticated account and other plan graphs.
+  Future<void> clearPlanContext(String planId) async {
+    final normalized = planId.trim();
+    if (normalized.isEmpty) return;
+    final generation = _sessionGeneration;
+    final owner = _cacheOwnerUserId;
+    await _enqueueCacheMutation(() async {
+      if (owner == null || !_isCurrentSession(generation, owner)) return;
+      await database.deletePlanGraph(normalized);
+      if (!_isCurrentSession(generation, owner)) return;
+      await refreshStatus();
+    });
   }
 
   Future<void> _wipeLocalState() async {
@@ -116,17 +143,29 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> ensureCacheOwner(String userId) async {
     if (userId.isEmpty || userId == 'null') return;
     _bindCacheOwner(userId);
-    final currentOwner = await database.getMeta(_cacheOwnerUserIdKey);
-    if (currentOwner != null && currentOwner != userId) {
-      await _wipeLocalState();
-    }
-    await database.setMeta(_cacheOwnerUserIdKey, userId);
+    final generation = _sessionGeneration;
+    await _enqueueCacheMutation(() async {
+      if (!_isCurrentSession(generation, userId)) return;
+      final currentOwner = await database.getMeta(_cacheOwnerUserIdKey);
+      if (!_isCurrentSession(generation, userId)) return;
+      if (currentOwner != null && currentOwner != userId) {
+        await _wipeLocalState();
+        if (!_isCurrentSession(generation, userId)) return;
+      }
+      await database.setMeta(_cacheOwnerUserIdKey, userId);
+    });
   }
 
   void _bindCacheOwner(String? userId) {
     if (_cacheOwnerUserId == userId) return;
     _sessionGeneration += 1;
     _cacheOwnerUserId = userId;
+  }
+
+  Future<void> _enqueueCacheMutation(Future<void> Function() mutation) {
+    final operation = _cacheMutationTail.then<void>((_) => mutation());
+    _cacheMutationTail = operation.then<void>((_) {}, onError: (_, _) {});
+    return operation;
   }
 
   Future<void> noteNetworkFailure([String? message]) async {

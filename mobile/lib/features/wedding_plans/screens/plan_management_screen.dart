@@ -10,6 +10,8 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../account_contexts/models/account_context.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
@@ -116,8 +118,12 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         : widget.initialSummary?.planId == widget.weddingPlanId
         ? widget.initialSummary
         : null;
+    final selectedContext = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
     final isContributor =
-        plan != null && _isContributorPlan(auth, activeSummary, plan);
+        selectedContext?.role == AccountContextRole.contributor &&
+        selectedContext?.weddingPlanId == widget.weddingPlanId;
     final isLoading =
         (_isLocalPlan
             ? _localLoading
@@ -128,14 +134,15 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ? _localError
         : weddingPlans.errorMessage ?? dashboard.errorMessage;
 
-    if (!isLoading && isContributor) {
+    if (isContributor) {
       final summary = activeSummary;
+      if (isLoading) {
+        return _buildContributorScaffold(
+          child: const AarastScreenLoading(label: 'جارٍ تجهيز مساحتك...'),
+        );
+      }
       if (summary == null) {
-        return AarastPageScaffold(
-          title: 'الخطة المشتركة',
-          subtitle: 'تعذر تجهيز مساحة مساهمتك الآن.',
-          showBack: true,
-          onBack: _goBack,
+        return _buildContributorScaffold(
           child: AarastErrorState(
             title: 'تعذر تحميل الخطة المشتركة',
             message: error ?? 'يرجى المحاولة مرة أخرى.',
@@ -144,35 +151,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         );
       }
 
-      return AarastPageScaffold(
-        title: 'الخطة المشتركة',
-        subtitle: 'كل ما سمح به صاحب الخطة في مكان واحد.',
-        showBack: true,
-        onBack: _goBack,
-        actions: [
-          IconButton(
-            key: const Key('contributor-notifications-action'),
-            tooltip: 'التحديثات',
-            onPressed: () => _openContributorRoute(
-              AppRouter.planNotifications(summary.planId),
-            ),
-            icon: summary.unreadNotificationsCount > 0
-                ? Badge.count(
-                    count: summary.unreadNotificationsCount,
-                    backgroundColor: AppTheme.burgundy,
-                    child: const Icon(LucideIcons.bell),
-                  )
-                : const Icon(LucideIcons.bell),
-          ),
-          IconButton(
-            key: const Key('contributor-permissions-action'),
-            tooltip: 'صلاحياتي',
-            onPressed: () => _showContributorPermissions(summary),
-            icon: const Icon(LucideIcons.shieldCheck),
-          ),
-        ],
+      return _buildContributorScaffold(
+        summary: summary,
         child: RefreshIndicator(
-          color: AppTheme.burgundy,
+          color: ContributorWorkspaceColors.oxblood,
           onRefresh: _load,
           child: ContributorWorkspaceView(
             summary: summary,
@@ -276,36 +258,226 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         widget.sharedMember?.role == 'MANAGER';
   }
 
-  bool _isContributorPlan(
-    AuthController auth,
+  Widget _buildContributorScaffold({
+    required Widget child,
     DashboardSummary? summary,
-    WeddingPlan plan,
-  ) {
-    if (_isLocalPlan) return false;
-    if (widget.sharedMember?.isOwner == true ||
-        summary?.permissions.isOwner == true ||
-        auth.user?.id == plan.ownerUserId) {
-      return false;
+  }) {
+    return AarastPageScaffold(
+      title: 'مساحتي',
+      subtitle: 'الخطة المشتركة',
+      showBack: false,
+      backgroundColor: ContributorWorkspaceColors.canvas,
+      backgroundDecoration: const BoxDecoration(
+        color: ContributorWorkspaceColors.canvas,
+      ),
+      actions: [
+        if (summary != null)
+          IconButton(
+            key: const Key('contributor-notifications-action'),
+            tooltip: 'التحديثات',
+            onPressed: () => _openContributorRoute(
+              AppRouter.planNotifications(summary.planId),
+            ),
+            icon: summary.unreadNotificationsCount > 0
+                ? Badge.count(
+                    count: summary.unreadNotificationsCount,
+                    backgroundColor: ContributorWorkspaceColors.oxblood,
+                    child: const Icon(LucideIcons.bell),
+                  )
+                : const Icon(LucideIcons.bell),
+          ),
+        IconButton(
+          key: const Key('contributor-account-action'),
+          tooltip: 'الحساب والخروج',
+          onPressed: _showContributorAccountMenu,
+          icon: const Icon(LucideIcons.userCircle),
+        ),
+      ],
+      child: child,
+    );
+  }
+
+  Future<void> _showContributorAccountMenu() async {
+    final action = await showAarastBottomSheet<_ContributorAccountAction>(
+      context: context,
+      backgroundColor: ContributorWorkspaceColors.surface,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              key: const Key('contributor-account-sheet'),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: ContributorWorkspaceColors.border,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusPill,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'إدارة الحساب',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: ContributorWorkspaceColors.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'اختر الإجراء الذي تريده',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: ContributorWorkspaceColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _ContributorAccountActionTile(
+                    key: const Key('contributor-exit-workspace'),
+                    icon: LucideIcons.logOut,
+                    title: 'الخروج من المساحة',
+                    subtitle: 'العودة إلى اختيار المسار مع بقاء الحساب مسجلًا',
+                    onTap: () => Navigator.of(
+                      sheetContext,
+                    ).pop(_ContributorAccountAction.exitWorkspace),
+                  ),
+                  const SizedBox(height: 10),
+                  _ContributorAccountActionTile(
+                    key: const Key('contributor-logout-account'),
+                    icon: LucideIcons.power,
+                    title: 'تسجيل الخروج من الحساب',
+                    subtitle: 'إنهاء الجلسة والعودة إلى شاشة تسجيل الدخول',
+                    destructive: true,
+                    onTap: () => Navigator.of(
+                      sheetContext,
+                    ).pop(_ContributorAccountAction.logoutAccount),
+                  ),
+                  const SizedBox(height: 14),
+                  TextButton(
+                    key: const Key('contributor-account-cancel'),
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: const Text('إلغاء'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case _ContributorAccountAction.exitWorkspace:
+        await _exitContributorWorkspace();
+        return;
+      case _ContributorAccountAction.logoutAccount:
+        await _confirmContributorLogout();
+        return;
     }
-    return widget.sharedMember != null || auth.user?.id != plan.ownerUserId;
+  }
+
+  Future<void> _exitContributorWorkspace() async {
+    final router = GoRouter.of(context);
+    final accountContexts = context.read<AccountContextController>();
+    await accountContexts.exitWorkspace();
+    await accountContexts.refresh();
+    router.go(AppRouter.home);
+  }
+
+  Future<void> _confirmContributorLogout() async {
+    final confirmed = await showAarastBottomSheet<bool>(
+      context: context,
+      backgroundColor: ContributorWorkspaceColors.surface,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(
+                    LucideIcons.power,
+                    color: AppTheme.danger,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'تسجيل الخروج من الحساب؟',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: ContributorWorkspaceColors.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    'سيتم إنهاء جلسة الحساب على هذا الجهاز.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: ContributorWorkspaceColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(false),
+                          child: const Text('إلغاء'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          key: const Key('contributor-logout-confirm'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.danger,
+                          ),
+                          onPressed: () => Navigator.of(sheetContext).pop(true),
+                          child: const Text('تسجيل الخروج'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final router = GoRouter.of(context);
+    final accountContexts = context.read<AccountContextController>();
+    final auth = context.read<AuthController>();
+    await accountContexts.clearForLogout();
+    await auth.logout();
+    router.go(AppRouter.login);
   }
 
   Future<void> _openContributorRoute(String route, {Object? extra}) async {
-    await context.push(_withContributorView(route), extra: extra);
+    await context.push(route, extra: extra);
     if (!mounted) return;
     await context.read<DashboardSummaryProvider>().loadDashboard(
       widget.weddingPlanId,
       sharedMember: widget.sharedMember,
     );
-  }
-
-  String _withContributorView(String route) {
-    final uri = Uri.parse(route);
-    return uri
-        .replace(
-          queryParameters: {...uri.queryParameters, 'view': 'contributor'},
-        )
-        .toString();
   }
 
   Future<void> _showContributorPermissions(DashboardSummary summary) {
@@ -323,7 +495,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
 
     return showAarastBottomSheet<void>(
       context: context,
-      backgroundColor: AppTheme.ivory,
+      backgroundColor: ContributorWorkspaceColors.surface,
       builder: (sheetContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: SafeArea(
@@ -338,7 +510,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                     width: 44,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppTheme.border,
+                      color: ContributorWorkspaceColors.border,
                       borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                     ),
                   ),
@@ -346,7 +518,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                 const SizedBox(height: 18),
                 const Icon(
                   LucideIcons.shieldCheck,
-                  color: AppTheme.gold,
+                  color: ContributorWorkspaceColors.bronze,
                   size: 34,
                 ),
                 const SizedBox(height: 10),
@@ -354,7 +526,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                   'صلاحياتك في هذه الخطة',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.deepBurgundy,
+                    color: ContributorWorkspaceColors.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -363,7 +535,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                   'حدد مالك الخطة هذه الصلاحيات، وتظهر لك الواجهة على أساسها.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.muted,
+                    color: ContributorWorkspaceColors.muted,
                     fontWeight: FontWeight.w600,
                     height: 1.45,
                   ),
@@ -378,9 +550,11 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.surface,
+                        color: ContributorWorkspaceColors.surfaceAlt,
                         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                        border: Border.all(color: AppTheme.border),
+                        border: Border.all(
+                          color: ContributorWorkspaceColors.border,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -395,7 +569,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                               label,
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
-                                    color: AppTheme.ink,
+                                    color: ContributorWorkspaceColors.ink,
                                     fontWeight: FontWeight.w800,
                                   ),
                             ),
@@ -607,6 +781,94 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onGuests: () => context.go(AppRouter.guestList(planId)),
       onProviders: () => context.go(AppRouter.planProviders(planId)),
+    );
+  }
+}
+
+enum _ContributorAccountAction { exitWorkspace, logoutAccount }
+
+class _ContributorAccountActionTile extends StatelessWidget {
+  const _ContributorAccountActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.destructive = false,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = destructive
+        ? AppTheme.danger
+        : ContributorWorkspaceColors.oxblood;
+    return Material(
+      color: destructive
+          ? AppTheme.dangerSoft.withValues(alpha: 0.52)
+          : ContributorWorkspaceColors.surfaceAlt,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(
+              color: destructive
+                  ? AppTheme.danger.withValues(alpha: 0.18)
+                  : ContributorWorkspaceColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: ContributorWorkspaceColors.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Icon(icon, color: accent, size: 21),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: destructive
+                            ? AppTheme.danger
+                            : ContributorWorkspaceColors.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ContributorWorkspaceColors.muted,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(LucideIcons.chevronLeft, color: accent, size: 18),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

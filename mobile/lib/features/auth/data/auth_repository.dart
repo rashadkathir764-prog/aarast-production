@@ -23,18 +23,25 @@ class AuthRepository {
     required String phone,
     required String password,
   }) async {
-    final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/api/v1/auth/login', {
-      'phone': normalizedPhone,
-      'password': password,
-    });
-    final response = _parseAuthResponse(json, operation: 'login');
-    await _authStorage.saveSession(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
-      user: response.user,
-    );
-    return response;
+    final sessionEpoch = _authStorage.beginSessionEstablishment();
+    try {
+      final normalizedPhone = normalizeYemeniPhone(phone);
+      final json = await _apiClient.postJson('/api/v1/auth/login', {
+        'phone': normalizedPhone,
+        'password': password,
+      });
+      final response = _parseAuthResponse(json, operation: 'login');
+      await _authStorage.saveSessionAtEpoch(
+        expectedEpoch: sessionEpoch,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+        user: response.user,
+      );
+      return response;
+    } on Object {
+      await _clearFailedSessionIntent(sessionEpoch);
+      rethrow;
+    }
   }
 
   Future<OtpRequestResult> startRegistration({
@@ -57,26 +64,34 @@ class AuthRepository {
     required String password,
     required String otpCode,
   }) async {
-    final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/api/v1/auth/register/complete', {
-      'name': name,
-      'phone': normalizedPhone,
-      'password': password,
-      'otpCode': otpCode,
-    });
-    final response = _parseAuthResponse(json, operation: 'register');
-    await _authStorage.saveSession(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
-      user: response.user,
-    );
-    return response;
+    final sessionEpoch = _authStorage.beginSessionEstablishment();
+    try {
+      final normalizedPhone = normalizeYemeniPhone(phone);
+      final json = await _apiClient.postJson('/api/v1/auth/register/complete', {
+        'name': name,
+        'phone': normalizedPhone,
+        'password': password,
+        'otpCode': otpCode,
+      });
+      final response = _parseAuthResponse(json, operation: 'register');
+      await _authStorage.saveSessionAtEpoch(
+        expectedEpoch: sessionEpoch,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+        user: response.user,
+      );
+      return response;
+    } on Object {
+      await _clearFailedSessionIntent(sessionEpoch);
+      rethrow;
+    }
   }
 
   Future<SafeUser> me() async {
+    final sessionEpoch = _authStorage.sessionEpoch;
     final json = await _apiClient.getJson('/api/v1/auth/me');
     final user = SafeUser.fromJson(json);
-    await _authStorage.saveUser(user);
+    await _authStorage.saveUserIfEpoch(user, sessionEpoch);
     return user;
   }
 
@@ -103,6 +118,11 @@ class AuthRepository {
       {'phone': normalizedPhone},
       receiveTimeout: _otpDeliveryReceiveTimeout,
     );
+    if (json['accountSetupRequired'] is! bool) {
+      throw const ApiException(
+        'تعذر تحديد حالة حساب المساهم. حدّث خدمة المصادقة ثم حاول مرة أخرى.',
+      );
+    }
     return OtpRequestResult.fromJson(json);
   }
 
@@ -111,25 +131,53 @@ class AuthRepository {
     required String purpose,
     required String code,
   }) async {
-    final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/api/v1/auth/otp/verify', {
-      'phone': normalizedPhone,
-      'purpose': purpose,
-      'code': code,
-    });
-    final response = OtpVerifyResult.fromJson(json);
-    if (response.accessToken != null &&
-        response.refreshToken != null &&
-        response.user != null) {
-      await _authStorage.saveSession(
-        accessToken: response.accessToken!,
-        refreshToken: response.refreshToken!,
-        user: response.user!,
-      );
-    } else if (response.user != null) {
-      await _authStorage.saveUser(response.user!);
+    final establishesSession = purpose == 'LOGIN';
+    final sessionEpoch = establishesSession
+        ? _authStorage.beginSessionEstablishment()
+        : _authStorage.sessionEpoch;
+    try {
+      final normalizedPhone = normalizeYemeniPhone(phone);
+      final json = await _apiClient.postJson('/api/v1/auth/otp/verify', {
+        'phone': normalizedPhone,
+        'purpose': purpose,
+        'code': code,
+      });
+      final response = OtpVerifyResult.fromJson(json);
+      if (establishesSession) {
+        if (!response.hasDurableSession) {
+          throw const ApiException(
+            'تعذر إنشاء جلسة دخول دائمة. لم تُحفظ جلسة مؤقتة على الجهاز.',
+          );
+        }
+        final saved = await _saveOtpSession(
+          response,
+          expectedEpoch: sessionEpoch,
+          reservedEpoch: true,
+        );
+        if (!saved) {
+          throw const ApiException(
+            'تغيّرت جلسة الحساب قبل اكتمال الحفظ. أعد المحاولة بأمان.',
+          );
+        }
+      } else if (response.accessToken != null &&
+          response.refreshToken != null &&
+          response.user != null) {
+        await _authStorage.saveSessionIfEpoch(
+          expectedEpoch: sessionEpoch,
+          accessToken: response.accessToken!,
+          refreshToken: response.refreshToken!,
+          user: response.user!,
+        );
+      } else if (response.user != null) {
+        await _authStorage.saveUserIfEpoch(response.user!, sessionEpoch);
+      }
+      return response;
+    } on Object {
+      if (establishesSession) {
+        await _clearFailedSessionIntent(sessionEpoch);
+      }
+      rethrow;
     }
-    return response;
   }
 
   Future<OtpVerifyResult> verifyInviteOtp({
@@ -139,17 +187,39 @@ class AuthRepository {
     String? name,
     String? password,
   }) async {
-    final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient
-        .postJson('/api/v1/invites/${Uri.encodeComponent(token)}/verify-otp', {
+    final sessionEpoch = _authStorage.beginSessionEstablishment();
+    try {
+      final normalizedPhone = normalizeYemeniPhone(phone);
+      final json = await _apiClient.postJson(
+        '/api/v1/invites/${Uri.encodeComponent(token)}/verify-otp',
+        {
           'phone': normalizedPhone,
           'code': code,
           if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
           if (password != null && password.isNotEmpty) 'password': password,
-        });
-    final response = OtpVerifyResult.fromJson(json);
-    await _saveOtpSession(response);
-    return response;
+        },
+      );
+      final response = OtpVerifyResult.fromJson(json);
+      if (!response.hasDurableSession) {
+        throw const ApiException(
+          'تعذر إنشاء جلسة مساهم دائمة. لم تُحفظ جلسة مؤقتة على الجهاز.',
+        );
+      }
+      final saved = await _saveOtpSession(
+        response,
+        expectedEpoch: sessionEpoch,
+        reservedEpoch: true,
+      );
+      if (!saved) {
+        throw const ApiException(
+          'تغيّرت جلسة الحساب قبل اكتمال الحفظ. أعد المحاولة بأمان.',
+        );
+      }
+      return response;
+    } on Object {
+      await _clearFailedSessionIntent(sessionEpoch);
+      rethrow;
+    }
   }
 
   /// يطلب رمز استعادة كلمة المرور. الخادم لا يكشف وجود الحساب من عدمه.
@@ -181,40 +251,58 @@ class AuthRepository {
   Future<String?> readAccessToken() => _authStorage.readAccessToken();
 
   Future<bool> refreshSession() async {
-    final refreshToken = await _authStorage.readRefreshToken();
+    final sessionEpoch = _authStorage.sessionEpoch;
+    final refreshToken = await _authStorage.readRefreshTokenIfEpoch(
+      sessionEpoch,
+    );
     if (refreshToken == null || refreshToken.isEmpty) return false;
     try {
       final json = await _apiClient.postJson('/api/v1/auth/refresh', {
         'refreshToken': refreshToken,
       });
       final response = _parseAuthResponse(json, operation: 'refresh');
-      await _authStorage.saveSession(
+      return _authStorage.saveSessionIfEpoch(
+        expectedEpoch: sessionEpoch,
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
         user: response.user,
       );
-      return true;
     } on ApiException catch (error) {
       if (!error.isUnauthorized) rethrow;
-      await _authStorage.clear();
+      await _authStorage.clearIfEpoch(sessionEpoch);
       return false;
     }
   }
 
   SafeUser? readCachedUser() => _authStorage.readUser();
 
-  Future<void> _saveOtpSession(OtpVerifyResult response) async {
+  Future<bool> _saveOtpSession(
+    OtpVerifyResult response, {
+    required int expectedEpoch,
+    bool reservedEpoch = false,
+  }) async {
     if (response.accessToken != null &&
         response.refreshToken != null &&
         response.user != null) {
-      await _authStorage.saveSession(
-        accessToken: response.accessToken!,
-        refreshToken: response.refreshToken!,
-        user: response.user!,
-      );
+      if (reservedEpoch) {
+        return _authStorage.saveSessionAtEpoch(
+          expectedEpoch: expectedEpoch,
+          accessToken: response.accessToken!,
+          refreshToken: response.refreshToken!,
+          user: response.user!,
+        );
+      } else {
+        return _authStorage.saveSessionIfEpoch(
+          expectedEpoch: expectedEpoch,
+          accessToken: response.accessToken!,
+          refreshToken: response.refreshToken!,
+          user: response.user!,
+        );
+      }
     } else if (response.user != null) {
-      await _authStorage.saveUser(response.user!);
+      return _authStorage.saveUserIfEpoch(response.user!, expectedEpoch);
     }
+    return false;
   }
 
   Future<SafeUser> updateAvatar({
@@ -222,6 +310,7 @@ class AuthRepository {
     required String fileName,
     required String contentType,
   }) async {
+    final sessionEpoch = _authStorage.sessionEpoch;
     try {
       final ticket = await _apiClient
           .postJson('/api/v1/media/uploads/presign', {
@@ -249,7 +338,7 @@ class AuthRepository {
           'avatarUrl': publicUrl,
         }),
       );
-      await _authStorage.saveUser(user);
+      await _authStorage.saveUserIfEpoch(user, sessionEpoch);
       return user;
     } on ApiException catch (error) {
       if (error.statusCode == 503 ||
@@ -272,16 +361,30 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    final refreshToken = await _authStorage.readRefreshToken();
+    final sessionEpoch = _authStorage.beginSessionInvalidation();
+    final refreshToken = await _authStorage.readRefreshTokenIfEpoch(
+      sessionEpoch,
+    );
+    if (!_authStorage.isSessionEpochCurrent(sessionEpoch)) return;
     try {
-      await _apiClient.postJson('/api/v1/auth/logout', {
-        if (refreshToken != null && refreshToken.isNotEmpty)
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _apiClient.postJson('/api/v1/auth/logout', {
           'refreshToken': refreshToken,
-      });
+        });
+      }
     } on Object {
       // Local logout must always complete, even when the network is down.
     } finally {
-      await _authStorage.clear();
+      await _authStorage.clearIfEpoch(sessionEpoch);
+    }
+  }
+
+  Future<void> _clearFailedSessionIntent(int sessionEpoch) async {
+    try {
+      await _authStorage.clearIfEpoch(sessionEpoch);
+    } on Object {
+      // Preserve the original authentication failure. A later restore still
+      // treats the reserved epoch as unauthenticated.
     }
   }
 

@@ -82,6 +82,12 @@ class OtpVerifyResult {
   });
 
   factory OtpVerifyResult.fromJson(Map<String, dynamic> json) {
+    final refreshTokenExpiresAt = DateTime.tryParse(
+      json['refreshTokenExpiresAt']?.toString() ?? '',
+    );
+    if (json['refreshToken'] != null && refreshTokenExpiresAt == null) {
+      throw const FormatException('Missing refreshTokenExpiresAt');
+    }
     return OtpVerifyResult(
       verified: json['verified'] == true,
       phone: json['phone']?.toString() ?? '',
@@ -91,9 +97,7 @@ class OtpVerifyResult {
           : null,
       accessToken: json['accessToken']?.toString(),
       refreshToken: json['refreshToken']?.toString(),
-      refreshTokenExpiresAt: DateTime.tryParse(
-        json['refreshTokenExpiresAt']?.toString() ?? '',
-      ),
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
     );
   }
 
@@ -104,4 +108,11 @@ class OtpVerifyResult {
   final String? accessToken;
   final String? refreshToken;
   final DateTime? refreshTokenExpiresAt;
+
+  bool get hasDurableSession =>
+      verified &&
+      user != null &&
+      accessToken?.trim().isNotEmpty == true &&
+      refreshToken?.trim().isNotEmpty == true &&
+      refreshTokenExpiresAt != null;
 }

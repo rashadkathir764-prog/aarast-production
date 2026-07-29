@@ -12,12 +12,12 @@ import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../notifications/providers/notifications_provider.dart';
-import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../widgets/more_screen_components.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -56,7 +56,8 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final notifications = _maybeWatchNotifications(context);
-    final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
+    final accountContexts = context.watch<AccountContextController?>();
+    final selectedContext = accountContexts?.selectedContext;
     final user = auth.user;
     final hasAccount = auth.status == AuthStatus.authenticated && user != null;
     final name = user?.name ?? 'مستخدم أعرست';
@@ -77,7 +78,7 @@ class _MoreScreenState extends State<MoreScreen> {
             future: _identityDraftFuture,
             builder: (context, snapshot) {
               final identity = MoreIdentitySummary.from(
-                activePlan: activePlan,
+                selectedContext: selectedContext,
                 draft: snapshot.data,
               );
               return MoreProfileCard(
@@ -117,6 +118,18 @@ class _MoreScreenState extends State<MoreScreen> {
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.createWeddingPlan),
               ),
+              if (hasAccount && selectedContext != null)
+                MoreActionTile(
+                  title: 'الخروج من المسار',
+                  icon: LucideIcons.layers,
+                  iconColor: AppTheme.burgundy,
+                  iconBackground: AppTheme.burgundySoft,
+                  onTap: () {
+                    final controller = accountContexts;
+                    if (controller == null) return;
+                    _exitWorkspace(context, controller);
+                  },
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -176,6 +189,16 @@ class _MoreScreenState extends State<MoreScreen> {
         ]),
       ),
     );
+  }
+
+  static Future<void> _exitWorkspace(
+    BuildContext context,
+    AccountContextController accountContexts,
+  ) async {
+    await accountContexts.exitWorkspace();
+    await accountContexts.refresh();
+    if (!context.mounted) return;
+    context.go(AppRouter.home);
   }
 
   static Future<void> _logout(BuildContext context) async {
@@ -519,14 +542,6 @@ NotificationsProvider? _maybeReadNotifications(BuildContext context) {
 NotificationsProvider? _maybeWatchNotifications(BuildContext context) {
   try {
     return context.watch<NotificationsProvider>();
-  } on ProviderNotFoundException {
-    return null;
-  }
-}
-
-WeddingPlansProvider? _maybeWatchWeddingPlans(BuildContext context) {
-  try {
-    return context.watch<WeddingPlansProvider>();
   } on ProviderNotFoundException {
     return null;
   }

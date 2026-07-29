@@ -263,7 +263,7 @@ Rules:
 
 ### Bottom Navigation
 
-Use `RoyalDashboardBottomNav`:
+Use `RoyalDashboardBottomNav` for the owner dashboard:
 
 - Home.
 - Money.
@@ -276,6 +276,10 @@ Rules:
 - Keep order stable.
 - Active state uses burgundy/gold language.
 - Shell state should be preserved through `IndexedStack` where appropriate.
+- The contributor `مساحتي` surface has no bottom navigation or `IndexedStack`.
+  It uses one permission-driven section panel on porcelain white/cool gray,
+  with a compact oxblood plan hero and muted bronze details. This palette is
+  local to that surface and does not replace the global ivory token.
 
 ### Floating Action
 

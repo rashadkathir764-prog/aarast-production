@@ -10,7 +10,6 @@ enum NotificationOfflineReleaseReadinessState {
   syncError,
   loading,
   blockedByError,
-  permissionRequestBlocked,
 }
 
 class NotificationOfflineReleaseReadiness {
@@ -64,12 +63,10 @@ class NotificationOfflineReleaseReadiness {
 
   bool get hasError => errorMessage != null && errorMessage!.trim().isNotEmpty;
 
-  bool get shouldRequestNotificationPermission => false;
+  bool get shouldRequestNotificationPermission =>
+      pushNotificationsEnabled && !notificationPermissionRequested;
 
   NotificationOfflineReleaseReadinessState get state {
-    if (notificationPermissionRequested) {
-      return NotificationOfflineReleaseReadinessState.permissionRequestBlocked;
-    }
     if (isLoading) {
       return NotificationOfflineReleaseReadinessState.loading;
     }

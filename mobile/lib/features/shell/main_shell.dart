@@ -3,57 +3,85 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/routing/app_router.dart';
+import '../../core/diagnostics/context_lifecycle_logger.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/aarast_toast.dart';
 import '../../core/widgets/aarast_ui.dart';
-import '../home/screens/home_screen.dart';
-import '../home/data/dashboard_summary_sources.dart';
+import '../account_contexts/models/account_context.dart';
+import '../account_contexts/providers/account_context_controller.dart';
 import '../finance/screens/money_overview_screen.dart';
 import '../finance/providers/finance_provider.dart';
 import '../guests/screens/guest_list_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../wedding_plans/providers/wedding_plans_provider.dart';
+import '../wedding_plans/screens/plan_management_screen.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../wedding_plans/widgets/quick_add_actions.dart';
 import '../wedding_plans/widgets/royal_home_chrome.dart';
 import 'widgets/plan_shell_chrome.dart';
 
-class MainShell extends StatefulWidget {
+class MainShell extends StatelessWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  Widget build(BuildContext context) {
+    final selected = context.watch<AccountContextController>().selectedContext;
+    if (selected == null || !selected.isAvailable) {
+      return const _InvalidShellContext(
+        message: 'لا توجد مساحة نشطة لبناء واجهة التطبيق.',
+      );
+    }
+
+    return switch (selected.role) {
+      AccountContextRole.owner => _OwnerMainShell(
+        key: ValueKey('owner-shell-${selected.contextKey}'),
+        contextKey: selected.contextKey,
+        weddingPlanId: selected.weddingPlanId!,
+      ),
+      AccountContextRole.contributor => _ContributorMainShell(
+        key: ValueKey('contributor-shell-${selected.contextKey}'),
+        accountContext: selected,
+      ),
+      AccountContextRole.provider => const _InvalidShellContext(
+        message: 'مساحة المورد لها واجهة مستقلة ولا تُفتح من واجهة الخطط.',
+      ),
+    };
+  }
 }
 
-class _MainShellState extends State<MainShell> {
+class _OwnerMainShell extends StatefulWidget {
+  const _OwnerMainShell({
+    required this.contextKey,
+    required this.weddingPlanId,
+    super.key,
+  });
+
+  final String contextKey;
+  final String weddingPlanId;
+
+  @override
+  State<_OwnerMainShell> createState() => _OwnerMainShellState();
+}
+
+class _OwnerMainShellState extends State<_OwnerMainShell> {
   // Bottom-nav indices for the live user shell:
   // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: الموردون.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   int _guestAddRequest = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final provider = context.read<WeddingPlansProvider>();
-      final activePlan = await BackendDashboardSummarySource(
-        provider,
-      ).loadActivePlan();
-      if (!mounted) return;
-      if (activePlan == null && provider.errorMessage == null) {
-        context.go(AppRouter.onboarding);
-        return;
-      }
-    });
-  }
-
   void _onItemTapped(int index) {
+    ContextLifecycleLogger.event(
+      'SHELL_TAB_SELECTED',
+      activeContextKey: widget.contextKey,
+      weddingPlanId: widget.weddingPlanId,
+      shellType: 'owner',
+      selectedTab: _ownerTabName(index),
+      screen: _ownerScreenName(index),
+      reason: 'explicit_tab_tap',
+      source: 'OwnerMainShell',
+    );
     setState(() {
       _index = index;
       _visitedTabs.add(index);
@@ -61,11 +89,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _showQuickAdd() {
-    final activePlanId = context.read<WeddingPlansProvider>().activePlan?.id;
-    if (activePlanId == null) {
-      AarastToast.showInfo(context, 'اختر أو أنشئ خطة زفاف أولًا.');
-      return;
-    }
+    final selectedPlanId = widget.weddingPlanId;
     if (_index == 3) {
       setState(() {
         _visitedTabs.add(3);
@@ -73,7 +97,7 @@ class _MainShellState extends State<MainShell> {
       });
       return;
     }
-    showRoyalHomeActionSheet(context, actions: _quickActions(activePlanId));
+    showRoyalHomeActionSheet(context, actions: _quickActions(selectedPlanId));
   }
 
   List<RoyalHomeAction> _quickActions(String planId) {
@@ -119,17 +143,23 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
-    final activePlanId = context.watch<WeddingPlansProvider>().activePlan?.id;
+    final selected = context.watch<AccountContextController>().selectedContext;
+    if (selected?.contextKey != widget.contextKey ||
+        selected?.role != AccountContextRole.owner ||
+        selected?.weddingPlanId != widget.weddingPlanId) {
+      return const _InvalidShellContext(
+        message: 'تغيّر سياق المالك قبل اكتمال بناء الواجهة.',
+      );
+    }
+    final selectedPlanId = widget.weddingPlanId;
     final finance = context.watch<FinanceProvider?>();
     final canManageCurrentMoney =
-        finance?.loadedPlanId == activePlanId &&
+        finance?.loadedPlanId == selectedPlanId &&
         (finance?.canManageMoney ?? false);
-    final showQuickFab =
-        activePlanId != null &&
-        shouldShowPlanQuickAdd(
-          tabIndex: _index,
-          canManageMoney: _index != 1 || canManageCurrentMoney,
-        );
+    final showQuickFab = shouldShowPlanQuickAdd(
+      tabIndex: _index,
+      canManageMoney: _index != 1 || canManageCurrentMoney,
+    );
 
     return RootTabBackScope(
       activeIndex: _index,
@@ -137,69 +167,63 @@ class _MainShellState extends State<MainShell> {
       child: Theme(
         data: shellTheme,
         child: PlanShellChrome(
+          key: ValueKey('owner-shell-chrome-${widget.contextKey}'),
           activeIndex: _index,
           onTabSelected: _onItemTapped,
           showQuickFab: showQuickFab,
           onQuickAdd: _showQuickAdd,
           backgroundColor: AppTheme.ivory,
           body: IndexedStack(
+            key: ValueKey('owner-indexed-stack-${widget.contextKey}'),
             index: _index,
             children: [
               // Index 0: Home overview. Plan lists are explicit routes.
               _buildLazyTab(
                 0,
-                activePlanId != null
-                    ? WeddingPlanDashboardScreen(
-                        key: ValueKey('home-$activePlanId'),
-                        weddingPlanId: activePlanId,
-                        embedded: true,
-                      )
-                    : const HomeScreen(embedded: true),
+                WeddingPlanDashboardScreen(
+                  key: ValueKey('home-$selectedPlanId'),
+                  weddingPlanId: selectedPlanId,
+                  embedded: true,
+                ),
               ),
 
               // Index 1: Money
               _buildLazyTab(
                 1,
-                activePlanId != null
-                    ? MoneyOverviewScreen(
-                        key: ValueKey('money-$activePlanId'),
-                        weddingPlanId: activePlanId,
-                        embedded: true,
-                      )
-                    : _buildNoPlanFallback('المال'),
+                MoneyOverviewScreen(
+                  key: ValueKey('money-$selectedPlanId'),
+                  weddingPlanId: selectedPlanId,
+                  embedded: true,
+                ),
               ),
 
               // Index 2: Tasks
               _buildLazyTab(
                 2,
-                activePlanId != null
-                    ? TaskTimelineScreen(
-                        key: ValueKey('tasks-$activePlanId'),
-                        weddingPlanId: activePlanId,
-                      )
-                    : _buildNoPlanFallback('المهام'),
+                TaskTimelineScreen(
+                  key: ValueKey('tasks-$selectedPlanId'),
+                  weddingPlanId: selectedPlanId,
+                ),
               ),
 
               // Index 3: Guests
               _buildLazyTab(
                 3,
-                activePlanId != null
-                    ? GuestListScreen(
-                        key: ValueKey('guests-$activePlanId'),
-                        weddingPlanId: activePlanId,
-                        showLocalFab: false,
-                        openAddRequest: _guestAddRequest,
-                      )
-                    : _buildNoPlanFallback('الضيوف'),
+                GuestListScreen(
+                  key: ValueKey('guests-$selectedPlanId'),
+                  weddingPlanId: selectedPlanId,
+                  showLocalFab: false,
+                  openAddRequest: _guestAddRequest,
+                ),
               ),
 
               // Index 4: Vendors marketplace
               _buildLazyTab(
                 4,
                 ProviderMarketplaceScreen(
-                  key: ValueKey('providers-${activePlanId ?? 'no-plan'}'),
+                  key: ValueKey('providers-$selectedPlanId'),
                   embedded: true,
-                  weddingPlanId: activePlanId,
+                  weddingPlanId: selectedPlanId,
                 ),
               ),
             ],
@@ -209,17 +233,80 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  String _ownerTabName(int index) {
+    return switch (index) {
+      1 => 'money',
+      2 => 'tasks',
+      3 => 'guests',
+      4 => 'providers',
+      _ => 'home',
+    };
+  }
+
+  String _ownerScreenName(int index) {
+    return switch (index) {
+      1 => 'MoneyOverviewScreen',
+      2 => 'TaskTimelineScreen',
+      3 => 'GuestListScreen',
+      4 => 'ProviderMarketplaceScreen',
+      _ => 'WeddingPlanDashboardScreen',
+    };
+  }
+
   Widget _buildLazyTab(int index, Widget child) {
     return _visitedTabs.contains(index) ? child : const SizedBox.shrink();
   }
+}
 
-  Widget _buildNoPlanFallback(String title) {
+class _ContributorMainShell extends StatelessWidget {
+  const _ContributorMainShell({required this.accountContext, super.key});
+
+  final AccountContext accountContext;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = context.watch<AccountContextController>().selectedContext;
+    if (selected?.contextKey != accountContext.contextKey ||
+        selected?.role != AccountContextRole.contributor ||
+        selected?.weddingPlanId != accountContext.weddingPlanId) {
+      return const _InvalidShellContext(
+        message: 'تغيّر سياق المساهم قبل اكتمال بناء الواجهة.',
+      );
+    }
+
+    ContextLifecycleLogger.event(
+      'SHELL_BUILT',
+      activeContextKey: accountContext.contextKey,
+      activeContextType: 'contributor',
+      weddingPlanId: accountContext.weddingPlanId,
+      shellType: 'contributor',
+      selectedTab: 'workspace',
+      screen: 'PlanCenterScreen',
+      reason: 'selected_context_role',
+      source: 'ContributorMainShell',
+    );
+
+    return PlanCenterScreen(
+      key: ValueKey('contributor-workspace-${accountContext.contextKey}'),
+      weddingPlanId: accountContext.weddingPlanId!,
+    );
+  }
+}
+
+class _InvalidShellContext extends StatelessWidget {
+  const _InvalidShellContext({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
     return AarastScaffold(
       child: Center(
         child: AarastEmptyState(
-          icon: LucideIcons.info,
-          title: title,
-          message: 'اختر خطة من الرئيسية أولًا لفتح $title.',
+          key: const ValueKey('invalid-shell-context'),
+          icon: LucideIcons.shieldAlert,
+          title: 'تعذر فتح مساحة الحساب',
+          message: message,
         ),
       ),
     );

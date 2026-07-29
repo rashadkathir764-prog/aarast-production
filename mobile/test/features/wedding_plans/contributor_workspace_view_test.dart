@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('contributor workspace only renders permission-backed cards', (
+  testWidgets('contributor workspace only renders permission-backed sections', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -32,11 +32,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('contributor-tasks-card')), findsOneWidget);
-    expect(find.byKey(const Key('contributor-money-card')), findsNothing);
-    expect(find.byKey(const Key('contributor-guests-card')), findsNothing);
-    expect(find.byKey(const Key('contributor-providers-card')), findsNothing);
-    expect(find.byKey(const Key('contributor-members-card')), findsNothing);
+    expect(find.byKey(const Key('contributor-sections-panel')), findsOneWidget);
+    expect(find.byKey(const Key('contributor-tasks-section')), findsOneWidget);
+    expect(find.byKey(const Key('contributor-money-section')), findsNothing);
+    expect(find.byKey(const Key('contributor-guests-section')), findsNothing);
+    expect(
+      find.byKey(const Key('contributor-providers-section')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('contributor-members-section')), findsNothing);
     expect(find.text('أنت مساهم للمتابعة'), findsOneWidget);
     await tester.drag(
       find.byKey(const PageStorageKey('contributor-workspace-list')),
@@ -51,7 +55,7 @@ void main() {
   });
 
   testWidgets(
-    'contributor workspace shows cards and actions from permissions',
+    'contributor workspace shows sections and actions from permissions',
     (tester) async {
       var tasksOpened = 0;
       var costsCreated = 0;
@@ -87,15 +91,24 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('contributor-money-card')), findsOneWidget);
-      expect(find.byKey(const Key('contributor-guests-card')), findsOneWidget);
       expect(
-        find.byKey(const Key('contributor-providers-card')),
+        find.byKey(const Key('contributor-money-section')),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('contributor-members-card')), findsOneWidget);
+      expect(
+        find.byKey(const Key('contributor-guests-section')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('contributor-providers-section')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('contributor-members-section')),
+        findsOneWidget,
+      );
 
-      await tester.tap(find.byKey(const Key('contributor-tasks-card')));
+      await tester.tap(find.byKey(const Key('contributor-tasks-section')));
       expect(tasksOpened, 1);
 
       final addCostButton = find.widgetWithText(TextButton, 'إضافة تكلفة');
@@ -150,7 +163,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('contributor-plan-hero')), findsOneWidget);
-    expect(find.byKey(const Key('contributor-tasks-card')), findsOneWidget);
+    expect(find.byKey(const Key('contributor-tasks-section')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
@@ -167,7 +180,7 @@ class _TestApp extends StatelessWidget {
       home: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: AppTheme.ivory,
+          backgroundColor: ContributorWorkspaceColors.canvas,
           body: SafeArea(
             child: Padding(padding: const EdgeInsets.all(20), child: child),
           ),

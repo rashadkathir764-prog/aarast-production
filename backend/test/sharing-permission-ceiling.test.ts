@@ -1035,17 +1035,13 @@ test("raw invite claims stay bound to the current token fingerprint", () => {
 test("accepting a stale invite preserves a newer membership and does not restore provider or finance access", async () => {
   const harness = inviteHarness();
   harness.target.activeWeddingPlanId = "already-selected-plan";
-  const created = await harness.service.createInvite(
-    harness.owner,
-    "plan-1",
-    {
-      phone: harness.target.phone!,
-      role: SharedMemberRole.FINANCE_MANAGER,
-      canViewMoney: true,
-      canManageProviders: true,
-      canManageMoney: true,
-    },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.FINANCE_MANAGER,
+    canViewMoney: true,
+    canManageProviders: true,
+    canManageMoney: true,
+  });
   const storedInvite = harness.db.invites[0];
   const newerMembershipAt = new Date(storedInvite.updatedAt.getTime() + 1_000);
   let currentMembership = {
@@ -1176,6 +1172,14 @@ test("accepting a stale invite preserves a newer membership and does not restore
     (accepted as any).contextKey,
     "plan:plan-1:contributor",
     "invite acceptance must return the canonical additive context key",
+  );
+  const acceptedInvites = await harness.service.findInvitesForCurrentUser(
+    harness.target,
+  );
+  assert.equal(
+    acceptedInvites[0]?.contextKey,
+    "plan:plan-1:contributor",
+    "the current user's accepted invite must retain its backend context key",
   );
   assert.equal(
     harness.target.activeWeddingPlanId,

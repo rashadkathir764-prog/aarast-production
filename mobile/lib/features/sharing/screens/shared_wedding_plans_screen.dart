@@ -6,7 +6,10 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/models/account_context.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../providers/sharing_provider.dart';
 import '../widgets/shared_plan_card.dart';
@@ -155,10 +158,39 @@ class _SharedPlansContent extends StatelessWidget {
         for (final plan in provider.sharedPlans)
           SharedPlanCard(
             plan: plan,
-            onTap: () => context.go(
-              AppRouter.planCenter(plan.id),
-              extra: plan.sharedMember,
-            ),
+            onTap: () async {
+              final accountContexts = context.read<AccountContextController>();
+              await accountContexts.refresh();
+              if (!context.mounted) return;
+              final matchingContexts = accountContexts.contexts
+                  .where(
+                    (candidate) =>
+                        candidate.isPlan &&
+                        candidate.isAvailable &&
+                        candidate.role == AccountContextRole.contributor &&
+                        candidate.weddingPlanId == plan.id,
+                  )
+                  .toList(growable: false);
+              final target = matchingContexts.isEmpty
+                  ? null
+                  : matchingContexts.first;
+              final selected =
+                  target != null &&
+                  await accountContexts.select(target.contextKey);
+              if (!context.mounted) return;
+              if (!selected) {
+                AarastToast.showError(
+                  context,
+                  accountContexts.errorMessage ??
+                      'تعذر تفعيل مسار الخطة المشتركة. اختر المسار ثم حاول مرة أخرى.',
+                );
+                return;
+              }
+              context.go(
+                AppRouter.planCenter(plan.id),
+                extra: plan.sharedMember,
+              );
+            },
           ),
       ]),
     );

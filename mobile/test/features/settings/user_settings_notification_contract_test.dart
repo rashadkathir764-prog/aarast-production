@@ -15,7 +15,7 @@ void main() {
       'providerMessagesEnabled': true,
       'channelCapabilities': {
         'inApp': {'supported': true, 'configurable': false, 'enabled': true},
-        'push': {'supported': false, 'configurable': false, 'enabled': false},
+        'push': {'supported': true, 'configurable': false, 'enabled': false},
         'sms': {'supported': false, 'configurable': false, 'enabled': false},
         'whatsapp': {
           'supported': false,
@@ -29,7 +29,7 @@ void main() {
     });
 
     expect(settings.channelCapabilities.inAppAvailable, isTrue);
-    expect(settings.channelCapabilities.externalDeliverySupported, isFalse);
+    expect(settings.channelCapabilities.externalDeliverySupported, isTrue);
     expect(settings.channelCapabilities.push.configurable, isFalse);
   });
 
@@ -50,7 +50,7 @@ void main() {
     },
   );
 
-  test('missing capabilities fail closed for external delivery channels', () {
+  test('missing capabilities retain the app-level push capability', () {
     final settings = UserSettings.fromJson({
       'id': 'settings-1',
       'userId': 'user-1',
@@ -66,7 +66,7 @@ void main() {
     });
 
     expect(settings.channelCapabilities.inAppAvailable, isTrue);
-    expect(settings.channelCapabilities.externalDeliverySupported, isFalse);
+    expect(settings.channelCapabilities.externalDeliverySupported, isTrue);
     expect(
       settings.sameValues(
         settings.copyWith(

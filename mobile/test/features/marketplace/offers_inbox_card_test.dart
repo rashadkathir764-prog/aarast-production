@@ -1,6 +1,9 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -13,12 +16,16 @@ import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dar
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
 import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
+import '../account_contexts/account_context_test_data.dart';
 
 QuoteRequest _receivedQuote() => QuoteRequest(
   id: 'quote-1',
@@ -498,6 +505,30 @@ Future<void> _pump(
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
   final authRepository = AuthRepository(apiClient, authStorage);
   final authController = _AuthedController(authRepository)..restoreSession();
+  final selectedAccountContext = accountContext(
+    role: AccountContextRole.owner,
+    planId: 'plan-1',
+  );
+  final accountContextController = AccountContextController(
+    contextsApi: _StaticContextsGateway(selectedAccountContext),
+    authStorage: authStorage,
+    setActiveWeddingPlan: (_) async {},
+  );
+  await accountContextController.refresh(allowInitialSingleContext: true);
+  final weddingPlans = _SelectedWeddingPlansProvider(
+    WeddingPlan(
+      id: 'plan-1',
+      ownerUserId: 'user-1',
+      title: 'خطة الاختبار',
+      city: 'صنعاء',
+      currency: 'YER',
+      status: 'PLANNING',
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    ),
+  );
+  addTearDown(accountContextController.dispose);
+  addTearDown(weddingPlans.dispose);
 
   await tester.pumpWidget(
     MultiProvider(
@@ -505,6 +536,10 @@ Future<void> _pump(
         Provider<AuthStorage>.value(value: authStorage),
         Provider<AuthRepository>.value(value: authRepository),
         ChangeNotifierProvider<AuthController>.value(value: authController),
+        ChangeNotifierProvider<AccountContextController>.value(
+          value: accountContextController,
+        ),
+        ChangeNotifierProvider<WeddingPlansProvider>.value(value: weddingPlans),
         ChangeNotifierProvider<ProviderMarketplaceProvider>.value(value: state),
         if (finance != null)
           ChangeNotifierProvider<FinanceProvider>.value(value: finance),
@@ -593,6 +628,33 @@ class _AcceptedQuoteFinanceApi extends FinanceApi {
       const [];
 }
 
+class _SelectedWeddingPlansProvider extends WeddingPlansProvider {
+  _SelectedWeddingPlansProvider(this.plan)
+    : super(
+        WeddingPlansApi(ApiClient(tokenProvider: () async => 'test-token')),
+      );
+
+  final WeddingPlan plan;
+
+  @override
+  WeddingPlan? get selectedPlan => plan;
+
+  @override
+  Future<void> loadWeddingPlan(String id) async {}
+}
+
+class _StaticContextsGateway implements AccountContextsGateway {
+  const _StaticContextsGateway(this.context);
+
+  final AccountContext context;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => [context];
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async => context;
+}
+
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   _FakeMarketplaceProvider({
     List<QuoteRequest> quoteRequests = const [],
@@ -655,10 +717,17 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   }) async {}
 
   @override
-  Future<bool> loadQuoteRequest(String quoteRequestId) async {
+  Future<bool> loadQuoteRequest(
+    String quoteRequestId, {
+    String? expectedWeddingPlanId,
+  }) async {
     directlyLoadedQuoteIds.add(quoteRequestId);
     final quote = quoteOnDirectLoad;
-    if (quote == null || quote.id != quoteRequestId) return false;
+    if (quote == null ||
+        quote.id != quoteRequestId ||
+        quote.weddingPlanId != expectedWeddingPlanId) {
+      return false;
+    }
     quoteRequestsData
       ..removeWhere((item) => item.id == quote.id)
       ..insert(0, quote);

@@ -102,6 +102,18 @@ User bottom navigation must cover:
 - Providers.
 - More.
 
+Contributor navigation must cover:
+
+- One `مساحتي` root with no bottom navigation or hidden tab subtrees.
+- Only permission-backed sections appear.
+- The account action remains available in loading, success, and error states.
+- `الخروج من المساحة` returns to path choice without clearing the account
+  session.
+- `تسجيل الخروج من الحساب` clears the selected context and account session,
+  then opens login.
+- The full surface remains RTL-safe and overflow-free at 320px and 1.3 text
+  scale.
+
 Provider bottom navigation must cover:
 
 - Home.
@@ -288,11 +300,22 @@ Cases:
 - Mark all as read.
 - Delete notification if supported.
 - Deep link to task, quote, plan, money, or safe fallback.
-- Push permission prompt timing.
+- First configured launch requests the Android notification permission once,
+  after the first frame.
+- Permission denial does not repeat the OS prompt on every launch.
+- A real task assignment and chat message show generic notifications while the
+  app is backgrounded and terminated.
+- Tapping a push opens the account notification inbox without selecting or
+  changing `AccountContextController.selectedContext`.
 
 Fail if:
 
-- Push permission appears at first app launch.
+- A configured first launch does not request notification permission, requests
+  it repeatedly, or requests it before the app renders.
+- A lock-screen alert exposes task titles, sender identity, phone numbers, or
+  private message text.
+- A push tap selects a plan context or restores history from a previous
+  context.
 - Notification deep link opens a forbidden route.
 - Notification opens a blank screen.
 

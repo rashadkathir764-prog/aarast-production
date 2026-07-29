@@ -7,15 +7,14 @@ import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../home/data/dashboard_summary_sources.dart';
-import '../../onboarding/models/persona_copy.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
-import '../providers/wedding_plans_provider.dart';
 import '../widgets/premium/premium_dashboard_view.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
@@ -99,6 +98,14 @@ class _WeddingPlanDashboardScreenState
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardSummaryProvider>();
     final auth = context.watch<AuthController>();
+    final selectedContext = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final selectedPlanId = _isLocalGuestPlan
+        ? widget.weddingPlanId
+        : selectedContext?.isPlan == true
+        ? selectedContext?.weddingPlanId
+        : null;
 
     return AarastScreenFrame(
       maxWidth: 520,
@@ -106,12 +113,16 @@ class _WeddingPlanDashboardScreenState
       child: RefreshIndicator(
         color: AppTheme.burgundy,
         onRefresh: _load,
-        child: _buildBody(provider, auth),
+        child: _buildBody(provider, auth, selectedPlanId),
       ),
     );
   }
 
-  Widget _buildBody(DashboardSummaryProvider provider, AuthController auth) {
+  Widget _buildBody(
+    DashboardSummaryProvider provider,
+    AuthController auth,
+    String? selectedPlanId,
+  ) {
     final summary = _isLocalGuestPlan
         ? _localSummary?.toDashboardSummary()
         : provider.summary;
@@ -120,7 +131,6 @@ class _WeddingPlanDashboardScreenState
         ? _localErrorMessage
         : provider.errorMessage;
     final bottomPadding = widget.embedded ? 158.0 : 36.0;
-    final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
 
     if (isLoading && summary == null) {
       return AnimatedSwitcher(
@@ -181,6 +191,19 @@ class _WeddingPlanDashboardScreenState
       );
     }
 
+    if (selectedPlanId == null || summary.planId != selectedPlanId) {
+      return _DashboardStateList(
+        bottomPadding: bottomPadding,
+        icon: LucideIcons.shieldAlert,
+        title: 'تعذر مطابقة مسار الخطة',
+        message:
+            'بيانات الرئيسية لا تطابق المسار المحدد حاليًا. ارجع إلى اختيار المسار ثم حاول مرة أخرى.',
+        actionLabel: 'العودة للرئيسية',
+        onAction: () => context.go(AppRouter.home),
+        tone: _StateTone.warning,
+      );
+    }
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 380),
       switchInCurve: Curves.easeOutCubic,
@@ -191,47 +214,33 @@ class _WeddingPlanDashboardScreenState
         key: ValueKey('royal-home-${summary.planId}'),
         child: Builder(
           builder: (_) {
-            final personaCopy = activePlan?.id == summary.planId
-                ? personaCopyForBackend(activePlan?.persona)
-                : null;
             return PremiumDashboardView(
               summary: summary,
-              userName: personaCopy?.isKnown == true
-                  ? personaCopy!.label
-                  : auth.user?.name ?? 'صاحب الخطة',
-              personaHeadline: personaCopy?.isKnown == true
-                  ? personaCopy!.dashboardHeadline
-                  : null,
+              userName: auth.user?.name ?? 'صاحب الخطة',
+              personaHeadline: null,
               bottomPadding: bottomPadding,
               onNotifications: () =>
-                  context.push(AppRouter.planNotifications(summary.planId)),
+                  context.push(AppRouter.planNotifications(selectedPlanId)),
               onProfile: () => context.push(AppRouter.more),
               onOpenPlan: () =>
-                  context.push(AppRouter.planCenter(summary.planId)),
-              onOpenMoney: () => context.go(AppRouter.money(summary.planId)),
-              onOpenTasks: () => context.go(AppRouter.tasks(summary.planId)),
+                  context.push(AppRouter.planCenter(selectedPlanId)),
+              onOpenMoney: () => context.go(AppRouter.money(selectedPlanId)),
+              onOpenTasks: () => context.go(AppRouter.tasks(selectedPlanId)),
               onOpenProviders: () =>
-                  context.go(AppRouter.planProviders(summary.planId)),
+                  context.go(AppRouter.planProviders(selectedPlanId)),
               onOpenGuests: () =>
-                  context.go(AppRouter.guestList(summary.planId)),
+                  context.go(AppRouter.guestList(selectedPlanId)),
               onOpenSharing: () => _isLocalGuestPlan
                   ? _requireAccountForSharing()
-                  : context.push(AppRouter.sharing(summary.planId)),
-              onOpenImportantItem: _openDashboardItem,
-              onOpenNextStep: () => _openNextStep(summary),
+                  : context.push(AppRouter.sharing(selectedPlanId)),
+              onOpenImportantItem: (item) =>
+                  _openDashboardItem(item, selectedPlanId),
+              onOpenNextStep: () => _openNextStep(summary, selectedPlanId),
             );
           },
         ),
       ),
     );
-  }
-
-  WeddingPlansProvider? _maybeWatchWeddingPlans(BuildContext context) {
-    try {
-      return context.watch<WeddingPlansProvider>();
-    } on ProviderNotFoundException {
-      return null;
-    }
   }
 
   LocalDatabase? _localDatabaseOrNull() {
@@ -250,56 +259,56 @@ class _WeddingPlanDashboardScreenState
     );
   }
 
-  void _openDashboardItem(DashboardImportantItem item) {
+  void _openDashboardItem(DashboardImportantItem item, String planId) {
     final route = item.routeTarget ?? item.route;
     if (route == null || route.trim().isEmpty) {
-      _openNextStepForType(item.type);
+      _openNextStepForType(item.type, planId);
       return;
     }
     context.push(route);
   }
 
-  void _openNextStep(DashboardSummary summary) {
+  void _openNextStep(DashboardSummary summary, String planId) {
     final item = summary.importantItems.isEmpty
         ? null
         : summary.importantItems.first;
     if (item != null) {
-      _openDashboardItem(item);
+      _openDashboardItem(item, planId);
       return;
     }
     if ((summary.duePaymentSchedulesCount ?? 0) > 0) {
-      context.go(AppRouter.money(summary.planId));
+      context.go(AppRouter.money(planId));
     } else if (summary.overdueTasks > 0 || summary.todayTasks > 0) {
-      context.go(AppRouter.tasks(summary.planId));
+      context.go(AppRouter.tasks(planId));
     } else if (summary.quoteRequestsCount > 0 ||
         summary.planProviders.isNotEmpty) {
-      context.go(AppRouter.planProviders(summary.planId));
+      context.go(AppRouter.planProviders(planId));
     } else {
-      context.go(AppRouter.planCenter(summary.planId));
+      context.go(AppRouter.planCenter(planId));
     }
   }
 
-  void _openNextStepForType(String type) {
+  void _openNextStepForType(String type, String planId) {
     if (type.contains('PAYMENT_SCHEDULE') ||
         type.contains('COST') ||
         type.contains('BUDGET') ||
         type.contains('MONEY')) {
-      context.go(AppRouter.money(widget.weddingPlanId));
+      context.go(AppRouter.money(planId));
       return;
     }
     if (type.contains('TASK')) {
-      context.go(AppRouter.tasks(widget.weddingPlanId));
+      context.go(AppRouter.tasks(planId));
       return;
     }
     if (type.contains('QUOTE') || type.contains('PROVIDER')) {
-      context.go(AppRouter.planProviders(widget.weddingPlanId));
+      context.go(AppRouter.planProviders(planId));
       return;
     }
     if (type.contains('GUEST')) {
-      context.go(AppRouter.guestList(widget.weddingPlanId));
+      context.go(AppRouter.guestList(planId));
       return;
     }
-    context.go(AppRouter.planCenter(widget.weddingPlanId));
+    context.go(AppRouter.planCenter(planId));
   }
 }
 

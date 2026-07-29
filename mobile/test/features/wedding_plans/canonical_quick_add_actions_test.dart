@@ -9,6 +9,10 @@ import 'dart:io';
 
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
@@ -19,8 +23,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../account_contexts/account_context_test_data.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('buildCanonicalQuickAddActions', () {
     test('keeps quick-add visibility aligned across both shells', () {
       expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
@@ -222,40 +231,58 @@ void main() {
   });
 
   group('WeddingPlanShell routing', () {
-    test('both production shells use one canonical chrome implementation', () {
-      final chrome = File('lib/features/shell/widgets/plan_shell_chrome.dart');
-      expect(
-        chrome.existsSync(),
-        isTrue,
-        reason: 'PlanShellChrome must be the only production shell frame.',
-      );
+    test(
+      'owner shells use canonical chrome while contributor shell stays isolated',
+      () {
+        final chrome = File(
+          'lib/features/shell/widgets/plan_shell_chrome.dart',
+        );
+        expect(
+          chrome.existsSync(),
+          isTrue,
+          reason: 'PlanShellChrome must be the only production shell frame.',
+        );
 
-      for (final path in <String>[
-        'lib/features/shell/main_shell.dart',
-        'lib/features/shell/screens/wedding_plan_shell.dart',
-      ]) {
-        final source = File(path).readAsStringSync();
-        expect(source, contains('PlanShellChrome('), reason: path);
-        expect(source, isNot(contains('child: Scaffold(')), reason: path);
-        expect(
-          source,
-          isNot(contains('RoyalSmartFloatingActionButton(')),
-          reason: path,
-        );
-        expect(
-          source,
-          isNot(contains('RoyalDashboardBottomNav(')),
-          reason: path,
-        );
-      }
-    });
+        for (final path in <String>[
+          'lib/features/shell/main_shell.dart',
+          'lib/features/shell/screens/wedding_plan_shell.dart',
+        ]) {
+          final source = File(path).readAsStringSync();
+          expect(source, contains('PlanShellChrome('), reason: path);
+          expect(
+            source,
+            isNot(contains('RoyalSmartFloatingActionButton(')),
+            reason: path,
+          );
+          expect(
+            source,
+            isNot(contains('RoyalDashboardBottomNav(')),
+            reason: path,
+          );
+        }
+
+        final routeShell = File(
+          'lib/features/shell/screens/wedding_plan_shell.dart',
+        ).readAsStringSync();
+        expect(routeShell, isNot(contains('child: Scaffold(')));
+
+        final mainShell = File(
+          'lib/features/shell/main_shell.dart',
+        ).readAsStringSync();
+        expect(mainShell, contains('class _ContributorMainShell'));
+        expect(mainShell, contains('contributor-workspace-'));
+        expect(mainShell, isNot(contains('contributor-indexed-stack-')));
+        expect(mainShell, isNot(contains('contributor-navigation-')));
+        expect(mainShell, isNot(contains('contributor-tab-')));
+      },
+    );
 
     testWidgets('money subpages hide the root money smart FAB', (tester) async {
       final router = _buildPlanShellRouter(
         initialLocation: AppRouter.moneyCosts('plan-7'),
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await _pumpPlanShellRouter(tester, router);
       await tester.pump();
 
       expect(find.text('costs'), findsOneWidget);
@@ -270,11 +297,10 @@ void main() {
             initialLocation: AppRouter.money('plan-7'),
           );
           addTearDown(router.dispose);
-          await tester.pumpWidget(
-            ChangeNotifierProvider<FinanceProvider>.value(
-              value: _ShellFinanceProvider(hasBudget: hasBudget),
-              child: MaterialApp.router(routerConfig: router),
-            ),
+          await _pumpPlanShellRouter(
+            tester,
+            router,
+            financeProvider: _ShellFinanceProvider(hasBudget: hasBudget),
           );
           await tester.pump();
         }
@@ -302,7 +328,7 @@ void main() {
         initialLocation: AppRouter.guestList('plan-7'),
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await _pumpPlanShellRouter(tester, router);
       await tester.pump();
 
       expect(find.text('guests'), findsOneWidget);
@@ -323,7 +349,7 @@ void main() {
         initialLocation: AppRouter.weddingPlanDashboard('plan-7'),
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await _pumpPlanShellRouter(tester, router);
       await tester.pump();
 
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
@@ -388,7 +414,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await _pumpPlanShellRouter(tester, router);
       await tester.pump();
       unawaited(router.push(AppRouter.planCenter('plan-7')));
       await tester.pump();
@@ -428,6 +454,41 @@ void main() {
       expect(source, contains('context.go(AppRouter.planProviders'));
     });
   });
+}
+
+Future<void> _pumpPlanShellRouter(
+  WidgetTester tester,
+  GoRouter router, {
+  FinanceProvider? financeProvider,
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final context = accountContext(
+    role: AccountContextRole.owner,
+    planId: 'plan-7',
+  );
+  final controller = AccountContextController(
+    contextsApi: _StaticAccountContextsGateway(context),
+    authStorage: AuthStorage(preferences),
+    setActiveWeddingPlan: (_) async {},
+  );
+  await controller.refresh();
+  expect(await controller.select(context.contextKey), isTrue);
+  addTearDown(controller.dispose);
+
+  Widget app = MaterialApp.router(routerConfig: router);
+  if (financeProvider != null) {
+    app = ChangeNotifierProvider<FinanceProvider>.value(
+      value: financeProvider,
+      child: app,
+    );
+  }
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AccountContextController>.value(
+      value: controller,
+      child: app,
+    ),
+  );
 }
 
 GoRouter _buildPlanShellRouter({
@@ -481,6 +542,23 @@ GoRouter _buildPlanShellRouter({
       ...extraRootRoutes,
     ],
   );
+}
+
+class _StaticAccountContextsGateway implements AccountContextsGateway {
+  const _StaticAccountContextsGateway(this.context);
+
+  final AccountContext context;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => [context];
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async {
+    if (context.contextKey != contextKey) {
+      throw StateError('Unknown context');
+    }
+    return context;
+  }
 }
 
 Future<void> _tapNavIcon(WidgetTester tester, IconData icon) async {

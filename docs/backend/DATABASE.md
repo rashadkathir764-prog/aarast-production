@@ -2,14 +2,14 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-26. Route-level behavior belongs in
+Current documentation snapshot: 2026-07-29. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
 
 | Entity | Purpose |
 | --- | --- |
-| User | Represents one person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. `role`/`appRole` are legacy account-mode fields and are not sufficient to discover or authorize an active product context. Owner contexts derive from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and provider contexts from `Provider.userId`. |
+| User | Represents one person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. `appPasswordConfiguredAt` proves that an application credential was explicitly chosen; a bcrypt hash alone is insufficient because the historical invite flow generated an unreachable random password. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. `role`/`appRole` are legacy account-mode fields and are not sufficient to discover or authorize an active product context. Owner contexts derive from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and provider contexts from `Provider.userId`. |
 | Provider | Represents a vendor or business that offers wedding-related services. |
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
 | Category | Groups services into discoverable wedding-service categories. |
@@ -24,7 +24,8 @@ Current documentation snapshot: 2026-07-26. Route-level behavior belongs in
 | --- | --- |
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. New provider-audience quote/chat alerts store generic text and explicit audience metadata instead of requester/sender contact identity. |
-| OutboxEvent | Durable PostgreSQL queue for conversation message/activity availability, notification availability, conversation-access revocation, all-user-session revocation, and one-session revocation. Domain/session rows and their events commit together. Workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. Strict realtime dispatch is processed only after the adapter action resolves; unavailable or rejected delivery remains retryable. |
+| PushInstallation | One Firebase Installation ID bound to one authenticated account and platform. The globally unique FID is moved atomically when a shared device signs into another account; account deletion cascades installations. |
+| OutboxEvent | Durable PostgreSQL queue for conversation message/activity availability, notification availability, FCM delivery requests, conversation-access revocation, all-user-session revocation, and one-session revocation. Domain/session rows and their events commit together. Workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. Strict realtime and push dispatch are processed only after their adapter action resolves; unavailable or rejected delivery remains retryable. |
 | BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`. A positive allocation requires a non-null general budget, and total allocations may not exceed it. |
 | WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. It has no due-date field; payment timing belongs only to `PaymentSchedule.dueDate`. |
 | CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
@@ -158,6 +159,11 @@ The backend now includes the approved provider-reference and quote-lead foundati
   `20260726041000_enforce_invite_otp_context` adds
   `OtpCode_invite_access_context_check`: `INVITE_ACCESS` requires a non-null
   `planInviteId`, while every other purpose requires it to be null.
+  Migration `20260729010000_track_application_password_setup` adds
+  `User.appPasswordConfiguredAt`, preserves explicitly configured ordinary and
+  admin-application credentials, leaves only the historical generated invite
+  accounts unset, and revokes their old application refresh sessions until a
+  token-and-phone-bound recovery replaces the generated password.
   Verification takes a row lock and commits comparison outcome, bounded failure
   count, terminal exhaustion, or one-time consumption in one retryable
   transaction so concurrent attempts cannot exceed the stored ceiling or both
@@ -217,13 +223,16 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `NotificationPreference` stores three effective content preferences for task,
   payment, and provider/quote/chat notifications. In-app delivery is always
   available and is not a stored toggle. When no preference row exists, the
-  three content categories default to enabled. Legacy push, SMS, WhatsApp, and
-  email booleans are forced to `false`; migration
-  `20260726020000_disable_unsupported_notification_channels` scrubs old `true`
-  values and changes the push default to `false`. Settings writes and
-  preference-aware notification creation serialize through the owning `User`
-  row so a committed disable cannot be followed by a notification decided from
-  stale state.
+  three content categories default to enabled. SMS, WhatsApp, and email remain
+  forced to `false`. Push is device-managed: registering the first
+  `PushInstallation` enables it and removing the last enabled installation
+  disables it. Settings writes cannot enable push directly. Preference-aware
+  notification creation and installation reassignment lock the owning users so
+  a committed change cannot be followed by delivery decided from stale state.
+- `PushInstallation` stores a unique Firebase Installation ID, authenticated
+  `userId`, platform, enabled state, and last-seen/timestamps. Migration
+  `20260729020000_add_firebase_push_installations` also adds
+  `NotificationType.TASK_ASSIGNED`.
 - `Notification` for persisted task, payment-schedule, sharing, and quote alerts
   with deduplication. Migration
   `20260726010000_scrub_notification_contact_pii` rewrites historical
@@ -290,7 +299,7 @@ rewrite as permission to restore a removed live model.
 | Model | Field count | Notable fields |
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
-| `User` | 47 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `User` | 49 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 12 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
@@ -309,6 +318,7 @@ rewrite as permission to restore a removed live model.
 | `PlanInvite` | 30 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 14 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt`, `planInviteId` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
+| `PushInstallation` | 9 | `id`, `userId`, `lastSeenAt`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
 | `Guest` | 18 | `id`, `weddingPlanId`, `groupId`, `createdAt`, `updatedAt` |
@@ -331,5 +341,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 41
+Total models: 42
 <!-- DOCS-SYNC:END -->

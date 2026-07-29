@@ -8,7 +8,10 @@ void main() {
     });
 
     test('formats full Arabic date with weekday by default', () {
-      expect(formatArabicDate(DateTime(2026, 12, 28)), 'الاثنين، 28 ديسمبر 2026');
+      expect(
+        formatArabicDate(DateTime(2026, 12, 28)),
+        'الاثنين، 28 ديسمبر 2026',
+      );
     });
 
     test('can omit weekday for dense cards', () {

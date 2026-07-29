@@ -7,7 +7,9 @@ import '../../../core/config/app_feature_flags.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
@@ -229,15 +231,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     NotificationsProvider provider,
     AarastNotification notification,
   ) async {
-    final marked = await provider.markRead(notification);
-    if (!mounted || !marked) return;
     final target = resolveNotificationRouteTarget(notification);
     if (target == null || !isSafeNotificationRouteTarget(target)) return;
+    if (!_isNotificationTargetCompatible(target)) {
+      AarastToast.showError(
+        context,
+        'هذا التنبيه لا يطابق مسار الخطة المحدد حاليًا.',
+      );
+      return;
+    }
+    final marked = await provider.markRead(notification);
+    if (!mounted || !marked) return;
     if (isPlanShellNotificationRouteTarget(target)) {
       context.go(target);
       return;
     }
     await context.push(target);
+  }
+
+  bool _isNotificationTargetCompatible(String target) {
+    final targetUri = Uri.tryParse(target);
+    final segments = targetUri?.pathSegments;
+    final targetPlanId =
+        segments != null &&
+            segments.length >= 2 &&
+            segments.first == 'wedding-plans'
+        ? segments[1]
+        : null;
+    if (targetPlanId == null) return true;
+    if (_isLocalPlanNotifications) {
+      return targetPlanId == widget.weddingPlanId;
+    }
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    return selected?.isPlan == true && selected?.weddingPlanId == targetPlanId;
   }
 }
 

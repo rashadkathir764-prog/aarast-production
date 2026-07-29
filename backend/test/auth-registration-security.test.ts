@@ -23,6 +23,7 @@ function createHarness() {
   let otpSequence = 0;
   let userSequence = 0;
   let planInvites: any[] = [];
+  const sharedMembers: any[] = [];
   let failNextRefreshCreate = false;
 
   const prisma: any = {
@@ -111,6 +112,7 @@ function createHarness() {
           appRole: "WEDDING_USER",
           status: "ACTIVE",
           appPasswordHash: null,
+          appPasswordConfiguredAt: null,
           appName: null,
           appEmail: null,
           appAvatarUrl: null,
@@ -152,7 +154,12 @@ function createHarness() {
             (where.passwordHash === undefined ||
               where.passwordHash === user.passwordHash) &&
             (where.appPasswordHash === undefined ||
-              where.appPasswordHash === user.appPasswordHash);
+              where.appPasswordHash === user.appPasswordHash) &&
+            (where.appPasswordConfiguredAt === undefined ||
+              (where.appPasswordConfiguredAt?.not === null
+                ? user.appPasswordConfiguredAt !== null
+                : where.appPasswordConfiguredAt ===
+                  user.appPasswordConfiguredAt));
           if (!matches) continue;
           Object.assign(user, data, { updatedAt: new Date() });
           count += 1;
@@ -170,6 +177,15 @@ function createHarness() {
         refreshTokens.push(token);
         return token;
       },
+    },
+    sharedMember: {
+      findUnique: async ({ where }: any) =>
+        sharedMembers.find(
+          (member) =>
+            member.weddingPlanId ===
+              where.weddingPlanId_userId?.weddingPlanId &&
+            member.userId === where.weddingPlanId_userId?.userId,
+        ) ?? null,
     },
     planInvite: {
       findFirst: async ({ where }: any) =>
@@ -267,6 +283,7 @@ function createHarness() {
           phone,
           email,
           passwordHash: await bcryptjs.hash("secret123", 4),
+          appPasswordConfiguredAt: new Date(),
           phoneVerifiedAt: verified ? new Date() : null,
           lastLoginAt: null,
         },
@@ -276,6 +293,13 @@ function createHarness() {
     },
     setPlanInvites: (values: any[]) => {
       planInvites = values;
+    },
+    addSharedMember: (weddingPlanId: string, userId: string) => {
+      sharedMembers.push({
+        id: `member-${sharedMembers.length + 1}`,
+        weddingPlanId,
+        userId,
+      });
     },
     failNextRefreshCreate: () => {
       failNextRefreshCreate = true;
@@ -555,6 +579,7 @@ test("an admin needs a separate application password for a wedding-app bearer", 
     assert.equal(refreshTokens.length, 0);
 
     admin.appPasswordHash = await bcryptjs.hash("application-secret", 4);
+    admin.appPasswordConfiguredAt = new Date();
     const response = await service.login({
       phone: "777123456",
       password: "application-secret",
@@ -573,6 +598,7 @@ test("general OTP login gives an admin only a standard wedding-app session", asy
     admin.role = 'ADMIN';
     admin.adminRole = 'SUPER_ADMIN';
     admin.appPasswordHash = await bcryptjs.hash('application-secret', 4);
+    admin.appPasswordConfiguredAt = new Date();
     admin.appName = 'Wedding App Admin';
 
     await service.requestOtp({
@@ -1110,6 +1136,61 @@ test("private invite setup can reuse the same unconsumed OTP after credentials a
     });
     assert.equal(users.length, 1);
     assert.ok(otps[0].consumedAt);
+  });
+});
+
+test("an accepted legacy invite replaces its generated password and restores a durable session", async () => {
+  await withDevOtp(async () => {
+    const token = TEST_INVITE_TOKEN;
+    const {
+      service,
+      addUser,
+      addSharedMember,
+      refreshTokens,
+      setPlanInvite,
+    } = createHarness();
+    const legacy = await addUser("+967777123456", true);
+    legacy.name = "مشارك أعرست";
+    legacy.passwordHash = await bcryptjs.hash("unreachable-random-secret", 4);
+    legacy.appPasswordConfiguredAt = null;
+    addSharedMember("plan-legacy", legacy.id);
+    setPlanInvite({
+      id: "invite-accepted-legacy",
+      weddingPlanId: "plan-legacy",
+      inviteeUserId: legacy.id,
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: new Date(),
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.requestInviteOtp(
+      "+967777123456",
+      "invite-accepted-legacy",
+      createHash("sha256").update(token).digest("hex"),
+      {},
+      true,
+    );
+    const result = await service.verifyInviteOtp({
+      token,
+      phone: "777123456",
+      code: "123456",
+      name: "المساهم أحمد",
+      password: "chosen-contributor-password",
+    });
+
+    assert.equal(legacy.name, "المساهم أحمد");
+    assert.ok(legacy.appPasswordConfiguredAt);
+    assert.ok(
+      await bcryptjs.compare(
+        "chosen-contributor-password",
+        legacy.passwordHash,
+      ),
+    );
+    assert.match(result.refreshToken ?? "", /^aarast_app_/);
+    assert.equal(refreshTokens.length, 1);
   });
 });
 

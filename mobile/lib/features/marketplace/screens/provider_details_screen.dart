@@ -8,11 +8,15 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/models/account_context.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';
 import '../widgets/quote_status_chip.dart';
+
+part 'provider_details_screen.widgets.dart';
 
 class ProviderDetailsScreen extends StatefulWidget {
   const ProviderDetailsScreen({
@@ -36,10 +40,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      await context.read<ProviderMarketplaceProvider>().loadProviderDetails(
-        widget.providerId,
-        weddingPlanId: widget.weddingPlanId,
-      );
+      await _loadDetails();
       if (mounted) setState(() => _quoteContextReady = true);
     });
   }
@@ -52,10 +53,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       _quoteContextReady = false;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        await context.read<ProviderMarketplaceProvider>().loadProviderDetails(
-          widget.providerId,
-          weddingPlanId: widget.weddingPlanId,
-        );
+        await _loadDetails();
         if (mounted) setState(() => _quoteContextReady = true);
       });
     }
@@ -63,6 +61,10 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selected = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final selectedPlanId = _matchingSelectedPlanId(selected);
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
@@ -79,7 +81,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               builder: (context, marketplace, _) {
                 final quotes = marketplace.quotesForProviderInScope(
                   widget.providerId,
-                  weddingPlanId: widget.weddingPlanId,
+                  weddingPlanId: selectedPlanId,
                 );
                 final latest = quotes.isEmpty ? null : quotes.first;
                 final loadingQuote =
@@ -176,7 +178,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                 action: OutlinedButton.icon(
                   onPressed: () => state.loadProviderDetails(
                     widget.providerId,
-                    weddingPlanId: widget.weddingPlanId,
+                    weddingPlanId: selectedPlanId,
                   ),
                   icon: const Icon(LucideIcons.refreshCw),
                   label: const Text('إعادة المحاولة'),
@@ -224,6 +226,48 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     );
   }
 
+  Future<void> _loadDetails() async {
+    final hasAccount = await _hasAccount();
+    if (!mounted) return;
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    final selectedPlanId = hasAccount
+        ? _matchingSelectedPlanId(selected)
+        : null;
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    marketplace.configureAccountScope(
+      includeAccountData: hasAccount,
+      weddingPlanId: selectedPlanId,
+    );
+    await marketplace.loadProviderDetails(
+      widget.providerId,
+      weddingPlanId: selectedPlanId,
+    );
+  }
+
+  Future<bool> _hasAccount() async {
+    try {
+      return await AuthActionGuard.hasAccount(context);
+    } on ProviderNotFoundException {
+      // Public provider previews and isolated route tests do not mount the
+      // account storage. They may browse public details, but never receive
+      // account-scoped quotes.
+      return false;
+    }
+  }
+
+  String? _matchingSelectedPlanId(AccountContext? selected) {
+    if (selected?.isPlan != true) return null;
+    final selectedPlanId = selected?.weddingPlanId?.toString().trim();
+    if (selectedPlanId == null || selectedPlanId.isEmpty) return null;
+    final requestedPlanId = widget.weddingPlanId?.trim();
+    if (requestedPlanId != null &&
+        requestedPlanId.isNotEmpty &&
+        requestedPlanId != selectedPlanId) {
+      return null;
+    }
+    return selectedPlanId;
+  }
+
   String _primaryQuoteActionLabel(QuoteRequest? quote) {
     if (quote == null) return 'طلب عرض سعر';
     if (quote.status == 'SENT' || quote.status == 'VIEWED') {
@@ -248,79 +292,21 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       context.push(AppRouter.quoteConversation(quote.id));
       return;
     }
-    final planId = quote.weddingPlanId ?? widget.weddingPlanId;
-    if (planId != null && planId.isNotEmpty) {
-      context.push(AppRouter.planProviders(planId, quoteId: quote.id));
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    final selectedPlanId = selected?.isPlan == true
+        ? selected?.weddingPlanId
+        : null;
+    final quotePlanId = quote.weddingPlanId?.trim();
+    if (selectedPlanId == null ||
+        (quotePlanId != null &&
+            quotePlanId.isNotEmpty &&
+            quotePlanId != selectedPlanId)) {
+      AarastToast.showError(
+        context,
+        'هذا العرض لا يطابق مسار الخطة المحدد حاليًا.',
+      );
       return;
     }
-    context.push('${AppRouter.providerMarketplace}?quoteId=${quote.id}');
-  }
-}
-
-Future<void> _shareProvider(
-  BuildContext context,
-  MarketplaceProvider provider,
-) async {
-  final city = provider.city?.nameAr.trim();
-  final snippet = city == null || city.isEmpty
-      ? provider.businessName
-      : '${provider.businessName} — $city';
-  await Clipboard.setData(ClipboardData(text: snippet));
-  if (!context.mounted) return;
-  AarastToast.showSuccess(context, 'تم نسخ بيانات المورد للمشاركة');
-}
-
-class _ContactIconButton extends StatelessWidget {
-  const _ContactIconButton({required this.onTap, super.key});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'المحادثات',
-      child: SizedBox(
-        width: 54,
-        height: 54,
-        child: OutlinedButton(
-          onPressed: onTap,
-          style: OutlinedButton.styleFrom(
-            padding: EdgeInsets.zero,
-            foregroundColor: AppTheme.burgundy,
-            backgroundColor: AppTheme.surface,
-            side: const BorderSide(color: AppTheme.border),
-            shape: const CircleBorder(),
-          ),
-          child: const Icon(LucideIcons.messageCircle, size: 22),
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailsFrame extends StatelessWidget {
-  const _DetailsFrame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-      children: [
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: IconButton(
-            tooltip: 'رجوع',
-            onPressed: () {
-              if (context.canPop()) context.pop();
-            },
-            icon: const Icon(LucideIcons.chevronRight),
-          ),
-        ),
-        const SizedBox(height: 80),
-        child,
-      ],
-    );
+    context.push(AppRouter.planProviders(selectedPlanId, quoteId: quote.id));
   }
 }

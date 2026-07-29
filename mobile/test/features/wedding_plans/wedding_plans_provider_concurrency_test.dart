@@ -27,23 +27,26 @@ void main() {
       expect(provider.errorMessage, isNull);
     });
 
-    test('an older set-active result cannot replace a newer active plan', () async {
-      final first = Completer<ActiveWeddingPlan>();
-      final second = Completer<ActiveWeddingPlan>();
-      final api = _ControlledWeddingPlansApi()
-        ..onSetActive = (id) => id == 'plan-1' ? first.future : second.future;
-      final provider = WeddingPlansProvider(api);
+    test(
+      'an older set-active result cannot replace a newer active plan',
+      () async {
+        final first = Completer<ActiveWeddingPlan>();
+        final second = Completer<ActiveWeddingPlan>();
+        final api = _ControlledWeddingPlansApi()
+          ..onSetActive = (id) => id == 'plan-1' ? first.future : second.future;
+        final provider = WeddingPlansProvider(api);
 
-      final older = provider.setActiveWeddingPlan('plan-1');
-      final newer = provider.setActiveWeddingPlan('plan-2');
-      second.complete(_activePlan('plan-2'));
-      expect((await newer)?.id, 'plan-2');
-      first.complete(_activePlan('plan-1'));
-      expect(await older, isNull);
+        final older = provider.setActiveWeddingPlan('plan-1');
+        final newer = provider.setActiveWeddingPlan('plan-2');
+        second.complete(_activePlan('plan-2'));
+        expect((await newer)?.id, 'plan-2');
+        first.complete(_activePlan('plan-1'));
+        expect(await older, isNull);
 
-      expect(provider.activePlan?.id, 'plan-2');
-      expect(provider.selectedPlan?.id, 'plan-2');
-    });
+        expect(provider.activePlan?.id, 'plan-2');
+        expect(provider.selectedPlan?.id, 'plan-2');
+      },
+    );
 
     test(
       'a stale load-active response cannot undo a newer explicit selection',
@@ -71,11 +74,10 @@ class _ControlledWeddingPlansApi extends WeddingPlansApi {
   _ControlledWeddingPlansApi()
     : super(ApiClient(tokenProvider: () async => 'test-token'));
 
-  Future<WeddingPlan> Function(String id) onGetPlan =
-      (id) async => _plan(id);
+  Future<WeddingPlan> Function(String id) onGetPlan = (id) async => _plan(id);
   Future<ActiveWeddingPlan?> Function() onGetActive = () async => null;
-  Future<ActiveWeddingPlan> Function(String id) onSetActive =
-      (id) async => _activePlan(id);
+  Future<ActiveWeddingPlan> Function(String id) onSetActive = (id) async =>
+      _activePlan(id);
 
   @override
   Future<WeddingPlan> getWeddingPlan(String id) => onGetPlan(id);

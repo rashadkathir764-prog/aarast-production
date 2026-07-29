@@ -1,28 +1,31 @@
-import 'reflect-metadata';
+import "reflect-metadata";
 
-import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import {
   Notification,
   NotificationPriority,
   NotificationType,
   UserStatus,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../src/auth/authenticated-user.interface';
-import { NotificationsService } from '../src/notifications/notifications.service';
-import { OutboxService } from '../src/outbox/outbox.service';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { PermissionService } from '../src/sharing/permission.service';
-import { SharingService } from '../src/sharing/sharing.service';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../src/auth/authenticated-user.interface";
+import { NotificationsService } from "../src/notifications/notifications.service";
+import { OutboxEventTypes } from "../src/outbox/outbox.constants";
+import { OutboxService } from "../src/outbox/outbox.service";
+import { PrismaService } from "../src/prisma/prisma.service";
+import { PermissionService } from "../src/sharing/permission.service";
+import { SharingService } from "../src/sharing/sharing.service";
 
-const user = { id: 'user-1' } as AuthenticatedUser;
+const user = { id: "user-1" } as AuthenticatedUser;
 
 function createHarness() {
   const records = new Map<string, Notification>();
   let sequence = 0;
   const notification = {
     findUnique: async ({ where }: { where: { dedupeKey?: string } }) =>
-      [...records.values()].find((item) => item.dedupeKey === where.dedupeKey) ?? null,
+      [...records.values()].find(
+        (item) => item.dedupeKey === where.dedupeKey,
+      ) ?? null,
     create: async ({ data }: { data: Record<string, unknown> }) => {
       const now = new Date();
       const item: Notification = {
@@ -30,7 +33,9 @@ function createHarness() {
         userId: data.userId as string,
         weddingPlanId: (data.weddingPlanId as string | null) ?? null,
         type: data.type as NotificationType,
-        priority: (data.priority as NotificationPriority) ?? NotificationPriority.NORMAL,
+        priority:
+          (data.priority as NotificationPriority) ??
+          NotificationPriority.NORMAL,
         title: data.title as string,
         body: data.body as string,
         entityType: (data.entityType as string | null) ?? null,
@@ -50,7 +55,13 @@ function createHarness() {
       const item = records.get(where.id);
       return item?.userId === where.userId ? item : null;
     },
-    update: async ({ where, data }: { where: { id: string }; data: Partial<Notification> }) => {
+    update: async ({
+      where,
+      data,
+    }: {
+      where: { id: string };
+      data: Partial<Notification>;
+    }) => {
       const item = {
         ...records.get(where.id)!,
         ...data,
@@ -61,7 +72,8 @@ function createHarness() {
     },
     count: async ({ where }: { where: { userId: string; archivedAt: null } }) =>
       [...records.values()].filter(
-        (item) => item.userId === where.userId && item.archivedAt === where.archivedAt,
+        (item) =>
+          item.userId === where.userId && item.archivedAt === where.archivedAt,
       ).length,
     findMany: async ({
       where,
@@ -73,20 +85,25 @@ function createHarness() {
       take: number;
     }) =>
       [...records.values()]
-        .filter((item) => item.userId === where.userId && item.archivedAt === where.archivedAt)
+        .filter(
+          (item) =>
+            item.userId === where.userId &&
+            item.archivedAt === where.archivedAt,
+        )
         .sort(
           (left, right) =>
-            right.createdAt.getTime() - left.createdAt.getTime() || right.id.localeCompare(left.id),
+            right.createdAt.getTime() - left.createdAt.getTime() ||
+            right.id.localeCompare(left.id),
         )
         .slice(skip, skip + take),
   };
-  const outboxEvent = { create: async () => ({ id: 'outbox-1' }) };
+  const outboxEvent = { create: async () => ({ id: "outbox-1" }) };
   const provider = { findUnique: async () => null };
   const conversation = { findUnique: async () => null };
   const notificationPreference = { findUnique: async () => null };
   const queryRaw = async (query: any) => {
     const sql = Array.isArray(query?.strings)
-      ? query.strings.join(' ')
+      ? query.strings.join(" ")
       : String(query);
     return sql.includes('FROM "User"')
       ? [{ id: user.id, status: UserStatus.ACTIVE }]
@@ -126,35 +143,35 @@ function createHarness() {
   };
 }
 
-test('notification creation preserves priority, entity, and route metadata', async () => {
+test("notification creation preserves priority, entity, and route metadata", async () => {
   const { service } = createHarness();
   const created = await service.createNotification({
     userId: user.id,
-    weddingPlanId: 'plan-1',
+    weddingPlanId: "plan-1",
     type: NotificationType.QUOTE_OFFER_RECEIVED,
     priority: NotificationPriority.HIGH,
-    title: 'Quote received',
-    body: 'A real provider offer arrived.',
-    entityType: 'quote_request',
-    entityId: 'quote-1',
-    routeTarget: '/wedding-plans/plan-1/plan-center',
-    dedupeKey: 'quote-1-received',
+    title: "Quote received",
+    body: "A real provider offer arrived.",
+    entityType: "quote_request",
+    entityId: "quote-1",
+    routeTarget: "/wedding-plans/plan-1/plan-center",
+    dedupeKey: "quote-1-received",
   });
 
   assert.ok(created);
   assert.equal(created.priority, NotificationPriority.HIGH);
-  assert.equal(created.entityType, 'quote_request');
-  assert.equal(created.entityId, 'quote-1');
-  assert.equal(created.routeTarget, '/wedding-plans/plan-1/plan-center');
+  assert.equal(created.entityType, "quote_request");
+  assert.equal(created.entityId, "quote-1");
+  assert.equal(created.routeTarget, "/wedding-plans/plan-1/plan-center");
 });
 
-test('transaction-scoped notification creation reuses the caller transaction', async () => {
+test("transaction-scoped notification creation reuses the caller transaction", async () => {
   let outboxRows = 0;
   const now = new Date();
   const client = {
     notification: {
       create: async ({ data }: { data: Record<string, unknown> }) => ({
-        id: 'notification-invite',
+        id: "notification-invite",
         userId: data.userId as string,
         weddingPlanId: null,
         type: data.type as NotificationType,
@@ -175,13 +192,13 @@ test('transaction-scoped notification creation reuses the caller transaction', a
     outboxEvent: {
       create: async () => {
         outboxRows += 1;
-        return { id: 'outbox-invite' };
+        return { id: "outbox-invite" };
       },
     },
   };
   const prisma = {
     $transaction: async () => {
-      throw new Error('nested transaction must not be opened');
+      throw new Error("nested transaction must not be opened");
     },
   } as unknown as PrismaService;
   const service = new NotificationsService(
@@ -193,17 +210,17 @@ test('transaction-scoped notification creation reuses the caller transaction', a
   const created = await service.createNotificationInTransaction(client as any, {
     userId: user.id,
     type: NotificationType.SHARING_INVITE_ACCEPTED,
-    title: 'Invite accepted',
-    body: 'Participant accepted the invitation.',
-    dedupeKey: 'invite-accepted',
+    title: "Invite accepted",
+    body: "Participant accepted the invitation.",
+    dedupeKey: "invite-accepted",
   });
 
   assert.ok(created);
-  assert.equal(created.id, 'notification-invite');
+  assert.equal(created.id, "notification-invite");
   assert.equal(outboxRows, 1);
 });
 
-test('disabled provider-message preference suppresses quote notifications and outbox work', async () => {
+test("disabled provider-message preference suppresses quote notifications and outbox work", async () => {
   let notificationRows = 0;
   let outboxRows = 0;
   const client = {
@@ -218,13 +235,15 @@ test('disabled provider-message preference suppresses quote notifications and ou
     notification: {
       create: async () => {
         notificationRows += 1;
-        throw new Error('disabled preference must prevent notification creation');
+        throw new Error(
+          "disabled preference must prevent notification creation",
+        );
       },
     },
     outboxEvent: {
       create: async () => {
         outboxRows += 1;
-        throw new Error('disabled preference must prevent outbox creation');
+        throw new Error("disabled preference must prevent outbox creation");
       },
     },
   };
@@ -234,29 +253,26 @@ test('disabled provider-message preference suppresses quote notifications and ou
     new OutboxService(),
   );
 
-  const created = await service.createNotificationInTransaction(
-    client as any,
-    {
-      userId: user.id,
-      type: NotificationType.QUOTE_OFFER_RECEIVED,
-      title: 'Quote received',
-      body: 'A provider offer arrived.',
-    },
-  );
+  const created = await service.createNotificationInTransaction(client as any, {
+    userId: user.id,
+    type: NotificationType.QUOTE_OFFER_RECEIVED,
+    title: "Quote received",
+    body: "A provider offer arrived.",
+  });
 
   assert.equal(created, null);
   assert.equal(notificationRows, 0);
   assert.equal(outboxRows, 0);
 });
 
-test('notification dedupe returns the existing event', async () => {
+test("notification dedupe returns the existing event", async () => {
   const { service, records } = createHarness();
   const input = {
     userId: user.id,
     type: NotificationType.TASK_DUE_SOON,
-    title: 'Task due',
-    body: 'Task is due soon.',
-    dedupeKey: 'user-1:task:task-1',
+    title: "Task due",
+    body: "Task is due soon.",
+    dedupeKey: "user-1:task:task-1",
   };
 
   const first = await service.createNotification(input);
@@ -267,13 +283,13 @@ test('notification dedupe returns the existing event', async () => {
   assert.equal(records.size, 1);
 });
 
-test('archive marks the notification read and removes it from the active inbox', async () => {
+test("archive marks the notification read and removes it from the active inbox", async () => {
   const { service } = createHarness();
   const created = await service.createNotification({
     userId: user.id,
     type: NotificationType.GENERAL,
-    title: 'Event',
-    body: 'Event body',
+    title: "Event",
+    body: "Event body",
   });
 
   assert.ok(created);
@@ -282,19 +298,33 @@ test('archive marks the notification read and removes it from the active inbox',
   assert.ok(archived.readAt);
 });
 
-test('notification inbox is paginated and reads never generate reminders', async () => {
+test("notification inbox is paginated and reads never generate reminders", async () => {
   const { service } = createHarness();
   for (let index = 0; index < 25; index++) {
     await service.createNotification({
       userId: user.id,
       type: NotificationType.GENERAL,
       title: `Event ${index}`,
-      body: 'Event body',
+      body: "Event body",
     });
   }
 
-  const first = await service.list(user, undefined, undefined, false, '1', '10');
-  const third = await service.list(user, undefined, undefined, false, '3', '10');
+  const first = await service.list(
+    user,
+    undefined,
+    undefined,
+    false,
+    "1",
+    "10",
+  );
+  const third = await service.list(
+    user,
+    undefined,
+    undefined,
+    false,
+    "3",
+    "10",
+  );
 
   assert.equal(first.items.length, 10);
   assert.equal(first.total, 25);
@@ -304,24 +334,24 @@ test('notification inbox is paginated and reads never generate reminders', async
   assert.equal(third.hasMore, false);
 });
 
-test('scheduled reminders respect notification and financial permissions', async () => {
+test("scheduled reminders respect notification and financial permissions", async () => {
   const now = new Date();
   const dueDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const captured: Array<Record<string, unknown>> = [];
-  let outboxRows = 0;
+  const outboxTypes: string[] = [];
   const plan = {
-    id: 'plan-1',
-    ownerUserId: 'owner-1',
-    status: 'PLANNING',
+    id: "plan-1",
+    ownerUserId: "owner-1",
+    status: "PLANNING",
     sharedMembers: [
       {
-        userId: 'finance-member',
+        userId: "finance-member",
         receiveNotifications: true,
         canViewMoney: true,
         canManageMoney: false,
       },
       {
-        userId: 'task-only-member',
+        userId: "task-only-member",
         receiveNotifications: true,
         canViewMoney: false,
         canManageMoney: false,
@@ -331,16 +361,16 @@ test('scheduled reminders respect notification and financial permissions', async
   const tx = {
     $queryRaw: async (query: any) => {
       const sql = Array.isArray(query?.strings)
-        ? query.strings.join(' ')
+        ? query.strings.join(" ")
         : String(query);
-      if (sql.includes('pg_try_advisory_xact_lock')) {
+      if (sql.includes("pg_try_advisory_xact_lock")) {
         return [{ locked: true }];
       }
       if (sql.includes('FROM "User"')) {
         return [
-          { id: 'owner-1', status: UserStatus.ACTIVE },
-          { id: 'finance-member', status: UserStatus.ACTIVE },
-          { id: 'task-only-member', status: UserStatus.ACTIVE },
+          { id: "owner-1", status: UserStatus.ACTIVE },
+          { id: "finance-member", status: UserStatus.ACTIVE },
+          { id: "task-only-member", status: UserStatus.ACTIVE },
         ];
       }
       return [{ id: plan.id }];
@@ -349,26 +379,26 @@ test('scheduled reminders respect notification and financial permissions', async
     weddingTask: {
       findMany: async () => [
         {
-          id: 'task-1',
+          id: "task-1",
           weddingPlanId: plan.id,
-          title: 'Task',
+          title: "Task",
           dueDate,
-          status: 'TODO',
+          status: "TODO",
         },
       ],
     },
     paymentSchedule: {
       findMany: async () => [
         {
-          id: 'schedule-1',
-          weddingCostId: 'cost-1',
-          amount: { toString: () => '100' },
+          id: "schedule-1",
+          weddingCostId: "cost-1",
+          amount: { toString: () => "100" },
           dueDate,
-          status: 'PENDING',
+          status: "PENDING",
           weddingCost: {
             weddingPlanId: plan.id,
-            title: 'Cost',
-            partyName: 'Private',
+            title: "Cost",
+            partyName: "Private",
             provider: null,
           },
         },
@@ -377,13 +407,13 @@ test('scheduled reminders respect notification and financial permissions', async
     notificationPreference: {
       findMany: async () => [
         {
-          userId: 'owner-1',
+          userId: "owner-1",
           taskRemindersEnabled: false,
           paymentRemindersEnabled: true,
           providerMessagesEnabled: true,
         },
         {
-          userId: 'finance-member',
+          userId: "finance-member",
           taskRemindersEnabled: true,
           paymentRemindersEnabled: false,
           providerMessagesEnabled: true,
@@ -391,69 +421,95 @@ test('scheduled reminders respect notification and financial permissions', async
       ],
     },
     notification: {
-      createManyAndReturn: async ({ data }: { data: Array<Record<string, unknown>> }) => {
+      createManyAndReturn: async ({
+        data,
+      }: {
+        data: Array<Record<string, unknown>>;
+      }) => {
         captured.push(...data);
         return data.map((item, index) => ({ ...item, id: `created-${index}` }));
       },
     },
     outboxEvent: {
-      create: async () => {
-        outboxRows++;
-        return { id: `outbox-${outboxRows}` };
+      create: async ({ data }: { data: { type: string } }) => {
+        outboxTypes.push(data.type);
+        return { id: `outbox-${outboxTypes.length}` };
       },
     },
   };
   const prisma = {
-    $transaction: async (operation: (client: typeof tx) => unknown) => operation(tx),
+    $transaction: async (operation: (client: typeof tx) => unknown) =>
+      operation(tx),
   } as unknown as PrismaService;
   const permissions = {
-    canViewMoney: (context: { sharedMember: { canViewMoney: boolean; canManageMoney: boolean } }) =>
+    canViewMoney: (context: {
+      sharedMember: { canViewMoney: boolean; canManageMoney: boolean };
+    }) =>
       context.sharedMember.canViewMoney || context.sharedMember.canManageMoney,
   } as unknown as PermissionService;
-  const service = new NotificationsService(prisma, permissions, new OutboxService());
+  const service = new NotificationsService(
+    prisma,
+    permissions,
+    new OutboxService(),
+  );
 
   const created = await service.generateDueNotifications();
   assert.equal(created, 3);
-  assert.equal(outboxRows, 3);
-  assert.equal(captured.filter((row) => row.entityType === 'task').length, 2);
-  assert.equal(captured.filter((row) => row.entityType === 'payment_schedule').length, 1);
+  assert.equal(
+    outboxTypes.filter((type) => type === OutboxEventTypes.notificationCreated)
+      .length,
+    3,
+  );
+  assert.equal(
+    outboxTypes.filter(
+      (type) => type === OutboxEventTypes.pushNotificationRequested,
+    ).length,
+    2,
+  );
+  assert.equal(captured.filter((row) => row.entityType === "task").length, 2);
+  assert.equal(
+    captured.filter((row) => row.entityType === "payment_schedule").length,
+    1,
+  );
   assert.equal(
     captured.some(
-      (row) => row.entityType === 'task' && row.userId === 'owner-1',
+      (row) => row.entityType === "task" && row.userId === "owner-1",
     ),
     false,
   );
   assert.equal(
     captured.some(
       (row) =>
-        row.entityType === 'payment_schedule' &&
-        row.userId === 'finance-member',
+        row.entityType === "payment_schedule" &&
+        row.userId === "finance-member",
     ),
     false,
   );
   assert.equal(
     captured.some(
-      (row) => row.entityType === 'payment_schedule' && row.userId === 'task-only-member',
+      (row) =>
+        row.entityType === "payment_schedule" &&
+        row.userId === "task-only-member",
     ),
     false,
   );
   const ownerSchedule = captured.find(
-    (row) => row.entityType === 'payment_schedule' && row.userId === 'owner-1',
+    (row) => row.entityType === "payment_schedule" && row.userId === "owner-1",
   );
   assert.ok(ownerSchedule);
   assert.match(String(ownerSchedule.body), /100/);
   assert.equal(
     ownerSchedule.routeTarget,
-    '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
+    "/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1",
   );
 });
 
-test('revoking financial access purges stored financial notifications atomically', async () => {
+test("revoking financial access purges stored financial notifications atomically", async () => {
   const existing = {
-    id: 'member-1',
-    weddingPlanId: 'plan-1',
-    userId: 'member-user-1',
-    role: 'VIEWER',
+    id: "member-1",
+    weddingPlanId: "plan-1",
+    userId: "member-user-1",
+    role: "VIEWER",
     canViewMoney: true,
     canEditPlan: false,
     canManageTasks: false,
@@ -473,7 +529,7 @@ test('revoking financial access purges stored financial notifications atomically
       update: async ({ data }: { data: Record<string, unknown> }) => ({
         ...existing,
         ...data,
-        user: { id: existing.userId, name: 'Member', phone: null },
+        user: { id: existing.userId, name: "Member", phone: null },
       }),
     },
   };
@@ -481,11 +537,12 @@ test('revoking financial access purges stored financial notifications atomically
     sharedMember: {
       findFirst: async () => existing,
     },
-    $transaction: async (operation: (client: typeof tx) => unknown) => operation(tx),
+    $transaction: async (operation: (client: typeof tx) => unknown) =>
+      operation(tx),
   } as unknown as PrismaService;
   const permissions = {
     assertMemberManageableInTransaction: async () => ({
-      plan: { id: 'plan-1', ownerUserId: 'owner-1' },
+      plan: { id: "plan-1", ownerUserId: "owner-1" },
       isOwner: true,
       sharedMember: null,
     }),
@@ -494,21 +551,34 @@ test('revoking financial access purges stored financial notifications atomically
       context.sharedMember?.canManageMoney === true,
   } as unknown as PermissionService;
   const notifications = {
-    purgeMoneyForMember: async (client: unknown, userId: string, weddingPlanId: string) => {
+    purgeMoneyForMember: async (
+      client: unknown,
+      userId: string,
+      weddingPlanId: string,
+    ) => {
       purgedInTransaction =
-        client === tx && userId === existing.userId && weddingPlanId === existing.weddingPlanId;
+        client === tx &&
+        userId === existing.userId &&
+        weddingPlanId === existing.weddingPlanId;
     },
   };
   const sharing = new SharingService(
     prisma,
     permissions,
     notifications as unknown as NotificationsService,
-    { deliver: async () => ({ channel: 'WHATSAPP', status: 'DELIVERED' }) } as any,
+    {
+      deliver: async () => ({ channel: "WHATSAPP", status: "DELIVERED" }),
+    } as any,
   );
 
-  await sharing.updateMemberForPlan({ id: 'owner-1' } as AuthenticatedUser, 'plan-1', existing.id, {
-    canViewMoney: false,
-  });
+  await sharing.updateMemberForPlan(
+    { id: "owner-1" } as AuthenticatedUser,
+    "plan-1",
+    existing.id,
+    {
+      canViewMoney: false,
+    },
+  );
 
   assert.equal(purgedInTransaction, true);
 });

@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../diagnostics/context_lifecycle_logger.dart';
 import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -8,6 +11,8 @@ import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/account_contexts/widgets/wedding_plan_context_gate.dart';
+import '../../features/account_contexts/models/account_context.dart';
+import '../../features/account_contexts/providers/account_context_controller.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/chat/screens/quote_conversation_entry_screen.dart';
 import '../../features/chat/widgets/conversation_list_view.dart';
@@ -54,7 +59,6 @@ import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 
 import '../../features/wedding_plans/models/dashboard_summary.dart';
-import '../../features/wedding_plans/providers/dashboard_summary_provider.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../../features/shell/screens/wedding_plan_shell.dart';
@@ -103,6 +107,20 @@ class AppRouter {
   static const support = '/support';
   static const guestOnboardingPreview = '/dev/guest-onboarding';
   static const userNavigationShellPreview = '/dev/user-navigation-shell';
+
+  static String authenticatedEntry(String? resumeLocation) {
+    final resume = resumeLocation?.trim();
+    if (resume == null ||
+        resume.isEmpty ||
+        !resume.startsWith('/') ||
+        resume.startsWith('//') ||
+        resume == home) {
+      return home;
+    }
+    final uri = Uri.tryParse(resume);
+    if (uri == null || uri.hasScheme || uri.hasAuthority) return home;
+    return Uri(path: home, queryParameters: {'resume': resume}).toString();
+  }
 
   static String providerDetails(String id, {String? weddingPlanId}) {
     final planId = weddingPlanId?.trim();
@@ -276,8 +294,8 @@ class AppRouter {
     return '/wedding-plans/$id/sharing/add';
   }
 
-  static String editSharedMember(String id) {
-    return '/shared-members/$id/edit';
+  static String editSharedMember(String weddingPlanId, String memberId) {
+    return '/wedding-plans/$weddingPlanId/sharing/$memberId/edit';
   }
 
   static const sharedWeddingPlans = '/shared/wedding-plans';
@@ -290,6 +308,16 @@ class AppRouter {
   static GoRouter create({AppFeatureFlags flags = AppFeatureFlags.defaults}) {
     return GoRouter(
       initialLocation: splash,
+      errorBuilder: (context, state) {
+        final safeLocation = safeRouterErrorLocation(state.uri);
+        ContextLifecycleLogger.event(
+          'ROUTE_BLOCKED',
+          targetRoute: safeLocation,
+          reason: 'router_error',
+          source: 'GoRouter.errorBuilder',
+        );
+        return RouterErrorScreen(error: state.error, location: safeLocation);
+      },
       routes: [
         GoRoute(
           path: splash,
@@ -365,10 +393,18 @@ class AppRouter {
           path: '/providers/:id',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return ProviderDetailsScreen(
+            final weddingPlanId = state.uri.queryParameters['weddingPlanId'];
+            final screen = ProviderDetailsScreen(
               providerId: id,
-              weddingPlanId: state.uri.queryParameters['weddingPlanId'],
+              weddingPlanId: weddingPlanId,
             );
+            return weddingPlanId == null
+                ? screen
+                : WeddingPlanContextGate(
+                    weddingPlanId: weddingPlanId,
+                    requiredAccess: WeddingPlanRouteAccess.manageProviders,
+                    child: screen,
+                  );
           },
         ),
         GoRoute(
@@ -383,10 +419,13 @@ class AppRouter {
                 (state.extra is String ? state.extra! as String : null);
             return ProviderAuthGate(
               resumeLocation: state.uri.toString(),
-              child: QuoteRequestScreen(
-                providerId: id,
-                initialServiceId: initialServiceId,
-                initialBudgetIntent: quoteContext?.budgetIntent,
+              child: SelectedWeddingPlanContextGate(
+                requiredAccess: WeddingPlanRouteAccess.manageProviders,
+                child: QuoteRequestScreen(
+                  providerId: id,
+                  initialServiceId: initialServiceId,
+                  initialBudgetIntent: quoteContext?.budgetIntent,
+                ),
               ),
             );
           },
@@ -518,6 +557,7 @@ class AppRouter {
             final id = state.pathParameters['id'] ?? '';
             return WeddingPlanContextGate(
               weddingPlanId: id,
+              requiredAccess: weddingPlanRouteAccessForPath(state.uri.path),
               child: WeddingPlanShell(weddingPlanId: id, child: child),
             );
           },
@@ -543,13 +583,12 @@ class AppRouter {
                 final sharedMember = state.extra is SharedMember
                     ? state.extra! as SharedMember
                     : null;
-                final dashboard = context.read<DashboardSummaryProvider?>();
-                final summary = dashboard?.summary?.planId == id
-                    ? dashboard?.summary
-                    : null;
+                final selected = context
+                    .read<AccountContextController?>()
+                    ?.selectedContext;
                 final contributorView =
-                    state.uri.queryParameters['view'] == 'contributor' ||
-                    (summary != null && !summary.permissions.isOwner);
+                    selected?.role == AccountContextRole.contributor &&
+                    selected?.weddingPlanId == id;
                 return MoneyOverviewScreen(
                   weddingPlanId: id,
                   sharedMember: sharedMember,
@@ -756,7 +795,12 @@ class AppRouter {
                     ? state.extra! as ProviderBudgetMatchIntent
                     : null;
                 return ProviderMarketplaceScreen(
-                  embedded: state.uri.queryParameters['view'] != 'contributor',
+                  embedded:
+                      context
+                          .read<AccountContextController?>()
+                          ?.selectedContext
+                          ?.role !=
+                      AccountContextRole.contributor,
                   weddingPlanId: id,
                   initialBudgetIntent: budgetIntent,
                   initialQuoteId: state.uri.queryParameters['quoteId'],
@@ -780,10 +824,14 @@ class AppRouter {
                     (state.extra as Map)['summary'] is DashboardSummary
                 ? (state.extra as Map)['summary'] as DashboardSummary
                 : null;
-            return PlanCenterScreen(
+            return WeddingPlanContextGate(
               weddingPlanId: id,
-              sharedMember: sharedMember,
-              initialSummary: initialSummary,
+              requiredAccess: WeddingPlanRouteAccess.viewPlan,
+              child: PlanCenterScreen(
+                weddingPlanId: id,
+                sharedMember: sharedMember,
+                initialSummary: initialSummary,
+              ),
             );
           },
         ),
@@ -791,7 +839,11 @@ class AppRouter {
           path: '/wedding-plans/:id/tasks/create',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return CreateTaskScreen(weddingPlanId: id);
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.manageTasks,
+              child: CreateTaskScreen(weddingPlanId: id),
+            );
           },
         ),
         GoRoute(
@@ -802,10 +854,14 @@ class AppRouter {
             final task = state.extra is WeddingTask
                 ? state.extra! as WeddingTask
                 : null;
-            return CreateTaskScreen(
+            return WeddingPlanContextGate(
               weddingPlanId: id,
-              taskId: taskId,
-              initialTask: task,
+              requiredAccess: WeddingPlanRouteAccess.manageTasks,
+              child: CreateTaskScreen(
+                weddingPlanId: id,
+                taskId: taskId,
+                initialTask: task,
+              ),
             );
           },
         ),
@@ -813,14 +869,22 @@ class AppRouter {
           path: '/wedding-plans/:id/timeline',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return TaskTimelineScreen(weddingPlanId: id);
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.viewPlan,
+              child: TaskTimelineScreen(weddingPlanId: id),
+            );
           },
         ),
         GoRoute(
           path: '/wedding-plans/:id/sharing',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return SharingScreen(weddingPlanId: id);
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.inviteMembers,
+              child: SharingScreen(weddingPlanId: id),
+            );
           },
         ),
 
@@ -828,21 +892,34 @@ class AppRouter {
           path: '/wedding-plans/:id/notifications',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return NotificationsScreen(weddingPlanId: id);
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.viewPlan,
+              child: NotificationsScreen(weddingPlanId: id),
+            );
           },
         ),
         GoRoute(
           path: '/wedding-plans/:id/sharing/add',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return AddSharedMemberScreen(weddingPlanId: id);
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.inviteMembers,
+              child: AddSharedMemberScreen(weddingPlanId: id),
+            );
           },
         ),
         GoRoute(
-          path: '/shared-members/:id/edit',
+          path: '/wedding-plans/:id/sharing/:memberId/edit',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return EditSharedMemberScreen(sharedMemberId: id);
+            final memberId = state.pathParameters['memberId'] ?? '';
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.inviteMembers,
+              child: EditSharedMemberScreen(sharedMemberId: memberId),
+            );
           },
         ),
         GoRoute(
@@ -850,6 +927,109 @@ class AppRouter {
           builder: (context, state) => const SharedWeddingPlansScreen(),
         ),
       ],
+    );
+  }
+}
+
+WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
+  final segments = Uri.tryParse(path)?.pathSegments ?? const <String>[];
+  if (segments.length < 3 || segments.first != 'wedding-plans') {
+    return WeddingPlanRouteAccess.unknown;
+  }
+
+  final section = segments[2];
+  return switch (section) {
+    'dashboard' => WeddingPlanRouteAccess.ownerDashboard,
+    'plan-center' ||
+    'timeline' ||
+    'notifications' => WeddingPlanRouteAccess.viewPlan,
+    'tasks' =>
+      segments.length >= 4 &&
+              (segments[3] == 'create' ||
+                  (segments.length >= 5 && segments[4] == 'edit'))
+          ? WeddingPlanRouteAccess.manageTasks
+          : WeddingPlanRouteAccess.viewPlan,
+    'guests' => WeddingPlanRouteAccess.manageGuests,
+    'providers' => WeddingPlanRouteAccess.manageProviders,
+    'sharing' => WeddingPlanRouteAccess.inviteMembers,
+    'money' =>
+      _isReadOnlyMoneyPath(segments)
+          ? WeddingPlanRouteAccess.viewMoney
+          : WeddingPlanRouteAccess.manageMoney,
+    _ => WeddingPlanRouteAccess.unknown,
+  };
+}
+
+bool _isReadOnlyMoneyPath(List<String> segments) {
+  if (segments.length == 3) return true;
+  final mutationMarkers = {'create', 'edit', 'pay'};
+  return !segments.any(mutationMarkers.contains);
+}
+
+@visibleForTesting
+String safeRouterErrorLocation(Uri uri) {
+  if (uri.pathSegments.isEmpty) return '/';
+  return '/${uri.pathSegments.first}';
+}
+
+/// Visible router boundary for unknown routes and route-construction failures.
+/// It deliberately offers an explicit escape to the welcome/selection flow
+/// and never selects a context or redirects implicitly.
+class RouterErrorScreen extends StatelessWidget {
+  const RouterErrorScreen({
+    required this.error,
+    required this.location,
+    super.key,
+  });
+
+  final Exception? error;
+  final String location;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: const Key('router-error-boundary'),
+      appBar: AppBar(title: const Text('تعذر فتح الصفحة')),
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(LucideIcons.navigation, size: 52),
+                const SizedBox(height: 16),
+                const Text(
+                  'حدث خطأ في مسار التنقل.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'لم نغيّر مسار الحساب تلقائيًا. عد إلى اختيار المسار وحاول مرة أخرى.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  key: const Key('router-error-home-button'),
+                  onPressed: () => context.go(AppRouter.home),
+                  child: const Text('العودة إلى اختيار المسار'),
+                ),
+                if (location.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      'المسار: $location',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

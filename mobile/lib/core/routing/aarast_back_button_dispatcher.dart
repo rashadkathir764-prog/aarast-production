@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../diagnostics/context_lifecycle_logger.dart';
 import 'app_router.dart';
 
 /// Preserves app-level back navigation when a forward transition used
@@ -12,9 +13,15 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   }
 
   final GoRouter router;
-  final List<String> _history = <String>[];
+  final List<_ContextRouteEntry> _history = <_ContextRouteEntry>[];
   String _currentLocation;
+  Listenable? _contextListenable;
+  String? Function()? _readContextKey;
+  String? Function()? _readWeddingPlanId;
+  String? _currentContextKey;
+  String? _currentWeddingPlanId;
   bool _restoringHistory = false;
+  bool _discardCurrentOnNextRoute = false;
 
   @override
   Future<bool> didPopRoute() async {
@@ -22,13 +29,26 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
 
     while (_history.isNotEmpty) {
       final previous = _history.removeLast();
-      if (previous == _currentLocation) continue;
+      if (previous.contextKey != _currentContextKey ||
+          previous.location == _currentLocation) {
+        continue;
+      }
       _restoringHistory = true;
-      router.go(previous);
+      router.go(previous.location);
       return true;
     }
 
-    final fallback = fallbackLocationFor(router.state.uri);
+    var fallback = fallbackLocationFor(router.state.uri);
+    if (_contextListenable != null && fallback != null) {
+      final fallbackPlanId = _planIdFromLocation(fallback);
+      if (fallbackPlanId != null && fallbackPlanId != _currentWeddingPlanId) {
+        fallback = AppRouter.home;
+      } else if (fallbackPlanId != null &&
+          _currentContextKey?.endsWith(':contributor') == true &&
+          Uri.parse(fallback).path.endsWith('/dashboard')) {
+        fallback = AppRouter.home;
+      }
+    }
     if (fallback == null || fallback == _currentLocation) return false;
 
     _restoringHistory = true;
@@ -37,7 +57,27 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   }
 
   void dispose() {
+    _contextListenable?.removeListener(_handleContextChanged);
     router.routerDelegate.removeListener(_handleRouteChanged);
+  }
+
+  /// Binds route history to the selected account context. Any context change
+  /// drops prior entries and suppresses recording the route that belonged to
+  /// the context being left.
+  void bindContext({
+    required Listenable listenable,
+    required String? Function() readContextKey,
+    String? Function()? readWeddingPlanId,
+  }) {
+    if (identical(_contextListenable, listenable)) return;
+    _contextListenable?.removeListener(_handleContextChanged);
+    _contextListenable = listenable;
+    _readContextKey = readContextKey;
+    _readWeddingPlanId = readWeddingPlanId;
+    _currentContextKey = readContextKey();
+    _currentWeddingPlanId = readWeddingPlanId?.call();
+    _history.clear();
+    listenable.addListener(_handleContextChanged);
   }
 
   @visibleForTesting
@@ -121,9 +161,24 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   void _handleRouteChanged() {
     final next = router.state.uri.toString();
     if (next == _currentLocation) return;
+    ContextLifecycleLogger.event(
+      'ROUTE_REQUESTED',
+      activeContextKey: _currentContextKey,
+      currentRoute: _currentLocation,
+      targetRoute: next,
+      reason: _restoringHistory ? 'history_restore' : 'router_transition',
+      source: 'AarastBackButtonDispatcher',
+    );
 
     if (_restoringHistory) {
       _restoringHistory = false;
+      _currentLocation = next;
+      return;
+    }
+
+    if (_discardCurrentOnNextRoute) {
+      _discardCurrentOnNextRoute = false;
+      _history.clear();
       _currentLocation = next;
       return;
     }
@@ -134,12 +189,37 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
       return;
     }
 
-    if (_history.isNotEmpty && _history.last == next) {
+    if (_history.isNotEmpty &&
+        _history.last.contextKey == _currentContextKey &&
+        _history.last.location == next) {
       _history.removeLast();
     } else {
-      _history.add(_currentLocation);
+      _history.add(
+        _ContextRouteEntry(
+          location: _currentLocation,
+          contextKey: _currentContextKey,
+        ),
+      );
     }
     _currentLocation = next;
+  }
+
+  void _handleContextChanged() {
+    final nextContextKey = _readContextKey?.call();
+    if (nextContextKey == _currentContextKey) return;
+    ContextLifecycleLogger.event(
+      'NAVIGATION_RESET',
+      fromContextKey: _currentContextKey,
+      toContextKey: nextContextKey,
+      currentRoute: _currentLocation,
+      reason: 'active_context_changed',
+      source: 'AarastBackButtonDispatcher',
+    );
+    _currentContextKey = nextContextKey;
+    _currentWeddingPlanId = _readWeddingPlanId?.call();
+    _history.clear();
+    _restoringHistory = false;
+    _discardCurrentOnNextRoute = true;
   }
 
   static bool _isNavigationRoot(String path) {
@@ -147,4 +227,21 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
         path == AppRouter.providerDashboard ||
         path == AppRouter.welcome;
   }
+
+  static String? _planIdFromLocation(String location) {
+    final segments = Uri.tryParse(location)?.pathSegments;
+    if (segments == null ||
+        segments.length < 2 ||
+        segments.first != 'wedding-plans') {
+      return null;
+    }
+    return segments[1];
+  }
+}
+
+class _ContextRouteEntry {
+  const _ContextRouteEntry({required this.location, required this.contextKey});
+
+  final String location;
+  final String? contextKey;
 }

@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-25
+Snapshot date: 2026-07-29
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -105,14 +105,20 @@ and runtime checks override historical completion reports.
   providers are replaced when the selected plan changes. Disposed providers
   ignore late responses, and offline replay is pinned to its original cache
   owner and access-token snapshot.
+- Post-auth `/home` now gates on live account contexts: zero contexts keep the
+  existing onboarding state, one available context is selected directly,
+  multiple contexts use a standalone Arabic `اختر المسار` screen, and the
+  chosen context routes to its matching dashboard. Dashboard shells no longer
+  render an account-path switcher.
 - Android/iOS/macOS offline caches are encrypted with SQLCipher. The 256-bit key
   lives only in secure OS storage, supported mobile startup fails closed if the
   key/database cannot be opened, and the old plaintext development cache is
   removed before the secure database is created.
-- The cached safe-user profile and guest-onboarding draft also live in a
+- The cached safe-user profile, guest-onboarding draft, and selected
+  account-context key also live in a
   dedicated OS secure-storage namespace in production wiring. Existing
-  SharedPreferences values migrate once and are deleted; non-sensitive plan
-  selectors may remain in preferences.
+  SharedPreferences values migrate once and are deleted; the non-sensitive
+  active-plan preference may remain in preferences for compatibility.
 - A guest may explicitly defer the budget and still open the local dashboard.
   A missing general budget remains unset; category allocations never become a
   substitute budget.
@@ -144,6 +150,16 @@ and runtime checks override historical completion reports.
   writes create immediate due reminders, while an hourly PostgreSQL-locked
   repair scan idempotently creates task/payment-schedule reminders and
   preserves `canViewMoney` visibility for shared members.
+- Android/Flutter and backend FCM implementation now exists for task
+  assignment, task due/overdue, and chat-message alerts. It requests the
+  Android notification permission once, registers a Firebase Installation ID
+  per authenticated account, uses an independent durable outbox event, removes
+  local registration before logout without allowing an old logout to erase a
+  newer login, and opens only the neutral notification inbox on tap. Local
+  analysis, focused tests, and a Debug APK build pass. Live delivery is not yet
+  proven: an Aarast-owned Firebase project, private backend credentials,
+  migration application, and physical-device background/terminated sends
+  remain external release gates.
 - Authenticated mutations now bind each idempotency key to a SHA-256 request
   fingerprint without storing raw tokens or query values. Identical retries
   execute once and replay, mismatched reuse returns `409`, response retention is

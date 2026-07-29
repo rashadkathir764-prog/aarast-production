@@ -33,6 +33,23 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get shouldOpenOnboarding =>
       !_isLoading && _errorMessage == null && _activePlan == null;
 
+  /// Drops all in-memory plan data when the account context changes.
+  ///
+  /// The backend active-plan association is intentionally not changed here;
+  /// this only prevents a previous owner/contributor plan from remaining a
+  /// source of UI data while another context is active.
+  void clearContextState() {
+    ++_selectionGeneration;
+    _isLoading = false;
+    _isSubmitting = false;
+    _errorMessage = null;
+    _noticeMessage = null;
+    _plans = const [];
+    _selectedPlan = null;
+    _activePlan = null;
+    notifyListeners();
+  }
+
   Future<void> loadActiveWeddingPlan() async {
     final generation = ++_selectionGeneration;
     _isLoading = true;

@@ -51,6 +51,113 @@ void main() {
     expect(harness.router.state.uri.path, AppRouter.home);
   });
 
+  testWidgets('context change discards routes from the previous context', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    final contextKey = ValueNotifier<String?>('plan:one:owner');
+    harness.dispatcher.bindContext(
+      listenable: contextKey,
+      readContextKey: () => contextKey.value,
+    );
+    addTearDown(() {
+      contextKey.dispose();
+      harness.dispose();
+    });
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go('/first');
+    await tester.pumpAndSettle();
+    harness.router.go('/second');
+    await tester.pumpAndSettle();
+
+    contextKey.value = 'plan:two:owner';
+    await tester.pump();
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(harness.router.state.uri.path, AppRouter.home);
+  });
+
+  testWidgets(
+    'context mismatch never restores a fallback route for the previous plan',
+    (tester) async {
+      final harness = _RouterHarness();
+      final selectedContext =
+          ValueNotifier<({String contextKey, String weddingPlanId})>((
+            contextKey: 'plan:one:owner',
+            weddingPlanId: 'plan-one',
+          ));
+      harness.dispatcher.bindContext(
+        listenable: selectedContext,
+        readContextKey: () => selectedContext.value.contextKey,
+        readWeddingPlanId: () => selectedContext.value.weddingPlanId,
+      );
+      addTearDown(() {
+        selectedContext.dispose();
+        harness.dispose();
+      });
+      await tester.pumpWidget(harness.app);
+
+      harness.router.go(AppRouter.moneyCostCreate('plan-one'));
+      await tester.pumpAndSettle();
+      expect(
+        harness.router.state.uri.path,
+        AppRouter.moneyCostCreate('plan-one'),
+      );
+
+      selectedContext.value = (
+        contextKey: 'plan:two:owner',
+        weddingPlanId: 'plan-two',
+      );
+      await tester.pump();
+
+      expect(await harness.dispatcher.didPopRoute(), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(harness.router.state.uri.path, AppRouter.home);
+      expect(harness.router.state.uri.path, isNot(AppRouter.money('plan-one')));
+    },
+  );
+
+  testWidgets('contributor fallback never re-enters the owner dashboard', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    final selectedContext =
+        ValueNotifier<({String contextKey, String weddingPlanId})>((
+          contextKey: 'plan:plan-one:owner',
+          weddingPlanId: 'plan-one',
+        ));
+    harness.dispatcher.bindContext(
+      listenable: selectedContext,
+      readContextKey: () => selectedContext.value.contextKey,
+      readWeddingPlanId: () => selectedContext.value.weddingPlanId,
+    );
+    addTearDown(() {
+      selectedContext.dispose();
+      harness.dispose();
+    });
+    await tester.pumpWidget(harness.app);
+
+    harness.router.go(AppRouter.money('plan-one'));
+    await tester.pumpAndSettle();
+    selectedContext.value = (
+      contextKey: 'plan:plan-one:contributor',
+      weddingPlanId: 'plan-one',
+    );
+    await tester.pump();
+
+    expect(await harness.dispatcher.didPopRoute(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(harness.router.state.uri.path, AppRouter.home);
+    expect(
+      harness.router.state.uri.path,
+      isNot(AppRouter.weddingPlanDashboard('plan-one')),
+    );
+  });
+
   test('deep-link routes have a logical back fallback', () {
     expect(
       AarastBackButtonDispatcher.fallbackLocationFor(
@@ -103,6 +210,14 @@ class _RouterHarness {
           GoRoute(
             path: '/second',
             builder: (context, state) => const _Screen('second'),
+          ),
+          GoRoute(
+            path: '/wedding-plans/:id/money',
+            builder: (context, state) => const _Screen('money'),
+          ),
+          GoRoute(
+            path: '/wedding-plans/:id/money/costs/create',
+            builder: (context, state) => const _Screen('create cost'),
           ),
         ],
       ) {

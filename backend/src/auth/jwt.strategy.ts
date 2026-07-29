@@ -48,6 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       !user ||
       user.status === 'DISABLED' ||
       !user.phoneVerifiedAt ||
+      (!isAdminSession && !user.appPasswordConfiguredAt) ||
       !session
     ) {
       throw new UnauthorizedException('User not found, disabled, or unverified');

@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-26.
+Current documentation snapshot: 2026-07-29.
 
 Source status:
 
@@ -325,7 +325,7 @@ additive `channelCapabilities` object:
 
 ```json
 {
-  "pushEnabled": false,
+  "pushEnabled": true,
   "smsEnabled": false,
   "whatsappEnabled": false,
   "emailEnabled": false,
@@ -334,7 +334,7 @@ additive `channelCapabilities` object:
   "providerMessagesEnabled": true,
   "channelCapabilities": {
     "inApp": { "supported": true, "configurable": false, "enabled": true },
-    "push": { "supported": false, "configurable": false, "enabled": false },
+    "push": { "supported": true, "configurable": false, "enabled": true },
     "sms": { "supported": false, "configurable": false, "enabled": false },
     "whatsapp": { "supported": false, "configurable": false, "enabled": false },
     "email": { "supported": false, "configurable": false, "enabled": false }
@@ -343,12 +343,15 @@ additive `channelCapabilities` object:
 ```
 
 The in-app inbox/realtime availability is supported and is not configurable.
-Device push, SMS, WhatsApp, and email notification delivery are not implemented
-notification channels. Their legacy booleans always return `false`; sending
-`false` remains accepted for older clients, while any attempt to set one to
-`true` returns HTTP `400` with code `NOTIFICATION_CHANNEL_UNSUPPORTED` and the
-rejected channel. OTP transport is a separate authentication concern and does
-not make WhatsApp a general notification channel.
+Device push is supported and managed by the authenticated device-registration
+contract below. `pushEnabled` reflects whether the account currently has an
+enabled installation preference; it is not writable through settings. Sending
+`pushEnabled: true` to settings returns HTTP `400` with code
+`NOTIFICATION_CHANNEL_DEVICE_MANAGED`; legacy `false` remains accepted and is
+ignored. SMS, WhatsApp, and email remain unsupported notification channels:
+their booleans return `false`, and attempts to enable them return
+`NOTIFICATION_CHANNEL_UNSUPPORTED`. OTP transport is a separate authentication
+concern and does not make WhatsApp a general notification channel.
 
 The three writable content preferences have direct effects:
 
@@ -770,6 +773,40 @@ task writes create immediate due reminders and an hourly cross-replica locked
 scheduler idempotently repairs task and payment-schedule reminders.
 Both paths honor the content preferences documented above before persisting a
 notification or outbox row.
+
+### Device push installations
+
+Protected routes:
+
+- `PUT /api/v1/push/installations/current`
+- `DELETE /api/v1/push/installations/current`
+
+Both accept:
+
+```json
+{
+  "fid": "firebase_installation_id",
+  "platform": "ANDROID"
+}
+```
+
+The Firebase Installation ID is unique across accounts. Registration moves a
+shared-device installation to the authenticated account in one serializable
+transaction and enables that account's push preference. Unregistration deletes
+only an installation owned by the authenticated account and disables the
+preference only when no enabled installation remains.
+
+Task assignment, task due/overdue, and chat-message notifications enqueue a
+separate `PUSH_NOTIFICATION_REQUESTED` outbox event. This keeps FCM retry
+independent from the existing Socket.IO notification event. Push delivery uses
+generic lock-screen copy and never copies task titles, sender identity, contact
+details, or notification bodies into the FCM alert. Invalid installations are
+purged; transient Firebase failures remain retryable.
+
+Push delivery is disabled unless `PUSH_NOTIFICATIONS_ENABLED=true`. When
+enabled, the backend also requires `FIREBASE_PROJECT_ID` and Application
+Default Credentials supplied by the runtime environment. Credentials are
+never accepted from the mobile client or stored in this repository.
 
 Notification response:
 
@@ -1205,6 +1242,13 @@ The acceptance response additively returns
 `User.activeWeddingPlanId`; selecting the accepted context remains a separate
 explicit action.
 
+For an accepted invitation owned by the authenticated invitee,
+`GET /api/v1/invites/mine` and `GET /api/v1/invites/:token` also return the
+same canonical `contextKey`. Other invite-list responses do not synthesize or
+expose a contributor context key. Mobile clients must select this backend
+value explicitly before opening a plan route; they must not derive a context
+from `weddingPlanId`.
+
 Creating an invitation runs the live-pending duplicate check, invite insert,
 and optional registered-user notification/outbox write inside one retryable
 `SERIALIZABLE` transaction. A notification failure therefore leaves no invite,
@@ -1270,7 +1314,11 @@ with code `INVITE_DELIVERY_ATTEMPT_SUPERSEDED` and no raw bearer.
 `POST /api/v1/invites/:token/request-otp` is public but bearer-and-phone bound.
 It issues an internal `INVITE_ACCESS` OTP only when the 43-character raw token
 fingerprints a live pending invitation and the canonical phone matches that
-exact invitation. The OTP row is bound to that `PlanInvite.id` through
+exact invitation. The sole accepted-invite exception is credential recovery
+for a pre-migration member whose `appPasswordConfiguredAt` is still null; the
+same phone must resolve to the existing member of that exact plan. Configured
+accounts and all other accepted links remain ineligible. The OTP row is bound
+to that `PlanInvite.id` through
 `planInviteId`; it is not a general `LOGIN` code. A mismatch returns stable code
 `INVITE_NOT_FOUND_FOR_PHONE` without plan details and without dispatching an
 OTP. General login and different pending invitations for the same phone keep
@@ -1297,14 +1345,18 @@ server still performs the normal verified-phone and atomic pending-invite claim
 checks.
 
 After the token and phone match, the request response includes
-`accountSetupRequired`. It is `true` only when the invited phone still needs an
-application credential. The client then collects the contributor name and a
-6-to-72-byte password before calling
+`accountSetupRequired`. This boolean is mandatory. It is `true` only when the
+invited phone still needs an application credential, including the bounded
+historical recovery above. The client then collects the contributor name, a
+6-to-72-byte password, and matching password confirmation before calling
 `POST /api/v1/invites/:token/verify-otp` with `{ phone, code, name, password }`.
 That verification is bound again to the exact live token and phone. It consumes
 the same invite-bound `INVITE_ACCESS` OTP, creates or claims the application
-account with the participant's chosen password, and returns the normal
-access/refresh session; no second registration OTP is sent. Existing verified
+account with the participant's chosen password, marks
+`appPasswordConfiguredAt`, and returns a complete access token, refresh token,
+and refresh expiry; no second registration OTP is sent. The mobile client
+rejects and clears any incomplete authentication response instead of mounting a
+temporary in-memory session. Existing verified
 application accounts send only `{ phone, code }` and receive a normal login
 session. General `POST /api/v1/auth/otp/verify` never creates an account merely
 because another pending invitation exists.
@@ -2098,6 +2150,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/providers/:id/reviews` | `marketplace.findProviderReviews` |  |
 | POST | `/api/v1/providers/:id/reviews` | `marketplace.createReview` | 🔒 |
 | GET | `/api/v1/providers/:id/services` | `marketplace.findProviderServices` |  |
+| DELETE | `/api/v1/push/installations/current` | `push.unregister` | 🔒 |
+| PUT | `/api/v1/push/installations/current` | `push.register` | 🔒 |
 | PATCH | `/api/v1/quote-offers/:id/accept` | `marketplace.acceptOffer` | 🔒 |
 | PATCH | `/api/v1/quote-offers/:id/reject` | `marketplace.rejectOffer` | 🔒 |
 | GET | `/api/v1/quote-requests/:id` | `marketplace.findQuoteRequest` | 🔒 |

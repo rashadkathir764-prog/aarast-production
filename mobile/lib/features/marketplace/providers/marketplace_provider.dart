@@ -26,7 +26,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String _search = '';
   String? _cityId;
   String? _categoryId;
-  bool _includeAccountData = true;
+  bool _includeAccountData = false;
   String? _quotePlanId;
   int _loadGeneration = 0;
   int _currentPage = 0;
@@ -82,6 +82,27 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   QuoteRequest? get existingActiveQuote => _existingActiveQuote;
   QuoteRequest? get lastCreatedQuote => _lastCreatedQuote;
 
+  void configureAccountScope({
+    required bool includeAccountData,
+    String? weddingPlanId,
+  }) {
+    final nextPlanId = includeAccountData
+        ? _normalizedOrNull(weddingPlanId)
+        : null;
+    if (_includeAccountData == includeAccountData &&
+        _quotePlanId == nextPlanId) {
+      return;
+    }
+    _loadGeneration += 1;
+    _includeAccountData = includeAccountData;
+    _quotePlanId = nextPlanId;
+    _quoteRequests = const [];
+    _existingActiveQuote = null;
+    _lastCreatedQuote = null;
+    _quoteRequestsErrorMessage = null;
+    notifyListeners();
+  }
+
   MarketplaceProvider? providerDetails(String id) => _details[id];
   List<MarketplaceService> servicesFor(String id) => _services[id] ?? const [];
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
@@ -102,9 +123,10 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     String? weddingPlanId,
   }) {
     final planId = _normalizedOrNull(weddingPlanId);
-    return quotesForProvider(providerId)
-        .where((quote) => planId == null || quote.weddingPlanId == planId)
-        .toList(growable: false);
+    if (planId == null) return const [];
+    return quotesForProvider(
+      providerId,
+    ).where((quote) => quote.weddingPlanId == planId).toList(growable: false);
   }
 
   List<QuoteRequest> quotesForPlan(String weddingPlanId) => quoteRequests
@@ -150,7 +172,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
         _includeAccountData
             ? _safeFavorites()
             : Future.value(const <FavoriteProvider>[]),
-        _includeAccountData
+        _includeAccountData && _quotePlanId != null
             ? _safeQuoteRequests(weddingPlanId: _quotePlanId)
             : Future.value(const <QuoteRequest>[]),
       ]);
@@ -326,6 +348,11 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     String providerId, {
     String? weddingPlanId,
   }) async {
+    final scopedPlanId = _normalizedOrNull(weddingPlanId);
+    final canLoadPlanQuotes =
+        _includeAccountData &&
+        scopedPlanId != null &&
+        scopedPlanId == _quotePlanId;
     _isLoading = true;
     _errorMessage = null;
     _providerQuoteContextsLoading.add(providerId);
@@ -337,15 +364,15 @@ class ProviderMarketplaceProvider extends ChangeNotifier
         _safeProviderServices(providerId),
         _safeProviderPackages(providerId),
         _safeProviderReviews(providerId),
-        if (_includeAccountData)
-          _safeQuoteRequests(weddingPlanId: weddingPlanId)
+        if (canLoadPlanQuotes)
+          _safeQuoteRequests(weddingPlanId: scopedPlanId)
         else
           Future.value(const <QuoteRequest>[]),
       ]);
       _services[providerId] = results[0] as List<MarketplaceService>;
       _packages[providerId] = results[1] as List<ProviderPackage>;
       _reviews[providerId] = results[2] as List<ProviderReview>;
-      if (_includeAccountData) {
+      if (canLoadPlanQuotes) {
         _mergeQuotes(results[3] as List<QuoteRequest>);
       }
     } on ApiException catch (error) {
@@ -551,17 +578,33 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   }
 
   Future<void> loadScopedQuoteRequests() async {
+    if (!_includeAccountData || _quotePlanId == null) {
+      _quoteRequests = const [];
+      _quoteRequestsErrorMessage = null;
+      notifyListeners();
+      return;
+    }
     _quoteRequests = await _safeQuoteRequests(weddingPlanId: _quotePlanId);
     notifyListeners();
   }
 
-  Future<bool> loadQuoteRequest(String quoteRequestId) async {
+  Future<bool> loadQuoteRequest(
+    String quoteRequestId, {
+    String? expectedWeddingPlanId,
+  }) async {
     final normalizedId = quoteRequestId.trim();
     if (normalizedId.isEmpty) return false;
 
     _quoteRequestsErrorMessage = null;
     try {
       final quote = await _api.getQuoteRequest(normalizedId);
+      final expectedPlanId = _normalizedOrNull(expectedWeddingPlanId);
+      if (expectedPlanId == null ||
+          _normalizedOrNull(quote.weddingPlanId) != expectedPlanId) {
+        _quoteRequestsErrorMessage =
+            'هذا الطلب لا يطابق مسار الخطة المحدد حاليًا.';
+        return false;
+      }
       _quoteRequests = [
         quote,
         ..._quoteRequests.where((item) => item.id != quote.id),

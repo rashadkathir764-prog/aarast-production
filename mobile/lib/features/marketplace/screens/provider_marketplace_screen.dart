@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../finance/providers/finance_provider.dart';
 import '../widgets/premium/premium_vendor_card.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -48,27 +49,32 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final _scrollController = ScrollController();
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
-  bool _planContextResolved = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_loadMoreNearEnd);
     _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
-    _planContextResolved = _weddingLocationPlanId != null;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
       _searchController.text = provider.search;
       final includeAccountData = await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
+      final selectedPlanId = includeAccountData
+          ? _selectedPlanIdForAccount()
+          : null;
+      provider.configureAccountScope(
+        includeAccountData: includeAccountData,
+        weddingPlanId: selectedPlanId,
+      );
       await provider.loadMarketplace(
         includeAccountData: includeAccountData,
-        weddingPlanId: widget.weddingPlanId,
+        weddingPlanId: selectedPlanId,
         updateQuoteScope: true,
       );
       if (!mounted) return;
-      await _loadRequestedQuote(provider, hasAccount: includeAccountData);
+      await _loadRequestedQuote(provider, selectedPlanId: selectedPlanId);
       if (!mounted) return;
       await _loadWeddingLocationContext(
         hasAccount: includeAccountData,
@@ -86,14 +92,19 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
-      _planContextResolved = _weddingLocationPlanId != null;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         final hasAccount = await AuthActionGuard.hasAccount(context);
         if (!mounted) return;
-        await context.read<ProviderMarketplaceProvider>().loadMarketplace(
+        final selectedPlanId = hasAccount ? _selectedPlanIdForAccount() : null;
+        final provider = context.read<ProviderMarketplaceProvider>();
+        provider.configureAccountScope(
           includeAccountData: hasAccount,
-          weddingPlanId: widget.weddingPlanId,
+          weddingPlanId: selectedPlanId,
+        );
+        await provider.loadMarketplace(
+          includeAccountData: hasAccount,
+          weddingPlanId: selectedPlanId,
           updateQuoteScope: true,
         );
         if (!mounted) return;
@@ -110,7 +121,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         if (!mounted) return;
         await _loadRequestedQuote(
           context.read<ProviderMarketplaceProvider>(),
-          hasAccount: hasAccount,
+          selectedPlanId: hasAccount ? _selectedPlanIdForAccount() : null,
         );
       });
     }
@@ -145,10 +156,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           final quoteRequests = _visibleQuoteRequests(provider);
           return RefreshIndicator(
             color: AppTheme.burgundy,
-            onRefresh: () => provider.loadMarketplace(
-              weddingPlanId: widget.weddingPlanId,
-              updateQuoteScope: true,
-            ),
+            onRefresh: () => _refreshMarketplace(provider),
             child: ListView(
               controller: _scrollController,
               padding: EdgeInsets.fromLTRB(
@@ -349,48 +357,36 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     WeddingPlansProvider? weddingPlans;
 
     if (hasAccount) {
+      final selected = context
+          .read<AccountContextController?>()
+          ?.selectedContext;
+      final selectedPlanId = selected?.isPlan == true
+          ? selected?.weddingPlanId
+          : null;
+      final scopedPlanId =
+          requestedPlanId == null || requestedPlanId == selectedPlanId
+          ? selectedPlanId
+          : null;
       try {
         weddingPlans = context.read<WeddingPlansProvider>();
       } on ProviderNotFoundException {
         // Marketplace browsing can still work without plan context.
       }
-      if (weddingPlans != null) {
-        if (weddingPlans.activePlan == null) {
-          await weddingPlans.loadActiveWeddingPlan();
-        }
-        final activePlan = weddingPlans.activePlan;
-        if (activePlan != null &&
-            activePlan.status.toUpperCase() != 'ARCHIVED' &&
-            (requestedPlanId == null || requestedPlanId == activePlan.id)) {
-          location = activePlan.weddingLocation;
-          planId = activePlan.id;
-        } else if (requestedPlanId != null) {
-          var requestedPlan = weddingPlans.selectedPlan?.id == requestedPlanId
-              ? weddingPlans.selectedPlan
-              : null;
-          if (requestedPlan == null) {
-            for (final candidate in weddingPlans.plans) {
-              if (candidate.id == requestedPlanId) {
-                requestedPlan = candidate;
-                break;
-              }
-            }
-          }
-          if (requestedPlan == null) {
-            await weddingPlans.loadWeddingPlan(requestedPlanId);
-            if (weddingPlans.selectedPlan?.id == requestedPlanId) {
-              requestedPlan = weddingPlans.selectedPlan;
-            }
-          }
-          if (requestedPlan != null &&
-              requestedPlan.status.toUpperCase() != 'ARCHIVED') {
-            location = requestedPlan.weddingLocation;
-            planId = requestedPlan.id;
+      if (weddingPlans != null && scopedPlanId != null) {
+        var scopedPlan = weddingPlans.selectedPlan?.id == scopedPlanId
+            ? weddingPlans.selectedPlan
+            : null;
+        if (scopedPlan == null) {
+          await weddingPlans.loadWeddingPlan(scopedPlanId);
+          if (weddingPlans.selectedPlan?.id == scopedPlanId) {
+            scopedPlan = weddingPlans.selectedPlan;
           }
         }
-      } else {
-        // Isolated widgets may provide an explicit already-scoped plan id.
-        planId = requestedPlanId;
+        if (scopedPlan != null &&
+            scopedPlan.status.toUpperCase() != 'ARCHIVED') {
+          location = scopedPlan.weddingLocation;
+          planId = scopedPlan.id;
+        }
       }
     } else {
       try {
@@ -415,7 +411,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     setState(() {
       _weddingLocation = location;
       _weddingLocationPlanId = planId;
-      _planContextResolved = true;
     });
     if (matchingCityId != null && marketplace.cityId == null) {
       await marketplace.setCity(matchingCityId);
@@ -427,13 +422,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   ) {
     final planId = _weddingLocationPlanId;
     if (planId != null) return marketplace.quotesForPlan(planId);
-    if (!_planContextResolved) return const [];
-
-    final prioritizedId = widget.initialQuoteId?.trim();
-    if (prioritizedId == null || prioritizedId.isEmpty) return const [];
-    return marketplace.quoteRequests
-        .where((quote) => quote.id == prioritizedId)
-        .toList(growable: false);
+    return const [];
   }
 
   String? _normalizedPlanId(String? value) {
@@ -443,11 +432,42 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   Future<void> _loadRequestedQuote(
     ProviderMarketplaceProvider marketplace, {
-    required bool hasAccount,
+    required String? selectedPlanId,
   }) async {
     final quoteId = widget.initialQuoteId?.trim();
-    if (!hasAccount || quoteId == null || quoteId.isEmpty) return;
-    await marketplace.loadQuoteRequest(quoteId);
+    if (selectedPlanId == null || quoteId == null || quoteId.isEmpty) return;
+    await marketplace.loadQuoteRequest(
+      quoteId,
+      expectedWeddingPlanId: selectedPlanId,
+    );
+  }
+
+  Future<void> _refreshMarketplace(
+    ProviderMarketplaceProvider marketplace,
+  ) async {
+    final hasAccount = await AuthActionGuard.hasAccount(context);
+    if (!mounted) return;
+    final selectedPlanId = hasAccount ? _selectedPlanIdForAccount() : null;
+    marketplace.configureAccountScope(
+      includeAccountData: hasAccount,
+      weddingPlanId: selectedPlanId,
+    );
+    await marketplace.loadMarketplace(
+      includeAccountData: hasAccount,
+      weddingPlanId: selectedPlanId,
+      updateQuoteScope: true,
+    );
+  }
+
+  String? _selectedPlanIdForAccount() {
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    if (selected?.isPlan != true) return null;
+    final selectedPlanId = _normalizedPlanId(selected?.weddingPlanId);
+    final requestedPlanId = _normalizedPlanId(widget.weddingPlanId);
+    if (requestedPlanId != null && requestedPlanId != selectedPlanId) {
+      return null;
+    }
+    return selectedPlanId;
   }
 
   String? _matchingCityId(
@@ -482,6 +502,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   // القبول من مكانه — الخادم يفحص الصلاحيات، ونحن نعرض النتيجة بصدق.
   Future<void> _acceptQuote(QuoteRequest quote) async {
+    final planId = _selectedPlanIdForQuote(quote);
+    if (planId == null) return;
     final marketplace = context.read<ProviderMarketplaceProvider>();
     final accepted = await marketplace.acceptQuote(quote);
     if (!mounted) return;
@@ -492,11 +514,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       );
       return;
     }
-    final planId = quote.weddingPlanId?.trim();
-    if (planId != null && planId.isNotEmpty) {
-      await context.read<FinanceProvider?>()?.loadMoney(planId);
-      if (!mounted) return;
-    }
+    await context.read<FinanceProvider?>()?.loadMoney(planId);
+    if (!mounted) return;
     AarastToast.showSuccess(
       context,
       'تم قبول العرض وإضافة التكلفة إلى تبويب المال.',
@@ -504,6 +523,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }
 
   Future<void> _rejectQuote(QuoteRequest quote) async {
+    if (_selectedPlanIdForQuote(quote) == null) return;
     final marketplace = context.read<ProviderMarketplaceProvider>();
     final rejected = await marketplace.rejectQuote(quote);
     if (!mounted) return;
@@ -518,12 +538,25 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }
 
   void _viewAcceptedQuoteCost(QuoteRequest quote) {
-    final planId = quote.weddingPlanId?.trim();
+    final planId = _selectedPlanIdForQuote(quote);
     final costId = quote.costSuggestion?.costId?.trim();
-    if (planId == null || planId.isEmpty || costId == null || costId.isEmpty) {
+    if (planId == null || costId == null || costId.isEmpty) {
       AarastToast.showError(context, 'تعذر فتح التكلفة المرتبطة بهذا العرض.');
       return;
     }
     context.push(AppRouter.moneyCostDetails(planId, costId));
+  }
+
+  String? _selectedPlanIdForQuote(QuoteRequest quote) {
+    final selectedPlanId = _selectedPlanIdForAccount();
+    final quotePlanId = _normalizedPlanId(quote.weddingPlanId);
+    if (selectedPlanId == null || quotePlanId != selectedPlanId) {
+      AarastToast.showError(
+        context,
+        'هذا العرض لا يطابق مسار الخطة المحدد حاليًا.',
+      );
+      return null;
+    }
+    return selectedPlanId;
   }
 }

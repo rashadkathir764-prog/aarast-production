@@ -1,6 +1,9 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
@@ -14,6 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../account_contexts/account_context_test_data.dart';
+
 void main() {
   testWidgets('MyWeddingPlansScreen is RTL and overflow-free at 320px', (
     tester,
@@ -25,12 +30,16 @@ void main() {
     final auth = await _authController();
     final apiClient = ApiClient(tokenProvider: () async => null);
     final plans = _EmptyWeddingPlansProvider(apiClient);
+    final accountContexts = await _accountContexts(const []);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthController>.value(value: auth),
           ChangeNotifierProvider<WeddingPlansProvider>.value(value: plans),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: accountContexts,
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -65,17 +74,28 @@ void main() {
     );
   });
 
-  testWidgets('the highlighted plan is the real active plan, not the newest', (
+  testWidgets('the highlighted plan follows selectedContext only', (
     tester,
   ) async {
     final newest = _plan('newest', 'الخطة الأحدث');
-    final active = _plan('active', 'الخطة الحالية');
+    final selected = _plan('selected', 'الخطة الحالية');
     final apiClient = ApiClient(tokenProvider: () async => null);
-    final plans = _PlansWithActiveProvider(apiClient, [newest, active], active);
+    final plans = _PlansWithActiveProvider(apiClient, [
+      newest,
+      selected,
+    ], newest);
+    final accountContexts = await _accountContexts([
+      accountContext(role: AccountContextRole.owner, planId: selected.id),
+    ], selectedPlanId: selected.id);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<WeddingPlansProvider>.value(
-        value: plans,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WeddingPlansProvider>.value(value: plans),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: accountContexts,
+          ),
+        ],
         child: MaterialApp(
           theme: AppTheme.light(),
           home: const Directionality(
@@ -89,7 +109,7 @@ void main() {
 
     expect(
       find.descendant(
-        of: find.byKey(const Key('wedding-plan-card-active')),
+        of: find.byKey(const Key('wedding-plan-card-selected')),
         matching: find.text('الخطة الحالية'),
       ),
       findsWidgets,
@@ -158,6 +178,40 @@ Future<AuthController> _authController() async {
   final storage = AuthStorage(preferences);
   final client = ApiClient(tokenProvider: storage.readAccessToken);
   return AuthController(AuthRepository(client, storage));
+}
+
+Future<AccountContextController> _accountContexts(
+  List<AccountContext> contexts, {
+  String? selectedPlanId,
+}) async {
+  final preferences = await SharedPreferences.getInstance();
+  final controller = AccountContextController(
+    contextsApi: _StaticAccountContextsGateway(contexts),
+    authStorage: AuthStorage(preferences),
+    setActiveWeddingPlan: (_) async {},
+  );
+  await controller.refresh();
+  if (selectedPlanId != null) {
+    final target = contexts.firstWhere(
+      (context) => context.weddingPlanId == selectedPlanId,
+    );
+    await controller.select(target.contextKey);
+  }
+  return controller;
+}
+
+class _StaticAccountContextsGateway implements AccountContextsGateway {
+  const _StaticAccountContextsGateway(this.contexts);
+
+  final List<AccountContext> contexts;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => contexts;
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async {
+    return contexts.firstWhere((context) => context.contextKey == contextKey);
+  }
 }
 
 class _EmptyWeddingPlansProvider extends WeddingPlansProvider {

@@ -9,7 +9,10 @@ void main() {
     final api = _QuoteLoadingApi()..directQuote = _receivedQuote('quote-1');
     final provider = ProviderMarketplaceProvider(api);
 
-    final loaded = await provider.loadQuoteRequest('quote-1');
+    final loaded = await provider.loadQuoteRequest(
+      'quote-1',
+      expectedWeddingPlanId: 'plan-1',
+    );
 
     expect(loaded, isTrue);
     expect(provider.quoteRequests.map((quote) => quote.id), ['quote-1']);
@@ -19,7 +22,7 @@ void main() {
   test('keeps loaded offers and reports a refresh failure honestly', () async {
     final api = _QuoteLoadingApi()..directQuote = _receivedQuote('quote-1');
     final provider = ProviderMarketplaceProvider(api);
-    await provider.loadQuoteRequest('quote-1');
+    await provider.loadQuoteRequest('quote-1', expectedWeddingPlanId: 'plan-1');
     api.listError = const ApiException(aarastBackendConnectionErrorMessage);
 
     await provider.loadMyQuoteRequests();

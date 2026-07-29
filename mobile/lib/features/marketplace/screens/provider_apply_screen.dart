@@ -239,9 +239,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       final accountContexts = context.read<AccountContextController>();
       await auth.refreshCurrentUser();
       if (!mounted) return;
-      await accountContexts.refresh(
-        activeWeddingPlanId: auth.user?.activeWeddingPlanId,
-      );
+      await accountContexts.refresh();
       if (!mounted) return;
       context.go(AppRouter.providerApplyStatus);
     }

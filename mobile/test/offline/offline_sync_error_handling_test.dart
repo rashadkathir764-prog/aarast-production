@@ -142,10 +142,7 @@ void main() {
     expect(restartedService.state, SyncState.syncError);
     expect(restartedService.blockedCount, 1);
     expect(restartedService.pendingCount, 0);
-    expect(
-      restartedService.lastError,
-      contains('title should not be empty'),
-    );
+    expect(restartedService.lastError, contains('title should not be empty'));
   });
 
   test('manual recovery requeues blocked work and syncs it once', () async {

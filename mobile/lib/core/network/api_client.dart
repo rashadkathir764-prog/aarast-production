@@ -1,7 +1,8 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
+import '../diagnostics/context_lifecycle_logger.dart';
 
 typedef TokenProvider = Future<String?> Function();
 typedef SessionRefresher = Future<bool> Function();
@@ -10,6 +11,7 @@ const aarastBackendConnectionErrorMessage =
     'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
 const aarastOtpDeliveryUnavailableMessage =
     'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.';
+const _requestScopeGenerationKey = 'aarast_request_scope_generation';
 
 class ApiClient {
   ApiClient({required TokenProvider tokenProvider, Dio? uploadDio})
@@ -37,6 +39,7 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final requestSessionGeneration = _sessionGeneration;
+          options.extra[_requestScopeGenerationKey] = requestSessionGeneration;
           final token = await _tokenProvider();
           if (requestSessionGeneration != _sessionGeneration) {
             handler.reject(
@@ -54,12 +57,43 @@ class ApiClient {
             options.headers['Authorization'] = 'Bearer $token';
           }
           _debugAuthLoginRequest(options);
+          ContextLifecycleLogger.event(
+            'API_REQUEST',
+            userId: _sessionIdentity,
+            activeContextKey: _contextIdentity,
+            weddingPlanId: _planIdFromContextKey(_contextIdentity),
+            currentRoute: options.path,
+            reason: options.method.toLowerCase(),
+            source: 'ApiClient',
+          );
           handler.next(options);
         },
         onResponse: (response, handler) {
+          if (_requestUsesAStaleScope(response.requestOptions)) {
+            handler.reject(
+              DioException(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioExceptionType.cancel,
+                error:
+                    'The account context changed before the response completed',
+              ),
+            );
+            return;
+          }
           _debugAuthLoginStatus(
             response.requestOptions.path,
             response.statusCode,
+          );
+          ContextLifecycleLogger.event(
+            'API_RESPONSE',
+            userId: _sessionIdentity,
+            activeContextKey: _contextIdentity,
+            weddingPlanId: _planIdFromContextKey(_contextIdentity),
+            currentRoute: response.requestOptions.path,
+            httpStatus: response.statusCode,
+            reason: 'completed',
+            source: 'ApiClient',
           );
           handler.next(response);
         },
@@ -68,9 +102,31 @@ class ApiClient {
             error.requestOptions.path,
             error.response?.statusCode,
           );
+          ContextLifecycleLogger.event(
+            'API_FAILURE',
+            userId: _sessionIdentity,
+            activeContextKey: _contextIdentity,
+            weddingPlanId: _planIdFromContextKey(_contextIdentity),
+            currentRoute: error.requestOptions.path,
+            httpStatus: error.response?.statusCode,
+            reason: error.type.name,
+            source: 'ApiClient',
+          );
           if (await _requestUsesAStaleSessionToken(error.requestOptions)) {
             handler.next(error);
             return;
+          }
+          final statusCode = error.response?.statusCode;
+          if (statusCode == 401 || statusCode == 403) {
+            ContextLifecycleLogger.event(
+              statusCode == 401 ? 'UNAUTHORIZED_401' : 'FORBIDDEN_403',
+              activeContextKey: _contextIdentity,
+              currentRoute: error.requestOptions.path,
+              reason: statusCode == 401
+                  ? 'backend_rejected_account_session'
+                  : 'backend_rejected_context_permission',
+              source: 'ApiClient',
+            );
           }
           // A 401 outside the auth endpoints, or from the read-only session
           // restore endpoint, means the access token may need one refresh.
@@ -110,6 +166,7 @@ class ApiClient {
   Future<bool>? _refreshInFlight;
   int _sessionGeneration = 0;
   String? _sessionIdentity;
+  String? _contextIdentity;
 
   SessionRefresher? refreshSession;
 
@@ -123,9 +180,25 @@ class ApiClient {
     _sessionGeneration += 1;
   }
 
+  /// Invalidates requests that started for a previous selected workspace.
+  /// The access token remains account-scoped; only response delivery changes.
+  void bindContextIdentity(String? contextIdentity) {
+    if (_contextIdentity == contextIdentity) return;
+    _contextIdentity = contextIdentity;
+    _sessionGeneration += 1;
+  }
+
+  static String? _planIdFromContextKey(String? contextKey) {
+    if (contextKey == null || !contextKey.startsWith('plan:')) return null;
+    final parts = contextKey.split(':');
+    if (parts.length < 3) return null;
+    return parts.sublist(1, parts.length - 1).join(':');
+  }
+
   Future<String?> readCurrentAccessToken() => _tokenProvider();
 
   Future<bool> _requestUsesAStaleSessionToken(RequestOptions options) async {
+    if (_requestUsesAStaleScope(options)) return true;
     final requestAuthorization = options.headers['Authorization']?.toString();
     if (requestAuthorization == null || requestAuthorization.isEmpty) {
       return false;
@@ -133,6 +206,11 @@ class ApiClient {
     final currentToken = await _tokenProvider();
     if (currentToken == null || currentToken.isEmpty) return true;
     return requestAuthorization != 'Bearer $currentToken';
+  }
+
+  bool _requestUsesAStaleScope(RequestOptions options) {
+    final requestGeneration = options.extra[_requestScopeGenerationKey] as int?;
+    return requestGeneration != null && requestGeneration != _sessionGeneration;
   }
 
   bool _canRefresh(DioException error) {
@@ -281,6 +359,18 @@ class ApiClient {
   Future<Map<String, dynamic>> deleteJson(String path) async {
     try {
       final response = await dio.delete<Object?>(path);
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteJsonWithData(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await dio.delete<Object?>(path, data: data);
       return _asJsonMap(response.data);
     } on DioException catch (error) {
       throw ApiException.fromDio(error);

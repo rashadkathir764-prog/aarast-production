@@ -44,6 +44,23 @@ class AppTheme {
   static const disabled = AarastDesignTokens.disabled;
   static const empty = AarastDesignTokens.empty;
 
+  static const contributorCanvas = AarastDesignTokens.contributorCanvas;
+  static const contributorSurface = AarastDesignTokens.contributorSurface;
+  static const contributorSurfaceAlt = AarastDesignTokens.contributorSurfaceAlt;
+  static const contributorBorder = AarastDesignTokens.contributorBorder;
+  static const contributorInk = AarastDesignTokens.contributorInk;
+  static const contributorMuted = AarastDesignTokens.contributorMuted;
+  static const contributorOxblood = AarastDesignTokens.contributorOxblood;
+  static const contributorOxbloodDark =
+      AarastDesignTokens.contributorOxbloodDark;
+  static const contributorWine = AarastDesignTokens.contributorWine;
+  static const contributorWineSoft = AarastDesignTokens.contributorWineSoft;
+  static const contributorBronze = AarastDesignTokens.contributorBronze;
+  static const contributorMoneyTint = AarastDesignTokens.contributorMoneyTint;
+  static const contributorGuestsTint = AarastDesignTokens.contributorGuestsTint;
+  static const contributorProvidersTint =
+      AarastDesignTokens.contributorProvidersTint;
+
   // Semantic Aliases
   static const background = ivory;
   static const cardWhite = surface;

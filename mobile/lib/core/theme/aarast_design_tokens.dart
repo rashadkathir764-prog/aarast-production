@@ -42,6 +42,24 @@ class AarastDesignTokens {
   static const Color disabled = Color(0xFFC7BABD);
   static const Color empty = Color(0xFFFFF8EF);
 
+  // Contributor workspace — cool porcelain surfaces with an oxblood hero.
+  // These tokens are intentionally scoped and do not replace the global
+  // Soft Royal ivory/burgundy palette used by owner and provider screens.
+  static const Color contributorCanvas = Color(0xFFF7F8FA);
+  static const Color contributorSurface = Color(0xFFFFFFFF);
+  static const Color contributorSurfaceAlt = Color(0xFFF1F3F5);
+  static const Color contributorBorder = Color(0xFFE3E6EA);
+  static const Color contributorInk = Color(0xFF17181B);
+  static const Color contributorMuted = Color(0xFF6F737B);
+  static const Color contributorOxblood = Color(0xFF550A1D);
+  static const Color contributorOxbloodDark = Color(0xFF350610);
+  static const Color contributorWine = Color(0xFF7A1432);
+  static const Color contributorWineSoft = Color(0xFFF8EEF2);
+  static const Color contributorBronze = Color(0xFFB69255);
+  static const Color contributorMoneyTint = Color(0xFFEAF5EF);
+  static const Color contributorGuestsTint = Color(0xFFEBF2F8);
+  static const Color contributorProvidersTint = Color(0xFFF4F0E8);
+
   // Backward compatibility for tests
   static const Color royalMaroon = burgundy;
   static const Color royalMaroonSoft = burgundy;

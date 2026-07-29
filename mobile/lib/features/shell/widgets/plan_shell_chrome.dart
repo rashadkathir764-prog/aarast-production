@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../account_contexts/widgets/account_context_switcher.dart';
 import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 
@@ -30,12 +29,7 @@ class PlanShellChrome extends StatelessWidget {
       child: Scaffold(
         backgroundColor: backgroundColor,
         extendBody: true,
-        body: Column(
-          children: [
-            const AccountContextSwitcher(),
-            Expanded(child: body),
-          ],
-        ),
+        body: body,
         floatingActionButton: showQuickFab && quickAdd != null
             ? RoyalSmartFloatingActionButton(
                 icon: planQuickAddIconForTab(activeIndex),

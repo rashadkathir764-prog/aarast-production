@@ -123,6 +123,33 @@ void main() {
       expect(adapter.requestCount, 0);
     },
   );
+
+  test(
+    'an in-flight response is cancelled when selected context changes',
+    () async {
+      final apiClient = ApiClient(tokenProvider: () async => 'account-token');
+      final adapter = _DelayedOkAdapter();
+      apiClient.dio.httpClientAdapter = adapter;
+      apiClient.bindSessionIdentity('user-a');
+      apiClient.bindContextIdentity('plan:one:owner');
+
+      final request = apiClient.dio.get<Object?>('/plan-one-private-read');
+      await adapter.started.future;
+      apiClient.bindContextIdentity('plan:two:owner');
+      adapter.release.complete();
+
+      await expectLater(
+        request,
+        throwsA(
+          isA<DioException>().having(
+            (error) => error.type,
+            'type',
+            DioExceptionType.cancel,
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _SessionRaceAdapter implements HttpClientAdapter {
@@ -191,6 +218,31 @@ class _RecordingOkAdapter implements HttpClientAdapter {
   ) async {
     requestCount += 1;
     return ResponseBody.fromString('{}', 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _DelayedOkAdapter implements HttpClientAdapter {
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    started.complete();
+    await release.future;
+    return ResponseBody.fromString(
+      '{}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
   }
 
   @override

@@ -29,6 +29,7 @@ import {
   PROVIDER_PORTAL_ROUTE,
 } from "../provider-dashboard/provider-access-policy";
 import { PermissionService } from "../sharing/permission.service";
+import { isPushNotificationType } from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
   lockUserLifecycleRowsInTransaction,
@@ -92,9 +93,7 @@ type NotificationCreateClient = Pick<
 
 type NotificationContentPreference = Pick<
   NotificationPreference,
-  | "taskRemindersEnabled"
-  | "paymentRemindersEnabled"
-  | "providerMessagesEnabled"
+  "taskRemindersEnabled" | "paymentRemindersEnabled" | "providerMessagesEnabled"
 >;
 
 type OwnedProviderLifecycle = {
@@ -208,18 +207,16 @@ export class NotificationsService {
   ): Promise<{ updated: number }> {
     const planId = this.optionalText(weddingPlanId);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      const accessiblePlanIds =
-        await this.lockAllPlanAccessForNotifications(
-          tx,
-          currentUser,
-          planId,
-        );
+      const accessiblePlanIds = await this.lockAllPlanAccessForNotifications(
+        tx,
+        currentUser,
+        planId,
+      );
       const provider = await this.lockOwnedProviderLifecycle(
         tx,
         currentUser.id,
       );
-      const providerAudience =
-        this.operationalProviderAudienceWhere(provider);
+      const providerAudience = this.operationalProviderAudienceWhere(provider);
       if (
         planId &&
         !accessiblePlanIds.includes(planId) &&
@@ -398,15 +395,7 @@ export class NotificationsService {
         dedupeKey: input.dedupeKey,
       },
     });
-    await this.outbox.enqueue(client, {
-      type: OutboxEventTypes.notificationCreated,
-      aggregateType: "notification",
-      aggregateId: created.id,
-      payload: {
-        notificationId: created.id,
-        userId: created.userId,
-      },
-    });
+    await this.enqueueNotificationDelivery(client, created);
     return this.toResponse(created);
   }
 
@@ -511,8 +500,7 @@ export class NotificationsService {
         ]),
       ]
         .filter(
-          (userId) =>
-            activeLockedUserIds.has(userId) && !excluded.has(userId),
+          (userId) => activeLockedUserIds.has(userId) && !excluded.has(userId),
         )
         .sort();
       const notifications: NotificationResponse[] = [];
@@ -577,10 +565,7 @@ export class NotificationsService {
         const currentTask = await tx.weddingTask.findUnique({
           where: { id: task.id },
         });
-        if (
-          !currentTask ||
-          currentTask.weddingPlanId !== task.weddingPlanId
-        ) {
+        if (!currentTask || currentTask.weddingPlanId !== task.weddingPlanId) {
           return null;
         }
         return this.taskDueNotificationInput(currentTask);
@@ -756,9 +741,7 @@ export class NotificationsService {
         }
         const costIds = [
           ...new Set(
-            paymentScheduleSeeds.map(
-              (schedule) => schedule.weddingCostId,
-            ),
+            paymentScheduleSeeds.map((schedule) => schedule.weddingCostId),
           ),
         ].sort();
         if (costIds.length > 0) {
@@ -836,9 +819,7 @@ export class NotificationsService {
           }),
         ]);
 
-        const plansById = new Map(
-          lockedPlans.map((plan) => [plan.id, plan]),
-        );
+        const plansById = new Map(lockedPlans.map((plan) => [plan.id, plan]));
         const preferencesByUserId = new Map(
           preferences.map((preference) => [preference.userId, preference]),
         );
@@ -952,15 +933,7 @@ export class NotificationsService {
           skipDuplicates: true,
         });
         for (const notification of created) {
-          await this.outbox.enqueue(tx, {
-            type: OutboxEventTypes.notificationCreated,
-            aggregateType: "notification",
-            aggregateId: notification.id,
-            payload: {
-              notificationId: notification.id,
-              userId: notification.userId,
-            },
-          });
+          await this.enqueueNotificationDelivery(tx, notification);
         }
         return created.length;
       },
@@ -974,6 +947,7 @@ export class NotificationsService {
     switch (type) {
       case NotificationType.TASK_DUE_SOON:
       case NotificationType.TASK_OVERDUE:
+      case NotificationType.TASK_ASSIGNED:
         return "taskRemindersEnabled";
       case NotificationType.PAYMENT_SCHEDULE_DUE_SOON:
       case NotificationType.PAYMENT_SCHEDULE_OVERDUE:
@@ -994,6 +968,30 @@ export class NotificationsService {
     preference: NotificationContentPreference | null | undefined,
   ): boolean {
     return preference?.[key] !== false;
+  }
+
+  private async enqueueNotificationDelivery(
+    client: NotificationCreateClient,
+    notification: Pick<Notification, "id" | "userId" | "type">,
+  ): Promise<void> {
+    await this.outbox.enqueue(client, {
+      type: OutboxEventTypes.notificationCreated,
+      aggregateType: "notification",
+      aggregateId: notification.id,
+      payload: {
+        notificationId: notification.id,
+        userId: notification.userId,
+      },
+    });
+    if (!isPushNotificationType(notification.type)) return;
+    await this.outbox.enqueue(client, {
+      type: OutboxEventTypes.pushNotificationRequested,
+      aggregateType: "notification",
+      aggregateId: notification.id,
+      payload: {
+        notificationId: notification.id,
+      },
+    });
   }
 
   async purgeMoneyForMember(
@@ -1049,8 +1047,7 @@ export class NotificationsService {
     userId: string,
     provider: OwnedProviderLifecycle,
   ): Prisma.NotificationWhereInput {
-    const providerAudience =
-      this.operationalProviderAudienceWhere(provider);
+    const providerAudience = this.operationalProviderAudienceWhere(provider);
     return {
       OR: [
         { weddingPlanId: null },
@@ -1163,12 +1160,11 @@ export class NotificationsService {
           currentUser,
         );
       } else {
-        const context =
-          await this.permissions.assertPlanReadableInTransaction(
-            tx,
-            seed.weddingPlanId,
-            currentUser,
-          );
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          seed.weddingPlanId,
+          currentUser,
+        );
         canViewMoney = this.permissions.canViewMoney(context);
         if (this.isMoneyNotification(seed) && !canViewMoney) {
           throw new NotFoundException("Notification not found");
@@ -1276,16 +1272,12 @@ export class NotificationsService {
       select: { weddingPlanId: true },
     });
     const planIds = [
-      ...new Set(
-        [
-          ...(weddingPlanId ? [weddingPlanId] : []),
-          ...notificationPlans.flatMap((notification) =>
-            notification.weddingPlanId
-              ? [notification.weddingPlanId]
-              : [],
-          ),
-        ],
-      ),
+      ...new Set([
+        ...(weddingPlanId ? [weddingPlanId] : []),
+        ...notificationPlans.flatMap((notification) =>
+          notification.weddingPlanId ? [notification.weddingPlanId] : [],
+        ),
+      ]),
     ].sort();
     const seedPlans =
       planIds.length === 0
@@ -1389,10 +1381,8 @@ export class NotificationsService {
   ): boolean {
     return (
       notification.entityType === "payment_schedule" ||
-      notification.type ===
-        NotificationType.PAYMENT_SCHEDULE_DUE_SOON ||
-      notification.type ===
-        NotificationType.PAYMENT_SCHEDULE_OVERDUE
+      notification.type === NotificationType.PAYMENT_SCHEDULE_DUE_SOON ||
+      notification.type === NotificationType.PAYMENT_SCHEDULE_OVERDUE
     );
   }
 
@@ -1566,8 +1556,7 @@ export class NotificationsService {
     client: NotificationVisibilityClient = this.prisma,
   ): Promise<void> {
     const data = this.notificationData(notification);
-    const explicitProviderAudience =
-      data?.recipientAudience === "PROVIDER";
+    const explicitProviderAudience = data?.recipientAudience === "PROVIDER";
     if (explicitProviderAudience) {
       if (!provider || data.providerId !== provider.id) {
         throw new NotFoundException("Notification not found");
@@ -1606,11 +1595,7 @@ export class NotificationsService {
       }
     }
 
-    if (
-      explicitProviderAudience ||
-      legacyProviderQuote ||
-      legacyProviderChat
-    ) {
+    if (explicitProviderAudience || legacyProviderQuote || legacyProviderChat) {
       assertProviderOperational(provider);
     }
   }

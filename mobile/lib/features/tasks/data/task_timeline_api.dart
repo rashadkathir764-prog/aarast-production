@@ -488,7 +488,9 @@ class TaskTimelineApi {
         operation: 'assign',
         endpoint: '/api/v1/tasks/$id/assign',
         method: 'PATCH',
-        payload: {'assigneeUserId': _trimmedOrNull(data['assigneeUserId']?.toString())},
+        payload: {
+          'assigneeUserId': _trimmedOrNull(data['assigneeUserId']?.toString()),
+        },
         localEntityId: id,
         replacePendingForEntity: true,
         clientRequestId: existingAssign?.id,
@@ -503,10 +505,7 @@ class TaskTimelineApi {
     required Map<String, dynamic> data,
   }) async {
     final items = await _queuedTaskItems(id, operation);
-    return {
-      for (final item in items) ...item.payload,
-      ...data,
-    };
+    return {for (final item in items) ...item.payload, ...data};
   }
 
   Future<String?> _queuedTaskRequestId(String id, String operation) async {

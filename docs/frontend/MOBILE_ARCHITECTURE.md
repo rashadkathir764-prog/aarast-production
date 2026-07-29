@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Snapshot date: 2026-07-23
+Snapshot date: 2026-07-28
 
 ## Principles
 
@@ -15,6 +15,8 @@ Snapshot date: 2026-07-23
 ## Current Architecture Areas
 
 - Routing: `mobile/lib/core/routing/app_router.dart`.
+- Account-context entry: `mobile/lib/features/account_contexts/providers/account_context_controller.dart`
+  and `mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart`.
 - API config: `mobile/lib/core/config/api_config.dart`.
 - Offline/cache: `mobile/lib/core/offline/` and related feature repositories.
 - Feature flags: `mobile/lib/core/config/app_feature_flags.dart`.
@@ -30,6 +32,12 @@ Snapshot date: 2026-07-23
 - Provider conversations: `mobile/lib/features/chat/` using a server-created
   plan/provider or account/provider identity, REST conversation/timeline pages,
   and authenticated Socket.IO delivery/recovery.
+- Post-auth routing is a single boundary: `/home` checks the authenticated
+  session, fetches live contexts, keeps the existing onboarding route for zero
+  contexts, auto-selects one available context, presents a standalone
+  `اختر المسار` screen for multiple contexts, and then replaces the route with
+  the plan or provider dashboard. Context selection is not rendered inside a
+  dashboard shell.
 
 ## QA Focus
 

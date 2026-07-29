@@ -13,7 +13,9 @@ void main() {
     expect(source, contains("AarastToast.showSuccess"));
     expect(source, isNot(contains("context.pop(true)")));
     expect(source, contains('marketplace.lastCreatedQuote'));
-    expect(source, contains('AppRouter.planProviders(planId'));
-    expect(source, contains('AppRouter.providerMarketplace'));
+    expect(source, contains('?.selectedContext;'));
+    expect(source, contains('weddingPlanId: selectedPlanId'));
+    expect(source, contains('AppRouter.planProviders(selectedPlanId'));
+    expect(source, isNot(contains('AppRouter.providerMarketplace')));
   });
 }

@@ -351,18 +351,105 @@ test("invite OTP verification stays bound to the exact private token", async () 
   ]);
 });
 
-test("invite OTP never dispatches for accepted, declined, cancelled, or expired links", async () => {
+test("accepted invite OTP is limited to legacy accounts missing a real app password", async () => {
+  const token = TEST_INVITE_TOKEN;
+  const expectedHash = createHash("sha256").update(token).digest("hex");
+  const authCalls: unknown[][] = [];
+  const legacyService = new InviteAccessService(
+    {
+      planInvite: {
+        findFirst: async () => ({
+          id: "accepted-invite",
+          acceptedAt: new Date(),
+          weddingPlanId: "plan-1",
+        }),
+      },
+      user: {
+        findFirst: async () => ({
+          id: "legacy-user",
+          role: "USER",
+          phoneVerifiedAt: new Date(),
+          appPasswordHash: null,
+          appPasswordConfiguredAt: null,
+        }),
+      },
+      sharedMember: {
+        findUnique: async () => ({ id: "member-1" }),
+      },
+    } as any,
+    {
+      requestInviteOtp: async (...args: unknown[]) => {
+        authCalls.push(args);
+        return { delivery: "WHATSAPP" };
+      },
+    } as any,
+  );
+
+  const result = await legacyService.requestOtp(
+    token,
+    { phone: "777 123 456" },
+    { ip: "127.0.0.1" },
+  );
+  assert.deepEqual(result, {
+    delivery: "WHATSAPP",
+    accountSetupRequired: true,
+  });
+  assert.equal(authCalls.length, 1);
+  assert.equal(authCalls[0][0], "+967777123456");
+  assert.equal(authCalls[0][1], "accepted-invite");
+  assert.equal(authCalls[0][2], expectedHash);
+  assert.equal(authCalls[0][4], true);
+
+  let configuredAuthCalls = 0;
+  const configuredService = new InviteAccessService(
+    {
+      planInvite: {
+        findFirst: async () => ({
+          id: "accepted-invite",
+          acceptedAt: new Date(),
+          weddingPlanId: "plan-1",
+        }),
+      },
+      user: {
+        findFirst: async () => ({
+          id: "configured-user",
+          role: "USER",
+          phoneVerifiedAt: new Date(),
+          appPasswordHash: null,
+          appPasswordConfiguredAt: new Date(),
+        }),
+      },
+    } as any,
+    {
+      requestInviteOtp: async () => {
+        configuredAuthCalls += 1;
+        return { delivery: "WHATSAPP" };
+      },
+    } as any,
+  );
+
+  await assert.rejects(
+    () =>
+      configuredService.requestOtp(
+        token,
+        { phone: "777 123 456" },
+        { ip: "127.0.0.1" },
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof HttpException);
+      const response = error.getResponse() as { code?: string };
+      assert.equal(response.code, AuthErrorCode.INVITE_NOT_FOUND_FOR_PHONE);
+      return true;
+    },
+  );
+  assert.equal(configuredAuthCalls, 0);
+});
+
+test("invite OTP never dispatches for declined, cancelled, or expired links", async () => {
   const token = TEST_INVITE_TOKEN;
   const expectedHash = createHash("sha256").update(token).digest("hex");
   const activeExpiry = new Date(Date.now() + 60_000);
   const terminalRows = [
-    {
-      label: "accepted",
-      acceptedAt: new Date(),
-      declinedAt: null,
-      revokedAt: null,
-      expiresAt: activeExpiry,
-    },
     {
       label: "declined",
       acceptedAt: null,

@@ -13,88 +13,102 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('offline create then edit replays one merged create without local ids', () async {
-    final harness = await _Harness.create();
+  test(
+    'offline create then edit replays one merged create without local ids',
+    () async {
+      final harness = await _Harness.create();
 
-    final task = await harness.api.createTask(
-      weddingPlanId: 'plan-1',
-      title: 'العنوان الأول',
-      description: 'الوصف الأول',
-    );
-    await harness.api.updateTask(task.id, {
-      'title': 'العنوان المصحح',
-      'priority': 'HIGH',
-    });
+      final task = await harness.api.createTask(
+        weddingPlanId: 'plan-1',
+        title: 'العنوان الأول',
+        description: 'الوصف الأول',
+      );
+      await harness.api.updateTask(task.id, {
+        'title': 'العنوان المصحح',
+        'priority': 'HIGH',
+      });
 
-    final queued = await harness.database.pendingSyncItems();
-    expect(queued, hasLength(1));
-    expect(queued.single.operation, 'create');
-    expect(queued.single.payload['title'], 'العنوان المصحح');
-    expect(queued.single.payload['description'], 'الوصف الأول');
-    expect(queued.single.payload['priority'], 'HIGH');
+      final queued = await harness.database.pendingSyncItems();
+      expect(queued, hasLength(1));
+      expect(queued.single.operation, 'create');
+      expect(queued.single.payload['title'], 'العنوان المصحح');
+      expect(queued.single.payload['description'], 'الوصف الأول');
+      expect(queued.single.payload['priority'], 'HIGH');
 
-    harness.adapter.online = true;
-    await harness.offline.syncPendingChanges();
+      harness.adapter.online = true;
+      await harness.offline.syncPendingChanges();
 
-    final replay = harness.adapter.successfulRequests.single;
-    expect(replay.path, '/api/v1/wedding-plans/plan-1/tasks');
-    expect(replay.path, isNot(contains('local-task-')));
-    expect(jsonEncode(replay.data), isNot(contains('local-task-')));
-    expect(Map<String, dynamic>.from(replay.data as Map)['title'], 'العنوان المصحح');
-    expect(await harness.database.pendingSyncItems(), isEmpty);
-  });
+      final replay = harness.adapter.successfulRequests.single;
+      expect(replay.path, '/api/v1/wedding-plans/plan-1/tasks');
+      expect(replay.path, isNot(contains('local-task-')));
+      expect(jsonEncode(replay.data), isNot(contains('local-task-')));
+      expect(
+        Map<String, dynamic>.from(replay.data as Map)['title'],
+        'العنوان المصحح',
+      );
+      expect(await harness.database.pendingSyncItems(), isEmpty);
+    },
+  );
 
-  test('offline create then delete cancels the local task without an API delete', () async {
-    final harness = await _Harness.create();
+  test(
+    'offline create then delete cancels the local task without an API delete',
+    () async {
+      final harness = await _Harness.create();
 
-    final task = await harness.api.createTask(
-      weddingPlanId: 'plan-1',
-      title: 'مهمة مؤقتة',
-    );
-    await harness.api.deleteTask(task.id);
+      final task = await harness.api.createTask(
+        weddingPlanId: 'plan-1',
+        title: 'مهمة مؤقتة',
+      );
+      await harness.api.deleteTask(task.id);
 
-    expect(
-      await harness.database.readCachedItem(
-        table: OfflineTables.cachedTasks,
-        id: task.id,
-      ),
-      isNull,
-    );
-    expect(await harness.database.pendingSyncItems(), isEmpty);
-    expect(
-      harness.adapter.requests.where((request) => request.method == 'DELETE'),
-      isEmpty,
-    );
-    expect(
-      harness.adapter.requests.map((request) => request.path),
-      everyElement(isNot(contains('local-task-'))),
-    );
-  });
+      expect(
+        await harness.database.readCachedItem(
+          table: OfflineTables.cachedTasks,
+          id: task.id,
+        ),
+        isNull,
+      );
+      expect(await harness.database.pendingSyncItems(), isEmpty);
+      expect(
+        harness.adapter.requests.where((request) => request.method == 'DELETE'),
+        isEmpty,
+      );
+      expect(
+        harness.adapter.requests.map((request) => request.path),
+        everyElement(isNot(contains('local-task-'))),
+      );
+    },
+  );
 
-  test('offline assigned task creates first then assigns with the remote id', () async {
-    final harness = await _Harness.create();
+  test(
+    'offline assigned task creates first then assigns with the remote id',
+    () async {
+      final harness = await _Harness.create();
 
-    await harness.api.createTask(
-      weddingPlanId: 'plan-1',
-      title: 'مهمة مشتركة',
-      assigneeUserId: 'member-1',
-      assigneeName: 'سارة',
-    );
-    expect(
-      (await harness.database.pendingSyncItems()).map((item) => item.operation),
-      ['create', 'assign'],
-    );
+      await harness.api.createTask(
+        weddingPlanId: 'plan-1',
+        title: 'مهمة مشتركة',
+        assigneeUserId: 'member-1',
+        assigneeName: 'سارة',
+      );
+      expect(
+        (await harness.database.pendingSyncItems()).map(
+          (item) => item.operation,
+        ),
+        ['create', 'assign'],
+      );
 
-    harness.adapter.online = true;
-    await harness.offline.syncPendingChanges();
+      harness.adapter.online = true;
+      await harness.offline.syncPendingChanges();
 
-    expect(harness.adapter.successfulRequests, hasLength(2));
-    final assignRequest = harness.adapter.successfulRequests.last;
-    expect(assignRequest.path, '/api/v1/tasks/remote-task-1/assign');
-    expect(assignRequest.path, isNot(contains('local-task-')));
-    expect(jsonEncode(assignRequest.data), isNot(contains('local-task-')));
-    expect(await harness.database.pendingSyncItems(), isEmpty);
-  });
+      expect(harness.adapter.successfulRequests, hasLength(2));
+      final assignRequest = harness.adapter.successfulRequests.last;
+      expect(assignRequest.path, '/api/v1/tasks/remote-task-1/assign');
+      expect(assignRequest.path, isNot(contains('local-task-')));
+      expect(jsonEncode(assignRequest.data), isNot(contains('local-task-')));
+      expect(await harness.database.pendingSyncItems(), isEmpty);
+    },
+  );
 }
 
 class _Harness {

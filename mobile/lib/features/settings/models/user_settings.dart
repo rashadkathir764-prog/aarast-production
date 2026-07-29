@@ -160,7 +160,7 @@ class NotificationChannelCapabilities {
       enabled: true,
     ),
     push: NotificationChannelCapability(
-      supported: false,
+      supported: true,
       configurable: false,
       enabled: false,
     ),

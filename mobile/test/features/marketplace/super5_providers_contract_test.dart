@@ -5,6 +5,9 @@ import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -14,11 +17,16 @@ import 'package:aarast_mobile/features/marketplace/models/provider_budget_match_
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_auth_gate.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../account_contexts/account_context_test_data.dart';
 
 void main() {
   test('provider list contract keeps category and service summary', () {
@@ -482,11 +490,49 @@ Future<void> _pumpMarketplace(
             ? _AuthenticatedAuthController(authRepository)
             : AuthController(authRepository)
         ..restoreSession();
+  AccountContextController? accountContexts;
+  WeddingPlansProvider? weddingPlans;
+  if (authenticated) {
+    final selectedContext = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-1',
+    );
+    accountContexts = AccountContextController(
+      contextsApi: _StaticContextsGateway(selectedContext),
+      authStorage: authStorage,
+      setActiveWeddingPlan: (_) async {},
+    );
+    await accountContexts.refresh();
+    final selected = await accountContexts.select(selectedContext.contextKey);
+    if (!selected) {
+      throw StateError('The marketplace test plan context must be selected');
+    }
+    weddingPlans = _SelectedWeddingPlansProvider(
+      WeddingPlan(
+        id: 'plan-1',
+        ownerUserId: 'user-1',
+        title: 'Test plan',
+        city: 'Sanaa',
+        currency: 'YER',
+        status: 'PLANNING',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+    );
+    addTearDown(accountContexts.dispose);
+    addTearDown(weddingPlans.dispose);
+  }
 
   final providers = [
     Provider<AuthStorage>.value(value: authStorage),
     Provider<AuthRepository>.value(value: authRepository),
     ChangeNotifierProvider<AuthController>.value(value: authController),
+    if (accountContexts != null)
+      ChangeNotifierProvider<AccountContextController>.value(
+        value: accountContexts,
+      ),
+    if (weddingPlans != null)
+      ChangeNotifierProvider<WeddingPlansProvider>.value(value: weddingPlans),
     ChangeNotifierProvider<ProviderMarketplaceProvider>.value(value: state),
   ];
 
@@ -728,4 +774,31 @@ class _AuthenticatedAuthController extends AuthController {
 
   @override
   AuthStatus get status => AuthStatus.authenticated;
+}
+
+class _SelectedWeddingPlansProvider extends WeddingPlansProvider {
+  _SelectedWeddingPlansProvider(this.plan)
+    : super(
+        WeddingPlansApi(ApiClient(tokenProvider: () async => 'test-token')),
+      );
+
+  final WeddingPlan plan;
+
+  @override
+  WeddingPlan? get selectedPlan => plan;
+
+  @override
+  Future<void> loadWeddingPlan(String id) async {}
+}
+
+class _StaticContextsGateway implements AccountContextsGateway {
+  const _StaticContextsGateway(this.context);
+
+  final AccountContext context;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => [context];
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async => context;
 }

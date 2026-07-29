@@ -2,6 +2,7 @@
 
 - `/conversations`
 - `/conversations/:id`
+- `/dashboard`
 - `/dev/guest-onboarding`
 - `/dev/user-navigation-shell`
 - `/home`
@@ -27,7 +28,6 @@
 - `/register`
 - `/reset-password`
 - `/settings`
-- `/shared-members/:id/edit`
 - `/shared/wedding-plans`
 - `/support`
 - `/wedding-plans`
@@ -54,6 +54,7 @@
 - `/wedding-plans/:id/plan-center`
 - `/wedding-plans/:id/providers`
 - `/wedding-plans/:id/sharing`
+- `/wedding-plans/:id/sharing/:memberId/edit`
 - `/wedding-plans/:id/sharing/add`
 - `/wedding-plans/:id/tasks`
 - `/wedding-plans/:id/tasks/:taskId/edit`
@@ -62,4 +63,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 61 unique routes
+Total: 62 unique routes

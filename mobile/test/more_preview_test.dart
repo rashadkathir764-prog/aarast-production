@@ -13,6 +13,9 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/more/screens/more_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
@@ -37,6 +40,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/preview_fonts.dart';
+import 'features/account_contexts/account_context_test_data.dart';
 
 void main() {
   setUpAll(loadPreviewAppFonts);
@@ -212,10 +216,25 @@ void main() {
         updatedAt: DateTime(2026, 6, 1),
       ),
     ]);
+    final accountContexts = AccountContextController(
+      contextsApi: _PreviewContextsGateway([
+        accountContext(role: AccountContextRole.owner, planId: 'plan-1'),
+        accountContext(role: AccountContextRole.owner, planId: 'plan-2'),
+      ]),
+      authStorage: AuthStorage(await SharedPreferences.getInstance()),
+      setActiveWeddingPlan: (_) async {},
+    );
+    await accountContexts.refresh();
+    await accountContexts.select('plan:plan-1:owner');
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<WeddingPlansProvider>.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WeddingPlansProvider>.value(value: provider),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: accountContexts,
+          ),
+        ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
@@ -297,6 +316,19 @@ void main() {
       matchesGoldenFile('goldens/shared_plans.png'),
     );
   });
+}
+
+class _PreviewContextsGateway implements AccountContextsGateway {
+  const _PreviewContextsGateway(this.contexts);
+
+  final List<AccountContext> contexts;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => contexts;
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async =>
+      contexts.firstWhere((context) => context.contextKey == contextKey);
 }
 
 SharedWeddingPlan _sharedPlan({

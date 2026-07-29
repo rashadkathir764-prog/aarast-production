@@ -181,6 +181,7 @@ class PlanInvite {
     required this.id,
     required this.weddingPlanId,
     required this.token,
+    this.contextKey,
     required this.role,
     required this.status,
     required this.expiresAt,
@@ -212,6 +213,10 @@ class PlanInvite {
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
       token: json['token']?.toString() ?? '',
+      contextKey: _canonicalContributorContextKeyOrNull(
+        json['contextKey'],
+        json['weddingPlanId'].toString(),
+      ),
       role: json['role']?.toString() ?? 'VIEWER',
       status: json['status']?.toString() ?? 'PENDING',
       canViewMoney:
@@ -245,6 +250,7 @@ class PlanInvite {
   final String id;
   final String weddingPlanId;
   final String token;
+  final String? contextKey;
   final String role;
   final String status;
   final DateTime expiresAt;
@@ -301,6 +307,7 @@ class PlanInvite {
       id: id,
       weddingPlanId: weddingPlanId,
       token: id,
+      contextKey: contextKey,
       role: role,
       status: status,
       expiresAt: expiresAt,
@@ -327,6 +334,7 @@ class PlanInvite {
       id: id,
       weddingPlanId: weddingPlanId,
       token: token,
+      contextKey: contextKey,
       role: role,
       status: status,
       expiresAt: expiresAt,
@@ -420,6 +428,22 @@ DateTime? _dateTimeOrNull(Object? value) {
 
 DateTime _dateTimeOrNow(Object? value) {
   return _dateTimeOrNull(value) ?? DateTime.now();
+}
+
+String? _canonicalContributorContextKeyOrNull(
+  Object? rawValue,
+  String weddingPlanId,
+) {
+  if (rawValue == null) return null;
+  if (rawValue is! String ||
+      rawValue.isEmpty ||
+      rawValue.trim() != rawValue ||
+      rawValue != 'plan:$weddingPlanId:contributor') {
+    throw const FormatException(
+      'Invite contextKey must be the canonical contributor context',
+    );
+  }
+  return rawValue;
 }
 
 String sharedMemberRoleLabel(String role) {

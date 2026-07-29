@@ -3,20 +3,7 @@ import '../../../core/offline/offline_tables.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/generated_dashboard_seed.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../wedding_plans/models/active_wedding_plan.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
-import '../../wedding_plans/providers/wedding_plans_provider.dart';
-
-class BackendDashboardSummarySource {
-  const BackendDashboardSummarySource(this._provider);
-
-  final WeddingPlansProvider _provider;
-
-  Future<ActiveWeddingPlan?> loadActivePlan() async {
-    await _provider.loadActiveWeddingPlan();
-    return _provider.activePlan;
-  }
-}
 
 class LocalGuestDashboardSummarySource {
   const LocalGuestDashboardSummarySource(

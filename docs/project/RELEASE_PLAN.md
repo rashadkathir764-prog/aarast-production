@@ -1,5 +1,5 @@
 # PLAN: Aarast Release — من الفحص العميق إلى الإطلاق العام
-**Slug:** aarast-release-plan | **Created:** 2026-07-04 | **Updated:** 2026-07-14 | **Status:** active
+**Slug:** aarast-release-plan | **Created:** 2026-07-04 | **Updated:** 2026-07-29 | **Status:** active
 
 ## Goal
 إيصال Aarast من حالة ما بعد الفحص العميق (تقييم 6.5/10) إلى إطلاق عام كامل على Google Play خلال ~6-7 أسابيع عبر 9 مراحل مرتبة بحرجية الثقة.
@@ -40,7 +40,7 @@
 - [x] م5: trust proxy + قفل حساب + exception filter (P2002→409) + Logger + config validation + PrismaService.$connect
 - [x] م5: تقييد users/lookup + cron OVERDUE + تجريد OtpChannel (pagination انتقل لبند مستقل)
 - [ ] م5+: pagination للقوائم الكبيرة (تكاليف/دفعات/ضيوف/مهام/عروض) + تحديث الموبايل معها
-- [ ] م6: FCM — موديل DeviceToken + fan-out + firebase_messaging + توجيه النقر ⚠️ يتطلب مشروع Firebase من المالك
+- [ ] م6: FCM — اكتمل الكود المحلي لـ PushInstallation + outbox fan-out + firebase_messaging + طلب الإذن + توجيه النقر المحايد؛ تبقى تهيئة مشروع Firebase خاص بأعّرست واعتماد الخادم واختبار جهاز حقيقي قبل إغلاق البند
 - [x] م6: Deep links للدعوات /invites/:token (Android VIEW + https App Links + iOS scheme؛ assetlinks.json في م9)
 - [ ] م7: تلميع UX — حالات فارغة أولى، قناة دعم حقيقية، مصطلحات المال الخمسة فقط، actual-screen goldens، أعلام ميتة، وتقسيم أكبر ملفين
 - [ ] م8: واتساب OTP عبر OtpChannel + endpoints استعادة كلمة المرور + شاشات نسيت كلمة المرور

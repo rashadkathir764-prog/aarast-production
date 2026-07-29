@@ -174,12 +174,12 @@ class SharingApi {
 
   Future<PlanInvite> getInvite(String token) async {
     final json = await _apiClient.getJson('/api/v1/invites/$token');
-    return PlanInvite.fromJson(json);
+    return _currentUserInviteFromJson(json);
   }
 
   Future<List<PlanInvite>> getMyInvites() async {
     final items = await _getJsonMapList('/api/v1/invites/mine');
-    return items.map(PlanInvite.fromJson).toList();
+    return items.map(_currentUserInviteFromJson).toList();
   }
 
   Future<AcceptedPlanInvite> acceptInvite(String token) async {
@@ -187,13 +187,28 @@ class SharingApi {
       '/api/v1/invites/$token/accept',
       const {},
     );
+    final invite = PlanInvite.fromJson(
+      Map<String, dynamic>.from(json['invite'] as Map),
+    );
+    final rawContextKey = json['contextKey'];
+    if (rawContextKey is! String ||
+        rawContextKey.isEmpty ||
+        rawContextKey.trim() != rawContextKey) {
+      throw const FormatException(
+        'Accepted invite response must include a canonical contextKey',
+      );
+    }
+    if (rawContextKey != 'plan:${invite.weddingPlanId}:contributor') {
+      throw const FormatException(
+        'Accepted invite contextKey does not match the invited plan',
+      );
+    }
     return AcceptedPlanInvite(
-      invite: PlanInvite.fromJson(
-        Map<String, dynamic>.from(json['invite'] as Map),
-      ),
+      invite: invite,
       member: SharedMember.fromJson(
         Map<String, dynamic>.from(json['member'] as Map),
       ),
+      contextKey: rawContextKey,
     );
   }
 
@@ -254,6 +269,16 @@ class SharingApi {
         .toList();
   }
 
+  PlanInvite _currentUserInviteFromJson(Map<String, dynamic> json) {
+    final invite = PlanInvite.fromJson(json);
+    if (invite.isAccepted && invite.contextKey == null) {
+      throw const FormatException(
+        'Accepted current-user invite must include contextKey',
+      );
+    }
+    return invite;
+  }
+
   String _normalizePhone(String phone) {
     try {
       return normalizeYemeniPhone(phone);
@@ -272,8 +297,13 @@ class SharingApi {
 }
 
 class AcceptedPlanInvite {
-  const AcceptedPlanInvite({required this.invite, required this.member});
+  const AcceptedPlanInvite({
+    required this.invite,
+    required this.member,
+    required this.contextKey,
+  });
 
   final PlanInvite invite;
   final SharedMember member;
+  final String contextKey;
 }

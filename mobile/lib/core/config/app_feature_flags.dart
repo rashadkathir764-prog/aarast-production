@@ -16,7 +16,7 @@ class AppFeatureFlags {
   static const defaults = AppFeatureFlags(
     enableGuestFirstOnboarding: true,
     enableOfflineSync: true,
-    enablePushNotifications: false,
+    enablePushNotifications: true,
   );
 
   /// These are rollout switches consumed by live production code. Product

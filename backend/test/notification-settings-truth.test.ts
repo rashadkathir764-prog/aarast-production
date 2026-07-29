@@ -72,17 +72,16 @@ test("settings expose truthful notification channel capabilities", async () => {
 
   assert.deepEqual(settings.channelCapabilities, {
     inApp: { supported: true, configurable: false, enabled: true },
-    push: { supported: false, configurable: false, enabled: false },
+    push: { supported: true, configurable: false, enabled: true },
     sms: { supported: false, configurable: false, enabled: false },
     whatsapp: { supported: false, configurable: false, enabled: false },
     email: { supported: false, configurable: false, enabled: false },
   });
-  assert.equal(settings.pushEnabled, false);
+  assert.equal(settings.pushEnabled, true);
 });
 
 test("unsupported notification channels cannot be enabled", async () => {
   for (const [field, channel] of [
-    ["pushEnabled", "push"],
     ["smsEnabled", "sms"],
     ["whatsappEnabled", "whatsapp"],
     ["emailEnabled", "email"],
@@ -106,7 +105,27 @@ test("unsupported notification channels cannot be enabled", async () => {
   }
 });
 
-test("supported content preferences remain writable while legacy channels stay false", async () => {
+test("push enablement is controlled by the device registration", async () => {
+  const { service, writes } = harness();
+
+  await assert.rejects(
+    () => service.updateSettings(currentUser, { pushEnabled: true }),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      const response = error.getResponse();
+      assert.equal(typeof response, "object");
+      assert.equal(
+        (response as { code?: unknown }).code,
+        "NOTIFICATION_CHANNEL_DEVICE_MANAGED",
+      );
+      assert.equal((response as { channel?: unknown }).channel, "push");
+      return true;
+    },
+  );
+  assert.equal(writes(), 0);
+});
+
+test("supported content preferences remain writable while device-managed push is preserved", async () => {
   const { service, lastUpsert, events } = harness();
 
   const settings = await service.updateSettings(currentUser, {
@@ -122,13 +141,12 @@ test("supported content preferences remain writable while legacy channels stay f
   assert.equal(settings.taskRemindersEnabled, false);
   assert.equal(settings.paymentRemindersEnabled, false);
   assert.equal(settings.providerMessagesEnabled, false);
-  assert.equal(settings.pushEnabled, false);
+  assert.equal(settings.pushEnabled, true);
   assert.equal(settings.smsEnabled, false);
   assert.equal(settings.whatsappEnabled, false);
   assert.equal(settings.emailEnabled, false);
   assert.deepEqual(events(), ["lock-user", "upsert"]);
   assert.deepEqual(lastUpsert().update, {
-    pushEnabled: false,
     smsEnabled: false,
     whatsappEnabled: false,
     emailEnabled: false,

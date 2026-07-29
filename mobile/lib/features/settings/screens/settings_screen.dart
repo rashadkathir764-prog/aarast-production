@@ -248,12 +248,12 @@ class _NotificationSettingsCard extends StatelessWidget {
           ),
           _DeliveryStatusRow(
             key: const Key('settings-external-delivery-status'),
-            icon: LucideIcons.info,
-            title: 'قنوات خارج التطبيق',
-            body: settings.channelCapabilities.externalDeliverySupported
-                ? 'تتوفر بعض القنوات حسب حالة الخدمة.'
-                : 'إشعارات الجهاز والرسائل النصية وواتساب والبريد الإلكتروني غير متاحة حالياً.',
-            available: settings.channelCapabilities.externalDeliverySupported,
+            icon: LucideIcons.bell,
+            title: 'إشعارات الجهاز',
+            body: settings.channelCapabilities.push.supported
+                ? 'متاحة للرسائل والمهام عند السماح بها من إعدادات الجهاز.'
+                : 'غير متاحة حالياً على هذا الجهاز.',
+            available: settings.channelCapabilities.push.supported,
           ),
           const _GroupLabel('ما الذي تريد متابعته'),
           _SwitchRow(

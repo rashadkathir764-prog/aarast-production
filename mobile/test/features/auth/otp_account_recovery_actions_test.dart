@@ -231,7 +231,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1100));
       await tester.pumpAndSettle();
 
-      expect(router.state.uri.path, '/invites/$token');
+      final postAuthUri = router.routeInformationProvider.value.uri;
+      expect(postAuthUri.path, '/home');
+      expect(postAuthUri.queryParameters['resume'], '/invites/$token');
       expect(controller.status, AuthStatus.authenticated);
       expect(controller.claimPendingInviteResumeRoute(), token);
       expect(controller.claimPendingInviteResumeRoute(), isNull);
@@ -303,6 +305,11 @@ GoRouter _router({
           'register:${state.uri.queryParameters['phone']}:'
           '${state.uri.queryParameters['resume']}',
         ),
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) =>
+            Text('home:${state.uri.queryParameters['resume']}'),
       ),
       GoRoute(
         path: '/invites/:token',

@@ -192,9 +192,7 @@ class _OtpScreenState extends State<OtpScreen> {
         final accountContexts = context.read<AccountContextController>();
         await auth.refreshCurrentUser();
         if (!mounted) return;
-        await accountContexts.refresh(
-          activeWeddingPlanId: auth.user?.activeWeddingPlanId,
-        );
+        await accountContexts.refresh();
         if (!mounted) return;
         context.go(AppRouter.providerApplyStatus);
         return;
@@ -206,7 +204,7 @@ class _OtpScreenState extends State<OtpScreen> {
       );
     }
 
-    context.go(widget.successLocation ?? AppRouter.home);
+    context.go(AppRouter.authenticatedEntry(widget.successLocation));
   }
 
   void _goBack() {

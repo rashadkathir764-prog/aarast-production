@@ -12,12 +12,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/widgets/auth_wedding_widgets.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 
-enum _InviteAccessStep { phone, otp, invites }
+enum _InviteAccessStep { phone, accountSetup, otp, invites }
 
 class InviteDecisionScreen extends StatefulWidget {
   const InviteDecisionScreen({this.token, super.key});
@@ -37,6 +38,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   final _otpController = TextEditingController();
   final _accountNameController = TextEditingController();
   final _accountPasswordController = TextEditingController();
+  final _accountPasswordConfirmationController = TextEditingController();
 
   _InviteAccessStep _step = _InviteAccessStep.phone;
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
@@ -84,6 +86,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     _otpController.dispose();
     _accountNameController.dispose();
     _accountPasswordController.dispose();
+    _accountPasswordConfirmationController.dispose();
     super.dispose();
   }
 
@@ -103,7 +106,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     if (!mounted || result == null) return;
     _otpController.clear();
     setState(() {
-      _step = _InviteAccessStep.otp;
+      _step = result.accountSetupRequired
+          ? _InviteAccessStep.accountSetup
+          : _InviteAccessStep.otp;
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
@@ -131,6 +136,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final token = _token;
     final accountName = _accountNameController.text.trim();
     final accountPassword = _accountPasswordController.text;
+    final accountPasswordConfirmation =
+        _accountPasswordConfirmationController.text;
     if (_accountSetupRequired) {
       if (accountName.isEmpty) {
         _showError('أدخل اسم المساهم لإنشاء الحساب.');
@@ -142,6 +149,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       }
       if (utf8.encode(accountPassword).length > 72) {
         _showError('كلمة المرور طويلة جدًا. استخدم 72 بايت كحد أقصى.');
+        return;
+      }
+      if (accountPassword != accountPasswordConfirmation) {
+        _showError('تأكيد كلمة المرور غير مطابق.');
         return;
       }
     }
@@ -161,6 +172,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         _otpFieldState = AarastOtpFieldState.error;
         if (auth.errorCode == 'INVITE_ACCOUNT_SETUP_REQUIRED') {
           _accountSetupRequired = true;
+          _step = _InviteAccessStep.accountSetup;
         }
       });
       return;
@@ -193,36 +205,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     await provider.loadMyInvites(token: _token);
     if (!mounted) return;
     final linkedInvite = _token == null ? null : provider.selectedInvite;
-    if (linkedInvite?.isAccepted == true &&
-        await _enterAcceptedLinkedInvite(provider, linkedInvite!)) {
-      return;
-    }
     setState(() {
       _isVerifying = false;
       _step = _InviteAccessStep.invites;
       _openedInvite = linkedInvite ?? provider.selectedInvite;
     });
-  }
-
-  Future<bool> _enterAcceptedLinkedInvite(
-    SharingProvider provider,
-    PlanInvite invite,
-  ) async {
-    if (!invite.isAccepted) return false;
-
-    await provider.loadSharedPlans();
-    if (!mounted) return false;
-
-    SharedMember? member;
-    for (final plan in provider.sharedPlans) {
-      if (plan.id == invite.weddingPlanId) {
-        member = plan.sharedMember;
-        break;
-      }
-    }
-
-    context.go(AppRouter.planCenter(invite.weddingPlanId), extra: member);
-    return true;
   }
 
   void _onOtpChanged(String value) {
@@ -241,6 +228,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     _otpController.clear();
     _accountNameController.clear();
     _accountPasswordController.clear();
+    _accountPasswordConfirmationController.clear();
     setState(() {
       _openedInvite = null;
       _otpFieldState = AarastOtpFieldState.idle;
@@ -333,15 +321,38 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   }
 
   Future<void> _openAcceptedPlan(PlanInvite invite) async {
-    final provider = context.read<SharingProvider>();
-    await provider.loadSharedPlans();
+    final inviteProvider = context.read<SharingProvider>();
+    final accountContexts = context.read<AccountContextController>();
+    var member = inviteProvider.acceptedInviteMember;
+    if (member?.weddingPlanId != invite.weddingPlanId) {
+      member = null;
+    }
+
+    final contextKey =
+        inviteProvider.acceptedInviteContextKey ?? invite.contextKey;
+    if (contextKey == null) {
+      _showError('تعذر العثور على مسار المساهم لهذه الخطة.');
+      return;
+    }
+
+    final selected = await accountContexts.select(contextKey);
+    if (!mounted) return;
+    if (!selected ||
+        accountContexts.selectedContext?.contextKey != contextKey) {
+      _showError(accountContexts.errorMessage ?? 'تعذر تفعيل مسار المساهم.');
+      return;
+    }
+
+    final scopedProvider = context.read<SharingProvider>();
+    await scopedProvider.loadSharedPlans();
     if (!mounted) return;
 
-    SharedMember? member;
-    for (final plan in provider.sharedPlans) {
-      if (plan.id == invite.weddingPlanId) {
-        member = plan.sharedMember;
-        break;
+    if (member == null) {
+      for (final plan in scopedProvider.sharedPlans) {
+        if (plan.id == invite.weddingPlanId) {
+          member = plan.sharedMember;
+          break;
+        }
       }
     }
 
@@ -354,6 +365,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   Widget build(BuildContext context) {
     final subtitle = switch (_step) {
       _InviteAccessStep.phone => 'أدخل الرقم الذي وصلت إليه الدعوة.',
+      _InviteAccessStep.accountSetup =>
+        'أنشئ كلمة سر دائمة قبل تأكيد رمز الدعوة.',
       _InviteAccessStep.otp => 'أدخل رمز التحقق قبل عرض الدعوات.',
       _InviteAccessStep.invites => 'راجع الدعوة ثم اختر قبولها أو رفضها.',
     };
@@ -374,20 +387,25 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
                 controller: _phoneController,
                 onSubmit: _requestOtp,
               ),
+              _InviteAccessStep.accountSetup => _AccountSetupStep(
+                nameController: _accountNameController,
+                passwordController: _accountPasswordController,
+                passwordConfirmationController:
+                    _accountPasswordConfirmationController,
+                obscurePassword: _obscureAccountPassword,
+                onTogglePassword: () => setState(
+                  () => _obscureAccountPassword = !_obscureAccountPassword,
+                ),
+                onContinue: _continueAccountSetup,
+                onChangePhone: _returnToPhone,
+              ),
               _InviteAccessStep.otp => _OtpStep(
                 controller: _otpController,
-                accountNameController: _accountNameController,
-                accountPasswordController: _accountPasswordController,
                 phone: _phoneController.text.trim(),
                 state: _otpFieldState,
                 resendSeconds: _resendSeconds,
                 otpNoticeMessage: _otpNoticeMessage,
                 deliveryConfirmed: _otpDeliveryConfirmed,
-                accountSetupRequired: _accountSetupRequired,
-                obscureAccountPassword: _obscureAccountPassword,
-                onToggleAccountPassword: () => setState(
-                  () => _obscureAccountPassword = !_obscureAccountPassword,
-                ),
                 onCodeChanged: _onOtpChanged,
                 onVerify: _verifyOtp,
                 onResend: _resendOtp,
@@ -414,8 +432,16 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   }
 
   void _handleBack() {
-    if (_step == _InviteAccessStep.otp) {
+    if (_step == _InviteAccessStep.accountSetup) {
       _returnToPhone();
+      return;
+    }
+    if (_step == _InviteAccessStep.otp) {
+      if (_accountSetupRequired) {
+        setState(() => _step = _InviteAccessStep.accountSetup);
+      } else {
+        _returnToPhone();
+      }
       return;
     }
     if (_step == _InviteAccessStep.invites && _openedInvite != null) {
@@ -427,6 +453,29 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       return;
     }
     context.go(AppRouter.welcome);
+  }
+
+  void _continueAccountSetup() {
+    final name = _accountNameController.text.trim();
+    final password = _accountPasswordController.text;
+    final confirmation = _accountPasswordConfirmationController.text;
+    if (name.isEmpty) {
+      _showError('أدخل اسم المساهم لإنشاء الحساب.');
+      return;
+    }
+    if (password.length < 6) {
+      _showError('كلمة المرور يجب أن تكون 6 أحرف على الأقل.');
+      return;
+    }
+    if (utf8.encode(password).length > 72) {
+      _showError('كلمة المرور طويلة جدًا. استخدم 72 بايت كحد أقصى.');
+      return;
+    }
+    if (password != confirmation) {
+      _showError('تأكيد كلمة المرور غير مطابق.');
+      return;
+    }
+    setState(() => _step = _InviteAccessStep.otp);
   }
 }
 
@@ -499,6 +548,7 @@ class _InviteJourneyProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeIndex = switch (step) {
       _InviteAccessStep.phone => 0,
+      _InviteAccessStep.accountSetup => 1,
       _InviteAccessStep.otp => 1,
       _InviteAccessStep.invites => 2,
     };
@@ -706,11 +756,108 @@ class _PrivacyLine extends StatelessWidget {
   }
 }
 
+class _AccountSetupStep extends StatelessWidget {
+  const _AccountSetupStep({
+    required this.nameController,
+    required this.passwordController,
+    required this.passwordConfirmationController,
+    required this.obscurePassword,
+    required this.onTogglePassword,
+    required this.onContinue,
+    required this.onChangePhone,
+  });
+
+  final TextEditingController nameController;
+  final TextEditingController passwordController;
+  final TextEditingController passwordConfirmationController;
+  final bool obscurePassword;
+  final VoidCallback onTogglePassword;
+  final VoidCallback onContinue;
+  final VoidCallback onChangePhone;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
+    return ListView(
+      key: const ValueKey('invite-account-setup-step'),
+      children: [
+        const _InviteWelcomeHero(
+          icon: LucideIcons.badgeCheck,
+          eyebrow: 'حساب دائم للمساهم',
+          title: 'أنشئ بيانات الدخول',
+          message:
+              'ستستخدم رقم الهاتف وكلمة المرور هذه للدخول لاحقًا دون طلب رمز تحقق جديد.',
+        ),
+        const SizedBox(height: 14),
+        AarastCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _InviteAccountSetupNotice(),
+              const SizedBox(height: 14),
+              AuthTextField(
+                key: const ValueKey('invite-account-name-field'),
+                controller: nameController,
+                label: 'اسم المساهم',
+                hint: 'الاسم الذي سيظهر داخل الخطة',
+                icon: LucideIcons.user,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 12),
+              AuthTextField(
+                key: const ValueKey('invite-account-password-field'),
+                controller: passwordController,
+                label: 'كلمة المرور',
+                hint: '6 أحرف على الأقل',
+                icon: LucideIcons.lock,
+                obscureText: obscurePassword,
+                textInputAction: TextInputAction.next,
+                suffixIcon: AuthObscureToggle(
+                  obscured: obscurePassword,
+                  onPressed: onTogglePassword,
+                ),
+              ),
+              const SizedBox(height: 12),
+              AuthTextField(
+                key: const ValueKey(
+                  'invite-account-password-confirmation-field',
+                ),
+                controller: passwordConfirmationController,
+                label: 'تأكيد كلمة المرور',
+                hint: 'أعد كتابة كلمة المرور',
+                icon: LucideIcons.lock,
+                obscureText: obscurePassword,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => onContinue(),
+              ),
+              if (auth.errorMessage != null) ...[
+                const SizedBox(height: 12),
+                _InlineError(auth.errorMessage!),
+              ],
+              const SizedBox(height: 18),
+              AarastButton(
+                key: const ValueKey('invite-account-setup-continue'),
+                label: 'متابعة إلى رمز التحقق',
+                icon: LucideIcons.arrowLeft,
+                onPressed: auth.isSubmitting ? null : onContinue,
+              ),
+              const SizedBox(height: 10),
+              AarastButton(
+                label: 'تغيير الرقم',
+                variant: AarastButtonVariant.ghost,
+                onPressed: auth.isSubmitting ? null : onChangePhone,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _OtpStep extends StatelessWidget {
   const _OtpStep({
     required this.controller,
-    required this.accountNameController,
-    required this.accountPasswordController,
     required this.phone,
     required this.state,
     required this.resendSeconds,
@@ -721,15 +868,10 @@ class _OtpStep extends StatelessWidget {
     required this.onCreateAppAccount,
     required this.reviewInviteAfterVerification,
     required this.deliveryConfirmed,
-    required this.accountSetupRequired,
-    required this.obscureAccountPassword,
-    required this.onToggleAccountPassword,
     this.otpNoticeMessage,
   });
 
   final TextEditingController controller;
-  final TextEditingController accountNameController;
-  final TextEditingController accountPasswordController;
   final String phone;
   final AarastOtpFieldState state;
   final int resendSeconds;
@@ -740,9 +882,6 @@ class _OtpStep extends StatelessWidget {
   final VoidCallback onCreateAppAccount;
   final bool reviewInviteAfterVerification;
   final bool deliveryConfirmed;
-  final bool accountSetupRequired;
-  final bool obscureAccountPassword;
-  final VoidCallback onToggleAccountPassword;
   final String? otpNoticeMessage;
 
   @override
@@ -787,33 +926,6 @@ class _OtpStep extends StatelessWidget {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (accountSetupRequired) ...[
-                        const _InviteAccountSetupNotice(),
-                        const SizedBox(height: 14),
-                        AuthTextField(
-                          key: const ValueKey('invite-account-name-field'),
-                          controller: accountNameController,
-                          label: 'اسم المساهم',
-                          hint: 'الاسم الذي سيظهر داخل الخطة',
-                          icon: LucideIcons.user,
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: 12),
-                        AuthTextField(
-                          key: const ValueKey('invite-account-password-field'),
-                          controller: accountPasswordController,
-                          label: 'كلمة المرور',
-                          hint: '6 أحرف على الأقل',
-                          icon: LucideIcons.lock,
-                          obscureText: obscureAccountPassword,
-                          textInputAction: TextInputAction.next,
-                          suffixIcon: AuthObscureToggle(
-                            obscured: obscureAccountPassword,
-                            onPressed: onToggleAccountPassword,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
                       const _FieldLabel('رمز التحقق'),
                       AarastOtpField(
                         controller: controller,

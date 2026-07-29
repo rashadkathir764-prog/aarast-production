@@ -70,7 +70,7 @@ void main() {
       expect(find.text('رسائل SMS'), findsNothing);
       expect(find.text('البريد الإلكتروني'), findsNothing);
       expect(find.text('تنبيهات داخل التطبيق'), findsOneWidget);
-      expect(find.textContaining('غير متاحة حالياً'), findsOneWidget);
+      expect(find.textContaining('متاحة للرسائل والمهام'), findsOneWidget);
 
       for (final key in const [
         Key('settings-task-reminders-switch'),

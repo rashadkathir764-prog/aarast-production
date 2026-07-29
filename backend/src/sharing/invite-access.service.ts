@@ -35,25 +35,42 @@ export class InviteAccessService {
       where: {
         tokenHash: expectedTokenHash,
         normalizedPhone: phone,
-        acceptedAt: null,
         declinedAt: null,
         revokedAt: null,
         expiresAt: { gt: now },
       },
-      select: { id: true },
+      select: { id: true, acceptedAt: true, weddingPlanId: true },
     });
     if (!invite) throw this.inviteNotFound();
 
     const account = await this.prisma.user.findFirst({
       where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
       select: {
+        id: true,
         role: true,
         phoneVerifiedAt: true,
         appPasswordHash: true,
+        appPasswordConfiguredAt: true,
       },
     });
+    if (invite.acceptedAt) {
+      if (!account || account.appPasswordConfiguredAt) {
+        throw this.inviteNotFound();
+      }
+      const existingMembership = await this.prisma.sharedMember.findUnique({
+        where: {
+          weddingPlanId_userId: {
+            weddingPlanId: invite.weddingPlanId,
+            userId: account.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (!existingMembership) throw this.inviteNotFound();
+    }
     const accountSetupRequired =
       !account ||
+      !account.appPasswordConfiguredAt ||
       (!account.phoneVerifiedAt && account.role !== UserRole.ADMIN) ||
       (account.role === UserRole.ADMIN && !account.appPasswordHash);
     let otp;
@@ -63,6 +80,7 @@ export class InviteAccessService {
         invite.id,
         expectedTokenHash,
         context,
+        invite.acceptedAt !== null,
       );
     } catch (error) {
       if (

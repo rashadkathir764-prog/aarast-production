@@ -6,6 +6,9 @@ import 'package:aarast_mobile/core/session/session_boundary.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
+import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
+import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
+import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
@@ -20,6 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../account_contexts/account_context_test_data.dart';
 
 String _testInviteToken() => List.filled(43, 'a').join();
 
@@ -404,7 +409,7 @@ void main() {
   );
 
   testWidgets(
-    'an invite accepted on another session opens without duplicate acceptance',
+    'an invite accepted on another session waits for explicit entry without duplicate acceptance',
     (tester) async {
       final token = _testInviteToken();
       final harness = await _authHarness();
@@ -439,6 +444,17 @@ void main() {
       expect(harness.controller.user?.id, 'invitee-1');
       expect(sharingApi.acceptCalls, 0);
       expect(sharingApi.acceptUserIds, isEmpty);
+      await _scrollUntilVisible(
+        tester,
+        find.byKey(const Key('invite-open-plan-button')),
+      );
+      expect(find.byKey(const Key('invite-open-plan-button')), findsOneWidget);
+      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
+      await _tapVisible(
+        tester,
+        find.byKey(const Key('invite-open-plan-button')),
+      );
+      await tester.pumpAndSettle();
       expect(find.byKey(const Key('contributor-dashboard')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -579,6 +595,17 @@ void main() {
         'contributor-secret',
       );
       await tester.enterText(
+        find.byKey(
+          const ValueKey('invite-account-password-confirmation-field'),
+        ),
+        'contributor-secret',
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('invite-account-setup-continue')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
         find.byKey(const Key('invite-otp-field')),
         '123456',
       );
@@ -684,11 +711,15 @@ Future<void> _pumpInviteScreen(
   double textScale = 1,
 }) async {
   final sharing = SharingProvider(sharingApi ?? _FakeSharingApi());
+  final accountContexts = await _accountContexts();
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthController>.value(value: harness.controller),
         ChangeNotifierProvider<SharingProvider>.value(value: sharing),
+        ChangeNotifierProvider<AccountContextController>.value(
+          value: accountContexts,
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -711,6 +742,7 @@ Future<GoRouter> _pumpLinkedInviteScreen(
   required SharingApi sharingApi,
 }) async {
   final sharing = SharingProvider(sharingApi);
+  final accountContexts = await _accountContexts();
   final router = GoRouter(
     initialLocation: '/invites/$token',
     routes: [
@@ -740,6 +772,9 @@ Future<GoRouter> _pumpLinkedInviteScreen(
       providers: [
         ChangeNotifierProvider<AuthController>.value(value: harness.controller),
         ChangeNotifierProvider<SharingProvider>.value(value: sharing),
+        ChangeNotifierProvider<AccountContextController>.value(
+          value: accountContexts,
+        ),
       ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     ),
@@ -755,9 +790,15 @@ Future<void> _pumpBoundaryLinkedInviteScreen(
   required SharingApi sharingApi,
   bool startGuestAtInvite = false,
 }) async {
+  final accountContexts = await _accountContexts();
   await tester.pumpWidget(
-    ChangeNotifierProvider<AuthController>.value(
-      value: harness.controller,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthController>.value(value: harness.controller),
+        ChangeNotifierProvider<AccountContextController>.value(
+          value: accountContexts,
+        ),
+      ],
       child: _AccountBoundaryInviteHarness(
         token: token,
         sharingApi: sharingApi,
@@ -901,6 +942,30 @@ Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
   }
 }
 
+Future<AccountContextController> _accountContexts() async {
+  final preferences = await SharedPreferences.getInstance();
+  return AccountContextController(
+    contextsApi: _InviteContextsGateway([
+      accountContext(role: AccountContextRole.contributor, planId: 'plan-1'),
+    ]),
+    authStorage: AuthStorage(preferences),
+    setActiveWeddingPlan: (_) async {},
+  );
+}
+
+class _InviteContextsGateway implements AccountContextsGateway {
+  const _InviteContextsGateway(this.contexts);
+
+  final List<AccountContext> contexts;
+
+  @override
+  Future<List<AccountContext>> listContexts() async => contexts;
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async =>
+      contexts.firstWhere((context) => context.contextKey == contextKey);
+}
+
 class _AuthHarness {
   const _AuthHarness(this.controller, this.repository);
 
@@ -923,6 +988,7 @@ PlanInvite _invite({
     id: 'invite-1',
     weddingPlanId: 'plan-1',
     token: token,
+    contextKey: status == 'ACCEPTED' ? 'plan:plan-1:contributor' : null,
     role: 'HELPER',
     status: status,
     expiresAt: DateTime(2026),
@@ -1125,6 +1191,7 @@ class _FakeSharingApi extends SharingApi {
         createdAt: now,
         updatedAt: now,
       ),
+      contextKey: 'plan:${invite.weddingPlanId}:contributor',
     );
   }
 

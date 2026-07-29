@@ -2,7 +2,12 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { WeddingTaskPriority, WeddingTaskStatus } from "@prisma/client";
+import {
+  NotificationPriority,
+  NotificationType,
+  WeddingTaskPriority,
+  WeddingTaskStatus,
+} from "@prisma/client";
 import { TasksService } from "../src/tasks/tasks.service";
 
 const now = new Date("2026-07-11T00:00:00.000Z");
@@ -105,6 +110,109 @@ test("assigning a plan participant clears manual responsibility", async () => {
     responsiblePhone: null,
     responsibleSource: null,
   });
+});
+
+test("assigning a notification-enabled contributor creates one durable task notification", async () => {
+  const notificationCalls: Array<{ client: unknown; input: any }> = [];
+  const prisma: any = {
+    weddingTask: {
+      findUnique: async () => task(),
+      update: async ({ data }: { data: Record<string, unknown> }) =>
+        task({
+          ...data,
+          assigneeUserId: "contributor-1",
+          updatedAt: new Date("2026-07-11T00:01:00.000Z"),
+        }),
+    },
+    sharedMember: {
+      findUnique: async () => ({
+        userId: "contributor-1",
+        receiveNotifications: true,
+      }),
+    },
+    $queryRaw: async () => [{ id: "locked" }],
+  };
+  prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
+    operation(prisma);
+  const permissions = {
+    assertTaskManageableInTransaction: async () => ({
+      plan: { ownerUserId: "owner-1" },
+    }),
+  };
+  const notifications = {
+    notifyTaskDue: async () => undefined,
+    createNotificationInTransaction: async (client: unknown, input: any) => {
+      notificationCalls.push({ client, input });
+    },
+  };
+  const service = new TasksService(
+    prisma as any,
+    permissions as any,
+    notifications as any,
+  );
+
+  await service.assign({ id: "owner-1" } as any, "task-1", {
+    assigneeUserId: "contributor-1",
+  });
+
+  assert.equal(notificationCalls.length, 1);
+  assert.equal(notificationCalls[0]?.client, prisma);
+  assert.equal(
+    notificationCalls[0]?.input.type,
+    NotificationType.TASK_ASSIGNED,
+  );
+  assert.equal(
+    notificationCalls[0]?.input.priority,
+    NotificationPriority.NORMAL,
+  );
+  assert.equal(
+    notificationCalls[0]?.input.routeTarget,
+    "/wedding-plans/plan-1/tasks",
+  );
+  assert.deepEqual(notificationCalls[0]?.input.data, {
+    taskId: "task-1",
+    weddingPlanId: "plan-1",
+  });
+});
+
+test("reassigning the same contributor does not duplicate the task notification", async () => {
+  let notificationCount = 0;
+  const prisma: any = {
+    weddingTask: {
+      findUnique: async () => task({ assigneeUserId: "contributor-1" }),
+      update: async ({ data }: { data: Record<string, unknown> }) =>
+        task({ ...data, assigneeUserId: "contributor-1" }),
+    },
+    sharedMember: {
+      findUnique: async () => ({
+        userId: "contributor-1",
+        receiveNotifications: true,
+      }),
+    },
+    $queryRaw: async () => [{ id: "locked" }],
+  };
+  prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
+    operation(prisma);
+  const service = new TasksService(
+    prisma as any,
+    {
+      assertTaskManageableInTransaction: async () => ({
+        plan: { ownerUserId: "owner-1" },
+      }),
+    } as any,
+    {
+      notifyTaskDue: async () => undefined,
+      createNotificationInTransaction: async () => {
+        notificationCount += 1;
+      },
+    } as any,
+  );
+
+  await service.assign({ id: "owner-1" } as any, "task-1", {
+    assigneeUserId: "contributor-1",
+  });
+
+  assert.equal(notificationCount, 0);
 });
 
 test("read-only plan members never receive a manual responsible phone", async () => {

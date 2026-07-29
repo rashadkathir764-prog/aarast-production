@@ -121,6 +121,28 @@ phase. Native launcher/splash assets and link declarations are committed, but
 final AAB/IPA signing, store upload, and real-device links remain external
 gates. See `STORE_RELEASE.md`.
 
+## Firebase Push Release Gate
+
+Android release builds require these non-secret Firebase client values as
+private build inputs:
+
+- `AARAST_FIREBASE_API_KEY`
+- `AARAST_FIREBASE_APP_ID`
+- `AARAST_FIREBASE_MESSAGING_SENDER_ID`
+- `AARAST_FIREBASE_PROJECT_ID`
+
+The Gradle release gate fails closed when any is missing and generates the
+native Android resources needed for delivery while the Flutter process is
+terminated. Do not bind Aarast to an unrelated Firebase project.
+
+Backend delivery remains off unless `PUSH_NOTIFICATIONS_ENABLED=true`. When it
+is enabled, the backend requires `FIREBASE_PROJECT_ID` plus Google Application
+Default Credentials supplied through the private runtime environment (for
+example workload identity or `GOOGLE_APPLICATION_CREDENTIALS`). Never commit a
+service-account JSON file. Production acceptance requires a real task and chat
+notification on a physical Android device in both background and terminated
+states.
+
 The public app domain must serve Android `assetlinks.json` and Apple
 `apple-app-site-association` using the production signing fingerprint and Apple
 Team ID. Do not publish temporary verification identities.

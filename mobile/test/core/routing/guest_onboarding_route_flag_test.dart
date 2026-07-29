@@ -6,10 +6,14 @@ import 'dart:io';
 void main() {
   group('guest onboarding route flag', () {
     test('the dev preview route consumes the runtime feature flag', () {
-      final source = File('lib/core/routing/app_router.dart').readAsStringSync();
+      final source = File(
+        'lib/core/routing/app_router.dart',
+      ).readAsStringSync();
       expect(
         source,
-        contains('redirect: (context, state) => guestOnboardingRedirect(flags)'),
+        contains(
+          'redirect: (context, state) => guestOnboardingRedirect(flags)',
+        ),
       );
     });
 

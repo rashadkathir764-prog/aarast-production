@@ -16,8 +16,11 @@ import 'package:aarast_mobile/features/marketplace/widgets/premium/premium_vendo
 
 import 'support/preview_fonts.dart';
 
-Future<void> _pump(WidgetTester tester, Widget child,
-    {required Size size}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  required Size size,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);

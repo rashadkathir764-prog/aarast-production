@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,24 +28,59 @@ class AuthStorage {
   final TokenVault? _tokenVault;
   final SensitiveValueVault? _sensitiveValueVault;
   SafeUser? _cachedUser;
+  String? _cachedAccountContextKey;
+  int _sessionEpoch = 0;
+  Future<void> _sessionMutationTail = Future<void>.value();
+
+  /// Monotonic identity for the locally persisted account session.
+  ///
+  /// Login/registration/refresh advance this value synchronously before any
+  /// storage await. Delayed logout and refresh completions may only mutate
+  /// storage while the epoch they started from is still current.
+  int get sessionEpoch => _sessionEpoch;
+
+  bool isSessionEpochCurrent(int epoch) => epoch == _sessionEpoch;
+
+  /// Claims a logout/session-expiry operation synchronously. Any refresh or
+  /// profile write that started from the previous epoch becomes stale before
+  /// the first logout network await.
+  int beginSessionInvalidation() => ++_sessionEpoch;
+
+  /// Reserves the epoch for a user-initiated replacement login before its
+  /// network request starts. This makes any older logout completion stale.
+  int beginSessionEstablishment() => ++_sessionEpoch;
 
   Future<void> initialize() async {
     final vault = _sensitiveValueVault;
     if (vault == null) return;
+
     final secureRaw = await vault.read(_safeUserKey);
     final secureUser = _decodeUser(secureRaw);
     if (secureUser != null) {
       _cachedUser = secureUser;
       await _preferences.remove(_safeUserKey);
-      return;
+    } else {
+      final legacyRaw = _preferences.getString(_safeUserKey);
+      final legacyUser = _decodeUser(legacyRaw);
+      if (legacyUser != null && legacyRaw != null) {
+        await vault.write(_safeUserKey, legacyRaw);
+        await _preferences.remove(_safeUserKey);
+        _cachedUser = legacyUser;
+      }
     }
 
-    final legacyRaw = _preferences.getString(_safeUserKey);
-    final legacyUser = _decodeUser(legacyRaw);
-    if (legacyUser == null || legacyRaw == null) return;
-    await vault.write(_safeUserKey, legacyRaw);
-    await _preferences.remove(_safeUserKey);
-    _cachedUser = legacyUser;
+    final secureContextKey = await vault.read(_accountContextKey);
+    if (secureContextKey != null && secureContextKey.isNotEmpty) {
+      _cachedAccountContextKey = secureContextKey;
+      await _preferences.remove(_accountContextKey);
+    } else {
+      final legacyContextKey = _preferences.getString(_accountContextKey);
+      if (legacyContextKey != null && legacyContextKey.isNotEmpty) {
+        await vault.write(_accountContextKey, legacyContextKey);
+        await _preferences.remove(_accountContextKey);
+        _cachedAccountContextKey = legacyContextKey;
+      }
+    }
   }
 
   Future<String?> readAccessToken() async {
@@ -90,6 +125,68 @@ class AuthStorage {
     String? refreshToken,
     required SafeUser user,
   }) async {
+    final epoch = ++_sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _writeSession(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        user: user,
+      );
+    });
+  }
+
+  Future<bool> saveSessionIfEpoch({
+    required int expectedEpoch,
+    required String accessToken,
+    String? refreshToken,
+    required SafeUser user,
+  }) async {
+    if (!isSessionEpochCurrent(expectedEpoch)) return false;
+    final epoch = ++_sessionEpoch;
+    var saved = false;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _writeSession(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        user: user,
+      );
+      saved = isSessionEpochCurrent(epoch);
+    });
+    return saved;
+  }
+
+  Future<bool> saveSessionAtEpoch({
+    required int expectedEpoch,
+    required String accessToken,
+    String? refreshToken,
+    required SafeUser user,
+  }) async {
+    var saved = false;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(expectedEpoch)) return;
+      await _writeSession(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        user: user,
+      );
+      saved = isSessionEpochCurrent(expectedEpoch);
+    });
+    return saved;
+  }
+
+  Future<String?> readRefreshTokenIfEpoch(int expectedEpoch) async {
+    if (!isSessionEpochCurrent(expectedEpoch)) return null;
+    final token = await readRefreshToken();
+    return isSessionEpochCurrent(expectedEpoch) ? token : null;
+  }
+
+  Future<void> _writeSession({
+    required String accessToken,
+    String? refreshToken,
+    required SafeUser user,
+  }) async {
     final vault = _tokenVault;
     if (vault == null) {
       await _preferences.setString(_accessTokenKey, accessToken);
@@ -113,7 +210,18 @@ class AuthStorage {
   }
 
   Future<void> saveUser(SafeUser user) async {
-    await _saveUser(user);
+    final epoch = _sessionEpoch;
+    await saveUserIfEpoch(user, epoch);
+  }
+
+  Future<bool> saveUserIfEpoch(SafeUser user, int expectedEpoch) async {
+    var saved = false;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(expectedEpoch)) return;
+      await _saveUser(user);
+      saved = isSessionEpochCurrent(expectedEpoch);
+    });
+    return saved;
   }
 
   String? readActivePlanId() {
@@ -121,26 +229,72 @@ class AuthStorage {
   }
 
   Future<void> saveActivePlanId(String activePlanId) async {
-    await _preferences.setString(_activePlanIdKey, activePlanId);
+    final epoch = _sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _preferences.setString(_activePlanIdKey, activePlanId);
+    });
   }
 
   Future<void> clearActivePlanId() async {
-    await _preferences.remove(_activePlanIdKey);
+    final epoch = _sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _preferences.remove(_activePlanIdKey);
+    });
   }
 
   String? readAccountContextKey() {
+    if (_sensitiveValueVault != null) return _cachedAccountContextKey;
     return _preferences.getString(_accountContextKey);
   }
 
   Future<void> saveAccountContextKey(String contextKey) async {
-    await _preferences.setString(_accountContextKey, contextKey);
+    final epoch = _sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      final vault = _sensitiveValueVault;
+      if (vault == null) {
+        await _preferences.setString(_accountContextKey, contextKey);
+        return;
+      }
+      await vault.write(_accountContextKey, contextKey);
+      await _preferences.remove(_accountContextKey);
+      if (isSessionEpochCurrent(epoch)) {
+        _cachedAccountContextKey = contextKey;
+      }
+    });
   }
 
   Future<void> clearAccountContextKey() async {
-    await _preferences.remove(_accountContextKey);
+    final epoch = _sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _clearAccountContextKey();
+    });
   }
 
   Future<void> clear() async {
+    final epoch = ++_sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _clearStorage();
+    });
+  }
+
+  Future<bool> clearIfEpoch(int expectedEpoch) async {
+    if (!isSessionEpochCurrent(expectedEpoch)) return false;
+    final epoch = ++_sessionEpoch;
+    var cleared = false;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      await _clearStorage();
+      cleared = isSessionEpochCurrent(epoch);
+    });
+    return cleared;
+  }
+
+  Future<void> _clearStorage() async {
     await _tokenVault?.delete();
     await _tokenVault?.deleteRefresh();
     await _preferences.remove(_accessTokenKey);
@@ -149,7 +303,19 @@ class AuthStorage {
     await _sensitiveValueVault?.delete(_safeUserKey);
     _cachedUser = null;
     await _preferences.remove(_activePlanIdKey);
+    await _clearAccountContextKey();
+  }
+
+  Future<void> _clearAccountContextKey() async {
+    await _sensitiveValueVault?.delete(_accountContextKey);
     await _preferences.remove(_accountContextKey);
+    _cachedAccountContextKey = null;
+  }
+
+  Future<void> _enqueueSessionMutation(Future<void> Function() mutation) {
+    final operation = _sessionMutationTail.then<void>((_) => mutation());
+    _sessionMutationTail = operation.then<void>((_) {}, onError: (_, _) {});
+    return operation;
   }
 
   Future<void> _saveUser(SafeUser user) async {

@@ -3,9 +3,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/models/account_context.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../onboarding/models/persona_copy.dart';
-import '../../wedding_plans/models/active_wedding_plan.dart';
 
 bool _hasText(String? value) {
   return value != null && value.trim().isNotEmpty;
@@ -15,17 +15,16 @@ class MoreIdentitySummary {
   const MoreIdentitySummary({this.roleLabel, this.personaLabel});
 
   factory MoreIdentitySummary.from({
-    ActiveWeddingPlan? activePlan,
+    AccountContext? selectedContext,
     GuestOnboardingDraft? draft,
   }) {
-    if (activePlan != null) {
-      final roleLabel = activePlan.onboardingPath?.toUpperCase() == 'PROVIDER'
-          ? 'مسار: مزود خدمة'
-          : 'مسار: أرتب زفافي';
-      final persona = personaCopyForBackend(activePlan.persona);
+    if (selectedContext != null) {
       return MoreIdentitySummary(
-        roleLabel: roleLabel,
-        personaLabel: persona.isKnown ? persona.identityLabel : null,
+        roleLabel: switch (selectedContext.role) {
+          AccountContextRole.owner => 'مسار: صاحب الخطة',
+          AccountContextRole.contributor => 'مسار: مساهم',
+          AccountContextRole.provider => 'مسار: مزود خدمة',
+        },
       );
     }
 

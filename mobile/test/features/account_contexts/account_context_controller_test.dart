@@ -15,7 +15,7 @@ void main() {
 
   group('AccountContextController fallback and persistence', () {
     test(
-      'loads owner contributor and provider without SafeUser role authority',
+      'loads every account path without choosing among multiple paths',
       () async {
         final owner = accountContext(role: AccountContextRole.owner);
         final contributor = accountContext(
@@ -27,15 +27,21 @@ void main() {
           contexts: [owner, contributor, provider],
         );
 
-        await harness.controller.refresh(activeWeddingPlanId: 'plan-2');
+        await harness.controller.refresh();
 
         expect(harness.controller.contexts, [owner, contributor, provider]);
-        expect(harness.controller.selectedContext, contributor);
+        expect(harness.controller.selectedContext, isNull);
+        expect(harness.controller.availableContexts, [
+          owner,
+          contributor,
+          provider,
+        ]);
+        expect(harness.controller.needsSelection, isTrue);
       },
     );
 
     test(
-      'fallback order is current then persisted then active then role priority',
+      'only current or persisted selection may bypass multi-path selection',
       () async {
         final owner = accountContext(role: AccountContextRole.owner);
         final contributor = accountContext(
@@ -48,15 +54,11 @@ void main() {
           persistedKey: contributor.contextKey,
         );
 
-        await harness.controller.refresh(
-          activeWeddingPlanId: owner.weddingPlanId,
-        );
+        await harness.controller.refresh();
         expect(harness.controller.selectedContext, contributor);
 
         await harness.storage.saveAccountContextKey(owner.contextKey);
-        await harness.controller.refresh(
-          activeWeddingPlanId: owner.weddingPlanId,
-        );
+        await harness.controller.refresh();
         expect(
           harness.controller.selectedContext,
           contributor,
@@ -66,16 +68,16 @@ void main() {
         final activeHarness = await _Harness.create(
           contexts: [owner, contributor, provider],
         );
-        await activeHarness.controller.refresh(
-          activeWeddingPlanId: contributor.weddingPlanId,
-        );
-        expect(activeHarness.controller.selectedContext, contributor);
+        await activeHarness.controller.refresh();
+        expect(activeHarness.controller.selectedContext, isNull);
+        expect(activeHarness.controller.needsSelection, isTrue);
 
         final roleHarness = await _Harness.create(
           contexts: [provider, contributor, owner],
         );
         await roleHarness.controller.refresh();
-        expect(roleHarness.controller.selectedContext, owner);
+        expect(roleHarness.controller.selectedContext, isNull);
+        expect(roleHarness.controller.needsSelection, isTrue);
       },
     );
 
@@ -94,43 +96,53 @@ void main() {
 
         await harness.controller.refresh();
 
-        expect(harness.controller.selectedContext, owner);
+        expect(harness.controller.selectedContext, isNull);
+        expect(harness.controller.needsSelection, isTrue);
       },
     );
 
-    test('falls from unavailable owner to contributor then provider', () async {
-      final archivedOwner = accountContext(
-        role: AccountContextRole.owner,
-        lifecycle: 'ARCHIVED',
-        accessMode: AccountContextAccessMode.readOnly,
-        isAvailable: false,
-        unavailableReason: 'PLAN_ARCHIVED',
-      );
-      final contributor = accountContext(
-        role: AccountContextRole.contributor,
-        planId: 'plan-2',
-      );
-      final provider = accountContext(role: AccountContextRole.provider);
-      final harness = await _Harness.create(
-        contexts: [provider, contributor, archivedOwner],
-      );
+    test(
+      'invalid saved path requires selection unless one path remains',
+      () async {
+        final archivedOwner = accountContext(
+          role: AccountContextRole.owner,
+          lifecycle: 'ARCHIVED',
+          accessMode: AccountContextAccessMode.readOnly,
+          isAvailable: false,
+          unavailableReason: 'PLAN_ARCHIVED',
+        );
+        final contributor = accountContext(
+          role: AccountContextRole.contributor,
+          planId: 'plan-2',
+        );
+        final provider = accountContext(role: AccountContextRole.provider);
+        final harness = await _Harness.create(
+          contexts: [provider, contributor, archivedOwner],
+        );
 
-      await harness.controller.refresh();
-      expect(harness.controller.selectedContext, contributor);
+        await harness.controller.refresh();
+        expect(harness.controller.selectedContext, isNull);
+        expect(harness.controller.needsSelection, isTrue);
 
-      harness.api.onList = () async => [provider, archivedOwner];
-      await harness.controller.clearForLogout();
-      await harness.storage.saveAccountContextKey(archivedOwner.contextKey);
-      await harness.controller.refresh();
-      expect(harness.controller.selectedContext, provider);
-    });
+        harness.api.onList = () async => [provider, archivedOwner];
+        await harness.controller.clearForLogout();
+        await harness.storage.saveAccountContextKey(archivedOwner.contextKey);
+        await harness.controller.refresh();
+        expect(
+          harness.controller.selectedContext,
+          isNull,
+          reason: 'an invalid saved path must never choose a replacement path',
+        );
+        expect(harness.controller.needsSelection, isTrue);
+      },
+    );
 
     test(
       'plan selection validates, sets active once, and persists both keys',
       () async {
         final owner = accountContext(role: AccountContextRole.owner);
         final harness = await _Harness.create(contexts: [owner]);
-        await harness.controller.refresh();
+        await harness.controller.refresh(allowInitialSingleContext: true);
 
         final selected = await harness.controller.select(owner.contextKey);
 
@@ -158,7 +170,7 @@ void main() {
         expect(selected, isTrue);
         expect(harness.api.validatedKeys, [provider.contextKey]);
         expect(harness.setActiveCalls, isEmpty);
-        expect(harness.storage.readActivePlanId(), owner.weddingPlanId);
+        expect(harness.storage.readActivePlanId(), isNull);
         expect(harness.storage.readAccountContextKey(), provider.contextKey);
       },
     );
@@ -171,10 +183,10 @@ void main() {
         final owner = accountContext(role: AccountContextRole.owner);
         final provider = accountContext(role: AccountContextRole.provider);
         final harness = await _Harness.create(contexts: [owner]);
-        await harness.controller.refresh();
+        await harness.controller.refresh(allowInitialSingleContext: true);
         harness.api.onList = () async => [owner, provider];
 
-        await harness.controller.refresh();
+        await harness.controller.refresh(allowInitialSingleContext: true);
 
         expect(harness.controller.selectedContext, owner);
         expect(harness.controller.contexts, [owner, provider]);
@@ -186,7 +198,7 @@ void main() {
       () async {
         final owner = accountContext(role: AccountContextRole.owner);
         final harness = await _Harness.create(contexts: [owner]);
-        await harness.controller.refresh();
+        await harness.controller.refresh(allowInitialSingleContext: true);
         harness.api.onList = () async =>
             throw const ApiException('offline', isNetworkFailure: true);
 
@@ -199,11 +211,14 @@ void main() {
     );
 
     test(
-      'archive or revocation selects a fallback with a generic notice',
+      'archive or revocation clears selection with a generic notice',
       () async {
         final owner = accountContext(role: AccountContextRole.owner);
         final provider = accountContext(role: AccountContextRole.provider);
-        final harness = await _Harness.create(contexts: [owner, provider]);
+        final harness = await _Harness.create(
+          contexts: [owner, provider],
+          persistedKey: owner.contextKey,
+        );
         await harness.controller.refresh();
         final archived = accountContext(
           role: AccountContextRole.owner,
@@ -216,7 +231,8 @@ void main() {
 
         await harness.controller.refresh();
 
-        expect(harness.controller.selectedContext, provider);
+        expect(harness.controller.selectedContext, isNull);
+        expect(harness.controller.needsSelection, isTrue);
         expect(harness.controller.noticeMessage, isNotNull);
         expect(harness.controller.noticeMessage, isNot(contains('plan-1')));
         expect(
@@ -238,7 +254,7 @@ void main() {
       final provider = accountContext(role: AccountContextRole.provider);
 
       final older = harness.controller.refresh();
-      final newer = harness.controller.refresh();
+      final newer = harness.controller.refresh(allowInitialSingleContext: true);
       second.complete([provider]);
       await newer;
       first.complete([owner]);

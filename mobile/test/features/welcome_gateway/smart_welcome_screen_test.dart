@@ -56,7 +56,10 @@ void main() {
 
     // ترويسة الخطوة هي المصدر الوحيد للعنوان — لا عنوان مكرّر في جسم الخطوة.
     expect(find.text('دورك يحدد التفاصيل'), findsOneWidget);
-    expect(find.text('اختيار بسيط يساعدنا نرتب التجربة لك بوضوح.'), findsOneWidget);
+    expect(
+      find.text('اختيار بسيط يساعدنا نرتب التجربة لك بوضوح.'),
+      findsOneWidget,
+    );
     expect(find.text('خلنا نتعرف عليك'), findsNothing);
     expect(find.text('العريس'), findsOneWidget);
     expect(find.text('أتابع الخطة والميزانية'), findsOneWidget);

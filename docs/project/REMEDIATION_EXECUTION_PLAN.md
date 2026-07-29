@@ -197,7 +197,9 @@ Status: **exit gate passed locally; no deployment claim**
 
 Scope:
 
-- Introduce one account-context controller and a visible context switcher.
+- Introduce one account-context controller and a centralized post-auth entry
+  gate. Multiple contexts use a standalone Arabic path-selection screen; the
+  dashboard shells do not contain a context switcher.
 - Scope plan providers to the selected context and reject stale async results.
 - Refresh user and contexts after provider application without losing wedding
   contexts.
@@ -255,7 +257,9 @@ Phase 4 evidence:
 - Plan-scoped providers are keyed from the selected context, while provider
   contexts cannot inherit the last wedding-plan data.
 - Login, OTP, provider application, deep-link guards, runtime guest flags, and
-  the visible Arabic context switcher are wired to the live context boundary.
+  the standalone Arabic context-selection screen are wired to the live
+  context boundary. The selected context key is stored through secure
+  storage.
 - Archived plan deep links render read-only history without calling
   `set-active`; revoked or missing contexts render a generic unavailable state.
 - A real `integration_test/account_context_android_test.dart` artifact covers

@@ -268,6 +268,7 @@ export class AuthService {
               },
               data: {
                 appPasswordHash: passwordHash,
+                appPasswordConfiguredAt: now,
                 appName: dto.name,
                 appEmail: null,
                 appAvatarUrl: null,
@@ -312,6 +313,7 @@ export class AuthService {
                 name: dto.name,
                 phone,
                 passwordHash,
+                appPasswordConfiguredAt: now,
                 phoneVerifiedAt: now,
                 lastLoginAt: now,
               },
@@ -337,6 +339,7 @@ export class AuthService {
               phone,
               email: null,
               passwordHash,
+              appPasswordConfiguredAt: now,
               phoneVerifiedAt: now,
               lastLoginAt: now,
             },
@@ -399,6 +402,7 @@ export class AuthService {
           role: user.role,
           status: "ACTIVE",
           phoneVerifiedAt: { not: null },
+          appPasswordConfiguredAt: { not: null },
           ...credentialIdentity,
         },
         data: { lastLoginAt: loginAt },
@@ -641,6 +645,7 @@ export class AuthService {
       !user ||
       !passwordMatch ||
       user.status === "DISABLED" ||
+      (realm === "application" && !user.appPasswordConfiguredAt) ||
       (requiredRole !== undefined && user.role !== requiredRole)
     ) {
       throw authError(
@@ -786,6 +791,8 @@ export class AuthService {
         existing.expiresAt <= now ||
         existing.user.status === "DISABLED" ||
         !existing.user.phoneVerifiedAt ||
+        (sessionScope === AuthSessionScope.APPLICATION &&
+          !existing.user.appPasswordConfiguredAt) ||
         (requiredRole !== undefined && existing.user.role !== requiredRole)
       ) {
         throw new UnauthorizedException("Session is invalid or expired");
@@ -1216,6 +1223,7 @@ export class AuthService {
     planInviteIdInput: string,
     expectedTokenHashInput: string,
     context: OtpDispatchContext = {},
+    allowAcceptedCredentialRecovery = false,
   ): Promise<OtpRequestResponse> {
     const phone = PhoneNormalizer.normalizeRequired(phoneInput);
     const planInviteId = planInviteIdInput.trim();
@@ -1230,6 +1238,7 @@ export class AuthService {
       false,
       planInviteId,
       expectedTokenHash,
+      allowAcceptedCredentialRecovery,
     );
     return response;
   }
@@ -1241,6 +1250,7 @@ export class AuthService {
     quotaAlreadyConsumed = false,
     planInviteId: string | null = null,
     expectedInviteTokenHash: string | null = null,
+    allowAcceptedCredentialRecovery = false,
   ): Promise<IssuedOtpResponse> {
     const mode = this.getOtpMode();
     let channel: OtpChannel;
@@ -1271,6 +1281,7 @@ export class AuthService {
         planInviteId,
       },
       expectedInviteTokenHash,
+      allowAcceptedCredentialRecovery,
     );
 
     let delivered;
@@ -1479,18 +1490,17 @@ export class AuthService {
     const hasAccountSetup = name.length > 0 && password.length > 0;
     const now = new Date();
     const tokenHash = createHash("sha256").update(cleanToken).digest("hex");
-    const pendingInvite = await this.prisma.planInvite.findFirst({
+    const inviteSeed = await this.prisma.planInvite.findFirst({
       where: {
         tokenHash,
         normalizedPhone: phone,
-        acceptedAt: null,
         declinedAt: null,
         revokedAt: null,
         expiresAt: { gt: now },
       },
-      select: { id: true },
+      select: { id: true, acceptedAt: true, weddingPlanId: true },
     });
-    if (!pendingInvite) {
+    if (!inviteSeed) {
       throw this.inviteNotFoundForPhone();
     }
 
@@ -1498,8 +1508,24 @@ export class AuthService {
       this.prisma,
       phone,
     );
+    if (inviteSeed.acceptedAt) {
+      if (!existingUser || existingUser.appPasswordConfiguredAt) {
+        throw this.inviteNotFoundForPhone();
+      }
+      const existingMembership = await this.prisma.sharedMember.findUnique({
+        where: {
+          weddingPlanId_userId: {
+            weddingPlanId: inviteSeed.weddingPlanId,
+            userId: existingUser.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (!existingMembership) throw this.inviteNotFoundForPhone();
+    }
     const accountSetupRequired =
       !existingUser ||
+      !existingUser.appPasswordConfiguredAt ||
       (!existingUser.phoneVerifiedAt &&
         existingUser.role !== UserRole.ADMIN) ||
       (existingUser.role === UserRole.ADMIN && !existingUser.appPasswordHash);
@@ -1528,25 +1554,41 @@ export class AuthService {
           const inviteLocked =
             await this.lockPlanInviteForUpdateInTransaction(
               tx,
-              pendingInvite.id,
+              inviteSeed.id,
             );
           if (!inviteLocked) {
             return { error: this.inviteNotFoundForPhone() };
           }
           const invite = await tx.planInvite.findFirst({
             where: {
-              id: pendingInvite.id,
+              id: inviteSeed.id,
               tokenHash,
               normalizedPhone: phone,
-              acceptedAt: null,
               declinedAt: null,
               revokedAt: null,
               expiresAt: { gt: now },
             },
-            select: { id: true },
+            select: { id: true, acceptedAt: true, weddingPlanId: true },
           });
           if (!invite) {
             return { error: this.inviteNotFoundForPhone() };
+          }
+          if (invite.acceptedAt) {
+            if (!user || user.appPasswordConfiguredAt) {
+              return { error: this.inviteNotFoundForPhone() };
+            }
+            const existingMembership = await tx.sharedMember.findUnique({
+              where: {
+                weddingPlanId_userId: {
+                  weddingPlanId: invite.weddingPlanId,
+                  userId: user.id,
+                },
+              },
+              select: { id: true },
+            });
+            if (!existingMembership) {
+              return { error: this.inviteNotFoundForPhone() };
+            }
           }
 
           const otpClaim = await this.claimOtpCodeInTransaction(tx, {
@@ -1562,6 +1604,7 @@ export class AuthService {
 
           const accountSetupRequired =
             !user ||
+            !user.appPasswordConfiguredAt ||
             (!user.phoneVerifiedAt && user.role !== UserRole.ADMIN) ||
             (user.role === UserRole.ADMIN && !user.appPasswordHash);
           if (accountSetupRequired && (!hasAccountSetup || !passwordHash)) {
@@ -1591,20 +1634,25 @@ export class AuthService {
                 phone,
                 email: null,
                 passwordHash: passwordHash!,
+                appPasswordConfiguredAt: now,
                 phoneVerifiedAt: now,
                 lastLoginAt: now,
               },
             });
-          } else if (user.role === UserRole.ADMIN && !user.appPasswordHash) {
+          } else if (
+            user.role === UserRole.ADMIN &&
+            !user.appPasswordConfiguredAt
+          ) {
             const claimed = await tx.user.updateMany({
               where: {
                 id: user.id,
                 role: UserRole.ADMIN,
                 status: "ACTIVE",
-                appPasswordHash: null,
+                appPasswordConfiguredAt: null,
               },
               data: {
                 appPasswordHash: passwordHash!,
+                appPasswordConfiguredAt: now,
                 appName: name,
                 appEmail: null,
                 appAvatarUrl: null,
@@ -1625,13 +1673,17 @@ export class AuthService {
             user = await tx.user.findUniqueOrThrow({
               where: { id: user.id },
             });
-          } else if (!user.phoneVerifiedAt) {
+          } else if (
+            !user.phoneVerifiedAt ||
+            !user.appPasswordConfiguredAt
+          ) {
             user = await tx.user.update({
               where: { id: user.id },
               data: {
                 name,
                 phone,
                 passwordHash: passwordHash!,
+                appPasswordConfiguredAt: now,
                 phoneVerifiedAt: now,
                 lastLoginAt: now,
               },
@@ -1771,8 +1823,11 @@ export class AuthService {
           where: { id: user.id },
           data: {
             ...(user.role === UserRole.ADMIN
-              ? { appPasswordHash: passwordHash }
-              : { passwordHash }),
+              ? {
+                  appPasswordHash: passwordHash,
+                  appPasswordConfiguredAt: now,
+                }
+              : { passwordHash, appPasswordConfiguredAt: now }),
             phoneVerifiedAt: user.phoneVerifiedAt ?? now,
           },
         });
@@ -2083,7 +2138,11 @@ export class AuthService {
     adminMfa = false,
     client: Pick<Prisma.TransactionClient, "refreshToken"> = this.prisma,
   ): Promise<AuthResponse> {
-    if (user.status === "DISABLED" || !user.phoneVerifiedAt) {
+    if (
+      user.status === "DISABLED" ||
+      !user.phoneVerifiedAt ||
+      (!adminMfa && !user.appPasswordConfiguredAt)
+    ) {
       throw authError(
         HttpStatus.UNAUTHORIZED,
         AuthErrorCode.PHONE_VERIFICATION_REQUIRED,
@@ -2219,6 +2278,7 @@ export class AuthService {
       | "planInviteId"
     >,
     expectedInviteTokenHash: string | null = null,
+    allowAcceptedCredentialRecovery = false,
   ): Promise<OtpCode> {
     for (let attempt = 0; attempt < 3; attempt++) {
       const now = new Date();
@@ -2242,7 +2302,9 @@ export class AuthService {
                   id: data.planInviteId,
                   tokenHash: expectedInviteTokenHash,
                   normalizedPhone: data.phone,
-                  acceptedAt: null,
+                  acceptedAt: allowAcceptedCredentialRecovery
+                    ? { not: null }
+                    : null,
                   declinedAt: null,
                   revokedAt: null,
                   expiresAt: { gt: now },

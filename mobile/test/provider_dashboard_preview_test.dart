@@ -227,11 +227,7 @@ Future<void> _pump(WidgetTester tester, {required Size size}) async {
             backgroundColor: AppTheme.ivory,
             body: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-              children: [
-                _profileCard(),
-                const SizedBox(height: 16),
-                _stats(),
-              ],
+              children: [_profileCard(), const SizedBox(height: 16), _stats()],
             ),
           ),
         ),

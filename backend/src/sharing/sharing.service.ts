@@ -100,6 +100,7 @@ export interface SharedWeddingPlanResponse {
 export interface PlanInviteResponse {
   id: string;
   weddingPlanId: string;
+  contextKey?: string;
   token: string;
   name: string | null;
   phone: string | null;
@@ -370,7 +371,7 @@ export class SharingService {
             weddingPlanId,
             currentUser,
             target.user ? [target.user.id] : [],
-        );
+          );
         this.assertPermissionCeiling(transactionalAccess, role, permissionData);
         if (target.user) {
           const lockedTarget = await tx.user.findUnique({
@@ -503,7 +504,9 @@ export class SharingService {
       include: this.inviteIncludes(),
       orderBy: { createdAt: "desc" },
     });
-    return invites.map((invite) => this.toInviteResponse(invite));
+    return invites.map((invite) =>
+      this.toCurrentUserInviteResponse(invite, currentUser.id),
+    );
   }
 
   async getInviteForCurrentUser(
@@ -512,7 +515,7 @@ export class SharingService {
   ): Promise<PlanInviteResponse> {
     const invite = await this.findInviteByTokenOrThrow(token);
     this.assertInviteBelongsToCurrentUser(invite, currentUser);
-    return this.toInviteResponse(invite);
+    return this.toCurrentUserInviteResponse(invite, currentUser.id);
   }
 
   async findInvitesForPlan(
@@ -1926,6 +1929,23 @@ export class SharingService {
               : null,
           }
         : {}),
+    };
+  }
+
+  private toCurrentUserInviteResponse(
+    invite: PlanInviteWithRelations,
+    currentUserId: string,
+  ): PlanInviteResponse {
+    const response = this.toInviteResponse(invite);
+    if (
+      response.status !== "ACCEPTED" ||
+      invite.inviteeUserId !== currentUserId
+    ) {
+      return response;
+    }
+    return {
+      ...response,
+      contextKey: canonicalPlanContextKey(invite.weddingPlanId, "contributor"),
     };
   }
 

@@ -11,6 +11,9 @@ import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
+import 'core/push/push_messaging_gateway.dart';
+import 'core/push/push_notifications_controller.dart';
+import 'core/push/push_registration_api.dart';
 import 'core/session/session_boundary.dart';
 import 'core/session/session_scoped_change_notifier.dart';
 import 'core/storage/auth_storage.dart';
@@ -74,6 +77,12 @@ Future<void> main() async {
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();
   final authRepository = AuthRepository(apiClient, authStorage);
+  final pushNotificationsController = PushNotificationsController(
+    preferences: preferences,
+    gateway: FirebasePushMessagingGateway(),
+    registrationApi: PushRegistrationApi(apiClient),
+  );
+  await pushNotificationsController.initialize();
   final accountContextsApi = AccountContextsApi(apiClient);
   apiClient.refreshSession = authRepository.refreshSession;
   final weddingPlansApi = WeddingPlansApi(
@@ -123,6 +132,9 @@ Future<void> main() async {
           value: offlineSyncService,
         ),
         Provider<AuthRepository>.value(value: authRepository),
+        ChangeNotifierProvider<PushNotificationsController>.value(
+          value: pushNotificationsController,
+        ),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<FinanceApi>.value(value: financeApi),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
@@ -141,6 +153,10 @@ Future<void> main() async {
               authRepository,
               offlineSyncService: offlineSyncService,
               guestOnboardingStorage: guestOnboardingStorage,
+              beforeAccountLogout:
+                  pushNotificationsController.unregisterAccount,
+              clearPushOnSessionEnd:
+                  pushNotificationsController.clearLocalRegistrationForAccount,
             );
             // A mid-session 401 anywhere forces a clean re-login instead of
             // degrading every screen into misleading errors.
@@ -153,7 +169,9 @@ Future<void> main() async {
         ),
       ],
       child: _AarastSessionProviders(
+        apiClient: apiClient,
         authStorage: authStorage,
+        offlineSyncService: offlineSyncService,
         accountContextsApi: accountContextsApi,
         weddingPlansApi: weddingPlansApi,
         financeApi: financeApi,
@@ -217,7 +235,9 @@ class _SecureOfflineStorageFailureApp extends StatelessWidget {
 
 class _AarastSessionProviders extends StatelessWidget {
   const _AarastSessionProviders({
+    required this.apiClient,
     required this.authStorage,
+    required this.offlineSyncService,
     required this.accountContextsApi,
     required this.weddingPlansApi,
     required this.financeApi,
@@ -232,7 +252,9 @@ class _AarastSessionProviders extends StatelessWidget {
     required this.settingsApi,
   });
 
+  final ApiClient apiClient;
   final AuthStorage authStorage;
+  final OfflineSyncService offlineSyncService;
   final AccountContextsApi accountContextsApi;
   final WeddingPlansApi weddingPlansApi;
   final FinanceApi financeApi;
@@ -251,9 +273,6 @@ class _AarastSessionProviders extends StatelessWidget {
     final sessionUserId = context.select<AuthController, String?>(
       (auth) => auth.user?.id,
     );
-    final activeWeddingPlanId = context.select<AuthController, String?>(
-      (auth) => auth.user?.activeWeddingPlanId,
-    );
     return AarastSessionBoundary(
       identity: 'account:${sessionUserId ?? 'guest'}',
       builder: (_) => MultiProvider(
@@ -267,8 +286,8 @@ class _AarastSessionProviders extends StatelessWidget {
           >(
             create: (providerContext) => _createAccountContextController(
               providerContext.read<WeddingPlansProvider>(),
-              activeWeddingPlanId: activeWeddingPlanId,
               shouldRefresh: sessionUserId != null,
+              userId: sessionUserId,
             ),
             update: (_, _, current) =>
                 current ??
@@ -277,15 +296,39 @@ class _AarastSessionProviders extends StatelessWidget {
                 )),
           ),
           ChangeNotifierProvider(create: (_) => SettingsProvider(settingsApi)),
-          ChangeNotifierProvider(
-            create: (_) => ProviderDashboardProvider(providerDashboardApi),
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            ProviderDashboardProvider
+          >(
+            create: (_) => _bindPlanScope(
+              ProviderDashboardProvider(providerDashboardApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => ProviderDashboardProvider(providerDashboardApi),
+            ),
           ),
-          ChangeNotifierProvider(
-            create: (_) => ChatProvider(
-              api: chatApi,
-              realtime: chatRealtimeClient,
-              authStorage: authStorage,
-              sessionUserId: sessionUserId,
+          ChangeNotifierProxyProvider<AccountContextController, ChatProvider>(
+            create: (_) => _bindPlanScope(
+              ChatProvider(
+                api: chatApi,
+                realtime: chatRealtimeClient,
+                authStorage: authStorage,
+                sessionUserId: sessionUserId,
+              ),
+              _unselectedPlanScope,
+            ),
+            update: (_, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => ChatProvider(
+                api: chatApi,
+                realtime: chatRealtimeClient,
+                authStorage: authStorage,
+                sessionUserId: sessionUserId,
+              ),
             ),
           ),
           ChangeNotifierProxyProvider<
@@ -378,10 +421,7 @@ class _AarastSessionProviders extends StatelessWidget {
               () => NotificationsProvider(notificationsApi),
             ),
           ),
-          ChangeNotifierProxyProvider<
-            AccountContextController,
-            GuestsProvider
-          >(
+          ChangeNotifierProxyProvider<AccountContextController, GuestsProvider>(
             create: (_) =>
                 _bindPlanScope(GuestsProvider(guestsApi), _unselectedPlanScope),
             update: (_, accountContexts, current) => _forPlanScope(
@@ -390,8 +430,19 @@ class _AarastSessionProviders extends StatelessWidget {
               () => GuestsProvider(guestsApi),
             ),
           ),
-          ChangeNotifierProvider(
-            create: (_) => ProviderMarketplaceProvider(marketplaceApi),
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            ProviderMarketplaceProvider
+          >(
+            create: (_) => _bindPlanScope(
+              ProviderMarketplaceProvider(marketplaceApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => ProviderMarketplaceProvider(marketplaceApi),
+            ),
           ),
         ],
         child: const AarastApp(),
@@ -401,12 +452,13 @@ class _AarastSessionProviders extends StatelessWidget {
 
   AccountContextController _createAccountContextController(
     WeddingPlansProvider plans, {
-    required String? activeWeddingPlanId,
     required bool shouldRefresh,
+    required String? userId,
   }) {
     final controller = AccountContextController(
       contextsApi: accountContextsApi,
       authStorage: authStorage,
+      userId: userId,
       readActiveWeddingPlanId: () async {
         return (await weddingPlansApi.getActiveWeddingPlan())?.id;
       },
@@ -419,21 +471,27 @@ class _AarastSessionProviders extends StatelessWidget {
           );
         }
       },
+      resetContextState: (previousContext, nextContext) async {
+        apiClient.bindContextIdentity(nextContext?.contextKey);
+        plans.clearContextState();
+        final previousPlanId = previousContext?.weddingPlanId;
+        if (previousPlanId != null) {
+          await offlineSyncService.clearPlanContext(previousPlanId);
+        }
+      },
     );
     if (shouldRefresh) {
-      unawaited(
-        controller.refresh(activeWeddingPlanId: activeWeddingPlanId),
-      );
+      unawaited(controller.refresh(allowInitialSingleContext: true));
     }
     return controller;
   }
 }
 
-const _unselectedPlanScope = 'plan:unselected';
+const _unselectedPlanScope = 'context:none';
 
 String _planScope(AccountContextController accountContexts) {
-  final planId = accountContexts.selectedContext?.weddingPlanId;
-  return planId == null ? _unselectedPlanScope : 'plan:$planId';
+  final contextKey = accountContexts.selectedContext?.contextKey;
+  return contextKey == null ? _unselectedPlanScope : 'context:$contextKey';
 }
 
 T _bindPlanScope<T extends ChangeNotifier>(T provider, Object identity) {

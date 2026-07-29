@@ -36,6 +36,8 @@ class AarastPageScaffold extends StatelessWidget {
     this.resizeToAvoidBottomInset,
     this.safeAreaBottom = true,
     this.extendBody = false,
+    this.backgroundColor,
+    this.backgroundDecoration,
     super.key,
   });
 
@@ -52,6 +54,8 @@ class AarastPageScaffold extends StatelessWidget {
   final bool? resizeToAvoidBottomInset;
   final bool safeAreaBottom;
   final bool extendBody;
+  final Color? backgroundColor;
+  final Decoration? backgroundDecoration;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +69,8 @@ class AarastPageScaffold extends StatelessWidget {
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       safeAreaBottom: safeAreaBottom,
       extendBody: extendBody,
+      backgroundColor: backgroundColor,
+      backgroundDecoration: backgroundDecoration,
       child: Padding(
         padding: padding,
         child: Column(
@@ -115,6 +121,8 @@ class AarastScreenFrame extends StatelessWidget {
     this.resizeToAvoidBottomInset,
     this.safeAreaBottom = true,
     this.extendBody = false,
+    this.backgroundColor,
+    this.backgroundDecoration,
     super.key,
   });
 
@@ -125,19 +133,21 @@ class AarastScreenFrame extends StatelessWidget {
   final bool? resizeToAvoidBottomInset;
   final bool safeAreaBottom;
   final bool extendBody;
+  final Color? backgroundColor;
+  final Decoration? backgroundDecoration;
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: backgroundColor ?? AppTheme.ivory,
         extendBody: extendBody,
         bottomNavigationBar: bottomNavigationBar,
         floatingActionButton: floatingActionButton,
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
         body: DecoratedBox(
-          decoration: AppTheme.screenDecoration(),
+          decoration: backgroundDecoration ?? AppTheme.screenDecoration(),
           child: SafeArea(
             bottom: safeAreaBottom,
             child: Center(

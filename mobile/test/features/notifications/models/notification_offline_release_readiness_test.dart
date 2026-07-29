@@ -20,7 +20,7 @@ void main() {
     });
 
     test(
-      'keeps in-app notification counts source-backed while push is disabled',
+      'keeps in-app notification counts source-backed while push is enabled',
       () {
         final readiness = NotificationOfflineReleaseReadiness.fromSources(
           notifications: [
@@ -30,27 +30,25 @@ void main() {
           unreadCount: 1,
         );
 
-        expect(
-          readiness.state,
-          NotificationOfflineReleaseReadinessState.pushDisabled,
-        );
+        expect(readiness.state, NotificationOfflineReleaseReadinessState.ready);
         expect(readiness.notificationCount, 2);
         expect(readiness.unreadCount, 1);
-        expect(readiness.shouldRequestNotificationPermission, isFalse);
+        expect(readiness.shouldRequestNotificationPermission, isTrue);
       },
     );
 
-    test('blocks accidental notification permission requests', () {
-      const readiness = NotificationOfflineReleaseReadiness(
-        notificationPermissionRequested: true,
-      );
+    test(
+      'does not request notification permission again after it was requested',
+      () {
+        const readiness = NotificationOfflineReleaseReadiness(
+          pushNotificationsEnabled: true,
+          notificationPermissionRequested: true,
+        );
 
-      expect(
-        readiness.state,
-        NotificationOfflineReleaseReadinessState.permissionRequestBlocked,
-      );
-      expect(readiness.shouldRequestNotificationPermission, isFalse);
-    });
+        expect(readiness.state, NotificationOfflineReleaseReadinessState.ready);
+        expect(readiness.shouldRequestNotificationPermission, isFalse);
+      },
+    );
 
     test('represents pending offline sync before release readiness', () {
       final readiness = NotificationOfflineReleaseReadiness.fromSources(
@@ -78,7 +76,7 @@ void main() {
 
       expect(readiness.state, NotificationOfflineReleaseReadinessState.ready);
       expect(readiness.pushNotificationsEnabled, isTrue);
-      expect(readiness.shouldRequestNotificationPermission, isFalse);
+      expect(readiness.shouldRequestNotificationPermission, isTrue);
     });
   });
 }

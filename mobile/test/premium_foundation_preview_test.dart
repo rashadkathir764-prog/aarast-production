@@ -46,12 +46,8 @@ void main() {
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: AarastSkeleton.list(rows: 3, rowHeight: 84),
-          ),
-          Expanded(
-            child: AarastSkeleton.form(fields: 3),
-          ),
+          Expanded(child: AarastSkeleton.list(rows: 3, rowHeight: 84)),
+          Expanded(child: AarastSkeleton.form(fields: 3)),
         ],
       ),
       const Size(420, 640),

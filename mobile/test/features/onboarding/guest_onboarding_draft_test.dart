@@ -246,19 +246,22 @@ void main() {
     });
 
     test('legacy saved local plan without budget is migrated to skipped', () {
-      final saved = GuestOnboardingDraft.quickLocalPlanSetup(
-        planName: 'Legacy Wedding',
-        persona: GuestPersona.bride,
-        location: 'Aden',
-        weddingDate: DateTime(2026, 12, 20),
-        currency: 'YER',
-      ).copyWith(
-        guestPlanId: 'local-guest-legacy',
-        createdAt: DateTime.utc(2026, 7, 1),
-        isGuestPlan: true,
-        needsSync: true,
-        budgetSkipped: false,
-      ).toJson();
+      final saved =
+          GuestOnboardingDraft.quickLocalPlanSetup(
+                planName: 'Legacy Wedding',
+                persona: GuestPersona.bride,
+                location: 'Aden',
+                weddingDate: DateTime(2026, 12, 20),
+                currency: 'YER',
+              )
+              .copyWith(
+                guestPlanId: 'local-guest-legacy',
+                createdAt: DateTime.utc(2026, 7, 1),
+                isGuestPlan: true,
+                needsSync: true,
+                budgetSkipped: false,
+              )
+              .toJson();
       saved['budgetSkipped'] = false;
 
       final restored = GuestOnboardingDraft.fromJson(saved);

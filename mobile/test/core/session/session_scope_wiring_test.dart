@@ -75,8 +75,9 @@ void main() {
     );
     expect(
       sessionWiring,
-      contains('activeWeddingPlanId: activeWeddingPlanId'),
-      reason: 'the initial context fallback must use the live authenticated user',
+      isNot(contains('activeWeddingPlanId:')),
+      reason:
+          'legacy active plan metadata must never select an account context',
     );
     for (final provider in [
       'DashboardSummaryProvider',
@@ -86,6 +87,9 @@ void main() {
       'SharingProvider',
       'NotificationsProvider',
       'GuestsProvider',
+      'ProviderMarketplaceProvider',
+      'ProviderDashboardProvider',
+      'ChatProvider',
     ]) {
       expect(
         sessionWiring,
@@ -101,21 +105,9 @@ void main() {
 
     expect(
       sessionWiring,
-      contains('create: (_) => ProviderMarketplaceProvider(marketplaceApi)'),
+      contains('controller.refresh(allowInitialSingleContext: true)'),
       reason:
-          'marketplace quotes belong to the account and must survive selected-plan changes',
-    );
-    expect(
-      sessionWiring,
-      isNot(
-        matches(
-          RegExp(
-            'ChangeNotifierProxyProvider<\\s*WeddingPlansProvider,\\s*ProviderMarketplaceProvider\\s*>',
-          ),
-        ),
-      ),
-      reason:
-          'replacing the marketplace on a plan change drops the already-loaded offers inbox',
+          'only the first confirmed single-context login may enter directly',
     );
   });
 }

@@ -127,9 +127,7 @@ void main() {
   });
 
   test('create task keeps orchestration outside presentation components', () {
-    final screen = _read(
-      'lib/features/tasks/screens/create_task_screen.dart',
-    );
+    final screen = _read('lib/features/tasks/screens/create_task_screen.dart');
     final components = _read(
       'lib/features/tasks/widgets/create_task_components.dart',
     );

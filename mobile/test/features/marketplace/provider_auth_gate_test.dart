@@ -198,10 +198,9 @@ void main() {
         status: 'ACTIVE',
       ),
     );
-    final accountContexts = await _accountContexts(
-      authStorage,
-      [_context(AccountContextRole.owner)],
-    );
+    final accountContexts = await _accountContexts(authStorage, [
+      _context(AccountContextRole.owner),
+    ]);
     final router = GoRouter(
       initialLocation: AppRouter.providerDashboard,
       routes: [
@@ -264,10 +263,9 @@ void main() {
           status: 'ACTIVE',
         ),
       );
-      final accountContexts = await _accountContexts(
-        authStorage,
-        [_context(AccountContextRole.provider)],
-      );
+      final accountContexts = await _accountContexts(authStorage, [
+        _context(AccountContextRole.provider),
+      ]);
       final router = GoRouter(
         initialLocation: AppRouter.providerDashboard,
         routes: [
@@ -378,10 +376,9 @@ void main() {
       final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
       final authRepository = AuthRepository(apiClient, authStorage);
       final authController = _AuthenticatedAuthController(authRepository);
-      final accountContexts = await _accountContexts(
-        authStorage,
-        [_context(AccountContextRole.provider, lifecycle: 'PENDING')],
-      );
+      final accountContexts = await _accountContexts(authStorage, [
+        _context(AccountContextRole.provider, lifecycle: 'PENDING'),
+      ]);
       final router = GoRouter(
         initialLocation: AppRouter.providerServiceNew,
         routes: [
@@ -452,6 +449,12 @@ Future<AccountContextController> _accountContexts(
     setActiveWeddingPlan: (_) async {},
   );
   await controller.refresh();
+  if (contexts.length == 1) {
+    final selected = await controller.select(contexts.single.contextKey);
+    if (!selected) {
+      throw StateError('The test context must be selected explicitly');
+    }
+  }
   return controller;
 }
 
@@ -465,9 +468,7 @@ class _StaticContextsGateway implements AccountContextsGateway {
 
   @override
   Future<AccountContext> validateContext(String contextKey) async {
-    return contexts.firstWhere(
-      (context) => context.contextKey == contextKey,
-    );
+    return contexts.firstWhere((context) => context.contextKey == contextKey);
   }
 }
 
@@ -481,9 +482,7 @@ AccountContext _context(
   final providerCanManage =
       isProvider && lifecycle != 'SUSPENDED' && lifecycle != 'REJECTED';
   final providerCanOperate = isProvider && lifecycle == 'ACTIVE';
-  final accessMode = isProvider && lifecycle != 'ACTIVE'
-      ? 'LIMITED'
-      : 'FULL';
+  final accessMode = isProvider && lifecycle != 'ACTIVE' ? 'LIMITED' : 'FULL';
   return AccountContext.fromJson({
     'contextKey': isProvider
         ? 'provider:$providerId'

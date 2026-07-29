@@ -172,6 +172,7 @@ enum PlanProviderLinkStatus {
 
 enum NotificationType {
   QUOTE_REQUEST_SUBMITTED
+  TASK_ASSIGNED
   TASK_DUE_SOON
   TASK_OVERDUE
   PAYMENT_SCHEDULE_DUE_SOON
@@ -224,6 +225,11 @@ enum NotificationPriority {
   URGENT
 }
 
+enum PushPlatform {
+  ANDROID
+  IOS
+}
+
 enum GuestSide {
   GROOM
   BRIDE
@@ -266,6 +272,7 @@ model User {
   email                        String?                       @unique
   passwordHash                 String
   appPasswordHash              String?
+  appPasswordConfiguredAt      DateTime?
   appName                      String?
   appEmail                     String?                       @unique
   appAvatarUrl                 String?
@@ -288,6 +295,7 @@ model User {
   sharedWeddingPlans           SharedMember[]
   notificationPreference       NotificationPreference?
   notifications                Notification[]
+  pushInstallations            PushInstallation[]
   providerProfile              Provider?
   favoriteProviders            FavoriteProvider[]
   providerReviews              ProviderReview[]
@@ -640,7 +648,7 @@ model PlanInvite {
   weddingPlan          WeddingPlan              @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   inviter              User                     @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
   invitee              User?                    @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
-  otpCodes              OtpCode[]
+  otpCodes             OtpCode[]
 
   @@index([weddingPlanId, createdAt])
   @@index([inviteeUserId, acceptedAt])
@@ -684,6 +692,21 @@ model NotificationPreference {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushInstallation {
+  id         String       @id @default(cuid())
+  userId     String
+  fid        String       @unique @db.VarChar(200)
+  platform   PushPlatform
+  enabled    Boolean      @default(true)
+  lastSeenAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, enabled])
+  @@index([updatedAt])
 }
 
 model Notification {

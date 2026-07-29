@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-17
+Snapshot date: 2026-07-28
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -204,6 +204,12 @@ flutter test
 Run targeted tests for touched flows and check Arabic/RTL layout at narrow phone
 widths for UI work.
 
+Push changes additionally require an Android APK build, inspection of the
+merged manifest for `POST_NOTIFICATIONS` and the `aarast_updates` channel, and a
+physical-device Firebase send while the app is backgrounded and terminated.
+Unit tests and a successful APK build do not prove Firebase Console, server
+credentials, or live delivery.
+
 The complete Money gate covers the real root and every sub-screen at 320px RTL
 with 1.3 text scale: budget management, category create/edit/detail, cost
 list/create/edit/detail, payment create/detail/reversal, and payment-schedule
@@ -238,6 +244,16 @@ local dashboard and that a legacy saved no-budget plan is recovered.
 Secure-storage tests must prove that production wiring never leaves the cached
 safe-user profile or guest-onboarding draft in SharedPreferences and that a
 legacy plaintext value migrates once and is removed.
+
+Account-context routing tests must cover the first-stage login/path contract:
+one owner, contributor, or provider context opens its matching dashboard
+without a second login or OTP; multiple contexts render the standalone Arabic
+`اختر المسار` screen and persist a stable context key; selecting a provider
+must not retain a wedding-plan id; a cold restart restores the saved context,
+while a missing, revoked, or invalid context re-fetches and re-evaluates the
+zero/one/multiple states. Logout must clear the context key and return to the
+login entry. Invitation links remain the first-link-only path and must not
+turn path selection into a second authentication flow.
 
 ## Admin Web Changes
 

@@ -10,11 +10,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
-import '../../wedding_plans/models/wedding_plan.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
@@ -43,7 +43,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   final _budgetMaxController = TextEditingController();
   final _messageController = TextEditingController();
 
-  String? _weddingPlanId;
   String? _serviceId;
   String? _cityId;
   DateTime? _eventDate;
@@ -78,8 +77,15 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       await marketplace.loadReferenceData();
       if (!mounted) return;
       if (hasAccount) {
-        await plans?.loadActiveWeddingPlan();
-        await plans?.loadMyWeddingPlans();
+        final selected = context
+            .read<AccountContextController?>()
+            ?.selectedContext;
+        final selectedPlanId = selected?.isPlan == true
+            ? selected?.weddingPlanId
+            : null;
+        if (selectedPlanId != null) {
+          await plans?.loadWeddingPlan(selectedPlanId);
+        }
       } else {
         await _loadGuestLocationContext(guestStorage);
       }
@@ -109,13 +115,19 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final plans = context.watch<WeddingPlansProvider>();
-    final currencyLabel = _selectedCurrencyLabel(plans);
+    final selectedContext = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final selectedPlanId = selectedContext?.isPlan == true
+        ? selectedContext?.weddingPlanId
+        : null;
+    final currencyLabel = _selectedCurrencyLabel(plans, selectedPlanId);
     final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
     final submitError =
         marketplace.quoteSubmitErrorMessage ?? marketplace.errorMessage;
-    _scheduleInitialPlanContext(plans, marketplace);
+    _scheduleInitialPlanContext(plans, marketplace, selectedPlanId);
 
     return AarastPageScaffold(
       title: 'طلب عرض سعر',
@@ -146,22 +158,17 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: _weddingPlanId,
+                        InputDecorator(
                           decoration: const InputDecoration(
                             labelText: 'خطة الزفاف',
                             prefixIcon: Icon(LucideIcons.calendarDays),
                           ),
-                          items: plans.plans
-                              .map(
-                                (plan) => DropdownMenuItem(
-                                  value: plan.id,
-                                  child: Text(plan.title),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) =>
-                              _selectWeddingPlan(value, plans, marketplace),
+                          child: Text(
+                            selectedContext?.displayName ??
+                                'لم يتم اختيار مسار خطة',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
@@ -309,15 +316,15 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         : null;
   }
 
-  String _selectedCurrencyLabel(WeddingPlansProvider plans) {
-    final planId = _weddingPlanId;
-    if (planId != null) {
-      final plan = _findWeddingPlan(plans.plans, planId);
-      if (plan != null) return currencyLabelAr(plan.currency);
-    }
-    final activeCurrency = plans.activePlan?.currency;
-    final selectedCurrency = plans.selectedPlan?.currency;
-    return currencyLabelAr(activeCurrency ?? selectedCurrency);
+  String _selectedCurrencyLabel(
+    WeddingPlansProvider plans,
+    String? selectedPlanId,
+  ) {
+    final selectedPlan = plans.selectedPlan;
+    final currency = selectedPlan?.id == selectedPlanId
+        ? selectedPlan?.currency
+        : null;
+    return currencyLabelAr(currency);
   }
 
   Future<void> _loadGuestLocationContext(
@@ -340,19 +347,19 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   void _scheduleInitialPlanContext(
     WeddingPlansProvider plans,
     ProviderMarketplaceProvider marketplace,
+    String? selectedPlanId,
   ) {
-    if (_didApplyInitialPlanContext) return;
-    final activePlan = plans.activePlan;
-    if (activePlan == null) return;
+    if (_didApplyInitialPlanContext || selectedPlanId == null) return;
+    final selectedPlan = plans.selectedPlan;
+    if (selectedPlan == null || selectedPlan.id != selectedPlanId) return;
     _didApplyInitialPlanContext = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final location = activePlan.weddingLocation;
+      final location = selectedPlan.weddingLocation;
       final matchingCityId = _matchingCityId(marketplace, location);
       setState(() {
-        _weddingPlanId ??= activePlan.id;
-        _eventDate ??= activePlan.weddingDate;
+        _eventDate ??= selectedPlan.weddingDate;
         if (location.hasAnyLocation) {
           _eventLocation ??= location;
         }
@@ -360,52 +367,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       });
       _prefillLocationMessage(location);
     });
-  }
-
-  void _selectWeddingPlan(
-    String? planId,
-    WeddingPlansProvider plans,
-    ProviderMarketplaceProvider marketplace,
-  ) {
-    if (planId == null) {
-      setState(() => _weddingPlanId = null);
-      return;
-    }
-
-    final activePlan = plans.activePlan;
-    WeddingLocationDraft location = const WeddingLocationDraft();
-    DateTime? eventDate;
-
-    if (activePlan?.id == planId) {
-      location = activePlan!.weddingLocation;
-      eventDate = activePlan.weddingDate;
-    } else {
-      final selectedPlan = _findWeddingPlan(plans.plans, planId);
-      if (selectedPlan != null) {
-        location = selectedPlan.weddingLocation;
-        eventDate = selectedPlan.weddingDate;
-      }
-    }
-
-    final matchingCityId = _matchingCityId(marketplace, location);
-    setState(() {
-      _weddingPlanId = planId;
-      if (eventDate != null) {
-        _eventDate = eventDate;
-      }
-      _eventLocation = location.hasAnyLocation ? location : null;
-      if (matchingCityId != null) {
-        _cityId = matchingCityId;
-      }
-    });
-    _prefillLocationMessage(location);
-  }
-
-  WeddingPlan? _findWeddingPlan(List<WeddingPlan> plans, String planId) {
-    for (final plan in plans) {
-      if (plan.id == planId) return plan;
-    }
-    return null;
   }
 
   String? _matchingCityId(
@@ -461,11 +422,25 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     }
     if (!mounted) return;
 
+    final selectedContext = context
+        .read<AccountContextController?>()
+        ?.selectedContext;
+    final selectedPlanId = selectedContext?.isPlan == true
+        ? selectedContext?.weddingPlanId
+        : null;
+    if (selectedPlanId == null) {
+      AarastToast.showError(
+        context,
+        'اختر مسار خطة الزفاف قبل إرسال طلب عرض السعر.',
+      );
+      return;
+    }
+
     final guestCount = int.tryParse(_guestCountController.text.trim());
     final marketplace = context.read<ProviderMarketplaceProvider>();
     final success = await marketplace.createQuoteRequest(
       providerId: widget.providerId,
-      weddingPlanId: _weddingPlanId,
+      weddingPlanId: selectedPlanId,
       serviceId: _serviceId,
       eventDate: _eventDate,
       location: _quoteLocationPayload(marketplace),
@@ -481,18 +456,19 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     if (!mounted) return;
     if (success) {
       final createdQuote = marketplace.lastCreatedQuote;
-      final planId =
-          createdQuote?.weddingPlanId?.trim() ?? _weddingPlanId?.trim();
+      final responsePlanId = createdQuote?.weddingPlanId?.trim();
       AarastToast.showSuccess(context, 'تم إرسال طلب عرض السعر بنجاح');
-      if (planId != null && planId.isNotEmpty) {
-        context.go(AppRouter.planProviders(planId, quoteId: createdQuote?.id));
+      if (responsePlanId != null &&
+          responsePlanId.isNotEmpty &&
+          responsePlanId != selectedPlanId) {
+        AarastToast.showError(
+          context,
+          'تعذر تأكيد ارتباط الطلب بمسار الخطة المحدد.',
+        );
         return;
       }
-      final quoteId = createdQuote?.id.trim();
       context.go(
-        quoteId == null || quoteId.isEmpty
-            ? AppRouter.providerDetails(widget.providerId)
-            : '${AppRouter.providerMarketplace}?quoteId=${Uri.encodeQueryComponent(quoteId)}',
+        AppRouter.planProviders(selectedPlanId, quoteId: createdQuote?.id),
       );
     }
   }

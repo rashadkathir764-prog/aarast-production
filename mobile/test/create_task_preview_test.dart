@@ -33,7 +33,10 @@ void main() {
     final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
     final database = JsonLocalDatabase(prefs);
     await database.initialize();
-    final offline = OfflineSyncService(database: database, apiClient: apiClient);
+    final offline = OfflineSyncService(
+      database: database,
+      apiClient: apiClient,
+    );
     await offline.refreshStatus();
 
     tester.view.physicalSize = const Size(390, 860);
@@ -45,8 +48,9 @@ void main() {
         providers: [
           Provider<AuthStorage>.value(value: authStorage),
           ChangeNotifierProvider<TaskTimelineProvider>(
-            create: (_) =>
-                TaskTimelineProvider(TaskTimelineApi(apiClient, offline: offline)),
+            create: (_) => TaskTimelineProvider(
+              TaskTimelineApi(apiClient, offline: offline),
+            ),
           ),
         ],
         child: MaterialApp(

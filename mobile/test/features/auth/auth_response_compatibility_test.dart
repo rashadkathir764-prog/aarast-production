@@ -2,18 +2,14 @@ import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('parses legacy access-token-only auth responses', () {
-    final response = AuthResponse.fromJson({
-      'accessToken': 'access-token',
-      'user': {'id': 'user-1', 'name': 'Test User', 'phone': '+967777758200'},
-    });
-
-    expect(response.accessToken, 'access-token');
-    expect(response.refreshToken, isNull);
-    expect(response.refreshTokenExpiresAt, isNull);
-    expect(response.user.id, 'user-1');
-    expect(response.user.appRole, 'WEDDING_USER');
-    expect(response.user.isWeddingUserAccount, isTrue);
+  test('rejects access-token-only auth responses', () {
+    expect(
+      () => AuthResponse.fromJson({
+        'accessToken': 'access-token',
+        'user': {'id': 'user-1', 'name': 'Test User', 'phone': '+967777758200'},
+      }),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test('preserves account routing fields from safe user responses', () {

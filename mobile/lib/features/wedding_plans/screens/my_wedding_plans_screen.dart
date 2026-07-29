@@ -10,6 +10,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/plan_status_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../account_contexts/models/account_context.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
 
@@ -33,14 +35,21 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
 
   Future<void> _loadPlans() async {
     final provider = context.read<WeddingPlansProvider>();
-    await provider.loadActiveWeddingPlan();
-    if (!mounted) return;
     await provider.loadMyWeddingPlans();
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<WeddingPlansProvider>();
+    // Isolated previews may render this screen without the app-level context
+    // controller. In that case there is simply no selected context to
+    // highlight; no plan provider value is used as a fallback.
+    final selectedContext = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final selectedPlanId = selectedContext?.isPlan == true
+        ? selectedContext?.weddingPlanId
+        : null;
 
     return AarastPageScaffold(
       title: 'خططي',
@@ -52,7 +61,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
         onRefresh: _loadPlans,
         child: _PlansContent(
           provider: provider,
-          activePlanId: provider.activePlan?.id,
+          activePlanId: selectedPlanId,
           onOpenPlan: _openPlan,
         ),
       ),
@@ -60,15 +69,26 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
   }
 
   Future<void> _openPlan(WeddingPlan plan) async {
-    final active = await context
-        .read<WeddingPlansProvider>()
-        .setActiveWeddingPlan(plan.id);
+    final accountContexts = context.read<AccountContextController>();
+    await accountContexts.refresh();
     if (!mounted) return;
-    if (active == null) {
+    final matchingContexts = accountContexts.contexts
+        .where(
+          (candidate) =>
+              candidate.isPlan &&
+              candidate.isAvailable &&
+              candidate.role == AccountContextRole.owner &&
+              candidate.weddingPlanId == plan.id,
+        )
+        .toList(growable: false);
+    final target = matchingContexts.isEmpty ? null : matchingContexts.first;
+    final selected =
+        target != null && await accountContexts.select(target.contextKey);
+    if (!mounted) return;
+    if (!selected) {
       AarastToast.showError(
         context,
-        context.read<WeddingPlansProvider>().errorMessage ??
-            'تعذر فتح الخطة المختارة.',
+        accountContexts.errorMessage ?? 'تعذر فتح الخطة المختارة.',
       );
       return;
     }

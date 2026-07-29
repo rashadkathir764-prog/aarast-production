@@ -49,7 +49,8 @@ void main() {
       expect(harness.repository.verifyCalls, 1);
       expect(harness.repository.lastVerifyPurpose, 'LOGIN');
       expect(harness.controller.status, AuthStatus.authenticated);
-      expect(router.state.uri.path, '/invite/example');
+      expect(router.state.uri.path, '/home');
+      expect(router.state.uri.queryParameters['resume'], '/invite/example');
       expect(
         find.byKey(const ValueKey('legacy-login-success-destination')),
         findsOneWidget,
@@ -125,9 +126,11 @@ GoRouter _router() {
         },
       ),
       GoRoute(
-        path: '/invite/example',
-        builder: (context, state) =>
-            const SizedBox(key: ValueKey('legacy-login-success-destination')),
+        path: '/home',
+        builder: (context, state) => SizedBox(
+          key: const ValueKey('legacy-login-success-destination'),
+          child: Text(state.uri.queryParameters['resume'] ?? ''),
+        ),
       ),
     ],
   );

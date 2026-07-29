@@ -162,7 +162,7 @@ void main() {
     // ملاحظة: أُزيلت فقرة التطمين المكررة من الترويسة في إعادة تصميم Premium
     // (تُقال مرة واحدة في الـ onboarding لا في كل شاشة).
     expect(find.text('تأكيد القاعة'), findsWidgets);
-    expect(find.text('إنجاز المهام'), findsOneWidget);
+    expect(find.text('تقدّم المهام'), findsOneWidget);
     expect(find.text('حساب محفوظ'), findsNothing);
     expect(find.text('تخطيط محلي'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -228,7 +228,8 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.text('متأخرة · 1'), findsOneWidget);
+    expect(find.text('الأهم الآن'), findsOneWidget);
+    expect(find.text('متأخرة · 1'), findsNothing);
     expect(find.text('لاحقًا · 1'), findsOneWidget);
     expect(find.text('مراجعة عقد القاعة'), findsWidgets);
 
@@ -500,7 +501,11 @@ void main() {
 
     await _pumpTasksScreen(tester, harness, setView: false);
 
-    expect(find.text('إنجاز المهام'), findsOneWidget);
+    expect(find.text('تقدّم المهام'), findsOneWidget);
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor,
+      Colors.white,
+    );
     expect(tester.takeException(), isNull);
   });
 }

@@ -66,7 +66,7 @@ void main() {
       expect(find.text('المدفوع'), findsWidgets);
       expect(find.text('التكاليف'), findsOneWidget);
       expect(find.text('المتبقي للدفع'), findsWidgets);
-      expect(find.text('إضافة تكلفة'), findsOneWidget);
+      expect(find.text('إضافة تكلفة'), findsNothing);
       expect(
         find.byKey(const ValueKey('money-destination-budget')),
         findsNothing,
@@ -125,7 +125,7 @@ void main() {
         find.byKey(const ValueKey('money-destination-costs')),
         findsNothing,
       );
-      expect(find.text('إضافة تكلفة'), findsOneWidget);
+      expect(find.text('إضافة تكلفة'), findsNothing);
       for (var index = 1; index <= 4; index++) {
         expect(find.text('تكلفة $index'), findsOneWidget);
       }

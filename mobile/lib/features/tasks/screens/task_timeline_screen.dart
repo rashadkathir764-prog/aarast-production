@@ -67,6 +67,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
 
     return AarastScreenFrame(
       maxWidth: 520,
+      backgroundColor: AppTheme.surface,
+      backgroundDecoration: const BoxDecoration(color: AppTheme.surface),
       child: Column(
         children: [
           Padding(
@@ -135,11 +137,33 @@ class _TasksHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        AarastStatusPill(
-          label: taskCount == 0 ? 'قائمة العمل' : _taskCountLabel(taskCount),
-          color: AppTheme.burgundy,
-          backgroundColor: AppTheme.burgundySoft,
-          icon: LucideIcons.listChecks,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            border: Border.all(
+              color: AppTheme.burgundy.withValues(alpha: 0.28),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.listChecks,
+                size: 15,
+                color: AppTheme.burgundy,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                taskCount == 0 ? 'قائمة العمل' : _taskCountLabel(taskCount),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppTheme.burgundy,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -440,16 +464,13 @@ class _TaskFilterChips extends StatelessWidget {
           for (final spec in _chipSpecs) ...[
             Builder(
               builder: (context) {
-                final count = spec.filter == _TaskFilter.all
-                    ? null
-                    : counts[spec.filter] ?? 0;
-                final showCount = count != null && count > 0;
-                return AarastFilterPill(
+                final count = counts[spec.filter] ?? 0;
+                final showCount = spec.filter == _TaskFilter.all || count > 0;
+                return _TaskFilterPill(
                   key: ValueKey('task-filter-${spec.filter.name}'),
                   label: showCount ? '${spec.label} $count' : spec.label,
                   selected: selected == spec.filter,
                   color: spec.color,
-                  softColor: spec.softColor,
                   onTap: () => onChanged(spec.filter),
                 );
               },
@@ -462,36 +483,81 @@ class _TaskFilterChips extends StatelessWidget {
   }
 }
 
+class _TaskFilterPill extends StatelessWidget {
+  const _TaskFilterPill({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = selected
+        ? color.withValues(alpha: 0.72)
+        : AppTheme.border;
+    final foreground = selected ? color : AppTheme.muted;
+
+    return Material(
+      color: AppTheme.surface,
+      shape: StadiumBorder(side: BorderSide(color: borderColor)),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ChipSpec {
-  const _ChipSpec(this.filter, this.label, this.color, this.softColor);
+  const _ChipSpec(this.filter, this.label, this.color);
 
   final _TaskFilter filter;
   final String label;
   final Color color;
-  final Color softColor;
 }
 
 const _chipSpecs = [
-  _ChipSpec(_TaskFilter.all, 'الكل', AppTheme.burgundy, AppTheme.surface),
-  _ChipSpec(
-    _TaskFilter.overdue,
-    'متأخرة',
-    AppTheme.danger,
-    AppTheme.dangerSoft,
-  ),
-  _ChipSpec(_TaskFilter.today, 'اليوم', AppTheme.warning, AppTheme.warningSoft),
-  _ChipSpec(
-    _TaskFilter.upcoming,
-    'قادمة',
-    AppTheme.burgundy,
-    AppTheme.burgundySoft,
-  ),
-  _ChipSpec(
-    _TaskFilter.completed,
-    'مكتملة',
-    AppTheme.success,
-    AppTheme.successSoft,
-  ),
+  _ChipSpec(_TaskFilter.all, 'الكل', AppTheme.burgundy),
+  _ChipSpec(_TaskFilter.overdue, 'متأخرة', AppTheme.danger),
+  _ChipSpec(_TaskFilter.today, 'اليوم', AppTheme.warning),
+  _ChipSpec(_TaskFilter.upcoming, 'قادمة', AppTheme.burgundy),
+  _ChipSpec(_TaskFilter.completed, 'مكتملة', AppTheme.success),
 ];
 
 /// الخط الزمني المجمّع: سكة عمودية بنقاط ملونة، والمتأخر يطفو للقمة.
@@ -518,15 +584,31 @@ class _GroupedTimeline extends StatelessWidget {
     }
 
     final today = _dateOnly(DateTime.now());
+    final importantTask = _selectImportantTask(tasks, today);
+    final timelineTasks = importantTask == null
+        ? tasks
+        : tasks.where((task) => task.id != importantTask.id).toList();
     final buckets = <_TimeBucket, List<WeddingTask>>{
       for (final bucket in _TimeBucket.values) bucket: [],
     };
-    for (final task in tasks) {
+    for (final task in timelineTasks) {
       buckets[_bucketFor(task, today)]!.add(task);
     }
 
     var cardIndex = 0;
     final children = <Widget>[];
+    if (importantTask != null) {
+      children
+        ..add(const _ImportantNowHeader())
+        ..add(
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 22),
+            child: buildCard(importantTask, cardIndex),
+          ),
+        )
+        ..add(const SizedBox(height: 18));
+      cardIndex++;
+    }
     for (final bucket in _TimeBucket.values) {
       final bucketTasks = buckets[bucket]!;
       if (bucketTasks.isEmpty) continue;
@@ -580,6 +662,43 @@ class _GroupedTimeline extends StatelessWidget {
           children: children,
         ),
       ],
+    );
+  }
+}
+
+class _ImportantNowHeader extends StatelessWidget {
+  const _ImportantNowHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: const ValueKey('tasks-important-now'),
+      padding: const EdgeInsets.only(top: 2, bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppTheme.goldSoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            ),
+            child: const Icon(
+              LucideIcons.sparkles,
+              size: 15,
+              color: AppTheme.goldDeep,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Text(
+            'الأهم الآن',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.title,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -697,7 +816,7 @@ class _EmptyTasksCard extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(color: AppTheme.border),
       ),
       child: Text(
@@ -722,7 +841,7 @@ class _TimelineLoadingState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 120),
       children: const [
-        _SkeletonBox(height: 158),
+        _SkeletonBox(height: 190),
         SizedBox(height: 18),
         _SkeletonBox(height: 24, width: 120),
         SizedBox(height: 12),
@@ -854,6 +973,41 @@ List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
       return true;
     }).toList(),
     _TaskFilter.completed => tasks.where((task) => task.isDone).toList(),
+  };
+}
+
+WeddingTask? _selectImportantTask(List<WeddingTask> tasks, DateTime today) {
+  final candidates = tasks.where((task) {
+    if (task.isDone || task.status == 'CANCELLED') return false;
+    final bucket = _bucketFor(task, today);
+    return bucket == _TimeBucket.overdue || bucket == _TimeBucket.today;
+  }).toList();
+  if (candidates.isEmpty) return null;
+
+  candidates.sort((first, second) {
+    final firstBucket = _bucketFor(first, today);
+    final secondBucket = _bucketFor(second, today);
+    final firstUrgency = firstBucket == _TimeBucket.overdue ? 0 : 1;
+    final secondUrgency = secondBucket == _TimeBucket.overdue ? 0 : 1;
+    final urgencyComparison = firstUrgency.compareTo(secondUrgency);
+    if (urgencyComparison != 0) return urgencyComparison;
+
+    final dateComparison = first.dueDate!.compareTo(second.dueDate!);
+    if (dateComparison != 0) return dateComparison;
+    return _priorityRank(
+      second.priority,
+    ).compareTo(_priorityRank(first.priority));
+  });
+  return candidates.first;
+}
+
+int _priorityRank(String priority) {
+  return switch (priority) {
+    'URGENT' => 4,
+    'HIGH' => 3,
+    'MEDIUM' => 2,
+    'LOW' => 1,
+    _ => 0,
   };
 }
 

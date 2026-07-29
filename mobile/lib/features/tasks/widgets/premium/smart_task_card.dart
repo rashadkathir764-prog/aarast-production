@@ -47,19 +47,20 @@ class SmartTaskCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onEdit,
-        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusXl),
         child: Ink(
           decoration: BoxDecoration(
             color: AarastDesignTokens.surface,
-            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusXl),
             border: Border.all(
               color: isLate
                   ? AarastDesignTokens.dangerSoft
                   : AarastDesignTokens.border,
             ),
+            boxShadow: AarastDesignTokens.cardShadow(opacity: 0.035),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusXl),
             child: Stack(
               children: [
                 PositionedDirectional(

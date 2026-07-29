@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_progress_ring.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/money_summary.dart';
@@ -338,15 +339,6 @@ class _MoneyCostsSection extends StatelessWidget {
             ),
           ],
         ],
-        if (costs.isNotEmpty && canManage) ...[
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            key: const ValueKey('money-add-cost-primary'),
-            onPressed: onAdd,
-            icon: const Icon(LucideIcons.plus),
-            label: const Text('إضافة تكلفة'),
-          ),
-        ],
       ],
     );
   }
@@ -367,20 +359,22 @@ class _MoneySnapshot extends StatelessWidget {
   Widget build(BuildContext context) {
     final remaining = moneyValue(summary.budget.remaining);
     final progress = summary.confirmedRatio.clamp(0.0, 1.0).toDouble();
-    final progressColor = remaining < 0
-        ? AppTheme.danger
-        : summary.confirmedRatio >= .85
-        ? AppTheme.gold
-        : AppTheme.success;
+    final percent = (summary.confirmedRatio * 100).round();
+    final overBudget = summary.hasBudget && remaining < 0;
 
     return Container(
       key: const ValueKey('money-dashboard-hero'),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: AppTheme.softShadow(opacity: .025),
+        gradient: AppTheme.heroGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.burgundyDark.withValues(alpha: .28),
+            blurRadius: 26,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -389,19 +383,22 @@ class _MoneySnapshot extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: AppTheme.burgundySoft,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  color: Colors.white.withValues(alpha: .13),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .16),
+                  ),
                 ),
                 child: const Icon(
                   LucideIcons.walletCards,
-                  size: 17,
-                  color: AppTheme.burgundy,
+                  size: 19,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,18 +408,19 @@ class _MoneySnapshot extends StatelessWidget {
                           ? 'الميزانية الكلية'
                           : 'الميزانية غير محددة',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.muted,
+                        color: Colors.white.withValues(alpha: .78),
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (summary.hasBudget)
+                    if (summary.hasBudget) ...[
+                      const SizedBox(height: 3),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: AlignmentDirectional.centerStart,
                         child: MoneyAmountText(
                           amount: summary.budget.total,
                           currency: summary.currency,
-                          color: AppTheme.burgundyDark,
+                          color: Colors.white,
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 fontFamily: AppTheme.displayFontFamily,
@@ -430,113 +428,151 @@ class _MoneySnapshot extends StatelessWidget {
                               ),
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
-              if (!summary.hasBudget && canManage)
+              const SizedBox(width: 12),
+              if (summary.hasBudget)
+                _BudgetRing(
+                  progress: progress,
+                  percent: percent,
+                  overBudget: overBudget,
+                )
+              else if (canManage)
                 TextButton(
                   key: const ValueKey('money-budget-setup'),
                   onPressed: onBudget,
                   style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    foregroundColor: AppTheme.burgundyDark,
+                    backgroundColor: AppTheme.goldLight,
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                    ),
                   ),
                   child: const Text('تحديدها'),
                 ),
             ],
           ),
           if (summary.hasBudget) ...[
-            const SizedBox(height: 9),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'نسبة استخدام الميزانية',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: _HeroMetric(
+                    label: 'المدفوع',
+                    amount: summary.costs.paid,
+                    currency: summary.currency,
+                    valueColor: Colors.white,
                   ),
                 ),
-                Text(
-                  '${(summary.confirmedRatio * 100).round()}%',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
+                const _HeroMetricDivider(),
+                Expanded(
+                  child: _HeroMetric(
+                    label: 'المتبقي للسداد',
+                    amount: summary.costs.outstanding,
+                    currency: summary.currency,
+                    valueColor: AppTheme.goldLight,
+                  ),
+                ),
+                const _HeroMetricDivider(),
+                Expanded(
+                  child: _HeroMetric(
+                    label: 'المتاح من الميزانية',
+                    amount: summary.budget.remaining,
+                    currency: summary.currency,
+                    valueColor: overBudget ? AppTheme.dangerSoft : Colors.white,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 5,
-                color: progressColor,
-                backgroundColor: AppTheme.border,
-              ),
-            ),
           ] else ...[
-            const SizedBox(height: 7),
+            const SizedBox(height: 12),
             Text(
               'حدد ميزانيتك ليظهر لك المتاح منها بوضوح.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.white.withValues(alpha: .72),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
-          const SizedBox(height: 11),
-          Row(
-            children: [
-              Expanded(
-                child: _InlineSnapshotMetric(
-                  label: 'المدفوع',
-                  amount: summary.costs.paid,
-                  currency: summary.currency,
-                  color: AppTheme.success,
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 20,
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                color: AppTheme.border,
-              ),
-              Expanded(
-                child: _InlineSnapshotMetric(
-                  label: summary.hasBudget
-                      ? 'المتاح من الميزانية'
-                      : 'إجمالي التكاليف',
-                  amount: summary.hasBudget
-                      ? summary.budget.remaining
-                      : summary.costs.total,
-                  currency: summary.currency,
-                  color: summary.hasBudget && remaining < 0
-                      ? AppTheme.danger
-                      : AppTheme.warning,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 }
 
-class _InlineSnapshotMetric extends StatelessWidget {
-  const _InlineSnapshotMetric({
+class _BudgetRing extends StatelessWidget {
+  const _BudgetRing({
+    required this.progress,
+    required this.percent,
+    required this.overBudget,
+  });
+
+  final double progress;
+  final int percent;
+  final bool overBudget;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastProgressRing(
+      progress: progress,
+      size: 64,
+      strokeWidth: 6,
+      trackColor: Colors.white.withValues(alpha: .18),
+      gradientColors: overBudget
+          ? const [
+              AppTheme.dangerSoft,
+              AppTheme.dangerSoft,
+              AppTheme.dangerSoft,
+            ]
+          : const [AppTheme.goldDeep, AppTheme.gold, AppTheme.goldLight],
+      tipColor: overBudget ? AppTheme.dangerSoft : AppTheme.goldGlow,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '$percent%',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroMetricDivider extends StatelessWidget {
+  const _HeroMetricDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: Colors.white.withValues(alpha: .14),
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  const _HeroMetric({
     required this.label,
     required this.amount,
     required this.currency,
-    required this.color,
+    required this.valueColor,
   });
 
   final String label;
   final Object? amount;
   final String currency;
-  final Color color;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -548,7 +584,7 @@ class _InlineSnapshotMetric extends StatelessWidget {
           maxLines: 2,
           softWrap: true,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppTheme.muted,
+            color: Colors.white.withValues(alpha: .72),
             fontWeight: FontWeight.w700,
             height: 1.25,
           ),
@@ -562,7 +598,7 @@ class _InlineSnapshotMetric extends StatelessWidget {
             child: MoneyAmountText(
               amount: amount,
               currency: currency,
-              color: color,
+              color: valueColor,
               style: Theme.of(context).textTheme.labelLarge,
             ),
           ),

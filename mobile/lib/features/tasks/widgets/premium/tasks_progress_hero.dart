@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/theme/aarast_design_tokens.dart';
-import '../../../../core/widgets/aarast_progress_ring.dart';
 import '../../models/task_summary.dart';
 
-/// بطل المهام — حلقة إنجاز + نبض ذكي.
+/// بطل المهام — تقدّم أفقي هادئ + ملخص صادق للحالة.
 ///
-/// الحلقة تلخص التقدم، و`footer` فتحة تضع فيها الشاشة شرائح الفلترة
+/// الشريط يلخص التقدم، و`footer` فتحة تضع فيها الشاشة شرائح الفلترة
 /// الحية فيصير الهيرو هو لوحة التحكم بدل صناديق أرقام جامدة.
 class TasksProgressHero extends StatelessWidget {
   const TasksProgressHero({
@@ -25,19 +24,9 @@ class TasksProgressHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFresh = summary.total == 0;
     final ratio = summary.completionRatio;
-    final ringColors = summary.overdue > 0 && !isFresh
-        ? const [
-            AarastDesignTokens.warning,
-            AarastDesignTokens.warningLight,
-            AarastDesignTokens.warningSoft,
-          ]
-        : const [
-            AarastDesignTokens.goldDeep,
-            AarastDesignTokens.gold,
-            AarastDesignTokens.goldLight,
-          ];
 
     return Container(
+      key: const ValueKey('tasks-progress-hero'),
       decoration: BoxDecoration(
         color: AarastDesignTokens.surface,
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusXl),
@@ -55,98 +44,112 @@ class TasksProgressHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AarastProgressRing(
-                progress: isFresh ? 0 : ratio,
-                size: 76,
-                strokeWidth: 7,
-                trackColor: AarastDesignTokens.border.withValues(alpha: 0.7),
-                gradientColors: ringColors,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${summary.completionPercent}%',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AarastDesignTokens.title,
-                        fontSize: 19,
-                        height: 1,
-                      ),
-                    ),
-                    Text(
-                      'إنجاز',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AarastDesignTokens.muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'إنجاز المهام',
+                      'تقدّم المهام',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AarastDesignTokens.title,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isFresh
-                          ? 'ابدأ بأول مهمة، وسنرتب لك الطريق خطوة خطوة.'
-                          : summary.overdue > 0
-                          ? 'لديك ${summary.overdue} مهمة متأخرة — عالجها أولًا.'
-                          : summary.dueToday > 0
-                          ? 'اليوم عندك ${summary.dueToday} مهمة — بالتوفيق.'
-                          : 'أنجزت ${summary.completed} من ${summary.total} — استمر.',
+                      _attentionMessage(summary),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AarastDesignTokens.muted,
-                        fontWeight: FontWeight.w600,
-                        height: 1.45,
+                        fontWeight: FontWeight.w700,
+                        height: 1.4,
                       ),
                     ),
-                    if (isLocalPlan) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AarastDesignTokens.goldSoft,
-                          borderRadius: BorderRadius.circular(
-                            AarastDesignTokens.radiusPill,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.smartphone,
-                              size: 11,
-                              color: AarastDesignTokens.warning,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'تخطيط محلي',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: AarastDesignTokens.ink,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 60,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${summary.completionPercent}%',
+                      key: const ValueKey('tasks-progress-percent'),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: AarastDesignTokens.title,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                    ),
+                    Text(
+                      'مكتملة',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AarastDesignTokens.muted,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Semantics(
+            label: 'تقدّم المهام',
+            value: '${summary.completionPercent} بالمئة',
+            child: SizedBox(
+              height: 8,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  AarastDesignTokens.radiusPill,
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(
+                      color: AarastDesignTokens.border.withValues(alpha: 0.62),
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: FractionallySizedBox(
+                        widthFactor: isFresh ? 0 : ratio,
+                        heightFactor: 1,
+                        child: const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: AlignmentDirectional.centerStart,
+                              end: AlignmentDirectional.centerEnd,
+                              colors: [
+                                AarastDesignTokens.burgundy,
+                                AarastDesignTokens.gold,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 11),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${summary.completed} من ${summary.total} مكتملة',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AarastDesignTokens.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (isLocalPlan) const _LocalPlanBadge(),
             ],
           ),
           if (footer != null) ...[const SizedBox(height: 14), footer!],
@@ -154,4 +157,55 @@ class TasksProgressHero extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LocalPlanBadge extends StatelessWidget {
+  const _LocalPlanBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AarastDesignTokens.surface,
+        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusPill),
+        border: Border.all(
+          color: AarastDesignTokens.gold.withValues(alpha: 0.58),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            LucideIcons.smartphone,
+            size: 11,
+            color: AarastDesignTokens.goldDeep,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'تخطيط محلي',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AarastDesignTokens.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _attentionMessage(TaskSummary summary) {
+  if (summary.total == 0) {
+    return 'ابدأ بأول مهمة، وسنرتب لك الطريق خطوة خطوة.';
+  }
+
+  final attentionCount = summary.overdue + summary.dueToday;
+  return switch (attentionCount) {
+    0 => 'لا توجد مهمة عاجلة الآن — استمر بهدوء.',
+    1 => 'مهمة واحدة تحتاج انتباهك الآن.',
+    2 => 'مهمتان تحتاجان انتباهك الآن.',
+    >= 3 && <= 10 => '$attentionCount مهام تحتاج انتباهك الآن.',
+    _ => '$attentionCount مهمة تحتاج انتباهك الآن.',
+  };
 }

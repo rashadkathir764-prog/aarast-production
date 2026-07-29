@@ -567,9 +567,9 @@ class CostCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Container(height: 1, color: AppTheme.border),
-          const SizedBox(height: 9),
+          const SizedBox(height: 11),
+          _CostProgressBar(cost: cost),
+          const SizedBox(height: 11),
           Row(
             children: [
               Expanded(
@@ -599,6 +599,36 @@ class CostCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// شريط تقدّم السداد للتكلفة الواحدة: نسبة المدفوع من الإجمالي بلون الحالة.
+class _CostProgressBar extends StatelessWidget {
+  const _CostProgressBar({required this.cost});
+
+  final WeddingCost cost;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = moneyValue(cost.totalAmount);
+    final paid = moneyValue(cost.paidAmount);
+    final ratio = total <= 0 ? 0.0 : (paid / total).clamp(0.0, 1.0).toDouble();
+    final color = cost.isCancelled
+        ? AppTheme.muted
+        : cost.isPaid
+        ? AppTheme.success
+        : paid > 0
+        ? AppTheme.warning
+        : AppTheme.disabled;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+      child: LinearProgressIndicator(
+        value: ratio,
+        minHeight: 6,
+        color: color,
+        backgroundColor: AppTheme.border,
       ),
     );
   }

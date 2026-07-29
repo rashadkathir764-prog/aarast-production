@@ -11,6 +11,7 @@ class AuthWeddingScaffold extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
     this.maxWidth = 430,
     this.leading,
+    this.useSafeArea = true,
     super.key,
   });
 
@@ -18,6 +19,7 @@ class AuthWeddingScaffold extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double maxWidth;
   final Widget? leading;
+  final bool useSafeArea;
 
   @override
   Widget build(BuildContext context) {
@@ -26,28 +28,27 @@ class AuthWeddingScaffold extends StatelessWidget {
     );
 
     // خلفية عاجية نظيفة مثل بقية التطبيق — لا زخارف مرسومة.
+    final body = Stack(
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: effectivePadding,
+              child: AarastFadeSlide(child: child),
+            ),
+          ),
+        ),
+        if (leading != null) Positioned(top: 8, right: 16, child: leading!),
+      ],
+    );
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppTheme.ivory,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxWidth),
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: effectivePadding,
-                    child: AarastFadeSlide(child: child),
-                  ),
-                ),
-              ),
-              if (leading != null)
-                Positioned(top: 8, right: 16, child: leading!),
-            ],
-          ),
-        ),
+        body: useSafeArea ? SafeArea(child: body) : body,
       ),
     );
   }

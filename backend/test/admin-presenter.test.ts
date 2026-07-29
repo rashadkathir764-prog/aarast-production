@@ -143,6 +143,8 @@ test('admin catalog and user mappers preserve response allowlists', () => {
     nameEn: 'Venues',
     slug: 'venues',
     icon: 'building',
+    showForGroom: true,
+    showForBride: false,
     isActive: true,
     sortOrder: 1,
     createdAt,
@@ -286,6 +288,7 @@ test('admin cannot reassign a service whose media belongs to another provider', 
   const service = new AdminService(
     prisma as never,
     { disconnectUser: () => undefined } as never,
+    { createNotificationInTransaction: async () => null } as never,
   );
 
   await assert.rejects(
@@ -397,6 +400,8 @@ function categoryFixture() {
     nameEn: 'Venues',
     slug: 'venues',
     icon: 'building',
+    showForGroom: true,
+    showForBride: false,
     isActive: true,
     sortOrder: 1,
     createdAt,

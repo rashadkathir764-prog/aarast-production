@@ -44,6 +44,8 @@ export type ProviderCategory = {
   nameEn: string | null;
   slug: string;
   icon: string | null;
+  showForGroom: boolean;
+  showForBride: boolean;
   isActive: boolean;
   sortOrder: number;
   providersCount?: number;
@@ -311,6 +313,8 @@ export type CatalogPayload = {
   nameEn?: string | null;
   slug?: string | null;
   icon?: string | null;
+  showForGroom?: boolean;
+  showForBride?: boolean;
   countryCode?: string | null;
   isActive?: boolean;
   sortOrder?: number;

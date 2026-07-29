@@ -11,11 +11,13 @@ import {
 } from "@prisma/client";
 import { ForbiddenException } from "@nestjs/common";
 import { AdminService } from "../../src/admin/admin.service";
+import { NotificationsService } from "../../src/notifications/notifications.service";
+import { OutboxService } from "../../src/outbox/outbox.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
-  assertManagedSmokeEnvironment: (
-    environment: NodeJS.ProcessEnv,
-  ) => { runId: string };
+  assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => {
+    runId: string;
+  };
 };
 
 assertManagedSmokeEnvironment(process.env);
@@ -109,13 +111,20 @@ async function main(): Promise<void> {
   });
   const revokedConversationIds: string[][] = [];
   const disconnectedUsers: string[] = [];
-  const service = new AdminService(prisma as any, {
-    disconnectUser: (userId: string) => disconnectedUsers.push(userId),
-    revokeConversationAccess: (
-      _userId: string,
-      conversationIds: string[],
-    ) => revokedConversationIds.push(conversationIds),
-  } as any);
+  const notifications = new NotificationsService(
+    prisma as any,
+    {} as any,
+    new OutboxService(),
+  );
+  const service = new AdminService(
+    prisma as any,
+    {
+      disconnectUser: (userId: string) => disconnectedUsers.push(userId),
+      revokeConversationAccess: (_userId: string, conversationIds: string[]) =>
+        revokedConversationIds.push(conversationIds),
+    } as any,
+    notifications,
+  );
   const authenticatedActor = {
     ...actor,
     adminMfa: true,
@@ -238,22 +247,36 @@ async function main(): Promise<void> {
   await service.suspendProvider(authenticatedActor, provider.id, {
     reason: "managed smoke",
   });
-  const [suspendedProvider, accessRevocation] = await Promise.all([
-    prisma.provider.findUniqueOrThrow({ where: { id: provider.id } }),
-    prisma.outboxEvent.findFirst({
-      where: {
-        type: "CONVERSATION_ACCESS_REVOKED",
-        aggregateType: "user",
-        aggregateId: providerOwner.id,
-      },
-    }),
-  ]);
+  const [suspendedProvider, accessRevocation, lifecycleNotification] =
+    await Promise.all([
+      prisma.provider.findUniqueOrThrow({ where: { id: provider.id } }),
+      prisma.outboxEvent.findFirst({
+        where: {
+          type: "CONVERSATION_ACCESS_REVOKED",
+          aggregateType: "user",
+          aggregateId: providerOwner.id,
+        },
+      }),
+      prisma.notification.findFirst({
+        where: {
+          userId: providerOwner.id,
+          entityType: "Provider",
+          entityId: provider.id,
+        },
+      }),
+    ]);
   assert.equal(suspendedProvider.status, ProviderStatus.SUSPENDED);
   assert.deepEqual(accessRevocation?.payload, {
     userId: providerOwner.id,
     conversationIds: [conversation.id],
   });
   assert.deepEqual(revokedConversationIds, [[conversation.id]]);
+  assert.equal(lifecycleNotification?.type, "GENERAL");
+  assert.equal(
+    (lifecycleNotification?.data as { providerStatus?: string })
+      ?.providerStatus,
+    ProviderStatus.SUSPENDED,
+  );
 
   console.log(
     "PASS - admin mutations reauthorize the locked live actor, reject revoked authority, and persist realtime revocations in the same transaction.",

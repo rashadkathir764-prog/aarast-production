@@ -42,34 +42,40 @@ class ProviderHomeTab extends StatelessWidget {
           else ...[
             _ProviderIdentityHero(profile: profile),
             const SizedBox(height: 16),
-            _ProviderMetrics(
-              summary: dashboard.summary,
-              packageCount: dashboard.packages.length,
-            ),
-            const SizedBox(height: 18),
-            _QuickActions(onOpenTab: onOpenTab),
-            const SizedBox(height: 18),
-            AarastSectionHeader(
-              title: 'أحدث الطلبات',
-              subtitle: 'طلبات عرض السعر الأحدث لنشاطك.',
-              icon: LucideIcons.mailQuestion,
-              actionLabel: dashboard.quoteRequests.isEmpty ? null : 'عرض الكل',
-              onAction: dashboard.quoteRequests.isEmpty
-                  ? null
-                  : () => onOpenTab(1),
-            ),
-            const SizedBox(height: 12),
-            if (dashboard.quoteRequests.isEmpty)
-              const AarastEmptyState(
-                icon: LucideIcons.inbox,
-                title: 'لا توجد طلبات جديدة',
-                message: 'حسّن ملفك وأضف صور خدماتك لزيادة فرص الظهور.',
-              )
-            else
-              for (final quote in dashboard.quoteRequests.take(3)) ...[
-                _QuoteSummaryTile(quote: quote),
-                const SizedBox(height: 10),
-              ],
+            if (!dashboard.canUseProviderOperations)
+              _ProviderLifecycleNotice(profile: profile)
+            else ...[
+              _ProviderMetrics(
+                summary: dashboard.summary,
+                packageCount: dashboard.packages.length,
+              ),
+              const SizedBox(height: 18),
+              _QuickActions(onOpenTab: onOpenTab),
+              const SizedBox(height: 18),
+              AarastSectionHeader(
+                title: 'أحدث الطلبات',
+                subtitle: 'طلبات عرض السعر الأحدث لنشاطك.',
+                icon: LucideIcons.mailQuestion,
+                actionLabel: dashboard.quoteRequests.isEmpty
+                    ? null
+                    : 'عرض الكل',
+                onAction: dashboard.quoteRequests.isEmpty
+                    ? null
+                    : () => onOpenTab(1),
+              ),
+              const SizedBox(height: 12),
+              if (dashboard.quoteRequests.isEmpty)
+                const AarastEmptyState(
+                  icon: LucideIcons.inbox,
+                  title: 'لا توجد طلبات جديدة',
+                  message: 'حسّن ملفك وأضف صور خدماتك لزيادة فرص الظهور.',
+                )
+              else
+                for (final quote in dashboard.quoteRequests.take(3)) ...[
+                  _QuoteSummaryTile(quote: quote),
+                  const SizedBox(height: 10),
+                ],
+            ],
           ],
           if (dashboard.errorMessage != null) ...[
             const SizedBox(height: 12),
@@ -77,6 +83,73 @@ class ProviderHomeTab extends StatelessWidget {
               title: 'تعذر تحديث لوحة المزوّد',
               message: dashboard.errorMessage!,
               onRetry: dashboard.loadDashboard,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderLifecycleNotice extends StatelessWidget {
+  const _ProviderLifecycleNotice({required this.profile});
+
+  final ProviderDashboardProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = profile.status.toUpperCase();
+    final title = switch (status) {
+      'NEEDS_CHANGES' => 'ملفك يحتاج تعديلات',
+      'REJECTED' => 'لم يُعتمد طلب المزوّد',
+      'SUSPENDED' => 'حساب المزوّد موقوف',
+      _ => 'طلبك قيد المراجعة',
+    };
+    final defaultMessage = switch (status) {
+      'NEEDS_CHANGES' => 'حدّث ملفك وفق ملاحظة الإدارة ليُراجع من جديد.',
+      'REJECTED' => 'راجع سبب الرفض قبل تحديث الملف أو التواصل مع الدعم.',
+      'SUSPENDED' => 'توقفت العمليات مؤقتًا حتى تعيد الإدارة تفعيل الحساب.',
+      _ => 'يمكنك متابعة ملفك، وستتاح العمليات بعد الاعتماد.',
+    };
+    final note = profile.reviewNote?.trim();
+    return AarastCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                status == 'NEEDS_CHANGES'
+                    ? LucideIcons.fileEdit
+                    : LucideIcons.shieldAlert,
+                color: AppTheme.burgundy,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            note == null || note.isEmpty ? defaultMessage : note,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.muted,
+              height: 1.6,
+            ),
+          ),
+          if (status == 'NEEDS_CHANGES' || status == 'PENDING') ...[
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () => context.push(AppRouter.providerProfileEdit),
+              icon: const Icon(LucideIcons.fileEdit),
+              label: const Text('تحديث ملف المزوّد'),
             ),
           ],
         ],

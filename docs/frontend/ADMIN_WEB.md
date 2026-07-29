@@ -60,8 +60,8 @@ browser-administration password; it cannot overwrite the wedding-app password.
 | --- | --- | --- |
 | `/` | Dashboard | Overview stats and quick actions |
 | `/users` | Users | List and manage end users |
-| `/providers` | Providers | Approved provider directory |
-| `/providers/applications` | Provider Applications | Review pending provider signups |
+| `/providers` | Providers | Active/suspended provider directory by default |
+| `/providers/applications` | Provider Applications | Pending/change-requested/rejected applications by default |
 | `/services` | Services | Provider service CRUD |
 | `/reviews` | Reviews | Moderate provider reviews |
 | `/notifications` | Notifications | Operational notifications |
@@ -88,3 +88,16 @@ remain intentionally unpaginated reference sets.
 
 Provider moderation is independently reviewed: an administrator cannot perform
 any review transition on a provider profile owned by that same account.
+The backend and UI share one lifecycle matrix: application states expose only
+approve/request-changes/reject where valid, `ACTIVE` exposes suspend, and
+`SUSPENDED` exposes activate. A suspended provider never shows both approve and
+activate. Provider status changes create a durable notification for the owner.
+
+Provider category create/edit also exposes two explicit customer-audience
+flags: groom and bride. A category may appear in either path or both, but the UI
+does not submit a category hidden from both. This changes discovery only; the
+provider catalog itself remains one shared source.
+
+List summary cards distinguish complete filtered totals from counts derived
+only from the current 20-row page. Page-local cards are labeled
+`في الصفحة`; they must not be presented as full-dataset statistics.

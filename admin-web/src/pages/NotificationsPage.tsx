@@ -148,11 +148,11 @@ export function NotificationsPage() {
       />
 
       <div className="stats-grid">
-        <StatCard title="المعروضة" value={items.length} tone="gold" />
-        <StatCard title="غير مقروءة" value={unreadVisibleCount} tone="info" />
+        <StatCard title="عناصر الصفحة" value={items.length} tone="gold" />
+        <StatCard title="غير مقروءة في الصفحة" value={unreadVisibleCount} tone="info" />
         <StatCard title="إجمالي غير مقروء" value={unreadCount} tone="warning" />
-        <StatCard title="أولوية عالية" value={highPriorityCount} tone="danger" />
-        <StatCard title="مؤرشفة" value={archivedCount} tone="success" />
+        <StatCard title="عالية في الصفحة" value={highPriorityCount} tone="danger" />
+        <StatCard title="مؤرشفة في الصفحة" value={archivedCount} tone="success" />
       </div>
 
       <SectionCard className="filters-card">

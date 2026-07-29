@@ -208,11 +208,49 @@ async function run() {
     check('cities include fixture city', Array.isArray(res.body) && res.body.some((city) => city.id === fixture.city.id));
   }
 
+  let capitalGovernorateId;
+  {
+    const res = await request('GET', '/api/v1/governorates');
+    check('GET /api/v1/governorates - HTTP 200', res.status === 200);
+    check('governorates response contains the 22 official first-level units', Array.isArray(res.body) && res.body.length === 22);
+    const capitalGovernorate = res.body?.find((governorate) => governorate.code === 'YE13');
+    capitalGovernorateId = capitalGovernorate?.id;
+    check('governorates preserve the Arabic name for Amanat Al Asimah', capitalGovernorate?.nameAr === 'أمانة العاصمة');
+    check(
+      'governorates report all 335 active districts',
+      res.body?.reduce((total, governorate) => total + (governorate.districtsCount ?? 0), 0) === 335,
+    );
+  }
+
+  {
+    const res = await request('GET', `/api/v1/governorates/${capitalGovernorateId}/districts`);
+    check('GET /api/v1/governorates/:id/districts - HTTP 200', res.status === 200);
+    check(
+      'Amanat Al Asimah returns its 12 source-defined districts',
+      Array.isArray(res.body) && res.body.length === 12,
+    );
+    check(
+      'districts preserve their parent and Arabic names',
+      res.body?.every((district) => district.governorateId === capitalGovernorateId) &&
+        res.body?.some((district) => district.nameAr === 'صنعاء القديمه'),
+    );
+  }
+
   {
     const res = await request('GET', '/api/v1/provider-categories');
     check('GET /api/v1/provider-categories - HTTP 200', res.status === 200);
     check('categories response is array', Array.isArray(res.body));
     check('categories include fixture category', Array.isArray(res.body) && res.body.some((category) => category.id === fixture.category.id));
+    check(
+      'categories expose server-owned groom and bride audience flags',
+      res.body?.every(
+        (category) => typeof category.showForGroom === 'boolean' && typeof category.showForBride === 'boolean',
+      ),
+    );
+    check(
+      'every active category belongs to at least one wedding persona',
+      res.body?.every((category) => category.showForGroom || category.showForBride),
+    );
   }
 
   {

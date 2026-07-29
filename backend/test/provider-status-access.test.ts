@@ -572,6 +572,8 @@ test('only ACTIVE providers can perform provider operations or receive quote/con
         run: () =>
           dashboard.createQuoteOffer(currentProvider, quoteRequestId, {
             message: 'Operational offer',
+            amount: '1000',
+            currency: 'YER',
           }),
       },
       {

@@ -2,6 +2,8 @@ enum AccountContextRole { owner, contributor, provider }
 
 enum AccountContextAccessMode { full, limited, readOnly }
 
+enum AccountContextPersona { groom, bride, helper }
+
 class AccountContextCapabilities {
   const AccountContextCapabilities({
     required this.canViewProviderProfile,
@@ -66,6 +68,7 @@ class AccountContext {
     required this.role,
     required this.weddingPlanId,
     required this.providerId,
+    required this.persona,
     required this.displayName,
     required this.lifecycle,
     required this.accessMode,
@@ -80,6 +83,7 @@ class AccountContext {
     final role = _parseRole(_requiredString(json, 'role'));
     final weddingPlanId = _requiredNullableString(json, 'weddingPlanId');
     final providerId = _requiredNullableString(json, 'providerId');
+    final persona = _parsePersona(_requiredNullableString(json, 'persona'));
     final displayName = _requiredString(json, 'displayName');
     final lifecycle = _requiredString(json, 'lifecycle');
     final accessMode = _parseAccessMode(_requiredString(json, 'accessMode'));
@@ -100,6 +104,7 @@ class AccountContext {
       role: role,
       weddingPlanId: weddingPlanId,
       providerId: providerId,
+      persona: persona,
       displayName: displayName,
       lifecycle: lifecycle,
       accessMode: accessMode,
@@ -116,6 +121,7 @@ class AccountContext {
   final AccountContextRole role;
   final String? weddingPlanId;
   final String? providerId;
+  final AccountContextPersona? persona;
   final String displayName;
   final String lifecycle;
   final AccountContextAccessMode accessMode;
@@ -129,6 +135,11 @@ class AccountContext {
 
   void _validateContract() {
     if (role == AccountContextRole.provider) {
+      if (persona != null) {
+        throw const FormatException(
+          'Provider context cannot expose a wedding persona',
+        );
+      }
       _validateProviderContract();
       return;
     }
@@ -230,6 +241,16 @@ class AccountContext {
       );
     }
   }
+}
+
+AccountContextPersona? _parsePersona(String? value) {
+  return switch (value) {
+    null => null,
+    'GROOM' => AccountContextPersona.groom,
+    'BRIDE' => AccountContextPersona.bride,
+    'HELPER' => AccountContextPersona.helper,
+    _ => throw const FormatException('Unknown account context persona'),
+  };
 }
 
 AccountContextRole _parseRole(String value) {

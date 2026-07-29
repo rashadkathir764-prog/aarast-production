@@ -490,6 +490,7 @@ AccountContext _context(
     'role': role.name.toUpperCase(),
     'weddingPlanId': planId,
     'providerId': providerId,
+    'persona': null,
     'displayName': isProvider ? 'مزود الاختبار' : 'خطة الاختبار',
     'lifecycle': isProvider ? lifecycle : 'PLANNING',
     'accessMode': accessMode,

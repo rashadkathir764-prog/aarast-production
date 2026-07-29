@@ -30,6 +30,21 @@ export class CitiesController {
   }
 }
 
+@Controller("api/v1/governorates")
+export class GovernoratesController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findGovernorates() {
+    return this.marketplaceService.findGovernorates();
+  }
+
+  @Get(":id/districts")
+  findDistricts(@Param("id") id: string) {
+    return this.marketplaceService.findGovernorateDistricts(id);
+  }
+}
+
 @Controller("api/v1/provider-categories")
 export class ProviderCategoriesController {
   constructor(private readonly marketplaceService: MarketplaceService) {}

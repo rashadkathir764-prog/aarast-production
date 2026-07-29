@@ -10,8 +10,8 @@ export class CreateQuoteOfferDto {
   message!: string;
 
   @IsString()
-  @IsOptional()
-  amount?: string | null;
+  @IsNotEmpty()
+  amount!: string;
 
   @IsString()
   @IsOptional()

@@ -321,22 +321,33 @@ export class AdminMutationExecutor {
     currentUser: AuthenticatedUser,
     dto: AdminCategoryDto,
   ) {
+    const showForGroom = dto.showForGroom ?? true;
+    const showForBride = dto.showForBride ?? true;
+    const isActive = dto.isActive ?? true;
     const category = await runAuthorizedAdminMutation(
       this.prisma,
       currentUser,
       AdminPermission.CATALOG_WRITE,
-      async (tx) =>
-        tx.providerCategory.create({
+      async (tx) => {
+        this.assertActiveCategoryAudience(
+          isActive,
+          showForGroom,
+          showForBride,
+        );
+        return tx.providerCategory.create({
           data: {
             nameAr: this.requiredText(dto.nameAr, 'nameAr'),
             nameEn: this.optionalText(dto.nameEn),
             slug: this.toSlug(dto.slug ?? dto.nameEn ?? dto.nameAr),
             icon: this.optionalText(dto.icon),
-            isActive: dto.isActive ?? true,
+            showForGroom,
+            showForBride,
+            isActive,
             sortOrder: dto.sortOrder ?? 0,
           },
           include: { _count: { select: { providers: true, services: true } } },
-        }),
+        });
+      },
     );
 
     return toCategoryResponse(category);
@@ -353,6 +364,22 @@ export class AdminMutationExecutor {
       AdminPermission.CATALOG_WRITE,
       async (tx) => {
         await this.lockCategory(tx, id, 'UPDATE');
+        const current = await tx.providerCategory.findUnique({
+          where: { id },
+          select: {
+            showForGroom: true,
+            showForBride: true,
+            isActive: true,
+          },
+        });
+        if (!current) {
+          throw new NotFoundException('Provider category not found');
+        }
+        this.assertActiveCategoryAudience(
+          dto.isActive ?? current.isActive,
+          dto.showForGroom ?? current.showForGroom,
+          dto.showForBride ?? current.showForBride,
+        );
         return tx.providerCategory.update({
           where: { id },
           data: {
@@ -365,6 +392,12 @@ export class AdminMutationExecutor {
             ...(dto.slug !== undefined ? { slug: this.toSlug(dto.slug) } : {}),
             ...(dto.icon !== undefined
               ? { icon: this.optionalText(dto.icon) }
+              : {}),
+            ...(dto.showForGroom !== undefined
+              ? { showForGroom: dto.showForGroom }
+              : {}),
+            ...(dto.showForBride !== undefined
+              ? { showForBride: dto.showForBride }
               : {}),
             ...(dto.isActive !== undefined
               ? { isActive: dto.isActive }
@@ -683,6 +716,18 @@ export class AdminMutationExecutor {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     return trimmed || null;
+  }
+
+  private assertActiveCategoryAudience(
+    isActive: boolean,
+    showForGroom: boolean,
+    showForBride: boolean,
+  ): void {
+    if (isActive && !showForGroom && !showForBride) {
+      throw new BadRequestException(
+        'An active provider category must belong to at least one wedding persona',
+      );
+    }
   }
 
   private toSlug(value: string | null | undefined): string {

@@ -12,8 +12,10 @@ Current documentation snapshot: 2026-07-29. Route-level behavior belongs in
 | User | Represents one person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. `appPasswordConfiguredAt` proves that an application credential was explicitly chosen; a bcrypt hash alone is insufficient because the historical invite flow generated an unreachable random password. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. `role`/`appRole` are legacy account-mode fields and are not sufficient to discover or authorize an active product context. Owner contexts derive from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and provider contexts from `Provider.userId`. |
 | Provider | Represents a vendor or business that offers wedding-related services. |
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
-| Category | Groups services into discoverable wedding-service categories. |
-| City | Supports Yemen-specific location filtering and local availability. |
+| Category | `ProviderCategory` groups services into one discoverable catalog. `showForGroom` and `showForBride` control customer-path discovery without duplicating provider categories; provider services and tags remain the flexible specialization layer. |
+| City | Compatibility catalog currently referenced by providers, services, and quote requests. It supports existing market filtering but is not a synonym for a governorate or district. |
+| Governorate | Authoritative Yemen first-level administrative reference with stable source code, Arabic/English names, center coordinates, active state, and ordered districts. The seeded set contains 22 units including `أمانة العاصمة`. |
+| District | Authoritative second-level administrative reference related to one Governorate by `governorateId`, with a stable source code, Arabic/English names, and center coordinates. The seeded set contains 335 districts. |
 | Favorite | Lets users save providers or services for later comparison. |
 | Review | Captures user feedback about a provider/service reference. Reviews are implemented as provider-reference support, not as paid marketplace monetization. |
 | Package | Represents bundled provider offerings, such as full hall packages or photography packages. |
@@ -324,7 +326,9 @@ rewrite as permission to restore a removed live model.
 | `Guest` | 18 | `id`, `weddingPlanId`, `groupId`, `createdAt`, `updatedAt` |
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
-| `ProviderCategory` | 11 | `id`, `createdAt`, `updatedAt` |
+| `Governorate` | 11 | `id`, `createdAt`, `updatedAt` |
+| `District` | 12 | `id`, `governorateId`, `createdAt`, `updatedAt` |
+| `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
 | `Provider` | 37 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
@@ -341,5 +345,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 42
+Total models: 44
 <!-- DOCS-SYNC:END -->

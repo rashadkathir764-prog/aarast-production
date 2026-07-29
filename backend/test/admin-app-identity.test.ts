@@ -238,6 +238,7 @@ test("a provider owner cannot review their own provider application", async () =
   const service = new AdminService(
     prisma as any,
     { disconnectUser: () => undefined } as any,
+    { createNotificationInTransaction: async () => null } as any,
   );
   const currentUser = {
     id: "admin-1",
@@ -295,7 +296,10 @@ test("a different administrator can review a provider application", async () => 
           throw new Error(`Unexpected provider-review lock: ${text}`);
         },
         provider: {
-          findUnique: async () => ({ userId: "provider-owner" }),
+          findUnique: async () => ({
+            userId: "provider-owner",
+            status: ProviderStatus.PENDING,
+          }),
           update: async ({ data }: any) => {
             persistedStatus = data.status;
             return {
@@ -357,6 +361,7 @@ test("a different administrator can review a provider application", async () => 
         revocations.push({ userId, conversationIds });
       },
     } as any,
+    { createNotificationInTransaction: async () => null } as any,
   );
 
   const response = await service.rejectProvider(

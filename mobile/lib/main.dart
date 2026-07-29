@@ -36,6 +36,8 @@ import 'features/marketplace/providers/marketplace_provider.dart';
 import 'features/notifications/data/notifications_api.dart';
 import 'features/notifications/providers/notifications_provider.dart';
 import 'features/onboarding/data/guest_onboarding_storage.dart';
+import 'features/onboarding/data/yemen_administrative_api.dart';
+import 'features/onboarding/providers/yemen_administrative_provider.dart';
 import 'features/settings/data/settings_api.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/sharing/data/sharing_api.dart';
@@ -113,6 +115,10 @@ Future<void> main() async {
   );
   final sharingApi = SharingApi(apiClient, offline: offlineSyncService);
   final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
+  final yemenAdministrativeApi = YemenAdministrativeApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
   final providerDashboardApi = ProviderDashboardApi(apiClient);
   final mediaUploadApi = MediaUploadApi(apiClient);
   final chatApi = ChatApi(apiClient);
@@ -140,6 +146,11 @@ Future<void> main() async {
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         Provider<SharingApi>.value(value: sharingApi),
         Provider<MarketplaceApi>.value(value: marketplaceApi),
+        ChangeNotifierProvider(
+          create: (_) =>
+              YemenAdministrativeProvider(yemenAdministrativeApi)
+                ..loadGovernorates(),
+        ),
         Provider<ProviderDashboardApi>.value(value: providerDashboardApi),
         Provider<MediaUploadApi>.value(value: mediaUploadApi),
         Provider<ChatApi>.value(value: chatApi),
@@ -438,11 +449,22 @@ class _AarastSessionProviders extends StatelessWidget {
               ProviderMarketplaceProvider(marketplaceApi),
               _unselectedPlanScope,
             ),
-            update: (_, accountContexts, current) => _forPlanScope(
-              current,
-              _planScope(accountContexts),
-              () => ProviderMarketplaceProvider(marketplaceApi),
-            ),
+            update: (_, accountContexts, current) {
+              final marketplace = _forPlanScope(
+                current,
+                _planScope(accountContexts),
+                () => ProviderMarketplaceProvider(
+                  marketplaceApi,
+                  catalogAudience:
+                      accountContexts.selectedContext?.persona?.name,
+                ),
+              );
+              marketplace.configureCatalogAudience(
+                accountContexts.selectedContext?.persona?.name,
+                notify: false,
+              );
+              return marketplace;
+            },
           ),
         ],
         child: const AarastApp(),

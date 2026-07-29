@@ -269,9 +269,32 @@ Fail if:
 Visible stable flows:
 
 - Browse providers.
+- In a selected groom plan, confirm groom/shared provider categories appear
+  and bride-only categories do not.
+- In a selected bride plan, confirm bride/shared provider categories appear
+  and groom-only categories do not.
+- Change context between groom and bride plans and confirm the category filter
+  follows `AccountContextController.selectedContext` with no stale selection.
+- Upgrade from a build with legacy cached categories and confirm those rows are
+  cleared; a category response missing either audience flag must fail closed.
+- Confirm provider context can use the union of active categories when managing
+  services.
+- Load all 22 Yemen governorates, select `أمانة العاصمة` separately from
+  `صنعاء`, and load only that governorate's districts. Repeat offline after one
+  successful load to verify encrypted-cache fallback.
 - Open provider detail.
 - Request quote only when authenticated and feature enabled.
 - Provider dashboard only for provider path.
+- Pending/change-requested/rejected/suspended provider keeps profile status and
+  review note visible; active-only endpoint failures must not erase them.
+- Provider workspace exit returns to path choice without clearing the account
+  session; full logout still returns to login.
+- Service and package edit, pause, and reactivate update real API data, and the
+  provider profile shows published reviews.
+- Quote-offer submit rejects blank details, blank/zero/invalid amount, uses the
+  plan currency, and permits editing only while the offer remains pending.
+- Admin approval/status change appears after provider sync without requiring a
+  new login and creates a durable provider lifecycle notification.
 - Accepting a plan-scoped quote creates one unpaid WeddingCost and refreshes
   Money; replaying acceptance must show the same cost and never a duplicate.
 - The accepted quote offers `عرض التكلفة في المال`, not a second manual cost

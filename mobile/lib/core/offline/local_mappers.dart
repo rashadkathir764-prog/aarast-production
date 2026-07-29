@@ -110,6 +110,19 @@ LocalCacheRow buildCacheRow({
         'nameAr': _string(json['nameAr']) ?? _string(json['name']),
         'name': _string(json['nameEn']) ?? _string(json['name']),
       });
+    case OfflineTables.cachedGovernorates:
+      base.addAll({
+        'code': _string(json['code']),
+        'nameAr': _string(json['nameAr']),
+        'name': _string(json['nameEn']),
+      });
+    case OfflineTables.cachedDistricts:
+      base.addAll({
+        'governorateId': _string(json['governorateId']),
+        'code': _string(json['code']),
+        'nameAr': _string(json['nameAr']),
+        'name': _string(json['nameEn']),
+      });
     case OfflineTables.cachedProviders:
       base.addAll({
         'name': _string(json['businessName']) ?? _string(json['name']),

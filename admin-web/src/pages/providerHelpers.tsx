@@ -32,11 +32,25 @@ type ProviderActionsProps = {
   detailsPath?: string;
 };
 
+export function providerActionVisibility(
+  status: ProviderApplication['status'],
+) {
+  return {
+    approve: ['PENDING', 'NEEDS_CHANGES', 'REJECTED'].includes(status),
+    activate: status === 'SUSPENDED',
+    requestChanges: ['PENDING', 'REJECTED'].includes(status),
+    reject: ['PENDING', 'NEEDS_CHANGES'].includes(status),
+    suspend: status === 'ACTIVE',
+  };
+}
+
 export function ProviderActions({
   provider,
   onChanged,
   detailsPath,
 }: ProviderActionsProps) {
+  const actions = providerActionVisibility(provider.status);
+
   async function run(action: () => Promise<ProviderApplication>) {
     await action();
     await onChanged();
@@ -50,7 +64,7 @@ export function ProviderActions({
         </ActionLink>
       ) : null}
       <Can permission={AdminPermission.PROVIDERS_WRITE}>
-        {provider.status !== 'ACTIVE' ? (
+        {actions.approve ? (
         <ConfirmDialog
           title="اعتماد المورد"
           message="سيصبح المورد ظاهرا للعملاء في سوق الموردين بعد الاعتماد."
@@ -63,7 +77,7 @@ export function ProviderActions({
           onConfirm={() => run(() => approveProvider(provider.id))}
         />
         ) : null}
-        {provider.status === 'SUSPENDED' ? (
+        {actions.activate ? (
         <ConfirmDialog
           title="تفعيل المورد"
           message="سيعود المورد إلى الحالة النشطة والمتاحة في السوق العام."
@@ -76,7 +90,7 @@ export function ProviderActions({
           onConfirm={() => run(() => activateProvider(provider.id))}
         />
         ) : null}
-        {provider.status !== 'NEEDS_CHANGES' ? (
+        {actions.requestChanges ? (
         <ConfirmDialog
           title="طلب تعديل"
           message="سيبقى المورد مخفيا حتى يراجع بياناته ويعالج ملاحظات الإدارة."
@@ -93,7 +107,7 @@ export function ProviderActions({
           }
         />
         ) : null}
-        {provider.status !== 'REJECTED' ? (
+        {actions.reject ? (
         <ConfirmDialog
           title="رفض الطلب"
           message="سيبقى المورد مخفيا عن العملاء ولن يظهر في السوق العام."
@@ -109,7 +123,7 @@ export function ProviderActions({
           onConfirm={(reason) => run(() => rejectProvider(provider.id, reason))}
         />
         ) : null}
-        {provider.status !== 'SUSPENDED' ? (
+        {actions.suspend ? (
         <ConfirmDialog
           title="إيقاف المورد"
           message="سيتم إخفاء المورد من السوق العام مؤقتا حتى تتم مراجعته."

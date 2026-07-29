@@ -158,7 +158,9 @@ function contextsHarness() {
 
 test("owner-only account exposes one trusted owner context", async () => {
   const { prisma, service } = contextsHarness();
-  prisma.plans.push(plan("plan-owner", currentUser.id, "My wedding"));
+  const ownedPlan = plan("plan-owner", currentUser.id, "My wedding");
+  ownedPlan.persona = WeddingPersona.GROOM;
+  prisma.plans.push(ownedPlan);
 
   const contexts = await service.list(currentUser);
 
@@ -167,6 +169,7 @@ test("owner-only account exposes one trusted owner context", async () => {
   assert.equal(contexts[0].role, AvailableContextRole.OWNER);
   assert.equal(contexts[0].weddingPlanId, "plan-owner");
   assert.equal(contexts[0].providerId, null);
+  assert.equal(contexts[0].persona, WeddingPersona.GROOM);
   assert.equal(contexts[0].permissions.canManageMoney, true);
   assert.equal(contexts[0].permissions.canManageProviderProfile, false);
 });
@@ -224,6 +227,7 @@ test("provider-only account is derived from Provider.userId, not appRole", async
     "provider:provider-1",
   ]);
   assert.equal(contexts[0].role, AvailableContextRole.PROVIDER);
+  assert.equal(contexts[0].persona, null);
   assert.equal(contexts[0].permissions.canManageProviderProfile, true);
   assert.equal(contexts[0].permissions.canViewPlan, false);
 });
@@ -286,15 +290,19 @@ test("owner, contributor, and provider contexts expose additive lifecycle-aware 
   const contexts = (await service.list(currentUser)) as Array<any>;
 
   assert.deepEqual(
-    contexts.map(({ contextKey, lifecycle, accessMode, capabilities }) => ({
+    contexts.map(
+      ({ contextKey, persona, lifecycle, accessMode, capabilities }) => ({
       contextKey,
+      persona,
       lifecycle,
       accessMode,
       capabilities,
-    })),
+      }),
+    ),
     [
       {
         contextKey: "plan:plan-owned:owner",
+        persona: null,
         lifecycle: WeddingPlanStatus.PLANNING,
         accessMode: "FULL",
         capabilities: {
@@ -305,6 +313,7 @@ test("owner, contributor, and provider contexts expose additive lifecycle-aware 
       },
       {
         contextKey: "plan:plan-member:contributor",
+        persona: null,
         lifecycle: WeddingPlanStatus.PLANNING,
         accessMode: "FULL",
         capabilities: {
@@ -315,6 +324,7 @@ test("owner, contributor, and provider contexts expose additive lifecycle-aware 
       },
       {
         contextKey: "provider:provider-1",
+        persona: null,
         lifecycle: ProviderStatus.ACTIVE,
         accessMode: "FULL",
         capabilities: {

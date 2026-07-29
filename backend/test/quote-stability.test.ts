@@ -378,9 +378,13 @@ test("concurrent provider submissions create exactly one offer", async () => {
   const results = await Promise.allSettled([
     service.createQuoteOffer({ id: "provider-user" } as any, quoteId, {
       message: "offer",
+      amount: "100",
+      currency: "YER",
     } as any),
     service.createQuoteOffer({ id: "provider-user" } as any, quoteId, {
       message: "offer",
+      amount: "100",
+      currency: "YER",
     } as any),
   ]);
 

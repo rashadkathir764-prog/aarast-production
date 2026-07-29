@@ -61,6 +61,7 @@ import {
   MarketplacePresenter,
   MarketplaceQuery,
 } from "./marketplace.presenter";
+import { YemenAdministrativePresenter } from "./yemen-administrative.presenter";
 import { acceptQuoteOfferInTransaction } from "./quote-offer-acceptance";
 
 export type { PaginatedResponse } from "./marketplace.contracts";
@@ -80,6 +81,46 @@ export class MarketplaceService {
     });
 
     return cities.map((city) => MarketplacePresenter.toCityResponse(city));
+  }
+
+  async findGovernorates() {
+    const governorates = await this.prisma.governorate.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
+      include: {
+        _count: {
+          select: {
+            districts: { where: { isActive: true } },
+          },
+        },
+      },
+    });
+
+    return governorates.map((governorate) =>
+      YemenAdministrativePresenter.toGovernorateResponse(governorate),
+    );
+  }
+
+  async findGovernorateDistricts(governorateId: string) {
+    const governorate = await this.prisma.governorate.findFirst({
+      where: { id: governorateId, isActive: true },
+      select: { id: true },
+    });
+    if (!governorate) {
+      throw new NotFoundException({
+        statusCode: 404,
+        code: "GOVERNORATE_NOT_FOUND",
+        message: "Governorate not found",
+      });
+    }
+    const districts = await this.prisma.district.findMany({
+      where: { governorateId, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
+    });
+
+    return districts.map((district) =>
+      YemenAdministrativePresenter.toDistrictResponse(district),
+    );
   }
 
   async findCategories() {

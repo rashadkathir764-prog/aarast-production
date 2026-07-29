@@ -475,6 +475,7 @@ AccountContext _context({
     role: role,
     weddingPlanId: weddingPlanId,
     providerId: null,
+    persona: null,
     displayName: displayName,
     lifecycle: 'PLANNING',
     accessMode: AccountContextAccessMode.full,

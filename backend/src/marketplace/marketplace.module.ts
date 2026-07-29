@@ -7,6 +7,7 @@ import {
   ApiV1QuoteRequestsController,
   ApiV1WeddingPlanQuoteRequestsController,
   CitiesController,
+  GovernoratesController,
   MeMarketplaceController,
   ProviderCategoriesController,
   ProvidersController,
@@ -19,6 +20,7 @@ import { MarketplaceService } from "./marketplace.service";
   imports: [PrismaModule, SharingModule, NotificationsModule],
   controllers: [
     CitiesController,
+    GovernoratesController,
     ProviderCategoriesController,
     ProvidersController,
     ServicesController,

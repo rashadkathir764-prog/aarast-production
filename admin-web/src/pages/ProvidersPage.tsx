@@ -23,7 +23,7 @@ import { TableToolbar } from '../components/TableToolbar';
 import { formatDate, ProviderActions } from './providerHelpers';
 
 const statuses = [
-  { value: '', label: 'كل الحالات' },
+  { value: '', label: 'النشطون والموقوفون' },
   { value: 'ACTIVE', label: 'نشط' },
   { value: 'SUSPENDED', label: 'موقوف' },
   { value: 'PENDING', label: 'جديد' },
@@ -114,11 +114,11 @@ export function ProvidersPage() {
       />
 
       <div className="stats-grid">
-        <StatCard title="الموردون" value={items.length} tone="gold" />
-        <StatCard title="نشط" value={activeCount} tone="success" />
-        <StatCard title="موقوف" value={suspendedCount} tone="danger" />
-        <StatCard title="الخدمات" value={totalServices} tone="info" />
-        <StatCard title="طلبات العروض" value={totalBookings} tone="warning" />
+        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
+        <StatCard title="نشط في الصفحة" value={activeCount} tone="success" />
+        <StatCard title="موقوف في الصفحة" value={suspendedCount} tone="danger" />
+        <StatCard title="خدمات الصفحة" value={totalServices} tone="info" />
+        <StatCard title="طلبات الصفحة" value={totalBookings} tone="warning" />
       </div>
 
       <SectionCard className="filters-card">

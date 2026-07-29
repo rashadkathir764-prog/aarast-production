@@ -249,6 +249,8 @@ export class MarketplacePresenter {
       nameEn: category.nameEn,
       slug: category.slug,
       icon: category.icon,
+      showForGroom: category.showForGroom,
+      showForBride: category.showForBride,
       isActive: category.isActive,
       sortOrder: category.sortOrder,
     };

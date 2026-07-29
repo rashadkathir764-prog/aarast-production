@@ -35,11 +35,14 @@ class MarketplaceApi {
   Future<List<ProviderCategory>> getCategories() async {
     try {
       final items = await _getJsonMapList('/api/v1/provider-categories');
+      final categories = items
+          .map(ProviderCategory.fromJson)
+          .toList(growable: false);
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedProviderCategories,
         items: items,
       );
-      return items.map(ProviderCategory.fromJson).toList();
+      return categories;
     } on Object catch (error) {
       final cached = await _cachedListOnNetworkFailure(
         error,
@@ -654,6 +657,14 @@ class ProviderDashboardApi {
         .toList();
   }
 
+  Future<List<ProviderReview>> getReviews() async {
+    final list = await _apiClient.getJsonList('/api/v1/provider/me/reviews');
+    return list
+        .whereType<Map>()
+        .map((item) => ProviderReview.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
   Future<ProviderDashboardProfile> applyProvider({
     required String businessName,
     required String phone,
@@ -760,6 +771,30 @@ class ProviderDashboardApi {
     return MarketplaceService.fromJson(json);
   }
 
+  Future<MarketplaceService> updateService({
+    required String serviceId,
+    String? title,
+    String? description,
+    String? basePrice,
+    String? priceUnit,
+    String? currency,
+    bool? isActive,
+  }) async {
+    final body = <String, dynamic>{
+      if (title != null) 'title': title.trim(),
+      if (description != null) 'description': description.trim(),
+      if (basePrice != null) 'basePrice': basePrice.trim(),
+      if (priceUnit != null) 'priceUnit': priceUnit.trim(),
+      if (currency != null) 'currency': currency.trim().toUpperCase(),
+    };
+    if (isActive case final value?) body['isActive'] = value;
+    final json = await _apiClient.patchJson(
+      '/api/v1/provider/me/services/$serviceId',
+      body,
+    );
+    return MarketplaceService.fromJson(json);
+  }
+
   Future<ProviderPackage> createPackage({
     required String title,
     String? serviceId,
@@ -782,6 +817,32 @@ class ProviderDashboardApi {
     return ProviderPackage.fromJson(json);
   }
 
+  Future<ProviderPackage> updatePackage({
+    required String packageId,
+    String? title,
+    String? serviceId,
+    String? description,
+    String? price,
+    String? currency,
+    List<String>? items,
+    bool? isActive,
+  }) async {
+    final body = <String, dynamic>{
+      if (title != null) 'title': title.trim(),
+      if (serviceId != null) 'serviceId': serviceId.trim(),
+      if (description != null) 'description': description.trim(),
+      if (price != null) 'price': price.trim(),
+      if (currency != null) 'currency': currency.trim().toUpperCase(),
+    };
+    if (items case final values?) body['items'] = values;
+    if (isActive case final value?) body['isActive'] = value;
+    final json = await _apiClient.patchJson(
+      '/api/v1/provider/me/packages/$packageId',
+      body,
+    );
+    return ProviderPackage.fromJson(json);
+  }
+
   Future<QuoteRequest> updateQuoteRequestStatus({
     required String quoteRequestId,
     required String status,
@@ -796,21 +857,38 @@ class ProviderDashboardApi {
   Future<QuoteOffer> createQuoteOffer({
     required String quoteRequestId,
     required String message,
+    required String amount,
+    required String currency,
     String? title,
-    String? amount,
-    String currency = 'YER',
     DateTime? validUntil,
   }) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/provider/me/quote-requests/$quoteRequestId/offers',
-      {
-        'message': message.trim(),
-        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
-        if (amount != null && amount.trim().isNotEmpty) 'amount': amount.trim(),
-        'currency': currency,
-        if (validUntil != null) 'validUntil': validUntil.toIso8601String(),
-      },
-    );
+    final json = await _apiClient
+        .postJson('/api/v1/provider/me/quote-requests/$quoteRequestId/offers', {
+          'message': message.trim(),
+          if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+          'amount': amount.trim(),
+          'currency': currency.trim().toUpperCase(),
+          if (validUntil != null) 'validUntil': validUntil.toIso8601String(),
+        });
+    return QuoteOffer.fromJson(json);
+  }
+
+  Future<QuoteOffer> updateQuoteOffer({
+    required String quoteOfferId,
+    required String message,
+    required String amount,
+    required String currency,
+    String? title,
+    DateTime? validUntil,
+  }) async {
+    final json = await _apiClient
+        .patchJson('/api/v1/provider/me/quote-offers/$quoteOfferId', {
+          'message': message.trim(),
+          if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+          'amount': amount.trim(),
+          'currency': currency.trim().toUpperCase(),
+          if (validUntil != null) 'validUntil': validUntil.toIso8601String(),
+        });
     return QuoteOffer.fromJson(json);
   }
 

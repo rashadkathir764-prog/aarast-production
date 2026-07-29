@@ -70,6 +70,13 @@ and runtime checks override historical completion reports.
   excess precision.
   Browser CORS preflight explicitly permits the canonical `PUT` money-budget
   write while retaining the configured origin, credential, and header policy.
+- Provider categories remain one catalog with explicit groom/bride visibility
+  flags. Flutter filters only from the selected account context persona, while
+  provider service management receives the active catalog union.
+- Yemen administrative references now include 22 governorates/first-level
+  units and 335 districts with stable codes and center coordinates, public read
+  APIs, and encrypted Flutter cache. Legacy `City` relations remain compatible
+  and are not presented as governorates.
 - One conversation per plan/provider or account/provider context, created with
   the first real quote request and reused by later requests. The implemented
   timeline combines human messages with persisted quote/offer system events,

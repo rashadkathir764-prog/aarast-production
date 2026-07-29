@@ -464,6 +464,8 @@ test('an active provider cannot create or update an offer for an archived plan',
     () =>
       service.createQuoteOffer(providerUser, quoteRequestId, {
         message: 'Offer',
+        amount: '100',
+        currency: 'YER',
       }),
     assertArchivedReadOnly,
   );

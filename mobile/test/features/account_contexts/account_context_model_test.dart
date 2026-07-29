@@ -13,6 +13,7 @@ void main() {
 
       expect(context.contextKey, 'plan:plan-1:owner');
       expect(context.role, AccountContextRole.owner);
+      expect(context.persona, isNull);
       expect(context.weddingPlanId, 'plan-1');
       expect(context.providerId, isNull);
       expect(context.lifecycle, 'PLANNING');
@@ -20,6 +21,17 @@ void main() {
       expect(context.permissions.canManageMoney, isTrue);
       expect(context.capabilities.canUseProviderOperations, isFalse);
       expect(context.isAvailable, isTrue);
+    });
+
+    test('parses the server-owned wedding persona from plan context', () {
+      final context = AccountContext.fromJson(
+        accountContextJson(
+          role: AccountContextRole.owner,
+          persona: AccountContextPersona.bride,
+        ),
+      );
+
+      expect(context.persona, AccountContextPersona.bride);
     });
 
     test('parses contributor and every provider lifecycle additively', () {

@@ -20,6 +20,31 @@ conversations, signed image uploads, and rotating refresh sessions.
   the automatically created cost appears immediately.
 - Provider flows use a dedicated five-tab portal: Home, Requests, Services,
   Messages, and Profile.
+- The provider profile/status endpoint loads independently from operational
+  endpoints. Pending, change-requested, rejected, and suspended providers keep
+  their business identity and administration note visible without attempting
+  active-only services, requests, reviews, or chat APIs.
+- Provider services and packages support create, edit, pause, and reactivate;
+  published customer reviews are visible in the provider Profile tab. A
+  pending quote offer requires a positive amount in the linked plan currency
+  and remains editable until accepted, rejected, cancelled, or expired.
+- Provider sync refreshes live account contexts before loading portal data.
+  The Profile account section separates workspace exit (return to path choice,
+  keep the account session) from full logout.
+- Provider categories are fetched and cached once as a shared catalog, then
+  filtered for plan browsing by
+  `AccountContextController.selectedContext.persona`: groom-only categories do
+  not appear in a bride plan and bride-only categories do not appear in a
+  groom plan. Route plan ids, legacy active-plan state, and provider state are
+  never alternate persona sources. Provider context sees the catalog union for
+  service management. The local database upgrade clears pre-audience category
+  cache rows, and category JSON without both server-owned audience flags is
+  rejected instead of being treated as visible to both personas.
+- Wedding location setup reads governorates and districts from the backend
+  Yemen administrative catalog instead of a hardcoded six-location list.
+  Governorates and per-governorate districts are cached in the encrypted local
+  database. The existing `cityOrDistrict` draft field temporarily carries the
+  selected district name for serialization compatibility.
 - The approved messaging design starts only from a real quote request and
   remains an account-backed online action. The inbox shows one row per
   plan/provider or account/provider context, even when it contains multiple

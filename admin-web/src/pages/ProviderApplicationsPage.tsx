@@ -25,7 +25,7 @@ import { TableToolbar } from '../components/TableToolbar';
 import { formatDate, ProviderActions, shortId } from './providerHelpers';
 
 const statuses = [
-  { value: '', label: 'كل الحالات' },
+  { value: '', label: 'الطلبات غير المعتمدة' },
   { value: 'PENDING', label: 'جديد' },
   { value: 'NEEDS_CHANGES', label: 'يحتاج تعديل' },
   { value: 'ACTIVE', label: 'مقبول' },
@@ -120,14 +120,12 @@ export function ProviderApplicationsPage() {
       {stats ? (
         <div className="stats-grid">
           <StatCard title="جديد" value={stats.pendingProviders} tone="warning" />
-          <StatCard title="مقبول" value={stats.approvedProviders} tone="success" />
           <StatCard
             title="يحتاج تعديل"
             value={stats.needsChangesProviders}
             tone="gold"
           />
           <StatCard title="مرفوض" value={stats.rejectedProviders} tone="danger" />
-          <StatCard title="موقوف" value={stats.suspendedProviders} />
         </div>
       ) : null}
 

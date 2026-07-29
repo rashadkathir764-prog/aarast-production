@@ -42,12 +42,20 @@ void main() {
         'id': 'cat-photo',
         'nameAr': 'التصوير',
         'slug': 'photography',
+        'showForGroom': true,
+        'showForBride': true,
       },
       'serviceSummary': {
         'activeCount': 2,
         'titles': ['تصوير فوتوغرافي', 'فيديو الزفاف'],
         'categories': [
-          {'id': 'cat-photo', 'nameAr': 'التصوير', 'slug': 'photography'},
+          {
+            'id': 'cat-photo',
+            'nameAr': 'التصوير',
+            'slug': 'photography',
+            'showForGroom': true,
+            'showForBride': true,
+          },
         ],
         'minPrice': '250000',
         'maxPrice': '400000',
@@ -193,12 +201,22 @@ void main() {
             'ratingCount': 0,
             'isFeatured': false,
             'primaryCategoryId': 'cat-photo',
-            'primaryCategory': {'id': 'cat-photo', 'nameAr': 'التصوير'},
+            'primaryCategory': {
+              'id': 'cat-photo',
+              'nameAr': 'التصوير',
+              'showForGroom': true,
+              'showForBride': true,
+            },
             'serviceSummary': {
               'activeCount': 2,
               'titles': ['تصوير فوتوغرافي', 'فيديو الزفاف'],
               'categories': [
-                {'id': 'cat-photo', 'nameAr': 'التصوير'},
+                {
+                  'id': 'cat-photo',
+                  'nameAr': 'التصوير',
+                  'showForGroom': true,
+                  'showForBride': true,
+                },
               ],
               'minPrice': '250000',
               'maxPrice': '400000',

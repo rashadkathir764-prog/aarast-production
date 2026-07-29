@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import {
   AdminRole,
   Prisma,
@@ -46,6 +46,14 @@ test("catalog mutation locks and reauthorizes the live actor before its target",
       throw new Error(`Unexpected query: ${text}`);
     },
     providerCategory: {
+      findUnique: async () => {
+        calls.push("target-read");
+        return {
+          showForGroom: true,
+          showForBride: true,
+          isActive: true,
+        };
+      },
       update: async () => {
         calls.push("target-write");
         return {
@@ -54,6 +62,8 @@ test("catalog mutation locks and reauthorizes the live actor before its target",
           nameEn: null,
           slug: "category",
           icon: null,
+          showForGroom: true,
+          showForBride: true,
           isActive: true,
           sortOrder: 0,
           createdAt: now,
@@ -70,15 +80,120 @@ test("catalog mutation locks and reauthorizes the live actor before its target",
       return operation(tx);
     },
   };
-  const service = new AdminService(prisma as any, {} as any);
+  const service = new AdminService(prisma as any, {} as any, {
+    createNotificationInTransaction: async () => null,
+  } as any);
 
   const result = await service.updateCategory(currentUser, "category-1", {
     nameAr: "تصنيف",
   });
 
   assert.equal(isolationLevel, Prisma.TransactionIsolationLevel.Serializable);
-  assert.deepEqual(calls, ["actor-lock", "target-lock", "target-write"]);
+  assert.deepEqual(calls, [
+    "actor-lock",
+    "target-lock",
+    "target-read",
+    "target-write",
+  ]);
   assert.equal(result.id, "category-1");
+});
+
+test("active catalog categories require at least one wedding persona", async () => {
+  let createWrites = 0;
+  const createTx = {
+    $queryRaw: async (query: any) => {
+      const text = sqlText(query);
+      if (text.includes('FROM "User"')) {
+        return [
+          {
+            id: currentUser.id,
+            role: UserRole.ADMIN,
+            adminRole: AdminRole.OPERATIONS,
+            status: UserStatus.ACTIVE,
+          },
+        ];
+      }
+      throw new Error(`Unexpected query: ${text}`);
+    },
+    providerCategory: {
+      create: async () => {
+        createWrites += 1;
+        return {};
+      },
+    },
+  };
+  const createService = new AdminService(
+    {
+      $transaction: async (operation: any) => operation(createTx),
+    } as any,
+    {} as any,
+    {
+      createNotificationInTransaction: async () => null,
+    } as any,
+  );
+
+  await assert.rejects(
+    () =>
+      createService.createCategory(currentUser, {
+        nameAr: "Hidden active category",
+        showForGroom: false,
+        showForBride: false,
+      }),
+    BadRequestException,
+  );
+  assert.equal(createWrites, 0);
+
+  let writes = 0;
+  const tx = {
+    $queryRaw: async (query: any) => {
+      const text = sqlText(query);
+      if (text.includes('FROM "User"')) {
+        return [
+          {
+            id: currentUser.id,
+            role: UserRole.ADMIN,
+            adminRole: AdminRole.OPERATIONS,
+            status: UserStatus.ACTIVE,
+          },
+        ];
+      }
+      if (text.includes('FROM "ProviderCategory"')) {
+        return [{ id: "category-1" }];
+      }
+      throw new Error(`Unexpected query: ${text}`);
+    },
+    providerCategory: {
+      findUnique: async () => ({
+        showForGroom: true,
+        showForBride: false,
+        isActive: true,
+      }),
+      update: async () => {
+        writes += 1;
+        return {};
+      },
+    },
+  };
+  const updateService = new AdminService(
+    {
+      $transaction: async (operation: any) => operation(tx),
+    } as any,
+    {} as any,
+    {
+      createNotificationInTransaction: async () => null,
+    } as any,
+  );
+
+  await assert.rejects(
+    () =>
+      updateService.updateCategory(currentUser, "category-1", {
+        nameAr: "Still active",
+        showForGroom: false,
+        showForBride: false,
+      }),
+    BadRequestException,
+  );
+  assert.equal(writes, 0);
 });
 
 test("catalog mutation rejects a disabled or underprivileged live actor before writing", async () => {
@@ -109,7 +224,9 @@ test("catalog mutation rejects a disabled or underprivileged live actor before w
     const prisma = {
       $transaction: async (operation: any) => operation(tx),
     };
-    const service = new AdminService(prisma as any, {} as any);
+    const service = new AdminService(prisma as any, {} as any, {
+      createNotificationInTransaction: async () => null,
+    } as any);
 
     await assert.rejects(
       () =>
@@ -197,6 +314,8 @@ test("disabling a user persists session revocation in the same transaction", asy
   };
   const service = new AdminService(prisma as any, {
     disconnectUser: (userId: string) => disconnectedUsers.push(userId),
+  } as any, {
+    createNotificationInTransaction: async () => null,
   } as any);
 
   const response = await service.disableUser(currentUser, targetId);

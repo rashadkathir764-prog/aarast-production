@@ -29,7 +29,10 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { toReviewIdentity } from '../common/privacy/review-identity';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
-import { optionalMoneyAmount } from '../common/validation/money';
+import {
+  optionalMoneyAmount,
+  requiredMoneyAmount,
+} from '../common/validation/money';
 import { recordConversationEvent } from '../conversations/conversation-lifecycle';
 import {
   assertQuoteRequestTransition,
@@ -88,7 +91,10 @@ type ProviderPackageRecord = ProviderPackage & {
 type ProviderQuoteRecord = QuoteRequest & {
   user: Pick<User, 'id' | 'name' | 'appName' | 'phone' | 'role'>;
   service?: (ProviderService & { category: ProviderCategory }) | null;
-  weddingPlan?: Pick<WeddingPlan, 'id' | 'title' | 'city' | 'weddingDate'> | null;
+  weddingPlan?: Pick<
+    WeddingPlan,
+    'id' | 'title' | 'city' | 'weddingDate' | 'currency'
+  > | null;
   offers?: QuoteOffer[];
 };
 type ProviderReviewRecord = ProviderReview & {
@@ -857,7 +863,7 @@ export class ProviderDashboardService {
     dto: CreateQuoteOfferDto,
   ) {
     this.assertUuid(quoteRequestId, 'quoteRequestId');
-    const amount = optionalMoneyAmount(dto.amount, 'amount');
+    const amount = this.requiredPositiveMoneyAmount(dto.amount, 'amount');
     const offer = await runSerializableTransaction(this.prisma, async (tx) => {
       const seed = await tx.quoteRequest.findUnique({
         where: { id: quoteRequestId },
@@ -882,7 +888,7 @@ export class ProviderDashboardService {
       const quote = await tx.quoteRequest.findFirst({
         where: { id: quoteRequestId, providerId: provider.id },
         include: {
-          weddingPlan: { select: { status: true } },
+          weddingPlan: { select: { status: true, currency: true } },
         },
       });
       if (!quote) {
@@ -907,6 +913,10 @@ export class ProviderDashboardService {
           quoteOfferId: existingOffer.id,
         });
       }
+      const currency = this.quoteOfferCurrency(
+        dto.currency,
+        quote.weddingPlan?.currency,
+      );
 
       const created = await tx.quoteOffer.create({
         data: {
@@ -915,7 +925,7 @@ export class ProviderDashboardService {
           title: this.optionalText(dto.title),
           message: this.requiredText(dto.message, 'message'),
           amount,
-          currency: dto.currency ?? 'YER',
+          currency,
           validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
         },
       });
@@ -960,9 +970,9 @@ export class ProviderDashboardService {
     dto: UpdateQuoteOfferDto,
   ) {
     this.assertUuid(id, 'quoteOfferId');
-    const amount =
+    const requestedAmount =
       dto.amount !== undefined
-        ? optionalMoneyAmount(dto.amount, 'amount')
+        ? this.requiredPositiveMoneyAmount(dto.amount, 'amount')
         : undefined;
     const offer = await runSerializableTransaction(this.prisma, async (tx) => {
       const seed = await tx.quoteOffer.findUnique({
@@ -1000,7 +1010,7 @@ export class ProviderDashboardService {
           quoteRequest: {
             select: {
               status: true,
-              weddingPlan: { select: { status: true } },
+              weddingPlan: { select: { status: true, currency: true } },
             },
           },
         },
@@ -1017,6 +1027,16 @@ export class ProviderDashboardService {
       ) {
         throw new ConflictException('Only pending quote offers can be updated');
       }
+      const amount =
+        requestedAmount ??
+        this.requiredPositiveMoneyAmount(
+          existing.amount?.toString(),
+          'amount',
+        );
+      const currency = this.quoteOfferCurrency(
+        dto.currency ?? existing.currency,
+        existing.quoteRequest.weddingPlan?.currency,
+      );
 
       const transition = await tx.quoteOffer.updateMany({
         where: { id, status: QuoteOfferStatus.PENDING },
@@ -1030,7 +1050,7 @@ export class ProviderDashboardService {
           ...(dto.amount !== undefined
             ? { amount }
             : {}),
-          ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
+          ...(dto.currency !== undefined ? { currency } : {}),
           ...(dto.validUntil !== undefined
             ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
             : {}),
@@ -1397,7 +1417,13 @@ export class ProviderDashboardService {
       },
       service: { include: { category: true } },
       weddingPlan: {
-        select: { id: true, title: true, city: true, weddingDate: true },
+        select: {
+          id: true,
+          title: true,
+          city: true,
+          weddingDate: true,
+          currency: true,
+        },
       },
       offers: { orderBy: { createdAt: 'desc' } },
     } satisfies Prisma.QuoteRequestInclude;
@@ -1409,6 +1435,36 @@ export class ProviderDashboardService {
       throw new BadRequestException(`${field} must not be empty`);
     }
     return trimmed;
+  }
+
+  private requiredPositiveMoneyAmount(value: unknown, field: string): string {
+    const amount = requiredMoneyAmount(value, field);
+    if (Number(amount) <= 0) {
+      throw new BadRequestException(`${field} must be greater than zero`);
+    }
+    return amount;
+  }
+
+  private quoteOfferCurrency(
+    requested: string | null | undefined,
+    weddingPlanCurrency?: string | null,
+  ): string {
+    const currency = (requested?.trim() || weddingPlanCurrency || 'YER')
+      .toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new BadRequestException(
+        'currency must be a three-letter ISO code',
+      );
+    }
+    if (
+      weddingPlanCurrency &&
+      currency !== weddingPlanCurrency.toUpperCase()
+    ) {
+      throw new BadRequestException(
+        'Quote offer currency must match the wedding plan currency',
+      );
+    }
+    return currency;
   }
 
   private optionalText(value: string | null | undefined): string | null {
@@ -1499,6 +1555,8 @@ export class ProviderDashboardService {
       nameEn: category.nameEn,
       slug: category.slug,
       icon: category.icon,
+      showForGroom: category.showForGroom,
+      showForBride: category.showForBride,
       sortOrder: category.sortOrder,
     };
   }

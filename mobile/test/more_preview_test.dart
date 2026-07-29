@@ -18,6 +18,9 @@ import 'package:aarast_mobile/features/account_contexts/models/account_context.d
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/more/screens/more_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
+import 'package:aarast_mobile/features/onboarding/data/yemen_administrative_api.dart';
+import 'package:aarast_mobile/features/onboarding/models/yemen_administrative_area.dart';
+import 'package:aarast_mobile/features/onboarding/providers/yemen_administrative_provider.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
 import 'package:aarast_mobile/features/settings/models/user_settings.dart';
 import 'package:aarast_mobile/features/settings/providers/settings_provider.dart';
@@ -167,10 +170,17 @@ void main() {
     final provider = WeddingPlansProvider(
       WeddingPlansApi(ApiClient(tokenProvider: () async => null)),
     );
+    final yemen = YemenAdministrativeProvider(_PreviewYemenAdministrativeApi());
+    await yemen.loadGovernorates();
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<WeddingPlansProvider>.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WeddingPlansProvider>.value(value: provider),
+          ChangeNotifierProvider<YemenAdministrativeProvider>.value(
+            value: yemen,
+          ),
+        ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
@@ -392,6 +402,40 @@ class _FakeSettingsApi extends SettingsApi {
   Future<UserSettings> updateSettings(UserSettings settings) async {
     return settings;
   }
+}
+
+class _PreviewYemenAdministrativeApi extends YemenAdministrativeApi {
+  _PreviewYemenAdministrativeApi()
+    : super(ApiClient(tokenProvider: () async => null));
+
+  @override
+  Future<List<YemenGovernorate>> getGovernorates() async => const [
+    YemenGovernorate(
+      id: 'capital',
+      code: 'YE13',
+      nameAr: 'أمانة العاصمة',
+      nameEn: "Sana'a City",
+      districtsCount: 10,
+    ),
+    YemenGovernorate(
+      id: 'sanaa',
+      code: 'YE23',
+      nameAr: 'صنعاء',
+      nameEn: "Sana'a",
+      districtsCount: 16,
+    ),
+    YemenGovernorate(
+      id: 'aden',
+      code: 'YE24',
+      nameAr: 'عدن',
+      nameEn: 'Aden',
+      districtsCount: 8,
+    ),
+  ];
+
+  @override
+  Future<List<YemenDistrict>> getDistricts(String governorateId) async =>
+      const [];
 }
 
 class _FakePlansProvider extends WeddingPlansProvider {

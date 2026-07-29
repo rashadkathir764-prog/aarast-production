@@ -1,6 +1,5 @@
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
-import 'package:aarast_mobile/features/onboarding/models/yemen_location_suggestions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -105,24 +104,6 @@ void main() {
       );
       expect(location.toJson()['city'], 'المنصورة');
       expect(location.toJson()['displayLabel'], location.fullLabel);
-    });
-
-    test('provides lightweight Yemen location suggestions', () {
-      expect(
-        YemenLocationSuggestions.governorates,
-        containsAll(['صنعاء', 'عدن', 'تعز', 'إب', 'الحديدة', 'حضرموت']),
-      );
-      expect(
-        YemenLocationSuggestions.cityOrDistrictsFor('صنعاء'),
-        containsAll(['شميلة', 'حدة', 'السبعين']),
-      );
-      expect(
-        YemenLocationSuggestions.areasFor(
-          governorate: 'عدن',
-          cityOrDistrict: 'المنصورة',
-        ),
-        contains('شارع التسعين'),
-      );
     });
 
     test('stores wedding date or unknown date state', () {

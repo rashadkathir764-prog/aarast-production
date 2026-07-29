@@ -108,10 +108,10 @@ export function ConversationReportsPage() {
       />
 
       <div className="stats-grid">
-        <StatCard title="البلاغات" value={reports.length} tone="gold" />
-        <StatCard title="مفتوحة" value={openCount} tone="warning" />
-        <StatCard title="تمت مراجعتها" value={reviewedCount} tone="success" />
-        <StatCard title="مرفوضة" value={dismissedCount} tone="info" />
+        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
+        <StatCard title="مفتوحة في الصفحة" value={openCount} tone="warning" />
+        <StatCard title="مراجعة مكتملة في الصفحة" value={reviewedCount} tone="success" />
+        <StatCard title="مرفوضة في الصفحة" value={dismissedCount} tone="info" />
       </div>
 
       <SectionCard className="filters-card">

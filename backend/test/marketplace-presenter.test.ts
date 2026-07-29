@@ -7,6 +7,7 @@ import {
   MarketplacePresenter,
   MarketplaceQuery,
 } from "../src/marketplace/marketplace.presenter";
+import { YemenAdministrativePresenter } from "../src/marketplace/yemen-administrative.presenter";
 
 test("marketplace pagination is bounded and rejects invalid values", () => {
   assert.deepEqual(MarketplaceQuery.parsePagination(), {
@@ -64,6 +65,8 @@ test("provider list response keeps category and active service summary", () => {
     nameEn: "Photography",
     slug: "photography",
     icon: null,
+    showForGroom: true,
+    showForBride: true,
     isActive: true,
     sortOrder: 1,
   };
@@ -117,6 +120,8 @@ test("provider list response keeps category and active service summary", () => {
         nameEn: "Photography",
         slug: "photography",
         icon: null,
+        showForGroom: true,
+        showForBride: true,
         isActive: true,
         sortOrder: 1,
       },
@@ -190,4 +195,112 @@ test("marketplace reference catalog is installed by an idempotent migration", ()
 
   assert.doesNotMatch(migration, /\bDELETE\b/i);
   assert.doesNotMatch(migration, /\bUPDATE\b/i);
+});
+
+test("provider category audience migration separates groom and bride discovery", () => {
+  const migration = readFileSync(
+    "prisma/migrations/20260729030000_add_provider_category_audience_catalog/migration.sql",
+    "utf8",
+  );
+  const schema = readFileSync("prisma/schema.prisma", "utf8");
+  const presenter = readFileSync(
+    "src/marketplace/marketplace.presenter.ts",
+    "utf8",
+  );
+
+  assert.match(schema, /showForGroom\s+Boolean\s+@default\(true\)/);
+  assert.match(schema, /showForBride\s+Boolean\s+@default\(true\)/);
+  assert.match(presenter, /showForGroom: category\.showForGroom/);
+  assert.match(presenter, /showForBride: category\.showForBride/);
+
+  for (const shared of ["wedding-halls", "photography", "soft-drinks"]) {
+    assert.ok(migration.includes(shared), shared);
+  }
+  for (const bride of ["makeup", "henna", "dance-troupe"]) {
+    assert.ok(migration.includes(bride), bride);
+  }
+  for (const groom of ["qat", "barber", "security-entry"]) {
+    assert.ok(migration.includes(groom), groom);
+  }
+
+  assert.doesNotMatch(migration, /\bDELETE\b/i);
+});
+
+test("Yemen administrative catalog installs 22 governorates and 335 districts", () => {
+  const migration = readFileSync(
+    "prisma/migrations/20260729040000_add_yemen_administrative_catalog/migration.sql",
+    "utf8",
+  );
+  const controller = readFileSync(
+    "src/marketplace/marketplace.controller.ts",
+    "utf8",
+  );
+
+  assert.equal(
+    migration.match(/\('c3000000-0000-4000-8000-/g)?.length,
+    22,
+  );
+  assert.equal(
+    migration.match(/\('d4000000-0000-4000-8000-/g)?.length,
+    335,
+  );
+  assert.match(migration, /'YE13', 'أمانة العاصمة'/);
+  assert.match(migration, /OCHA Yemen \/ CSO via HDX/);
+  assert.doesNotMatch(migration, /truncated|NEXT_DISTRICT_BATCH/);
+  assert.match(controller, /@Controller\("api\/v1\/governorates"\)/);
+  assert.match(controller, /@Get\(":id\/districts"\)/);
+});
+
+test("Yemen administrative presenters preserve stable codes and coordinates", () => {
+  assert.deepEqual(
+    YemenAdministrativePresenter.toGovernorateResponse({
+      id: "governorate-1",
+      code: "YE13",
+      nameAr: "أمانة العاصمة",
+      nameEn: "Sana'a City",
+      latitude: 15.40928,
+      longitude: 44.17555835,
+      isActive: true,
+      sortOrder: 10,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _count: { districts: 10 },
+    } as never),
+    {
+      id: "governorate-1",
+      code: "YE13",
+      nameAr: "أمانة العاصمة",
+      nameEn: "Sana'a City",
+      latitude: 15.40928,
+      longitude: 44.17555835,
+      sortOrder: 10,
+      districtsCount: 10,
+    },
+  );
+
+  assert.deepEqual(
+    YemenAdministrativePresenter.toDistrictResponse({
+      id: "district-1",
+      governorateId: "governorate-1",
+      code: "YE1301",
+      nameAr: "صنعاء القديمة",
+      nameEn: "Old City",
+      latitude: 15.35493,
+      longitude: 44.21484244,
+      isActive: true,
+      sortOrder: 10,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }),
+    {
+      id: "district-1",
+      governorateId: "governorate-1",
+      code: "YE1301",
+      nameAr: "صنعاء القديمة",
+      nameEn: "Old City",
+      latitude: 15.35493,
+      longitude: 44.21484244,
+      sortOrder: 10,
+    },
+  );
 });

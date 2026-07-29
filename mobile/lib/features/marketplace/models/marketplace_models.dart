@@ -30,15 +30,26 @@ class ProviderCategory {
     this.nameEn,
     this.slug,
     this.icon,
+    this.showForGroom = true,
+    this.showForBride = true,
   });
 
   factory ProviderCategory.fromJson(Map<String, dynamic> json) {
+    final showForGroom = json['showForGroom'];
+    final showForBride = json['showForBride'];
+    if (showForGroom is! bool || showForBride is! bool) {
+      throw const FormatException(
+        'Provider category audience flags are required',
+      );
+    }
     return ProviderCategory(
       id: json['id'].toString(),
       nameAr: json['nameAr']?.toString() ?? json['name']?.toString() ?? '',
       nameEn: json['nameEn']?.toString(),
       slug: json['slug']?.toString(),
       icon: json['icon']?.toString(),
+      showForGroom: showForGroom,
+      showForBride: showForBride,
     );
   }
 
@@ -47,6 +58,16 @@ class ProviderCategory {
   final String? nameEn;
   final String? slug;
   final String? icon;
+  final bool showForGroom;
+  final bool showForBride;
+
+  bool isVisibleFor(String? audience) {
+    return switch (audience?.trim().toUpperCase()) {
+      'GROOM' => showForGroom,
+      'BRIDE' => showForBride,
+      _ => showForGroom || showForBride,
+    };
+  }
 }
 
 class MarketplaceProvider {
@@ -395,6 +416,7 @@ class QuoteRequest {
     this.contactName,
     this.contactPhone,
     this.weddingPlanTitle,
+    this.weddingPlanCurrency,
     this.provider,
     this.service,
     this.eventDate,
@@ -427,6 +449,9 @@ class QuoteRequest {
           json['contactPhone']?.toString(),
       weddingPlanTitle: weddingPlan is Map
           ? weddingPlan['title']?.toString()
+          : null,
+      weddingPlanCurrency: weddingPlan is Map
+          ? weddingPlan['currency']?.toString()
           : null,
       provider: _mapOrNull(json['provider'], ProviderSummary.fromJson),
       service: _mapOrNull(json['service'], MarketplaceService.fromJson),
@@ -469,6 +494,7 @@ class QuoteRequest {
   final String? contactName;
   final String? contactPhone;
   final String? weddingPlanTitle;
+  final String? weddingPlanCurrency;
   final ProviderSummary? provider;
   final MarketplaceService? service;
   final DateTime? eventDate;

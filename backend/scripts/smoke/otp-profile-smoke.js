@@ -168,7 +168,7 @@ async function run() {
   {
     const res = await request('GET', '/api/v1/users/me/settings', null, token);
     check('GET /api/v1/users/me/settings - HTTP 200', res.status === 200);
-    check('settings default unsupported channels false', (
+    check('settings default device and unsupported channels false', (
       res.body?.pushEnabled === false &&
       res.body?.smsEnabled === false &&
       res.body?.whatsappEnabled === false &&
@@ -179,8 +179,13 @@ async function run() {
       res.body?.channelCapabilities?.inApp?.configurable === false &&
       res.body?.channelCapabilities?.inApp?.enabled === true
     ));
-    check('settings expose external delivery channels as unsupported', (
-      ['push', 'sms', 'whatsapp', 'email'].every((channel) => (
+    check('settings expose push as supported and device-managed', (
+      res.body?.channelCapabilities?.push?.supported === true &&
+      res.body?.channelCapabilities?.push?.configurable === false &&
+      res.body?.channelCapabilities?.push?.enabled === false
+    ));
+    check('settings expose unavailable external channels as unsupported', (
+      ['sms', 'whatsapp', 'email'].every((channel) => (
         res.body?.channelCapabilities?.[channel]?.supported === false &&
         res.body?.channelCapabilities?.[channel]?.configurable === false &&
         res.body?.channelCapabilities?.[channel]?.enabled === false
@@ -188,7 +193,20 @@ async function run() {
     ));
   }
 
-  for (const field of ['pushEnabled', 'smsEnabled', 'whatsappEnabled', 'emailEnabled']) {
+  {
+    const res = await request(
+      'PATCH',
+      '/api/v1/users/me/settings',
+      { pushEnabled: true },
+      token,
+    );
+    check('device-managed push cannot be enabled from settings', (
+      res.status === 400 &&
+      errorCode(res) === 'NOTIFICATION_CHANNEL_DEVICE_MANAGED'
+    ));
+  }
+
+  for (const field of ['smsEnabled', 'whatsappEnabled', 'emailEnabled']) {
     const res = await request(
       'PATCH',
       '/api/v1/users/me/settings',

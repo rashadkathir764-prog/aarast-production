@@ -51,7 +51,7 @@ test("provider service prices fail at validation before Prisma can round or over
   assert.equal(writes, 0);
 });
 
-test("all provider-facing price fields share the central optional-money contract", () => {
+test("provider catalog prices stay optional while quote offers require positive money", () => {
   assert.equal(optionalMoneyAmount(undefined, "price"), null);
   assert.equal(optionalMoneyAmount(null, "price"), null);
   assert.equal(optionalMoneyAmount("  ", "price"), null);
@@ -93,8 +93,12 @@ test("all provider-facing price fields share the central optional-money contract
   );
   assert.match(source, /optionalMoneyAmount/);
   assert.ok(
-    (source.match(/optionalMoneyAmount\(/g) ?? []).length >= 6,
-    "service, package, and quote-offer create/update paths use the validator",
+    (source.match(/optionalMoneyAmount\(/g) ?? []).length >= 4,
+    "service and package create/update paths use the optional validator",
+  );
+  assert.ok(
+    (source.match(/requiredPositiveMoneyAmount\(/g) ?? []).length >= 3,
+    "quote-offer create/update paths require a positive amount",
   );
   assert.doesNotMatch(source, /private optionalDecimal/);
   assert.doesNotMatch(source, /\^\\d\+\\\(\\\.\\d\+\\\)\\\?\$/);

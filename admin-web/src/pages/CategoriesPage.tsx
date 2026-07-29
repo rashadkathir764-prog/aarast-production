@@ -29,6 +29,8 @@ export function CategoriesPage() {
   const [slug, setSlug] = useState('');
   const [icon, setIcon] = useState('');
   const [sortOrder, setSortOrder] = useState('0');
+  const [showForGroom, setShowForGroom] = useState(true);
+  const [showForBride, setShowForBride] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -55,6 +57,8 @@ export function CategoriesPage() {
     setSlug(category.slug);
     setIcon(category.icon ?? '');
     setSortOrder(String(category.sortOrder));
+    setShowForGroom(category.showForGroom);
+    setShowForBride(category.showForBride);
   }
 
   function resetForm() {
@@ -64,6 +68,8 @@ export function CategoriesPage() {
     setSlug('');
     setIcon('');
     setSortOrder('0');
+    setShowForGroom(true);
+    setShowForBride(true);
   }
 
   async function submit(event: FormEvent) {
@@ -75,6 +81,8 @@ export function CategoriesPage() {
         nameEn: nameEn || null,
         slug: slug || null,
         icon: icon || null,
+        showForGroom,
+        showForBride,
         sortOrder: Number(sortOrder) || 0,
       };
       if (editing) {
@@ -134,6 +142,7 @@ export function CategoriesPage() {
               columns={[
                 'اسم الفئة',
                 'الأيقونة',
+                'يظهر في',
                 'الحالة',
                 'الترتيب',
                 'الموردون',
@@ -141,7 +150,7 @@ export function CategoriesPage() {
                 'إجراءات',
               ]}
               dense
-              minWidth={900}
+              minWidth={1020}
             >
               {items.map((category) => (
                 <tr key={category.id}>
@@ -150,6 +159,15 @@ export function CategoriesPage() {
                     <span className="table-subtle">{category.nameEn ?? category.slug}</span>
                   </td>
                   <td>{category.icon ?? 'غير محدد'}</td>
+                  <td>
+                    {category.showForGroom && category.showForBride
+                      ? 'العريس والعروسة'
+                      : category.showForGroom
+                        ? 'العريس'
+                        : category.showForBride
+                          ? 'العروسة'
+                          : 'مخفي من المسارين'}
+                  </td>
                   <td>
                     <StatusBadge
                       status={category.isActive ? 'ACTIVE' : 'DISABLED'}
@@ -225,8 +243,33 @@ export function CategoriesPage() {
               value={sortOrder}
               onChange={(event) => setSortOrder(event.target.value)}
             />
+            <div className="catalog-audience-picker">
+              <span>الظهور في مسار العميل</span>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showForGroom}
+                  onChange={(event) => setShowForGroom(event.target.checked)}
+                />
+                <span>العريس</span>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showForBride}
+                  onChange={(event) => setShowForBride(event.target.checked)}
+                />
+                <span>العروسة</span>
+              </label>
+              {!showForGroom && !showForBride ? (
+                <small>اختر مسارًا واحدًا على الأقل ليظهر التصنيف للعملاء.</small>
+              ) : null}
+            </div>
             <div className="form-actions">
-              <ActionButton type="submit">
+              <ActionButton
+                type="submit"
+                disabled={!showForGroom && !showForBride}
+              >
                 {editing ? 'حفظ التعديل' : 'إضافة فئة'}
               </ActionButton>
               {editing ? (

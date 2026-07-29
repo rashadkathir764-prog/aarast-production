@@ -9,6 +9,7 @@ void main() {
       'id': 'quote-1',
       'providerId': 'provider-1',
       'weddingPlanId': 'plan-1',
+      'weddingPlan': {'title': 'عرس رشاد', 'currency': 'SAR'},
       'status': 'RESPONDED',
       'lifecycleStatus': 'RECEIVED',
       'contactName': 'رشاد',
@@ -27,6 +28,7 @@ void main() {
     expect(quote.lifecycleStatus, 'RECEIVED');
     expect(quote.location?.governorate, 'صنعاء');
     expect(quote.contactPhone, '+967777758200');
+    expect(quote.weddingPlanCurrency, 'SAR');
     expect(quote.pendingOffer?.amount, '250000');
     expect(quote.canAcceptOrReject, isTrue);
   });

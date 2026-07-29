@@ -14,6 +14,8 @@
   static const cachedPaymentSchedules = 'cached_payment_schedules';
   static const cachedProviderCategories = 'cached_provider_categories';
   static const cachedCities = 'cached_cities';
+  static const cachedGovernorates = 'cached_governorates';
+  static const cachedDistricts = 'cached_districts';
   static const cachedProviders = 'cached_providers';
   static const cachedProviderServices = 'cached_provider_services';
   static const cachedProviderPackages = 'cached_provider_packages';
@@ -32,6 +34,8 @@
     cachedPaymentSchedules,
     cachedProviderCategories,
     cachedCities,
+    cachedGovernorates,
+    cachedDistricts,
     cachedProviders,
     cachedProviderServices,
     cachedProviderPackages,
@@ -64,6 +68,8 @@
       'payment_schedule' => cachedPaymentSchedules,
       'provider_category' => cachedProviderCategories,
       'city' => cachedCities,
+      'governorate' => cachedGovernorates,
+      'district' => cachedDistricts,
       'provider' => cachedProviders,
       'provider_service' => cachedProviderServices,
       'provider_package' => cachedProviderPackages,

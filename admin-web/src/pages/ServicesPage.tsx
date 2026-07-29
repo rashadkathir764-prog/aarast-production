@@ -170,11 +170,11 @@ export function ServicesPage() {
       />
 
       <div className="stats-grid">
-        <StatCard title="الخدمات" value={items.length} tone="gold" />
-        <StatCard title="نشطة" value={activeCount} tone="success" />
-        <StatCard title="متوقفة" value={disabledCount} tone="danger" />
-        <StatCard title="مميزة" value={featuredCount} tone="warning" />
-        <StatCard title="لها سعر" value={pricedCount} tone="info" />
+        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
+        <StatCard title="نشطة في الصفحة" value={activeCount} tone="success" />
+        <StatCard title="متوقفة في الصفحة" value={disabledCount} tone="danger" />
+        <StatCard title="مميزة في الصفحة" value={featuredCount} tone="warning" />
+        <StatCard title="بسعر في الصفحة" value={pricedCount} tone="info" />
       </div>
 
       <Can permission={AdminPermission.SERVICES_WRITE}>

@@ -13,6 +13,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
+import 'provider_catalog_management_widgets.dart';
 
 typedef ProviderServiceImagePicker = Future<List<XFile>> Function();
 typedef ProviderServiceImageUploader =
@@ -33,6 +34,7 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
 
   bool _showServices = true;
   String? _busyServiceId;
+  String? _busyPackageId;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +59,9 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
           ),
           const SizedBox(height: 14),
           SegmentedButton<bool>(
+            style: const ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(AppTheme.surface),
+            ),
             segments: const [
               ButtonSegment(
                 value: true,
@@ -87,6 +92,8 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
                 _ServiceManagementCard(
                   service: service,
                   busy: _busyServiceId == service.id,
+                  onEdit: () => _editService(service),
+                  onToggleActive: () => _toggleService(service),
                   onAddImages: () => _addImages(service),
                   onDeleteImage: (image) => _deleteImage(service, image),
                 ),
@@ -100,12 +107,100 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
             )
           else
             for (final item in dashboard.packages) ...[
-              _PackageManagementCard(item: item),
+              ProviderPackageManagementCard(
+                item: item,
+                priceLabel: item.price == null
+                    ? null
+                    : '${item.price} ${currencyLabelAr(item.currency)}',
+                busy: _busyPackageId == item.id,
+                onEdit: () => _editPackage(item),
+                onToggleActive: () => _togglePackage(item),
+              ),
               const SizedBox(height: 12),
             ],
         ],
       ),
     );
+  }
+
+  Future<void> _editService(MarketplaceService service) async {
+    setState(() => _busyServiceId = service.id);
+    try {
+      final saved = await showProviderServiceEditDialog(context, service);
+      if (!mounted || saved != true) return;
+      AarastToast.showSuccess(context, 'تم تحديث الخدمة.');
+    } finally {
+      if (mounted) setState(() => _busyServiceId = null);
+    }
+  }
+
+  Future<void> _toggleService(MarketplaceService service) async {
+    final confirmed = service.isActive
+        ? await confirmProviderListingPause(context, kind: 'الخدمة')
+        : true;
+    if (confirmed != true || !mounted) return;
+    setState(() => _busyServiceId = service.id);
+    try {
+      final dashboard = context.read<ProviderDashboardProvider>();
+      final saved = await dashboard.setServiceActive(
+        serviceId: service.id,
+        isActive: !service.isActive,
+      );
+      if (!mounted) return;
+      if (saved) {
+        AarastToast.showSuccess(
+          context,
+          service.isActive ? 'تم إيقاف الخدمة.' : 'تم تفعيل الخدمة.',
+        );
+      } else {
+        AarastToast.showError(
+          context,
+          dashboard.errorMessage ?? 'تعذر تحديث حالة الخدمة.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyServiceId = null);
+    }
+  }
+
+  Future<void> _editPackage(ProviderPackage item) async {
+    setState(() => _busyPackageId = item.id);
+    try {
+      final saved = await showProviderPackageEditDialog(context, item);
+      if (!mounted || saved != true) return;
+      AarastToast.showSuccess(context, 'تم تحديث الباقة.');
+    } finally {
+      if (mounted) setState(() => _busyPackageId = null);
+    }
+  }
+
+  Future<void> _togglePackage(ProviderPackage item) async {
+    final confirmed = item.isActive
+        ? await confirmProviderListingPause(context, kind: 'الباقة')
+        : true;
+    if (confirmed != true || !mounted) return;
+    setState(() => _busyPackageId = item.id);
+    try {
+      final dashboard = context.read<ProviderDashboardProvider>();
+      final saved = await dashboard.setPackageActive(
+        packageId: item.id,
+        isActive: !item.isActive,
+      );
+      if (!mounted) return;
+      if (saved) {
+        AarastToast.showSuccess(
+          context,
+          item.isActive ? 'تم إيقاف الباقة.' : 'تم تفعيل الباقة.',
+        );
+      } else {
+        AarastToast.showError(
+          context,
+          dashboard.errorMessage ?? 'تعذر تحديث حالة الباقة.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyPackageId = null);
+    }
   }
 
   Future<void> _addImages(MarketplaceService service) async {
@@ -221,12 +316,16 @@ class _ServiceManagementCard extends StatelessWidget {
   const _ServiceManagementCard({
     required this.service,
     required this.busy,
+    required this.onEdit,
+    required this.onToggleActive,
     required this.onAddImages,
     required this.onDeleteImage,
   });
 
   final MarketplaceService service;
   final bool busy;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleActive;
   final VoidCallback onAddImages;
   final ValueChanged<ProviderServiceImage> onDeleteImage;
 
@@ -267,6 +366,30 @@ class _ServiceManagementCard extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: Key('provider-service-edit-${service.id}'),
+                  onPressed: busy ? null : onEdit,
+                  icon: const Icon(LucideIcons.pencil),
+                  label: const Text('تعديل'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: Key('provider-service-toggle-${service.id}'),
+                  onPressed: busy ? null : onToggleActive,
+                  icon: Icon(
+                    service.isActive ? LucideIcons.pause : LucideIcons.play,
+                  ),
+                  label: Text(service.isActive ? 'إيقاف' : 'تفعيل'),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Text(
             service.images.isEmpty
@@ -320,46 +443,6 @@ class _ServiceManagementCard extends StatelessWidget {
                 ? const AarastInlineSpinner()
                 : const Icon(LucideIcons.imagePlus),
             label: Text(busy ? 'جاري رفع الصور...' : 'إضافة صور للأعمال'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PackageManagementCard extends StatelessWidget {
-  const _PackageManagementCard({required this.item});
-
-  final ProviderPackage item;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      child: Row(
-        children: [
-          const Icon(LucideIcons.gem, color: AppTheme.gold),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (item.price != null)
-                  Text(
-                    '${item.price} ${currencyLabelAr(item.currency)}',
-                    style: const TextStyle(
-                      color: AppTheme.burgundy,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-              ],
-            ),
           ),
         ],
       ),

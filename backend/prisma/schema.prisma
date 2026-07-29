@@ -816,20 +816,58 @@ model City {
   @@index([isActive, sortOrder])
 }
 
-model ProviderCategory {
-  id        String            @id @default(uuid())
+model Governorate {
+  id        String     @id @default(uuid())
+  code      String     @unique
   nameAr    String
-  nameEn    String?
-  slug      String            @unique
-  icon      String?
-  isActive  Boolean           @default(true)
-  sortOrder Int               @default(0)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  services  ProviderService[]
-  providers Provider[]
+  nameEn    String
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean    @default(true)
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  districts District[]
 
   @@index([isActive, sortOrder])
+}
+
+model District {
+  id            String      @id @default(uuid())
+  governorateId String
+  code          String      @unique
+  nameAr        String
+  nameEn        String
+  latitude      Float?
+  longitude     Float?
+  isActive      Boolean     @default(true)
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  governorate   Governorate @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+
+  @@unique([governorateId, nameAr])
+  @@index([governorateId, isActive, sortOrder])
+}
+
+model ProviderCategory {
+  id           String            @id @default(uuid())
+  nameAr       String
+  nameEn       String?
+  slug         String            @unique
+  icon         String?
+  showForGroom Boolean           @default(true)
+  showForBride Boolean           @default(true)
+  isActive     Boolean           @default(true)
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  services     ProviderService[]
+  providers    Provider[]
+
+  @@index([isActive, sortOrder])
+  @@index([showForGroom, isActive, sortOrder])
+  @@index([showForBride, isActive, sortOrder])
 }
 
 model Provider {

@@ -286,6 +286,26 @@ async function run() {
   }
 
   {
+    const missingAmount = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
+      message: 'Offer without amount',
+    }, providerUser.token);
+    check('provider offer without amount is rejected', missingAmount.status === 400);
+
+    const zeroAmount = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
+      message: 'Offer with zero amount',
+      amount: '0',
+    }, providerUser.token);
+    check('provider offer with zero amount is rejected', zeroAmount.status === 400);
+
+    const wrongCurrency = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
+      message: 'Offer with mismatched currency',
+      amount: '300000.00',
+      currency: 'USD',
+    }, providerUser.token);
+    check('provider offer with plan currency mismatch is rejected', wrongCurrency.status === 400);
+  }
+
+  {
     const res = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
       title: 'Phase8 Offer',
       message: 'Offer details for Phase8',

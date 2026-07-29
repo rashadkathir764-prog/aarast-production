@@ -1063,6 +1063,8 @@ test("a received provider offer opens its exact marketplace quote", async () => 
 
   await service.createQuoteOffer({ id: PROVIDER_USER_ID } as any, QUOTE_ID, {
     message: "offer",
+    amount: "1000",
+    currency: "YER",
   } as any);
 
   assert.equal(sent.length, 1);

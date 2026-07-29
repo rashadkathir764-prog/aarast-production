@@ -20,6 +20,14 @@ export class AdminCategoryDto {
   @IsOptional()
   isActive?: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  showForGroom?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  showForBride?: boolean;
+
   @IsNumber()
   @IsOptional()
   sortOrder?: number;

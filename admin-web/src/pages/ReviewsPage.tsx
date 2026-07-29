@@ -127,11 +127,11 @@ export function ReviewsPage() {
       />
 
       <div className="stats-grid">
-        <StatCard title="التقييمات" value={reviews.length} tone="gold" />
-        <StatCard title="منشورة" value={publishedCount} tone="success" />
-        <StatCard title="قيد المراجعة" value={pendingCount} tone="warning" />
-        <StatCard title="مخفية" value={hiddenCount} tone="danger" />
-        <StatCard title="متوسط النجوم" value={averageRating} tone="info" />
+        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
+        <StatCard title="منشورة في الصفحة" value={publishedCount} tone="success" />
+        <StatCard title="قيد المراجعة في الصفحة" value={pendingCount} tone="warning" />
+        <StatCard title="مخفية في الصفحة" value={hiddenCount} tone="danger" />
+        <StatCard title="متوسط الصفحة" value={averageRating} tone="info" />
       </div>
 
       <SectionCard className="filters-card">

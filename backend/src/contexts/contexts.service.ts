@@ -9,6 +9,7 @@ import {
   ProviderStatus,
   SharedMember,
   WeddingPlan,
+  WeddingPersona,
   WeddingPlanStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
@@ -54,6 +55,7 @@ export interface AvailableContext {
   role: AvailableContextRole;
   weddingPlanId: string | null;
   providerId: string | null;
+  persona: WeddingPersona | null;
   displayName: string;
   lifecycle: ContextLifecycle;
   accessMode: ContextAccessMode;
@@ -227,6 +229,7 @@ export class ContextsService {
       role,
       weddingPlanId: plan.id,
       providerId: null,
+      persona: plan.persona,
       displayName: plan.title,
       lifecycle: plan.status,
       accessMode: isAvailable ? "FULL" : "READ_ONLY",
@@ -258,6 +261,7 @@ export class ContextsService {
       role: AvailableContextRole.PROVIDER,
       weddingPlanId: null,
       providerId: provider.id,
+      persona: null,
       displayName: provider.businessName,
       lifecycle: provider.status,
       accessMode: policy.accessMode,

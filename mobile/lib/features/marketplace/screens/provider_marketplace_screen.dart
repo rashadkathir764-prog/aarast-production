@@ -13,6 +13,7 @@ import '../../finance/providers/finance_provider.dart';
 import '../widgets/premium/premium_vendor_card.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
@@ -60,6 +61,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       final provider = context.read<ProviderMarketplaceProvider>();
       _searchController.text = provider.search;
       final includeAccountData = await AuthActionGuard.hasAccount(context);
+      if (!mounted) return;
+      provider.configureCatalogAudience(
+        await _catalogAudienceForSession(hasAccount: includeAccountData),
+      );
       if (!mounted) return;
       final selectedPlanId = includeAccountData
           ? _selectedPlanIdForAccount()
@@ -414,6 +419,30 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     });
     if (matchingCityId != null && marketplace.cityId == null) {
       await marketplace.setCity(matchingCityId);
+    }
+  }
+
+  Future<String?> _catalogAudienceForSession({required bool hasAccount}) async {
+    if (hasAccount) {
+      final selected = context
+          .read<AccountContextController?>()
+          ?.selectedContext;
+      if (selected?.isPlan != true) return null;
+      return selected?.persona?.name;
+    }
+
+    try {
+      final guestPlan = await context
+          .read<GuestOnboardingStorage>()
+          .loadGuestPlan();
+      return switch (guestPlan?.persona) {
+        GuestPersona.groom => 'GROOM',
+        GuestPersona.bride => 'BRIDE',
+        GuestPersona.helper => null,
+        null => null,
+      };
+    } on ProviderNotFoundException {
+      return null;
     }
   }
 

@@ -17,6 +17,7 @@ void main() {
         child: ProviderAccountActions(
           onOpenSettings: () => settingsCalls += 1,
           onSync: () async {},
+          onExitWorkspace: () async {},
           onLogout: () async {},
           onDeleteAccount: () async => null,
         ),
@@ -46,6 +47,7 @@ void main() {
             syncCalls += 1;
             return syncCompleter.future;
           },
+          onExitWorkspace: () async {},
           onLogout: () async {},
           onDeleteAccount: () async => null,
         ),
@@ -74,6 +76,7 @@ void main() {
         child: ProviderAccountActions(
           onOpenSettings: () {},
           onSync: () async => throw StateError('offline'),
+          onExitWorkspace: () async {},
           onLogout: () async {},
           onDeleteAccount: () async => null,
         ),
@@ -89,6 +92,40 @@ void main() {
     );
   });
 
+  testWidgets('workspace exit keeps logout as a separate confirmed action', (
+    tester,
+  ) async {
+    var exitCalls = 0;
+    var logoutCalls = 0;
+    await tester.pumpWidget(
+      _TestApp(
+        child: ProviderAccountActions(
+          onOpenSettings: () {},
+          onSync: () async {},
+          onExitWorkspace: () async => exitCalls += 1,
+          onLogout: () async => logoutCalls += 1,
+          onDeleteAccount: () async => null,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('provider-exit-workspace-action')));
+    await tester.pumpAndSettle();
+    expect(find.text('الخروج من مساحة المزوّد؟'), findsOneWidget);
+    expect(
+      find.text(
+        'ستعود إلى شاشة اختيار المسار، وسيبقى حسابك مسجلًا على هذا الجهاز.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('provider-exit-workspace-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(exitCalls, 1);
+    expect(logoutCalls, 0);
+  });
+
   testWidgets('logout requires explicit confirmation', (tester) async {
     var logoutCalls = 0;
     await tester.pumpWidget(
@@ -96,6 +133,7 @@ void main() {
         child: ProviderAccountActions(
           onOpenSettings: () {},
           onSync: () async {},
+          onExitWorkspace: () async {},
           onLogout: () async => logoutCalls += 1,
           onDeleteAccount: () async => null,
         ),
@@ -127,6 +165,7 @@ void main() {
         child: ProviderAccountActions(
           onOpenSettings: () {},
           onSync: () async {},
+          onExitWorkspace: () async {},
           onLogout: () async {},
           onDeleteAccount: () async {
             deleteCalls += 1;

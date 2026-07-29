@@ -111,10 +111,10 @@ export function UsersPage() {
       />
 
       <div className="stats-grid">
-        <StatCard title="الحسابات" value={items.length} tone="gold" />
-        <StatCard title="نشطة" value={activeCount} tone="success" />
-        <StatCard title="إدارة" value={adminCount} tone="warning" />
-        <StatCard title="موردون" value={providerCount} tone="info" />
+        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
+        <StatCard title="نشطة في الصفحة" value={activeCount} tone="success" />
+        <StatCard title="إدارة في الصفحة" value={adminCount} tone="warning" />
+        <StatCard title="موردون في الصفحة" value={providerCount} tone="info" />
       </div>
 
       <SectionCard className="filters-card">

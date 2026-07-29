@@ -10,6 +10,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
+import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../models/marketplace_models.dart';
@@ -93,11 +94,16 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           ),
           const SizedBox(height: 14),
           _PortfolioGallery(services: dashboard.services),
+          if (dashboard.canUseProviderOperations) ...[
+            const SizedBox(height: 18),
+            _ProviderReviewsSection(reviews: dashboard.reviews),
+          ],
         ],
         const SizedBox(height: 22),
         ProviderAccountActions(
           onOpenSettings: () => context.push(AppRouter.settings),
           onSync: _syncProviderData,
+          onExitWorkspace: _exitWorkspace,
           onLogout: _logout,
           onDeleteAccount: _deleteAccount,
         ),
@@ -106,12 +112,28 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
   }
 
   Future<void> _syncProviderData() async {
+    final accountContexts = context.read<AccountContextController>();
+    await accountContexts.refresh();
+    if (!mounted) return;
     final dashboard = context.read<ProviderDashboardProvider>();
     final chat = context.read<ChatProvider>();
-    await Future.wait([dashboard.loadDashboard(), chat.loadConversations()]);
-    if (dashboard.errorMessage != null || chat.errorMessage != null) {
+    await dashboard.loadDashboard();
+    if (!mounted) return;
+    if (dashboard.canUseProviderOperations) {
+      await chat.loadConversations();
+    }
+    if (dashboard.errorMessage != null ||
+        (dashboard.canUseProviderOperations && chat.errorMessage != null)) {
       throw StateError('Provider refresh failed');
     }
+  }
+
+  Future<void> _exitWorkspace() async {
+    final router = GoRouter.of(context);
+    final accountContexts = context.read<AccountContextController>();
+    await accountContexts.exitWorkspace();
+    await accountContexts.refresh();
+    router.go(AppRouter.home);
   }
 
   Future<void> _logout() async {
@@ -172,6 +194,77 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+class _ProviderReviewsSection extends StatelessWidget {
+  const _ProviderReviewsSection({required this.reviews});
+
+  final List<ProviderReview> reviews;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AarastSectionHeader(
+          title: 'مراجعات العملاء',
+          subtitle: reviews.isEmpty
+              ? 'لا توجد مراجعات منشورة حتى الآن.'
+              : '${reviews.length} مراجعة منشورة على ملفك.',
+          icon: LucideIcons.star,
+        ),
+        const SizedBox(height: 10),
+        if (reviews.isEmpty)
+          const AarastEmptyState(
+            icon: LucideIcons.messageSquare,
+            title: 'لا توجد مراجعات بعد',
+            message: 'ستظهر هنا المراجعات المنشورة من العملاء.',
+          )
+        else
+          for (final review in reviews) ...[
+            AarastCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          review.userName?.trim().isNotEmpty == true
+                              ? review.userName!.trim()
+                              : 'عميل أعرست',
+                          style: const TextStyle(
+                            color: AppTheme.ink,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      AarastStatusPill(
+                        label: '${review.rating}/5',
+                        icon: LucideIcons.star,
+                        color: AppTheme.gold,
+                        backgroundColor: AppTheme.goldSoft,
+                      ),
+                    ],
+                  ),
+                  if (review.comment?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      review.comment!.trim(),
+                      style: const TextStyle(
+                        color: AppTheme.muted,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+      ],
+    );
   }
 }
 

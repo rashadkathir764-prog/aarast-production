@@ -35,7 +35,7 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   static const _legacyDatabaseName = 'aarast_offline.db';
   static const _databaseName = 'aarast_offline_secure_v1.db';
-  static const _databaseVersion = 5;
+  static const _databaseVersion = 6;
 
   final SharedPreferences _preferences;
   final OfflineDatabaseKeyVault _keyVault;
@@ -75,6 +75,12 @@ class SqliteLocalDatabase implements LocalDatabase {
         }
         if (oldVersion < 5) {
           await _replaceLegacyFinanceSchema(db);
+        }
+        if (oldVersion < 6) {
+          final batch = db.batch();
+          _createYemenAdministrativeCacheTables(batch);
+          batch.delete(OfflineTables.cachedProviderCategories);
+          await batch.commit();
         }
       },
     );
@@ -546,6 +552,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       'nameAr TEXT, name TEXT',
     );
     _cacheTable(batch, OfflineTables.cachedCities, 'nameAr TEXT, name TEXT');
+    _createYemenAdministrativeCacheTables(batch);
     _cacheTable(
       batch,
       OfflineTables.cachedProviders,
@@ -636,6 +643,19 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.localMeta,
       where: 'key LIKE ? OR key LIKE ?',
       whereArgs: const ['expense_summary:%', 'money_summary:%'],
+    );
+  }
+
+  static void _createYemenAdministrativeCacheTables(Batch batch) {
+    _cacheTable(
+      batch,
+      OfflineTables.cachedGovernorates,
+      'code TEXT, nameAr TEXT, name TEXT',
+    );
+    _cacheTable(
+      batch,
+      OfflineTables.cachedDistricts,
+      'governorateId TEXT, code TEXT, nameAr TEXT, name TEXT',
     );
   }
 

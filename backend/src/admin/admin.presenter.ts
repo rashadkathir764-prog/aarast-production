@@ -237,6 +237,8 @@ export function toCategoryResponse(category: AdminCategoryRecord) {
     nameEn: category.nameEn,
     slug: category.slug,
     icon: category.icon,
+    showForGroom: category.showForGroom,
+    showForBride: category.showForBride,
     isActive: category.isActive,
     sortOrder: category.sortOrder,
     createdAt: category.createdAt,

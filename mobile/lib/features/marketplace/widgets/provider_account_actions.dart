@@ -8,6 +8,7 @@ class ProviderAccountActions extends StatefulWidget {
   const ProviderAccountActions({
     required this.onOpenSettings,
     required this.onSync,
+    required this.onExitWorkspace,
     required this.onLogout,
     required this.onDeleteAccount,
     super.key,
@@ -15,6 +16,7 @@ class ProviderAccountActions extends StatefulWidget {
 
   final VoidCallback onOpenSettings;
   final Future<void> Function() onSync;
+  final Future<void> Function() onExitWorkspace;
   final Future<void> Function() onLogout;
   final Future<String?> Function() onDeleteAccount;
 
@@ -24,12 +26,14 @@ class ProviderAccountActions extends StatefulWidget {
 
 class _ProviderAccountActionsState extends State<ProviderAccountActions> {
   bool _isSyncing = false;
+  bool _isExitingWorkspace = false;
   bool _isLoggingOut = false;
   bool _isDeleting = false;
   String? _statusMessage;
   bool _statusIsError = false;
 
-  bool get _isBusy => _isSyncing || _isLoggingOut || _isDeleting;
+  bool get _isBusy =>
+      _isSyncing || _isExitingWorkspace || _isLoggingOut || _isDeleting;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +67,19 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                     ? const AarastInlineSpinner(dimension: 20)
                     : null,
                 onTap: _isBusy ? null : _sync,
+              ),
+              const Divider(height: 1),
+              _ProviderAccountTile(
+                key: const Key('provider-exit-workspace-action'),
+                title: _isExitingWorkspace
+                    ? 'جارٍ الخروج من المساحة...'
+                    : 'الخروج من مساحة المزوّد',
+                subtitle: 'العودة لاختيار المسار مع إبقاء الحساب مسجلًا',
+                icon: LucideIcons.arrowRightFromLine,
+                trailing: _isExitingWorkspace
+                    ? const AarastInlineSpinner(dimension: 20)
+                    : null,
+                onTap: _isBusy ? null : _confirmExitWorkspace,
               ),
               const Divider(height: 1),
               _ProviderAccountTile(
@@ -132,6 +149,87 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
       });
     } finally {
       if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  Future<void> _confirmExitWorkspace() async {
+    if (_isBusy) return;
+    final confirmed = await showAarastBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  LucideIcons.arrowRightFromLine,
+                  size: 34,
+                  color: AppTheme.burgundy,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'الخروج من مساحة المزوّد؟',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'ستعود إلى شاشة اختيار المسار، وسيبقى حسابك مسجلًا على هذا الجهاز.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetContext, false),
+                        child: const Text('إلغاء'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('provider-exit-workspace-confirm'),
+                        onPressed: () => Navigator.pop(sheetContext, true),
+                        icon: const Icon(LucideIcons.arrowRightFromLine),
+                        label: const Text('الخروج للمسارات'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _isExitingWorkspace = true;
+      _statusMessage = null;
+      _statusIsError = false;
+    });
+    try {
+      await widget.onExitWorkspace();
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _statusIsError = true;
+        _statusMessage = 'تعذّر الخروج من مساحة المزوّد. حاول مرة أخرى.';
+      });
+    } finally {
+      if (mounted) setState(() => _isExitingWorkspace = false);
     }
   }
 

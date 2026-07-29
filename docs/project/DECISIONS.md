@@ -86,6 +86,13 @@
 | Derive account contexts from current ownership and membership rows. | Accepted and implemented in backend source | One authenticated User may expose owner contexts from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and one provider context from `Provider.userId`. `User.role` and `appRole` are not sufficient context authority, no role-membership table is added, and every validation rebuilds permissions from current database rows. |
 | Never replace an invalid active plan automatically. | Accepted and implemented in backend source | `GET /api/v1/wedding-plans/active` returns the explicitly selected accessible planning plan or null. Deleted, archived, or revoked selections never fall back to a different plan; the future Flutter context selector owns the next explicit choice. |
 
+## Current Decisions Addendum - 2026-07-29
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Keep one provider category catalog with groom/bride discovery flags. | Accepted and implemented in source | What the customer requests remains the shared category identity. `showForGroom` and `showForBride` separate visibility without duplicating provider data, while service titles and later tags carry specialization. Flutter derives the active view only from `AccountContextController.selectedContext.persona`. |
+| Model Yemen governorates and districts separately from legacy City. | Accepted and implemented in source | The OCHA Yemen/CSO HDX v01 reference provides 22 first-level units including Amanat Al Asimah and 335 districts. Stable codes and coordinates live in database tables and public read APIs; the existing City relations remain temporarily compatible and are not relabeled as governorates. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

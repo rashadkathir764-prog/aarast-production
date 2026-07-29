@@ -11,7 +11,8 @@ import '../models/provider_budget_match_intent.dart';
 
 class ProviderMarketplaceProvider extends ChangeNotifier
     with SessionScopedNotifier {
-  ProviderMarketplaceProvider(this._api);
+  ProviderMarketplaceProvider(this._api, {String? catalogAudience})
+    : _catalogAudience = _normalizedAudience(catalogAudience);
 
   final MarketplaceApi _api;
 
@@ -27,6 +28,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? _cityId;
   String? _categoryId;
   bool _includeAccountData = false;
+  String? _catalogAudience;
   String? _quotePlanId;
   int _loadGeneration = 0;
   int _currentPage = 0;
@@ -65,7 +67,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? get cityId => _cityId;
   String? get categoryId => _categoryId;
   List<MarketplaceCity> get cities => _cities;
-  List<ProviderCategory> get categories => _categories;
+  List<ProviderCategory> get categories => _categories
+      .where((category) => category.isVisibleFor(_catalogAudience))
+      .toList(growable: false);
   List<MarketplaceProvider> get providers => _providers;
   List<MarketplaceService> get budgetMatchedServices => _budgetMatchedServices;
   ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
@@ -81,6 +85,18 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? get loadMoreErrorMessage => _loadMoreErrorMessage;
   QuoteRequest? get existingActiveQuote => _existingActiveQuote;
   QuoteRequest? get lastCreatedQuote => _lastCreatedQuote;
+
+  void configureCatalogAudience(String? audience, {bool notify = true}) {
+    final normalized = _normalizedAudience(audience);
+    if (_catalogAudience == normalized) return;
+    _catalogAudience = normalized;
+    final currentCategoryId = _categoryId;
+    if (currentCategoryId != null &&
+        !categories.any((category) => category.id == currentCategoryId)) {
+      _categoryId = null;
+    }
+    if (notify) notifyListeners();
+  }
 
   void configureAccountScope({
     required bool includeAccountData,
@@ -686,6 +702,11 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     }
   }
 
+  static String? _normalizedAudience(String? value) {
+    final normalized = value?.trim().toUpperCase();
+    return normalized == 'GROOM' || normalized == 'BRIDE' ? normalized : null;
+  }
+
   Future<List<MarketplaceService>> _safeProviderServices(
     String providerId,
   ) async {
@@ -832,7 +853,9 @@ class ProviderDashboardProvider extends ChangeNotifier
   ProviderDashboardSummary _summary = ProviderDashboardSummary.empty();
   List<MarketplaceService> _services = const [];
   List<ProviderPackage> _packages = const [];
+  List<ProviderReview> _reviews = const [];
   List<QuoteRequest> _quoteRequests = const [];
+  bool _operationsAccessDenied = false;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -842,7 +865,10 @@ class ProviderDashboardProvider extends ChangeNotifier
   ProviderDashboardSummary get summary => _summary;
   List<MarketplaceService> get services => _services;
   List<ProviderPackage> get packages => _packages;
+  List<ProviderReview> get reviews => _reviews;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
+  bool get canUseProviderOperations =>
+      profile?.status.toUpperCase() == 'ACTIVE' && !_operationsAccessDenied;
 
   Future<void> loadDashboard() async {
     _isLoading = true;
@@ -851,26 +877,84 @@ class ProviderDashboardProvider extends ChangeNotifier
 
     try {
       final profile = await _api.getProfile();
-      final results = await Future.wait<Object>([
-        _api.getSummary(),
-        _api.getServices(),
-        _api.getPackages(),
-        _api.getQuoteRequests(),
-      ]);
       _profile = profile;
-      _summary = results[0] as ProviderDashboardSummary;
-      _services = results[1] as List<MarketplaceService>;
-      _packages = results[2] as List<ProviderPackage>;
-      _quoteRequests = results[3] as List<QuoteRequest>;
       _hasProviderProfile = true;
+      _operationsAccessDenied = false;
+
+      if (!canUseProviderOperations) {
+        _clearOperationalData();
+        return;
+      }
+
+      final sectionErrors = <String>[];
+      var accessDenied = false;
+      final results = await Future.wait<Object?>([
+        _loadDashboardSection(
+          label: 'الملخص',
+          loader: _api.getSummary,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
+        _loadDashboardSection(
+          label: 'الخدمات',
+          loader: _api.getServices,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
+        _loadDashboardSection(
+          label: 'الباقات',
+          loader: _api.getPackages,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
+        _loadDashboardSection(
+          label: 'طلبات عروض السعر',
+          loader: _api.getQuoteRequests,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
+        _loadDashboardSection(
+          label: 'التقييمات',
+          loader: _api.getReviews,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
+      ]);
+      if (accessDenied) {
+        _operationsAccessDenied = true;
+        _clearOperationalData();
+        try {
+          _profile = await _api.getProfile();
+        } catch (_) {
+          // Keep the last safe profile shell while operational data stays clear.
+        }
+        _errorMessage =
+            'تغيّرت صلاحية مساحة المزوّد. حدّث المسارات أو أعد المحاولة.';
+        return;
+      }
+      final summary = results[0];
+      final services = results[1];
+      final packages = results[2];
+      final quoteRequests = results[3];
+      final reviews = results[4];
+      if (summary is ProviderDashboardSummary) _summary = summary;
+      if (services is List<MarketplaceService>) _services = services;
+      if (packages is List<ProviderPackage>) _packages = packages;
+      if (quoteRequests is List<QuoteRequest>) {
+        _quoteRequests = quoteRequests;
+      }
+      if (reviews is List<ProviderReview>) _reviews = reviews;
+      if (sectionErrors.isNotEmpty) {
+        _errorMessage =
+            'تم تحميل ملف المزوّد، لكن تعذر تحديث: ${sectionErrors.join('، ')}.';
+      }
     } on ApiException catch (error) {
-      _profile = null;
-      _summary = ProviderDashboardSummary.empty();
-      _services = const [];
-      _packages = const [];
-      _quoteRequests = const [];
-      _hasProviderProfile = false;
-      if (!_isMissingProviderProfile(error.message)) {
+      if (_isMissingProviderProfile(error.message)) {
+        _profile = null;
+        _hasProviderProfile = false;
+        _operationsAccessDenied = false;
+        _clearOperationalData();
+      } else {
         _errorMessage = marketplaceErrorMessage(error.message);
       }
     } catch (_) {
@@ -879,6 +963,34 @@ class ProviderDashboardProvider extends ChangeNotifier
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<T?> _loadDashboardSection<T>({
+    required String label,
+    required Future<T> Function() loader,
+    required List<String> errors,
+    required VoidCallback onAccessDenied,
+  }) async {
+    try {
+      return await loader();
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        onAccessDenied();
+      }
+      errors.add(label);
+      return null;
+    } catch (_) {
+      errors.add(label);
+      return null;
+    }
+  }
+
+  void _clearOperationalData() {
+    _summary = ProviderDashboardSummary.empty();
+    _services = const [];
+    _packages = const [];
+    _reviews = const [];
+    _quoteRequests = const [];
   }
 
   Future<bool> applyProvider({
@@ -904,6 +1016,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _summary = ProviderDashboardSummary.empty();
       _services = const [];
       _packages = const [];
+      _reviews = const [];
       _quoteRequests = const [];
       return true;
     } on ApiException catch (error) {
@@ -1073,6 +1186,57 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  Future<bool> updateService({
+    required String serviceId,
+    required String title,
+    required String description,
+    required String basePrice,
+    required String priceUnit,
+    required String currency,
+  }) async {
+    return _mutateService(
+      () => _api.updateService(
+        serviceId: serviceId,
+        title: title,
+        description: description,
+        basePrice: basePrice,
+        priceUnit: priceUnit,
+        currency: currency,
+      ),
+    );
+  }
+
+  Future<bool> setServiceActive({
+    required String serviceId,
+    required bool isActive,
+  }) {
+    return _mutateService(
+      () => _api.updateService(serviceId: serviceId, isActive: isActive),
+    );
+  }
+
+  Future<bool> _mutateService(
+    Future<MarketplaceService> Function() mutation,
+  ) async {
+    _errorMessage = null;
+    try {
+      final service = await mutation();
+      _services = [
+        for (final item in _services) item.id == service.id ? service : item,
+      ];
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث الخدمة. حاول مرة أخرى.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> createPackage({
     required String title,
     String? serviceId,
@@ -1112,6 +1276,58 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  Future<bool> updatePackage({
+    required String packageId,
+    required String title,
+    required String description,
+    required String price,
+    required String currency,
+    required List<String> items,
+  }) async {
+    return _mutatePackage(
+      () => _api.updatePackage(
+        packageId: packageId,
+        title: title,
+        description: description,
+        price: price,
+        currency: currency,
+        items: items,
+      ),
+    );
+  }
+
+  Future<bool> setPackageActive({
+    required String packageId,
+    required bool isActive,
+  }) {
+    return _mutatePackage(
+      () => _api.updatePackage(packageId: packageId, isActive: isActive),
+    );
+  }
+
+  Future<bool> _mutatePackage(
+    Future<ProviderPackage> Function() mutation,
+  ) async {
+    _errorMessage = null;
+    try {
+      final providerPackage = await mutation();
+      _packages = [
+        for (final item in _packages)
+          item.id == providerPackage.id ? providerPackage : item,
+      ];
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث الباقة. حاول مرة أخرى.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateQuoteStatus({
     required String quoteRequestId,
     required String status,
@@ -1144,8 +1360,9 @@ class ProviderDashboardProvider extends ChangeNotifier
   Future<bool> createQuoteOffer({
     required String quoteRequestId,
     required String message,
+    required String amount,
+    required String currency,
     String? title,
-    String? amount,
     DateTime? validUntil,
   }) async {
     _isSubmitting = true;
@@ -1156,8 +1373,9 @@ class ProviderDashboardProvider extends ChangeNotifier
       await _api.createQuoteOffer(
         quoteRequestId: quoteRequestId,
         message: message,
-        title: title,
         amount: amount,
+        currency: currency,
+        title: title,
         validUntil: validUntil,
       );
       await loadDashboard();
@@ -1167,6 +1385,41 @@ class ProviderDashboardProvider extends ChangeNotifier
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال عرض السعر. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateQuoteOffer({
+    required String quoteOfferId,
+    required String message,
+    required String amount,
+    required String currency,
+    String? title,
+    DateTime? validUntil,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.updateQuoteOffer(
+        quoteOfferId: quoteOfferId,
+        message: message,
+        amount: amount,
+        currency: currency,
+        title: title,
+        validUntil: validUntil,
+      );
+      await loadDashboard();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تعديل عرض السعر. حاول مرة أخرى.';
       return false;
     } finally {
       _isSubmitting = false;

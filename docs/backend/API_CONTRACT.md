@@ -476,6 +476,10 @@ selection is no longer usable.
 Every context preserves the compatibility fields already consumed by clients
 and adds:
 
+- `persona`: the plan-owned `GROOM`, `BRIDE`, or `HELPER` value for plan
+  contexts, and `null` for provider contexts. Clients use this only through
+  the selected account context; route ids and legacy active-plan fields are
+  not persona or navigation fallbacks.
 - `lifecycle`: the live `WeddingPlan.status` or `Provider.status`.
 - `accessMode`: `FULL`, `LIMITED`, or `READ_ONLY`. `FULL` means the lifecycle
   permits the context's normal feature set; it does not grant a route action
@@ -497,6 +501,7 @@ Owner example:
   "role": "OWNER",
   "weddingPlanId": "clx123",
   "providerId": null,
+  "persona": "GROOM",
   "displayName": "خطة زفاف محمد",
   "lifecycle": "PLANNING",
   "accessMode": "FULL",
@@ -529,6 +534,7 @@ Contributor example:
   "role": "CONTRIBUTOR",
   "weddingPlanId": "clx456",
   "providerId": null,
+  "persona": "BRIDE",
   "displayName": "خطة زفاف أحمد",
   "lifecycle": "PLANNING",
   "accessMode": "FULL",
@@ -561,6 +567,7 @@ Provider example:
   "role": "PROVIDER",
   "weddingPlanId": null,
   "providerId": "7c5301cb-0194-4f44-bb62-18dc9025bb52",
+  "persona": null,
   "displayName": "قاعة السعادة",
   "lifecycle": "ACTIVE",
   "accessMode": "FULL",
@@ -1520,6 +1527,8 @@ planning ledger and never move money.
 Public/reference routes:
 
 - `GET /api/v1/cities`
+- `GET /api/v1/governorates`
+- `GET /api/v1/governorates/:id/districts`
 - `GET /api/v1/provider-categories`
 - `GET /api/v1/providers`
 - `GET /api/v1/providers/:id`
@@ -1538,6 +1547,24 @@ and provider categories through migration
 reactivates, or deletes admin-managed catalog rows. Both reference endpoints
 return active rows only; clients must expose loading, empty/error, and retry
 states instead of rendering enabled selectors with no options.
+
+Provider categories are one shared service catalog, not duplicated groom and
+bride tables. Every category response includes `showForGroom` and
+`showForBride`. The Flutter plan marketplace filters that full cached catalog
+from `AccountContextController.selectedContext.persona`; provider and helper
+contexts may inspect the union. The administrator may edit both visibility
+flags, and at least one customer audience must remain selected in the admin UI.
+
+Yemen administrative geography is separate from the compatibility `City`
+catalog. Migration
+`20260729040000_add_yemen_administrative_catalog` installs 22 first-level
+administrative units (including `أمانة العاصمة`) and 335 districts from OCHA
+Yemen/CSO HDX version `v01`. Governorate responses contain stable `code`,
+Arabic/English names, center coordinates, and `districtsCount`. District
+responses contain their stable code and `governorateId`. Only active rows are
+returned. `City` remains in provider and quote contracts until those existing
+relations receive an explicit, separately migrated replacement; it must not be
+treated as a synonym for governorate.
 
 `GET /api/v1/providers` keeps the paginated provider card contract compact but
 complete enough for discovery. Every item includes `primaryCategory` plus a
@@ -1584,6 +1611,10 @@ Provider create/update, administrator service create/update, and marketplace
 price filters all share this validator. Invalid precision or overflow returns
 `400` before Prisma writes, so PostgreSQL never silently rounds a provider
 price and never surfaces numeric overflow as `500`.
+Provider quote-offer creation is stricter: `amount` is required and must be
+greater than zero. A plan-scoped offer must use the current WeddingPlan
+currency; the provider quote response includes `weddingPlan.currency` so the
+client does not guess or default a plan offer to `YER`.
 
 Plan-scoped `/api/v1` quote routes:
 
@@ -1615,7 +1646,9 @@ Quote-offer responses expose derived `isExpired` and `isActionable` fields.
 Expired pending offers remain historically `PENDING` in storage, cannot be
 accepted or rejected, and return `QUOTE_OFFER_EXPIRED` if a stale client tries.
 Provider offer creation locks the quote request and permits one offer for the
-current request cycle.
+current request cycle. The provider may edit that one offer only while the
+offer is `PENDING` and the request is `RESPONDED`; the resulting amount remains
+positive and its currency remains equal to the linked plan currency.
 
 Every quote decision uses one serializable transition policy. Request rows are
 locked before offer rows, the current request/offer states are re-read under
@@ -1700,6 +1733,12 @@ HTTP `403` with code `PROVIDER_PROFILE_READ_ONLY`. Moving a linked provider to
 a non-active status revokes that provider user's current conversation-room
 access after the status transaction commits; every later HTTP/socket
 authorization still rechecks live database state.
+
+Every successful administrator lifecycle transition creates a durable
+account-level `GENERAL` notification for the provider owner with the new
+`providerStatus`, the review note when present, and
+`routeTarget=/provider/dashboard`. Notification creation is inside the same
+serializable transaction as the status update, so the two cannot diverge.
 
 Provider-audience quote and chat notifications are filtered before inbox
 pagination, counts, and bulk-read mutation while the provider is non-active.
@@ -1912,6 +1951,21 @@ who owns the application-side provider profile cannot approve, reject, request
 changes, suspend, or reactivate that same profile. The check is enforced inside
 the review transaction before any status or reviewer field is written.
 
+Provider lifecycle actions also follow this server-enforced matrix:
+
+| Current status | Allowed administrator actions |
+| --- | --- |
+| `PENDING` | approve, request changes, reject |
+| `NEEDS_CHANGES` | approve, reject |
+| `REJECTED` | approve, request changes |
+| `ACTIVE` | suspend |
+| `SUSPENDED` | activate |
+
+Without an explicit `status` query, `/admin/providers/applications` returns
+`PENDING`, `NEEDS_CHANGES`, and `REJECTED`, while `/admin/providers` returns
+`ACTIVE` and `SUSPENDED`. Supplying a valid status remains an explicit
+administrative filter and overrides that page default.
+
 The admin user, provider application, provider, service, review, conversation
 report, and notification list routes accept positive `page` and `limit` query
 parameters (`limit` is capped server-side). They return
@@ -2087,6 +2141,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/costs/:id/payments` | `wedding-costs.listPayments` | 🔒 |
 | POST | `/api/v1/costs/:id/payments` | `wedding-costs.createPayment` | 🔒 |
 | GET | `/api/v1/dashboard/home` | `dashboard.getHome` | 🔒 |
+| GET | `/api/v1/governorates` | `marketplace.findGovernorates` |  |
+| GET | `/api/v1/governorates/:id/districts` | `marketplace.findDistricts` |  |
 | DELETE | `/api/v1/guest-groups/:id` | `guests.removeGroup` | 🔒 |
 | PATCH | `/api/v1/guest-groups/:id` | `guests.updateGroup` | 🔒 |
 | DELETE | `/api/v1/guests/:id` | `guests.remove` | 🔒 |

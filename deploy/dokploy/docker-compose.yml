@@ -221,6 +221,9 @@ services:
       READINESS_REQUIRE_MEDIA: ${READINESS_REQUIRE_MEDIA:-true}
       SENTRY_DSN: ${SENTRY_DSN:-}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
+      PUSH_NOTIFICATIONS_ENABLED: ${PUSH_NOTIFICATIONS_ENABLED:-false}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/aarast-firebase/service-account.json
       AARAST_MEDIA_ENDPOINT: ${AARAST_MEDIA_ENDPOINT:-http://media:9000}
       AARAST_MEDIA_SIGNED_ENDPOINT: ${AARAST_MEDIA_SIGNED_ENDPOINT:?AARAST_MEDIA_SIGNED_ENDPOINT is required}
       AARAST_MEDIA_REGION: ${AARAST_MEDIA_REGION:-us-east-1}
@@ -255,10 +258,12 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
     volumes:
       - ${OPENWA_PRODUCTION_CREDENTIAL_DIR:-aarast_openwa_production_credential}:/run/aarast:ro
+      - ${AARAST_FIREBASE_CREDENTIAL_DIR:-aarast_firebase_credential}:/run/aarast-firebase:ro
     command:
       - /bin/sh
       - -ec
       - |
+        node scripts/prod/assert-firebase-credentials.cjs
         node scripts/prod/assert-database-identity.cjs
         exec node dist/main.js
     ports:
@@ -314,6 +319,7 @@ volumes:
   aarast_postgres_backups:
   aarast_media_data:
   aarast_openwa_production_credential:
+  aarast_firebase_credential:
 
 configs:
   postgres_least_privilege:

@@ -61,6 +61,9 @@ Required:
 - `AARAST_MEDIA_ACCESS_KEY_ID`
 - `AARAST_MEDIA_SECRET_ACCESS_KEY`
 - `AARAST_MEDIA_SIGNED_ENDPOINT`
+- `PUSH_NOTIFICATIONS_ENABLED`
+- `FIREBASE_PROJECT_ID` when push is enabled
+- `AARAST_FIREBASE_CREDENTIAL_DIR` when push is enabled
 
 Current backend note: the backend code reads `JWT_SECRET`. The compose file maps `JWT_ACCESS_SECRET` into the backend container as `JWT_SECRET`. `JWT_REFRESH_SECRET` is documented for the production secret contract, but it is not consumed by the current backend code.
 `JWT_ACCESS_SECRET` must contain at least 32 UTF-8 bytes, include at least 12
@@ -88,6 +91,34 @@ Optional:
 - `SMTP_USER`
 - `SMTP_PASS`
 - `EMAIL_FROM`
+
+### Firebase Admin credential
+
+Keep `PUSH_NOTIFICATIONS_ENABLED=false` until the Aarast Firebase service
+account is installed on the Dokploy host. Create the private directory outside
+the repository, store the downloaded key with the exact name
+`service-account.json`, and make it readable only by the container runtime
+user:
+
+```sh
+install -d -m 0700 -o 1000 -g 1000 /var/lib/aarast/firebase
+install -m 0600 -o 1000 -g 1000 \
+  /secure/operator/firebase-service-account.json \
+  /var/lib/aarast/firebase/service-account.json
+```
+
+Set:
+
+```env
+PUSH_NOTIFICATIONS_ENABLED=true
+FIREBASE_PROJECT_ID=aarast-d62e9
+AARAST_FIREBASE_CREDENTIAL_DIR=/var/lib/aarast/firebase
+```
+
+The Backend mounts this directory read-only. Its production startup command
+fails before serving traffic when the file is missing, malformed, or belongs
+to another Firebase project. Never place the downloaded JSON under the
+repository checkout, Dokploy logs, shell history, or Markdown.
 
 Production never echoes OTP codes. Meta remains the supported long-term
 channel; the hardened OpenWA channel is the explicitly risk-accepted MVP path.

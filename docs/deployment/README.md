@@ -139,9 +139,16 @@ Backend delivery remains off unless `PUSH_NOTIFICATIONS_ENABLED=true`. When it
 is enabled, the backend requires `FIREBASE_PROJECT_ID` plus Google Application
 Default Credentials supplied through the private runtime environment (for
 example workload identity or `GOOGLE_APPLICATION_CREDENTIALS`). Never commit a
-service-account JSON file. Production acceptance requires a real task and chat
-notification on a physical Android device in both background and terminated
-states.
+service-account JSON file. The committed Dokploy deployment uses
+`AARAST_FIREBASE_CREDENTIAL_DIR` as a private host directory, mounts it
+read-only at `/run/aarast-firebase`, and expects the exact file name
+`service-account.json`. Its startup guard verifies that the file is a service
+account for `FIREBASE_PROJECT_ID` before the Backend starts. The host directory
+and file must be owned by the container runtime user and must not be
+group/world-readable.
+
+Production acceptance requires a real task and chat notification on a physical
+Android device in both background and terminated states.
 
 The public app domain must serve Android `assetlinks.json` and Apple
 `apple-app-site-association` using the production signing fingerprint and Apple

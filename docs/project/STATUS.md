@@ -72,7 +72,10 @@ and runtime checks override historical completion reports.
   write while retaining the configured origin, credential, and header policy.
 - Provider categories remain one catalog with explicit groom/bride visibility
   flags. Flutter filters only from the selected account context persona, while
-  provider service management receives the active catalog union.
+  provider service management receives the active catalog union. Historical
+  UUID bootstrap rows are reconciled by slug with provider/service references
+  preserved, so the active catalog contains no legacy duplicates such as
+  `مراقصة` beside `فرقة رقص`.
 - Yemen administrative references now include 22 governorates/first-level
   units and 335 districts with stable codes and center coordinates, public read
   APIs, and encrypted Flutter cache. Legacy `City` relations remain compatible

@@ -1554,6 +1554,13 @@ bride tables. Every category response includes `showForGroom` and
 from `AccountContextController.selectedContext.persona`; provider and helper
 contexts may inspect the union. The administrator may edit both visibility
 flags, and at least one customer audience must remain selected in the admin UI.
+Migration
+`20260729050000_reconcile_provider_category_catalog` corrects databases that
+ran the historical UUID-generating production bootstrap before deterministic
+catalog IDs existed. It identifies canonical rows by stable slug, moves
+`Provider.primaryCategoryId` and `ProviderService.categoryId` references from
+eight known duplicate Arabic-slug rows, then deactivates those duplicates
+without deleting provider data or arbitrary administrator-created categories.
 
 Yemen administrative geography is separate from the compatibility `City`
 catalog. Migration

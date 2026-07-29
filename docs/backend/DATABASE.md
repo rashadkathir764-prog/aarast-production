@@ -266,7 +266,12 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `City` and `ProviderCategory` for Yemen-first marketplace filters. Fresh
   databases receive an additive baseline catalog from migration
   `20260714100000_seed_provider_reference_catalog`; existing admin-managed rows
-  are preserved without forced rename, reactivation, or deletion.
+  are preserved without forced deletion. Migration
+  `20260729050000_reconcile_provider_category_catalog` handles the narrower
+  historical production-bootstrap case by canonical slug: it normalizes the
+  shared groom/bride catalog, moves provider and service references from eight
+  known Arabic-slug duplicates, and deactivates those duplicates without
+  deleting rows or losing relationships.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage`
   for public planning references. Every externally supplied `numeric(14,2)`
   provider price is bounded by the central money validator before persistence;

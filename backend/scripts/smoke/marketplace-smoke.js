@@ -251,6 +251,33 @@ async function run() {
       'every active category belongs to at least one wedding persona',
       res.body?.every((category) => category.showForGroom || category.showForBride),
     );
+    const catalogBySlug = new Map(
+      Array.isArray(res.body)
+        ? res.body.map((category) => [category.slug, category])
+        : [],
+    );
+    check(
+      'canonical category names survive legacy bootstrap IDs',
+      catalogBySlug.get('wedding-halls')?.nameAr === '\u0635\u0627\u0644\u0629' &&
+        catalogBySlug.get('catering')?.nameAr === '\u0648\u062c\u0628\u0627\u062a' &&
+        catalogBySlug.get('dance-troupe')?.nameAr ===
+          '\u0641\u0631\u0642\u0629 \u0631\u0642\u0635' &&
+        catalogBySlug.get('refrigerators')?.nameAr ===
+          '\u062b\u0644\u0627\u062c\u0629',
+    );
+    check(
+      'legacy Arabic-slug duplicate categories are not active',
+      ![
+        '\u0645\u0631\u0627\u0642\u0635\u0629',
+        '\u0635\u0627\u0644\u0629',
+        '\u0643\u0648\u0634\u0629',
+        '\u0632\u064a\u0646\u0629',
+        '\u0641\u0646\u0627\u0646',
+        '\u0645\u0646\u0634\u062f',
+        '\u0645\u0632\u0645\u0627\u0631',
+        '\u0645\u0628\u0631\u0639',
+      ].some((slug) => catalogBySlug.has(slug)),
+    );
   }
 
   {

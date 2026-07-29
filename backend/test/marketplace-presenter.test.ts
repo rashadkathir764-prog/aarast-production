@@ -226,6 +226,39 @@ test("provider category audience migration separates groom and bride discovery",
   assert.doesNotMatch(migration, /\bDELETE\b/i);
 });
 
+test("provider category reconciliation uses stable slugs and preserves references", () => {
+  const migration = readFileSync(
+    "prisma/migrations/20260729050000_reconcile_provider_category_catalog/migration.sql",
+    "utf8",
+  );
+
+  for (const canonical of [
+    "wedding-halls",
+    "photography",
+    "catering",
+    "stage-decor",
+    "dresses",
+    "sound-lighting",
+    "dance-troupe",
+    "mizmar-folk-band",
+    "refrigerators",
+  ]) {
+    assert.ok(migration.includes(canonical), canonical);
+  }
+
+  assert.match(migration, /WHERE category\."slug" = desired\."slug"/);
+  assert.match(migration, /UPDATE "Provider" AS provider/);
+  assert.match(migration, /UPDATE "ProviderService" AS service/);
+  assert.match(
+    migration,
+    /WHERE provider\."primaryCategoryId" = legacy\.id/,
+  );
+  assert.match(migration, /WHERE service\."categoryId" = legacy\.id/);
+  assert.match(migration, /'مراقصة', 'dance-troupe'/);
+  assert.match(migration, /"isActive" = false/);
+  assert.doesNotMatch(migration, /\bDELETE\b/i);
+});
+
 test("Yemen administrative catalog installs 22 governorates and 335 districts", () => {
   const migration = readFileSync(
     "prisma/migrations/20260729040000_add_yemen_administrative_catalog/migration.sql",

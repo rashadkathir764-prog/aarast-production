@@ -1,12 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/config/api_config.dart';
+import 'core/config/observability_config.dart';
+import 'core/diagnostics/app_logger.dart';
+import 'core/diagnostics/diagnostic_report_sender.dart';
+import 'core/diagnostics/sentry_log_sink.dart';
 import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
@@ -16,6 +23,7 @@ import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
 import 'core/session/session_boundary.dart';
 import 'core/session/session_scoped_change_notifier.dart';
+import 'core/session/session_teardown_coordinator.dart';
 import 'core/storage/auth_storage.dart';
 import 'core/storage/token_vault.dart';
 import 'core/storage/sensitive_value_vault.dart';
@@ -49,17 +57,91 @@ import 'features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'features/wedding_plans/providers/wedding_plans_provider.dart';
 
 Future<void> main() async {
-  ApiConfig.validateForStartup();
+  const observability = ObservabilityConfig.fromEnvironment();
+  final bootstrapRedactor = LogRedactor(
+    installationSalt: 'aarast-observability-bootstrap-v1',
+  );
+  final bootstrapSentrySink = SentryAppLogSink(redactor: bootstrapRedactor);
+
+  Future<void> appRunner() => _bootstrapApplication(observability);
+  if (!observability.isEnabled) {
+    await appRunner();
+    return;
+  }
+
+  await SentryFlutter.init(
+    (options) => observability.applyTo(
+      options,
+      beforeSend: bootstrapSentrySink.beforeSend,
+      beforeBreadcrumb: bootstrapSentrySink.beforeBreadcrumb,
+    ),
+    appRunner: appRunner,
+  );
+}
+
+Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferences = await SharedPreferences.getInstance();
+  final installationSalt = await _readOrCreateObservabilitySalt(preferences);
+  final redactor = LogRedactor(installationSalt: installationSalt);
+  final memoryLogSink = MemoryRingBufferSink();
+  final logger = AppLogger(
+    redactor: redactor,
+    sinks: [
+      DebugConsoleAppLogSink(),
+      memoryLogSink,
+      if (observability.isEnabled) SentryAppLogSink(redactor: redactor),
+    ],
+  );
+  AppLogger.installGlobal(logger);
+  logger.startSessionCorrelation();
+  final DiagnosticReportService diagnosticReportService =
+      observability.isEnabled
+      ? DiagnosticReportSender(
+          ringBuffer: memoryLogSink,
+          redactor: redactor,
+          transport: DirectSentryDiagnosticReportTransport(
+            dsn: observability.dsn,
+            environment: observability.environment,
+            release: observability.release,
+          ),
+        )
+      : const UnavailableDiagnosticReportService();
+  logger.log(
+    level: AppLogLevel.info,
+    category: AppLogCategory.lifecycle,
+    name: 'application_start',
+    attributes: {'environment': observability.environment},
+  );
+  logger.log(
+    level: AppLogLevel.info,
+    category: AppLogCategory.lifecycle,
+    name: 'observability_initialized',
+    attributes: {
+      'sentryEnabled': observability.isEnabled,
+      'tracesSampleRate': observability.tracesSampleRate,
+    },
+  );
+
+  ApiConfig.validateForStartup();
   const sensitiveValueVault = SecureSensitiveValueVault();
   final authStorage = AuthStorage(
     preferences,
     tokenVault: const SecureTokenVault(),
     sensitiveValueVault: sensitiveValueVault,
   );
+  logger.log(
+    level: AppLogLevel.info,
+    category: AppLogCategory.session,
+    name: 'session_storage_initialization_started',
+  );
   await authStorage.initialize();
+  logger.log(
+    level: AppLogLevel.info,
+    category: AppLogCategory.session,
+    name: 'session_storage_initialization_completed',
+  );
   final guestOnboardingStorage = GuestOnboardingStorage(
     preferences,
     sensitiveValueVault: sensitiveValueVault,
@@ -68,7 +150,19 @@ Future<void> main() async {
   late final LocalDatabase localDatabase;
   try {
     localDatabase = await createLocalDatabase(preferences);
-  } on Object {
+    logger.log(
+      level: AppLogLevel.info,
+      category: AppLogCategory.database,
+      name: 'offline_database_opened',
+    );
+  } on Object catch (error, stackTrace) {
+    logger.log(
+      level: AppLogLevel.fatal,
+      category: AppLogCategory.database,
+      name: 'offline_database_open_failed',
+      error: error,
+      stackTrace: stackTrace,
+    );
     runApp(const _SecureOfflineStorageFailureApp());
     return;
   }
@@ -85,6 +179,12 @@ Future<void> main() async {
     registrationApi: PushRegistrationApi(apiClient),
   );
   await pushNotificationsController.initialize();
+  final sessionTeardownCoordinator = SessionTeardownCoordinator(
+    auth: authRepository,
+    push: pushNotificationsController,
+    clearLocalAccountData: offlineSyncService.clearLocalData,
+    clearGuestDraft: guestOnboardingStorage.clearDraft,
+  );
   final accountContextsApi = AccountContextsApi(apiClient);
   apiClient.refreshSession = authRepository.refreshSession;
   final weddingPlansApi = WeddingPlansApi(
@@ -127,9 +227,17 @@ Future<void> main() async {
   final guestsApi = GuestsApi(apiClient, offline: offlineSyncService);
   final settingsApi = SettingsApi(apiClient);
 
+  logger.log(
+    level: AppLogLevel.info,
+    category: AppLogCategory.lifecycle,
+    name: 'application_dependencies_ready',
+  );
   runApp(
     MultiProvider(
       providers: [
+        Provider<AppLogger>.value(value: logger),
+        Provider<MemoryRingBufferSink>.value(value: memoryLogSink),
+        Provider<DiagnosticReportService>.value(value: diagnosticReportService),
         Provider<AuthStorage>.value(value: authStorage),
         Provider<GuestOnboardingStorage>.value(value: guestOnboardingStorage),
         Provider<ApiClient>.value(value: apiClient),
@@ -164,8 +272,7 @@ Future<void> main() async {
               authRepository,
               offlineSyncService: offlineSyncService,
               guestOnboardingStorage: guestOnboardingStorage,
-              beforeAccountLogout:
-                  pushNotificationsController.unregisterAccount,
+              sessionTeardownCoordinator: sessionTeardownCoordinator,
               clearPushOnSessionEnd:
                   pushNotificationsController.clearLocalRegistrationForAccount,
             );
@@ -198,6 +305,24 @@ Future<void> main() async {
       ),
     ),
   );
+}
+
+const _observabilityInstallationSaltKey =
+    'aarast.observability.installation_salt.v1';
+
+Future<String> _readOrCreateObservabilitySalt(
+  SharedPreferences preferences,
+) async {
+  final existing = preferences
+      .getString(_observabilityInstallationSaltKey)
+      ?.trim();
+  if (existing != null && existing.isNotEmpty) return existing;
+
+  final random = Random.secure();
+  final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+  final generated = base64UrlEncode(bytes);
+  await preferences.setString(_observabilityInstallationSaltKey, generated);
+  return generated;
 }
 
 class _SecureOfflineStorageFailureApp extends StatelessWidget {

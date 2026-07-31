@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -46,7 +47,31 @@ class _WeddingPlanDashboardScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      appLogEvent(
+        'DASHBOARD_BUILT',
+        category: AppLogCategory.groom,
+        weddingPlanId: widget.weddingPlanId,
+        screen: 'WeddingPlanDashboardScreen',
+        reason: 'first_frame_completed',
+        source: 'WeddingPlanDashboardScreen',
+      );
+      _load();
+    });
+  }
+
+  @override
+  void dispose() {
+    appLogEvent(
+      'DASHBOARD_DISPOSED',
+      category: AppLogCategory.groom,
+      weddingPlanId: widget.weddingPlanId,
+      screen: 'WeddingPlanDashboardScreen',
+      reason: 'widget_disposed',
+      source: 'WeddingPlanDashboardScreen',
+    );
+    super.dispose();
   }
 
   @override

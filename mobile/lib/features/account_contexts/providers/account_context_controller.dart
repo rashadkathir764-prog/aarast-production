@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../core/diagnostics/context_lifecycle_logger.dart';
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../data/account_contexts_api.dart';
@@ -80,8 +80,9 @@ class AccountContextController extends ChangeNotifier {
   Future<void> refresh({bool allowInitialSingleContext = false}) async {
     final generation = ++_generation;
     final previousContext = _selectedContext;
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'WORKSPACES_LOAD_STARTED',
+      category: AppLogCategory.context,
       userId: _userId,
       fromContextKey: previousContext?.contextKey,
       source: 'AccountContextController',
@@ -109,8 +110,9 @@ class AccountContextController extends ChangeNotifier {
             previousKey == null &&
             persistedKey == null,
       );
-      ContextLifecycleLogger.event(
+      appLogEvent(
         'WORKSPACES_LOADED',
+        category: AppLogCategory.context,
         userId: _userId,
         fromContextKey: previousContext?.contextKey,
         toContextKey: selected?.contextKey,
@@ -154,10 +156,11 @@ class AccountContextController extends ChangeNotifier {
       _selectedContext = selected;
       _hasLoadedContexts = true;
       if (!_sameContext(previousContext, selected)) {
-        ContextLifecycleLogger.event(
+        appLogEvent(
           selected == null
               ? 'ACTIVE_CONTEXT_CLEARED'
               : 'ACTIVE_CONTEXT_SELECTED',
+          category: AppLogCategory.context,
           userId: _userId,
           fromContextKey: previousContext?.contextKey,
           toContextKey: selected?.contextKey,
@@ -186,8 +189,9 @@ class AccountContextController extends ChangeNotifier {
   }
 
   Future<bool> select(String contextKey) async {
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'ACTIVE_CONTEXT_SELECTION_REQUESTED',
+      category: AppLogCategory.context,
       userId: _userId,
       fromContextKey: _selectedContext?.contextKey,
       toContextKey: contextKey,
@@ -237,8 +241,9 @@ class AccountContextController extends ChangeNotifier {
         _replaceOrAppend(_contexts, validated),
       );
       _selectedContext = validated;
-      ContextLifecycleLogger.event(
+      appLogEvent(
         'ACTIVE_CONTEXT_SELECTED',
+        category: AppLogCategory.context,
         userId: _userId,
         fromContextKey: previousContext?.contextKey,
         toContextKey: validated.contextKey,
@@ -254,8 +259,9 @@ class AccountContextController extends ChangeNotifier {
         _contexts = const [];
         _selectedContext = null;
         _hasLoadedContexts = false;
-        ContextLifecycleLogger.event(
+        appLogEvent(
           'ACTIVE_CONTEXT_CLEARED',
+          category: AppLogCategory.context,
           userId: _userId,
           fromContextKey: previousContext?.contextKey,
           source: 'AccountContextController.select',
@@ -344,8 +350,9 @@ class AccountContextController extends ChangeNotifier {
   /// untouched. The caller must navigate to the context selection screen.
   Future<void> exitWorkspace() async {
     final previousContext = _selectedContext;
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'EXIT_WORKSPACE',
+      category: AppLogCategory.context,
       userId: _userId,
       fromContextKey: previousContext?.contextKey,
       source: 'AccountContextController.exitWorkspace',
@@ -360,8 +367,9 @@ class AccountContextController extends ChangeNotifier {
   /// is deliberately separate from [exitWorkspace] at the call site.
   Future<void> clearForLogout() async {
     final previousContext = _selectedContext;
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'LOGOUT_ACCOUNT',
+      category: AppLogCategory.context,
       userId: _userId,
       fromContextKey: previousContext?.contextKey,
       source: 'AccountContextController.clearForLogout',
@@ -381,8 +389,9 @@ class AccountContextController extends ChangeNotifier {
     _errorMessage = null;
     _noticeMessage = null;
     _notifyListeners();
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'ACTIVE_CONTEXT_CLEARED',
+      category: AppLogCategory.context,
       userId: _userId,
       fromContextKey: previousContext?.contextKey,
       source: 'AccountContextController',

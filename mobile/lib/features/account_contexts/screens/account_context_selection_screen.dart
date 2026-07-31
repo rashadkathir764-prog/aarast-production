@@ -2,13 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/account_context.dart';
 import '../providers/account_context_controller.dart';
 
-class AccountContextSelectionScreen extends StatelessWidget {
+class AccountContextSelectionScreen extends StatefulWidget {
   const AccountContextSelectionScreen({super.key});
+
+  @override
+  State<AccountContextSelectionScreen> createState() =>
+      _AccountContextSelectionScreenState();
+}
+
+class _AccountContextSelectionScreenState
+    extends State<AccountContextSelectionScreen> {
+  bool _shownEventRecorded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_shownEventRecorded) return;
+    _shownEventRecorded = true;
+    final controller = context.read<AccountContextController>();
+    appLogEvent(
+      'ROLE_CHOOSER_SHOWN',
+      category: AppLogCategory.context,
+      source: 'AccountContextSelectionScreen',
+      reason: 'active_context_required',
+      attributes: {
+        'availableContextCount': controller.availableContexts.length,
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

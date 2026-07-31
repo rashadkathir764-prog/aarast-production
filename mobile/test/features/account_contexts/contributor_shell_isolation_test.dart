@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
@@ -27,6 +28,14 @@ void main() {
   testWidgets(
     'contributor shell builds one workspace without navigation tabs',
     (tester) async {
+      final logSink = _CollectingLogSink();
+      AppLogger.installGlobal(
+        AppLogger(
+          redactor: LogRedactor(installationSalt: 'contributor-shell-test'),
+          sinks: [logSink],
+        ),
+      );
+      addTearDown(AppLogger.clearGlobal);
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 720);
       addTearDown(tester.view.reset);
@@ -115,8 +124,34 @@ void main() {
       expect(find.text('الخروج من المساحة'), findsOneWidget);
       expect(find.text('تسجيل الخروج من الحساب'), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      expect(
+        logSink.events.where(
+          (event) =>
+              event.name == 'dashboard_built' &&
+              event.category == AppLogCategory.contributor,
+        ),
+        hasLength(1),
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(
+        logSink.events.where(
+          (event) =>
+              event.name == 'dashboard_disposed' &&
+              event.category == AppLogCategory.contributor,
+        ),
+        hasLength(1),
+      );
     },
   );
+}
+
+class _CollectingLogSink implements AppLogSink {
+  final List<AppLogEvent> events = [];
+
+  @override
+  void add(AppLogEvent event) => events.add(event);
 }
 
 class _SingleContextGateway implements AccountContextsGateway {

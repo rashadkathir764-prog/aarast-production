@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-import '../diagnostics/context_lifecycle_logger.dart';
+import '../diagnostics/app_logger.dart';
 import 'app_router.dart';
 
 /// Preserves app-level back navigation when a forward transition used
@@ -161,8 +161,9 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   void _handleRouteChanged() {
     final next = router.state.uri.toString();
     if (next == _currentLocation) return;
-    ContextLifecycleLogger.event(
-      'ROUTE_REQUESTED',
+    appLogEvent(
+      'NAVIGATION_EFFECTIVE_TRANSITION',
+      category: AppLogCategory.navigation,
       activeContextKey: _currentContextKey,
       currentRoute: _currentLocation,
       targetRoute: next,
@@ -207,8 +208,9 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
   void _handleContextChanged() {
     final nextContextKey = _readContextKey?.call();
     if (nextContextKey == _currentContextKey) return;
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'NAVIGATION_RESET',
+      category: AppLogCategory.navigation,
       fromContextKey: _currentContextKey,
       toContextKey: nextContextKey,
       currentRoute: _currentLocation,

@@ -279,7 +279,6 @@ class _MoreScreenState extends State<MoreScreen> {
 
     if (confirmed == true && context.mounted) {
       await context.read<AuthController>().logout();
-      if (context.mounted) context.go(AppRouter.login);
     }
   }
 

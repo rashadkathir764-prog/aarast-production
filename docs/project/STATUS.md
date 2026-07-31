@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-29
+Snapshot date: 2026-07-31
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -45,7 +45,9 @@ and runtime checks override historical completion reports.
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS
   keystore/keychain storage for tokens, the random offline-database key, and
-  sensitive profile/onboarding state.
+  sensitive profile/onboarding state. Structured mobile observability uses
+  `AppLogger`, an in-memory ring buffer, and optional `sentry_flutter` 9.25.0;
+  `sentry_dart_plugin` 3.4.0 is configured for debug-symbol upload.
 - Admin web: React 18, Vite, and TypeScript strict mode.
 - Local runtime: Docker Compose backend, PostgreSQL, Redis, and MinIO-compatible
   object storage with an initialized private chat prefix.
@@ -120,6 +122,37 @@ and runtime checks override historical completion reports.
   multiple contexts use a standalone Arabic `اختر المسار` screen, and the
   chosen context routes to its matching dashboard. Dashboard shells no longer
   render an account-path switcher.
+- Full mobile logout now crosses one explicit session boundary. `AuthController`
+  enters `terminating`, removes the in-memory user, and notifies listeners
+  before any awaited teardown. Credential capture is bounded to two seconds and
+  every local teardown stage to five seconds. `SessionTeardownCoordinator` then
+  clears local auth/account/guest state and the account's Push binding before
+  draining remote auth revoke plus Push unregister in parallel with a two-second
+  deadline. Local cleanup failure or timeout produces a dedicated retry screen;
+  remote failure or timeout cannot restore the old session. Session-operation
+  generations, sealed teardown credentials, and storage epochs reject late
+  results from an older session.
+- The selected account context is now persisted as version 2 with `userId` and
+  `contextKey` in secure storage. A fresh Login and full Logout clear the old
+  selection. A multi-context account always returns to the chooser, a
+  single-context account may enter directly, and cold restart restores only a
+  same-user selection still present in the latest context response. Legacy raw
+  values migrate once and invalid or revoked values are removed.
+- `AarastSessionTransitionGate`, `AarastAuthFlowRedirector`, and
+  `AccountContextEntryGate` now separate session UI, authentication-driven
+  route intent, and context-driven Dashboard entry. Checking, terminating, and
+  failed local teardown have explicit safe screens; logout controls do not
+  navigate independently. Effective transitions and provider/groom/contributor
+  Dashboard build/dispose events are structured trace boundaries.
+- Mobile logs are structured under `auth`, `session`, `context`, `navigation`,
+  `api`, `cache`, `database`, `state`, `lifecycle`, `provider`, `groom`,
+  `contributor`, `push`, `chat`, and `error`; no local `*.log` files are
+  created. The Debug console, 300-event/256KB/15-minute memory ring, and
+  optional Sentry sink share one redaction boundary. Tokens, contact data,
+  headers, query values, and bodies are excluded, while user/context/session
+  identifiers are installation-salted hashes. The Support screen can send a
+  fresh in-memory JSON diagnostic attachment only after per-send consent and
+  never stores or retries a failed report.
 - Android/iOS/macOS offline caches are encrypted with SQLCipher. The 256-bit key
   lives only in secure OS storage, supported mobile startup fails closed if the
   key/database cannot be opened, and the old plaintext development cache is
@@ -163,13 +196,15 @@ and runtime checks override historical completion reports.
 - Android/Flutter and backend FCM implementation now exists for task
   assignment, task due/overdue, and chat-message alerts. It requests the
   Android notification permission once, registers a Firebase Installation ID
-  per authenticated account, uses an independent durable outbox event, removes
-  local registration before logout without allowing an old logout to erase a
-  newer login, and opens only the neutral notification inbox on tap. Local
-  analysis, focused tests, and a Debug APK build pass. Live delivery is not yet
-  proven: an Aarast-owned Firebase project, private backend credentials,
-  migration application, and physical-device background/terminated sends
-  remain external release gates.
+  against the authenticated account, uses an independent durable outbox event,
+  clears that account binding and cancels its request immediately on Logout,
+  and gives a newer login a fresh operation queue. The device-scoped FID and
+  FCM token are retained while the old server binding is removed through the
+  bounded remote teardown. Token refresh and app resume revalidate the current
+  binding without using the Android-unsafe Firebase Installations ID-change
+  stream. Notification taps open only the neutral notification inbox. Local
+  analysis, focused tests, and Android builds pass. Live background/terminated
+  delivery remains an external release gate.
 - Authenticated mutations now bind each idempotency key to a SHA-256 request
   fingerprint without storing raw tokens or query values. Identical retries
   execute once and replay, mismatched reuse returns `409`, response retention is
@@ -274,6 +309,35 @@ mandatory before wider use.
 
 ## Verification Status
 
+The 2026-07-31 session/context/observability release-candidate slice is not yet a
+release-accepted mobile artifact. Full `flutter analyze --no-pub` passes with
+no issues and the complete `flutter test --no-pub` run passes all 918 tests.
+Focused session and Push tests include the Provider-Logout-Groom regression,
+stalled-registration queue starvation, a local teardown watchdog and retry,
+late credential capture, authenticated Push teardown, lifecycle revalidation,
+stale-generation guards, redaction, and one-envelope Flutter error capture.
+Android Debug APK, Release APK, and Release AAB builds succeed as `1.0.0+7`,
+package `com.aarast.aarast_mobile`, against
+`https://aarast-api.shadowgardn.com`. Their respective SHA-256 values are
+`A4BE8A93A02E5246AADAF70F60A28F9B9CF90DFEE79E061C8E7A1ED756FEFC7C`,
+`3F9EE178A6D8E35ED0E1B6B2D084E52C4DF7D1B9AA5EB576B29781A9C0FF29C0`,
+and `BB181EA46A103C9F2F40E3491EA3528B9C84DD78A30C0A5A81734DD71B77444F`.
+The Release APK is non-debuggable, uses APK Signature Scheme v2 with
+certificate SHA-256
+`4D9F978CD647A7CFA165835C551293BDCB8E5E4E556CE0DD94546FFB9BD387B2`,
+and contains `POST_NOTIFICATIONS`, the default-channel metadata, and
+`aarast_updates`. Its exact SHA matches the APK installed on the connected
+Samsung Android 16 device. After launch, the inspected process produced no
+Flutter fatal, ANR, or Firebase UI-thread violation. A Profile-mode
+Provider-Logout-Groom integration scenario using controlled fakes passed on
+that device; the runner warned that it did not detect the `integration_test`
+plugin, so this is not evidence of a live-account end-to-end flow. The local
+Release artifacts use an empty Sentry DSN. Strict local AAB `jarsigner`
+inspection also reports entry-consistency warnings, so Play/store acceptance
+and final AAB signer verification remain open. Live Provider/Groom credentials,
+slow/offline/error/interruption scenarios, live Push and Sentry, iOS Archive,
+and Staging acceptance remain external gates.
+
 For revision `0c1d81c7aebb8b3f93f83238ea13219de0994344` on 2026-07-17,
 Flutter Analyze passes with no issues and all 628 Flutter tests pass.
 SQLCipher key-vault/fail-closed tests are included. A production Release APK
@@ -339,6 +403,15 @@ twice, and also stored encrypted off-host.
   validation are still required; they are not covered by the local code gate.
 - Android App Links and iOS Universal Links require deployed association files
   populated with real production identities and physical-device tests.
+- The complete mobile suite and one controlled Android Profile scenario pass.
+  The session/context flow still requires a live-account Android run, all
+  slow/offline/error/interruption conditions, and the complete iOS
+  physical-device run.
+- Sentry remains unaccepted until Staging proves symbolication, environment and
+  release labeling, mobile/backend request-id correlation, absence of PII, and
+  the consent-gated diagnostic attachment. Owner/Admin-only attachment access
+  and the targeted 30-day retention are operational Sentry settings, not
+  application-enforced guarantees.
 - Financial data remains private by default, including the general budget,
   category allocations, costs, payments, and payment schedules. Reads require
   `canViewMoney`; writes require `canManageMoney`.

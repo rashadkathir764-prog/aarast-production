@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -232,11 +233,11 @@ void main() {
       await tester.pumpAndSettle();
 
       final postAuthUri = router.routeInformationProvider.value.uri;
-      expect(postAuthUri.path, '/home');
-      expect(postAuthUri.queryParameters['resume'], '/invites/$token');
+      expect(postAuthUri.path, '/invites/$token');
       expect(controller.status, AuthStatus.authenticated);
-      expect(controller.claimPendingInviteResumeRoute(), token);
+      expect(controller.hasPendingInviteResume, isFalse);
       expect(controller.claimPendingInviteResumeRoute(), isNull);
+      expect(controller.consumePendingInviteResume(token), isTrue);
     },
   );
 }
@@ -257,11 +258,14 @@ Future<void> _pump(
         theme: AppTheme.light(),
         locale: const Locale('ar'),
         routerConfig: router,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
-          child: child!,
+        builder: (context, child) => AarastAuthFlowRedirector(
+          router: router,
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.3)),
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     ),
@@ -329,7 +333,7 @@ Future<AuthController> _controller({
   final preferences = await SharedPreferences.getInstance();
   final storage = AuthStorage(preferences);
   final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
-  return AuthController(
+  final controller = AuthController(
     _RecoveryRepository(
       apiClient,
       storage,
@@ -338,6 +342,8 @@ Future<AuthController> _controller({
       registrationSucceeds: registrationSucceeds,
     ),
   );
+  await controller.restoreSession();
+  return controller;
 }
 
 class _RecoveryRepository extends AuthRepository {

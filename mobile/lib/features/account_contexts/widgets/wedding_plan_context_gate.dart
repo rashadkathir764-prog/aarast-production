@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/diagnostics/context_lifecycle_logger.dart';
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -148,8 +148,9 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
 
     final controller = context.watch<AccountContextController?>();
     if (controller == null) {
-      ContextLifecycleLogger.event(
+      appLogEvent(
         'ROUTE_BLOCKED',
+        category: AppLogCategory.navigation,
         targetRoute: '/wedding-plans/:selected',
         reason: 'context_controller_missing',
         source: 'SelectedWeddingPlanContextGate',
@@ -172,8 +173,9 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
         accountContextAllowsPlanAccess(selected, requiredAccess)) {
       return child;
     }
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'ROUTE_BLOCKED',
+      category: AppLogCategory.navigation,
       activeContextKey: selected?.contextKey,
       targetRoute: '/wedding-plans/:selected',
       reason: selected?.isPlan == true
@@ -186,8 +188,9 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
 }
 
 void _logBlockedRoute(String? contextKey, String weddingPlanId, String reason) {
-  ContextLifecycleLogger.event(
+  appLogEvent(
     'ROUTE_BLOCKED',
+    category: AppLogCategory.navigation,
     activeContextKey: contextKey,
     targetRoute: '/wedding-plans/$weddingPlanId',
     reason: reason,

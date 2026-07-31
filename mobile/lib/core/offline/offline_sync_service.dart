@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../features/auth/models/safe_user.dart';
+import '../diagnostics/app_logger.dart';
 import '../network/api_client.dart';
 import 'cache_policy.dart';
 import 'local_database.dart';
@@ -103,14 +104,40 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// device can never see the previous account's financial data, and so
   /// stale queued writes never replay under a new user's token.
   Future<void> clearLocalData() async {
+    appLogEvent(
+      'CACHE_CLEAR_STARTED',
+      category: AppLogCategory.cache,
+      source: 'OfflineSyncService.clearLocalData',
+    );
     _bindCacheOwner(null);
     final generation = _sessionGeneration;
-    await _enqueueCacheMutation(() async {
-      if (generation != _sessionGeneration || _cacheOwnerUserId != null) {
-        return;
-      }
-      await _wipeLocalState();
-    });
+    var cleared = false;
+    try {
+      await _enqueueCacheMutation(() async {
+        if (generation != _sessionGeneration || _cacheOwnerUserId != null) {
+          return;
+        }
+        await _wipeLocalState();
+        cleared = generation == _sessionGeneration && _cacheOwnerUserId == null;
+      });
+      appLogEvent(
+        cleared ? 'CACHE_CLEAR_COMPLETED' : 'CACHE_CLEAR_SUPERSEDED',
+        category: AppLogCategory.cache,
+        level: cleared ? AppLogLevel.info : AppLogLevel.debug,
+        reason: cleared ? 'local_state_wiped' : 'session_generation_changed',
+        source: 'OfflineSyncService.clearLocalData',
+      );
+    } on Object catch (error) {
+      appLogEvent(
+        'CACHE_CLEAR_FAILED',
+        category: AppLogCategory.cache,
+        level: AppLogLevel.warning,
+        reason: 'database_operation_failed',
+        source: 'OfflineSyncService.clearLocalData',
+        attributes: {'errorType': error.runtimeType.toString()},
+      );
+      rethrow;
+    }
   }
 
   /// Removes cached rows and queued writes owned by one plan context while
@@ -142,8 +169,15 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// happens. Must be called right after a session is established.
   Future<void> ensureCacheOwner(String userId) async {
     if (userId.isEmpty || userId == 'null') return;
+    appLogEvent(
+      'CACHE_OWNER_BIND_STARTED',
+      category: AppLogCategory.cache,
+      userId: userId,
+      source: 'OfflineSyncService.ensureCacheOwner',
+    );
     _bindCacheOwner(userId);
     final generation = _sessionGeneration;
+    var bound = false;
     await _enqueueCacheMutation(() async {
       if (!_isCurrentSession(generation, userId)) return;
       final currentOwner = await database.getMeta(_cacheOwnerUserIdKey);
@@ -153,7 +187,16 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         if (!_isCurrentSession(generation, userId)) return;
       }
       await database.setMeta(_cacheOwnerUserIdKey, userId);
+      bound = _isCurrentSession(generation, userId);
     });
+    appLogEvent(
+      bound ? 'CACHE_OWNER_BOUND' : 'CACHE_OWNER_BIND_SUPERSEDED',
+      category: AppLogCategory.cache,
+      userId: userId,
+      level: bound ? AppLogLevel.info : AppLogLevel.debug,
+      reason: bound ? 'owner_persisted' : 'session_generation_changed',
+      source: 'OfflineSyncService.ensureCacheOwner',
+    );
   }
 
   void _bindCacheOwner(String? userId) {
@@ -180,10 +223,25 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   bool _syncInFlight = false;
 
   Future<void> syncPendingChanges() async {
-    if (_syncInFlight) return;
+    if (_syncInFlight) {
+      appLogEvent(
+        'SYNC_SKIPPED',
+        category: AppLogCategory.database,
+        level: AppLogLevel.debug,
+        reason: 'sync_already_in_flight',
+        source: 'OfflineSyncService.syncPendingChanges',
+      );
+      return;
+    }
     _syncInFlight = true;
     final sessionGeneration = _sessionGeneration;
     final cacheOwnerUserId = _cacheOwnerUserId;
+    appLogEvent(
+      'SYNC_STARTED',
+      category: AppLogCategory.database,
+      userId: cacheOwnerUserId,
+      source: 'OfflineSyncService.syncPendingChanges',
+    );
     try {
       if (cacheOwnerUserId == null) return;
       final accessToken = await apiClient.readCurrentAccessToken();
@@ -293,7 +351,29 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         _state = SyncState.hasPendingChanges;
       }
       await refreshStatus();
+    } on Object catch (error) {
+      appLogEvent(
+        'SYNC_FAILED',
+        category: AppLogCategory.database,
+        level: AppLogLevel.warning,
+        userId: cacheOwnerUserId,
+        reason: 'sync_operation_failed',
+        source: 'OfflineSyncService.syncPendingChanges',
+        attributes: {'errorType': error.runtimeType.toString()},
+      );
+      rethrow;
     } finally {
+      appLogEvent(
+        'SYNC_COMPLETED',
+        category: AppLogCategory.database,
+        userId: cacheOwnerUserId,
+        reason: _state.name,
+        source: 'OfflineSyncService.syncPendingChanges',
+        attributes: {
+          'pendingCount': _pendingCount,
+          'blockedCount': _blockedCount,
+        },
+      );
       _syncInFlight = false;
       if (sessionGeneration != _sessionGeneration &&
           _cacheOwnerUserId != null) {

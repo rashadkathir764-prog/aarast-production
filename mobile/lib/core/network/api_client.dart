@@ -1,8 +1,10 @@
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
-import '../diagnostics/context_lifecycle_logger.dart';
+import '../diagnostics/app_logger.dart';
 
 typedef TokenProvider = Future<String?> Function();
 typedef SessionRefresher = Future<bool> Function();
@@ -12,6 +14,12 @@ const aarastBackendConnectionErrorMessage =
 const aarastOtpDeliveryUnavailableMessage =
     'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.';
 const _requestScopeGenerationKey = 'aarast_request_scope_generation';
+const _requestClientIdKey = 'aarast_client_request_id';
+const _requestAttemptKey = 'aarast_request_attempt';
+const _requestAttemptTimerKey = 'aarast_request_attempt_timer';
+const _requestAttemptFailureLoggedKey = 'aarast_request_attempt_failure_logged';
+const _requestResponseLoggedKey = 'aarast_request_response_logged';
+const _requestFinalFailureLoggedKey = 'aarast_request_final_failure_logged';
 
 class ApiClient {
   ApiClient({required TokenProvider tokenProvider, Dio? uploadDio})
@@ -38,8 +46,11 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final requestSessionGeneration = _sessionGeneration;
+          final requestSessionGeneration =
+              options.extra[_requestScopeGenerationKey] as int? ??
+              _sessionGeneration;
           options.extra[_requestScopeGenerationKey] = requestSessionGeneration;
+          _beginRequestAttempt(options);
           final token = await _tokenProvider();
           if (requestSessionGeneration != _sessionGeneration) {
             handler.reject(
@@ -56,76 +67,38 @@ class ApiClient {
               options.headers['Authorization'] == null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          _debugAuthLoginRequest(options);
-          ContextLifecycleLogger.event(
-            'API_REQUEST',
-            userId: _sessionIdentity,
-            activeContextKey: _contextIdentity,
-            weddingPlanId: _planIdFromContextKey(_contextIdentity),
-            currentRoute: options.path,
-            reason: options.method.toLowerCase(),
-            source: 'ApiClient',
-          );
+          _logRequest(options);
           handler.next(options);
         },
         onResponse: (response, handler) {
           if (_requestUsesAStaleScope(response.requestOptions)) {
-            handler.reject(
-              DioException(
-                requestOptions: response.requestOptions,
-                response: response,
-                type: DioExceptionType.cancel,
-                error:
-                    'The account context changed before the response completed',
-              ),
+            final error = DioException(
+              requestOptions: response.requestOptions,
+              response: response,
+              type: DioExceptionType.cancel,
+              error:
+                  'The account context changed before the response completed',
             );
+            _logAttemptFailure(error);
+            _logFinalFailure(error);
+            handler.reject(error);
             return;
           }
-          _debugAuthLoginStatus(
-            response.requestOptions.path,
-            response.statusCode,
-          );
-          ContextLifecycleLogger.event(
-            'API_RESPONSE',
-            userId: _sessionIdentity,
-            activeContextKey: _contextIdentity,
-            weddingPlanId: _planIdFromContextKey(_contextIdentity),
-            currentRoute: response.requestOptions.path,
-            httpStatus: response.statusCode,
-            reason: 'completed',
-            source: 'ApiClient',
-          );
+          _logResponse(response);
           handler.next(response);
         },
         onError: (error, handler) async {
-          _debugAuthLoginStatus(
-            error.requestOptions.path,
-            error.response?.statusCode,
-          );
-          ContextLifecycleLogger.event(
-            'API_FAILURE',
-            userId: _sessionIdentity,
-            activeContextKey: _contextIdentity,
-            weddingPlanId: _planIdFromContextKey(_contextIdentity),
-            currentRoute: error.requestOptions.path,
-            httpStatus: error.response?.statusCode,
-            reason: error.type.name,
-            source: 'ApiClient',
-          );
+          _logAttemptFailure(error);
           if (await _requestUsesAStaleSessionToken(error.requestOptions)) {
+            _logFinalFailure(error);
             handler.next(error);
             return;
           }
           final statusCode = error.response?.statusCode;
           if (statusCode == 401 || statusCode == 403) {
-            ContextLifecycleLogger.event(
-              statusCode == 401 ? 'UNAUTHORIZED_401' : 'FORBIDDEN_403',
-              activeContextKey: _contextIdentity,
-              currentRoute: error.requestOptions.path,
-              reason: statusCode == 401
-                  ? 'backend_rejected_account_session'
-                  : 'backend_rejected_context_permission',
-              source: 'ApiClient',
+            _logAuthRejection(
+              error,
+              statusCode == 401 ? 'api_unauthorized' : 'api_forbidden',
             );
           }
           // A 401 outside the auth endpoints, or from the read-only session
@@ -134,17 +107,29 @@ class ApiClient {
           if (_canRefresh(error)) {
             try {
               final refreshed = await _refreshOnce();
+              if (_requestUsesAStaleScope(error.requestOptions)) {
+                _logFinalFailure(error);
+                handler.next(error);
+                return;
+              }
               if (refreshed) {
                 final options = error.requestOptions;
-                options.extra[_refreshRetryKey] = true;
                 final token = await _tokenProvider();
+                if (_requestUsesAStaleScope(options)) {
+                  _logFinalFailure(error);
+                  handler.next(error);
+                  return;
+                }
+                options.extra[_refreshRetryKey] = true;
                 if (token != null && token.isNotEmpty) {
                   options.headers['Authorization'] = 'Bearer $token';
                 }
+                _logRetry(error);
                 handler.resolve(await dio.fetch<Object?>(options));
                 return;
               }
             } on Object {
+              _logFinalFailure(error);
               handler.next(error);
               return;
             }
@@ -152,6 +137,7 @@ class ApiClient {
           } else if (_isFinalUnauthorized(error)) {
             onSessionExpired?.call();
           }
+          _logFinalFailure(error);
           handler.next(error);
         },
       ),
@@ -162,7 +148,12 @@ class ApiClient {
   final Dio _uploadDio;
   final TokenProvider _tokenProvider;
   static const clientRequestIdHeader = 'X-Client-Request-Id';
+  static const backendRequestIdHeader = 'X-Request-Id';
   static const _refreshRetryKey = 'aarast_refresh_retried';
+  static final Random _secureRequestIdRandom = Random.secure();
+  static final RegExp _safeRequestIdPattern = RegExp(
+    r'^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$',
+  );
   Future<bool>? _refreshInFlight;
   int _sessionGeneration = 0;
   String? _sessionIdentity;
@@ -174,10 +165,186 @@ class ApiClient {
   /// non-auth request returns 401 so the app can force a clean re-login.
   void Function()? onSessionExpired;
 
+  void _beginRequestAttempt(RequestOptions options) {
+    final requestId =
+        _safeRequestId(options.extra[_requestClientIdKey]?.toString()) ??
+        _safeRequestId(_requestHeader(options, clientRequestIdHeader)) ??
+        _newClientRequestId();
+    final attempt = (options.extra[_requestAttemptKey] as int? ?? 0) + 1;
+
+    options.headers.removeWhere(
+      (name, _) => name.toLowerCase() == clientRequestIdHeader.toLowerCase(),
+    );
+    options.headers[clientRequestIdHeader] = requestId;
+    options.extra[_requestClientIdKey] = requestId;
+    options.extra[_requestAttemptKey] = attempt;
+    options.extra[_requestAttemptTimerKey] = Stopwatch()..start();
+  }
+
+  void _logRequest(RequestOptions options) {
+    _logApiEvent(
+      name: 'api_request',
+      level: AppLogLevel.debug,
+      attributes: _baseRequestAttributes(options),
+    );
+  }
+
+  void _logResponse(Response<Object?> response) {
+    final options = response.requestOptions;
+    final attempt = _attempt(options);
+    if (options.extra[_requestResponseLoggedKey] == attempt) return;
+    options.extra[_requestResponseLoggedKey] = attempt;
+    _logApiEvent(
+      name: 'api_response',
+      level: AppLogLevel.info,
+      attributes: {
+        ..._baseRequestAttributes(options),
+        'statusCode': response.statusCode ?? 0,
+        'durationMs': _stopwatchElapsedMilliseconds(options),
+        'backendRequestId': ?_backendRequestId(response.headers),
+      },
+    );
+  }
+
+  void _logAttemptFailure(DioException error) {
+    final options = error.requestOptions;
+    final attempt = _attempt(options);
+    if (options.extra[_requestAttemptFailureLoggedKey] == attempt) return;
+    options.extra[_requestAttemptFailureLoggedKey] = attempt;
+    _logApiEvent(
+      name: 'api_attempt_failure',
+      level: AppLogLevel.warning,
+      attributes: _failureAttributes(error),
+    );
+  }
+
+  void _logFinalFailure(DioException error) {
+    final options = error.requestOptions;
+    if (options.extra[_requestFinalFailureLoggedKey] == true) return;
+    options.extra[_requestFinalFailureLoggedKey] = true;
+    _logApiEvent(
+      name: 'api_final_failure',
+      level: AppLogLevel.error,
+      attributes: _failureAttributes(error),
+    );
+  }
+
+  void _logRetry(DioException error) {
+    _logApiEvent(
+      name: 'api_retry',
+      level: AppLogLevel.info,
+      attributes: {
+        ..._failureAttributes(error),
+        'nextAttempt': _attempt(error.requestOptions) + 1,
+        'reason': 'access_token_refreshed',
+      },
+    );
+  }
+
+  void _logAuthRejection(DioException error, String eventName) {
+    _logApiEvent(
+      name: eventName,
+      level: AppLogLevel.warning,
+      attributes: _failureAttributes(error),
+    );
+  }
+
+  void _logApiEvent({
+    required String name,
+    required AppLogLevel level,
+    required Map<String, Object?> attributes,
+  }) {
+    AppLogger.global?.log(
+      level: level,
+      category: AppLogCategory.api,
+      name: name,
+      attributes: attributes,
+    );
+  }
+
+  Map<String, Object?> _baseRequestAttributes(RequestOptions options) {
+    final logger = AppLogger.global;
+    final routeTemplate =
+        logger?.sanitizeRouteTemplate(options.uri.path) ?? 'unavailable';
+    final clientRequestId =
+        _safeRequestId(options.extra[_requestClientIdKey]?.toString()) ??
+        'unavailable';
+    return {
+      'method': options.method.toUpperCase(),
+      'routeTemplate': routeTemplate,
+      'attempt': _attempt(options),
+      'clientRequestId': clientRequestId,
+      'userId': ?_sessionIdentity,
+      'contextKey': ?_contextIdentity,
+      'weddingPlanId': ?_planIdFromContextKey(_contextIdentity),
+    };
+  }
+
+  Map<String, Object?> _failureAttributes(DioException error) {
+    return {
+      ..._baseRequestAttributes(error.requestOptions),
+      'statusCode': error.response?.statusCode ?? 0,
+      'durationMs': _stopwatchElapsedMilliseconds(error.requestOptions),
+      'errorType': error.type.name,
+      'backendRequestId': ?_backendRequestId(error.response?.headers),
+    };
+  }
+
+  static int _attempt(RequestOptions options) {
+    return options.extra[_requestAttemptKey] as int? ?? 1;
+  }
+
+  static int _stopwatchElapsedMilliseconds(RequestOptions options) {
+    final stopwatch = options.extra[_requestAttemptTimerKey] as Stopwatch?;
+    stopwatch?.stop();
+    return stopwatch?.elapsedMilliseconds ?? 0;
+  }
+
+  static String? _requestHeader(RequestOptions options, String name) {
+    final normalizedName = name.toLowerCase();
+    for (final entry in options.headers.entries) {
+      if (entry.key.toLowerCase() == normalizedName) {
+        return entry.value?.toString();
+      }
+    }
+    return null;
+  }
+
+  static String? _backendRequestId(Headers? headers) {
+    if (headers == null) return null;
+    final normalizedName = backendRequestIdHeader.toLowerCase();
+    for (final entry in headers.map.entries) {
+      if (entry.key.toLowerCase() != normalizedName || entry.value.isEmpty) {
+        continue;
+      }
+      return _safeRequestId(entry.value.first);
+    }
+    return null;
+  }
+
+  static String? _safeRequestId(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || !_safeRequestIdPattern.hasMatch(normalized)) {
+      return null;
+    }
+    return normalized;
+  }
+
+  static String _newClientRequestId() {
+    final buffer = StringBuffer();
+    for (var index = 0; index < 16; index += 1) {
+      buffer.write(
+        _secureRequestIdRandom.nextInt(256).toRadixString(16).padLeft(2, '0'),
+      );
+    }
+    return buffer.toString();
+  }
+
   void bindSessionIdentity(String? sessionIdentity) {
     if (_sessionIdentity == sessionIdentity) return;
     _sessionIdentity = sessionIdentity;
     _sessionGeneration += 1;
+    _refreshInFlight = null;
   }
 
   /// Invalidates requests that started for a previous selected workspace.
@@ -280,6 +447,28 @@ class ApiClient {
     return _postJson(path, data, receiveTimeout: receiveTimeout);
   }
 
+  /// Uses credentials captured by a terminating session after local storage
+  /// has already been cleared. The token is memory-only and is never added to
+  /// diagnostics.
+  Future<Map<String, dynamic>> postJsonWithBearer(
+    String path,
+    Map<String, dynamic> data, {
+    required String bearerToken,
+    required CancelToken cancelToken,
+  }) async {
+    try {
+      final response = await dio.post<Object?>(
+        path,
+        data: data,
+        cancelToken: cancelToken,
+        options: Options(headers: {'Authorization': 'Bearer $bearerToken'}),
+      );
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Future<Map<String, dynamic>> _postJson(
     String path,
     Map<String, dynamic> data, {
@@ -317,6 +506,23 @@ class ApiClient {
   ) async {
     try {
       final response = await dio.put<Object?>(path, data: data);
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
+  Future<Map<String, dynamic>> putJsonCancellable(
+    String path,
+    Map<String, dynamic> data, {
+    required CancelToken cancelToken,
+  }) async {
+    try {
+      final response = await dio.put<Object?>(
+        path,
+        data: data,
+        cancelToken: cancelToken,
+      );
       return _asJsonMap(response.data);
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
@@ -367,10 +573,19 @@ class ApiClient {
 
   Future<Map<String, dynamic>> deleteJsonWithData(
     String path,
-    Map<String, dynamic> data,
-  ) async {
+    Map<String, dynamic> data, {
+    CancelToken? cancelToken,
+    String? bearerToken,
+  }) async {
     try {
-      final response = await dio.delete<Object?>(path, data: data);
+      final response = await dio.delete<Object?>(
+        path,
+        data: data,
+        cancelToken: cancelToken,
+        options: bearerToken == null || bearerToken.isEmpty
+            ? null
+            : Options(headers: {'Authorization': 'Bearer $bearerToken'}),
+      );
       return _asJsonMap(response.data);
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
@@ -407,20 +622,6 @@ class ApiClient {
       return Map<String, dynamic>.from(data);
     }
     throw const ApiException(aarastBackendConnectionErrorMessage);
-  }
-
-  static void _debugAuthLoginRequest(RequestOptions options) {
-    if (!kDebugMode || options.path != '/api/v1/auth/login') return;
-    debugPrint(
-      '[AarastAuth] baseUrl=${options.baseUrl}; endpoint=${options.path}',
-    );
-  }
-
-  static void _debugAuthLoginStatus(String path, int? statusCode) {
-    if (!kDebugMode || path != '/api/v1/auth/login') return;
-    debugPrint(
-      '[AarastAuth] statusCode=${statusCode?.toString() ?? 'no response'}',
-    );
   }
 }
 

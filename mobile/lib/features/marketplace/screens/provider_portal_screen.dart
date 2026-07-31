@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../chat/widgets/conversation_list_view.dart';
 import '../models/marketplace_models.dart';
@@ -25,7 +25,29 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initializePortal());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      appLogEvent(
+        'DASHBOARD_BUILT',
+        category: AppLogCategory.provider,
+        screen: 'ProviderPortalScreen',
+        reason: 'first_frame_completed',
+        source: 'ProviderPortalScreen',
+      );
+      _initializePortal();
+    });
+  }
+
+  @override
+  void dispose() {
+    appLogEvent(
+      'DASHBOARD_DISPOSED',
+      category: AppLogCategory.provider,
+      screen: 'ProviderPortalScreen',
+      reason: 'widget_disposed',
+      source: 'ProviderPortalScreen',
+    );
+    super.dispose();
   }
 
   @override
@@ -68,10 +90,6 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   }
 
   Future<void> _initializePortal() async {
-    final contexts = context.read<AccountContextController?>();
-    await contexts?.refresh();
-    if (!mounted) return;
-
     final dashboard = context.read<ProviderDashboardProvider>();
     await dashboard.loadDashboard();
     if (!mounted || !dashboard.canUseProviderOperations) return;

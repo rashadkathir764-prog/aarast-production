@@ -138,7 +138,7 @@ void main() {
       await firstSession.refresh();
       expect(firstSession.selectedContext, provider);
 
-      await firstSession.clearForLogout();
+      await storage.clear();
       expect(storage.readAccountContextKey(), isNull);
 
       final nextSession = AccountContextController(

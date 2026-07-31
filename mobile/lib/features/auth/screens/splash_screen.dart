@@ -48,6 +48,10 @@ class _SplashScreenState extends State<SplashScreen>
       await Future<void>.delayed(const Duration(milliseconds: 180));
       return _navigateWhenReady();
     }
+    if (auth.status == AuthStatus.terminating ||
+        auth.status == AuthStatus.terminationFailed) {
+      return;
+    }
 
     final hasGuestPlan =
         auth.status == AuthStatus.unauthenticated &&

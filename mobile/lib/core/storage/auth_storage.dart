@@ -69,16 +69,19 @@ class AuthStorage {
       }
     }
 
-    final secureContextKey = await vault.read(_accountContextKey);
-    if (secureContextKey != null && secureContextKey.isNotEmpty) {
-      _cachedAccountContextKey = secureContextKey;
+    final secureContextValue = await vault.read(_accountContextKey);
+    if (secureContextValue != null && secureContextValue.isNotEmpty) {
+      _cachedAccountContextKey = await _migrateAccountContextValue(
+        secureContextValue,
+      );
       await _preferences.remove(_accountContextKey);
     } else {
-      final legacyContextKey = _preferences.getString(_accountContextKey);
-      if (legacyContextKey != null && legacyContextKey.isNotEmpty) {
-        await vault.write(_accountContextKey, legacyContextKey);
+      final legacyContextValue = _preferences.getString(_accountContextKey);
+      if (legacyContextValue != null && legacyContextValue.isNotEmpty) {
+        final migrated = await _migrateAccountContextValue(legacyContextValue);
+        await vault.write(_accountContextKey, migrated);
         await _preferences.remove(_accountContextKey);
-        _cachedAccountContextKey = legacyContextKey;
+        _cachedAccountContextKey = migrated;
       }
     }
   }
@@ -132,6 +135,7 @@ class AuthStorage {
         accessToken: accessToken,
         refreshToken: refreshToken,
         user: user,
+        clearAccountContext: true,
       );
     });
   }
@@ -151,6 +155,7 @@ class AuthStorage {
         accessToken: accessToken,
         refreshToken: refreshToken,
         user: user,
+        clearAccountContext: false,
       );
       saved = isSessionEpochCurrent(epoch);
     });
@@ -170,6 +175,7 @@ class AuthStorage {
         accessToken: accessToken,
         refreshToken: refreshToken,
         user: user,
+        clearAccountContext: true,
       );
       saved = isSessionEpochCurrent(expectedEpoch);
     });
@@ -182,11 +188,21 @@ class AuthStorage {
     return isSessionEpochCurrent(expectedEpoch) ? token : null;
   }
 
+  Future<String?> readAccessTokenIfEpoch(int expectedEpoch) async {
+    if (!isSessionEpochCurrent(expectedEpoch)) return null;
+    final token = await readAccessToken();
+    return isSessionEpochCurrent(expectedEpoch) ? token : null;
+  }
+
   Future<void> _writeSession({
     required String accessToken,
     String? refreshToken,
     required SafeUser user,
+    required bool clearAccountContext,
   }) async {
+    if (clearAccountContext) {
+      await _clearAccountContextKey();
+    }
     final vault = _tokenVault;
     if (vault == null) {
       await _preferences.setString(_accessTokenKey, accessToken);
@@ -245,23 +261,40 @@ class AuthStorage {
   }
 
   String? readAccountContextKey() {
-    if (_sensitiveValueVault != null) return _cachedAccountContextKey;
-    return _preferences.getString(_accountContextKey);
+    final raw = _sensitiveValueVault != null
+        ? _cachedAccountContextKey
+        : _preferences.getString(_accountContextKey);
+    if (raw == null || raw.isEmpty) return null;
+    final selection = _decodeAccountContextSelection(raw);
+    if (selection == null) return raw;
+    final currentUserId = readUser()?.id;
+    if (currentUserId == null || currentUserId != selection.userId) {
+      return null;
+    }
+    return selection.contextKey;
   }
 
   Future<void> saveAccountContextKey(String contextKey) async {
     final epoch = _sessionEpoch;
     await _enqueueSessionMutation(() async {
       if (!isSessionEpochCurrent(epoch)) return;
+      final userId = readUser()?.id;
+      final storedValue = userId == null
+          ? contextKey
+          : jsonEncode({
+              'version': 2,
+              'userId': userId,
+              'contextKey': contextKey,
+            });
       final vault = _sensitiveValueVault;
       if (vault == null) {
-        await _preferences.setString(_accountContextKey, contextKey);
+        await _preferences.setString(_accountContextKey, storedValue);
         return;
       }
-      await vault.write(_accountContextKey, contextKey);
+      await vault.write(_accountContextKey, storedValue);
       await _preferences.remove(_accountContextKey);
       if (isSessionEpochCurrent(epoch)) {
-        _cachedAccountContextKey = contextKey;
+        _cachedAccountContextKey = storedValue;
       }
     });
   }
@@ -290,6 +323,21 @@ class AuthStorage {
       if (!isSessionEpochCurrent(epoch)) return;
       await _clearStorage();
       cleared = isSessionEpochCurrent(epoch);
+    });
+    return cleared;
+  }
+
+  /// Clears the session claimed by a terminating flow without advancing its
+  /// epoch again. This makes a failed secure-storage deletion retryable while
+  /// still rejecting any late cleanup after a replacement session claimed a
+  /// newer epoch.
+  Future<bool> clearTerminatingSessionAtEpoch(int expectedEpoch) async {
+    if (!isSessionEpochCurrent(expectedEpoch)) return false;
+    var cleared = false;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(expectedEpoch)) return;
+      await _clearStorage();
+      cleared = isSessionEpochCurrent(expectedEpoch);
     });
     return cleared;
   }
@@ -338,4 +386,52 @@ class AuthStorage {
       return null;
     }
   }
+
+  Future<String> _migrateAccountContextValue(String rawValue) async {
+    if (_decodeAccountContextSelection(rawValue) != null) return rawValue;
+    final userId = readUser()?.id;
+    if (userId == null || userId.isEmpty) return rawValue;
+    final migrated = jsonEncode({
+      'version': 2,
+      'userId': userId,
+      'contextKey': rawValue,
+    });
+    await _sensitiveValueVault?.write(_accountContextKey, migrated);
+    return migrated;
+  }
+
+  _PersistedAccountContextSelection? _decodeAccountContextSelection(
+    String rawValue,
+  ) {
+    try {
+      final decoded = jsonDecode(rawValue);
+      if (decoded is! Map<String, dynamic> || decoded['version'] != 2) {
+        return null;
+      }
+      final userId = decoded['userId']?.toString().trim();
+      final contextKey = decoded['contextKey']?.toString().trim();
+      if (userId == null ||
+          userId.isEmpty ||
+          contextKey == null ||
+          contextKey.isEmpty) {
+        return null;
+      }
+      return _PersistedAccountContextSelection(
+        userId: userId,
+        contextKey: contextKey,
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+}
+
+class _PersistedAccountContextSelection {
+  const _PersistedAccountContextSelection({
+    required this.userId,
+    required this.contextKey,
+  });
+
+  final String userId;
+  final String contextKey;
 }

@@ -1,17 +1,24 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../core/diagnostics/context_lifecycle_logger.dart';
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/session/session_teardown_coordinator.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../data/auth_repository.dart';
 import '../models/auth_otp.dart';
 import '../models/safe_user.dart';
 
-enum AuthStatus { checking, authenticated, unauthenticated }
+enum AuthStatus {
+  checking,
+  authenticated,
+  terminating,
+  terminationFailed,
+  unauthenticated,
+}
 
 class AuthController extends ChangeNotifier {
   static final RegExp _privateInviteTokenPattern = RegExp(
@@ -19,20 +26,31 @@ class AuthController extends ChangeNotifier {
   );
 
   AuthController(
-    this._authRepository, {
+    AuthRepository authRepository, {
     OfflineSyncService? offlineSyncService,
     GuestOnboardingStorage? guestOnboardingStorage,
-    Future<void> Function(String userId)? beforeAccountLogout,
+    SessionTeardownCoordinator? sessionTeardownCoordinator,
     Future<void> Function(String userId)? clearPushOnSessionEnd,
-  }) : _offlineSyncService = offlineSyncService,
+  }) : _authRepository = authRepository,
+       _offlineSyncService = offlineSyncService,
        _guestOnboardingStorage = guestOnboardingStorage,
-       _beforeAccountLogout = beforeAccountLogout,
+       _sessionTeardownCoordinator =
+           sessionTeardownCoordinator ??
+           SessionTeardownCoordinator(
+             auth: authRepository,
+             clearLocalAccountData: () async {
+               await offlineSyncService?.clearLocalData();
+             },
+             clearGuestDraft: () async {
+               await guestOnboardingStorage?.clearDraft();
+             },
+           ),
        _clearPushOnSessionEnd = clearPushOnSessionEnd;
 
   final AuthRepository _authRepository;
   final OfflineSyncService? _offlineSyncService;
   final GuestOnboardingStorage? _guestOnboardingStorage;
-  final Future<void> Function(String userId)? _beforeAccountLogout;
+  final SessionTeardownCoordinator _sessionTeardownCoordinator;
   final Future<void> Function(String userId)? _clearPushOnSessionEnd;
 
   AuthStatus _status = AuthStatus.checking;
@@ -43,9 +61,16 @@ class AuthController extends ChangeNotifier {
   OtpRequestResult? _otpRequest;
   bool _sessionExpired = false;
   bool _loginRequestedAfterLogout = false;
+  bool _authenticatedEntryPending = false;
+  String? _pendingAuthenticatedEntryLocation;
   String? _pendingInviteResumeToken;
   bool _pendingInviteRouteClaimed = false;
   int _sessionOperationGeneration = 0;
+  String? _pendingLogoutUserId;
+  String _pendingLogoutReason = 'explicit_account_logout';
+  bool _pendingLogoutRequestsLogin = true;
+  bool _pendingLogoutMarksSessionExpired = false;
+  Future<void>? _logoutInFlight;
 
   AuthStatus get status => _status;
   SafeUser? get user => _user;
@@ -62,9 +87,18 @@ class AuthController extends ChangeNotifier {
   /// redirects to login once, then acknowledges.
   bool get sessionExpired => _sessionExpired;
   bool get loginRequestedAfterLogout => _loginRequestedAfterLogout;
+  bool get hasPendingAuthenticatedEntry =>
+      _status == AuthStatus.authenticated && _authenticatedEntryPending;
 
   Future<void> restoreSession() async {
+    AppLogger.global?.ensureSessionCorrelation();
     final operation = ++_sessionOperationGeneration;
+    appLogEvent(
+      'SESSION_LOAD_STARTED',
+      category: AppLogCategory.session,
+      reason: 'restore_requested',
+      source: 'AuthController.restoreSession',
+    );
     _status = AuthStatus.checking;
     _user = _authRepository.readCachedUser();
     _authRepository.bindClientSession(_user?.id);
@@ -76,6 +110,12 @@ class AuthController extends ChangeNotifier {
       _user = null;
       _authRepository.bindClientSession(null);
       _status = AuthStatus.unauthenticated;
+      appLogEvent(
+        'SESSION_LOAD_COMPLETED',
+        category: AppLogCategory.session,
+        reason: 'no_access_token',
+        source: 'AuthController.restoreSession',
+      );
       notifyListeners();
       return;
     }
@@ -92,8 +132,9 @@ class AuthController extends ChangeNotifier {
         if (!_isCurrentSessionOperation(operation)) return;
       }
       _status = AuthStatus.authenticated;
-      ContextLifecycleLogger.event(
+      appLogEvent(
         'SESSION_RESTORED',
+        category: AppLogCategory.session,
         userId: _user?.id,
         reason: 'server_session_confirmed',
         source: 'AuthController.restoreSession',
@@ -103,8 +144,10 @@ class AuthController extends ChangeNotifier {
       if (!_isCurrentSessionOperation(operation)) return;
       if (CachePolicy.shouldUseCache(error) && _user != null) {
         _status = AuthStatus.authenticated;
-        ContextLifecycleLogger.event(
+        appLogEvent(
           'SESSION_RESTORED',
+          category: AppLogCategory.session,
+          level: AppLogLevel.warning,
           userId: _user?.id,
           reason: 'offline_cached_account',
           source: 'AuthController.restoreSession',
@@ -112,27 +155,55 @@ class AuthController extends ChangeNotifier {
         await _offlineSyncService?.noteNetworkFailure(error.message);
       } else {
         final cachedUserId = _user?.id;
-        final clearPush = _clearPushOnSessionEnd;
-        if (cachedUserId != null && clearPush != null) {
-          await clearPush(cachedUserId);
-          if (!_isCurrentSessionOperation(operation)) return;
-        }
-        // Drop the in-memory identity before any network or storage cleanup.
-        // A slow logout request must never keep the previous account's
-        // provider subtree mounted during failed session restoration.
-        _user = null;
-        _authRepository.bindClientSession(null);
-        _status = AuthStatus.unauthenticated;
-        notifyListeners();
-        await _authRepository.logout();
+        appLogEvent(
+          'SESSION_RESTORE_FAILED',
+          category: AppLogCategory.session,
+          level: AppLogLevel.warning,
+          userId: cachedUserId,
+          reason: 'server_session_rejected',
+          source: 'AuthController.restoreSession',
+          attributes: {
+            'httpStatus': ?error.statusCode,
+            'errorCode': ?error.serverCode,
+          },
+        );
+        _pendingLogoutUserId = cachedUserId ?? 'unknown-session';
+        await _startSessionTermination(
+          reason: 'server_session_rejected',
+          requestLoginAfterCompletion: false,
+          markSessionExpired: false,
+          allowChecking: true,
+        );
         return;
       }
     }
     notifyListeners();
   }
 
-  Future<bool> login({required String phone, required String password}) async {
+  Future<bool> login({
+    required String phone,
+    required String password,
+    String? successLocation,
+  }) async {
+    if (_status != AuthStatus.unauthenticated) {
+      appLogEvent(
+        'LOGIN_FAILED',
+        category: AppLogCategory.auth,
+        level: AppLogLevel.warning,
+        reason: 'session_not_unauthenticated',
+        source: 'AuthController.login',
+        attributes: {'authStatus': _status.name},
+      );
+      return false;
+    }
+    AppLogger.global?.startSessionCorrelation();
     final operation = ++_sessionOperationGeneration;
+    appLogEvent(
+      'LOGIN_STARTED',
+      category: AppLogCategory.auth,
+      reason: 'password_login_requested',
+      source: 'AuthController.login',
+    );
     final success = await _submit(() async {
       final response = await _authRepository.login(
         phone: phone.trim(),
@@ -147,9 +218,24 @@ class AuthController extends ChangeNotifier {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       _loginRequestedAfterLogout = false;
+      _queueAuthenticatedEntry(successLocation);
       unawaited(_offlineSyncService?.syncPendingChanges());
     }, unauthorizedMessage: _safeLoginFailureMessage);
-    return success && _isCurrentSessionOperation(operation);
+    final completed = success && _isCurrentSessionOperation(operation);
+    appLogEvent(
+      completed ? 'LOGIN_SUCCEEDED' : 'LOGIN_FAILED',
+      category: AppLogCategory.auth,
+      level: completed ? AppLogLevel.info : AppLogLevel.warning,
+      userId: completed ? _user?.id : null,
+      reason: completed
+          ? 'authenticated_session_established'
+          : success
+          ? 'stale_session_operation'
+          : 'authentication_rejected',
+      source: 'AuthController.login',
+      attributes: {'authStatus': _status.name, 'errorCode': ?_errorCode},
+    );
+    return completed;
   }
 
   Future<bool> register({
@@ -158,7 +244,13 @@ class AuthController extends ChangeNotifier {
     required String password,
     required String otpCode,
     String? resumeInviteToken,
+    String? successLocation,
+    Future<String?> Function()? afterSessionEstablished,
   }) async {
+    if (_status != AuthStatus.unauthenticated) {
+      return false;
+    }
+    AppLogger.global?.startSessionCorrelation();
     final cleanResumeToken = _validInviteToken(resumeInviteToken);
     final operation = ++_sessionOperationGeneration;
     final success = await _submit(() async {
@@ -175,6 +267,10 @@ class AuthController extends ChangeNotifier {
       if (!_isCurrentSessionOperation(operation)) return;
       await _offlineSyncService?.cacheCurrentUser(response.user);
       if (!_isCurrentSessionOperation(operation)) return;
+      final resolvedSuccessLocation = afterSessionEstablished == null
+          ? successLocation
+          : (await afterSessionEstablished()) ?? successLocation;
+      if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
@@ -182,6 +278,7 @@ class AuthController extends ChangeNotifier {
         _pendingInviteRouteClaimed = false;
       } else {
         _clearPendingInviteResume();
+        _queueAuthenticatedEntry(resolvedSuccessLocation);
       }
       unawaited(_offlineSyncService?.syncPendingChanges());
     });
@@ -254,8 +351,20 @@ class AuthController extends ChangeNotifier {
     String? resumeInviteToken,
     String? accountName,
     String? accountPassword,
+    String? successLocation,
   }) async {
     final cleanResumeToken = _validInviteToken(resumeInviteToken);
+    final establishesSession = purpose == 'LOGIN' || cleanResumeToken != null;
+    final privateInviteAccountSwitch =
+        cleanResumeToken != null && _status == AuthStatus.authenticated;
+    if (establishesSession &&
+        _status != AuthStatus.unauthenticated &&
+        !privateInviteAccountSwitch) {
+      return false;
+    }
+    if (establishesSession) {
+      AppLogger.global?.startSessionCorrelation();
+    }
     final operation = ++_sessionOperationGeneration;
     final success = await _submit(() async {
       final response = cleanResumeToken == null
@@ -288,6 +397,7 @@ class AuthController extends ChangeNotifier {
           _pendingInviteRouteClaimed = false;
         } else {
           _clearPendingInviteResume();
+          _queueAuthenticatedEntry(successLocation);
         }
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
@@ -308,6 +418,20 @@ class AuthController extends ChangeNotifier {
     if (!_loginRequestedAfterLogout) return false;
     _loginRequestedAfterLogout = false;
     return true;
+  }
+
+  String? claimPendingAuthenticatedEntry() {
+    if (!hasPendingAuthenticatedEntry) return null;
+    _authenticatedEntryPending = false;
+    final location = _pendingAuthenticatedEntryLocation;
+    _pendingAuthenticatedEntryLocation = null;
+    return location;
+  }
+
+  void requestAuthenticatedEntry([String? successLocation]) {
+    if (_status != AuthStatus.authenticated) return;
+    _queueAuthenticatedEntry(successLocation);
+    notifyListeners();
   }
 
   /// Allows only the route carrying the same private token to resume. A stale
@@ -359,37 +483,138 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout() {
+    final retrying = _status == AuthStatus.terminationFailed;
+    return _startSessionTermination(
+      reason: retrying ? _pendingLogoutReason : 'explicit_account_logout',
+      requestLoginAfterCompletion: retrying
+          ? _pendingLogoutRequestsLogin
+          : true,
+      markSessionExpired: retrying ? _pendingLogoutMarksSessionExpired : false,
+    );
+  }
+
+  Future<void> _startSessionTermination({
+    required String reason,
+    required bool requestLoginAfterCompletion,
+    required bool markSessionExpired,
+    bool allowChecking = false,
+  }) {
+    final inFlight = _logoutInFlight;
+    if (inFlight != null) return inFlight;
+    if (_status != AuthStatus.authenticated &&
+        _status != AuthStatus.terminationFailed &&
+        !(allowChecking && _status == AuthStatus.checking)) {
+      return Future<void>.value();
+    }
+    if (_status != AuthStatus.terminationFailed) {
+      _pendingLogoutReason = reason;
+      _pendingLogoutRequestsLogin = requestLoginAfterCompletion;
+      _pendingLogoutMarksSessionExpired = markSessionExpired;
+    }
+    final operation = _performLogout(
+      reason: _pendingLogoutReason,
+      requestLoginAfterCompletion: _pendingLogoutRequestsLogin,
+      markSessionExpired: _pendingLogoutMarksSessionExpired,
+    );
+    _logoutInFlight = operation;
+    return operation.whenComplete(() {
+      if (identical(_logoutInFlight, operation)) {
+        _logoutInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _performLogout({
+    required String reason,
+    required bool requestLoginAfterCompletion,
+    required bool markSessionExpired,
+  }) async {
     final operation = ++_sessionOperationGeneration;
-    final outgoingUserId = _user?.id;
-    ContextLifecycleLogger.event(
-      'LOGOUT_ACCOUNT',
-      userId: _user?.id,
-      reason: 'explicit_account_logout',
+    final outgoingUserId = _pendingLogoutUserId ?? _user?.id;
+    _pendingLogoutUserId = outgoingUserId;
+    SessionTeardownLease? teardownLease;
+    Object? beginFailure;
+    if (outgoingUserId != null) {
+      try {
+        teardownLease = _sessionTeardownCoordinator.begin(outgoingUserId);
+      } on Object catch (error) {
+        beginFailure = error;
+      }
+    } else {
+      beginFailure = StateError('Authenticated session has no user identity');
+    }
+    appLogEvent(
+      'LOGOUT_STARTED',
+      category: AppLogCategory.auth,
+      userId: outgoingUserId,
+      reason: reason,
       source: 'AuthController.logout',
     );
-    final beforeLogout = _beforeAccountLogout;
-    if (outgoingUserId != null && beforeLogout != null) {
-      await beforeLogout(outgoingUserId);
-      if (!_isCurrentSessionOperation(operation)) return;
-    }
     _authRepository.bindClientSession(null);
     _clearPendingInviteResume();
-    _loginRequestedAfterLogout = true;
+    _clearPendingAuthenticatedEntry();
+    _loginRequestedAfterLogout = false;
+    _sessionExpired = markSessionExpired;
     _user = null;
-    _status = AuthStatus.unauthenticated;
+    _status = AuthStatus.terminating;
+    _errorMessage = markSessionExpired
+        ? 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.'
+        : null;
+    _errorCode = null;
     notifyListeners();
-    // Start repository logout immediately so it captures the outgoing
-    // storage epoch before a replacement login can begin.
-    final repositoryLogout = _authRepository.logout();
-    // Privacy hard-rule: shared devices are common in Yemen. Everything
-    // financial that this account cached locally must go with the session —
-    // cache, queued writes and any onboarding draft tied to this session.
-    await _offlineSyncService?.clearLocalData();
-    if (_isCurrentSessionOperation(operation)) {
-      await _guestOnboardingStorage?.clearDraft();
+
+    if (beginFailure != null || teardownLease == null) {
+      if (!_isCurrentSessionOperation(operation)) return;
+      _status = AuthStatus.terminationFailed;
+      _errorMessage =
+          'تعذر تنظيف بيانات الجلسة المحلية بأمان. حاول تسجيل الخروج مرة أخرى.';
+      _errorCode = 'LOCAL_SESSION_TEARDOWN_FAILED';
+      appLogEvent(
+        'LOGOUT_FAILED',
+        category: AppLogCategory.auth,
+        level: AppLogLevel.error,
+        userId: outgoingUserId,
+        reason: 'local_teardown_begin_failed',
+        source: 'AuthController.logout',
+        error: beginFailure,
+      );
+      notifyListeners();
+      return;
     }
-    await repositoryLogout;
+
+    try {
+      await _sessionTeardownCoordinator.terminate(teardownLease);
+      if (!_isCurrentSessionOperation(operation)) return;
+
+      _pendingLogoutUserId = null;
+      _loginRequestedAfterLogout = requestLoginAfterCompletion;
+      _status = AuthStatus.unauthenticated;
+      appLogEvent(
+        'LOGOUT_COMPLETED',
+        category: AppLogCategory.auth,
+        userId: outgoingUserId,
+        reason: reason,
+        source: 'AuthController.logout',
+      );
+    } on Object catch (error, stackTrace) {
+      if (!_isCurrentSessionOperation(operation)) return;
+      _status = AuthStatus.terminationFailed;
+      _errorMessage =
+          'تعذر تنظيف بيانات الجلسة المحلية بأمان. حاول تسجيل الخروج مرة أخرى.';
+      _errorCode = 'LOCAL_SESSION_TEARDOWN_FAILED';
+      appLogEvent(
+        'LOGOUT_FAILED',
+        category: AppLogCategory.auth,
+        level: AppLogLevel.error,
+        userId: outgoingUserId,
+        reason: 'local_session_teardown_failed',
+        source: 'AuthController.logout',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    notifyListeners();
   }
 
   /// Permanently deletes the account, then tears the local session down the
@@ -419,6 +644,7 @@ class AuthController extends ChangeNotifier {
     }
     _authRepository.bindClientSession(null);
     _clearPendingInviteResume();
+    _clearPendingAuthenticatedEntry();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -429,32 +655,23 @@ class AuthController extends ChangeNotifier {
 
   /// Called by the API layer when any non-auth request returns 401. Ends
   /// the session cleanly instead of letting every screen degrade into
-  /// misleading errors. Local cache is kept: the SAME account will log in
-  /// again and `ensureCacheOwner` protects against a different one.
+  /// misleading errors. It uses the same local teardown boundary as an
+  /// explicit logout so account data cannot remain mounted or be reused.
   Future<void> handleSessionExpired() async {
     if (_status != AuthStatus.authenticated) return;
-    final operation = ++_sessionOperationGeneration;
-    final outgoingUserId = _user?.id;
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'UNAUTHORIZED_401',
+      category: AppLogCategory.session,
+      level: AppLogLevel.warning,
       userId: _user?.id,
       reason: 'confirmed_session_expiry',
       source: 'AuthController.handleSessionExpired',
     );
-    final clearPush = _clearPushOnSessionEnd;
-    if (outgoingUserId != null && clearPush != null) {
-      await clearPush(outgoingUserId);
-      if (!_isCurrentSessionOperation(operation)) return;
-    }
-    _authRepository.bindClientSession(null);
-    _clearPendingInviteResume();
-    _user = null;
-    _status = AuthStatus.unauthenticated;
-    _sessionExpired = true;
-    _errorMessage = 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.';
-    _errorCode = null;
-    notifyListeners();
-    await _authRepository.logout();
+    await _startSessionTermination(
+      reason: 'confirmed_session_expiry',
+      requestLoginAfterCompletion: false,
+      markSessionExpired: true,
+    );
   }
 
   void acknowledgeSessionExpiry() {
@@ -481,6 +698,16 @@ class AuthController extends ChangeNotifier {
     _pendingInviteRouteClaimed = false;
   }
 
+  void _queueAuthenticatedEntry(String? successLocation) {
+    _authenticatedEntryPending = true;
+    _pendingAuthenticatedEntryLocation = successLocation;
+  }
+
+  void _clearPendingAuthenticatedEntry() {
+    _authenticatedEntryPending = false;
+    _pendingAuthenticatedEntryLocation = null;
+  }
+
   bool _isCurrentSessionOperation(int generation) {
     return generation == _sessionOperationGeneration;
   }
@@ -499,9 +726,14 @@ class AuthController extends ChangeNotifier {
       await action();
       return true;
     } on FormatException catch (error) {
-      if (kDebugMode) {
-        debugPrint('[AarastAuth] Invalid phone input: $error');
-      }
+      appLogEvent(
+        'AUTH_INPUT_REJECTED',
+        category: AppLogCategory.auth,
+        level: AppLogLevel.warning,
+        reason: 'invalid_phone_format',
+        source: 'AuthController.submit',
+        attributes: {'errorType': error.runtimeType.toString()},
+      );
       _errorMessage = 'رقم الهاتف غير صحيح';
       return false;
     } on ApiException catch (error) {
@@ -520,9 +752,14 @@ class AuthController extends ChangeNotifier {
       }
       return false;
     } catch (error) {
-      if (kDebugMode) {
-        debugPrint('[AarastAuth] Unexpected auth error: $error');
-      }
+      appLogEvent(
+        'AUTH_UNEXPECTED_FAILURE',
+        category: AppLogCategory.auth,
+        level: AppLogLevel.error,
+        reason: 'unexpected_auth_exception',
+        source: 'AuthController.submit',
+        attributes: {'errorType': error.runtimeType.toString()},
+      );
       _errorMessage = 'حدث خطأ، يرجى المحاولة مرة أخرى.';
       return false;
     } finally {

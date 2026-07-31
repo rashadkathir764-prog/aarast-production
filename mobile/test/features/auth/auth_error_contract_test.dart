@@ -179,10 +179,9 @@ class _AuthHarness {
     final storage = AuthStorage(preferences);
     final client = ApiClient(tokenProvider: storage.readAccessToken);
     final repository = _FailingAuthRepository(client, storage);
-    return _AuthHarness(
-      controller: AuthController(repository),
-      repository: repository,
-    );
+    final controller = AuthController(repository);
+    await controller.restoreSession();
+    return _AuthHarness(controller: controller, repository: repository);
   }
 }
 

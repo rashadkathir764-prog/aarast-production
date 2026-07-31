@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -190,6 +191,14 @@ void main() {
   testWidgets('WeddingPlanDashboardScreen renders empty state at 320px RTL', (
     tester,
   ) async {
+    final logSink = _CollectingLogSink();
+    AppLogger.installGlobal(
+      AppLogger(
+        redactor: LogRedactor(installationSalt: 'groom-dashboard-test'),
+        sinks: [logSink],
+      ),
+    );
+    addTearDown(AppLogger.clearGlobal);
     final harness = await _Harness.create();
     addTearDown(harness.dispose);
 
@@ -206,6 +215,25 @@ void main() {
     expect(find.byType(AarastButton), findsOneWidget);
     _expectRtl(tester, find.byKey(const ValueKey('royal-home-empty')));
     expect(tester.takeException(), isNull);
+
+    expect(
+      logSink.events.where(
+        (event) =>
+            event.name == 'dashboard_built' &&
+            event.category == AppLogCategory.groom,
+      ),
+      hasLength(1),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(
+      logSink.events.where(
+        (event) =>
+            event.name == 'dashboard_disposed' &&
+            event.category == AppLogCategory.groom,
+      ),
+      hasLength(1),
+    );
   });
 
   testWidgets(
@@ -230,6 +258,13 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+}
+
+class _CollectingLogSink implements AppLogSink {
+  final List<AppLogEvent> events = [];
+
+  @override
+  void add(AppLogEvent event) => events.add(event);
 }
 
 class _Harness {

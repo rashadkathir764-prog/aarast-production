@@ -67,15 +67,35 @@ Gradle configuration. There is no debug-signing fallback.
 
 ## 3. Build Android with the production API origin
 
+Load the approved Firebase client values and Sentry configuration from the
+protected release environment. Do not copy them into this file, source control,
+or shell history. `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are
+CI/plugin environment values only; never pass the auth token through a Dart
+define.
+
 ```powershell
 cd mobile
+$releaseSha = git rev-parse HEAD
+$releaseId = "aarast-mobile@1.0.0+7-$releaseSha"
+$env:SENTRY_RELEASE = $releaseId
 flutter build appbundle --release `
-  --dart-define=AARAST_API_BASE_URL=https://aarast-api.shadowgardn.com
+  --dart-define=AARAST_API_BASE_URL=https://aarast-api.shadowgardn.com `
+  --dart-define=AARAST_FIREBASE_API_KEY=$env:AARAST_FIREBASE_API_KEY `
+  --dart-define=AARAST_FIREBASE_APP_ID=$env:AARAST_FIREBASE_APP_ID `
+  --dart-define=AARAST_FIREBASE_MESSAGING_SENDER_ID=$env:AARAST_FIREBASE_MESSAGING_SENDER_ID `
+  --dart-define=AARAST_FIREBASE_PROJECT_ID=$env:AARAST_FIREBASE_PROJECT_ID `
+  --dart-define=AARAST_SENTRY_DSN=$env:AARAST_SENTRY_DSN `
+  --dart-define=AARAST_ENVIRONMENT=production `
+  --dart-define=AARAST_SENTRY_TRACES_SAMPLE_RATE=0.1 `
+  --dart-define=SENTRY_RELEASE=$releaseId
 ```
 
 Release also rejects `AARAST_DEV_BYPASS_LOGIN_GATES=true`. The API URL must be
 an explicit public HTTPS host without credentials, query, fragment, localhost,
-private IPv4, malformed numeric IPv4, or IPv6 literal.
+private IPv4, malformed numeric IPv4, or IPv6 literal. Android Release also
+fails closed when any of the four Firebase client values is absent. A
+Production store build must use a real Sentry DSN and protected symbol-upload
+credentials; an empty DSN is suitable only for local release validation.
 
 Expected output after a successful build:
 `mobile/build/app/outputs/bundle/release/app-release.aab`.
@@ -87,7 +107,12 @@ the Android application ID and launcher label may be overridden explicitly:
 $env:AARAST_ANDROID_APPLICATION_ID = 'com.aarast.aarast_mobile.qa'
 $env:AARAST_ANDROID_APP_LABEL = 'اعّرست QA'
 flutter build apk --release `
-  --dart-define=AARAST_API_BASE_URL=https://your-staging-api.example
+  --dart-define=AARAST_API_BASE_URL=https://your-staging-api.example `
+  --dart-define=AARAST_FIREBASE_API_KEY=$env:AARAST_FIREBASE_API_KEY `
+  --dart-define=AARAST_FIREBASE_APP_ID=$env:AARAST_FIREBASE_APP_ID `
+  --dart-define=AARAST_FIREBASE_MESSAGING_SENDER_ID=$env:AARAST_FIREBASE_MESSAGING_SENDER_ID `
+  --dart-define=AARAST_FIREBASE_PROJECT_ID=$env:AARAST_FIREBASE_PROJECT_ID `
+  --dart-define=AARAST_ENVIRONMENT=staging
 ```
 
 The default remains `com.aarast.aarast_mobile` with the production launcher

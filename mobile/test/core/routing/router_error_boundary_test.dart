@@ -1,5 +1,5 @@
 import 'package:aarast_mobile/app.dart';
-import 'package:aarast_mobile/core/diagnostics/context_lifecycle_logger.dart';
+import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,17 +55,20 @@ void main() {
   });
 
   test(
-    'lifecycle logs include context type without exposing route secrets',
+    'structured navigation logs hash context data and remove route secrets',
     () {
-      final previousDebugPrint = debugPrint;
-      final messages = <String>[];
-      debugPrint = (message, {wrapWidth}) {
-        if (message != null) messages.add(message);
-      };
-      addTearDown(() => debugPrint = previousDebugPrint);
+      final sink = _CollectingLogSink();
+      AppLogger.installGlobal(
+        AppLogger(
+          redactor: LogRedactor(installationSalt: 'router-boundary-test'),
+          sinks: [sink],
+        ),
+      );
+      addTearDown(AppLogger.clearGlobal);
 
-      ContextLifecycleLogger.event(
+      appLogEvent(
         'ROUTE_BLOCKED',
+        category: AppLogCategory.navigation,
         userId: 'user-1',
         activeContextKey: 'provider:provider-1',
         targetRoute: '/invites/private-token?resume=/wedding-plans/secret',
@@ -73,15 +76,24 @@ void main() {
         source: 'test',
       );
 
-      final message = messages.single;
-      expect(message, contains('userId=user-1'));
-      expect(message, contains('activeContextId=provider-1'));
-      expect(message, contains('activeContextType=provider'));
-      expect(message, contains('targetRoute=/invites/:redacted'));
-      expect(message, isNot(contains('private-token')));
-      expect(message, isNot(contains('secret')));
+      final event = sink.events.single;
+      expect(event.attributes['userIdHash'], isA<String>());
+      expect(event.attributes['activeContextKeyHash'], isA<String>());
+      expect(event.attributes['targetRoute'], '/invites/:invite');
+      expect(event.category, AppLogCategory.navigation);
+      expect(event.toJson().toString(), isNot(contains('user-1')));
+      expect(event.toJson().toString(), isNot(contains('provider-1')));
+      expect(event.toJson().toString(), isNot(contains('private-token')));
+      expect(event.toJson().toString(), isNot(contains('secret')));
     },
   );
+}
+
+class _CollectingLogSink implements AppLogSink {
+  final List<AppLogEvent> events = [];
+
+  @override
+  void add(AppLogEvent event) => events.add(event);
 }
 
 class _ThrowingRoute extends StatelessWidget {

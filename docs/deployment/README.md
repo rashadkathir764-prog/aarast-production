@@ -1,6 +1,6 @@
 # Deployment
 
-Snapshot date: 2026-07-19
+Snapshot date: 2026-07-31
 
 Deployment source files live under `deploy/dokploy/`. This folder is the compact
 documentation entry point for deployment.
@@ -120,6 +120,87 @@ variables. iOS runs the equivalent configuration check as a Release Xcode build
 phase. Native launcher/splash assets and link declarations are committed, but
 final AAB/IPA signing, store upload, and real-device links remain external
 gates. See `STORE_RELEASE.md`.
+
+## Mobile Session And Observability Release Gate
+
+The mobile session/context change is application-only. It does not change the
+Backend API or database schema. Do not couple its rollout or rollback to a
+Backend/database deployment.
+
+Sentry runtime configuration is supplied through Flutter build defines:
+
+- `AARAST_SENTRY_DSN`
+- `AARAST_ENVIRONMENT`
+- `AARAST_SENTRY_TRACES_SAMPLE_RATE`
+- `SENTRY_RELEASE`
+
+An empty `AARAST_SENTRY_DSN` disables Sentry initialization and the diagnostic
+upload action; the application still uses its in-memory ring and Debug builds
+still use the console sink. The DSN is client configuration, but symbol-upload
+credentials are not. `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT`
+must exist only in the protected CI environment. `SENTRY_RELEASE` must identify
+the same immutable mobile release for both the Flutter runtime and the CI
+symbol-upload step.
+
+The committed `sentry_dart_plugin` configuration uploads debug symbols, does
+not upload source maps or source files, waits for processing, and does not
+associate commits. Release CI must fail if the expected symbol upload cannot be
+confirmed; never place the Sentry auth token in a Dart define, source file,
+artifact, or runtime log.
+
+The fixed client privacy policy is:
+
+- 100% error sampling;
+- 100% trace sampling in Staging and 10% by default elsewhere, unless the
+  explicit trace build define supplies a valid value from 0 to 1;
+- profiling, replay, screenshots, view hierarchy, default PII, raw print/HTTP
+  breadcrumbs, failed-request capture, and request bodies disabled;
+- identifiers hashed with a per-installation salt and tokens, credentials,
+  contact data, headers, query values, and bodies removed before every sink.
+
+The Support diagnostic report is a consent-gated in-memory JSON attachment. It
+is never written to a local file or queued for automatic retry. Restrict
+attachment access to Sentry Owner/Admin roles and configure the targeted
+30-day retention in Sentry itself; these are operational controls and are not
+enforced by the mobile binary.
+
+Release order is Internal Android plus TestFlight on Staging, then the primary
+Provider-Logout-Groom scenario on a physical Android and iOS device. Repeat it
+with slow network, network loss during Logout, API failure, and app termination
+during the transition. Before Production, verify Sentry symbolication,
+environment/release labeling, mobile/backend request-id correlation, absence of
+PII, and the consent-gated attachment.
+
+At the 2026-07-31 snapshot, full Flutter analysis and all 918 regular Flutter
+tests pass. Android Debug APK, signed Release APK, and Release AAB builds
+succeed as `1.0.0+7` against the Production HTTPS origin. The local
+Release-validation artifacts use the Aarast upload certificate and Firebase
+client resources recovered in memory from a prior same-package/same-signer
+Aarast artifact; the values were not written to source or logs. The Release APK
+is non-debuggable, uses APK Signature Scheme v2, and contains
+`POST_NOTIFICATIONS`, default-channel metadata, and `aarast_updates`. The APK
+SHA-256 is
+`3F9EE178A6D8E35ED0E1B6B2D084E52C4DF7D1B9AA5EB576B29781A9C0FF29C0`;
+the AAB SHA-256 is
+`BB181EA46A103C9F2F40E3491EA3528B9C84DD78A30C0A5A81734DD71B77444F`.
+
+The final APK is installed and hash-matched on a Samsung Android 16 device. A
+controlled-fake Profile integration scenario for Provider Logout followed by
+Groom Login passes there, with a Flutter runner warning that the
+`integration_test` plugin was not detected. This does not prove the live
+Login/API/Firebase path. Strict local AAB `jarsigner` inspection reports
+entry-consistency warnings, so final Play/store signing acceptance remains
+open. These artifacts intentionally use an empty Sentry DSN because no live
+Sentry/CI credentials are available. Live-account slow/offline/error/
+interruption scenarios, background/terminated Push, iOS Archive, live symbol
+upload, and Staging Sentry checks remain unverified. This section defines a
+gate; it is not evidence that every external gate has passed.
+
+For an observability-only incident, rebuild the same session-fixed release with
+an empty `AARAST_SENTRY_DSN`. For a session/context regression, halt rollout and
+return to the last accepted signed mobile artifact. Record the exact
+release/artifact and rerun the session/context regression suite before
+resuming. No Backend or database rollback belongs to this mobile-only change.
 
 ## Firebase Push Release Gate
 

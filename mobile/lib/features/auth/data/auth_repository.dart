@@ -1,13 +1,18 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/session/session_teardown_coordinator.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../models/auth_otp.dart';
 import '../models/auth_response.dart';
 import '../models/safe_user.dart';
 
-class AuthRepository {
+class AuthRepository implements SessionAuthTeardownPort {
   const AuthRepository(this._apiClient, this._authStorage);
 
   static const _otpDeliveryReceiveTimeout = Duration(seconds: 25);
@@ -360,22 +365,76 @@ class AuthRepository {
     await _authStorage.clear();
   }
 
-  Future<void> logout() async {
-    final sessionEpoch = _authStorage.beginSessionInvalidation();
-    final refreshToken = await _authStorage.readRefreshTokenIfEpoch(
-      sessionEpoch,
+  @override
+  SessionAuthTeardownLease beginSessionTeardown(String userId) {
+    return SessionAuthTeardownLease(
+      userId: userId,
+      storageEpoch: _authStorage.beginSessionInvalidation(),
     );
-    if (!_authStorage.isSessionEpochCurrent(sessionEpoch)) return;
+  }
+
+  @override
+  Future<void> captureRemoteCredentials(SessionAuthTeardownLease lease) async {
+    final accessToken = await _authStorage.readAccessTokenIfEpoch(
+      lease.storageEpoch,
+    );
+    final refreshToken = await _authStorage.readRefreshTokenIfEpoch(
+      lease.storageEpoch,
+    );
+    lease.captureCredentials(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
+  }
+
+  @override
+  Future<void> clearLocalSession(SessionAuthTeardownLease lease) async {
+    final cleared = await _authStorage.clearTerminatingSessionAtEpoch(
+      lease.storageEpoch,
+    );
+    if (!cleared) {
+      throw StateError(
+        'The session epoch changed before local teardown completed',
+      );
+    }
+  }
+
+  @override
+  Future<void> revokeRemoteSession(
+    SessionAuthTeardownLease lease, {
+    required CancelToken cancelToken,
+  }) async {
+    final refreshToken = lease.refreshTokenForRemoteTeardown;
+    if (refreshToken == null || refreshToken.isEmpty) return;
+    final accessToken = lease.accessTokenForRemoteTeardown;
+    if (accessToken == null || accessToken.isEmpty) {
+      throw StateError('Remote logout credentials are incomplete');
+    }
+    await _apiClient.postJsonWithBearer(
+      '/api/v1/auth/logout',
+      {'refreshToken': refreshToken},
+      bearerToken: accessToken,
+      cancelToken: cancelToken,
+    );
+  }
+
+  Future<void> logout() async {
+    final userId = _authStorage.readUser()?.id ?? 'unknown-session';
+    final lease = beginSessionTeardown(userId);
+    await captureRemoteCredentials(lease);
+    await clearLocalSession(lease);
+    final cancelToken = CancelToken();
     try {
-      if (refreshToken != null && refreshToken.isNotEmpty) {
-        await _apiClient.postJson('/api/v1/auth/logout', {
-          'refreshToken': refreshToken,
-        });
-      }
+      await revokeRemoteSession(
+        lease,
+        cancelToken: cancelToken,
+      ).timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      cancelToken.cancel('Session teardown deadline reached');
     } on Object {
       // Local logout must always complete, even when the network is down.
     } finally {
-      await _authStorage.clearIfEpoch(sessionEpoch);
+      lease.clearSensitiveCredentials();
     }
   }
 
@@ -395,9 +454,17 @@ class AuthRepository {
     try {
       return AuthResponse.fromJson(json);
     } on Object catch (error) {
-      if (kDebugMode) {
-        debugPrint('[AarastAuth] Failed to parse $operation response: $error');
-      }
+      appLogEvent(
+        'AUTH_RESPONSE_PARSE_FAILED',
+        category: AppLogCategory.auth,
+        level: AppLogLevel.error,
+        reason: 'invalid_auth_response_shape',
+        source: 'AuthRepository.parseAuthResponse',
+        attributes: {
+          'operation': operation,
+          'errorType': error.runtimeType.toString(),
+        },
+      );
       throw const ApiException(
         'تعذر قراءة جلسة تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى.',
       );

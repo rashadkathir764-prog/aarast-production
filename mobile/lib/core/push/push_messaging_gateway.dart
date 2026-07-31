@@ -12,8 +12,6 @@ enum PushAuthorizationStatus { authorized, denied, notDetermined }
 abstract interface class PushMessagingGateway {
   bool get isAvailable;
 
-  Stream<void> get installationChanges;
-
   Stream<void> get tokenChanges;
 
   Stream<void> get notificationTaps;
@@ -25,8 +23,6 @@ abstract interface class PushMessagingGateway {
   Future<PushAuthorizationStatus> requestPermission();
 
   Future<String> ensureRegistrationAndGetInstallationId();
-
-  Future<void> deleteLocalRegistration();
 
   Future<bool> consumeInitialNotificationTap();
 }
@@ -50,13 +46,6 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.android &&
       FirebasePushConfig.isConfigured;
-
-  @override
-  Stream<void> get installationChanges {
-    final installations = _installations;
-    if (installations == null) return const Stream<void>.empty();
-    return installations.onIdChange.map((_) {});
-  }
 
   @override
   Stream<void> get tokenChanges {
@@ -115,15 +104,6 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
     // itself is deliberately not persisted; the backend addresses the FID.
     await messaging.getToken();
     return installations.getId();
-  }
-
-  @override
-  Future<void> deleteLocalRegistration() async {
-    final messaging = _messaging;
-    final installations = _installations;
-    if (messaging == null || installations == null) return;
-    await messaging.deleteToken();
-    await installations.delete();
   }
 
   @override

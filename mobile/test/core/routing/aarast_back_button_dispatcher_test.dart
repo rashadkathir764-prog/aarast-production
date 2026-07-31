@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/routing/aarast_back_button_dispatcher.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/routing/root_tab_back_scope.dart';
@@ -7,6 +8,14 @@ import 'package:go_router/go_router.dart';
 
 void main() {
   testWidgets('system back restores locations replaced by go', (tester) async {
+    final logSink = _CollectingLogSink();
+    AppLogger.installGlobal(
+      AppLogger(
+        redactor: LogRedactor(installationSalt: 'navigation-test'),
+        sinks: [logSink],
+      ),
+    );
+    addTearDown(AppLogger.clearGlobal);
     final harness = _RouterHarness();
     addTearDown(harness.dispose);
     await tester.pumpWidget(harness.app);
@@ -23,6 +32,22 @@ void main() {
     expect(await harness.dispatcher.didPopRoute(), isTrue);
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.path, AppRouter.home);
+
+    final transitions = logSink.events
+        .where(
+          (event) =>
+              event.name == 'navigation_effective_transition' &&
+              event.category == AppLogCategory.navigation,
+        )
+        .toList();
+    expect(transitions, hasLength(4));
+    expect(transitions.map((event) => event.attributes['targetRoute']), [
+      '/first',
+      '/second',
+      '/first',
+      AppRouter.home,
+    ]);
+    expect(transitions.first.attributes['currentRoute'], AppRouter.home);
   });
 
   testWidgets('ordinary pushed routes still pop through Navigator', (
@@ -192,6 +217,13 @@ void main() {
     await tester.pump();
     expect(find.text('tab 0'), findsOneWidget);
   });
+}
+
+class _CollectingLogSink implements AppLogSink {
+  final List<AppLogEvent> events = [];
+
+  @override
+  void add(AppLogEvent event) => events.add(event);
 }
 
 class _RouterHarness {

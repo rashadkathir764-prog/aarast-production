@@ -138,7 +138,6 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
 
   Future<void> _logout() async {
     await context.read<AuthController>().logout();
-    if (mounted) context.go(AppRouter.login);
   }
 
   Future<String?> _deleteAccount() async {

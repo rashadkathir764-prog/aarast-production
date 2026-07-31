@@ -1,5 +1,7 @@
+import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
+import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
@@ -57,7 +59,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('login-destination')), findsOneWidget);
-    expect(harness.contexts.selectedContext, isNull);
     expect(harness.storage.readAccountContextKey(), isNull);
     expect(await harness.storage.readAccessToken(), isNull);
     expect(await harness.storage.readRefreshToken(), isNull);
@@ -125,7 +126,8 @@ class _ContributorActionHarness {
       ),
     );
     final weddingPlansApi = WeddingPlansApi(apiClient);
-    final auth = AuthController(AuthRepository(apiClient, storage));
+    final auth = AuthController(_ContributorAuthRepository(apiClient, storage));
+    await auth.restoreSession();
     final weddingPlans = WeddingPlansProvider(weddingPlansApi);
     final dashboard = DashboardSummaryProvider(
       weddingPlansApi: weddingPlansApi,
@@ -174,6 +176,10 @@ class _ContributorActionHarness {
         child: MaterialApp.router(
           theme: AppTheme.light(),
           routerConfig: router,
+          builder: (context, child) => AarastAuthFlowRedirector(
+            router: router,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );
@@ -201,4 +207,30 @@ class _ContextsGateway implements AccountContextsGateway {
   Future<AccountContext> validateContext(String contextKey) async {
     return contexts.singleWhere((context) => context.contextKey == contextKey);
   }
+}
+
+class _ContributorAuthRepository extends AuthRepository {
+  _ContributorAuthRepository(super.apiClient, super.authStorage);
+
+  static const _user = SafeUser(
+    id: 'contributor-user',
+    name: 'مساهم',
+    role: 'USER',
+    status: 'ACTIVE',
+  );
+
+  @override
+  SafeUser? readCachedUser() => _user;
+
+  @override
+  Future<String?> readAccessToken() async => 'session-token';
+
+  @override
+  Future<SafeUser> me() async => _user;
+
+  @override
+  Future<void> revokeRemoteSession(
+    SessionAuthTeardownLease lease, {
+    required CancelToken cancelToken,
+  }) async {}
 }

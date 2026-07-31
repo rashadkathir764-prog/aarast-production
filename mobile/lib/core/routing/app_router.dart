@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../diagnostics/context_lifecycle_logger.dart';
+import '../diagnostics/app_logger.dart';
 import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -310,8 +310,9 @@ class AppRouter {
       initialLocation: splash,
       errorBuilder: (context, state) {
         final safeLocation = safeRouterErrorLocation(state.uri);
-        ContextLifecycleLogger.event(
+        appLogEvent(
           'ROUTE_BLOCKED',
+          category: AppLogCategory.navigation,
           targetRoute: safeLocation,
           reason: 'router_error',
           source: 'GoRouter.errorBuilder',

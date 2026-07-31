@@ -8,6 +8,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
+import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/storage/token_vault.dart';
@@ -447,37 +448,35 @@ void main() {
     });
   });
 
-  test(
-    'logout invalidates in-memory identity before network logout finishes',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
-      final storage = AuthStorage(preferences);
-      final user = SafeUser.fromJson({
-        'id': 'user-a',
-        'name': 'User A',
-        'role': 'USER',
-        'status': 'ACTIVE',
-      });
-      final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
-      final repository = _DelayedLogoutRepository(apiClient, storage, user);
-      final controller = AuthController(repository);
+  test('logout publishes terminating before network logout finishes', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final storage = AuthStorage(preferences);
+    final user = SafeUser.fromJson({
+      'id': 'user-a',
+      'name': 'User A',
+      'role': 'USER',
+      'status': 'ACTIVE',
+    });
+    final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+    final repository = _DelayedLogoutRepository(apiClient, storage, user);
+    final controller = AuthController(repository);
 
-      await controller.restoreSession();
-      expect(controller.status, AuthStatus.authenticated);
-      expect(controller.user?.id, 'user-a');
+    await controller.restoreSession();
+    expect(controller.status, AuthStatus.authenticated);
+    expect(controller.user?.id, 'user-a');
 
-      final logout = controller.logout();
-      expect(controller.status, AuthStatus.unauthenticated);
-      expect(controller.user, isNull);
-      expect(repository.boundSessions.last, isNull);
+    final logout = controller.logout();
+    expect(controller.status.name, 'terminating');
+    expect(controller.user, isNull);
+    expect(repository.boundSessions.last, isNull);
 
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      expect(repository.logoutCalled, isTrue);
-      expect(controller.user, isNull);
-      await logout;
-    },
-  );
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    expect(repository.logoutCalled, isTrue);
+    expect(controller.user, isNull);
+    await logout;
+    expect(controller.status, AuthStatus.unauthenticated);
+  });
 
   test(
     'failed restore invalidates cached identity before logout finishes',
@@ -498,60 +497,109 @@ void main() {
       final restore = controller.restoreSession();
       await Future<void>.delayed(Duration.zero);
 
-      expect(controller.status, AuthStatus.unauthenticated);
+      expect(controller.status, AuthStatus.terminating);
       expect(controller.user, isNull);
       expect(repository.boundSessions.last, isNull);
       expect(repository.logoutCalled, isTrue);
 
       await restore;
+      expect(controller.status, AuthStatus.unauthenticated);
       expect(controller.user, isNull);
     },
   );
 
-  test('an old push-aware logout cannot erase a newer login', () async {
+  test(
+    'logout hides the old account before push cleanup and blocks replacement login',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      final firstUser = SafeUser.fromJson({
+        'id': 'user-a',
+        'name': 'User A',
+        'role': 'USER',
+        'status': 'ACTIVE',
+      });
+      final secondUser = SafeUser.fromJson({
+        'id': 'user-b',
+        'name': 'User B',
+        'role': 'USER',
+        'status': 'ACTIVE',
+      });
+      final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+      final repository = _ConcurrentReloginRepository(
+        apiClient,
+        storage,
+        firstUser,
+        secondUser,
+      );
+      final pushCleanup = Completer<void>();
+      final push = _DelayedPushTeardown(pushCleanup);
+      final controller = AuthController(
+        repository,
+        sessionTeardownCoordinator: SessionTeardownCoordinator(
+          auth: repository,
+          push: push,
+          clearLocalAccountData: () async {},
+          clearGuestDraft: () async {},
+        ),
+      );
+
+      await controller.restoreSession();
+      final oldLogout = controller.logout();
+      expect(controller.status.name, 'terminating');
+      expect(controller.user, isNull);
+
+      expect(
+        await controller.login(phone: '+967700000002', password: 'secret'),
+        isFalse,
+      );
+      expect(controller.user, isNull);
+      pushCleanup.complete();
+      await oldLogout;
+
+      expect(controller.status, AuthStatus.unauthenticated);
+      expect(controller.user, isNull);
+      expect(repository.logoutCalled, isTrue);
+    },
+  );
+
+  test('local logout failure stays behind a retryable safe gate', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final storage = AuthStorage(preferences);
-    final firstUser = SafeUser.fromJson({
+    final user = SafeUser.fromJson({
       'id': 'user-a',
       'name': 'User A',
       'role': 'USER',
       'status': 'ACTIVE',
     });
-    final secondUser = SafeUser.fromJson({
-      'id': 'user-b',
-      'name': 'User B',
-      'role': 'USER',
-      'status': 'ACTIVE',
-    });
     final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
-    final repository = _ConcurrentReloginRepository(
-      apiClient,
-      storage,
-      firstUser,
-      secondUser,
-    );
-    final pushCleanup = Completer<void>();
+    final repository = _DelayedLogoutRepository(apiClient, storage, user);
+    var failCleanup = true;
     final controller = AuthController(
       repository,
-      beforeAccountLogout: (_) => pushCleanup.future,
+      sessionTeardownCoordinator: SessionTeardownCoordinator(
+        auth: repository,
+        clearLocalAccountData: () async {
+          if (failCleanup) throw StateError('local cleanup failed');
+        },
+        clearGuestDraft: () async {},
+      ),
     );
 
     await controller.restoreSession();
-    final oldLogout = controller.logout();
-    expect(controller.user?.id, 'user-a');
+    await controller.logout();
 
-    expect(
-      await controller.login(phone: '+967700000002', password: 'secret'),
-      isTrue,
-    );
-    expect(controller.user?.id, 'user-b');
-    pushCleanup.complete();
-    await oldLogout;
+    expect(controller.status.name, 'terminationFailed');
+    expect(controller.user, isNull);
+    expect(repository.logoutCalled, isTrue);
 
-    expect(controller.status, AuthStatus.authenticated);
-    expect(controller.user?.id, 'user-b');
-    expect(repository.logoutCalled, isFalse);
+    failCleanup = false;
+    await controller.logout();
+
+    expect(controller.status, AuthStatus.unauthenticated);
+    expect(repository.logoutCalled, isTrue);
   });
 }
 
@@ -579,6 +627,12 @@ class _DelayedLogoutRepository extends AuthRepository {
 
   @override
   Future<void> logout() async {
+    logoutCalled = true;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+
+  @override
+  Future<void> clearLocalSession(SessionAuthTeardownLease lease) async {
     logoutCalled = true;
     await Future<void>.delayed(const Duration(milliseconds: 50));
   }
@@ -613,5 +667,28 @@ class _ConcurrentReloginRepository extends _DelayedLogoutRepository {
     required String password,
   }) async {
     return AuthResponse(accessToken: 'new-token', user: loginUser);
+  }
+}
+
+class _DelayedPushTeardown implements SessionPushTeardownPort {
+  _DelayedPushTeardown(this.remoteCompletion);
+
+  final Completer<void> remoteCompletion;
+
+  @override
+  SessionPushTeardownLease beginAccountTeardown(String userId) {
+    return SessionPushTeardownLease(userId: userId, installationId: 'fid-a');
+  }
+
+  @override
+  Future<void> clearLocalRegistration(SessionPushTeardownLease lease) async {}
+
+  @override
+  Future<void> unregisterRemote(
+    SessionPushTeardownLease lease, {
+    required CancelToken cancelToken,
+    String? bearerToken,
+  }) {
+    return remoteCompletion.future;
   }
 }

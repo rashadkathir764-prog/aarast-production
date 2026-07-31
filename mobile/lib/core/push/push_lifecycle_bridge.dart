@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -21,10 +23,25 @@ class AarastPushLifecycleBridge extends StatefulWidget {
       _AarastPushLifecycleBridgeState();
 }
 
-class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge> {
+class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
+    with WidgetsBindingObserver {
   String? _lastBoundUserId;
   bool _permissionScheduled = false;
   bool _navigationScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    unawaited(
+      context.read<PushNotificationsController>().refreshCurrentRegistration(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,5 +92,11 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge> {
     }
 
     return widget.child;
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 }

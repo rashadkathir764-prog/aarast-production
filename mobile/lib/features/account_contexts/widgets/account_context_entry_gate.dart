@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../shell/main_shell.dart';
@@ -107,7 +108,17 @@ class _ReplaceRouteState extends State<_ReplaceRoute> {
     if (_scheduled) return;
     _scheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.go(widget.location);
+      if (!mounted) return;
+      final routerState = GoRouterState.of(context);
+      appLogEvent(
+        'NAVIGATION_REQUEST',
+        category: AppLogCategory.navigation,
+        currentRoute: routerState.uri.toString(),
+        targetRoute: widget.location,
+        reason: 'account_context_gate',
+        source: 'AccountContextEntryGate',
+      );
+      context.go(widget.location);
     });
   }
 

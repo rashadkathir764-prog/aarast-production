@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/diagnostics/context_lifecycle_logger.dart';
+import '../../core/diagnostics/app_logger.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
@@ -72,8 +72,9 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
   int _guestAddRequest = 0;
 
   void _onItemTapped(int index) {
-    ContextLifecycleLogger.event(
+    appLogEvent(
       'SHELL_TAB_SELECTED',
+      category: AppLogCategory.groom,
       activeContextKey: widget.contextKey,
       weddingPlanId: widget.weddingPlanId,
       shellType: 'owner',
@@ -258,13 +259,58 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
   }
 }
 
-class _ContributorMainShell extends StatelessWidget {
+class _ContributorMainShell extends StatefulWidget {
   const _ContributorMainShell({required this.accountContext, super.key});
 
   final AccountContext accountContext;
 
   @override
+  State<_ContributorMainShell> createState() => _ContributorMainShellState();
+}
+
+class _ContributorMainShellState extends State<_ContributorMainShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final accountContext = widget.accountContext;
+      appLogEvent(
+        'DASHBOARD_BUILT',
+        category: AppLogCategory.contributor,
+        activeContextKey: accountContext.contextKey,
+        activeContextType: 'contributor',
+        weddingPlanId: accountContext.weddingPlanId,
+        shellType: 'contributor',
+        selectedTab: 'workspace',
+        screen: 'PlanCenterScreen',
+        reason: 'first_frame_completed',
+        source: 'ContributorMainShell',
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    final accountContext = widget.accountContext;
+    appLogEvent(
+      'DASHBOARD_DISPOSED',
+      category: AppLogCategory.contributor,
+      activeContextKey: accountContext.contextKey,
+      activeContextType: 'contributor',
+      weddingPlanId: accountContext.weddingPlanId,
+      shellType: 'contributor',
+      selectedTab: 'workspace',
+      screen: 'PlanCenterScreen',
+      reason: 'widget_disposed',
+      source: 'ContributorMainShell',
+    );
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final accountContext = widget.accountContext;
     final selected = context.watch<AccountContextController>().selectedContext;
     if (selected?.contextKey != accountContext.contextKey ||
         selected?.role != AccountContextRole.contributor ||
@@ -273,18 +319,6 @@ class _ContributorMainShell extends StatelessWidget {
         message: 'تغيّر سياق المساهم قبل اكتمال بناء الواجهة.',
       );
     }
-
-    ContextLifecycleLogger.event(
-      'SHELL_BUILT',
-      activeContextKey: accountContext.contextKey,
-      activeContextType: 'contributor',
-      weddingPlanId: accountContext.weddingPlanId,
-      shellType: 'contributor',
-      selectedTab: 'workspace',
-      screen: 'PlanCenterScreen',
-      reason: 'selected_context_role',
-      source: 'ContributorMainShell',
-    );
 
     return PlanCenterScreen(
       key: ValueKey('contributor-workspace-${accountContext.contextKey}'),

@@ -33,11 +33,11 @@ void main() {
     'private invite resume tokens are validated, memory-only, and one-shot',
     () async {
       final token = _testInviteToken();
-      final harness = await _authHarness();
-      harness.repository.authenticateOnVerify = true;
+      final invalidHarness = await _authHarness();
+      invalidHarness.repository.authenticateOnVerify = true;
 
       expect(
-        await harness.controller.verifyOtp(
+        await invalidHarness.controller.verifyOtp(
           phone: '777123456',
           purpose: 'LOGIN',
           code: '123456',
@@ -45,10 +45,13 @@ void main() {
         ),
         isTrue,
       );
-      expect(harness.controller.hasPendingInviteResume, isFalse);
+      expect(invalidHarness.controller.hasPendingInviteResume, isFalse);
+
+      final validHarness = await _authHarness();
+      validHarness.repository.authenticateOnVerify = true;
 
       expect(
-        await harness.controller.verifyOtp(
+        await validHarness.controller.verifyOtp(
           phone: '777123456',
           purpose: 'LOGIN',
           code: '123456',
@@ -56,23 +59,29 @@ void main() {
         ),
         isTrue,
       );
-      expect(harness.controller.claimPendingInviteResumeRoute(), token);
-      expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
+      expect(validHarness.controller.claimPendingInviteResumeRoute(), token);
+      expect(validHarness.controller.claimPendingInviteResumeRoute(), isNull);
       expect(
-        harness.controller.consumePendingInviteResume('${token}x'),
+        validHarness.controller.consumePendingInviteResume('${token}x'),
         isFalse,
       );
-      expect(harness.controller.consumePendingInviteResume(token), isTrue);
-      expect(harness.controller.consumePendingInviteResume(token), isFalse);
+      expect(validHarness.controller.consumePendingInviteResume(token), isTrue);
+      expect(
+        validHarness.controller.consumePendingInviteResume(token),
+        isFalse,
+      );
 
-      await harness.controller.verifyOtp(
+      final logoutHarness = await _authHarness();
+      logoutHarness.repository.authenticateOnVerify = true;
+
+      await logoutHarness.controller.verifyOtp(
         phone: '777123456',
         purpose: 'LOGIN',
         code: '123456',
         resumeInviteToken: token,
       );
-      await harness.controller.logout();
-      expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
+      await logoutHarness.controller.logout();
+      expect(logoutHarness.controller.claimPendingInviteResumeRoute(), isNull);
     },
   );
 
@@ -80,11 +89,11 @@ void main() {
     'completed app registration preserves a valid private invite for the new account boundary',
     () async {
       final token = _testInviteToken();
-      final harness = await _authHarness();
-      harness.repository.authenticateOnRegister = true;
+      final invalidHarness = await _authHarness();
+      invalidHarness.repository.authenticateOnRegister = true;
 
       expect(
-        await harness.controller.register(
+        await invalidHarness.controller.register(
           name: 'أحمد',
           phone: '777123456',
           password: 'secret123',
@@ -93,10 +102,13 @@ void main() {
         ),
         isTrue,
       );
-      expect(harness.controller.hasPendingInviteResume, isFalse);
+      expect(invalidHarness.controller.hasPendingInviteResume, isFalse);
+
+      final validHarness = await _authHarness();
+      validHarness.repository.authenticateOnRegister = true;
 
       expect(
-        await harness.controller.register(
+        await validHarness.controller.register(
           name: 'أحمد',
           phone: '777123456',
           password: 'secret123',
@@ -105,10 +117,10 @@ void main() {
         ),
         isTrue,
       );
-      expect(harness.controller.status, AuthStatus.authenticated);
-      expect(harness.controller.claimPendingInviteResumeRoute(), token);
-      expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
-      expect(harness.controller.consumePendingInviteResume(token), isTrue);
+      expect(validHarness.controller.status, AuthStatus.authenticated);
+      expect(validHarness.controller.claimPendingInviteResumeRoute(), token);
+      expect(validHarness.controller.claimPendingInviteResumeRoute(), isNull);
+      expect(validHarness.controller.consumePendingInviteResume(token), isTrue);
     },
   );
 
@@ -701,7 +713,9 @@ Future<_AuthHarness> _authHarness() async {
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
   final repository = _FakeAuthRepository(authStorage);
-  return _AuthHarness(AuthController(repository), repository);
+  final controller = AuthController(repository);
+  await controller.restoreSession();
+  return _AuthHarness(controller, repository);
 }
 
 Future<void> _pumpInviteScreen(
@@ -790,6 +804,9 @@ Future<void> _pumpBoundaryLinkedInviteScreen(
   required SharingApi sharingApi,
   bool startGuestAtInvite = false,
 }) async {
+  if (harness.controller.user != null) {
+    harness.controller.claimPendingAuthenticatedEntry();
+  }
   final accountContexts = await _accountContexts();
   await tester.pumpWidget(
     MultiProvider(

@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-28
+Snapshot date: 2026-07-31
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -204,6 +204,80 @@ flutter test
 Run targeted tests for touched flows and check Arabic/RTL layout at narrow phone
 widths for UI work.
 
+### Session And Account-Context Regression Gate
+
+Any change to authentication, secure storage, account contexts, push teardown,
+offline data, or authentication-driven routing must prove all of the following:
+
+- In `Provider Login -> Dashboard -> Logout -> Groom Login`, the provider
+  Dashboard is absent immediately after Logout starts. The assertion must test
+  that the widget is not mounted or built, not only that it disappears quickly.
+- A hanging push unregister cannot keep the old Dashboard visible. Local
+  cleanup failure exposes the retry-only termination screen, while remote
+  timeout or failure leaves the local session terminated.
+- A stalled Push registration cannot starve local Logout or the next account.
+  Logout cancels and detaches the old request immediately, every local cleanup
+  stage has a bounded watchdog, and a watchdog expiry enters the retry-only
+  termination state instead of spinning indefinitely.
+- Account Logout clears the account binding but keeps the device-scoped FID and
+  FCM token. A late old-account request cannot mutate a newer binding, and app
+  resume plus FCM token refresh revalidate the current account.
+- Login, registration, and ordinary session-establishing actions are rejected
+  unless the state is `unauthenticated`. The one intentional exception is an
+  authenticated account switch backed by a validated private-invite token; it
+  remains blocked while checking or terminating and is covered by invite-flow
+  tests. Completion of an old Login, context load, token refresh, cache
+  operation, or navigation intent cannot mutate a newer session.
+- The explicit states `checking`, `authenticated`, `terminating`,
+  `terminationFailed`, and `unauthenticated` each render their defined UI.
+  Login and Dashboard routes must not bypass the three blocking states,
+  including through a deep link.
+- A fresh multi-context Login renders the standalone Arabic
+  `اختر المسار` chooser without first building any Dashboard. A
+  single available context may enter directly, and selecting groom, provider,
+  or contributor produces one matching Dashboard and one effective transition.
+- A cold restart restores only a version-2 selection whose `userId` matches the
+  restored user and whose `contextKey` remains in the fresh API result.
+  Different-user, revoked, missing, and malformed selections are cleared. A
+  legacy raw selection may migrate once and must still pass current-context
+  validation.
+- Full Logout clears the context key. `exitWorkspace()` remains a separate
+  operation and must not be tested as account Logout.
+
+The focused suite is necessary but not sufficient. The release candidate must
+also run the complete Flutter tests plus integration coverage for Login,
+Logout, context choice, cold restart, deep links, interrupted Logout, and app
+termination during transition.
+
+### Mobile Observability And Privacy Gate
+
+Tests must use fake sinks/transports and prove:
+
+- every event, Sentry event, breadcrumb, and diagnostic attachment passes
+  redaction; no access/refresh token, password, phone, email, cookie,
+  authorization value, header, query value, request/response body, or raw
+  account identifier leaves the logging boundary;
+- user, account-context, session, wedding-plan, and Firebase installation
+  identifiers are installation-salted hashes, while client and backend request
+  ids remain available for correlation;
+- the memory ring retains no more than 300 events, 256KB, or 15 minutes,
+  whichever bound is reached first, and no `*.log` file is created;
+- Error/Fatal events reach the Sentry event sink, lower-level trace events
+  become redacted breadcrumbs, and one Flutter error is not captured twice;
+- API trace records only method, sanitized route template, status, duration,
+  attempt, `X-Client-Request-Id`, and returned `X-Request-Id`, including a
+  stable client request id across the single guarded `401` retry;
+- the Support action explains the report, requires fresh consent on every send,
+  creates `aarast-diagnostic-report.json` only in memory, performs no automatic
+  retry, and reports failure without persisting the attachment.
+
+Staging acceptance must verify correct Sentry environment/release labeling,
+Android symbols and iOS dSYM symbolication, mobile/backend request correlation,
+absence of PII, and the consent-gated attachment. Sentry attachment access must
+be restricted operationally to Owner/Admin and the targeted 30-day retention
+must be configured and checked in Sentry; neither policy is enforced by Flutter
+code.
+
 Push changes additionally require an Android APK build, inspection of the
 merged manifest for `POST_NOTIFICATIONS` and the `aarast_updates` channel, and a
 physical-device Firebase send while the app is backgrounded and terminated.
@@ -245,15 +319,51 @@ Secure-storage tests must prove that production wiring never leaves the cached
 safe-user profile or guest-onboarding draft in SharedPreferences and that a
 legacy plaintext value migrates once and is removed.
 
-Account-context routing tests must cover the first-stage login/path contract:
-one owner, contributor, or provider context opens its matching dashboard
-without a second login or OTP; multiple contexts render the standalone Arabic
-`اختر المسار` screen and persist a stable context key; selecting a provider
-must not retain a wedding-plan id; a cold restart restores the saved context,
-while a missing, revoked, or invalid context re-fetches and re-evaluates the
-zero/one/multiple states. Logout must clear the context key and return to the
-login entry. Invitation links remain the first-link-only path and must not
-turn path selection into a second authentication flow.
+Invitation links remain the first-link-only path and must not turn account
+context selection into a second authentication flow.
+
+### Mobile Release And Rollback Gate
+
+Before wider rollout, run and report separately:
+
+- full `flutter analyze` and full `flutter test`;
+- Login/Logout/account-context integration tests;
+- Android debug APK and signed Release APK/AAB, including Sentry symbol upload;
+- iOS Archive on macOS, including dSYM upload;
+- the primary scenario on one physical Android and one physical iOS device,
+  repeated with a slow network, network loss during Logout, API failure, and
+  app termination during transition.
+
+The 2026-07-31 local gate passes full analysis and all 918 regular Flutter
+tests. `1.0.0+7` Debug APK, signed Release APK, and Release AAB builds pass
+against the Production HTTPS origin. The Release APK is non-debuggable, has a
+valid v2 signature, contains the required notification permission/channel
+metadata, and its SHA-256 is
+`3F9EE178A6D8E35ED0E1B6B2D084E52C4DF7D1B9AA5EB576B29781A9C0FF29C0`.
+The AAB SHA-256 is
+`BB181EA46A103C9F2F40E3491EA3528B9C84DD78A30C0A5A81734DD71B77444F`;
+strict local `jarsigner` inspection still exits with entry-consistency warnings,
+so final Play/store signer acceptance remains open.
+
+The controlled Profile-mode Provider-Logout-Groom integration scenario passed
+on a connected Samsung Android 16 device, and the final installed APK hash
+matches the built Release APK. The runner emitted a warning that it did not
+detect the `integration_test` plugin, and the scenario uses controlled fakes;
+therefore it does not prove the live Login/API/Firebase path. During that QA
+run Flutter tooling removed the primary package while cleaning its runner,
+which erased the package's app-local data. The final Release APK was reinstalled
+and hash-verified immediately afterward. No equivalent iOS run has occurred.
+Neither artifact enables Sentry because no real DSN/upload credentials are
+available. These results close the local build and controlled Android scenario,
+not the live-account, live-Push, live-Sentry, TestFlight, or store gates.
+
+If the defect is isolated to Sentry transport, rebuild the same session-fixed
+code with an empty `AARAST_SENTRY_DSN`; this disables external delivery without
+removing the local ring or session boundary. If session/context behavior
+regresses, stop rollout and return to the last accepted signed mobile artifact.
+This slice has no backend API or database migration, so do not roll back backend
+or schema state. Record the exact release/artifact used for rollback and rerun
+the regression gate before resuming rollout.
 
 ## Admin Web Changes
 

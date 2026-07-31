@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import 'core/diagnostics/app_logger.dart';
 import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/push/push_lifecycle_bridge.dart';
@@ -78,15 +81,134 @@ class _AarastAppState extends State<AarastApp> {
             textDirection: TextDirection.rtl,
             child: AarastPushLifecycleBridge(
               router: _router,
-              child: AarastAuthFlowRedirector(
-                router: _router,
-                child: child ?? const SizedBox.shrink(),
+              child: AarastSessionTransitionGate(
+                child: AarastAuthFlowRedirector(
+                  router: _router,
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           );
         },
       ),
     );
+  }
+}
+
+@visibleForTesting
+class AarastSessionTransitionGate extends StatelessWidget {
+  const AarastSessionTransitionGate({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    AuthStatus status;
+    try {
+      status = context.select<AuthController, AuthStatus>(
+        (controller) => controller.status,
+      );
+    } on ProviderNotFoundException {
+      return child;
+    }
+
+    if (status == AuthStatus.checking) {
+      return const Scaffold(
+        key: Key('session-checking-screen'),
+        backgroundColor: AppTheme.ivory,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text(
+                    'جارٍ التحقق من الجلسة…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (status == AuthStatus.terminating) {
+      return const Scaffold(
+        key: Key('session-terminating-screen'),
+        backgroundColor: AppTheme.ivory,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text(
+                    'جارٍ إنهاء الجلسة بأمان…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (status == AuthStatus.terminationFailed) {
+      return Scaffold(
+        key: const Key('session-termination-failed-screen'),
+        backgroundColor: AppTheme.ivory,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    LucideIcons.alertTriangle,
+                    color: AppTheme.danger,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'تعذر إنهاء الجلسة محلياً',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'لن نعرض حساباً قديماً أو شاشة الدخول قبل اكتمال تنظيف بيانات هذا الجهاز.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    key: const Key('session-termination-retry'),
+                    onPressed: () {
+                      unawaited(context.read<AuthController>().logout());
+                    },
+                    icon: const Icon(LucideIcons.refreshCw),
+                    label: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return child;
   }
 }
 
@@ -191,6 +313,7 @@ class AarastAuthFlowRedirector extends StatelessWidget {
       bool sessionExpired,
       bool hasPendingInvite,
       bool loginRequestedAfterLogout,
+      bool hasPendingAuthenticatedEntry,
     })
     flow;
     try {
@@ -201,12 +324,15 @@ class AarastAuthFlowRedirector extends StatelessWidget {
               bool sessionExpired,
               bool hasPendingInvite,
               bool loginRequestedAfterLogout,
+              bool hasPendingAuthenticatedEntry,
             })
           >(
             (controller) => (
               sessionExpired: controller.sessionExpired,
               hasPendingInvite: controller.hasPendingInviteResume,
               loginRequestedAfterLogout: controller.loginRequestedAfterLogout,
+              hasPendingAuthenticatedEntry:
+                  controller.hasPendingAuthenticatedEntry,
             ),
           );
     } on ProviderNotFoundException {
@@ -217,12 +343,28 @@ class AarastAuthFlowRedirector extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         context.read<AuthController>().acknowledgeSessionExpiry();
+        appLogEvent(
+          'NAVIGATION_REQUEST',
+          category: AppLogCategory.navigation,
+          currentRoute: router.routeInformationProvider.value.uri.toString(),
+          targetRoute: AppRouter.login,
+          reason: 'session_expired',
+          source: 'AarastAuthFlowRedirector',
+        );
         router.go(AppRouter.login);
       });
     } else if (flow.loginRequestedAfterLogout) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         if (context.read<AuthController>().claimLoginAfterLogout()) {
+          appLogEvent(
+            'NAVIGATION_REQUEST',
+            category: AppLogCategory.navigation,
+            currentRoute: router.routeInformationProvider.value.uri.toString(),
+            targetRoute: AppRouter.login,
+            reason: 'logout_completed',
+            source: 'AarastAuthFlowRedirector',
+          );
           router.go(AppRouter.login);
         }
       });
@@ -232,7 +374,35 @@ class AarastAuthFlowRedirector extends StatelessWidget {
         final token = context
             .read<AuthController>()
             .claimPendingInviteResumeRoute();
-        if (token != null) router.go(AppRouter.inviteDecision(token));
+        if (token != null) {
+          final target = AppRouter.inviteDecision(token);
+          appLogEvent(
+            'NAVIGATION_REQUEST',
+            category: AppLogCategory.navigation,
+            currentRoute: router.routeInformationProvider.value.uri.toString(),
+            targetRoute: target,
+            reason: 'invite_resume',
+            source: 'AarastAuthFlowRedirector',
+          );
+          router.go(target);
+        }
+      });
+    } else if (flow.hasPendingAuthenticatedEntry) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        final auth = context.read<AuthController>();
+        if (!auth.hasPendingAuthenticatedEntry) return;
+        final location = auth.claimPendingAuthenticatedEntry();
+        final target = AppRouter.authenticatedEntry(location);
+        appLogEvent(
+          'NAVIGATION_REQUEST',
+          category: AppLogCategory.navigation,
+          currentRoute: router.routeInformationProvider.value.uri.toString(),
+          targetRoute: target,
+          reason: 'authenticated_entry',
+          source: 'AarastAuthFlowRedirector',
+        );
+        router.go(target);
       });
     }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
@@ -207,6 +208,14 @@ void main() {
   testWidgets('provider portal is usable at 320px and switches tabs', (
     tester,
   ) async {
+    final logSink = _CollectingLogSink();
+    AppLogger.installGlobal(
+      AppLogger(
+        redactor: LogRedactor(installationSalt: 'provider-portal-test'),
+        sinks: [logSink],
+      ),
+    );
+    addTearDown(AppLogger.clearGlobal);
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 760);
     addTearDown(tester.view.reset);
@@ -268,7 +277,33 @@ void main() {
     expect(find.text('مزامنة الآن'), findsOneWidget);
     expect(find.text('تسجيل الخروج'), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    expect(
+      logSink.events.where(
+        (event) =>
+            event.name == 'dashboard_built' &&
+            event.category == AppLogCategory.provider,
+      ),
+      hasLength(1),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(
+      logSink.events.where(
+        (event) =>
+            event.name == 'dashboard_disposed' &&
+            event.category == AppLogCategory.provider,
+      ),
+      hasLength(1),
+    );
   });
+}
+
+class _CollectingLogSink implements AppLogSink {
+  final List<AppLogEvent> events = [];
+
+  @override
+  void add(AppLogEvent event) => events.add(event);
 }
 
 class _FakeProviderDashboardProvider extends ProviderDashboardProvider {

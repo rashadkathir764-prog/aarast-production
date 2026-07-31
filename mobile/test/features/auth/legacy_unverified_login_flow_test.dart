@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -98,6 +99,10 @@ Future<void> _pump(
         theme: AppTheme.light(),
         locale: const Locale('ar'),
         routerConfig: router,
+        builder: (context, child) => AarastAuthFlowRedirector(
+          router: router,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     ),
   );
@@ -151,10 +156,9 @@ class _LoginHarness {
       storage,
       loginErrorCode: loginErrorCode,
     );
-    return _LoginHarness(
-      controller: AuthController(repository),
-      repository: repository,
-    );
+    final controller = AuthController(repository);
+    await controller.restoreSession();
+    return _LoginHarness(controller: controller, repository: repository);
   }
 }
 

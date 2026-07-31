@@ -10,7 +10,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
@@ -151,8 +150,17 @@ class _OtpScreenState extends State<OtpScreen> {
 
     setState(() => _isVerifying = true);
     final registration = widget.registration;
+    final providerApplication = registration?.providerApplication;
+    final provider = providerApplication == null
+        ? null
+        : context.read<ProviderDashboardProvider>();
     final success = registration == null
-        ? await auth.verifyOtp(phone: phone, purpose: purpose, code: code)
+        ? await auth.verifyOtp(
+            phone: phone,
+            purpose: purpose,
+            code: code,
+            successLocation: widget.successLocation,
+          )
         : await auth.register(
             name: registration.name,
             phone: registration.phone,
@@ -161,6 +169,25 @@ class _OtpScreenState extends State<OtpScreen> {
             resumeInviteToken: _privateInviteTokenFromLocation(
               widget.successLocation,
             ),
+            successLocation: widget.successLocation,
+            afterSessionEstablished: providerApplication == null
+                ? null
+                : () async {
+                    final applied = await provider!.applyProvider(
+                      businessName: providerApplication.businessName,
+                      phone: providerApplication.phone,
+                      cityId: providerApplication.cityId,
+                      categoryIds: [providerApplication.categoryId],
+                      description: providerApplication.description,
+                    );
+                    if (!applied && mounted) {
+                      AarastToast.showError(
+                        context,
+                        'تم إنشاء الحساب وتوثيق الرقم، لكن تعذر إرسال طلب المزود. يمكنك إعادة الطلب من حسابك.',
+                      );
+                    }
+                    return applied ? AppRouter.providerApplyStatus : null;
+                  },
           );
 
     if (!mounted) return;
@@ -175,36 +202,6 @@ class _OtpScreenState extends State<OtpScreen> {
     // نجاح: لوحة تأكيد قصيرة قبل المتابعة (تُتخطى مع تقليل الحركة).
     setState(() => _fieldState = AarastOtpFieldState.success);
     await Future<void>.delayed(AarastOtpField.successHold(context));
-    if (!mounted) return;
-
-    final providerApplication = registration?.providerApplication;
-    if (providerApplication != null) {
-      final provider = context.read<ProviderDashboardProvider>();
-      final applied = await provider.applyProvider(
-        businessName: providerApplication.businessName,
-        phone: providerApplication.phone,
-        cityId: providerApplication.cityId,
-        categoryIds: [providerApplication.categoryId],
-        description: providerApplication.description,
-      );
-      if (!mounted) return;
-      if (applied) {
-        final accountContexts = context.read<AccountContextController>();
-        await auth.refreshCurrentUser();
-        if (!mounted) return;
-        await accountContexts.refresh();
-        if (!mounted) return;
-        context.go(AppRouter.providerApplyStatus);
-        return;
-      }
-
-      AarastToast.showError(
-        context,
-        'تم إنشاء الحساب وتوثيق الرقم، لكن تعذر إرسال طلب المزود. يمكنك إعادة الطلب من حسابك.',
-      );
-    }
-
-    context.go(AppRouter.authenticatedEntry(widget.successLocation));
   }
 
   void _goBack() {

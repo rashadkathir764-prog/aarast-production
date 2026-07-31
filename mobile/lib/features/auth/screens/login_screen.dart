@@ -242,12 +242,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final success = await auth.login(
       phone: _phoneController.text.trim(),
       password: _passwordController.text,
+      successLocation: _safeResumeLocation(context),
     );
 
     if (!mounted) return;
 
     if (success) {
-      context.go(AppRouter.authenticatedEntry(_safeResumeLocation(context)));
       return;
     }
 

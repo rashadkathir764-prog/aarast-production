@@ -463,12 +463,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    final router = GoRouter.of(context);
-    final accountContexts = context.read<AccountContextController>();
-    final auth = context.read<AuthController>();
-    await accountContexts.clearForLogout();
-    await auth.logout();
-    router.go(AppRouter.login);
+    await context.read<AuthController>().logout();
   }
 
   Future<void> _openContributorRoute(String route, {Object? extra}) async {

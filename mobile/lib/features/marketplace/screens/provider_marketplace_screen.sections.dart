@@ -4,127 +4,71 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
   const _TopMarketplaceCommandCard({
     required this.embedded,
     required this.provider,
-    required this.quotes,
+    required this.onOpenFavorites,
+    required this.onOpenConversations,
   });
 
   final bool embedded;
   final ProviderMarketplaceProvider provider;
-  final List<QuoteRequest> quotes;
+  final VoidCallback onOpenFavorites;
+  final VoidCallback onOpenConversations;
 
   @override
   Widget build(BuildContext context) {
-    final acceptedProviders = _acceptedProviderCount(quotes);
-    final requests = _requestCount(quotes);
-    final actionableOffers = _actionableOfferCount(quotes);
-
-    Widget title() => Expanded(
-      child: Text(
-        'الموردون',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(
-          context,
-        ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
-      ),
-    );
-
-    Widget accountStatus() => AarastStatusPill(
-      label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
-      color: AppTheme.gold,
-      backgroundColor: AppTheme.goldSoft,
-      icon: provider.includesAccountData
-          ? LucideIcons.shieldCheck
-          : LucideIcons.eye,
-    );
-
-    Widget conversationsAction() => IconButton(
-      key: const Key('user-conversations-action'),
-      onPressed: () => context.push(AppRouter.conversations),
-      icon: const Icon(LucideIcons.messagesSquare),
-      tooltip: 'المحادثات',
-    );
-
-    // ترويسة مكشوفة موحدة مع بقية التبويبات: عنوان + شارة + إجراءات.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compactHeader = constraints.maxWidth < 360;
-            final leading = <Widget>[
-              if (!embedded) ...[
-                _CircleButton(
-                  icon: LucideIcons.chevronRight,
-                  onTap: () {
-                    if (context.canPop()) context.pop();
-                  },
+        if (!embedded) ...[
+          _CircleButton(
+            icon: LucideIcons.chevronRight,
+            onTap: () {
+              if (context.canPop()) context.pop();
+            },
+          ),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'الموردون',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: AppTheme.title,
+                  fontWeight: FontWeight.w900,
                 ),
-                const SizedBox(width: 10),
-              ],
-            ];
-            if (compactHeader) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      ...leading,
-                      title(),
-                      if (provider.includesAccountData) conversationsAction(),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: accountStatus(),
-                  ),
-                ],
-              );
-            }
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ...leading,
-                title(),
-                const SizedBox(width: 10),
-                accountStatus(),
-                if (provider.includesAccountData) conversationsAction(),
-              ],
-            );
-          },
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'ابحث وقارن، ثم افتح المورد المناسب لطلب عرض.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.muted,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
         ),
         if (provider.includesAccountData) ...[
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _MiniStat(
-                  key: const Key('quote-stat-requests'),
-                  label: 'طلباتك',
-                  value: requests.toString(),
-                  color: AppTheme.muted,
-                ),
-                _MiniStat(
-                  key: const Key('quote-stat-actionable'),
-                  label: 'تحتاج قرار',
-                  value: actionableOffers.toString(),
-                  color: AppTheme.gold,
-                ),
-                _MiniStat(
-                  key: const Key('quote-stat-accepted'),
-                  label: 'عروض مقبولة',
-                  value: acceptedProviders.toString(),
-                  color: AppTheme.success,
-                ),
-                _MiniStat(
-                  label: 'محفوظة',
-                  value: provider.favoriteProviderIds.length.toString(),
-                  color: AppTheme.burgundy,
-                  onTap: () => context.push(AppRouter.favoriteProviders),
-                ),
-              ],
-            ),
+          const SizedBox(width: 8),
+          _MarketplaceHeaderAction(
+            key: const Key('favorite-providers-action'),
+            icon: LucideIcons.heart,
+            tooltip: 'الموردون المحفوظون',
+            badgeValue: provider.favoriteProviderIds.length,
+            onTap: onOpenFavorites,
+          ),
+          const SizedBox(width: 6),
+          _MarketplaceHeaderAction(
+            key: const Key('user-conversations-action'),
+            icon: LucideIcons.messagesSquare,
+            tooltip: 'المحادثات',
+            onTap: onOpenConversations,
           ),
         ],
       ],
@@ -132,54 +76,66 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
   }
 }
 
-class _MiniStat extends StatelessWidget {
-  const _MiniStat({
-    required this.label,
-    required this.value,
-    required this.color,
-    this.onTap,
+class _MarketplaceHeaderAction extends StatelessWidget {
+  const _MarketplaceHeaderAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.badgeValue = 0,
     super.key,
   });
-  final String label;
-  final String value;
-  final Color color;
-  final VoidCallback? onTap;
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final int badgeValue;
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      margin: const EdgeInsets.only(left: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Text(
-            value,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w900,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Tooltip(
+          message: tooltip,
+          child: Material(
+            color: AppTheme.surface,
+            shape: CircleBorder(side: BorderSide(color: AppTheme.border)),
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: SizedBox(
+                width: 42,
+                height: 42,
+                child: Icon(icon, size: 20, color: AppTheme.burgundy),
+              ),
             ),
           ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
+        ),
+        if (badgeValue > 0)
+          PositionedDirectional(
+            top: -4,
+            end: -3,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppTheme.burgundy,
+                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                border: Border.all(color: AppTheme.ivory, width: 2),
+              ),
+              child: Text(
+                badgeValue > 99 ? '99+' : '$badgeValue',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white,
+                  fontSize: 9,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ),
-        ],
-      ),
-    );
-    if (onTap == null) return content;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      child: content,
+      ],
     );
   }
 }
@@ -201,6 +157,7 @@ class _MarketplaceSearch extends StatelessWidget {
       valueListenable: controller,
       builder: (context, value, _) {
         return TextField(
+          key: const Key('marketplace-search-field'),
           controller: controller,
           focusNode: focusNode,
           textInputAction: TextInputAction.search,
@@ -291,39 +248,50 @@ class _CityFilterChip extends StatelessWidget {
               .nameAr
         : null;
 
-    return InkWell(
-      key: const Key('city-filter-trigger'),
-      onTap: () => _showCityPicker(context),
-      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-      child: Container(
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: hasCity ? AppTheme.burgundySoft : AppTheme.surface,
-          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-          border: Border.all(
-            color: hasCity ? AppTheme.burgundy : AppTheme.border,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 118),
+      child: InkWell(
+        key: const Key('city-filter-trigger'),
+        onTap: () => _showCityPicker(context),
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: hasCity ? AppTheme.burgundySoft : AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            border: Border.all(
+              color: hasCity ? AppTheme.burgundy : AppTheme.border,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.mapPin, size: 15, color: AppTheme.burgundy),
-            const SizedBox(width: 6),
-            Text(
-              cityLabel ?? 'المدينة',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.mapPin,
+                size: 15,
                 color: AppTheme.burgundy,
-                fontWeight: FontWeight.w800,
               ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              LucideIcons.chevronDown,
-              size: 14,
-              color: AppTheme.burgundy,
-            ),
-          ],
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  cityLabel ?? 'المدينة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppTheme.burgundy,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 3),
+              const Icon(
+                LucideIcons.chevronDown,
+                size: 14,
+                color: AppTheme.burgundy,
+              ),
+            ],
+          ),
         ),
       ),
     );

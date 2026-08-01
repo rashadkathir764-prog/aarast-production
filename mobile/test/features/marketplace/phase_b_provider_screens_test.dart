@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/widgets/aarast_button.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -292,6 +293,72 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets('provider details review action ignores a duplicate launch', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final quote = _quote(
+        status: 'RESPONDED',
+        offers: const [QuoteOffer(id: 'offer-live', status: 'PENDING')],
+      );
+      final marketplace = _FakeMarketplaceProvider(quotes: [quote]);
+      final account = await _authenticatedPlanContext();
+      addTearDown(account.controller.dispose);
+      final router = GoRouter(
+        initialLocation: '/providers/$_providerId?weddingPlanId=plan-1',
+        routes: [
+          GoRoute(
+            path: '/providers/:id',
+            builder: (_, state) => ProviderDetailsScreen(
+              providerId: _providerId,
+              weddingPlanId: state.uri.queryParameters['weddingPlanId'],
+            ),
+          ),
+          GoRoute(
+            path: '/wedding-plans/:id/providers',
+            builder: (_, state) => Scaffold(
+              body: Text(
+                'offer-route:${state.pathParameters['id']}:'
+                '${state.uri.queryParameters['quoteId']}',
+              ),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: account.authStorage),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: account.controller,
+            ),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: marketplace,
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final actionButton = find.byWidgetPredicate(
+        (widget) => widget is AarastButton && widget.label == 'مراجعة العرض',
+      );
+      final onPressed = tester.widget<AarastButton>(actionButton).onPressed!;
+
+      onPressed();
+      onPressed();
+      await tester.pumpAndSettle();
+      expect(find.text('offer-route:plan-1:${quote.id}'), findsOneWidget);
+
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ProviderDetailsScreen), findsOneWidget);
+      expect(find.text('offer-route:plan-1:${quote.id}'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('favorite providers keep comparison copy and currency labels', (
       tester,

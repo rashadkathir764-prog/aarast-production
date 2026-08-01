@@ -5,9 +5,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/aarast_design_tokens.dart';
 import '../../../../core/theme/aarast_motion.dart';
 
-/// بطاقة المورد الأنيقة — صورة كبيرة على اليمين، ثم الاسم والفئة والتقييم
-/// والموقع والسعر على اليسار، وزر "عرض التفاصيل" بلون العنّاب أسفل البطاقة.
-/// تصميم مطابق لواجهة تبويب الموردين المعتمدة.
+/// بطاقة مورد مضغوطة تعرض الحقائق المتاحة فقط، مع صورة ثابتة وإجراء تفاصيل
+/// خفيف حتى تبقى قائمة الموردين واضحة وآمنة على الشاشات الضيقة.
 class PremiumVendorCard extends StatelessWidget {
   const PremiumVendorCard({
     required this.businessName,
@@ -79,103 +78,11 @@ class PremiumVendorCard extends StatelessWidget {
               ),
             ],
           ),
-          child: IntrinsicHeight(
+          child: Padding(
+            padding: const EdgeInsets.all(AarastDesignTokens.space12),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          businessName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: AarastDesignTokens.ink,
-                                fontWeight: FontWeight.w800,
-                                height: 1.22,
-                              ),
-                        ),
-                        if (hasCategory) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            categoryLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  color: AarastDesignTokens.burgundy,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                        ],
-                        if (hasRating || hasLocation) ...[
-                          const SizedBox(height: 7),
-                          Row(
-                            children: [
-                              if (hasRating)
-                                _RatingChip(
-                                  average: ratingAverage,
-                                  count: ratingCount,
-                                ),
-                              if (hasRating && hasLocation)
-                                const SizedBox(width: 12),
-                              if (hasLocation)
-                                Expanded(
-                                  child: _LocationLabel(label: locationLabel!),
-                                ),
-                            ],
-                          ),
-                        ],
-                        if (hasPrice) ...[
-                          const SizedBox(height: 7),
-                          Text(
-                            priceLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: AarastDesignTokens.burgundy,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                        ],
-                        if (hasBudget) ...[
-                          const SizedBox(height: 7),
-                          _BudgetChip(
-                            label: budgetStatusLabel!,
-                            color: budgetStatusColor ?? AarastDesignTokens.gold,
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 40,
-                          child: FilledButton(
-                            key: detailsButtonKey,
-                            onPressed: onDetails,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AarastDesignTokens.burgundy,
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AarastDesignTokens.radiusMd,
-                                ),
-                              ),
-                              textStyle: Theme.of(context).textTheme.labelLarge,
-                            ),
-                            child: const Text('عرض التفاصيل'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
                 _VendorImage(
                   imageUrl: imageUrl,
                   name: businessName,
@@ -183,6 +90,125 @@ class PremiumVendorCard extends StatelessWidget {
                   isFavorite: isFavorite,
                   onFavorite: onFavorite,
                   favoriteButtonKey: favoriteButtonKey,
+                ),
+                const SizedBox(width: AarastDesignTokens.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        businessName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: AarastDesignTokens.ink,
+                              fontWeight: FontWeight.w800,
+                              height: 1.18,
+                            ),
+                      ),
+                      if (hasCategory) ...[
+                        const SizedBox(height: AarastDesignTokens.space2),
+                        Text(
+                          categoryLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: AarastDesignTokens.burgundy,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
+                      if (hasRating || hasLocation) ...[
+                        const SizedBox(height: AarastDesignTokens.space6),
+                        Row(
+                          children: [
+                            if (hasRating)
+                              _RatingChip(
+                                average: ratingAverage,
+                                count: ratingCount,
+                              ),
+                            if (hasRating && hasLocation)
+                              const SizedBox(width: AarastDesignTokens.space8),
+                            if (hasLocation)
+                              Expanded(
+                                child: _LocationLabel(label: locationLabel!),
+                              ),
+                          ],
+                        ),
+                      ],
+                      if (hasPrice) ...[
+                        const SizedBox(height: AarastDesignTokens.space6),
+                        Text(
+                          priceLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: AarastDesignTokens.burgundy,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
+                      if (hasBudget) ...[
+                        const SizedBox(height: AarastDesignTokens.space6),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: _BudgetChip(
+                            label: budgetStatusLabel!,
+                            color: budgetStatusColor ?? AarastDesignTokens.gold,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AarastDesignTokens.space6),
+                      Semantics(
+                        button: true,
+                        label: 'عرض تفاصيل $businessName',
+                        child: InkWell(
+                          key: detailsButtonKey,
+                          onTap: onDetails,
+                          borderRadius: BorderRadius.circular(
+                            AarastDesignTokens.radiusSm,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(
+                              top: AarastDesignTokens.space4,
+                              bottom: AarastDesignTokens.space4,
+                              end: AarastDesignTokens.space4,
+                            ),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'عرض التفاصيل',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: AarastDesignTokens.burgundy,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: AarastDesignTokens.space4,
+                                ),
+                                const Icon(
+                                  LucideIcons.chevronLeft,
+                                  size: AarastDesignTokens.iconSm,
+                                  color: AarastDesignTokens.burgundy,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -213,36 +239,32 @@ class _VendorImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl?.trim();
-    return Container(
-      width: 112,
-      clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadiusDirectional.only(
-          topEnd: Radius.circular(AarastDesignTokens.radiusLg),
-          bottomEnd: Radius.circular(AarastDesignTokens.radiusLg),
-        ),
-      ),
+    return SizedBox(
+      width: 92,
+      height: 92,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (url == null || url.isEmpty)
-            _VendorImagePlaceholder(name: name)
-          else
-            Image.network(
-              url,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stack) =>
-                  _VendorImagePlaceholder(name: name),
-            ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusMd),
+            child: url == null || url.isEmpty
+                ? _VendorImagePlaceholder(name: name)
+                : Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) =>
+                        _VendorImagePlaceholder(name: name),
+                  ),
+          ),
           if (isFeatured)
             const PositionedDirectional(
-              top: 8,
-              start: 8,
+              start: 6,
+              bottom: 6,
               child: _FeaturedBadge(),
             ),
           PositionedDirectional(
-            top: 6,
-            end: 6,
+            top: 4,
+            end: 4,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: AarastDesignTokens.surface.withValues(alpha: 0.9),

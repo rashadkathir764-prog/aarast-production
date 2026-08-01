@@ -156,6 +156,7 @@ void main() {
     final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
 
     expect(find.text('طلباتك وعروضك'), findsOneWidget);
     expect(find.text('أهم ما يحتاج قرار الآن'), findsNothing);
@@ -205,6 +206,7 @@ void main() {
     addTearDown(finance.dispose);
 
     await _pump(tester, state, finance: finance);
+    await _expandQuoteInbox(tester);
     await tester.scrollUntilVisible(
       find.byKey(const Key('quote-accept-quote-1')),
       200,
@@ -228,6 +230,7 @@ void main() {
       );
 
       await _pump(tester, state);
+      await _expandQuoteInbox(tester);
 
       expect(find.text('قاعة الثريا'), findsOneWidget);
       expect(find.text('مورد الخطة المؤرشفة'), findsNothing);
@@ -242,6 +245,7 @@ void main() {
     final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
     await tester.scrollUntilVisible(
       find.byKey(const Key('quote-reject-quote-1')),
       200,
@@ -261,6 +265,7 @@ void main() {
     final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
     await tester.scrollUntilVisible(
       find.byKey(const Key('quote-offer-details-quote-1')),
       200,
@@ -296,6 +301,7 @@ void main() {
     final state = _FakeMarketplaceProvider(quoteRequests: [_acceptedQuote()]);
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
 
     expect(find.textContaining('إنشاء التكلفة تلقائيًا'), findsOneWidget);
     expect(find.byKey(const Key('quote-view-cost-quote-2')), findsOneWidget);
@@ -310,6 +316,7 @@ void main() {
     final state = _FakeMarketplaceProvider(quoteRequests: [_expiredQuote()]);
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
 
     expect(find.text('انتهت صلاحية العرض'), findsOneWidget);
     expect(find.byKey(const Key('quote-accept-quote-expired')), findsNothing);
@@ -328,6 +335,7 @@ void main() {
     );
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
 
     expect(find.text('حسب اقتراح المورد'), findsOneWidget);
     expect(find.text('خدمة غير محددة'), findsNothing);
@@ -348,27 +356,12 @@ void main() {
 
       await _pump(tester, state);
 
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('quote-stat-requests')),
-          matching: find.text('5'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('quote-stat-actionable')),
-          matching: find.text('1'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('quote-stat-accepted')),
-          matching: find.text('1'),
-        ),
-        findsOneWidget,
-      );
+      final summary = find.byKey(const Key('quote-inbox-summary'));
+      expect(summary, findsOneWidget);
+      final summaryText = tester.widget<Text>(summary).data;
+      expect(summaryText, contains('5 طلبات'));
+      expect(summaryText, contains('1 بحاجة قرار'));
+      expect(summaryText, contains('1 عرض مقبول'));
     },
   );
 
@@ -443,6 +436,7 @@ void main() {
     final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
 
     await _pump(tester, state);
+    await _expandQuoteInbox(tester);
     await tester.scrollUntilVisible(
       find.byKey(const Key('quote-offer-details-quote-1')),
       160,
@@ -468,6 +462,7 @@ void main() {
       final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
 
       await _pump(tester, state);
+      await _expandQuoteInbox(tester);
       final card = find.byKey(const Key('received-offer-quote-1'));
       await tester.scrollUntilVisible(
         card,
@@ -482,6 +477,11 @@ void main() {
     },
     tags: const ['golden'],
   );
+}
+
+Future<void> _expandQuoteInbox(WidgetTester tester) async {
+  await tester.tap(find.text('طلباتك وعروضك'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pump(

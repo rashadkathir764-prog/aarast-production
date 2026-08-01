@@ -566,35 +566,41 @@ class _ContributorSectionsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const Key('contributor-sections-panel'),
-      decoration: BoxDecoration(
-        color: ContributorWorkspaceColors.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: ContributorWorkspaceColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: ContributorWorkspaceColors.ink.withValues(alpha: 0.035),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var index = 0; index < sections.length; index++) ...[
-            _ContributorSectionRow(section: sections[index]),
-            if (index != sections.length - 1)
-              const Divider(
-                height: 1,
-                indent: 66,
-                endIndent: 16,
-                color: ContributorWorkspaceColors.border,
-              ),
-          ],
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useGrid =
+            constraints.maxWidth.isFinite &&
+            constraints.maxWidth >= 460 &&
+            sections.length > 1;
+        final cards = sections
+            .map((section) => _ContributorSectionRow(section: section))
+            .toList(growable: false);
+
+        return KeyedSubtree(
+          key: const Key('contributor-sections-panel'),
+          child: useGrid
+              ? Wrap(
+                  spacing: AppTheme.gapSm,
+                  runSpacing: AppTheme.gapSm,
+                  children: [
+                    for (final card in cards)
+                      SizedBox(
+                        width: (constraints.maxWidth - AppTheme.gapSm) / 2,
+                        child: card,
+                      ),
+                  ],
+                )
+              : Column(
+                  children: [
+                    for (var index = 0; index < cards.length; index++) ...[
+                      cards[index],
+                      if (index != cards.length - 1)
+                        const SizedBox(height: AppTheme.gapSm),
+                    ],
+                  ],
+                ),
+        );
+      },
     );
   }
 }
@@ -606,104 +612,141 @@ class _ContributorSectionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    final hasAction = section.actionLabel != null && section.onAction != null;
+
+    return AarastCard(
       key: Key('contributor-${section.keyName}-section'),
+      padding: EdgeInsets.zero,
+      color: ContributorWorkspaceColors.surface,
+      radius: AppTheme.radiusXl,
+      border: Border.all(color: ContributorWorkspaceColors.border),
       onTap: section.onTap,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        child: Stack(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: section.tint,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  ),
-                  child: Icon(
-                    section.icon,
-                    color: ContributorWorkspaceColors.oxblood,
-                    size: 21,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              section.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: ContributorWorkspaceColors.ink,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              section.value,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(
-                                    color: ContributorWorkspaceColors.wine,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        section.caption,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: ContributorWorkspaceColors.muted,
-                          fontWeight: FontWeight.w600,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  LucideIcons.chevronLeft,
-                  color: ContributorWorkspaceColors.muted,
-                  size: 17,
-                ),
-              ],
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(width: 4, color: section.tint),
             ),
-            if (section.actionLabel != null && section.onAction != null) ...[
-              const SizedBox(height: 7),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton.icon(
-                  onPressed: section.onAction,
-                  style: TextButton.styleFrom(
-                    foregroundColor: ContributorWorkspaceColors.oxblood,
-                    minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            Padding(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                16,
+                16,
+                16,
+                hasAction ? 68 : 16,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: section.tint,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                    child: Icon(
+                      section.icon,
+                      color: ContributorWorkspaceColors.oxblood,
+                      size: 22,
+                    ),
                   ),
-                  icon: const Icon(LucideIcons.plus, size: 15),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                section.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: ContributorWorkspaceColors.ink,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                section.value,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(
+                                      color: ContributorWorkspaceColors.wine,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          section.caption,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: ContributorWorkspaceColors.muted,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                        ),
+                        const SizedBox(height: 9),
+                        Row(
+                          children: [
+                            const Icon(
+                              LucideIcons.arrowLeft,
+                              color: ContributorWorkspaceColors.oxblood,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                'عرض القسم',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: ContributorWorkspaceColors.oxblood,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (hasAction)
+              PositionedDirectional(
+                end: 12,
+                bottom: 12,
+                child: FloatingActionButton.extended(
+                  key: Key('contributor-${section.keyName}-add-action'),
+                  heroTag: 'contributor-${section.keyName}-quick-add',
+                  onPressed: section.onAction,
+                  backgroundColor: ContributorWorkspaceColors.oxblood,
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  extendedPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  icon: const Icon(LucideIcons.plus, size: 17),
                   label: Text(section.actionLabel!),
                 ),
               ),
-            ],
           ],
         ),
       ),

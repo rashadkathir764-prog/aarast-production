@@ -1,7 +1,6 @@
-// Visual preview for the redesigned image-forward vendor card
-// (PremiumVendorCard) used across the vendors tab — large cover image, name,
-// category, rating, location, price range, and a burgundy "عرض التفاصيل"
-// button. Matches the approved marketplace mockup.
+// Visual preview for the compact vendor card (PremiumVendorCard) used across
+// the vendors tab — fixed thumbnail, real provider facts, and a light details
+// affordance that keeps the list usable on narrow phones.
 //
 // Regenerate with:
 //   flutter test test/premium_vendor_preview_test.dart --update-goldens
@@ -20,6 +19,7 @@ Future<void> _pump(
   WidgetTester tester,
   Widget child, {
   required Size size,
+  double textScale = 1,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -28,6 +28,12 @@ Future<void> _pump(
     MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -98,5 +104,63 @@ void main() {
       find.byType(Scaffold),
       matchesGoldenFile('goldens/premium_vendors.png'),
     );
+  });
+
+  testWidgets('vendor card stays compact and actionable at 320', (
+    tester,
+  ) async {
+    var detailsTaps = 0;
+    var favoriteTaps = 0;
+
+    await _pump(
+      tester,
+      PremiumVendorCard(
+        key: const Key('compact-vendor-card'),
+        businessName: 'قاعة المناسبات الملكية للاحتفالات والمؤتمرات',
+        isFeatured: true,
+        ratingAverage: 4.8,
+        ratingCount: 125,
+        categoryLabel: 'قاعات ومناسبات',
+        locationLabel: 'الرياض، حي الملقا',
+        priceLabel: '15,000 - 35,000 ر.س',
+        budgetStatusLabel: 'ضمن الميزانية المقترحة',
+        isFavorite: false,
+        onFavorite: () => favoriteTaps += 1,
+        onDetails: () => detailsTaps += 1,
+        detailsButtonKey: const Key('compact-vendor-details'),
+        favoriteButtonKey: const Key('compact-vendor-favorite'),
+      ),
+      size: const Size(320, 760),
+      textScale: 1.3,
+    );
+
+    expect(find.byType(IntrinsicHeight), findsNothing);
+    expect(find.byType(FilledButton), findsNothing);
+    expect(find.text('عرض التفاصيل'), findsOneWidget);
+    expect(find.text('قاعات ومناسبات'), findsOneWidget);
+    expect(find.text('الرياض، حي الملقا'), findsOneWidget);
+    expect(find.text('15,000 - 35,000 ر.س'), findsOneWidget);
+    expect(find.text('ضمن الميزانية المقترحة'), findsOneWidget);
+    expect(find.byKey(const Key('compact-vendor-details')), findsOneWidget);
+    expect(find.byKey(const Key('compact-vendor-favorite')), findsOneWidget);
+    final imageStack = find.descendant(
+      of: find.byKey(const Key('compact-vendor-card')),
+      matching: find.byType(Stack),
+    );
+    expect(tester.getSize(imageStack), const Size(92, 92));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('compact-vendor-details')));
+    await tester.pump();
+    expect(detailsTaps, 1);
+
+    await tester.tap(find.byKey(const Key('compact-vendor-favorite')));
+    await tester.pump();
+    expect(favoriteTaps, 1);
+    expect(detailsTaps, 1);
+
+    await tester.tap(find.text('قاعة المناسبات الملكية للاحتفالات والمؤتمرات'));
+    await tester.pump();
+    expect(detailsTaps, 2);
   });
 }

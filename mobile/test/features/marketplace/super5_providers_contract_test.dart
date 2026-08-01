@@ -26,9 +26,12 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/preview_fonts.dart';
 import '../account_contexts/account_context_test_data.dart';
 
 void main() {
+  setUpAll(loadPreviewAppFonts);
+
   test('provider list contract keeps category and service summary', () {
     final provider = MarketplaceProvider.fromJson({
       'id': 'provider-1',
@@ -91,7 +94,7 @@ void main() {
   );
 
   testWidgets(
-    'authenticated user opens the inbox and a quote-scoped conversation',
+    'authenticated user opens one quote-scoped conversation per launch',
     (tester) async {
       final state = _FakeMarketplaceProvider(
         quoteRequests: const [
@@ -124,6 +127,7 @@ void main() {
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
+      await _expandQuoteInbox(tester);
       await tester.scrollUntilVisible(
         find.byKey(const Key('quote-conversation-quote-user-1')),
         320,
@@ -133,12 +137,23 @@ void main() {
         find.byKey(const Key('quote-conversation-quote-user-1')),
       );
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('quote-conversation-quote-user-1')),
+      final conversation = find.byKey(
+        const Key('quote-conversation-quote-user-1'),
       );
+      final router = GoRouter.of(tester.element(conversation));
+      final onPressed = tester.widget<IconButton>(conversation).onPressed!;
+
+      onPressed();
+      onPressed();
       await tester.pumpAndSettle();
 
       expect(find.text('quote-chat-quote-user-1'), findsOneWidget);
+
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ProviderMarketplaceScreen), findsOneWidget);
+      expect(find.text('quote-chat-quote-user-1'), findsNothing);
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -366,6 +381,35 @@ void main() {
     expect(find.text('quote-opened'), findsNothing);
   });
 
+  testWidgets('provider details action ignores a duplicate launch', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      providers: [_provider(id: 'provider-1', businessName: 'استديو وعد')],
+    );
+
+    await _pumpMarketplace(tester, state, withRouter: true);
+    final details = find.byKey(const Key('super5-provider-details-provider-1'));
+    await tester.scrollUntilVisible(
+      details,
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final router = GoRouter.of(tester.element(details));
+    final action = tester.widget<InkWell>(details).onTap!;
+
+    action();
+    action();
+    await tester.pumpAndSettle();
+    expect(find.text('details-opened'), findsOneWidget);
+
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(ProviderMarketplaceScreen), findsOneWidget);
+    expect(find.text('details-opened'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('accepted offer shows the automatically created finance cost', (
     tester,
   ) async {
@@ -407,6 +451,7 @@ void main() {
     );
 
     await _pumpMarketplace(tester, state, authenticated: true);
+    await _expandQuoteInbox(tester);
     await tester.scrollUntilVisible(
       find.textContaining('إنشاء التكلفة تلقائيًا'),
       360,
@@ -451,6 +496,186 @@ void main() {
   });
 
   testWidgets(
+    'embedded providers tab keeps discovery above the fold at 320px RTL',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 760);
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+
+      final state = _FakeMarketplaceProvider(
+        providers: [
+          _provider(
+            id: 'provider-1',
+            businessName: 'قاعة السلام',
+            city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
+            services: [_service(title: 'تنسيق قاعة', basePrice: '250000')],
+          ),
+        ],
+        categories: const [
+          ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+          ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+        ],
+        quoteRequests: const [
+          QuoteRequest(
+            id: 'quote-actionable',
+            providerId: 'provider-quote',
+            weddingPlanId: 'plan-1',
+            status: 'RESPONDED',
+            lifecycleStatus: 'RECEIVED',
+            provider: ProviderSummary(
+              id: 'provider-quote',
+              businessName: 'استديو وعد',
+              ratingAverage: 0,
+              ratingCount: 0,
+            ),
+            offers: [
+              QuoteOffer(
+                id: 'offer-actionable',
+                status: 'PENDING',
+                amount: '280000',
+                currency: 'YER',
+              ),
+            ],
+          ),
+        ],
+      );
+
+      await _pumpMarketplace(
+        tester,
+        state,
+        authenticated: true,
+        embedded: true,
+      );
+
+      final marketplaceList = find.byType(ListView).first;
+      expect(
+        Directionality.of(tester.element(marketplaceList)),
+        TextDirection.rtl,
+      );
+      expect(
+        find.byKey(const Key('marketplace-search-field')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('city-filter-trigger')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('quote-accept-quote-actionable')).hitTestable(),
+        findsNothing,
+      );
+      expect(find.textContaining('1 بحاجة قرار').hitTestable(), findsOneWidget);
+
+      final firstProvider = find
+          .byKey(const Key('provider-marketplace-card-provider-1'))
+          .hitTestable();
+      expect(firstProvider, findsOneWidget);
+      expect(tester.getTopLeft(firstProvider).dy, lessThan(640));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'embedded providers tab keeps the approved browse-first visual',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(420, 900);
+      addTearDown(tester.view.reset);
+
+      final state = _FakeMarketplaceProvider(
+        providers: [
+          _provider(
+            id: 'provider-1',
+            businessName: 'قاعة السلام للمناسبات',
+            city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
+            services: [
+              _service(title: 'تنسيق وتجهيز القاعة', basePrice: '250000'),
+            ],
+          ),
+        ],
+        categories: const [
+          ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+          ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+          ProviderCategory(id: 'cat-food', nameAr: 'الضيافة'),
+        ],
+        quoteRequests: const [
+          QuoteRequest(
+            id: 'quote-waiting',
+            providerId: 'provider-quote',
+            weddingPlanId: 'plan-1',
+            status: 'SENT',
+            lifecycleStatus: 'PENDING_PROVIDER',
+            provider: ProviderSummary(
+              id: 'provider-quote',
+              businessName: 'استديو وعد',
+              ratingAverage: 0,
+              ratingCount: 0,
+            ),
+          ),
+        ],
+      );
+
+      await _pumpMarketplace(
+        tester,
+        state,
+        authenticated: true,
+        embedded: true,
+      );
+
+      await expectLater(
+        find.byType(AarastScreenFrame),
+        matchesGoldenFile('goldens/provider_marketplace_compact.png'),
+      );
+    },
+    tags: const ['golden'],
+  );
+
+  testWidgets('budget matches stay horizontal and safe at 320px text scale', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 900);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+
+    final matchedServices = List.generate(
+      5,
+      (index) => _service(
+        title: 'خدمة مناسبة طويلة رقم ${index + 1}',
+        basePrice: '${250000 + (index * 10000)}',
+        city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
+      ),
+    );
+    final state = _FakeMarketplaceProvider(
+      providers: [_provider(id: 'provider-1', businessName: 'قاعة السلام')],
+      budgetMatchIntent: const ProviderBudgetMatchIntent(
+        budgetCategoryName: 'الصالة',
+        allocatedAmount: '300000',
+      ),
+      budgetMatchedServices: matchedServices,
+    );
+
+    await _pumpMarketplace(tester, state);
+
+    expect(
+      find.byKey(const Key('budget-matched-services-carousel')),
+      findsOneWidget,
+    );
+    expect(find.text('خدمة مناسبة طويلة رقم 1'), findsOneWidget);
+    expect(find.text('خدمة مناسبة طويلة رقم 5'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
     'Marketplace load-more keeps results and uses the shared inline spinner',
     (tester) async {
       final state = _FakeMarketplaceProvider(
@@ -479,6 +704,32 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'filter refresh keeps current results with a visible progress cue',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        providers: [_provider(id: 'provider-1', businessName: 'قاعة السلام')],
+      );
+
+      await _pumpMarketplace(tester, state);
+      state.showRefreshing();
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('marketplace-results-refreshing')),
+        findsOneWidget,
+      );
+      expect(find.text('قاعة السلام'), findsOneWidget);
+      expect(find.byType(AarastSkeleton), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+}
+
+Future<void> _expandQuoteInbox(WidgetTester tester) async {
+  await tester.tap(find.text('طلباتك وعروضك'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpMarketplace(
@@ -486,6 +737,7 @@ Future<void> _pumpMarketplace(
   _FakeMarketplaceProvider state, {
   bool authenticated = false,
   bool withRouter = false,
+  bool embedded = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -573,6 +825,7 @@ Future<void> _pumpMarketplace(
               GoRoute(
                 path: AppRouter.providerMarketplace,
                 builder: (context, state) => ProviderMarketplaceScreen(
+                  embedded: embedded,
                   weddingPlanId: authenticated ? 'plan-1' : null,
                 ),
               ),
@@ -605,6 +858,7 @@ Future<void> _pumpMarketplace(
       : MaterialApp(
           theme: AppTheme.light(),
           home: ProviderMarketplaceScreen(
+            embedded: embedded,
             weddingPlanId: authenticated ? 'plan-1' : null,
           ),
         );
@@ -657,6 +911,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     List<MarketplaceService> budgetMatchedServices = const [],
     bool isLoadingMore = false,
     bool hasMoreProviders = false,
+    bool isLoading = false,
     String search = '',
   }) : providersData = providers,
        categoriesData = categories,
@@ -665,6 +920,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
        budgetMatchedServicesData = budgetMatchedServices,
        isLoadingMoreData = isLoadingMore,
        hasMoreProvidersData = hasMoreProviders,
+       isLoadingData = isLoading,
        _search = search,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
@@ -673,6 +929,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   final List<QuoteRequest> quoteRequestsData;
   bool isLoadingMoreData;
   final bool hasMoreProvidersData;
+  bool isLoadingData;
   ProviderBudgetMatchIntent? budgetMatchIntentData;
   List<MarketplaceService> budgetMatchedServicesData;
 
@@ -682,7 +939,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   String _search;
 
   @override
-  bool get isLoading => false;
+  bool get isLoading => isLoadingData;
 
   @override
   String? get errorMessage => null;
@@ -767,6 +1024,11 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   void showLoadingMore() {
     isLoadingMoreData = true;
+    notifyListeners();
+  }
+
+  void showRefreshing() {
+    isLoadingData = true;
     notifyListeners();
   }
 

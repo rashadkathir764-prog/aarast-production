@@ -34,6 +34,7 @@ class ProviderDetailsScreen extends StatefulWidget {
 
 class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   bool _quoteContextReady = false;
+  final Set<String> _routeLaunchesInFlight = <String>{};
 
   @override
   void initState() {
@@ -128,7 +129,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                           if (latest != null) ...[
                             _ContactIconButton(
                               key: const Key('provider-details-conversation'),
-                              onTap: () => context.push(
+                              onTap: () => _pushOnce(
                                 AppRouter.quoteConversation(latest.id),
                               ),
                             ),
@@ -216,7 +217,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               }
               await state.toggleFavorite(provider.id);
             },
-            onRequestQuote: (service) => context.push(
+            onRequestQuote: (service) => _pushOnce(
               AppRouter.providerQuote(provider.id),
               extra: service.id,
             ),
@@ -280,16 +281,25 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     return 'طلب عرض جديد';
   }
 
+  Future<T?> _pushOnce<T>(String location, {Object? extra}) async {
+    if (!mounted || !_routeLaunchesInFlight.add(location)) return null;
+    try {
+      return await context.push<T>(location, extra: extra);
+    } finally {
+      _routeLaunchesInFlight.remove(location);
+    }
+  }
+
   void _openPrimaryQuoteAction(BuildContext context, QuoteRequest? quote) {
     if (quote == null ||
         quote.status == 'CANCELLED' ||
         quote.status == 'REJECTED' ||
         quote.hasExpiredOffer) {
-      context.push(AppRouter.providerQuote(widget.providerId));
+      _pushOnce(AppRouter.providerQuote(widget.providerId));
       return;
     }
     if (quote.status == 'SENT' || quote.status == 'VIEWED') {
-      context.push(AppRouter.quoteConversation(quote.id));
+      _pushOnce(AppRouter.quoteConversation(quote.id));
       return;
     }
     final selected = context.read<AccountContextController?>()?.selectedContext;
@@ -307,6 +317,6 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       );
       return;
     }
-    context.push(AppRouter.planProviders(selectedPlanId, quoteId: quote.id));
+    _pushOnce(AppRouter.planProviders(selectedPlanId, quoteId: quote.id));
   }
 }

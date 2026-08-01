@@ -457,6 +457,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     String? budgetMin,
     String? budgetMax,
   }) async {
+    if (_isSubmitting) return false;
     _isSubmitting = true;
     _errorMessage = null;
     _quoteSubmitErrorMessage = null;
@@ -664,6 +665,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   }
 
   Future<bool> _updateQuote(Future<QuoteRequest> Function() action) async {
+    if (_isSubmitting) return false;
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();

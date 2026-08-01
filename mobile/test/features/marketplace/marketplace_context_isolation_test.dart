@@ -95,6 +95,8 @@ void main() {
       addTearDown(finance.dispose);
 
       await _pumpMarketplace(tester, marketplace, finance: finance);
+      await tester.tap(find.text('طلباتك وعروضك'));
+      await tester.pumpAndSettle();
 
       final acceptButton = find.byKey(const Key('quote-accept-quote-old'));
       expect(acceptButton, findsOneWidget);

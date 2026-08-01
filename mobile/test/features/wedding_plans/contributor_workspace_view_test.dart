@@ -41,6 +41,7 @@ void main() {
       findsNothing,
     );
     expect(find.byKey(const Key('contributor-members-section')), findsNothing);
+    expect(find.byKey(const Key('contributor-tasks-add-action')), findsNothing);
     expect(find.text('أنت مساهم للمتابعة'), findsOneWidget);
     await tester.drag(
       find.byKey(const PageStorageKey('contributor-workspace-list')),
@@ -58,6 +59,7 @@ void main() {
     'contributor workspace shows sections and actions from permissions',
     (tester) async {
       var tasksOpened = 0;
+      var moneyOpened = 0;
       var costsCreated = 0;
 
       await tester.pumpWidget(
@@ -79,7 +81,7 @@ void main() {
             onOpenTasks: () => tasksOpened += 1,
             onOpenNotifications: () {},
             onShowPermissions: () {},
-            onOpenMoney: () {},
+            onOpenMoney: () => moneyOpened += 1,
             onOpenGuests: () {},
             onOpenProviders: () {},
             onOpenMembers: () {},
@@ -111,11 +113,22 @@ void main() {
       await tester.tap(find.byKey(const Key('contributor-tasks-section')));
       expect(tasksOpened, 1);
 
-      final addCostButton = find.widgetWithText(TextButton, 'إضافة تكلفة');
+      final addCostButton = find.byKey(
+        const Key('contributor-money-add-action'),
+      );
       await tester.ensureVisible(addCostButton);
       await tester.pumpAndSettle();
       await tester.tap(addCostButton);
       expect(costsCreated, 1);
+      expect(moneyOpened, 0);
+      expect(
+        find.byKey(const Key('contributor-tasks-add-action')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('contributor-guests-add-action')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

@@ -74,6 +74,59 @@ void main() {
     },
   );
 
+  test('concurrent quote create starts one request only', () async {
+    final api = _ConcurrentQuoteApi();
+    final provider = ProviderMarketplaceProvider(api);
+
+    final first = provider.createQuoteRequest(
+      providerId: 'provider-1',
+      weddingPlanId: 'plan-1',
+      message: 'same request',
+    );
+    final duplicate = provider.createQuoteRequest(
+      providerId: 'provider-1',
+      weddingPlanId: 'plan-1',
+      message: 'same request',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(api.createCalls, 1);
+    expect(await duplicate, false);
+    api.createResult.complete(_quote('quote-created', planId: 'plan-1'));
+    expect(await first, true);
+  });
+
+  test('concurrent offer decision starts one mutation only', () async {
+    final api = _ConcurrentQuoteApi();
+    final provider = ProviderMarketplaceProvider(api);
+    final quote = QuoteRequest(
+      id: 'quote-offer',
+      providerId: 'provider-1',
+      weddingPlanId: 'plan-1',
+      status: 'RESPONDED',
+      lifecycleStatus: 'RECEIVED',
+      offers: const [QuoteOffer(id: 'offer-1', status: 'PENDING')],
+    );
+
+    final first = provider.acceptQuote(quote);
+    final duplicate = provider.acceptQuote(quote);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(api.acceptCalls, 1);
+    expect(await duplicate, false);
+    api.acceptResult.complete(
+      QuoteRequest(
+        id: quote.id,
+        providerId: quote.providerId,
+        weddingPlanId: quote.weddingPlanId,
+        status: 'ACCEPTED',
+        lifecycleStatus: 'ACCEPTED',
+        offers: const [QuoteOffer(id: 'offer-1', status: 'ACCEPTED')],
+      ),
+    );
+    expect(await first, true);
+  });
+
   test('active request conflict exposes the current request action', () async {
     final api = _ActiveConflictApi();
     final provider = ProviderMarketplaceProvider(api);
@@ -253,6 +306,44 @@ class _ActiveConflictApi extends _RetryQuoteApi {
   @override
   Future<List<QuoteRequest>> getPlanQuoteRequests(String weddingPlanId) async =>
       [_quote('quote-existing', planId: weddingPlanId)];
+}
+
+class _ConcurrentQuoteApi extends MarketplaceApi {
+  _ConcurrentQuoteApi() : super(ApiClient(tokenProvider: () async => null));
+
+  final createResult = Completer<QuoteRequest>();
+  final acceptResult = Completer<QuoteRequest>();
+  int createCalls = 0;
+  int acceptCalls = 0;
+
+  @override
+  Future<QuoteRequest> createQuoteRequest({
+    required String providerId,
+    required String clientRequestId,
+    String? weddingPlanId,
+    String? serviceId,
+    DateTime? eventDate,
+    Map<String, dynamic>? location,
+    String? cityId,
+    int? guestCount,
+    String? contactName,
+    String? contactPhone,
+    String? message,
+    String? budgetMin,
+    String? budgetMax,
+  }) {
+    createCalls += 1;
+    return createResult.future;
+  }
+
+  @override
+  Future<QuoteRequest> acceptQuoteOffer({
+    required String quoteRequestId,
+    required String quoteOfferId,
+  }) {
+    acceptCalls += 1;
+    return acceptResult.future;
+  }
 }
 
 class _PlanScopeApi extends MarketplaceApi {

@@ -48,6 +48,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   DateTime? _eventDate;
   WeddingLocationDraft? _eventLocation;
   bool _didApplyInitialPlanContext = false;
+  final Set<String> _routeLaunchesInFlight = <String>{};
 
   @override
   void initState() {
@@ -287,9 +288,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                       Center(
                         child: TextButton.icon(
                           key: const Key('continue-active-quote'),
-                          onPressed: () => context.push(
-                            AppRouter.quoteConversation(quote.id),
-                          ),
+                          onPressed: () =>
+                              _pushOnce(AppRouter.quoteConversation(quote.id)),
                           icon: const Icon(LucideIcons.messageCircle),
                           label: const Text('متابعة الطلب الحالي'),
                         ),
@@ -470,6 +470,15 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       context.go(
         AppRouter.planProviders(selectedPlanId, quoteId: createdQuote?.id),
       );
+    }
+  }
+
+  Future<T?> _pushOnce<T>(String location, {Object? extra}) async {
+    if (!mounted || !_routeLaunchesInFlight.add(location)) return null;
+    try {
+      return await context.push<T>(location, extra: extra);
+    } finally {
+      _routeLaunchesInFlight.remove(location);
     }
   }
 

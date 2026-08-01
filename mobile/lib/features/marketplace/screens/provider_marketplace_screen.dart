@@ -48,6 +48,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _scrollController = ScrollController();
+  final Set<String> _routeLaunchesInFlight = <String>{};
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
 
@@ -174,7 +175,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 _TopMarketplaceCommandCard(
                   embedded: widget.embedded,
                   provider: provider,
-                  quotes: quoteRequests,
+                  onOpenFavorites: () => _pushOnce(AppRouter.favoriteProviders),
+                  onOpenConversations: () => _pushOnce(AppRouter.conversations),
                 ),
                 if (!provider.includesAccountData) ...[
                   const SizedBox(height: 12),
@@ -186,17 +188,18 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   focusNode: _searchFocusNode,
                   provider: provider,
                 ),
-
+                const SizedBox(height: 10),
+                _FilterChips(provider: provider),
                 if (_weddingLocation != null &&
                     !_weddingLocation!.hasRequiredLocation) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _LocationContextCard(
                     location: _weddingLocation,
                     onCompleteLocation: _openLocationCompletion,
                   ),
                 ],
                 if (provider.budgetMatchIntent != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _BudgetMatchContextCard(
                     intent: provider.budgetMatchIntent!,
                     categoryName: _activeCategoryName(provider),
@@ -204,7 +207,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   ),
                 ],
                 if (quoteRequests.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _OffersInboxCard(
                     quotes: quoteRequests,
                     initialQuoteId: widget.initialQuoteId,
@@ -212,22 +215,34 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     onAccept: _acceptQuote,
                     onReject: _rejectQuote,
                     onViewCost: _viewAcceptedQuoteCost,
+                    onOpenConversation: (quote) =>
+                        _pushOnce(AppRouter.quoteConversation(quote.id)),
                     onCreateNew: (quote) =>
-                        context.push(AppRouter.providerQuote(quote.providerId)),
+                        _pushOnce(AppRouter.providerQuote(quote.providerId)),
                   ),
                 ],
                 if (provider.includesAccountData &&
                     provider.quoteRequestsErrorMessage != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _ErrorCard(
                     title: 'تعذر تحميل عروض الأسعار',
                     message: provider.quoteRequestsErrorMessage!,
                     onRetry: provider.loadScopedQuoteRequests,
                   ),
                 ],
-                const SizedBox(height: 12),
-                _FilterChips(provider: provider),
-                const SizedBox(height: 18),
+                if (provider.isLoading && provider.providers.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(999)),
+                    child: LinearProgressIndicator(
+                      key: Key('marketplace-results-refreshing'),
+                      minHeight: 3,
+                      color: AppTheme.burgundy,
+                      backgroundColor: AppTheme.burgundySoft,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
                 if (provider.errorMessage != null)
                   _ErrorCard(
                     message: provider.errorMessage!,
@@ -255,13 +270,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     _BudgetMatchedServicesSection(
                       intent: provider.budgetMatchIntent!,
                       services: provider.budgetMatchedServices,
-                      onOpenProvider: (providerId) => context.push(
+                      onOpenProvider: (providerId) => _pushOnce(
                         AppRouter.providerDetails(
                           providerId,
                           weddingPlanId: _weddingLocationPlanId,
                         ),
                       ),
-                      onRequestQuote: (service) => context.push(
+                      onRequestQuote: (service) => _pushOnce(
                         AppRouter.providerQuote(service.providerId),
                         extra: ProviderQuoteInitialContext(
                           serviceId: service.id,
@@ -297,7 +312,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         }
                         await provider.toggleFavorite(item.id);
                       },
-                      onTap: () => context.push(
+                      onTap: () => _pushOnce(
                         AppRouter.providerDetails(
                           item.id,
                           weddingPlanId: _weddingLocationPlanId,
@@ -459,6 +474,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     return normalized == null || normalized.isEmpty ? null : normalized;
   }
 
+  Future<T?> _pushOnce<T>(String location, {Object? extra}) async {
+    if (!mounted || !_routeLaunchesInFlight.add(location)) return null;
+    try {
+      return await context.push<T>(location, extra: extra);
+    } finally {
+      _routeLaunchesInFlight.remove(location);
+    }
+  }
+
   Future<void> _loadRequestedQuote(
     ProviderMarketplaceProvider marketplace, {
     required String? selectedPlanId,
@@ -523,10 +547,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   void _openLocationCompletion() {
     final planId = _weddingLocationPlanId;
     if (planId != null && planId.trim().isNotEmpty) {
-      context.push(AppRouter.planCenter(planId));
+      _pushOnce(AppRouter.planCenter(planId));
       return;
     }
-    context.push(AppRouter.onboarding);
+    _pushOnce(AppRouter.onboarding);
   }
 
   // القبول من مكانه — الخادم يفحص الصلاحيات، ونحن نعرض النتيجة بصدق.
@@ -573,7 +597,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       AarastToast.showError(context, 'تعذر فتح التكلفة المرتبطة بهذا العرض.');
       return;
     }
-    context.push(AppRouter.moneyCostDetails(planId, costId));
+    _pushOnce(AppRouter.moneyCostDetails(planId, costId));
   }
 
   String? _selectedPlanIdForQuote(QuoteRequest quote) {

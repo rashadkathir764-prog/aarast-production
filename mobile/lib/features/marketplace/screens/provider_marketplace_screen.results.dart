@@ -23,15 +23,41 @@ class _BudgetMatchedServicesSection extends StatelessWidget {
           icon: LucideIcons.store,
         ),
         const SizedBox(height: 10),
-        for (final service in services.take(5)) ...[
-          _BudgetMatchedServiceCard(
-            intent: intent,
-            service: service,
-            onOpenProvider: () => onOpenProvider(service.providerId),
-            onRequestQuote: () => onRequestQuote(service),
-          ),
-          const SizedBox(height: 10),
-        ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = constraints.maxWidth < 360
+                ? constraints.maxWidth - 20
+                : 320.0;
+            return SingleChildScrollView(
+              key: const Key('budget-matched-services-carousel'),
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (
+                    var index = 0;
+                    index < services.take(5).length;
+                    index++
+                  ) ...[
+                    SizedBox(
+                      width: cardWidth,
+                      child: _BudgetMatchedServiceCard(
+                        intent: intent,
+                        service: services[index],
+                        onOpenProvider: () =>
+                            onOpenProvider(services[index].providerId),
+                        onRequestQuote: () => onRequestQuote(services[index]),
+                      ),
+                    ),
+                    if (index < services.take(5).length - 1)
+                      const SizedBox(width: 10),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
       ],
     );
   }
@@ -201,31 +227,41 @@ class _LocationContextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      key: const Key('marketplace-location-prompt'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       color: AppTheme.surface,
       border: Border.all(color: AppTheme.border),
+      onTap: onCompleteLocation,
       child: Row(
         children: [
-          const Icon(LucideIcons.mapPin, color: AppTheme.gold, size: 20),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppTheme.goldSoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            ),
+            child: const Icon(
+              LucideIcons.mapPin,
+              color: AppTheme.gold,
+              size: 18,
+            ),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'أضف موقع الزفاف لتحسين تصفية المدينة',
+              'أكمل موقع الزفاف لتحسين نتائج المدينة',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
+                height: 1.35,
               ),
             ),
           ),
-          TextButton(
-            onPressed: onCompleteLocation,
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.gold,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              minimumSize: const Size(0, 32),
-            ),
-            child: const Text('إكمال الموقع'),
-          ),
+          const SizedBox(width: 6),
+          const Icon(LucideIcons.chevronLeft, color: AppTheme.gold, size: 18),
         ],
       ),
     );
@@ -242,6 +278,7 @@ class _OffersInboxCard extends StatelessWidget {
     required this.onAccept,
     required this.onReject,
     required this.onViewCost,
+    required this.onOpenConversation,
     required this.onCreateNew,
   });
 
@@ -251,6 +288,7 @@ class _OffersInboxCard extends StatelessWidget {
   final void Function(QuoteRequest quote) onAccept;
   final void Function(QuoteRequest quote) onReject;
   final void Function(QuoteRequest quote) onViewCost;
+  final void Function(QuoteRequest quote) onOpenConversation;
   final void Function(QuoteRequest quote) onCreateNew;
 
   @override
@@ -258,74 +296,94 @@ class _OffersInboxCard extends StatelessWidget {
     final visible = _inboxQuotes(quotes, prioritizedQuoteId: initialQuoteId);
     if (visible.isEmpty) return const SizedBox.shrink();
 
-    final needsDecision = quotes
-        .where((quote) => quote.canAcceptOrReject)
-        .length;
+    final needsDecision = _actionableOfferCount(quotes);
     final prioritizedId = initialQuoteId?.trim();
     final hasPrioritizedQuote =
         prioritizedId != null &&
         prioritizedId.isNotEmpty &&
         visible.any((quote) => quote.id == prioritizedId);
-    final initiallyExpanded =
-        needsDecision > 0 || hasPrioritizedQuote || visible.length == 1;
+    final requests = _requestCount(quotes);
+    final accepted = _acceptedProviderCount(quotes);
+    final summaryParts = <String>[
+      '$requests ${requests == 1 ? 'طلب' : 'طلبات'}',
+      if (needsDecision > 0) '$needsDecision بحاجة قرار',
+      if (accepted > 0)
+        '$accepted ${accepted == 1 ? 'عرض مقبول' : 'عروض مقبولة'}',
+    ];
 
     return AarastCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      key: const Key('quote-inbox-summary-card'),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       color: AppTheme.surface,
-      border: Border.all(color: AppTheme.border),
+      border: Border.all(
+        color: needsDecision > 0
+            ? AppTheme.gold.withValues(alpha: 0.45)
+            : AppTheme.border,
+      ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          key: ValueKey(
-            'quote-inbox-$needsDecision-${visible.length}-$prioritizedId',
-          ),
-          initiallyExpanded: initiallyExpanded,
-          maintainState: true,
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: const EdgeInsets.only(bottom: 12),
-          leading: const Icon(LucideIcons.mailOpen, color: AppTheme.burgundy),
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'طلباتك وعروضك',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              if (needsDecision > 0)
-                AarastStatusPill(
-                  label: '$needsDecision بحاجة قرار',
-                  color: AppTheme.gold,
-                  backgroundColor: AppTheme.goldSoft,
-                ),
-            ],
-          ),
-          subtitle: Text(
-            needsDecision > 0
-                ? 'راجع العرض ثم اقبله أو ارفضه من هنا.'
-                : 'لا يوجد عرض لاتخاذ قرار الآن؛ الطلبات بانتظار رد المورد.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
+        child: KeyedSubtree(
+          key: const Key('quote-inbox-toggle'),
+          child: ExpansionTile(
+            key: ValueKey(
+              'quote-inbox-$needsDecision-${visible.length}-$prioritizedId',
             ),
-          ),
-          children: [
-            for (var index = 0; index < visible.length; index += 1) ...[
-              if (index > 0) const Divider(height: 22, color: AppTheme.border),
-              _OfferQuoteTile(
-                quote: visible[index],
-                isSubmitting: isSubmitting,
-                onAccept: () => onAccept(visible[index]),
-                onReject: () => onReject(visible[index]),
-                onViewCost: () => onViewCost(visible[index]),
-                onCreateNew: () => onCreateNew(visible[index]),
+            initiallyExpanded: hasPrioritizedQuote,
+            maintainState: true,
+            dense: true,
+            tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+            childrenPadding: const EdgeInsets.fromLTRB(6, 0, 6, 12),
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: needsDecision > 0
+                    ? AppTheme.goldSoft
+                    : AppTheme.burgundySoft,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
+              child: Icon(
+                needsDecision > 0 ? LucideIcons.bellRing : LucideIcons.mailOpen,
+                color: needsDecision > 0 ? AppTheme.gold : AppTheme.burgundy,
+                size: 18,
+              ),
+            ),
+            title: Text(
+              'طلباتك وعروضك',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            subtitle: Text(
+              summaryParts.join(' · '),
+              key: const Key('quote-inbox-summary'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: needsDecision > 0 ? AppTheme.gold : AppTheme.muted,
+                fontWeight: FontWeight.w800,
+                height: 1.3,
+              ),
+            ),
+            children: [
+              for (var index = 0; index < visible.length; index += 1) ...[
+                if (index > 0)
+                  const Divider(height: 22, color: AppTheme.border),
+                _OfferQuoteTile(
+                  quote: visible[index],
+                  isSubmitting: isSubmitting,
+                  onAccept: () => onAccept(visible[index]),
+                  onReject: () => onReject(visible[index]),
+                  onViewCost: () => onViewCost(visible[index]),
+                  onOpenConversation: () => onOpenConversation(visible[index]),
+                  onCreateNew: () => onCreateNew(visible[index]),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -339,6 +397,7 @@ class _OfferQuoteTile extends StatelessWidget {
     required this.onAccept,
     required this.onReject,
     required this.onViewCost,
+    required this.onOpenConversation,
     required this.onCreateNew,
   });
 
@@ -347,6 +406,7 @@ class _OfferQuoteTile extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onReject;
   final VoidCallback onViewCost;
+  final VoidCallback onOpenConversation;
   final VoidCallback onCreateNew;
 
   @override
@@ -362,7 +422,10 @@ class _OfferQuoteTile extends StatelessWidget {
     }
 
     if (!quote.canAcceptOrReject && !isAccepted) {
-      return _CompactQuoteStatusRow(quote: quote);
+      return _CompactQuoteStatusRow(
+        quote: quote,
+        onOpenConversation: onOpenConversation,
+      );
     }
 
     return Column(
@@ -403,12 +466,14 @@ class _OfferQuoteTile extends StatelessWidget {
             isSubmitting: isSubmitting,
             onAccept: onAccept,
             onReject: onReject,
+            onOpenConversation: onOpenConversation,
           )
         else
           _OfferAcceptedArea(
             quote: quote,
             isSubmitting: isSubmitting,
             onViewCost: onViewCost,
+            onOpenConversation: onOpenConversation,
           ),
       ],
     );
@@ -467,9 +532,13 @@ class _ExpiredOfferRow extends StatelessWidget {
 
 /// الطلب الذي لم يصله عرض بعد يبقى سطر متابعة، لا بطاقة قرار كاملة.
 class _CompactQuoteStatusRow extends StatelessWidget {
-  const _CompactQuoteStatusRow({required this.quote});
+  const _CompactQuoteStatusRow({
+    required this.quote,
+    required this.onOpenConversation,
+  });
 
   final QuoteRequest quote;
+  final VoidCallback onOpenConversation;
 
   @override
   Widget build(BuildContext context) {
@@ -540,8 +609,7 @@ class _CompactQuoteStatusRow extends StatelessWidget {
           const SizedBox(width: 4),
           IconButton(
             key: Key('quote-conversation-${quote.id}'),
-            onPressed: () =>
-                context.push(AppRouter.quoteConversation(quote.id)),
+            onPressed: onOpenConversation,
             tooltip: 'محادثة المزوّد',
             style: IconButton.styleFrom(
               foregroundColor: AppTheme.burgundy,
@@ -563,12 +631,14 @@ class _OfferDecisionArea extends StatelessWidget {
     required this.isSubmitting,
     required this.onAccept,
     required this.onReject,
+    required this.onOpenConversation,
   });
 
   final QuoteRequest quote;
   final bool isSubmitting;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+  final VoidCallback onOpenConversation;
 
   @override
   Widget build(BuildContext context) {
@@ -619,8 +689,7 @@ class _OfferDecisionArea extends StatelessWidget {
                   minimumSize: const Size(0, 44),
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                 ),
-                onPressed: () =>
-                    context.push(AppRouter.quoteConversation(quote.id)),
+                onPressed: onOpenConversation,
                 icon: const Icon(LucideIcons.messageCircle, size: 18),
                 label: const Text('محادثة'),
               ),
@@ -638,6 +707,7 @@ class _OfferDecisionArea extends StatelessWidget {
               isSubmitting: isSubmitting,
               onAccept: onAccept,
               onReject: onReject,
+              onOpenConversation: onOpenConversation,
             ),
             icon: const Icon(LucideIcons.listChecks, size: 17),
             label: const Text('عرض تفاصيل العرض'),
@@ -676,11 +746,13 @@ class _OfferAcceptedArea extends StatelessWidget {
     required this.quote,
     required this.isSubmitting,
     required this.onViewCost,
+    required this.onOpenConversation,
   });
 
   final QuoteRequest quote;
   final bool isSubmitting;
   final VoidCallback onViewCost;
+  final VoidCallback onOpenConversation;
 
   @override
   Widget build(BuildContext context) {
@@ -729,7 +801,7 @@ class _OfferAcceptedArea extends StatelessWidget {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           key: Key('quote-conversation-${quote.id}'),
-          onPressed: () => context.push(AppRouter.quoteConversation(quote.id)),
+          onPressed: onOpenConversation,
           icon: const Icon(LucideIcons.messageCircle, size: 18),
           label: const Text('محادثة المزوّد'),
         ),
@@ -745,6 +817,7 @@ Future<void> _showOfferDetailsSheet(
   required bool isSubmitting,
   required VoidCallback onAccept,
   required VoidCallback onReject,
+  required VoidCallback onOpenConversation,
 }) {
   return showAarastBottomSheet<void>(
     context: context,
@@ -958,7 +1031,7 @@ Future<void> _showOfferDetailsSheet(
                   key: Key('sheet-quote-conversation-${quote.id}'),
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    context.push(AppRouter.quoteConversation(quote.id));
+                    onOpenConversation();
                   },
                   icon: const Icon(LucideIcons.messageCircle, size: 18),
                   label: const Text('محادثة المورد'),
@@ -1090,6 +1163,7 @@ class _ProviderCard extends StatelessWidget {
         : _serviceBudgetStatusColor(budgetStatus);
 
     return PremiumVendorCard(
+      key: Key('provider-marketplace-card-${provider.id}'),
       businessName: provider.businessName,
       isFeatured: provider.isFeatured,
       ratingAverage: provider.ratingAverage,

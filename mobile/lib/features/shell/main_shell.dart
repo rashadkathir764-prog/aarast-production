@@ -225,6 +225,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                   key: ValueKey('providers-$selectedPlanId'),
                   embedded: true,
                   weddingPlanId: selectedPlanId,
+                  preserveOwnerShellOnQuoteFocus: true,
                 ),
               ),
             ],

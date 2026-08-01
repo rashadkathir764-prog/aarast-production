@@ -22,11 +22,13 @@ class ProviderDetailsScreen extends StatefulWidget {
   const ProviderDetailsScreen({
     required this.providerId,
     this.weddingPlanId,
+    this.returnQuoteToMarketplace = false,
     super.key,
   });
 
   final String providerId;
   final String? weddingPlanId;
+  final bool returnQuoteToMarketplace;
 
   @override
   State<ProviderDetailsScreen> createState() => _ProviderDetailsScreenState();
@@ -34,6 +36,7 @@ class ProviderDetailsScreen extends StatefulWidget {
 
 class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   bool _quoteContextReady = false;
+  bool _isReturningQuoteToMarketplace = false;
   final Set<String> _routeLaunchesInFlight = <String>{};
 
   @override
@@ -129,9 +132,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                           if (latest != null) ...[
                             _ContactIconButton(
                               key: const Key('provider-details-conversation'),
-                              onTap: () => _pushOnce(
-                                AppRouter.quoteConversation(latest.id),
-                              ),
+                              onTap: () => _openQuoteConversation(latest.id),
                             ),
                             const SizedBox(width: 10),
                           ],
@@ -299,7 +300,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       return;
     }
     if (quote.status == 'SENT' || quote.status == 'VIEWED') {
-      _pushOnce(AppRouter.quoteConversation(quote.id));
+      _openQuoteConversation(quote.id);
       return;
     }
     final selected = context.read<AccountContextController?>()?.selectedContext;
@@ -317,6 +318,31 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       );
       return;
     }
+    if (_returnQuoteToMarketplace(
+      ProviderMarketplaceRouteResult.focusQuote(quote.id),
+    )) {
+      return;
+    }
     _pushOnce(AppRouter.planProviders(selectedPlanId, quoteId: quote.id));
+  }
+
+  Future<void> _openQuoteConversation(String quoteId) async {
+    final result = await _pushOnce<ProviderMarketplaceRouteResult>(
+      AppRouter.quoteConversation(quoteId),
+      extra: widget.returnQuoteToMarketplace
+          ? ProviderMarketplaceLaunchOrigin.ownerMainShellProviders
+          : null,
+    );
+    if (!mounted || result == null) return;
+    _returnQuoteToMarketplace(result);
+  }
+
+  bool _returnQuoteToMarketplace(ProviderMarketplaceRouteResult result) {
+    if (!widget.returnQuoteToMarketplace) return false;
+    if (_isReturningQuoteToMarketplace) return true;
+    if (!context.canPop()) return false;
+    _isReturningQuoteToMarketplace = true;
+    context.pop(result);
+    return true;
   }
 }

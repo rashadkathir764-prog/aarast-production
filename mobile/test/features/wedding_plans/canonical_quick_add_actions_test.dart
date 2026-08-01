@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -274,6 +275,34 @@ void main() {
         expect(mainShell, isNot(contains('contributor-indexed-stack-')));
         expect(mainShell, isNot(contains('contributor-navigation-')));
         expect(mainShell, isNot(contains('contributor-tab-')));
+      },
+    );
+
+    testWidgets(
+      'route-owned plan shell keeps an opaque ivory surface during tab changes',
+      (tester) async {
+        final router = _buildPlanShellRouter(
+          initialLocation: AppRouter.planProviders('plan-7'),
+        );
+        addTearDown(router.dispose);
+
+        await _pumpPlanShellRouter(tester, router);
+        await tester.pump();
+
+        void expectOpaqueShellSurface() {
+          final shellScaffold = tester
+              .widgetList<Scaffold>(find.byType(Scaffold))
+              .singleWhere((scaffold) => scaffold.bottomNavigationBar != null);
+          expect(shellScaffold.backgroundColor, AppTheme.ivory);
+          expect(shellScaffold.backgroundColor?.a, 1);
+        }
+
+        expectOpaqueShellSurface();
+        await _tapNavIcon(tester, LucideIcons.home);
+        expectOpaqueShellSurface();
+        await _tapNavIcon(tester, LucideIcons.store);
+        expectOpaqueShellSurface();
+        expect(tester.takeException(), isNull);
       },
     );
 

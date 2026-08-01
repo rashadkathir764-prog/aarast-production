@@ -15,9 +15,14 @@ import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({required this.conversationId, super.key});
+  const ChatScreen({
+    required this.conversationId,
+    this.returnQuoteToMarketplace = false,
+    super.key,
+  });
 
   final String conversationId;
+  final bool returnQuoteToMarketplace;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -28,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   MediaUploadTicket? _attachment;
   bool _isUploading = false;
+  bool _quoteNavigationInFlight = false;
   ChatProvider? _chatProvider;
 
   @override
@@ -155,17 +161,30 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _openQuoteEvent(ChatConversation? conversation, String quoteRequestId) {
-    final planId = conversation?.weddingPlan?.id;
-    if (planId != null && planId.isNotEmpty) {
-      context.push(
-        '/wedding-plans/$planId/providers?quoteId=${Uri.encodeQueryComponent(quoteRequestId)}',
-      );
+  Future<void> _openQuoteEvent(
+    ChatConversation? conversation,
+    String quoteRequestId,
+  ) async {
+    if (_quoteNavigationInFlight) return;
+    _quoteNavigationInFlight = true;
+    if (widget.returnQuoteToMarketplace && context.canPop()) {
+      context.pop(ProviderMarketplaceRouteResult.focusQuote(quoteRequestId));
       return;
     }
-    context.push(
-      '${AppRouter.providerMarketplace}?quoteId=${Uri.encodeQueryComponent(quoteRequestId)}',
-    );
+    final planId = conversation?.weddingPlan?.id;
+    try {
+      if (planId != null && planId.isNotEmpty) {
+        await context.push(
+          AppRouter.planProviders(planId, quoteId: quoteRequestId),
+        );
+        return;
+      }
+      await context.push(
+        '${AppRouter.providerMarketplace}?quoteId=${Uri.encodeQueryComponent(quoteRequestId)}',
+      );
+    } finally {
+      if (mounted) _quoteNavigationInFlight = false;
+    }
   }
 
   ChatConversation? _conversation(ChatProvider provider) {
@@ -308,7 +327,9 @@ class _ChatHeader extends StatelessWidget {
           children: [
             IconButton(
               tooltip: 'رجوع',
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () {
+                if (context.canPop()) context.pop();
+              },
               icon: const Icon(LucideIcons.arrowRight),
             ),
             CircleAvatar(

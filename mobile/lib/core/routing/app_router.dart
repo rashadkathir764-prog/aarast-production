@@ -64,6 +64,15 @@ import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart'
 import '../../features/shell/screens/wedding_plan_shell.dart';
 import '../config/app_feature_flags.dart';
 
+enum ProviderMarketplaceLaunchOrigin { ownerMainShellProviders }
+
+@immutable
+class ProviderMarketplaceRouteResult {
+  const ProviderMarketplaceRouteResult.focusQuote(this.quoteId);
+
+  final String quoteId;
+}
+
 class AppRouter {
   const AppRouter._();
 
@@ -398,6 +407,9 @@ class AppRouter {
             final screen = ProviderDetailsScreen(
               providerId: id,
               weddingPlanId: weddingPlanId,
+              returnQuoteToMarketplace:
+                  state.extra ==
+                  ProviderMarketplaceLaunchOrigin.ownerMainShellProviders,
             );
             return weddingPlanId == null
                 ? screen
@@ -519,7 +531,12 @@ class AppRouter {
             final id = state.pathParameters['id'] ?? '';
             return ProviderAuthGate(
               resumeLocation: state.uri.toString(),
-              child: QuoteConversationEntryScreen(quoteRequestId: id),
+              child: QuoteConversationEntryScreen(
+                quoteRequestId: id,
+                returnQuoteToMarketplace:
+                    state.extra ==
+                    ProviderMarketplaceLaunchOrigin.ownerMainShellProviders,
+              ),
             );
           },
         ),

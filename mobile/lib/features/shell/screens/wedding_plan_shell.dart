@@ -9,6 +9,7 @@ import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../finance/providers/finance_provider.dart';
 import '../widgets/plan_shell_chrome.dart';
 
@@ -132,7 +133,11 @@ class WeddingPlanShell extends StatelessWidget {
       onTabSelected: (index) => _onNavigate(context, index),
       showQuickFab: showQuickFab,
       onQuickAdd: () => _showQuickAdd(context, weddingPlanId, currentIndex),
-      backgroundColor: Colors.transparent,
+      // This route-owned shell is entered from quote and conversation flows.
+      // Its surface must stay opaque while GoRouter replaces child routes;
+      // otherwise the Android render surface is exposed behind the persistent
+      // bottom navigation during the transition.
+      backgroundColor: AppTheme.ivory,
       body: child,
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 
@@ -10,7 +11,7 @@ class PlanShellChrome extends StatelessWidget {
     required this.onTabSelected,
     required this.showQuickFab,
     this.onQuickAdd,
-    this.backgroundColor = Colors.transparent,
+    this.backgroundColor = AppTheme.ivory,
     super.key,
   });
 

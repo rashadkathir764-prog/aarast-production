@@ -31,6 +31,7 @@ class ProviderMarketplaceScreen extends StatefulWidget {
     this.weddingPlanId,
     this.initialBudgetIntent,
     this.initialQuoteId,
+    this.preserveOwnerShellOnQuoteFocus = false,
     super.key,
   });
 
@@ -38,6 +39,7 @@ class ProviderMarketplaceScreen extends StatefulWidget {
   final String? weddingPlanId;
   final ProviderBudgetMatchIntent? initialBudgetIntent;
   final String? initialQuoteId;
+  final bool preserveOwnerShellOnQuoteFocus;
 
   @override
   State<ProviderMarketplaceScreen> createState() =>
@@ -51,12 +53,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final Set<String> _routeLaunchesInFlight = <String>{};
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
+  String? _focusedQuoteId;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_loadMoreNearEnd);
     _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
+    _focusedQuoteId = _normalizedPlanId(widget.initialQuoteId);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
@@ -121,6 +125,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       });
     }
     if (oldWidget.initialQuoteId != widget.initialQuoteId) {
+      _focusedQuoteId = _normalizedPlanId(widget.initialQuoteId);
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         final hasAccount = await AuthActionGuard.hasAccount(context);
@@ -210,13 +215,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   const SizedBox(height: 10),
                   _OffersInboxCard(
                     quotes: quoteRequests,
-                    initialQuoteId: widget.initialQuoteId,
+                    initialQuoteId: _focusedQuoteId,
                     isSubmitting: provider.isSubmitting,
                     onAccept: _acceptQuote,
                     onReject: _rejectQuote,
                     onViewCost: _viewAcceptedQuoteCost,
-                    onOpenConversation: (quote) =>
-                        _pushOnce(AppRouter.quoteConversation(quote.id)),
+                    onOpenConversation: _openQuoteConversation,
                     onCreateNew: (quote) =>
                         _pushOnce(AppRouter.providerQuote(quote.providerId)),
                   ),
@@ -270,12 +274,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     _BudgetMatchedServicesSection(
                       intent: provider.budgetMatchIntent!,
                       services: provider.budgetMatchedServices,
-                      onOpenProvider: (providerId) => _pushOnce(
-                        AppRouter.providerDetails(
-                          providerId,
-                          weddingPlanId: _weddingLocationPlanId,
-                        ),
-                      ),
+                      onOpenProvider: _openProviderDetails,
                       onRequestQuote: (service) => _pushOnce(
                         AppRouter.providerQuote(service.providerId),
                         extra: ProviderQuoteInitialContext(
@@ -312,12 +311,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         }
                         await provider.toggleFavorite(item.id);
                       },
-                      onTap: () => _pushOnce(
-                        AppRouter.providerDetails(
-                          item.id,
-                          weddingPlanId: _weddingLocationPlanId,
-                        ),
-                      ),
+                      onTap: () => _openProviderDetails(item.id),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -483,11 +477,44 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     }
   }
 
+  Future<void> _openProviderDetails(String providerId) async {
+    final result = await _pushOnce<ProviderMarketplaceRouteResult>(
+      AppRouter.providerDetails(
+        providerId,
+        weddingPlanId: _weddingLocationPlanId,
+      ),
+      extra: widget.preserveOwnerShellOnQuoteFocus
+          ? ProviderMarketplaceLaunchOrigin.ownerMainShellProviders
+          : null,
+    );
+    await _applyRouteResult(result);
+  }
+
+  Future<void> _openQuoteConversation(QuoteRequest quote) async {
+    final result = await _pushOnce<ProviderMarketplaceRouteResult>(
+      AppRouter.quoteConversation(quote.id),
+      extra: widget.preserveOwnerShellOnQuoteFocus
+          ? ProviderMarketplaceLaunchOrigin.ownerMainShellProviders
+          : null,
+    );
+    await _applyRouteResult(result);
+  }
+
+  Future<void> _applyRouteResult(ProviderMarketplaceRouteResult? result) async {
+    final quoteId = _normalizedPlanId(result?.quoteId);
+    if (!mounted || quoteId == null) return;
+    setState(() => _focusedQuoteId = quoteId);
+    await _loadRequestedQuote(
+      context.read<ProviderMarketplaceProvider>(),
+      selectedPlanId: _selectedPlanIdForAccount(),
+    );
+  }
+
   Future<void> _loadRequestedQuote(
     ProviderMarketplaceProvider marketplace, {
     required String? selectedPlanId,
   }) async {
-    final quoteId = widget.initialQuoteId?.trim();
+    final quoteId = _focusedQuoteId?.trim();
     if (selectedPlanId == null || quoteId == null || quoteId.isEmpty) return;
     await marketplace.loadQuoteRequest(
       quoteId,

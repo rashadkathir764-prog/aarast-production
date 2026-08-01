@@ -8,9 +8,14 @@ import '../providers/chat_provider.dart';
 import 'chat_screen.dart';
 
 class QuoteConversationEntryScreen extends StatefulWidget {
-  const QuoteConversationEntryScreen({required this.quoteRequestId, super.key});
+  const QuoteConversationEntryScreen({
+    required this.quoteRequestId,
+    this.returnQuoteToMarketplace = false,
+    super.key,
+  });
 
   final String quoteRequestId;
+  final bool returnQuoteToMarketplace;
 
   @override
   State<QuoteConversationEntryScreen> createState() =>
@@ -50,7 +55,10 @@ class _QuoteConversationEntryScreenState
   Widget build(BuildContext context) {
     final conversation = _conversation;
     if (conversation != null) {
-      return ChatScreen(conversationId: conversation.id);
+      return ChatScreen(
+        conversationId: conversation.id,
+        returnQuoteToMarketplace: widget.returnQuoteToMarketplace,
+      );
     }
     return AarastPageScaffold(
       title: 'المحادثة',

@@ -472,6 +472,147 @@ void main() {
     },
   );
 
+  testWidgets(
+    'opening a second accepted invite never reuses the first invite context',
+    (tester) async {
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      expect(
+        await harness.controller.verifyOtp(
+          phone: '777123456',
+          purpose: 'LOGIN',
+          code: '123456',
+        ),
+        isTrue,
+      );
+      final sharingApi = _FakeSharingApi(
+        invites: [
+          _invite(
+            id: 'invite-1',
+            weddingPlanId: 'plan-1',
+            weddingPlanTitle: 'الخطة الأولى',
+          ),
+          _invite(
+            id: 'invite-2',
+            weddingPlanId: 'plan-2',
+            weddingPlanTitle: 'الخطة الثانية',
+            token: 'token-2',
+            status: 'ACCEPTED',
+          ),
+        ],
+      );
+      final accountContexts = await _accountContexts(
+        planIds: const ['plan-1', 'plan-2'],
+      );
+      final sharingProvider = SharingProvider(sharingApi);
+      final router = GoRouter(
+        initialLocation: '/invites',
+        routes: [
+          GoRoute(
+            path: '/invites',
+            builder: (context, state) => const InviteDecisionScreen(),
+          ),
+          GoRoute(
+            path: '/wedding-plans/:id/plan-center',
+            builder: (context, state) => Scaffold(
+              key: Key('contributor-dashboard-${state.pathParameters['id']}'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthController>.value(
+              value: harness.controller,
+            ),
+            ChangeNotifierProvider<SharingProvider>.value(
+              value: sharingProvider,
+            ),
+            ChangeNotifierProvider<AccountContextController>.value(
+              value: accountContexts,
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('الخطة الأولى'));
+      await tester.pumpAndSettle();
+      await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
+      await tester.pumpAndSettle();
+      expect(
+        sharingProvider.acceptedInviteContextKey,
+        'plan:plan-1:contributor',
+      );
+
+      await _tapVisible(tester, find.text('رجوع'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('الخطة الثانية'));
+      await tester.pumpAndSettle();
+
+      expect(
+        accountContexts.selectedContext?.contextKey,
+        'plan:plan-2:contributor',
+      );
+      expect(
+        find.byKey(const Key('contributor-dashboard-plan-2')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'an accepted invite without context reports an ended membership',
+    (tester) async {
+      final token = _testInviteToken();
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      final sharingApi = _FakeSharingApi(
+        invites: [
+          _invite(token: token, status: 'ACCEPTED', withContextKey: false),
+        ],
+        currentUserId: () => harness.controller.user?.id,
+      );
+
+      await _pumpBoundaryLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+        startGuestAtInvite: true,
+      );
+      await _openOtpStep(tester);
+      await tester.enterText(
+        find.byKey(const Key('invite-otp-field')),
+        '123456',
+      );
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pumpAndSettle();
+
+      expect(find.text('انتهت عضويتك في هذه الخطة'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('invite-membership-ended')),
+          matching: find.textContaining('عضويتك في الخطة لم تعد فعالة'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('invite-open-plan-button')), findsNothing);
+      expect(find.text('صلاحياتك في الخطة'), findsNothing);
+      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
+      expect(sharingApi.acceptCalls, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('new app registration resumes at the explicit invite decision', (
     tester,
   ) async {
@@ -959,11 +1100,14 @@ Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
   }
 }
 
-Future<AccountContextController> _accountContexts() async {
+Future<AccountContextController> _accountContexts({
+  List<String> planIds = const ['plan-1'],
+}) async {
   final preferences = await SharedPreferences.getInstance();
   return AccountContextController(
     contextsApi: _InviteContextsGateway([
-      accountContext(role: AccountContextRole.contributor, planId: 'plan-1'),
+      for (final planId in planIds)
+        accountContext(role: AccountContextRole.contributor, planId: planId),
     ]),
     authStorage: AuthStorage(preferences),
     setActiveWeddingPlan: (_) async {},
@@ -991,8 +1135,12 @@ class _AuthHarness {
 }
 
 PlanInvite _invite({
+  String id = 'invite-1',
+  String weddingPlanId = 'plan-1',
+  String weddingPlanTitle = 'عرس رشاد وسارة',
   String token = 'token-1',
   String status = 'PENDING',
+  bool withContextKey = true,
   bool canViewMoney = false,
   bool canEditPlan = false,
   bool canManageTasks = false,
@@ -1002,10 +1150,12 @@ PlanInvite _invite({
   bool canManageMoney = false,
 }) {
   return PlanInvite(
-    id: 'invite-1',
-    weddingPlanId: 'plan-1',
+    id: id,
+    weddingPlanId: weddingPlanId,
     token: token,
-    contextKey: status == 'ACCEPTED' ? 'plan:plan-1:contributor' : null,
+    contextKey: status == 'ACCEPTED' && withContextKey
+        ? 'plan:$weddingPlanId:contributor'
+        : null,
     role: 'HELPER',
     status: status,
     expiresAt: DateTime(2026),
@@ -1016,7 +1166,7 @@ PlanInvite _invite({
     canManageProviders: canManageProviders,
     canInviteMembers: canInviteMembers,
     canManageMoney: canManageMoney,
-    weddingPlanTitle: 'عرس رشاد وسارة',
+    weddingPlanTitle: weddingPlanTitle,
     inviterName: 'رشاد',
   );
 }

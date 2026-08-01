@@ -175,6 +175,7 @@ class MemorySharingPrisma {
 
   sharedMember = {
     findUnique: async () => null,
+    findMany: async () => [],
   };
 
   planInvite = {
@@ -1032,8 +1033,120 @@ test("raw invite claims stay bound to the current token fingerprint", () => {
   );
 });
 
-test("accepting a stale invite preserves a newer membership and does not restore provider or finance access", async () => {
+test("current-user invite context requires one live membership batch without rewriting accepted history", async () => {
+  const user = sharingUser(
+    "context-user",
+    "+967777000088",
+    "context participant",
+  );
+  const acceptedAt = new Date("2026-07-20T10:00:00.000Z");
+  const makeInvite = (id: string, weddingPlanId: string) =>
+    ({
+      id,
+      weddingPlanId,
+      inviterUserId: "owner-1",
+      inviteeUserId: user.id,
+      name: user.name,
+      phone: user.phone,
+      normalizedPhone: user.phone,
+      email: null,
+      tokenHash: createHash("sha256").update(id).digest("hex"),
+      role: SharedMemberRole.VIEWER,
+      ...rolePermissionDefaults(SharedMemberRole.VIEWER),
+      acceptedAt,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date("2026-12-01T00:00:00.000Z"),
+      deliveryStatus: PlanInviteDeliveryStatus.DELIVERED,
+      deliveryAttemptedAt: new Date("2026-07-19T10:00:00.000Z"),
+      createdAt: new Date("2026-07-19T10:00:00.000Z"),
+      updatedAt: acceptedAt,
+      inviter: sharingUser("owner-1", "+967777000001", "owner"),
+      invitee: user,
+    }) as any;
+  const liveInvite = makeInvite("accepted-live", "plan-live");
+  const removedInvite = makeInvite("accepted-removed", "plan-removed");
+  const membershipListQueries: Array<Record<string, any>> = [];
+  const membershipDetailQueries: Array<Record<string, any>> = [];
+  const prisma = {
+    planInvite: {
+      findMany: async () => [liveInvite, removedInvite],
+      findUnique: async ({ where }: any) => {
+        if (where.tokenHash) return null;
+        return [liveInvite, removedInvite].find(
+          (invite) => invite.id === where.id,
+        );
+      },
+    },
+    sharedMember: {
+      findMany: async (query: Record<string, any>) => {
+        membershipListQueries.push(query);
+        return [{ weddingPlanId: "plan-live" }];
+      },
+      findUnique: async (query: Record<string, any>) => {
+        membershipDetailQueries.push(query);
+        return query.where.weddingPlanId_userId.weddingPlanId === "plan-live"
+          ? { id: "member-live" }
+          : null;
+      },
+    },
+  };
+  const service = new SharingService(
+    prisma as any,
+    {} as any,
+    {} as any,
+    {} as any,
+  );
+
+  const listed = await service.findInvitesForCurrentUser(user);
+  const listedLive = listed.find((invite) => invite.id === liveInvite.id);
+  const listedRemoved = listed.find((invite) => invite.id === removedInvite.id);
+  assert.equal(
+    listedLive?.contextKey,
+    "plan:plan-live:contributor",
+    "an accepted invite with a live member retains its contributor context",
+  );
+  assert.equal(
+    listedRemoved?.contextKey,
+    undefined,
+    "historical acceptance cannot recreate a removed contributor context",
+  );
+  assert.equal(
+    listedRemoved?.acceptedAt,
+    acceptedAt,
+    "membership removal must not rewrite accepted invitation history",
+  );
+  assert.equal(
+    membershipListQueries.length,
+    1,
+    "the current-user list must batch all membership validation",
+  );
+  assert.deepEqual(membershipListQueries[0]?.where, {
+    userId: user.id,
+    weddingPlanId: { in: ["plan-live", "plan-removed"] },
+  });
+
+  const liveDetail = await service.getInviteForCurrentUser(
+    user,
+    liveInvite.id,
+  );
+  const removedDetail = await service.getInviteForCurrentUser(
+    user,
+    removedInvite.id,
+  );
+  assert.equal(liveDetail.contextKey, "plan:plan-live:contributor");
+  assert.equal(removedDetail.contextKey, undefined);
+  assert.equal(removedDetail.acceptedAt, acceptedAt);
+  assert.equal(membershipDetailQueries.length, 2);
+});
+
+test("a lost invite-accept response can be retried without changing newer membership or duplicating notification", async () => {
   const harness = inviteHarness();
+  const outsider = sharingUser(
+    "accept-replay-outsider",
+    "+967777000077",
+    "outsider",
+  );
   harness.target.activeWeddingPlanId = "already-selected-plan";
   const created = await harness.service.createInvite(harness.owner, "plan-1", {
     phone: harness.target.phone!,
@@ -1061,6 +1174,9 @@ test("accepting a stale invite preserves a newer membership and does not restore
     updatedAt: newerMembershipAt,
     user: harness.target,
   };
+  (harness.db.sharedMember as any).findMany = async () => [
+    currentMembership,
+  ];
   let providerParticipationWrites = 0;
 
   (harness.db as any).$transaction = async (
@@ -1075,10 +1191,12 @@ test("accepting a stale invite preserves a newer membership and does not restore
           ? query.strings.join(" ")
           : String(query);
         if (sql.includes('FROM "User"')) {
-          return [harness.owner, harness.target].map(({ id, status }) => ({
-            id,
-            status,
-          }));
+          return [harness.owner, harness.target, outsider].map(
+            ({ id, status }) => ({
+              id,
+              status,
+            }),
+          );
         }
         if (sql.includes('FROM "PlanInvite"')) {
           return [{ id: storedInvite.id }];
@@ -1138,6 +1256,22 @@ test("accepting a stale invite preserves a newer membership and does not restore
     harness.target,
     created.id,
   );
+  const acceptedNotificationCount = harness.notificationInputs.filter(
+    (input) => input.type === "SHARING_INVITE_ACCEPTED",
+  ).length;
+  assert.equal(acceptedNotificationCount, 1);
+  const replayed = await harness.service.acceptInvite(
+    harness.target,
+    created.id,
+  );
+  harness.db.plan.status = "ARCHIVED";
+  await assert.rejects(
+    () => harness.service.acceptInvite(outsider, created.id),
+    (error: unknown) =>
+      error instanceof HttpException && error.getStatus() === 404,
+    "another account must not learn the accepted invitation's archived plan state",
+  );
+  harness.db.plan.status = "PLANNING";
   const expectedMembership = {
     role: SharedMemberRole.VIEWER,
     canViewMoney: false,
@@ -1173,6 +1307,28 @@ test("accepting a stale invite preserves a newer membership and does not restore
     "plan:plan-1:contributor",
     "invite acceptance must return the canonical additive context key",
   );
+  assert.deepEqual(
+    {
+      inviteId: replayed.invite.id,
+      status: replayed.invite.status,
+      memberId: replayed.member.id,
+      contextKey: replayed.contextKey,
+    },
+    {
+      inviteId: accepted.invite.id,
+      status: "ACCEPTED",
+      memberId: accepted.member.id,
+      contextKey: accepted.contextKey,
+    },
+    "retrying after a lost success response must replay the accepted result",
+  );
+  assert.equal(
+    harness.notificationInputs.filter(
+      (input) => input.type === "SHARING_INVITE_ACCEPTED",
+    ).length,
+    acceptedNotificationCount,
+    "an accepted replay must not create a second owner notification",
+  );
   const acceptedInvites = await harness.service.findInvitesForCurrentUser(
     harness.target,
   );
@@ -1186,6 +1342,212 @@ test("accepting a stale invite preserves a newer membership and does not restore
     "already-selected-plan",
     "invite acceptance must not replace an already selected plan",
   );
+});
+
+test("decline is concurrent and lost-response idempotent only for the verified invitee", async () => {
+  const harness = inviteHarness();
+  const outsider = sharingUser(
+    "decline-replay-outsider",
+    "+967777000078",
+    "outsider",
+  );
+  harness.db.users.push(outsider);
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  const storedInvite = harness.db.invites[0];
+  let transactionTail = Promise.resolve();
+
+  (harness.db as any).$transaction = async (
+    operation: (tx: Record<string, any>) => Promise<any>,
+    options: Record<string, unknown> = {},
+  ) => {
+    const previous = transactionTail;
+    let release!: () => void;
+    transactionTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    harness.db.transactionOptions.push(options);
+    try {
+      return await operation({
+        __transaction: true,
+        $queryRaw: async (query: any) => {
+          const sql = Array.isArray(query?.strings)
+            ? query.strings.join(" ")
+            : String(query);
+          if (sql.includes('FROM "User"')) {
+            return [harness.owner, harness.target, outsider].map(
+              ({ id, status }) => ({ id, status }),
+            );
+          }
+          if (sql.includes('FROM "PlanInvite"')) {
+            return [{ id: storedInvite.id }];
+          }
+          return [{ id: "plan-1" }];
+        },
+        weddingPlan: {
+          findUnique: async () => harness.db.plan,
+        },
+        planInvite: {
+          findUnique: harness.db.planInvite.findUnique,
+          updateMany: async ({ where, data }: any) =>
+            harness.db.planInvite.updateMany({
+              where: {
+                weddingPlanId: storedInvite.weddingPlanId,
+                ...where,
+              },
+              data,
+            }),
+        },
+      });
+    } finally {
+      release();
+    }
+  };
+
+  const concurrent = await Promise.all([
+    harness.service.declineInvite(harness.target, created.token),
+    harness.service.declineInvite(harness.target, created.token),
+  ]);
+  const replayedById = await harness.service.declineInvite(
+    harness.target,
+    created.id,
+  );
+  await assert.rejects(
+    () => harness.service.declineInvite(outsider, created.id),
+    (error: unknown) =>
+      error instanceof HttpException && error.getStatus() === 404,
+    "decline replay must not reveal invitation lifecycle to another account",
+  );
+
+  assert.deepEqual(
+    [...concurrent, replayedById].map((invite) => ({
+      id: invite.id,
+      status: invite.status,
+      declinedAt: invite.declinedAt,
+    })),
+    Array.from({ length: 3 }, () => ({
+      id: storedInvite.id,
+      status: "DECLINED",
+      declinedAt: storedInvite.declinedAt,
+    })),
+  );
+  assert.equal(
+    harness.notificationInputs.filter(
+      (input) => input.type === "SHARING_INVITE_DECLINED",
+    ).length,
+    1,
+    "concurrent and lost-response retries must create one decline notification",
+  );
+});
+
+test("member removal locks pending invitations before the target member and revokes every live identity match", async () => {
+  const owner = sharingUser("remove-owner", "+967777000001", "owner");
+  const target = sharingUser("remove-target", "+967777000002", "target");
+  const targetMember = {
+    id: "member-remove-target",
+    weddingPlanId: "plan-remove",
+    userId: target.id,
+    role: SharedMemberRole.VIEWER,
+    ...rolePermissionDefaults(SharedMemberRole.VIEWER),
+    createdAt: new Date("2026-07-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+  };
+  const lockOrder: string[] = [];
+  const revokedWrites: Array<Record<string, any>> = [];
+  let memberDeleted = false;
+  const permissionService = new PermissionService({} as any);
+  (permissionService as any).assertMemberManageableInTransaction = async () => {
+    lockOrder.push("Plan");
+    return {
+      plan: {
+        id: "plan-remove",
+        ownerUserId: owner.id,
+        status: "PLANNING",
+      },
+      isOwner: true,
+      sharedMember: null,
+    };
+  };
+  const prisma = {
+    sharedMember: {
+      findFirst: async () =>
+        memberDeleted ? null : { ...targetMember, userId: target.id },
+    },
+    $transaction: async (
+      operation: (tx: Record<string, any>) => Promise<any>,
+    ) =>
+      operation({
+        __transaction: true,
+        user: {
+          findUnique: async () => ({ id: target.id, phone: target.phone }),
+        },
+        $queryRaw: async (query: any) => {
+          const sql = Array.isArray(query?.strings)
+            ? query.strings.join(" ")
+            : String(query);
+          if (sql.includes('FROM "PlanInvite"')) {
+            lockOrder.push("PlanInvite");
+            return [{ id: "pending-by-user" }, { id: "pending-by-phone" }];
+          }
+          if (sql.includes('FROM "SharedMember"')) {
+            lockOrder.push("SharedMember");
+            return [{ id: targetMember.id }];
+          }
+          return [];
+        },
+        planInvite: {
+          updateMany: async (query: Record<string, any>) => {
+            revokedWrites.push(query);
+            return { count: 2 };
+          },
+        },
+        sharedMember: {
+          findFirst: async () =>
+            memberDeleted ? null : { ...targetMember, userId: target.id },
+          delete: async () => {
+            memberDeleted = true;
+            return targetMember;
+          },
+        },
+        conversation: {
+          findMany: async () => [],
+        },
+      }),
+  };
+  const notifications = {
+    purgeMoneyForMember: async () => undefined,
+  };
+  const service = new SharingService(
+    prisma as any,
+    permissionService,
+    notifications as any,
+    {} as any,
+  );
+
+  const removed = await service.removeMemberFromPlan(
+    owner,
+    "plan-remove",
+    targetMember.id,
+  );
+
+  assert.deepEqual(removed, { id: targetMember.id, deleted: true });
+  assert.deepEqual(
+    lockOrder,
+    ["Plan", "PlanInvite", "SharedMember"],
+    "the anti-resurrection boundary must lock Plan, matching PlanInvite rows, then SharedMember",
+  );
+  assert.equal(revokedWrites.length, 1);
+  assert.deepEqual(revokedWrites[0]?.where.id, {
+    in: ["pending-by-user", "pending-by-phone"],
+  });
+  assert.equal(revokedWrites[0]?.where.acceptedAt, null);
+  assert.equal(revokedWrites[0]?.where.declinedAt, null);
+  assert.equal(revokedWrites[0]?.where.revokedAt, null);
+  assert.equal(revokedWrites[0]?.data.revokedAt instanceof Date, true);
+  assert.equal(memberDeleted, true);
 });
 
 test("reissue rejects historical invitations and delegated authority above the inviter ceiling", async () => {

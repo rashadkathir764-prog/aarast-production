@@ -321,6 +321,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   }
 
   Future<void> _openAcceptedPlan(PlanInvite invite) async {
+    if (invite.hasEndedMembership) {
+      _showError('هذه الدعوة مقبولة سابقًا، لكن عضويتك في الخطة لم تعد فعالة.');
+      return;
+    }
     final inviteProvider = context.read<SharingProvider>();
     final accountContexts = context.read<AccountContextController>();
     var member = inviteProvider.acceptedInviteMember;
@@ -328,8 +332,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       member = null;
     }
 
-    final contextKey =
-        inviteProvider.acceptedInviteContextKey ?? invite.contextKey;
+    final expectedContextKey = 'plan:${invite.weddingPlanId}:contributor';
+    final inviteContextKey = invite.contextKey;
+    final acceptedContextKey = inviteProvider.acceptedInviteContextKey;
+    final contextKey = inviteContextKey == expectedContextKey
+        ? inviteContextKey
+        : acceptedContextKey == expectedContextKey
+        ? acceptedContextKey
+        : null;
     if (contextKey == null) {
       _showError('تعذر العثور على مسار المساهم لهذه الخطة.');
       return;
@@ -1060,7 +1070,7 @@ class _InvitesStep extends StatelessWidget {
         return _InviteListCard(
           invite: invite,
           onTap: () {
-            if (invite.isAccepted) {
+            if (invite.hasActiveMembership) {
               onOpenAcceptedPlan(invite);
               return;
             }
@@ -1095,12 +1105,16 @@ class _InviteDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        if (invite.isAccepted)
+        if (invite.hasActiveMembership)
           _InviteJoinedHero(invite: invite)
+        else if (invite.hasEndedMembership)
+          const _EndedMembershipHero()
         else
           _InvitePlanHero(invite: invite),
-        const SizedBox(height: 14),
-        _InvitePermissionsCard(invite: invite),
+        if (!invite.hasEndedMembership) ...[
+          const SizedBox(height: 14),
+          _InvitePermissionsCard(invite: invite),
+        ],
         if (errorMessage != null) ...[
           const SizedBox(height: 12),
           _InlineError(errorMessage!),
@@ -1121,7 +1135,7 @@ class _InviteDetails extends StatelessWidget {
             variant: AarastButtonVariant.secondary,
             onPressed: isSubmitting ? null : onDecline,
           ),
-        ] else if (invite.isAccepted)
+        ] else if (invite.hasActiveMembership)
           AarastButton(
             key: const Key('invite-open-plan-button'),
             label: 'الدخول إلى الخطة',
@@ -1129,6 +1143,8 @@ class _InviteDetails extends StatelessWidget {
             isLoading: isSubmitting,
             onPressed: isSubmitting ? null : onOpenAcceptedPlan,
           )
+        else if (invite.hasEndedMembership)
+          const _ClosedInviteStatus(status: 'MEMBERSHIP_ENDED')
         else
           _ClosedInviteStatus(status: invite.status),
         const SizedBox(height: 10),
@@ -1285,6 +1301,22 @@ class _InviteJoinedHero extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EndedMembershipHero extends StatelessWidget {
+  const _EndedMembershipHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastEmptyState(
+      key: const Key('invite-membership-ended'),
+      icon: LucideIcons.userX,
+      title: 'انتهت عضويتك في هذه الخطة',
+      message:
+          'هذه الدعوة مقبولة سابقًا، لكن عضويتك في الخطة لم تعد فعالة. '
+          'اطلب من صاحب الخطة إرسال دعوة جديدة.',
     );
   }
 }
@@ -1772,6 +1804,8 @@ class _ClosedInviteStatus extends StatelessWidget {
       icon: LucideIcons.info,
       title: label,
       message: switch (status) {
+        'MEMBERSHIP_ENDED' =>
+          'هذه الدعوة مقبولة سابقًا، لكن عضويتك في الخطة لم تعد فعالة. اطلب من صاحب الخطة إرسال دعوة جديدة.',
         'DECLINED' => 'تم رفض هذه الدعوة سابقًا.',
         'EXPIRED' =>
           'انتهت صلاحية الدعوة. اطلب من صاحب الخطة إرسال دعوة جديدة.',
@@ -1786,6 +1820,7 @@ String _statusLabel(String status) {
   return switch (status) {
     'PENDING' => 'بانتظار القبول',
     'ACCEPTED' => 'مقبولة',
+    'MEMBERSHIP_ENDED' => 'انتهت العضوية',
     'DECLINED' => 'مرفوضة',
     'EXPIRED' => 'منتهية',
     'CANCELLED' => 'ملغاة',

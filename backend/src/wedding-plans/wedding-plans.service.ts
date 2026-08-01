@@ -270,9 +270,23 @@ export class WeddingPlansService {
           id,
           currentUser,
         );
+      const archivedAt = new Date();
       const plan = await tx.weddingPlan.update({
         where: { id },
         data: { status: WeddingPlanStatus.ARCHIVED },
+      });
+      // The permission assertion above holds the plan's UPDATE lock. Invite
+      // acceptance takes the same lifecycle lock before claiming an invite, so
+      // either acceptance commits first or it observes the archived plan.
+      await tx.planInvite.updateMany({
+        where: {
+          weddingPlanId: id,
+          acceptedAt: null,
+          declinedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: archivedAt },
+        },
+        data: { revokedAt: archivedAt },
       });
       return { context, plan };
     });

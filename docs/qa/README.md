@@ -131,6 +131,30 @@ contributor plan. Opening a private
 link while another account is signed in must not query the token as that
 account; after OTP changes the account boundary, the in-memory token must resume
 at the same explicit decision screen.
+Acceptance coverage must continue through the cross-account read model: the
+owner invite list must expose the accepted row as `ACCEPTED`, owner dashboard
+`pendingInvites` must become zero for that invite, and the invitee contexts list
+must contain the canonical contributor context. Replaying an acceptance after a
+lost response must return the same member/context without another owner
+notification, while another user fails closed. Mobile tests must also prove
+single-flight acceptance, reconciliation after an ambiguous response, owner
+refresh on app resume/return from sharing, contributor-context refresh on
+resume, and latest-wins behavior for overlapping invite/dashboard loads.
+Decline coverage must prove that concurrent requests and a lost-response retry
+by the same verified invitee return the same `DECLINED` result, create one
+owner notification, and expose no invitation lifecycle to another account.
+Membership-revocation coverage must prove that an accepted invitation remains
+historical `ACCEPTED` with `acceptedAt` but loses `contextKey` when its
+`SharedMember` is removed. Flutter must render the explicit Arabic ended-
+membership state and no plan-entry action. Member removal must revoke every
+live pending invitation matching the target user id or normalized phone before
+deleting the member, so an old bearer cannot recreate access. Plan archive must
+revoke all remaining live pending invitations in the same transaction while
+leaving terminal history unchanged. Owner sharing-screen tests must use a
+controlled refresh interval and prove that polling runs only while pending
+invitations exist, causes no loading flicker, reconciles the terminal state, and
+stops afterward. Overlapping invite, sharing-access, plan-selection, and
+dashboard requests must all be latest-wins.
 Invite delivery coverage must also prove that the stored delivery status and
 attempt time survive list refresh, every status obeys the server-provided retry
 window, rapid reissue returns the stable 429 contract, and a late completion
@@ -236,6 +260,16 @@ offline data, or authentication-driven routing must prove all of the following:
   `اختر المسار` chooser without first building any Dashboard. A
   single available context may enter directly, and selecting groom, provider,
   or contributor produces one matching Dashboard and one effective transition.
+- A contributor workspace refreshes its account-context authority together with
+  dashboard data on app resume and after returning from a protected section.
+  Visible mutation actions use the intersection of those permission snapshots,
+  so stale dashboard data cannot expose an action rejected by the route gate.
+  A contributor plan center mounted behind `WeddingPlanContextGate` must perform
+  one authority refresh on resume without entering a refresh/remount loop.
+- During an account-context authority refresh, both entry and plan-context
+  gates render the checking state. A refresh failure must render its explicit
+  error state even when older contexts were previously loaded; stale
+  contributor routes or actions must not remain visible.
 - A cold restart restores only a version-2 selection whose `userId` matches the
   restored user and whose `contextKey` remains in the fresh API result.
   Different-user, revoked, missing, and malformed selections are cleared. A
@@ -334,28 +368,25 @@ Before wider rollout, run and report separately:
   repeated with a slow network, network loss during Logout, API failure, and
   app termination during transition.
 
-The 2026-07-31 local gate passes full analysis and all 918 regular Flutter
-tests. `1.0.0+7` Debug APK, signed Release APK, and Release AAB builds pass
-against the Production HTTPS origin. The Release APK is non-debuggable, has a
-valid v2 signature, contains the required notification permission/channel
+The 2026-08-01 local gate passes full analysis and all 941 Flutter tests.
+`1.0.0+7` Debug APK, local Release APK, and local Release AAB builds pass
+against the Production HTTPS origin. The Release APK is non-debuggable, uses
+APK Signature Scheme v2, contains the required notification permission/channel
 metadata, and its SHA-256 is
-`3F9EE178A6D8E35ED0E1B6B2D084E52C4DF7D1B9AA5EB576B29781A9C0FF29C0`.
+`7C3BF390E459FF913ECF4FB519D02B517F2E0813DE938B6F615A20E43011814F`.
 The AAB SHA-256 is
-`BB181EA46A103C9F2F40E3491EA3528B9C84DD78A30C0A5A81734DD71B77444F`;
-strict local `jarsigner` inspection still exits with entry-consistency warnings,
-so final Play/store signer acceptance remains open.
+`DFF417C0935DABA8B39B5182F3EC28D1421E049BA387F59679D8C32427D37D90`.
+`jarsigner -verify` accepts the AAB with the expected self-signed/no-timestamp
+warnings, so final Play/store signer acceptance remains open.
 
-The controlled Profile-mode Provider-Logout-Groom integration scenario passed
-on a connected Samsung Android 16 device, and the final installed APK hash
-matches the built Release APK. The runner emitted a warning that it did not
-detect the `integration_test` plugin, and the scenario uses controlled fakes;
-therefore it does not prove the live Login/API/Firebase path. During that QA
-run Flutter tooling removed the primary package while cleaning its runner,
-which erased the package's app-local data. The final Release APK was reinstalled
-and hash-verified immediately afterward. No equivalent iOS run has occurred.
-Neither artifact enables Sentry because no real DSN/upload credentials are
-available. These results close the local build and controlled Android scenario,
-not the live-account, live-Push, live-Sentry, TestFlight, or store gates.
+The current Release artifact was not installed on the connected Samsung
+Android 16 phone: an earlier controlled runner removed the main package after
+a signature mismatch, and the prototype package was intentionally left alone.
+The earlier Profile-mode Provider-Logout-Groom run used controlled fakes and
+therefore does not prove the live Login/API/Firebase path. No equivalent iOS
+run has occurred. Neither artifact enables Sentry because real DSN/upload
+credentials are not available. These results close the local build and test
+gates, not live-account, live-Push, live-Sentry, TestFlight, or store gates.
 
 If the defect is isolated to Sentry transport, rebuild the same session-fixed
 code with an empty `AARAST_SENTRY_DSN`; this disables external delivery without

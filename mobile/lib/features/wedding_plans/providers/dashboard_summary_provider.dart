@@ -17,6 +17,7 @@ class DashboardSummaryProvider extends ChangeNotifier
   String? _errorMessage;
   DashboardSummary? _summary;
   WeddingPlan? _plan;
+  int _loadGeneration = 0;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -27,6 +28,7 @@ class DashboardSummaryProvider extends ChangeNotifier
     String weddingPlanId, {
     SharedMember? sharedMember,
   }) async {
+    final generation = ++_loadGeneration;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -35,15 +37,22 @@ class DashboardSummaryProvider extends ChangeNotifier
       final nextSummary = await weddingPlansApi.getDashboardSummary(
         weddingPlanId,
       );
+      if (generation != _loadGeneration || isSessionDisposed) return;
       _summary = nextSummary;
       _plan = nextSummary.toWeddingPlan();
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _loadGeneration && !isSessionDisposed) {
+        _errorMessage = error.message;
+      }
     } catch (_) {
-      _errorMessage = 'تعذر تحميل بيانات اللوحة.';
+      if (generation == _loadGeneration && !isSessionDisposed) {
+        _errorMessage = 'تعذر تحميل بيانات اللوحة.';
+      }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _loadGeneration && !isSessionDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 }

@@ -527,10 +527,16 @@ class _FakeSharingProvider extends SharingProvider {
       const PlanAccessPermissions.owner(weddingPlanId: 'plan-1');
 
   @override
-  Future<bool> loadAccess(String weddingPlanId) async => true;
+  Future<bool> loadAccess(
+    String weddingPlanId, {
+    bool preserveCurrentState = false,
+  }) async => true;
 
   @override
-  Future<void> loadMembers(String weddingPlanId) async {}
+  Future<void> loadMembers(
+    String weddingPlanId, {
+    bool preserveCurrentState = false,
+  }) async {}
 
   @override
   bool get isSubmitting => _submitting;

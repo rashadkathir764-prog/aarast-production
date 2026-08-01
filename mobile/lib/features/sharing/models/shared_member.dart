@@ -272,6 +272,9 @@ class PlanInvite {
 
   bool get isPending => status == 'PENDING';
   bool get isAccepted => status == 'ACCEPTED';
+  bool get isDeclined => status == 'DECLINED';
+  bool get hasActiveMembership => isAccepted && contextKey != null;
+  bool get hasEndedMembership => isAccepted && contextKey == null;
   bool get wasDeliveredByAarast => deliveryStatus == 'DELIVERED';
   bool get hasUncertainDelivery => deliveryStatus == 'UNCERTAIN';
   bool get hasPendingDelivery => deliveryStatus == 'PENDING';
@@ -308,6 +311,37 @@ class PlanInvite {
       weddingPlanId: weddingPlanId,
       token: id,
       contextKey: contextKey,
+      role: role,
+      status: status,
+      expiresAt: expiresAt,
+      canViewMoney: canViewMoney,
+      canEditPlan: canEditPlan,
+      canManageTasks: canManageTasks,
+      canManageGuests: canManageGuests,
+      canManageProviders: canManageProviders,
+      canInviteMembers: canInviteMembers,
+      canManageMoney: canManageMoney,
+      deliveryStatus: deliveryStatus,
+      deliveryAttemptedAt: deliveryAttemptedAt,
+      deliveryRetryAvailableAt: deliveryRetryAvailableAt,
+      name: name,
+      phone: phone,
+      email: email,
+      weddingPlanTitle: weddingPlanTitle,
+      inviterName: inviterName,
+    );
+  }
+
+  PlanInvite withContextKey(String value) {
+    final canonicalContextKey = _canonicalContributorContextKeyOrNull(
+      value,
+      weddingPlanId,
+    );
+    return PlanInvite(
+      id: id,
+      weddingPlanId: weddingPlanId,
+      token: token,
+      contextKey: canonicalContextKey,
       role: role,
       status: status,
       expiresAt: expiresAt,

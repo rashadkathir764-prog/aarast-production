@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -35,8 +37,8 @@ class WeddingPlanDashboardScreen extends StatefulWidget {
       _WeddingPlanDashboardScreenState();
 }
 
-class _WeddingPlanDashboardScreenState
-    extends State<WeddingPlanDashboardScreen> {
+class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
+    with WidgetsBindingObserver {
   LocalGuestDashboardSummary? _localSummary;
   bool _localLoading = false;
   String? _localErrorMessage;
@@ -47,6 +49,7 @@ class _WeddingPlanDashboardScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       appLogEvent(
@@ -63,6 +66,7 @@ class _WeddingPlanDashboardScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     appLogEvent(
       'DASHBOARD_DISPOSED',
       category: AppLogCategory.groom,
@@ -72,6 +76,12 @@ class _WeddingPlanDashboardScreenState
       source: 'WeddingPlanDashboardScreen',
     );
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    unawaited(_load());
   }
 
   @override
@@ -257,7 +267,7 @@ class _WeddingPlanDashboardScreenState
                   context.go(AppRouter.guestList(selectedPlanId)),
               onOpenSharing: () => _isLocalGuestPlan
                   ? _requireAccountForSharing()
-                  : context.push(AppRouter.sharing(selectedPlanId)),
+                  : _openSharing(selectedPlanId),
               onOpenImportantItem: (item) =>
                   _openDashboardItem(item, selectedPlanId),
               onOpenNextStep: () => _openNextStep(summary, selectedPlanId),
@@ -282,6 +292,12 @@ class _WeddingPlanDashboardScreenState
       reason:
           'المشاركة تحتاج حساباً حتى نحفظ الصلاحيات والدعوات ونربطها بخطتك بأمان.',
     );
+  }
+
+  Future<void> _openSharing(String weddingPlanId) async {
+    await context.push(AppRouter.sharing(weddingPlanId));
+    if (!mounted) return;
+    await _load();
   }
 
   void _openDashboardItem(DashboardImportantItem item, String planId) {

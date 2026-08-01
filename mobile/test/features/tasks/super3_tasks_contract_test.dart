@@ -754,7 +754,10 @@ class _FakeSharingProvider extends SharingProvider {
   List<PlanInvite> get invites => _fakeInvites;
 
   @override
-  Future<void> loadMembers(String weddingPlanId) async {}
+  Future<void> loadMembers(
+    String weddingPlanId, {
+    bool preserveCurrentState = false,
+  }) async {}
 }
 
 class _Harness {

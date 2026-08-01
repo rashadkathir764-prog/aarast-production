@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -77,6 +78,131 @@ void main() {
       expect(api.getPlanInvitesCalls, 1);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'owner sharing reconciles an accepted invite when the app resumes',
+      (tester) async {
+        _setTallView(tester);
+        final members = <SharedMember>[];
+        final invites = <PlanInvite>[_invite()];
+        final api = _FakeSharingApi(members: members, invites: invites);
+
+        await _pumpWithAuth(
+          tester,
+          provider: SharingProvider(api),
+          child: const SharingScreen(weddingPlanId: _planId),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
+        expect(api.getSharedMembersCalls, 1);
+        expect(api.getPlanInvitesCalls, 1);
+
+        invites.clear();
+        members.add(
+          _member(id: 'accepted-contributor', userName: 'المساهم المقبول'),
+        );
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('الدعوات المعلقة (1)'), findsNothing);
+        expect(find.text('المساهم المقبول'), findsOneWidget);
+        expect(api.getSharedMembersCalls, 2);
+        expect(api.getPlanInvitesCalls, 2);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'pending invites poll every controlled interval without flicker and stop when resolved',
+      (tester) async {
+        _setTallView(tester);
+        final members = <SharedMember>[];
+        final invites = <PlanInvite>[_invite()];
+        final refreshGate = Completer<void>();
+        final api = _ControlledPollingSharingApi(
+          members: members,
+          invites: invites,
+          refreshGate: refreshGate,
+        );
+        final provider = SharingProvider(api);
+
+        await _pumpWithAuth(
+          tester,
+          provider: provider,
+          child: const SharingScreen(
+            weddingPlanId: _planId,
+            pendingInviteRefreshInterval: Duration(seconds: 30),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(api.getPlanInvitesCalls, 1);
+        // Keep a wide margin because pumpAndSettle advances the fake clock
+        // while the initial screen animations finish after the timer starts.
+        await tester.pump(const Duration(seconds: 20));
+        expect(api.getPlanInvitesCalls, 1);
+
+        await tester.pump(const Duration(seconds: 10));
+        await tester.pump();
+        await tester.pump();
+
+        expect(api.getPlanInvitesCalls, 2);
+        expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
+        expect(provider.isLoading, isFalse);
+
+        invites.clear();
+        members.add(
+          _member(id: 'accepted-contributor', userName: 'المساهم المقبول'),
+        );
+        refreshGate.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.text('الدعوات المعلقة (1)'), findsNothing);
+        expect(find.text('المساهم المقبول'), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 30));
+        await tester.pump();
+        expect(api.getPlanInvitesCalls, 2);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'stale pending invites never poll behind a different-plan permission gate',
+      (tester) async {
+        _setTallView(tester);
+        final api = _PlanAwareAccessSharingApi(
+          members: const [],
+          invites: [_invite()],
+        );
+        final provider = SharingProvider(api);
+        await provider.loadMembers(_planId);
+
+        await _pumpWithAuth(
+          tester,
+          provider: provider,
+          child: const SharingScreen(
+            weddingPlanId: 'plan-without-sharing-access',
+            pendingInviteRefreshInterval: Duration(seconds: 30),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(api.accessCalls, 1);
+        expect(api.getPlanInvitesCalls, 1);
+        await tester.pump(const Duration(seconds: 60));
+        await tester.pump();
+
+        expect(api.accessCalls, 1);
+        expect(api.getPlanInvitesCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets(
       'phone-only participants and invites stay LTR at 320px and 1.3 scale',
@@ -421,6 +547,46 @@ class _FakeSharingApi extends SharingApi {
       inviterName: 'رشاد',
       weddingPlanTitle: 'خطة الاختبار',
     );
+  }
+}
+
+class _ControlledPollingSharingApi extends _FakeSharingApi {
+  _ControlledPollingSharingApi({
+    required super.members,
+    required super.invites,
+    required this.refreshGate,
+  });
+
+  final Completer<void> refreshGate;
+
+  @override
+  Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
+    getSharedMembersCalls += 1;
+    if (getSharedMembersCalls > 1) await refreshGate.future;
+    return members;
+  }
+
+  @override
+  Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
+    getPlanInvitesCalls += 1;
+    if (getPlanInvitesCalls > 1) await refreshGate.future;
+    return invites;
+  }
+}
+
+class _PlanAwareAccessSharingApi extends _FakeSharingApi {
+  _PlanAwareAccessSharingApi({required super.members, required super.invites});
+
+  int accessCalls = 0;
+
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async {
+    accessCalls += 1;
+    return weddingPlanId == _planId
+        ? PlanAccessPermissions.owner(weddingPlanId: weddingPlanId)
+        : PlanAccessPermissions.denied(weddingPlanId: weddingPlanId);
   }
 }
 

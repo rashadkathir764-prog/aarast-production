@@ -28,6 +28,31 @@ void main() {
     });
 
     test(
+      'a stale plan failure cannot finish the latest plan loading state',
+      () async {
+        final first = Completer<WeddingPlan>();
+        final second = Completer<WeddingPlan>();
+        final api = _ControlledWeddingPlansApi()
+          ..onGetPlan = (id) => id == 'plan-1' ? first.future : second.future;
+        final provider = WeddingPlansProvider(api);
+
+        final older = provider.loadWeddingPlan('plan-1');
+        final newer = provider.loadWeddingPlan('plan-2');
+        first.completeError(const ApiException('stale failure'));
+        await older;
+
+        expect(provider.isLoading, isTrue);
+        expect(provider.errorMessage, isNull);
+
+        second.complete(_plan('plan-2'));
+        await newer;
+
+        expect(provider.isLoading, isFalse);
+        expect(provider.selectedPlan?.id, 'plan-2');
+      },
+    );
+
+    test(
       'an older set-active result cannot replace a newer active plan',
       () async {
         final first = Completer<ActiveWeddingPlan>();
@@ -38,13 +63,16 @@ void main() {
 
         final older = provider.setActiveWeddingPlan('plan-1');
         final newer = provider.setActiveWeddingPlan('plan-2');
-        second.complete(_activePlan('plan-2'));
-        expect((await newer)?.id, 'plan-2');
         first.complete(_activePlan('plan-1'));
         expect(await older, isNull);
+        expect(provider.isSubmitting, isTrue);
+
+        second.complete(_activePlan('plan-2'));
+        expect((await newer)?.id, 'plan-2');
 
         expect(provider.activePlan?.id, 'plan-2');
         expect(provider.selectedPlan?.id, 'plan-2');
+        expect(provider.isSubmitting, isFalse);
       },
     );
 

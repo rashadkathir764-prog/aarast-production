@@ -295,6 +295,34 @@ twice or disabling uncertain delivery forever. Old rows are explicitly
 `UNKNOWN`; late superseded attempts fail with a typed conflict and cannot
 overwrite a newer result or produce an invalid invite link.
 
+Contributor acceptance is now recoverable across ambiguous mobile failures.
+If the acceptance commits but its response is lost, the same verified invitee
+may replay the same token or authenticated invite-id handle and receive the
+existing accepted invite, authoritative membership, and contributor context
+without a second notification. Flutter also reconciles an ambiguous response
+from the invite detail before reporting failure. Owner sharing and dashboard
+surfaces reload after app resume or return from sharing, so an accepted invite
+does not remain displayed from an old in-memory `PENDING` snapshot. Contributor
+workspace resume refreshes both account-context authority and dashboard data;
+overlapping invite/dashboard loads are latest-wins, and visible contributor
+actions fail closed to the intersection of both current permission snapshots.
+
+Decline has the same retry-safe terminal behavior: concurrent calls or a lost
+response reconcile to one authoritative `DECLINED` result without a second
+owner notification. An accepted invitation exposes contributor access only
+while its `SharedMember` exists; after removal it remains historical
+`ACCEPTED` without `contextKey`, and Flutter renders an explicit ended-
+membership state with no plan-entry action. Removing a member atomically
+revokes every live pending invite matching that user or normalized phone, while
+archiving a plan atomically revokes all remaining live pending invitations.
+
+While the owner remains on the sharing screen, Flutter refreshes at a
+controlled ten-second interval only when pending invitations exist, preserves
+the current content during refresh, and stops polling once the pending set is
+resolved. Invite, sharing-access, plan-selection, and dashboard requests are
+latest-wins. Account-context gates render checking or error states during an
+authority refresh instead of retaining stale contributor actions.
+
 The isolated server acceptance environment is now live at
 `https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its
 PostgreSQL, OpenWA session, and scoped credentials live on a separately keyed
@@ -309,34 +337,37 @@ mandatory before wider use.
 
 ## Verification Status
 
-The 2026-07-31 session/context/observability release-candidate slice is not yet a
-release-accepted mobile artifact. Full `flutter analyze --no-pub` passes with
-no issues and the complete `flutter test --no-pub` run passes all 918 tests.
-Focused session and Push tests include the Provider-Logout-Groom regression,
-stalled-registration queue starvation, a local teardown watchdog and retry,
-late credential capture, authenticated Push teardown, lifecycle revalidation,
-stale-generation guards, redaction, and one-envelope Flutter error capture.
-Android Debug APK, Release APK, and Release AAB builds succeed as `1.0.0+7`,
-package `com.aarast.aarast_mobile`, against
-`https://aarast-api.shadowgardn.com`. Their respective SHA-256 values are
-`A4BE8A93A02E5246AADAF70F60A28F9B9CF90DFEE79E061C8E7A1ED756FEFC7C`,
-`3F9EE178A6D8E35ED0E1B6B2D084E52C4DF7D1B9AA5EB576B29781A9C0FF29C0`,
-and `BB181EA46A103C9F2F40E3491EA3528B9C84DD78A30C0A5A81734DD71B77444F`.
-The Release APK is non-debuggable, uses APK Signature Scheme v2 with
-certificate SHA-256
-`4D9F978CD647A7CFA165835C551293BDCB8E5E4E556CE0DD94546FFB9BD387B2`,
-and contains `POST_NOTIFICATIONS`, the default-channel metadata, and
-`aarast_updates`. Its exact SHA matches the APK installed on the connected
-Samsung Android 16 device. After launch, the inspected process produced no
-Flutter fatal, ANR, or Firebase UI-thread violation. A Profile-mode
-Provider-Logout-Groom integration scenario using controlled fakes passed on
-that device; the runner warned that it did not detect the `integration_test`
-plugin, so this is not evidence of a live-account end-to-end flow. The local
-Release artifacts use an empty Sentry DSN. Strict local AAB `jarsigner`
-inspection also reports entry-consistency warnings, so Play/store acceptance
-and final AAB signer verification remain open. Live Provider/Groom credentials,
-slow/offline/error/interruption scenarios, live Push and Sentry, iOS Archive,
-and Staging acceptance remain external gates.
+The 2026-08-01 contributor-hardening slice is not yet a store-accepted mobile
+artifact. `flutter analyze --no-pub` passes with no issues and the complete
+`flutter test --no-pub` run passes all 941 tests. The Backend check and complete
+test suite also pass (548 passed, 1 skipped, 0 failed); the sharing-security
+smoke is 38/38 and the sharing-concurrency smoke passes.
+
+Android Debug APK, local Release APK, and local Release AAB were built as
+`1.0.0+7`, package `com.aarast.aarast_mobile`. The Release artifacts use the
+explicit production origin `https://aarast-api.shadowgardn.com`. Their current
+SHA-256 values are, respectively:
+
+- Debug APK: `D1AA16015C10BC510B06E8A605FE6D30A4395D5C54A2C6194BD3926D1CB7561F`
+- Release APK: `7C3BF390E459FF913ECF4FB519D02B517F2E0813DE938B6F615A20E43011814F`
+- Release AAB: `DFF417C0935DABA8B39B5182F3EC28D1421E049BA387F59679D8C32427D37D90`
+
+The Release APK is non-debuggable, uses APK Signature Scheme v2, and is signed
+with certificate SHA-256
+`4D9F978CD647A7CFA165835C551293BDCB8E5E4E556CE0DD94546FFB9BD387B2`.
+Manifest checks confirm Internet access, `POST_NOTIFICATIONS`, and the default
+notification-channel metadata. Local Release validation used an empty Sentry
+DSN and kept Firebase client values in process memory only; protected CI
+Firebase/Sentry inputs were not available in this shell, so this is not a
+store-release acceptance. `jarsigner -verify` accepts the AAB, with the expected
+self-signed/no-timestamp warnings that still require store signing review.
+
+The current artifact was not installed on the connected phone: the earlier
+integration runner removed the main package after a signature mismatch, and
+the remaining prototype package was intentionally left untouched. Live
+two-account OTP/WhatsApp behavior, slow/offline/interruption scenarios, live
+Push and Sentry, iOS Archive, AASA deployment, and Staging acceptance remain
+external gates.
 
 For revision `0c1d81c7aebb8b3f93f83238ea13219de0994344` on 2026-07-17,
 Flutter Analyze passes with no issues and all 628 Flutter tests pass.

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
@@ -35,8 +35,13 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   SharedMember? _acceptedInviteMember;
   String? _acceptedInviteContextKey;
   final Map<String, Future<PlanInvite?>> _reissueFlights = {};
+  final Map<String, ({bool accept, Future<bool> future})>
+  _inviteResponseFlights = {};
   int _memberLoadGeneration = 0;
   String? _memberLoadWeddingPlanId;
+  int _accessLoadGeneration = 0;
+  String? _accessLoadWeddingPlanId;
+  int _myInvitesLoadGeneration = 0;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -63,17 +68,24 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     return null;
   }
 
-  Future<void> loadMembers(String weddingPlanId) async {
+  Future<void> loadMembers(
+    String weddingPlanId, {
+    bool preserveCurrentState = false,
+  }) async {
     final generation = ++_memberLoadGeneration;
     _memberLoadWeddingPlanId = weddingPlanId;
-    _isLoading = true;
     _errorMessage = null;
     _authGateKind = null;
-    _members = const [];
-    _invites = const [];
-    _selectedMember = null;
-    _lookupUser = null;
-    notifyListeners();
+    if (preserveCurrentState) {
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      _members = const [];
+      _invites = const [];
+      _selectedMember = null;
+      _lookupUser = null;
+      notifyListeners();
+    }
 
     try {
       final results = await Future.wait<Object>([
@@ -91,7 +103,9 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = 'تعذر تحميل أعضاء المشاركة.';
     } finally {
       if (_isCurrentMemberLoad(generation, weddingPlanId)) {
-        _isLoading = false;
+        if (!preserveCurrentState) {
+          _isLoading = false;
+        }
         notifyListeners();
       }
     }
@@ -102,15 +116,25 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         weddingPlanId == _memberLoadWeddingPlanId;
   }
 
-  Future<bool> loadAccess(String weddingPlanId) async {
+  Future<bool> loadAccess(
+    String weddingPlanId, {
+    bool preserveCurrentState = false,
+  }) async {
+    final generation = ++_accessLoadGeneration;
+    _accessLoadWeddingPlanId = weddingPlanId;
     _accessErrorMessage = null;
     _authGateKind = null;
-    _access = PlanAccessPermissions.denied(weddingPlanId: weddingPlanId);
-    notifyListeners();
+    if (!preserveCurrentState) {
+      _access = PlanAccessPermissions.denied(weddingPlanId: weddingPlanId);
+      notifyListeners();
+    }
     try {
-      _access = await _api.getMyPlanPermissions(weddingPlanId);
+      final access = await _api.getMyPlanPermissions(weddingPlanId);
+      if (!_isCurrentAccessLoad(generation, weddingPlanId)) return false;
+      _access = access;
       return true;
     } on ApiException catch (error) {
+      if (!_isCurrentAccessLoad(generation, weddingPlanId)) return false;
       if (error.isUnauthorized) {
         _handleApiError(error);
       } else {
@@ -121,11 +145,19 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return false;
     } catch (_) {
+      if (!_isCurrentAccessLoad(generation, weddingPlanId)) return false;
       _accessErrorMessage = 'تعذر التحقق من صلاحية إدارة المشاركين.';
       return false;
     } finally {
-      notifyListeners();
+      if (_isCurrentAccessLoad(generation, weddingPlanId)) {
+        notifyListeners();
+      }
     }
+  }
+
+  bool _isCurrentAccessLoad(int generation, String weddingPlanId) {
+    return generation == _accessLoadGeneration &&
+        weddingPlanId == _accessLoadWeddingPlanId;
   }
 
   Future<void> loadSharedPlans() async {
@@ -394,11 +426,14 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<void> loadInvite(String token) async {
     _isLoading = true;
     _errorMessage = null;
+    _selectedInvite = null;
     notifyListeners();
     try {
       _selectedInvite = await _api.getInvite(token);
     } on ApiException catch (error) {
       _errorMessage = _sharingErrorMessage(error.message);
+    } catch (_) {
+      _errorMessage = 'تعذر تحميل الدعوة المرتبطة بهذا الرابط.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -406,6 +441,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<void> loadMyInvites({String? token}) async {
+    final generation = ++_myInvitesLoadGeneration;
     _isLoading = true;
     _errorMessage = null;
     _selectedInvite = null;
@@ -414,26 +450,39 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
     try {
       final cleanToken = token?.trim();
+      final List<PlanInvite> nextInvites;
       if (cleanToken != null && cleanToken.isNotEmpty) {
         final invite = await _api.getInvite(cleanToken);
-        _myInvites = [invite];
+        nextInvites = [invite];
       } else {
-        _myInvites = await _api.getMyInvites();
+        nextInvites = await _api.getMyInvites();
       }
-      if (_myInvites.length == 1) {
-        _selectedInvite = _myInvites.single;
+      if (!_isCurrentMyInvitesLoad(generation)) return;
+      _myInvites = nextInvites;
+      if (nextInvites.length == 1) {
+        _selectedInvite = nextInvites.single;
       }
     } on ApiException catch (error) {
+      if (!_isCurrentMyInvitesLoad(generation)) return;
       _errorMessage = _sharingErrorMessage(error.message);
     } catch (_) {
+      if (!_isCurrentMyInvitesLoad(generation)) return;
       _errorMessage = 'تعذر تحميل الدعوات المرتبطة بهذا الرقم.';
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (_isCurrentMyInvitesLoad(generation)) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
+  bool _isCurrentMyInvitesLoad(int generation) {
+    return generation == _myInvitesLoadGeneration;
+  }
+
   void clearInviteAccessState() {
+    _myInvitesLoadGeneration += 1;
+    _isLoading = false;
     _myInvites = const [];
     _selectedInvite = null;
     _acceptedInviteMember = null;
@@ -443,32 +492,138 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<bool> respondToInvite(String token, {required bool accept}) async {
+    if (accept && _isAcceptedInviteForToken(token)) return true;
+    if (!accept && _isDeclinedInviteForToken(token)) return true;
+
+    final active = _inviteResponseFlights[token];
+    if (active != null) {
+      return active.accept == accept ? active.future : false;
+    }
+    if (_inviteResponseFlights.isNotEmpty) return false;
+
+    final future = _performInviteResponse(token, accept: accept);
+    _inviteResponseFlights[token] = (accept: accept, future: future);
+    try {
+      return await future;
+    } finally {
+      if (identical(_inviteResponseFlights[token]?.future, future)) {
+        _inviteResponseFlights.remove(token);
+      }
+    }
+  }
+
+  Future<bool> _performInviteResponse(
+    String token, {
+    required bool accept,
+  }) async {
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
     try {
       if (accept) {
         final result = await _api.acceptInvite(token);
-        _selectedInvite = result.invite;
-        _acceptedInviteMember = result.member;
-        _acceptedInviteContextKey = result.contextKey;
+        _applyAcceptedInvite(result, actionToken: token);
       } else {
         _selectedInvite = await _api.declineInvite(token);
         _acceptedInviteMember = null;
         _acceptedInviteContextKey = null;
+        _replaceMyInvite(_selectedInvite!, actionToken: token);
       }
-      _myInvites = [
-        for (final invite in _myInvites)
-          invite.token == token ? _selectedInvite! : invite,
-      ];
       return true;
     } on ApiException catch (error) {
+      if ((error.isAmbiguousMutationFailure || error.statusCode == 409) &&
+          await _reconcileInviteResponse(token, accept: accept)) {
+        return true;
+      }
       _errorMessage = _sharingErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      if (await _reconcileInviteResponse(token, accept: accept)) {
+        return true;
+      }
+      _errorMessage = accept
+          ? 'تعذر تأكيد قبول الدعوة. تحقق من حالة الدعوة وحاول مرة أخرى.'
+          : 'تعذر رفض الدعوة. حاول مرة أخرى.';
       return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  bool _isAcceptedInviteForToken(String token) {
+    final selected = _selectedInvite;
+    if (selected == null || !selected.isAccepted) {
+      return false;
+    }
+    final contextKey = _acceptedInviteContextKey ?? selected.contextKey;
+    if (contextKey != 'plan:${selected.weddingPlanId}:contributor') {
+      return false;
+    }
+    if (selected.token == token) return true;
+    return _myInvites.any(
+      (invite) => invite.id == selected.id && invite.token == token,
+    );
+  }
+
+  bool _isDeclinedInviteForToken(String token) {
+    final selected = _selectedInvite;
+    if (selected == null || !selected.isDeclined) return false;
+    if (selected.token == token) return true;
+    return _myInvites.any(
+      (invite) => invite.id == selected.id && invite.token == token,
+    );
+  }
+
+  Future<bool> _reconcileInviteResponse(
+    String token, {
+    required bool accept,
+  }) async {
+    try {
+      final observed = await _api.getInvite(token);
+      if (accept) {
+        final contextKey = observed.contextKey;
+        if (!observed.isAccepted ||
+            contextKey != 'plan:${observed.weddingPlanId}:contributor') {
+          return false;
+        }
+        _selectedInvite = observed;
+        _acceptedInviteMember = null;
+        _acceptedInviteContextKey = contextKey;
+      } else if (observed.isDeclined) {
+        _selectedInvite = observed;
+        _acceptedInviteMember = null;
+        _acceptedInviteContextKey = null;
+      } else {
+        return false;
+      }
+      _replaceMyInvite(observed, actionToken: token);
+      _errorMessage = null;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _applyAcceptedInvite(
+    AcceptedPlanInvite result, {
+    required String actionToken,
+  }) {
+    final acceptedInvite = result.invite.withContextKey(result.contextKey);
+    _selectedInvite = acceptedInvite;
+    _acceptedInviteMember = result.member;
+    _acceptedInviteContextKey = result.contextKey;
+    _replaceMyInvite(acceptedInvite, actionToken: actionToken);
+  }
+
+  void _replaceMyInvite(PlanInvite updated, {required String actionToken}) {
+    _myInvites = [
+      for (final invite in _myInvites)
+        if (invite.id == updated.id || invite.token == actionToken)
+          updated
+        else
+          invite,
+    ];
   }
 
   Future<bool> updateMember({

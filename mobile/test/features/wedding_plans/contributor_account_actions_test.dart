@@ -7,6 +7,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
+import 'package:aarast_mobile/features/account_contexts/widgets/wedding_plan_context_gate.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -14,6 +15,7 @@ import 'package:aarast_mobile/features/shell/main_shell.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -64,11 +66,48 @@ void main() {
     expect(await harness.storage.readRefreshToken(), isNull);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'resuming the contributor workspace refreshes account-context authority',
+    (tester) async {
+      final harness = await _ContributorActionHarness.create();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      final callsBeforeResume = harness.contextsGateway.listCalls;
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(harness.contextsGateway.listCalls, greaterThan(callsBeforeResume));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'guarded contributor center refreshes once without a remount loop',
+    (tester) async {
+      final harness = await _ContributorActionHarness.create(
+        initialLocation: '/guarded-workspace',
+      );
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+
+      final callsBeforeResume = harness.contextsGateway.listCalls;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(harness.contextsGateway.listCalls, callsBeforeResume + 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _ContributorActionHarness {
   _ContributorActionHarness({
     required this.storage,
+    required this.contextsGateway,
     required this.contexts,
     required this.auth,
     required this.weddingPlans,
@@ -77,13 +116,16 @@ class _ContributorActionHarness {
   });
 
   final AuthStorage storage;
+  final _ContextsGateway contextsGateway;
   final AccountContextController contexts;
   final AuthController auth;
   final WeddingPlansProvider weddingPlans;
   final DashboardSummaryProvider dashboard;
   final GoRouter router;
 
-  static Future<_ContributorActionHarness> create() async {
+  static Future<_ContributorActionHarness> create({
+    String initialLocation = '/workspace',
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final storage = AuthStorage(await SharedPreferences.getInstance());
     await storage.saveSession(
@@ -105,8 +147,9 @@ class _ContributorActionHarness {
       role: AccountContextRole.owner,
       planId: 'owner-plan',
     );
+    final contextsGateway = _ContextsGateway([owner, contributor]);
     final contexts = AccountContextController(
-      contextsApi: _ContextsGateway([owner, contributor]),
+      contextsApi: contextsGateway,
       authStorage: storage,
       setActiveWeddingPlan: (_) async {},
     );
@@ -133,9 +176,16 @@ class _ContributorActionHarness {
       weddingPlansApi: weddingPlansApi,
     );
     final router = GoRouter(
-      initialLocation: '/workspace',
+      initialLocation: initialLocation,
       routes: [
         GoRoute(path: '/workspace', builder: (_, _) => const MainShell()),
+        GoRoute(
+          path: '/guarded-workspace',
+          builder: (_, _) => const WeddingPlanContextGate(
+            weddingPlanId: 'shared-plan',
+            child: PlanCenterScreen(weddingPlanId: 'shared-plan'),
+          ),
+        ),
         GoRoute(
           path: AppRouter.home,
           builder: (_, _) =>
@@ -150,6 +200,7 @@ class _ContributorActionHarness {
 
     return _ContributorActionHarness(
       storage: storage,
+      contextsGateway: contextsGateway,
       contexts: contexts,
       auth: auth,
       weddingPlans: weddingPlans,
@@ -196,12 +247,16 @@ class _ContributorActionHarness {
 }
 
 class _ContextsGateway implements AccountContextsGateway {
-  const _ContextsGateway(this.contexts);
+  _ContextsGateway(this.contexts);
 
   final List<AccountContext> contexts;
+  int listCalls = 0;
 
   @override
-  Future<List<AccountContext>> listContexts() async => contexts;
+  Future<List<AccountContext>> listContexts() async {
+    listCalls += 1;
+    return contexts;
+  }
 
   @override
   Future<AccountContext> validateContext(String contextKey) async {

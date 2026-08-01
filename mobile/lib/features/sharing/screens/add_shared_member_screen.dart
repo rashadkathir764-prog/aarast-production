@@ -100,7 +100,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         if (!didPop) _handleBack();
       },
       child: AarastPageScaffold(
-        title: createdInvite == null ? 'إضافة عضو' : 'تمت إضافة المشارك',
+        title: createdInvite == null ? 'إضافة عضو' : 'تم إنشاء الدعوة',
         subtitle: createdInvite == null
             ? 'ابحث بالرقم ثم اختر الدور — الصلاحيات تُضبط تلقائيًا.'
             : createdInvite.wasDeliveredByAarast
@@ -497,7 +497,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     if (invite.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تمت إضافة المشارك إلى الخطة بانتظار التحقق، وتسلّم واتساب الرابط.',
+        'تم إنشاء دعوة المساهم وتسليم رابطها عبر واتساب. العضوية بانتظار القبول.',
       );
     }
   }
@@ -584,8 +584,8 @@ class _InviteCreatedView extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 invite.wasDeliveredByAarast
-                    ? 'تمت إضافة المشارك وتسليم الرابط'
-                    : 'تمت إضافة دعوة المشارك',
+                    ? 'تم إنشاء الدعوة وتسليم الرابط'
+                    : 'تم إنشاء دعوة المساهم',
                 textAlign: TextAlign.center,
                 style: textTheme.titleLarge?.copyWith(
                   color: AppTheme.ink,

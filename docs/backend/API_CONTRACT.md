@@ -704,6 +704,12 @@ then locks and rechecks the selected `WeddingPlan` and applicable
 membership deletion, or archive that commits first therefore rejects the
 waiting mutation instead of allowing a stale authorization decision.
 
+Archiving a plan also revokes every invitation that is still live and pending
+at that boundary: `acceptedAt`, `declinedAt`, and `revokedAt` are null and
+`expiresAt` is still in the future. The plan update and invitation revocation
+commit in the same serializable transaction; terminal invitation history is
+not rewritten.
+
 This concurrent contract is verified for plan update/archive/set-active,
 invitation acceptance, all six member/invite administration mutations, all
 seven task mutations, all seven guest/group mutations, all fifteen financial
@@ -1231,9 +1237,15 @@ names, dates, phone numbers, permissions, or participant data.
 External invite tokens are random bearer values returned only when an invite is
 created. PostgreSQL stores their SHA-256 fingerprints, never the raw value.
 Authenticated invite lists use the invite id as an identity-checked action
-handle. Accept/decline uses a conditional single-row claim, so concurrent
-requests cannot both consume one invite. Access and error logs replace invite
-path tokens and sensitive query values with redacted placeholders.
+handle. Acceptance and decline each use a conditional single-row claim, so
+only one request writes the terminal state and owner notification. Concurrent
+calls or a lost-response retry by the same verified invitee using the same
+current raw token fingerprint or authenticated invite-id handle return the
+existing `ACCEPTED` or `DECLINED` result. Acceptance replay additionally
+requires the corresponding live membership. Another account receives the
+privacy-preserving not-found result, and a rotated or stale raw token cannot
+replay success. Access and error logs replace invite path tokens and sensitive
+query values with redacted placeholders.
 
 Invite acceptance runs in a retryable `SERIALIZABLE` transaction. It locks the
 `WeddingPlan` lifecycle row before the `PlanInvite` row, re-reads both states,
@@ -1242,6 +1254,12 @@ authoritative and is never overwritten from an older invitation snapshot;
 acceptance creates membership only when none exists. This prevents a stale
 invite from restoring revoked provider or financial permissions and prevents
 acceptance after an archive that commits first.
+If the same invitee retries the same live token or authenticated invite-id
+handle after the acceptance committed but its response was lost, the endpoint
+returns the current accepted invite, authoritative membership, and canonical
+context key without writing another acceptance notification. This replay is
+available only while that exact invitee still owns the membership; another
+user, a rotated raw token, or a removed membership cannot replay the success.
 
 The acceptance response additively returns
 `contextKey: "plan:<weddingPlanId>:contributor"` alongside the existing
@@ -1250,11 +1268,13 @@ The acceptance response additively returns
 explicit action.
 
 For an accepted invitation owned by the authenticated invitee,
-`GET /api/v1/invites/mine` and `GET /api/v1/invites/:token` also return the
-same canonical `contextKey`. Other invite-list responses do not synthesize or
-expose a contributor context key. Mobile clients must select this backend
-value explicitly before opening a plan route; they must not derive a context
-from `weddingPlanId`.
+`GET /api/v1/invites/mine` and `GET /api/v1/invites/:token` return the canonical
+`contextKey` only while an active `SharedMember` row still exists for the same
+user and plan. If that membership is removed, the invitation remains
+historical `ACCEPTED` and retains `acceptedAt`, but `contextKey` is omitted.
+Clients must treat `ACCEPTED` without `contextKey` as an ended membership and
+must not synthesize or open a contributor route from `weddingPlanId`. Other
+invite-list responses do not expose a contributor context key.
 
 Creating an invitation runs the live-pending duplicate check, invite insert,
 and optional registered-user notification/outbox write inside one retryable
@@ -1421,6 +1441,13 @@ dependent notification/conversation cleanup, and the database mutation commit
 together. Realtime permission-revocation signals are emitted only after commit.
 Consequently, a permission revocation or plan archive that commits first makes
 the waiting operation fail closed and leaves the target unchanged.
+
+Before deleting a membership, member removal locks matching live invitations
+in id order and revokes every unexpired pending row whose `inviteeUserId` or
+`normalizedPhone` identifies that member. This happens in the same transaction
+as membership deletion and prevents an older pending link from recreating
+access. Accepted, declined, revoked, and expired invitation history is not
+rewritten.
 
 Invite routes support explicit acceptance and decline flows. OTP verification
 must not call either action implicitly. They do not create chat or broad social

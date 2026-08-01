@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -40,7 +42,8 @@ class PlanCenterScreen extends StatefulWidget {
   State<PlanCenterScreen> createState() => _PlanCenterScreenState();
 }
 
-class _PlanCenterScreenState extends State<PlanCenterScreen> {
+class _PlanCenterScreenState extends State<PlanCenterScreen>
+    with WidgetsBindingObserver {
   WeddingPlan? _localPlan;
   bool _localLoading = false;
   String? _localError;
@@ -51,7 +54,20 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    unawaited(_load(refreshContextAuthority: true));
   }
 
   @override
@@ -63,11 +79,25 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     }
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool refreshContextAuthority = false}) async {
     if (!mounted) return;
     if (_isLocalPlan) {
       await _loadLocalPlan();
       return;
+    }
+    final accountContexts = context.read<AccountContextController?>();
+    final selectedContext = accountContexts?.selectedContext;
+    if (refreshContextAuthority &&
+        selectedContext?.role == AccountContextRole.contributor &&
+        selectedContext?.weddingPlanId == widget.weddingPlanId) {
+      await accountContexts!.refresh();
+      if (!mounted) return;
+      final refreshedContext = accountContexts.selectedContext;
+      if (refreshedContext?.role != AccountContextRole.contributor ||
+          refreshedContext?.weddingPlanId != widget.weddingPlanId ||
+          refreshedContext?.isAvailable != true) {
+        return;
+      }
     }
     await Future.wait([
       context.read<WeddingPlansProvider>().loadWeddingPlan(
@@ -150,12 +180,30 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           ),
         );
       }
+      final contextPermissions = selectedContext!.permissions;
+      final canViewMoney =
+          summary.permissions.canViewMoney && contextPermissions.canViewMoney;
+      final canManageMoney =
+          summary.permissions.canManageMoney &&
+          contextPermissions.canManageMoney;
+      final canManageTasks =
+          summary.permissions.canManageTasks &&
+          contextPermissions.canManageTasks;
+      final canManageGuests =
+          summary.permissions.canManageGuests &&
+          contextPermissions.canManageGuests;
+      final canManageProviders =
+          summary.permissions.canManageProviders &&
+          contextPermissions.canManageProviders;
+      final canManageMembers =
+          summary.permissions.canManageMembers &&
+          contextPermissions.canInviteMembers;
 
       return _buildContributorScaffold(
         summary: summary,
         child: RefreshIndicator(
           color: ContributorWorkspaceColors.oxblood,
-          onRefresh: _load,
+          onRefresh: () => _load(refreshContextAuthority: true),
           child: ContributorWorkspaceView(
             summary: summary,
             onOpenTasks: () =>
@@ -163,43 +211,46 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
             onOpenNotifications: () => _openContributorRoute(
               AppRouter.planNotifications(summary.planId),
             ),
-            onShowPermissions: () => _showContributorPermissions(summary),
-            onOpenMoney: summary.permissions.canViewMoney
+            onShowPermissions: () => _showContributorPermissions(
+              summary,
+              contextPermissions: contextPermissions,
+            ),
+            onOpenMoney: canViewMoney
                 ? () => _openContributorRoute(
                     AppRouter.money(summary.planId),
                     extra: widget.sharedMember,
                   )
                 : null,
-            onOpenGuests: summary.permissions.canManageGuests
+            onOpenGuests: canManageGuests
                 ? () => _openContributorRoute(
                     AppRouter.guestList(summary.planId),
                     extra: widget.sharedMember,
                   )
                 : null,
-            onOpenProviders: summary.permissions.canManageProviders
+            onOpenProviders: canManageProviders
                 ? () => _openContributorRoute(
                     AppRouter.planProviders(summary.planId),
                     extra: widget.sharedMember,
                   )
                 : null,
-            onOpenMembers: summary.permissions.canManageMembers
+            onOpenMembers: canManageMembers
                 ? () => _openContributorRoute(
                     AppRouter.sharing(summary.planId),
                     extra: widget.sharedMember,
                   )
                 : null,
-            onCreateTask: summary.permissions.canManageTasks
+            onCreateTask: canManageTasks
                 ? () => _openContributorRoute(
                     AppRouter.createTask(summary.planId),
                   )
                 : null,
-            onAddGuest: summary.permissions.canManageGuests
+            onAddGuest: canManageGuests
                 ? () => _openContributorRoute(
                     AppRouter.guestListAdd(summary.planId),
                     extra: widget.sharedMember,
                   )
                 : null,
-            onAddCost: summary.permissions.canManageMoney
+            onAddCost: canManageMoney
                 ? () => _openContributorRoute(
                     AppRouter.moneyCostCreate(summary.planId),
                     extra: widget.sharedMember,
@@ -240,7 +291,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                 onEditBasics: () => _showEditPlan(plan),
                 onEditLocation: () =>
                     _showEditPlan(plan, requireCompleteLocation: true),
-                onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
+                onManageSharing: () => _openSharing(plan.id),
                 onArchive: _isLocalPlan ? null : () => _confirmArchive(plan),
               ),
             ),
@@ -469,23 +520,42 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
   Future<void> _openContributorRoute(String route, {Object? extra}) async {
     await context.push(route, extra: extra);
     if (!mounted) return;
-    await context.read<DashboardSummaryProvider>().loadDashboard(
-      widget.weddingPlanId,
-      sharedMember: widget.sharedMember,
-    );
+    await _load(refreshContextAuthority: true);
   }
 
-  Future<void> _showContributorPermissions(DashboardSummary summary) {
+  Future<void> _openSharing(String weddingPlanId) async {
+    await context.push(AppRouter.sharing(weddingPlanId));
+    if (!mounted) return;
+    await _load();
+  }
+
+  Future<void> _showContributorPermissions(
+    DashboardSummary summary, {
+    required AccountContextPermissions contextPermissions,
+  }) {
     final permissions = summary.permissions;
+    final canManageTasks =
+        permissions.canManageTasks && contextPermissions.canManageTasks;
+    final canViewMoney =
+        permissions.canViewMoney && contextPermissions.canViewMoney;
+    final canManageMoney =
+        permissions.canManageMoney && contextPermissions.canManageMoney;
+    final canManageGuests =
+        permissions.canManageGuests && contextPermissions.canManageGuests;
+    final canManageProviders =
+        permissions.canManageProviders && contextPermissions.canManageProviders;
+    final canManageMembers =
+        permissions.canManageMembers && contextPermissions.canInviteMembers;
+    final canManagePlan =
+        permissions.canManagePlan && contextPermissions.canEditPlan;
     final labels = <String>[
       'عرض الخطة والتحديثات',
-      permissions.canManageTasks ? 'إدارة المهام' : 'مشاهدة المهام',
-      if (permissions.canViewMoney)
-        permissions.canManageMoney ? 'إدارة المال' : 'مشاهدة المال',
-      if (permissions.canManageGuests) 'إدارة الضيوف',
-      if (permissions.canManageProviders) 'إدارة الموردين والعروض',
-      if (permissions.canManageMembers) 'إدارة المشاركين',
-      if (permissions.canManagePlan) 'تعديل بيانات الخطة',
+      canManageTasks ? 'إدارة المهام' : 'مشاهدة المهام',
+      if (canViewMoney) canManageMoney ? 'إدارة المال' : 'مشاهدة المال',
+      if (canManageGuests) 'إدارة الضيوف',
+      if (canManageProviders) 'إدارة الموردين والعروض',
+      if (canManageMembers) 'إدارة المشاركين',
+      if (canManagePlan) 'تعديل بيانات الخطة',
     ];
 
     return showAarastBottomSheet<void>(

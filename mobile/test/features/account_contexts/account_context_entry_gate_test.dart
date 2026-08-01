@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
@@ -45,6 +48,47 @@ void main() {
       AccountContextEntryState.planDashboard,
     );
   });
+
+  test(
+    'a loaded contributor path fails closed while authority refreshes or fails',
+    () async {
+      final contributor = accountContext(role: AccountContextRole.contributor);
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final gateway = _ControlledGateway([contributor]);
+      final controller = AccountContextController(
+        contextsApi: gateway,
+        authStorage: AuthStorage(preferences),
+        setActiveWeddingPlan: (_) async {},
+      );
+      await controller.refresh(allowInitialSingleContext: true);
+      expect(
+        resolveAccountContextEntry(controller),
+        AccountContextEntryState.planDashboard,
+      );
+
+      final pending = Completer<List<AccountContext>>();
+      gateway.next = pending.future;
+      final refresh = controller.refresh();
+
+      expect(controller.isRefreshing, isTrue);
+      expect(
+        resolveAccountContextEntry(controller),
+        AccountContextEntryState.loading,
+      );
+
+      pending.completeError(
+        const ApiException('authority unavailable', isNetworkFailure: true),
+      );
+      await refresh;
+
+      expect(controller.errorMessage, isNotNull);
+      expect(
+        resolveAccountContextEntry(controller),
+        AccountContextEntryState.error,
+      );
+    },
+  );
 
   test(
     'owner and contributor require the standalone selection screen',
@@ -235,5 +279,24 @@ class _StaticGateway implements AccountContextsGateway {
   @override
   Future<AccountContext> validateContext(String contextKey) async {
     return contexts.firstWhere((context) => context.contextKey == contextKey);
+  }
+}
+
+class _ControlledGateway implements AccountContextsGateway {
+  _ControlledGateway(this.contexts);
+
+  final List<AccountContext> contexts;
+  Future<List<AccountContext>>? next;
+
+  @override
+  Future<List<AccountContext>> listContexts() {
+    final pending = next;
+    next = null;
+    return pending ?? Future.value(contexts);
+  }
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async {
+    return contexts.singleWhere((context) => context.contextKey == contextKey);
   }
 }

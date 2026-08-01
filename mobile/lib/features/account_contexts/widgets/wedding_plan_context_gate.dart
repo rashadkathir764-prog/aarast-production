@@ -52,9 +52,7 @@ class WeddingPlanContextGate extends StatelessWidget {
       _logBlockedRoute(null, weddingPlanId, 'context_controller_missing');
       return const _MismatchedPlanContext();
     }
-    if (!controller.hasLoadedContexts &&
-        !controller.isRefreshing &&
-        controller.errorMessage != null) {
+    if (!controller.isRefreshing && controller.errorMessage != null) {
       return _MismatchedPlanContext(
         title: 'تعذر التحقق من مساحة الخطة',
         message: controller.errorMessage!,
@@ -157,9 +155,7 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
       );
       return const _MismatchedPlanContext();
     }
-    if (!controller.hasLoadedContexts &&
-        !controller.isRefreshing &&
-        controller.errorMessage != null) {
+    if (!controller.isRefreshing && controller.errorMessage != null) {
       return _MismatchedPlanContext(
         title: 'تعذر التحقق من مساحة الخطة',
         message: controller.errorMessage!,

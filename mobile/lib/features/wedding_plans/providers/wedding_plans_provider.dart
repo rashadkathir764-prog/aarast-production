@@ -76,8 +76,10 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
         _errorMessage = 'تعذر تحميل الخطة الحالية.';
       }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -117,8 +119,10 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
         _errorMessage = 'تعذر تحميل خطة الزفاف.';
       }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -189,8 +193,10 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return null;
     } finally {
-      _isSubmitting = false;
-      notifyListeners();
+      if (generation == _selectionGeneration && !isSessionDisposed) {
+        _isSubmitting = false;
+        notifyListeners();
+      }
     }
   }
 

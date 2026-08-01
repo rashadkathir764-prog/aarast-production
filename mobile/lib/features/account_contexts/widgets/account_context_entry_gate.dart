@@ -70,11 +70,9 @@ enum AccountContextEntryState {
 AccountContextEntryState resolveAccountContextEntry(
   AccountContextController controller,
 ) {
-  if (!controller.hasLoadedContexts) {
-    return controller.errorMessage != null && !controller.isRefreshing
-        ? AccountContextEntryState.error
-        : AccountContextEntryState.loading;
-  }
+  if (controller.isRefreshing) return AccountContextEntryState.loading;
+  if (controller.errorMessage != null) return AccountContextEntryState.error;
+  if (!controller.hasLoadedContexts) return AccountContextEntryState.loading;
 
   final selected = controller.selectedContext;
   if (selected != null && selected.isAvailable) {

@@ -171,8 +171,8 @@ during the transition. Before Production, verify Sentry symbolication,
 environment/release labeling, mobile/backend request-id correlation, absence of
 PII, and the consent-gated attachment.
 
-At the 2026-07-31 snapshot, full Flutter analysis and all 918 regular Flutter
-tests pass. Android Debug APK, signed Release APK, and Release AAB builds
+At the 2026-08-01 snapshot, full Flutter analysis and all 941 Flutter tests
+pass. Android Debug APK, local Release APK, and local Release AAB builds
 succeed as `1.0.0+7` against the Production HTTPS origin. The local
 Release-validation artifacts use the Aarast upload certificate and Firebase
 client resources recovered in memory from a prior same-package/same-signer
@@ -180,21 +180,23 @@ Aarast artifact; the values were not written to source or logs. The Release APK
 is non-debuggable, uses APK Signature Scheme v2, and contains
 `POST_NOTIFICATIONS`, default-channel metadata, and `aarast_updates`. The APK
 SHA-256 is
-`3F9EE178A6D8E35ED0E1B6B2D084E52C4DF7D1B9AA5EB576B29781A9C0FF29C0`;
+`7C3BF390E459FF913ECF4FB519D02B517F2E0813DE938B6F615A20E43011814F`;
 the AAB SHA-256 is
-`BB181EA46A103C9F2F40E3491EA3528B9C84DD78A30C0A5A81734DD71B77444F`.
+`DFF417C0935DABA8B39B5182F3EC28D1421E049BA387F59679D8C32427D37D90`.
 
-The final APK is installed and hash-matched on a Samsung Android 16 device. A
+The current Release APK was not installed on the connected Samsung Android 16
+device: an earlier controlled runner removed the main package after a signature
+mismatch, and the prototype package was intentionally left untouched. A
 controlled-fake Profile integration scenario for Provider Logout followed by
-Groom Login passes there, with a Flutter runner warning that the
-`integration_test` plugin was not detected. This does not prove the live
-Login/API/Firebase path. Strict local AAB `jarsigner` inspection reports
-entry-consistency warnings, so final Play/store signing acceptance remains
-open. These artifacts intentionally use an empty Sentry DSN because no live
-Sentry/CI credentials are available. Live-account slow/offline/error/
-interruption scenarios, background/terminated Push, iOS Archive, live symbol
-upload, and Staging Sentry checks remain unverified. This section defines a
-gate; it is not evidence that every external gate has passed.
+Groom Login passed earlier, with a Flutter runner warning that it did not
+detect the `integration_test` plugin; this does not prove the live
+Login/API/Firebase path. Strict local AAB `jarsigner -verify` succeeds with the
+expected self-signed/no-timestamp warnings, so final Play/store signing
+acceptance remains open. These artifacts intentionally use an empty Sentry DSN
+because no live Sentry/CI credentials are available. Live-account
+slow/offline/error/interruption scenarios, background/terminated Push, iOS
+Archive, live symbol upload, and Staging Sentry checks remain unverified. This
+section defines a gate; it is not evidence that every external gate has passed.
 
 For an observability-only incident, rebuild the same session-fixed release with
 an empty `AARAST_SENTRY_DSN`. For a session/context regression, halt rollout and

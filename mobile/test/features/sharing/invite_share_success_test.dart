@@ -34,7 +34,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.text('تمت إضافة المشارك وتسليم الرابط'), findsOneWidget);
+      expect(find.text('تم إنشاء الدعوة وتسليم الرابط'), findsOneWidget);
       expect(find.textContaining('بانتظار التحقق'), findsWidgets);
       expect(find.text('+967 777 123 456'), findsOneWidget);
       expect(find.byKey(const Key('invite-share-whatsapp')), findsNothing);
@@ -69,7 +69,7 @@ void main() {
 
       expect(api.createCalls, 1);
       expect(api.reissueCalls, 1);
-      expect(find.text('تمت إضافة المشارك وتسليم الرابط'), findsOneWidget);
+      expect(find.text('تم إنشاء الدعوة وتسليم الرابط'), findsOneWidget);
       expect(find.byKey(const Key('invite-retry-delivery')), findsNothing);
       expect(find.textContaining('تم تسليم رابط المشاركة'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -88,7 +88,7 @@ void main() {
 
       expect(api.createCalls, 1);
       expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.text('تمت إضافة دعوة المشارك'), findsOneWidget);
+      expect(find.text('تم إنشاء دعوة المساهم'), findsOneWidget);
       expect(
         find.textContaining('لم نتأكد من وصول رسالة واتساب'),
         findsOneWidget,
@@ -127,7 +127,7 @@ void main() {
       expect(api.lastReissueRole, 'VIEWER');
       expect(api.lastReissueCanManageTasks, isFalse);
       expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.text('تمت إضافة المشارك وتسليم الرابط'), findsOneWidget);
+      expect(find.text('تم إنشاء الدعوة وتسليم الرابط'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

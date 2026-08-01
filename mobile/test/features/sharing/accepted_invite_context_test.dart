@@ -40,7 +40,7 @@ void main() {
   });
 
   test(
-    'accepted current-user invites require the backend contextKey',
+    'accepted current-user invite without context marks an ended membership',
     () async {
       Map<String, dynamic> acceptedInvite({String? contextKey}) {
         final json = Map<String, dynamic>.from(
@@ -57,7 +57,9 @@ void main() {
 
       final invites = await withContext.getMyInvites();
       expect(invites.single.contextKey, 'plan:plan-1:contributor');
-      await expectLater(missingContext.getMyInvites(), throwsFormatException);
+      final endedMembership = await missingContext.getMyInvites();
+      expect(endedMembership.single.contextKey, isNull);
+      expect(endedMembership.single.hasEndedMembership, isTrue);
     },
   );
 }

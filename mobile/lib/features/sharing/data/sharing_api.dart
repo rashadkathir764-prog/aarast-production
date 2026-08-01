@@ -270,13 +270,7 @@ class SharingApi {
   }
 
   PlanInvite _currentUserInviteFromJson(Map<String, dynamic> json) {
-    final invite = PlanInvite.fromJson(json);
-    if (invite.isAccepted && invite.contextKey == null) {
-      throw const FormatException(
-        'Accepted current-user invite must include contextKey',
-      );
-    }
-    return invite;
+    return PlanInvite.fromJson(json);
   }
 
   String _normalizePhone(String phone) {

@@ -440,7 +440,75 @@ async function run() {
   );
   check(
     "the new contributor session accepts its exact invitation",
-    firstTimeAccepted.status === 201,
+    firstTimeAccepted.status === 201 &&
+      firstTimeAccepted.body?.invite?.status === "ACCEPTED" &&
+      firstTimeAccepted.body?.contextKey ===
+        `plan:${plan.body.id}:contributor`,
+  );
+  const firstTimeAcceptedReplay = await request(
+    "POST",
+    `/api/v1/invites/${firstTimeInvite.body.token}/accept`,
+    null,
+    firstTimeSession.body?.accessToken,
+  );
+  check(
+    "a lost accept response can be retried without changing the result",
+    firstTimeAcceptedReplay.status === 201 &&
+      firstTimeAcceptedReplay.body?.invite?.id ===
+        firstTimeAccepted.body?.invite?.id &&
+      firstTimeAcceptedReplay.body?.member?.id ===
+        firstTimeAccepted.body?.member?.id &&
+      firstTimeAcceptedReplay.body?.contextKey ===
+        firstTimeAccepted.body?.contextKey,
+  );
+  const ownerInvitesAfterFirstAcceptance = await request(
+    "GET",
+    `/api/v1/wedding-plans/${plan.body.id}/invites`,
+    null,
+    owner.token,
+  );
+  const acceptedInviteRows = Array.isArray(
+    ownerInvitesAfterFirstAcceptance.body,
+  )
+    ? ownerInvitesAfterFirstAcceptance.body.filter(
+        (invite) => invite.id === firstTimeInvite.body.id,
+      )
+    : [];
+  check(
+    "owner invite list has zero pending rows for the accepted contributor",
+    ownerInvitesAfterFirstAcceptance.status === 200 &&
+      acceptedInviteRows.length === 1 &&
+      acceptedInviteRows[0]?.status === "ACCEPTED" &&
+      acceptedInviteRows.filter((invite) => invite.status === "PENDING")
+        .length === 0,
+  );
+  const contributorContexts = await request(
+    "GET",
+    "/api/v1/contexts",
+    null,
+    firstTimeSession.body?.accessToken,
+  );
+  check(
+    "accepted contributor context is available immediately",
+    contributorContexts.status === 200 &&
+      Array.isArray(contributorContexts.body) &&
+      contributorContexts.body.some(
+        (context) =>
+          context.contextKey === `plan:${plan.body.id}:contributor` &&
+          context.role === "CONTRIBUTOR" &&
+          context.weddingPlanId === plan.body.id,
+      ),
+  );
+  const firstTimeAcceptedNotifications = await prisma.notification.count({
+    where: {
+      entityType: "plan_invite",
+      entityId: firstTimeInvite.body.id,
+      type: "SHARING_INVITE_ACCEPTED",
+    },
+  });
+  check(
+    "accept replay does not duplicate the owner notification",
+    firstTimeAcceptedNotifications === 1,
   );
 
   const wrongPreview = await request(
@@ -495,12 +563,18 @@ async function run() {
     request("POST", `/api/v1/invites/${rawToken}/accept`, null, target.token),
   ]);
   check(
-    "concurrent invite acceptance succeeds exactly once",
-    concurrent.filter((response) => response.status === 201).length === 1,
+    "concurrent invite acceptance and its replay both return success",
+    concurrent.every((response) => response.status === 201),
   );
   check(
-    "concurrent invite replay is rejected",
-    concurrent.filter((response) => response.status === 409).length === 1,
+    "concurrent invite replay returns the same member and context",
+    new Set(concurrent.map((response) => response.body?.member?.id)).size ===
+      1 &&
+      concurrent.every(
+        (response) =>
+          response.body?.invite?.status === "ACCEPTED" &&
+          response.body?.contextKey === `plan:${plan.body.id}:contributor`,
+      ),
   );
 
   const memberCount = await prisma.sharedMember.count({

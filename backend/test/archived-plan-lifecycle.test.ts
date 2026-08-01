@@ -90,6 +90,91 @@ function assertArchivedReadOnly(error: unknown) {
   return true;
 }
 
+test('archiving a plan revokes every live pending invitation in the same transaction', async () => {
+  const planningPlan = {
+    ...archivedPlan,
+    status: WeddingPlanStatus.PLANNING,
+  };
+  const operations: string[] = [];
+  let inviteMutation:
+    | {
+        where: Record<string, any>;
+        data: Record<string, any>;
+      }
+    | undefined;
+  const tx = {
+    weddingPlan: {
+      update: async ({ where, data }: any) => {
+        operations.push('plan:archived');
+        assert.deepEqual(where, { id: weddingPlanId });
+        assert.deepEqual(data, { status: WeddingPlanStatus.ARCHIVED });
+        return archivedPlan;
+      },
+    },
+    planInvite: {
+      updateMany: async (mutation: {
+        where: Record<string, any>;
+        data: Record<string, any>;
+      }) => {
+        operations.push('invites:revoked');
+        inviteMutation = mutation;
+        return { count: 2 };
+      },
+    },
+  };
+  let transactionCalls = 0;
+  const service = new WeddingPlansService(
+    {
+      $transaction: async (operation: (client: any) => Promise<unknown>) => {
+        transactionCalls += 1;
+        operations.push('transaction:start');
+        const result = await operation(tx);
+        operations.push('transaction:end');
+        return result;
+      },
+    } as any,
+    {
+      assertPlanManageableForUpdateInTransaction: async (
+        client: unknown,
+        id: string,
+        actor: unknown,
+      ) => {
+        operations.push('plan:locked');
+        assert.equal(client, tx);
+        assert.equal(id, weddingPlanId);
+        assert.equal(actor, requester);
+        return {
+          plan: planningPlan,
+          isOwner: true,
+          sharedMember: null,
+        };
+      },
+      canViewMoney: () => true,
+    } as any,
+  );
+
+  const result = await service.archive(requester, weddingPlanId);
+
+  assert.equal(result.status, WeddingPlanStatus.ARCHIVED);
+  assert.equal(transactionCalls, 1);
+  assert.deepEqual(operations, [
+    'transaction:start',
+    'plan:locked',
+    'plan:archived',
+    'invites:revoked',
+    'transaction:end',
+  ]);
+  assert.ok(inviteMutation);
+  assert.deepEqual(inviteMutation.where, {
+    weddingPlanId,
+    acceptedAt: null,
+    declinedAt: null,
+    revokedAt: null,
+    expiresAt: { gt: inviteMutation.data.revokedAt },
+  });
+  assert.ok(inviteMutation.data.revokedAt instanceof Date);
+});
+
 test('an archived plan cannot be selected as active under the stable lifecycle contract', async () => {
   let activePlanWrites = 0;
   const tx = {

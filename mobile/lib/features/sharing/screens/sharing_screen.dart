@@ -18,23 +18,37 @@ import '../providers/sharing_provider.dart';
 import '../widgets/shared_member_card.dart';
 
 class SharingScreen extends StatefulWidget {
-  const SharingScreen({required this.weddingPlanId, super.key});
+  const SharingScreen({
+    required this.weddingPlanId,
+    this.pendingInviteRefreshInterval = const Duration(seconds: 10),
+    super.key,
+  });
 
   final String weddingPlanId;
+  final Duration pendingInviteRefreshInterval;
 
   @override
   State<SharingScreen> createState() => _SharingScreenState();
 }
 
-class _SharingScreenState extends State<SharingScreen> {
+class _SharingScreenState extends State<SharingScreen>
+    with WidgetsBindingObserver {
   bool _isCheckingSharingAccess = true;
   bool _showLoginGate = false;
   bool _showPermissionGate = false;
   bool _showAccessError = false;
+  Timer? _pendingInviteRefreshTimer;
+  int _refreshGeneration = 0;
+  int _refreshesInFlight = 0;
+  bool _isForeground = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    _isForeground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _refreshSharingAccessAndLoad();
@@ -42,9 +56,39 @@ class _SharingScreenState extends State<SharingScreen> {
   }
 
   @override
+  void dispose() {
+    _refreshGeneration += 1;
+    _pendingInviteRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isForeground = state == AppLifecycleState.resumed;
+    if (!_isForeground) {
+      _pendingInviteRefreshTimer?.cancel();
+      _pendingInviteRefreshTimer = null;
+      return;
+    }
+    if (!mounted) return;
+    unawaited(
+      _refreshSharingAccessAndLoad(
+        showPageLoader: false,
+        preserveCurrentState: true,
+      ),
+    );
+  }
+
+  @override
   void didUpdateWidget(covariant SharingScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+    if (oldWidget.weddingPlanId != widget.weddingPlanId ||
+        oldWidget.pendingInviteRefreshInterval !=
+            widget.pendingInviteRefreshInterval) {
+      _refreshGeneration += 1;
+      _pendingInviteRefreshTimer?.cancel();
+      _pendingInviteRefreshTimer = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _refreshSharingAccessAndLoad();
@@ -52,47 +96,118 @@ class _SharingScreenState extends State<SharingScreen> {
     }
   }
 
-  Future<void> _refreshSharingAccessAndLoad() async {
-    setState(() {
-      _isCheckingSharingAccess = true;
-      _showLoginGate = false;
-      _showPermissionGate = false;
-      _showAccessError = false;
-    });
+  Future<void> _refreshSharingAccessAndLoad({
+    bool showPageLoader = true,
+    bool preserveCurrentState = false,
+  }) async {
+    final planId = widget.weddingPlanId;
+    final generation = ++_refreshGeneration;
+    _refreshesInFlight += 1;
+    _pendingInviteRefreshTimer?.cancel();
+    _pendingInviteRefreshTimer = null;
+    if (showPageLoader) {
+      setState(() {
+        _isCheckingSharingAccess = true;
+        _showLoginGate = false;
+        _showPermissionGate = false;
+        _showAccessError = false;
+      });
+    }
 
-    final shouldGate = await AuthActionGuard.shouldGateProtectedSharing(
-      context,
-      weddingPlanId: widget.weddingPlanId,
-    );
-    if (!mounted) return;
+    try {
+      final shouldGate = await AuthActionGuard.shouldGateProtectedSharing(
+        context,
+        weddingPlanId: planId,
+      );
+      if (!_isCurrentRefresh(generation, planId)) return;
 
-    if (shouldGate) {
+      if (shouldGate) {
+        setState(() {
+          _isCheckingSharingAccess = false;
+          _showLoginGate = true;
+          _showPermissionGate = false;
+          _showAccessError = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      final provider = context.read<SharingProvider>();
+      final accessLoaded = await provider.loadAccess(
+        planId,
+        preserveCurrentState: preserveCurrentState,
+      );
+      if (!_isCurrentRefresh(generation, planId)) return;
+      final canManageMembers = accessLoaded && provider.access.canManageMembers;
+      if (canManageMembers) {
+        await provider.loadMembers(
+          planId,
+          preserveCurrentState: preserveCurrentState,
+        );
+        if (!_isCurrentRefresh(generation, planId)) return;
+      }
+
       setState(() {
         _isCheckingSharingAccess = false;
-        _showLoginGate = true;
+        _showLoginGate = false;
+        _showPermissionGate = accessLoaded && !canManageMembers;
+        _showAccessError = !accessLoaded && provider.authGateKind == null;
       });
+    } finally {
+      _refreshesInFlight -= 1;
+      if (mounted && _refreshesInFlight == 0) {
+        _syncPendingInviteRefreshTimer();
+      }
+    }
+  }
+
+  bool _isCurrentRefresh(int generation, String planId) {
+    return mounted &&
+        generation == _refreshGeneration &&
+        planId == widget.weddingPlanId;
+  }
+
+  void _syncPendingInviteRefreshTimer() {
+    if (!mounted || !_isForeground || _refreshesInFlight > 0) return;
+    final provider = context.read<SharingProvider>();
+    final canObserveCurrentPlanInvites =
+        !_isCheckingSharingAccess &&
+        !_showLoginGate &&
+        !_showPermissionGate &&
+        !_showAccessError &&
+        provider.authGateKind == null &&
+        provider.access.weddingPlanId == widget.weddingPlanId &&
+        provider.access.canManageMembers;
+    final hasPendingInvites =
+        canObserveCurrentPlanInvites &&
+        provider.invites.any(
+          (invite) =>
+              invite.weddingPlanId == widget.weddingPlanId && invite.isPending,
+        );
+    if (!hasPendingInvites) {
+      _pendingInviteRefreshTimer?.cancel();
+      _pendingInviteRefreshTimer = null;
       return;
     }
-
-    final provider = context.read<SharingProvider>();
-    final accessLoaded = await provider.loadAccess(widget.weddingPlanId);
-    if (!mounted) return;
-    final canManageMembers = accessLoaded && provider.access.canManageMembers;
-    if (canManageMembers) {
-      await provider.loadMembers(widget.weddingPlanId);
-      if (!mounted) return;
-    }
-
-    setState(() {
-      _isCheckingSharingAccess = false;
-      _showPermissionGate = accessLoaded && !canManageMembers;
-      _showAccessError = !accessLoaded && provider.authGateKind == null;
+    if (_pendingInviteRefreshTimer?.isActive == true) return;
+    _pendingInviteRefreshTimer = Timer(widget.pendingInviteRefreshInterval, () {
+      _pendingInviteRefreshTimer = null;
+      if (!mounted || !_isForeground) return;
+      unawaited(
+        _refreshSharingAccessAndLoad(
+          showPageLoader: false,
+          preserveCurrentState: true,
+        ),
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncPendingInviteRefreshTimer();
+    });
 
     return AarastPageScaffold(
       title: 'المشاركة والصلاحيات',
@@ -100,7 +215,10 @@ class _SharingScreenState extends State<SharingScreen> {
       showBack: true,
       child: RefreshIndicator(
         color: AppTheme.burgundy,
-        onRefresh: _refreshSharingAccessAndLoad,
+        onRefresh: () => _refreshSharingAccessAndLoad(
+          showPageLoader: false,
+          preserveCurrentState: true,
+        ),
         child: _SharingContent(
           provider: provider,
           weddingPlanId: widget.weddingPlanId,

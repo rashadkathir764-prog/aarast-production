@@ -103,6 +103,12 @@
 | Use structured, privacy-redacted, memory-bounded mobile observability with optional Sentry delivery. | Accepted and implemented in mobile source; external acceptance pending | `AppLogger` uses logical categories rather than local `*.log` files, a Debug console sink, a 300-event/256KB/15-minute memory ring, and an optional Sentry sink. Identifiers are installation-salted hashes; tokens, credentials, contact data, headers, query values, and bodies are removed. Sentry errors are sampled at 100%, traces default to 100% in Staging and 10% elsewhere, and profiling, replay, screenshots, default PII, raw print/HTTP breadcrumbs, and request bodies are disabled. A diagnostic JSON attachment is generated in memory and sent only after explicit consent for that attempt. Live symbolication, access control, retention, and PII verification remain release gates outside the application code. |
 | Keep the Firebase installation identity device-scoped across account Logout. | Accepted and implemented in mobile source | Logout immediately cancels the old account registration request, clears its in-memory binding, and gives a new session a fresh operation queue. It does not delete the device FID or FCM token; the captured old credentials are used only for the bounded server unregister. Token refresh and app resume revalidate the current account binding. The `FirebaseInstallations.onIdChange` bridge is intentionally not used because the current Flutter plugin dispatches that callback from a Firebase background thread on Android. |
 
+## Current Decisions Addendum - 2026-07-31
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Make contributor invite outcomes replay-safe and bind access to live membership. | Accepted and implemented in backend and mobile source | Acceptance and decline perform one authoritative terminal mutation and safely replay the result only to the same verified invitee without duplicate notifications. An accepted invite exposes `contextKey` only while its live `SharedMember` exists. Member removal revokes every matching live pending invite before deleting membership, and plan archive revokes all remaining live pending invitations, preventing stale links from restoring access. Flutter single-flights accept/decline, reconciles ambiguous responses, refreshes owner state while pending and at lifecycle boundaries, fails closed during context-authority refresh, and ignores out-of-order invite, access, plan, and dashboard results. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

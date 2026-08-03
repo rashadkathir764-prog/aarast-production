@@ -119,7 +119,14 @@ async function createPlanQuote({ planId, providerId, serviceId, cityId, token, d
 
 async function cleanupAccount(label, token) {
   if (!token) return;
-  const response = await request('DELETE', '/api/v1/users/me', null, token);
+  const deletionRequestId = randomUUID();
+  const response = await request(
+    'DELETE',
+    '/api/v1/users/me',
+    null,
+    token,
+    deletionRequestId,
+  );
   check(`${label} fixture account is cleaned`, response.status === 200 && response.body?.deleted === true);
 }
 

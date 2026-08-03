@@ -34,7 +34,7 @@ function check(label, condition) {
   }
 }
 
-function request(method, path, body, token) {
+function request(method, path, body, token, requestId) {
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
     const payload = body === undefined || body === null ? null : JSON.stringify(body);
@@ -44,6 +44,7 @@ function request(method, path, body, token) {
       headers['Content-Length'] = Buffer.byteLength(payload);
     }
     if (token) headers.Authorization = `Bearer ${token}`;
+    if (requestId) headers['X-Client-Request-Id'] = requestId;
 
     const req = http.request(
       {
@@ -100,7 +101,14 @@ async function register(name, value) {
 
 async function cleanupAccount(label, token) {
   if (!token) return;
-  const response = await request('DELETE', '/api/v1/users/me', null, token);
+  const deletionRequestId = randomUUID();
+  const response = await request(
+    'DELETE',
+    '/api/v1/users/me',
+    null,
+    token,
+    deletionRequestId,
+  );
   check(`${label} fixture account is cleaned`, response.status === 200 && response.body?.deleted === true);
 }
 

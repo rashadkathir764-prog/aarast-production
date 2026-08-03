@@ -319,7 +319,14 @@ async function run() {
   } finally {
     if (token) {
       try {
-        const cleanup = await request('DELETE', '/api/v1/users/me', null, token);
+        const deletionRequestId = randomUUID();
+        const cleanup = await request(
+          'DELETE',
+          '/api/v1/users/me',
+          null,
+          token,
+          deletionRequestId,
+        );
         check('concurrency fixture account is cleaned', cleanup.status === 200 && cleanup.body?.deleted === true);
       } catch (error) {
         check('concurrency fixture account cleanup completes', false);

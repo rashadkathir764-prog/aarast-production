@@ -47,6 +47,26 @@ test("DELETE /users/me forwards the validated client request id", async () => {
   assert.equal(forwarded, "account-delete-request-1");
 });
 
+test("HTTP smoke account cleanup always supplies a stable deletion request id", () => {
+  for (const fileName of [
+    "financial-ledger-concurrency-smoke.js",
+    "money-apis-smoke.js",
+    "money-budget-smoke.js",
+    "quote-stability-smoke.js",
+  ]) {
+    const source = readFileSync(
+      join(process.cwd(), "scripts", "smoke", fileName),
+      "utf8",
+    );
+    assert.match(source, /const deletionRequestId = randomUUID\(\);/, fileName);
+    assert.match(
+      source,
+      /request\(\s*["']DELETE["'],\s*["']\/api\/v1\/users\/me["'],\s*null,\s*token,\s*deletionRequestId,?\s*\)/,
+      fileName,
+    );
+  }
+});
+
 test("public status exposes only DELETED PENDING or NOT_STARTED from one snapshot", async () => {
   const statuses = [
     {

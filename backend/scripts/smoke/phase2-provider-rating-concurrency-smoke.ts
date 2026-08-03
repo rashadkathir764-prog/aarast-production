@@ -233,7 +233,10 @@ async function main(): Promise<void> {
       {} as any,
       { scheduleAllOwnedMediaDeletion: async () => [] } as any,
     );
-    await usersService.deleteMe(deletionReviewer as any);
+    await usersService.deleteMe(
+      deletionReviewer as any,
+      "smoke-delete-rating-reviewer",
+    );
     assert.equal(
       await prisma.providerReview.count({
         where: { userId: deletionReviewer.id },

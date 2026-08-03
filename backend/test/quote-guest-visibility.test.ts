@@ -9,7 +9,26 @@ import { MarketplaceService } from "../src/marketplace/marketplace.service";
 const user = (id: string) =>
   ({ id, name: "Tester", phone: "+967700000000" }) as any;
 
-const readerContext = { isOwner: false, sharedMember: {} };
+const readerContext = {
+  plan: { id: "p1" },
+  isOwner: false,
+  sharedMember: { id: "member-u2", userId: "u2" },
+};
+const contributionHistory = {
+  recordForContextInTransaction: async () => undefined,
+};
+const contributorScope = {
+  qualifyingEntityIds: async () => [],
+  qualifyingEntityIdsInTransaction: async () => [],
+};
+
+function transactionalPrisma(models: Record<string, unknown>) {
+  const prisma: any = { ...models };
+  prisma.$transaction = async (
+    operation: (tx: any) => Promise<unknown>,
+  ) => operation(prisma);
+  return prisma;
+}
 
 // --- Guests: phone is PII, gated behind canManageGuests -------------------
 
@@ -30,26 +49,40 @@ const guestRow = () => ({
   updatedAt: new Date(),
 });
 
-test("guest phone is hidden from a read-only member, shown to a guest manager", async () => {
-  const prisma = { guest: { findMany: async () => [guestRow()] } };
+test("a read-only member receives no live guests, while a manager receives only their scoped guest", async () => {
+  const prisma = transactionalPrisma({
+    guest: { findMany: async () => [guestRow()] },
+  });
 
   const viewer = new GuestsService(
     prisma as any,
     {
       assertPlanReadable: async () => readerContext,
+      assertPlanReadableInTransaction: async () => readerContext,
       canManageGuests: () => false,
     } as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
-  const [redacted] = await viewer.findForPlan(user("u2"), "p1");
-  assert.equal(redacted.phone, null, "viewer must not see the phone");
-  assert.equal(redacted.notes, null, "viewer must not see private guest notes");
-  assert.equal(redacted.name, "ضيف", "non-PII stays visible");
+  const hidden = await viewer.findForPlan(user("u2"), "p1");
+  assert.deepEqual(hidden, [], "revoked guest access must expose no live row");
 
   const manager = new GuestsService(
     prisma as any,
     {
       assertPlanReadable: async () => readerContext,
+      assertPlanReadableInTransaction: async () => readerContext,
       canManageGuests: () => true,
+    } as any,
+    contributionHistory as any,
+    {
+      qualifyingEntityIds: async () => ["g1"],
+      qualifyingEntityIdsInTransaction: async (
+        _tx: unknown,
+        _planId: string,
+        _actorId: string,
+        entityTypes: string[],
+      ) => (entityTypes.includes("GUEST_GROUP") ? [] : ["g1"]),
     } as any,
   );
   const [full] = await manager.findForPlan(user("u2"), "p1");
@@ -57,7 +90,7 @@ test("guest phone is hidden from a read-only member, shown to a guest manager", 
   assert.equal(full.notes, "private guest note");
 });
 
-test("guest-group notes are hidden from a read-only member", async () => {
+test("a read-only member receives no live guest groups, while a manager receives only their scoped group", async () => {
   const group = {
     id: "group-1",
     weddingPlanId: "p1",
@@ -67,23 +100,43 @@ test("guest-group notes are hidden from a read-only member", async () => {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  const prisma = { guestGroup: { findMany: async () => [group] } };
+  const prisma = transactionalPrisma({
+    guestGroup: { findMany: async () => [group] },
+  });
 
   const viewer = new GuestsService(
     prisma as any,
     {
       assertPlanReadable: async () => readerContext,
+      assertPlanReadableInTransaction: async () => readerContext,
       canManageGuests: () => false,
     } as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
-  const [redacted] = await viewer.findGroups(user("u2"), "p1");
-  assert.equal(redacted.notes, null);
+  const hidden = await viewer.findGroups(user("u2"), "p1");
+  assert.deepEqual(hidden, []);
 
   const manager = new GuestsService(
     prisma as any,
     {
       assertPlanReadable: async () => readerContext,
+      assertPlanReadableInTransaction: async () => readerContext,
       canManageGuests: () => true,
+    } as any,
+    contributionHistory as any,
+    {
+      qualifyingEntityIds: async (
+        _planId: string,
+        _actorId: string,
+        entityTypes: string[],
+      ) => (entityTypes.includes("GUEST_GROUP") ? ["group-1"] : []),
+      qualifyingEntityIdsInTransaction: async (
+        _tx: unknown,
+        _planId: string,
+        _actorId: string,
+        entityTypes: string[],
+      ) => (entityTypes.includes("GUEST_GROUP") ? ["group-1"] : []),
     } as any,
   );
   const [full] = await manager.findGroups(user("u2"), "p1");
@@ -165,25 +218,41 @@ const marketplace = (
   perms: Record<string, unknown>,
 ) =>
   new MarketplaceService(
-    { quoteRequest: { findMany: async () => [quote] } } as any,
-    { assertPlanReadable: async () => readerContext, ...perms } as any,
+    {
+      contributionEvent: {
+        findMany: async () => [{ entityId: quote.id }],
+      },
+      quoteRequest: { findMany: async () => [quote] },
+    } as any,
+    {
+      assertPlanReadable: async (
+        _planId: string,
+        currentUser: { id: string },
+      ) => ({
+        ...readerContext,
+        sharedMember: {
+          id: `member-${currentUser.id}`,
+          userId: currentUser.id,
+        },
+      }),
+      ...perms,
+    } as any,
     {} as any,
+    contributionHistory as any,
   );
 
-test("quote budget and contact phone are hidden from a read-only member", async () => {
+test("plan quote live data is denied after provider permission revocation", async () => {
   const svc = marketplace(quoteRow("owner"), {
     canViewMoney: () => false,
     canManageProviders: () => false,
   });
-  const [q] = await svc.findPlanQuoteRequests(user("viewer"), "p1");
-  assert.equal(q.contactPhone, null);
-  assert.equal(q.contactNormalizedPhone, null);
-  assert.equal(q.budgetMin, null);
-  assert.equal(q.budgetMax, null);
-  assert.equal(q.guestCount, 100, "non-sensitive fields stay visible");
+  await assert.rejects(
+    () => svc.findPlanQuoteRequests(user("viewer"), "p1"),
+    (error: any) => error?.getResponse?.().code === "PROVIDER_PERMISSION_REVOKED",
+  );
 });
 
-test("quote offer amounts and financial suggestion are hidden from a read-only member", async () => {
+test("plan quote offers are denied after provider permission revocation", async () => {
   const svc = marketplace(
     quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer(true)] }),
     {
@@ -191,15 +260,10 @@ test("quote offer amounts and financial suggestion are hidden from a read-only m
       canManageProviders: () => false,
     },
   );
-  const [q] = await svc.findPlanQuoteRequests(user("viewer"), "p1");
-  assert.equal(q.offers.length, 1, "offer context can remain visible");
-  assert.equal(q.offers[0].amount, null);
-  assert.equal(q.offers[0].currency, null);
-  assert.equal(q.costSuggestion.quotedAmount, null);
-  assert.equal(q.costSuggestion.currency, null);
-  assert.equal(q.costSuggestion.suggestedAction, "NONE");
-  assert.deepEqual(q.costSuggestion.availableActions, []);
-  assert.equal(q.costSuggestion.automaticCostCreated, false);
+  await assert.rejects(
+    () => svc.findPlanQuoteRequests(user("viewer"), "p1"),
+    (error: any) => error?.getResponse?.().code === "PROVIDER_PERMISSION_REVOKED",
+  );
 });
 
 test("quote budget and contact phone are visible to a provider+budget manager", async () => {
@@ -249,12 +313,13 @@ test("quote offer amounts and financial suggestion are visible to a budget manag
   assert.equal(q.costSuggestion.automaticCostCreated, true);
 });
 
-test("the member who submitted the request always sees their own contact and budget", async () => {
+test("the member who submitted a request loses live quote access when provider permission is revoked", async () => {
   const svc = marketplace(quoteRow("self"), {
     canViewMoney: () => false,
     canManageProviders: () => false,
   });
-  const [q] = await svc.findPlanQuoteRequests(user("self"), "p1");
-  assert.equal(q.contactPhone, "+967733333333");
-  assert.equal(q.budgetMin, "1000");
+  await assert.rejects(
+    () => svc.findPlanQuoteRequests(user("self"), "p1"),
+    (error: any) => error?.getResponse?.().code === "PROVIDER_PERMISSION_REVOKED",
+  );
 });

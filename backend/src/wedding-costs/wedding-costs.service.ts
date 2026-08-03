@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   CostPaymentType,
   PaymentScheduleStatus,
   Prisma,
@@ -13,11 +17,20 @@ import {
   WeddingCostStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { paymentsRecordedTotal } from "../common/observability/metrics";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../common/prisma/serializable-transaction";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { PrismaService } from "../prisma/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  PermissionService,
+  type PlanAccessContext,
+} from "../sharing/permission.service";
 import { CreateCostPaymentDto } from "./dto/create-cost-payment.dto";
 import { CreatePaymentScheduleDto } from "./dto/create-payment-schedule.dto";
 import { CreateWeddingCostDto } from "./dto/create-wedding-cost.dto";
@@ -126,6 +139,8 @@ export class WeddingCostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly contributorScope?: ContributorScopeService,
+    private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 
   async createCost(
@@ -156,6 +171,11 @@ export class WeddingCostsService {
           providerIds: [dto.providerId],
           quoteOfferIds: [dto.quoteOfferId],
         });
+        await this.assertScopedCategoryInTransaction(
+          tx,
+          context,
+          dto.budgetCategoryId.trim(),
+        );
         await this.assertCategory(tx, dto.budgetCategoryId, weddingPlanId);
         const counterparty = await this.normalizeCounterparty(tx, {
           weddingPlanId,
@@ -192,6 +212,21 @@ export class WeddingCostsService {
             },
           });
         }
+        await this.recordMoneyEvent(tx, context, {
+          entityType: ContributionEntityType.WEDDING_COST,
+          entityId: created.id,
+          action: ContributionAction.CREATED,
+          dedupeKey: `money:wedding-cost:${created.id}:created`,
+          source: {
+            title: created.title,
+            currency: context.plan.currency,
+            totalAmount: created.totalAmount,
+            paidAmount: created.paidAmount,
+            status: created.status,
+            relevantDate: created.agreementDate,
+          },
+          occurredAt: created.createdAt,
+        });
         return tx.weddingCost.findUniqueOrThrow({
           where: { id: created.id },
           include: weddingCostResponseInclude,
@@ -209,61 +244,117 @@ export class WeddingCostsService {
     weddingPlanId: string,
     query: ListCostsQueryDto,
   ): Promise<PaginatedResponse<WeddingCostResponse>> {
-    await this.permissions.assertMoneyReadable(weddingPlanId, currentUser);
     const page = query.page ?? 1;
     const pageSize = query.limit ?? 50;
     const search = query.search?.trim();
-    const where: Prisma.WeddingCostWhereInput = {
-      weddingPlanId,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.categoryId?.trim()
-        ? { budgetCategoryId: query.categoryId.trim() }
-        : {}),
-      ...(search
-        ? {
-            OR: [
-              { title: { contains: search, mode: "insensitive" } },
-              { partyName: { contains: search, mode: "insensitive" } },
-              {
-                provider: {
-                  businessName: { contains: search, mode: "insensitive" },
-                },
-              },
-              {
-                budgetCategory: {
-                  name: { contains: search, mode: "insensitive" },
-                },
-              },
-            ],
-          }
-        : {}),
-    };
-    const [costs, total] = await this.prisma.$transaction([
-      this.prisma.weddingCost.findMany({
-        where,
-        include: weddingCostResponseInclude,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.weddingCost.count({ where }),
-    ]);
-    return {
-      items: costs.map(toWeddingCostResponse),
-      page,
-      pageSize,
-      total,
-      totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
-    };
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        const where: Prisma.WeddingCostWhereInput = {
+          weddingPlanId,
+          weddingPlan: {
+            is: this.permissions.livePlanAuthorizationWhere(
+              access,
+              currentUser.id,
+              ["canViewMoney"],
+            ),
+          },
+          ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+          ...(query.status ? { status: query.status } : {}),
+          ...(query.categoryId?.trim()
+            ? { budgetCategoryId: query.categoryId.trim() }
+            : {}),
+          ...(search
+            ? {
+                OR: [
+                  { title: { contains: search, mode: "insensitive" } },
+                  { partyName: { contains: search, mode: "insensitive" } },
+                  {
+                    provider: {
+                      businessName: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                  {
+                    budgetCategory: {
+                      name: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {}),
+        };
+        const [costs, total] = await Promise.all([
+          tx.weddingCost.findMany({
+            where,
+            include: weddingCostResponseInclude,
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+          tx.weddingCost.count({ where }),
+        ]);
+        return {
+          items: costs.map(toWeddingCostResponse),
+          page,
+          pageSize,
+          total,
+          totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async getCost(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<WeddingCostResponse> {
-    const cost = await this.costOrThrow(id);
-    await this.permissions.assertMoneyReadable(cost.weddingPlanId, currentUser);
-    return toWeddingCostResponse(cost);
+    const identity = await this.costIdentityOrThrow(id);
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            identity.weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        if (scopedCostIds && !scopedCostIds.includes(id)) {
+          throw new NotFoundException("Wedding cost not found");
+        }
+        const cost = await tx.weddingCost.findFirst({
+          where: {
+            id,
+            weddingPlanId: identity.weddingPlanId,
+            weddingPlan: {
+              is: this.permissions.livePlanAuthorizationWhere(
+                access,
+                currentUser.id,
+                ["canViewMoney"],
+              ),
+            },
+          },
+          include: weddingCostResponseInclude,
+        });
+        if (!cost) throw new NotFoundException("Wedding cost not found");
+        return toWeddingCostResponse(cost);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async updateCost(
@@ -281,6 +372,7 @@ export class WeddingCostsService {
             current.weddingPlanId,
             currentUser,
           );
+        await this.assertScopedCostInTransaction(tx, context, id);
         const snapshot = await tx.weddingCost.findUnique({ where: { id } });
         if (
           !snapshot ||
@@ -302,6 +394,11 @@ export class WeddingCostsService {
           dto.budgetCategoryId === undefined
             ? snapshot.budgetCategoryId
             : dto.budgetCategoryId.trim();
+        await this.assertScopedCategoryInTransaction(
+          tx,
+          context,
+          targetBudgetCategoryId,
+        );
         await this.assertCategory(
           tx,
           targetBudgetCategoryId,
@@ -377,6 +474,22 @@ export class WeddingCostsService {
           include: weddingCostResponseInclude,
         });
         await this.cancelPendingSchedulesWhenPaid(tx, id, status);
+        await this.recordMoneyEvent(tx, context, {
+          entityType: ContributionEntityType.WEDDING_COST,
+          entityId: updated.id,
+          action: ContributionAction.UPDATED,
+          dedupeKey: `money:wedding-cost:${updated.id}:updated:${updated.updatedAt.toISOString()}`,
+          source: {
+            title: updated.title,
+            categoryLabel: updated.budgetCategory.name,
+            currency: context.plan.currency,
+            totalAmount: updated.totalAmount,
+            paidAmount: updated.paidAmount,
+            status: updated.status,
+            relevantDate: updated.agreementDate,
+          },
+          occurredAt: updated.updatedAt,
+        });
         return toWeddingCostResponse(updated);
       });
     } catch (error) {
@@ -390,11 +503,12 @@ export class WeddingCostsService {
   ): Promise<{ deleted: true }> {
     const current = await this.costOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingPlanId,
         currentUser,
       );
+      await this.assertScopedCostInTransaction(tx, context, id);
       const locked = await this.lockCost(tx, id);
       const paymentsCount = await tx.costPayment.count({
         where: { weddingCostId: id },
@@ -404,6 +518,20 @@ export class WeddingCostsService {
           "A cost with payment history cannot be deleted",
         );
       }
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.WEDDING_COST,
+        entityId: locked.id,
+        action: ContributionAction.DELETED,
+        dedupeKey: `money:wedding-cost:${locked.id}:deleted`,
+        source: {
+          title: locked.title,
+          currency: context.plan.currency,
+          totalAmount: locked.totalAmount,
+          paidAmount: locked.paidAmount,
+          status: locked.status,
+          relevantDate: locked.agreementDate,
+        },
+      });
       await tx.weddingCost.delete({ where: { id } });
     });
     return { deleted: true };
@@ -415,11 +543,12 @@ export class WeddingCostsService {
   ): Promise<WeddingCostResponse> {
     const current = await this.costOrThrow(id);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingPlanId,
         currentUser,
       );
+      await this.assertScopedCostInTransaction(tx, context, id);
       const locked = await this.lockCost(tx, id);
       if (locked.status === WeddingCostStatus.CANCELLED) {
         return toWeddingCostResponse(
@@ -443,6 +572,22 @@ export class WeddingCostsService {
         data: { status: WeddingCostStatus.CANCELLED },
         include: weddingCostResponseInclude,
       });
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.WEDDING_COST,
+        entityId: cancelled.id,
+        action: ContributionAction.STATUS_CHANGED,
+        dedupeKey: `money:wedding-cost:${cancelled.id}:cancelled`,
+        source: {
+          title: cancelled.title,
+          categoryLabel: cancelled.budgetCategory.name,
+          currency: context.plan.currency,
+          totalAmount: cancelled.totalAmount,
+          paidAmount: cancelled.paidAmount,
+          status: cancelled.status,
+          relevantDate: cancelled.updatedAt,
+        },
+        occurredAt: cancelled.updatedAt,
+      });
       return toWeddingCostResponse(cancelled);
     });
   }
@@ -456,11 +601,12 @@ export class WeddingCostsService {
     const response = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
-        await this.permissions.assertMoneyManageableInTransaction(
+        const context = await this.permissions.assertMoneyManageableInTransaction(
           tx,
           current.weddingPlanId,
           currentUser,
         );
+        await this.assertScopedCostInTransaction(tx, context, costId);
         const amount = this.positiveAmount(dto.amount, "amount");
         const cost = await this.lockCost(tx, costId);
         this.assertCostPayable(cost.status);
@@ -490,6 +636,22 @@ export class WeddingCostsService {
           },
         });
         await this.cancelPendingSchedulesWhenPaid(tx, costId, status);
+        await this.recordMoneyEvent(tx, context, {
+          entityType: ContributionEntityType.WEDDING_COST,
+          entityId: cost.id,
+          action: ContributionAction.PAYMENT_RECORDED,
+          dedupeKey: `money:wedding-cost:${cost.id}:payment:${payment.id}`,
+          source: {
+            title: cost.title,
+            currency: context.plan.currency,
+            totalAmount: cost.totalAmount,
+            paidAmount,
+            amount: payment.amount,
+            status,
+            relevantDate: payment.paidAt,
+          },
+          occurredAt: payment.paidAt,
+        });
         return this.paymentResponse(payment);
       },
     );
@@ -501,14 +663,45 @@ export class WeddingCostsService {
     currentUser: AuthenticatedUser,
     costId: string,
   ): Promise<CostPaymentResponse[]> {
-    const cost = await this.costOrThrow(costId);
-    await this.permissions.assertMoneyReadable(cost.weddingPlanId, currentUser);
-    const payments = await this.prisma.costPayment.findMany({
-      where: { weddingCostId: costId },
-      include: paymentInclude,
-      orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
-    });
-    return payments.map((payment) => this.paymentResponse(payment));
+    const identity = await this.costIdentityOrThrow(costId);
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            identity.weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        if (scopedCostIds && !scopedCostIds.includes(costId)) {
+          throw new NotFoundException("Wedding cost not found");
+        }
+        const payments = await tx.costPayment.findMany({
+          where: {
+            weddingCostId: costId,
+            weddingCost: {
+              weddingPlanId: identity.weddingPlanId,
+              weddingPlan: {
+                is: this.permissions.livePlanAuthorizationWhere(
+                  access,
+                  currentUser.id,
+                  ["canViewMoney"],
+                ),
+              },
+              ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+            },
+          },
+          include: paymentInclude,
+          orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+        });
+        return payments.map((payment) => this.paymentResponse(payment));
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async listPaymentsForPlan(
@@ -516,41 +709,97 @@ export class WeddingCostsService {
     weddingPlanId: string,
     query: ListCostPaymentsQueryDto,
   ): Promise<PaginatedResponse<CostPaymentResponse>> {
-    await this.permissions.assertMoneyReadable(weddingPlanId, currentUser);
     const page = query.page ?? 1;
     const pageSize = query.limit ?? 50;
-    const where: Prisma.CostPaymentWhereInput = {
-      weddingCost: { weddingPlanId },
-    };
-    const [payments, total] = await this.prisma.$transaction([
-      this.prisma.costPayment.findMany({
-        where,
-        include: paymentInclude,
-        orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.costPayment.count({ where }),
-    ]);
-    return {
-      items: payments.map((payment) => this.paymentResponse(payment)),
-      page,
-      pageSize,
-      total,
-      totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
-    };
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        const where: Prisma.CostPaymentWhereInput = {
+          weddingCost: {
+            weddingPlanId,
+            weddingPlan: {
+              is: this.permissions.livePlanAuthorizationWhere(
+                access,
+                currentUser.id,
+                ["canViewMoney"],
+              ),
+            },
+            ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+          },
+        };
+        const [payments, total] = await Promise.all([
+          tx.costPayment.findMany({
+            where,
+            include: paymentInclude,
+            orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+          tx.costPayment.count({ where }),
+        ]);
+        return {
+          items: payments.map((payment) => this.paymentResponse(payment)),
+          page,
+          pageSize,
+          total,
+          totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async getPayment(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<CostPaymentResponse> {
-    const payment = await this.paymentOrThrow(id);
-    await this.permissions.assertMoneyReadable(
-      payment.weddingCost.weddingPlanId,
-      currentUser,
+    const identity = await this.paymentIdentityOrThrow(id);
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            identity.weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        const payment = await tx.costPayment.findFirst({
+          where: {
+            id,
+            weddingCostId: identity.weddingCostId,
+            weddingCost: {
+              weddingPlanId: identity.weddingPlanId,
+              weddingPlan: {
+                is: this.permissions.livePlanAuthorizationWhere(
+                  access,
+                  currentUser.id,
+                  ["canViewMoney"],
+                ),
+              },
+              ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+            },
+          },
+          include: paymentInclude,
+        });
+        if (!payment) throw new NotFoundException("Cost payment not found");
+        return this.paymentResponse(payment);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
-    return this.paymentResponse(payment);
   }
 
   async reversePayment(
@@ -560,10 +809,15 @@ export class WeddingCostsService {
   ): Promise<CostPaymentResponse> {
     const current = await this.paymentOrThrow(id);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
+      );
+      await this.assertScopedCostInTransaction(
+        tx,
+        context,
+        current.weddingCostId,
       );
       const cost = await this.lockCost(tx, current.weddingCostId);
       await this.lockPayment(tx, id);
@@ -606,6 +860,22 @@ export class WeddingCostsService {
           data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
         });
       }
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.WEDDING_COST,
+        entityId: cost.id,
+        action: ContributionAction.PAYMENT_REVERSED,
+        dedupeKey: `money:wedding-cost:${cost.id}:reversal:${reversal.id}`,
+        source: {
+          title: cost.title,
+          currency: context.plan.currency,
+          totalAmount: cost.totalAmount,
+          paidAmount,
+          amount: reversal.amount,
+          status: this.deriveStatus(cost.totalAmount, paidAmount),
+          relevantDate: reversal.paidAt,
+        },
+        occurredAt: reversal.paidAt,
+      });
       return this.paymentResponse(reversal);
     });
   }
@@ -617,11 +887,12 @@ export class WeddingCostsService {
   ): Promise<PaymentScheduleResponse> {
     const current = await this.costOrThrow(costId);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingPlanId,
         currentUser,
       );
+      await this.assertScopedCostInTransaction(tx, context, costId);
       const amount = this.positiveAmount(dto.amount, "amount");
       const cost = await this.lockCost(tx, costId);
       this.assertCostPayable(cost.status);
@@ -639,6 +910,21 @@ export class WeddingCostsService {
         },
         include: scheduleInclude,
       });
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.PAYMENT_SCHEDULE,
+        entityId: schedule.id,
+        action: ContributionAction.CREATED,
+        dedupeKey: `money:payment-schedule:${schedule.id}:created`,
+        source: {
+          title: schedule.weddingCost.title,
+          categoryLabel: schedule.weddingCost.budgetCategory.name,
+          currency: context.plan.currency,
+          amount: schedule.amount,
+          status: schedule.status,
+          relevantDate: schedule.dueDate,
+        },
+        occurredAt: schedule.createdAt,
+      });
       return this.scheduleResponse(schedule);
     });
   }
@@ -647,37 +933,91 @@ export class WeddingCostsService {
     currentUser: AuthenticatedUser,
     costId: string,
   ): Promise<PaymentScheduleResponse[]> {
-    const cost = await this.costOrThrow(costId);
-    await this.permissions.assertMoneyReadable(cost.weddingPlanId, currentUser);
-    const schedules = await this.prisma.paymentSchedule.findMany({
-      where: { weddingCostId: costId },
-      include: scheduleInclude,
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-    });
-    return schedules.map((schedule) => this.scheduleResponse(schedule));
+    const identity = await this.costIdentityOrThrow(costId);
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            identity.weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        if (scopedCostIds && !scopedCostIds.includes(costId)) {
+          throw new NotFoundException("Wedding cost not found");
+        }
+        const schedules = await tx.paymentSchedule.findMany({
+          where: {
+            weddingCostId: costId,
+            weddingCost: {
+              weddingPlanId: identity.weddingPlanId,
+              weddingPlan: {
+                is: this.permissions.livePlanAuthorizationWhere(
+                  access,
+                  currentUser.id,
+                  ["canViewMoney"],
+                ),
+              },
+              ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+            },
+          },
+          include: scheduleInclude,
+          orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+        });
+        return schedules.map((schedule) => this.scheduleResponse(schedule));
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async listDueSchedulesForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<PaymentScheduleResponse[]> {
-    await this.permissions.assertMoneyReadable(weddingPlanId, currentUser);
     const through = new Date(
       this.startOfTodayInRiyadh().getTime() + 30 * 24 * 60 * 60 * 1000,
     );
-    const schedules = await this.prisma.paymentSchedule.findMany({
-      where: {
-        weddingCost: {
-          weddingPlanId,
-          status: { not: WeddingCostStatus.CANCELLED },
-        },
-        status: PaymentScheduleStatus.PENDING,
-        dueDate: { lte: through },
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const scopedCostIds = await this.scopedCostIdsInTransaction(
+          tx,
+          access,
+        );
+        const schedules = await tx.paymentSchedule.findMany({
+          where: {
+            weddingCost: {
+              weddingPlanId,
+              weddingPlan: {
+                is: this.permissions.livePlanAuthorizationWhere(
+                  access,
+                  currentUser.id,
+                  ["canViewMoney"],
+                ),
+              },
+              ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
+              status: { not: WeddingCostStatus.CANCELLED },
+            },
+            status: PaymentScheduleStatus.PENDING,
+            dueDate: { lte: through },
+          },
+          include: scheduleInclude,
+          orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+        });
+        return schedules.map((schedule) => this.scheduleResponse(schedule));
       },
-      include: scheduleInclude,
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-    });
-    return schedules.map((schedule) => this.scheduleResponse(schedule));
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async updateSchedule(
@@ -687,10 +1027,15 @@ export class WeddingCostsService {
   ): Promise<PaymentScheduleResponse> {
     const current = await this.scheduleOrThrow(id);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
+      );
+      await this.assertScopedCostInTransaction(
+        tx,
+        context,
+        current.weddingCostId,
       );
       const cost = await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
@@ -733,6 +1078,21 @@ export class WeddingCostsService {
         },
         include: scheduleInclude,
       });
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.PAYMENT_SCHEDULE,
+        entityId: updated.id,
+        action: ContributionAction.UPDATED,
+        dedupeKey: `money:payment-schedule:${updated.id}:updated:${updated.updatedAt.toISOString()}`,
+        source: {
+          title: updated.weddingCost.title,
+          categoryLabel: updated.weddingCost.budgetCategory.name,
+          currency: context.plan.currency,
+          amount: updated.amount,
+          status: updated.status,
+          relevantDate: updated.dueDate,
+        },
+        occurredAt: updated.updatedAt,
+      });
       return this.scheduleResponse(updated);
     });
   }
@@ -743,10 +1103,15 @@ export class WeddingCostsService {
   ): Promise<{ deleted: true }> {
     const current = await this.scheduleOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
+      );
+      await this.assertScopedCostInTransaction(
+        tx,
+        context,
+        current.weddingCostId,
       );
       await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
@@ -766,6 +1131,20 @@ export class WeddingCostsService {
           "A payment schedule with ledger history cannot be deleted",
         );
       }
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.PAYMENT_SCHEDULE,
+        entityId: schedule.id,
+        action: ContributionAction.DELETED,
+        dedupeKey: `money:payment-schedule:${schedule.id}:deleted`,
+        source: {
+          title: current.weddingCost.title,
+          categoryLabel: current.weddingCost.budgetCategory.name,
+          currency: context.plan.currency,
+          amount: schedule.amount,
+          status: schedule.status,
+          relevantDate: schedule.dueDate,
+        },
+      });
       await tx.paymentSchedule.delete({ where: { id } });
     });
     return { deleted: true };
@@ -777,10 +1156,15 @@ export class WeddingCostsService {
   ): Promise<PaymentScheduleResponse> {
     const current = await this.scheduleOrThrow(id);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
+      );
+      await this.assertScopedCostInTransaction(
+        tx,
+        context,
+        current.weddingCostId,
       );
       await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
@@ -818,6 +1202,21 @@ export class WeddingCostsService {
         data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
         include: scheduleInclude,
       });
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.PAYMENT_SCHEDULE,
+        entityId: cancelled.id,
+        action: ContributionAction.STATUS_CHANGED,
+        dedupeKey: `money:payment-schedule:${cancelled.id}:cancelled`,
+        source: {
+          title: cancelled.weddingCost.title,
+          categoryLabel: cancelled.weddingCost.budgetCategory.name,
+          currency: context.plan.currency,
+          amount: cancelled.amount,
+          status: cancelled.status,
+          relevantDate: cancelled.dueDate,
+        },
+        occurredAt: cancelled.updatedAt,
+      });
       return this.scheduleResponse(cancelled);
     });
   }
@@ -829,10 +1228,15 @@ export class WeddingCostsService {
   ): Promise<SchedulePaymentResponse> {
     const current = await this.scheduleOrThrow(id);
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableInTransaction(
+      const context = await this.permissions.assertMoneyManageableInTransaction(
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
+      );
+      await this.assertScopedCostInTransaction(
+        tx,
+        context,
+        current.weddingCostId,
       );
       const cost = await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
@@ -914,6 +1318,22 @@ export class WeddingCostsService {
         },
       });
       await this.cancelPendingSchedulesWhenPaid(tx, cost.id, status);
+      await this.recordMoneyEvent(tx, context, {
+        entityType: ContributionEntityType.WEDDING_COST,
+        entityId: cost.id,
+        action: ContributionAction.PAYMENT_RECORDED,
+        dedupeKey: `money:wedding-cost:${cost.id}:schedule-payment:${payment.id}`,
+        source: {
+          title: cost.title,
+          currency: context.plan.currency,
+          totalAmount: cost.totalAmount,
+          paidAmount,
+          amount: payment.amount,
+          status,
+          relevantDate: paidAt,
+        },
+        occurredAt: paidAt,
+      });
       return {
         payment: this.paymentResponse(payment),
         schedule: this.scheduleResponse(paidSchedule),
@@ -1136,10 +1556,104 @@ export class WeddingCostsService {
     });
   }
 
+  private async scopedCostIdsInTransaction(
+    tx: Tx,
+    context: PlanAccessContext,
+  ): Promise<string[] | null> {
+    if (context.isOwner || !context.sharedMember) return null;
+    return this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+      tx,
+      context.plan.id,
+      context.sharedMember.userId,
+      [ContributionEntityType.WEDDING_COST],
+      [
+        ContributionAction.CREATED,
+        ContributionAction.COMPLETED,
+        ContributionAction.PAYMENT_RECORDED,
+      ],
+    );
+  }
+
+  private async assertScopedCostInTransaction(
+    tx: Tx,
+    context: PlanAccessContext,
+    costId: string,
+  ): Promise<void> {
+    if (context.isOwner || !context.sharedMember) return;
+    const ids = await this.scopedCostIdsInTransaction(tx, context);
+    if (!ids?.includes(costId)) {
+      throw new NotFoundException("Wedding cost not found");
+    }
+  }
+
+  private async assertScopedCategoryInTransaction(
+    tx: Tx,
+    context: PlanAccessContext,
+    categoryId: string,
+  ): Promise<void> {
+    if (context.isOwner || !context.sharedMember) return;
+    const categoryIds =
+      await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+        tx,
+        context.plan.id,
+        context.sharedMember.userId,
+        [ContributionEntityType.BUDGET_CATEGORY],
+        [ContributionAction.CREATED],
+      );
+    if (categoryIds.includes(categoryId)) return;
+    throw new NotFoundException("Budget category not found");
+  }
+
+  private recordMoneyEvent(
+    tx: Tx,
+    context: PlanAccessContext,
+    input: {
+      entityType: ContributionEntityType;
+      entityId: string;
+      action: ContributionAction;
+      dedupeKey: string;
+      source: Record<string, unknown>;
+      occurredAt?: Date | null;
+    },
+  ) {
+    if (context.isOwner) return Promise.resolve(null);
+    if (!this.contributionHistory) {
+      throw new Error("ContributionHistoryService is required for contributor money writes");
+    }
+    return this.contributionHistory.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.MONEY,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      action: input.action,
+      snapshot: buildContributionSnapshot(input.entityType, input.source),
+      dedupeKey: input.dedupeKey,
+      requiredPermission: ContributionPermission.MANAGE_MONEY,
+      occurredAt: input.occurredAt ?? null,
+    });
+  }
+
+  private requiredContributorScope(): ContributorScopeService {
+    if (!this.contributorScope) {
+      throw new Error(
+        "ContributorScopeService is required for contributor money access",
+      );
+    }
+    return this.contributorScope;
+  }
+
   private async costOrThrow(id: string) {
     const cost = await this.prisma.weddingCost.findUnique({
       where: { id },
       include: weddingCostResponseInclude,
+    });
+    if (!cost) throw new NotFoundException("Wedding cost not found");
+    return cost;
+  }
+
+  private async costIdentityOrThrow(id: string) {
+    const cost = await this.prisma.weddingCost.findUnique({
+      where: { id },
+      select: { weddingPlanId: true },
     });
     if (!cost) throw new NotFoundException("Wedding cost not found");
     return cost;
@@ -1152,6 +1666,21 @@ export class WeddingCostsService {
     });
     if (!payment) throw new NotFoundException("Cost payment not found");
     return payment;
+  }
+
+  private async paymentIdentityOrThrow(id: string) {
+    const payment = await this.prisma.costPayment.findUnique({
+      where: { id },
+      select: {
+        weddingCostId: true,
+        weddingCost: { select: { weddingPlanId: true } },
+      },
+    });
+    if (!payment) throw new NotFoundException("Cost payment not found");
+    return {
+      weddingCostId: payment.weddingCostId,
+      weddingPlanId: payment.weddingCost.weddingPlanId,
+    };
   }
 
   private async scheduleOrThrow(id: string) {

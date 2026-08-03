@@ -29,6 +29,7 @@ void main() {
           'totalAmount': '200000',
           'budgetCategoryId': 'local-budget-category-7',
         },
+        planId: 'plan-1',
         localEntityId: 'local-cost-1',
       );
       await database.enqueueSync(
@@ -37,6 +38,7 @@ void main() {
         endpoint: '/budget-categories/local-budget-category-7',
         method: 'PATCH',
         payload: {'name': 'القاعة'},
+        planId: 'plan-1',
         localEntityId: 'local-budget-category-7',
       );
 
@@ -63,6 +65,7 @@ void main() {
       endpoint: '/api/v1/wedding-plans/plan-1/costs',
       method: 'POST',
       payload: {'totalAmount': 'not-a-number'},
+      planId: 'plan-1',
       localEntityId: 'local-cost-2',
     );
 
@@ -79,6 +82,7 @@ void main() {
       endpoint: '/api/v1/wedding-plans/plan-1/costs',
       method: 'POST',
       payload: {'totalAmount': '100'},
+      planId: 'plan-1',
       localEntityId: 'local-cost-3',
     );
 

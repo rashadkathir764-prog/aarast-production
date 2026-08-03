@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { PermissionService } from "./permission.service";
@@ -17,7 +18,12 @@ import { InviteAccessService } from "./invite-access.service";
 import { SharingService } from "./sharing.service";
 
 @Module({
-  imports: [AuthModule, PrismaModule, NotificationsModule],
+  imports: [
+    AuthModule,
+    PrismaModule,
+    NotificationsModule,
+    ContributionHistoryModule,
+  ],
   controllers: [
     ApiV1InviteAccessController,
     SharedWeddingPlansController,

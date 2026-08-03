@@ -189,6 +189,7 @@ class TaskTimelineApi {
         endpoint: '/api/v1/wedding-plans/$weddingPlanId/tasks',
         method: 'POST',
         payload: payload,
+        planId: weddingPlanId,
         localEntityId: localId,
       );
       if (_hasValue(assigneeUserId)) {
@@ -198,6 +199,7 @@ class TaskTimelineApi {
           endpoint: '/api/v1/tasks/$localId/assign',
           method: 'PATCH',
           payload: {'assigneeUserId': assigneeUserId!.trim()},
+          planId: weddingPlanId,
           localEntityId: localId,
           replacePendingForEntity: true,
         );
@@ -285,6 +287,7 @@ class TaskTimelineApi {
           operation: 'update',
           data: data,
         ),
+        planId: _taskPlanId(localJson),
         localEntityId: id,
         replacePendingForEntity: true,
         clientRequestId: await _queuedTaskRequestId(id, 'update'),
@@ -314,20 +317,20 @@ class TaskTimelineApi {
         table: OfflineTables.cachedTasks,
         id: id,
       );
-      if (cached != null) {
-        await _offline.database.saveCachedItem(
-          table: OfflineTables.cachedTasks,
-          json: cached,
-          dirty: true,
-          deletedLocally: true,
-        );
-      }
+      if (cached == null) rethrow;
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedTasks,
+        json: cached,
+        dirty: true,
+        deletedLocally: true,
+      );
       await _offline.database.enqueueSync(
         entityType: 'task',
         operation: 'delete',
         endpoint: '/api/v1/tasks/$id',
         method: 'DELETE',
         payload: const {},
+        planId: _taskPlanId(cached),
         localEntityId: id,
         replaceAllPendingForEntity: true,
       );
@@ -475,6 +478,7 @@ class TaskTimelineApi {
       endpoint: create.endpoint,
       method: create.method,
       payload: _taskCreatePayloadFromLocal(localJson),
+      planId: _taskPlanId(localJson),
       localEntityId: id,
       replacePendingForEntity: true,
       clientRequestId: create.id,
@@ -491,6 +495,7 @@ class TaskTimelineApi {
         payload: {
           'assigneeUserId': _trimmedOrNull(data['assigneeUserId']?.toString()),
         },
+        planId: _taskPlanId(localJson),
         localEntityId: id,
         replacePendingForEntity: true,
         clientRequestId: existingAssign?.id,
@@ -663,5 +668,13 @@ class TaskTimelineApi {
   String? _trimmedOrNull(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  String _taskPlanId(Map<String, dynamic> json) {
+    final planId = json['weddingPlanId']?.toString().trim();
+    if (planId == null || planId.isEmpty) {
+      throw const FormatException('Task cache row is missing weddingPlanId');
+    }
+    return planId;
   }
 }

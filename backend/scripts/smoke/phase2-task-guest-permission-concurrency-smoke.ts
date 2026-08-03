@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
 import {
@@ -12,8 +13,14 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
+import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
+import { ContributorScopeService } from "../../src/contribution-history/contributor-scope.service";
 import { GuestsService } from "../../src/guests/guests.service";
-import { PermissionService } from "../../src/sharing/permission.service";
+import {
+  PermissionService,
+  TASK_PERMISSION_REVOKED,
+  TASK_PERMISSION_REVOKED_MESSAGE,
+} from "../../src/sharing/permission.service";
 import { TasksService } from "../../src/tasks/tasks.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -38,10 +45,23 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any);
-const tasks = new TasksService(prisma as any, permissions, {
-  notifyTaskDue: async () => undefined,
-} as any);
-const guests = new GuestsService(prisma as any, permissions);
+const contributionHistory = new ContributionHistoryService(prisma as any);
+const contributorScope = new ContributorScopeService(contributionHistory);
+const tasks = new TasksService(
+  prisma as any,
+  permissions,
+  {
+    notifyTaskDue: async () => undefined,
+  } as any,
+  contributionHistory,
+  contributorScope,
+);
+const guests = new GuestsService(
+  prisma as any,
+  permissions,
+  contributionHistory,
+  contributorScope,
+);
 
 function authenticatedUser(user: {
   id: string;
@@ -64,6 +84,15 @@ function deferred(): {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+function assertTaskPermissionRevoked(error: unknown): void {
+  assert.ok(error instanceof ForbiddenException);
+  assert.deepEqual(error.getResponse(), {
+    statusCode: 403,
+    code: TASK_PERMISSION_REVOKED,
+    message: TASK_PERMISSION_REVOKED_MESSAGE,
+  });
 }
 
 async function holdUncommittedDomainPermissionRevocation(
@@ -270,7 +299,7 @@ async function assertTaskCreationFailsClosed(): Promise<void> {
         const [result] = await Promise.allSettled([creation]);
         assert.equal(result?.status, "rejected");
         if (result?.status === "rejected") {
-          assert.ok(result.reason instanceof NotFoundException);
+          assertTaskPermissionRevoked(result.reason);
         }
         assert.equal(
           await prisma.weddingTask.count({
@@ -570,6 +599,7 @@ const guestRevocationScenarios: MutationScenario[] = [
 
 async function assertPermissionRevocationMatrix(
   scenarios: MutationScenario[],
+  expectedError: "TASK_PERMISSION_REVOKED" | "NOT_FOUND",
 ): Promise<void> {
   for (const scenario of scenarios) {
     await withFixture(
@@ -594,7 +624,11 @@ async function assertPermissionRevocationMatrix(
           const [result] = await Promise.allSettled([operation]);
           assert.equal(result?.status, "rejected");
           if (result?.status === "rejected") {
-            assert.ok(result.reason instanceof NotFoundException);
+            if (expectedError === "TASK_PERMISSION_REVOKED") {
+              assertTaskPermissionRevoked(result.reason);
+            } else {
+              assert.ok(result.reason instanceof NotFoundException);
+            }
           }
           await scenario.verifyUnchanged(fixture, state);
         } finally {
@@ -876,10 +910,16 @@ async function main(): Promise<void> {
       await assertGuestCreationFailsClosed();
     }
     if (!requestedCase || requestedCase === "task-matrix") {
-      await assertPermissionRevocationMatrix(taskRevocationScenarios);
+      await assertPermissionRevocationMatrix(
+        taskRevocationScenarios,
+        "TASK_PERMISSION_REVOKED",
+      );
     }
     if (!requestedCase || requestedCase === "guest-matrix") {
-      await assertPermissionRevocationMatrix(guestRevocationScenarios);
+      await assertPermissionRevocationMatrix(
+        guestRevocationScenarios,
+        "NOT_FOUND",
+      );
     }
     if (!requestedCase || requestedCase === "archive-matrix") {
       await assertPlanArchiveMatrix();

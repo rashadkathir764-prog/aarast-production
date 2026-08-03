@@ -188,21 +188,17 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   ) async {
     final previousTask = _currentTask(task);
     final mutationVersion = _nextStatusMutationVersion(task.id);
-    if (nextStatus == 'DONE' && previousTask.status != 'DONE') {
-      _lastMeaningfulStatuses[task.id] = previousTask.status;
-    }
-
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
-    _replaceTask(
-      previousTask.copyWith(status: nextStatus, updatedAt: DateTime.now()),
-    );
     notifyListeners();
 
     try {
       final updated = await _api.updateTask(task.id, {'status': nextStatus});
       if (_isCurrentStatusMutation(task.id, mutationVersion)) {
+        if (nextStatus == 'DONE' && previousTask.status != 'DONE') {
+          _lastMeaningfulStatuses[task.id] = previousTask.status;
+        }
         _replaceTask(updated);
         if (updated.id.startsWith('local-')) {
           _noticeMessage = CachePolicy.offlineWriteMessage;
@@ -212,13 +208,11 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return true;
     } on ApiException catch (error) {
       if (_isCurrentStatusMutation(task.id, mutationVersion)) {
-        _replaceTask(previousTask);
         _errorMessage = error.message;
       }
       return false;
     } catch (_) {
       if (_isCurrentStatusMutation(task.id, mutationVersion)) {
-        _replaceTask(previousTask);
         _errorMessage = 'تعذر تحديث المهمة.';
       }
       return false;

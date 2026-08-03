@@ -23,13 +23,14 @@ import {
   WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  livePlanAuthorizationWhere,
   PermissionService,
-  type PlanAccessContext,
 } from "../sharing/permission.service";
 import { normalizeWeddingLocationInput } from "../wedding-plans/wedding-location";
 import { toWeddingCostResponse } from "../wedding-costs/wedding-cost.presenter";
@@ -63,6 +64,13 @@ import {
 } from "./marketplace.presenter";
 import { YemenAdministrativePresenter } from "./yemen-administrative.presenter";
 import { acceptQuoteOfferInTransaction } from "./quote-offer-acceptance";
+import {
+  assertProviderSectionLive,
+  buildMyQuoteAccessWhere,
+  findAccessiblePlanQuoteRequest,
+  findContributorProviderQuoteIds,
+  quoteVisibilityForPlan,
+} from "./marketplace-contributor-quote-scope";
 
 export type { PaginatedResponse } from "./marketplace.contracts";
 
@@ -72,6 +80,7 @@ export class MarketplaceService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 
   async findCities() {
@@ -464,6 +473,7 @@ export class MarketplaceService {
       {
         currentUser,
         permissions: this.permissions,
+        history: this.contributionHistory,
       },
     );
 
@@ -489,8 +499,31 @@ export class MarketplaceService {
       weddingPlanId,
       currentUser,
     );
+    assertProviderSectionLive(context, this.permissions);
+    const quoteIds = context.isOwner
+      ? null
+      : await findContributorProviderQuoteIds(
+          this.prisma,
+          weddingPlanId,
+          currentUser.id,
+        );
     const quotes = await this.prisma.quoteRequest.findMany({
-      where: { weddingPlanId },
+      where: {
+        weddingPlanId,
+        weddingPlan: {
+          is: livePlanAuthorizationWhere(
+            context,
+            currentUser.id,
+            [
+              "canManageProviders",
+              ...(this.permissions.canViewMoney(context)
+                ? (["canViewMoney"] as const)
+                : []),
+            ],
+          ),
+        },
+        ...(quoteIds ? { id: { in: quoteIds } } : {}),
+      },
       include: MARKETPLACE_QUOTE_INCLUDE,
       orderBy: { createdAt: "desc" },
     });
@@ -498,26 +531,14 @@ export class MarketplaceService {
     return quotes.map((quote) =>
       MarketplacePresenter.toQuoteResponse(
         quote,
-        this.quoteVisibility(context, quote, currentUser),
+        quoteVisibilityForPlan(
+          context,
+          this.permissions,
+          currentUser.id,
+          quote,
+        ),
       ),
     );
-  }
-
-  /**
-   * Contact phone and budget are only visible to members with the matching
-   * permission (provider management / budget read). The member who submitted
-   * the request always sees what they entered.
-   */
-  private quoteVisibility(
-    context: PlanAccessContext,
-    quote: Pick<QuoteRequest, "userId">,
-    currentUser: AuthenticatedUser,
-  ): QuoteVisibility {
-    if (quote.userId === currentUser.id) return FULL_QUOTE_VISIBILITY;
-    return {
-      budget: this.permissions.canViewMoney(context),
-      contact: this.permissions.canManageProviders(context),
-    };
   }
 
   async findQuoteRequestForCurrentUser(
@@ -541,7 +562,8 @@ export class MarketplaceService {
       this.permissions,
       currentUser,
       id,
-      "PLAN_OR_OWNER",
+      "PLAN_OR_REQUESTER",
+      this.contributionHistory,
     );
 
     return MarketplacePresenter.toQuoteResponse(
@@ -558,8 +580,8 @@ export class MarketplaceService {
       );
     }
     const weddingPlanId = offer.quoteRequest.weddingPlanId;
-    // Fast API guard retained for compatibility. The authoritative check is
-    // repeated under User -> Plan -> SharedMember locks in the transaction.
+    // Fail-fast API preflight. The authoritative check is repeated under
+    // User -> Plan -> SharedMember locks in the transaction.
     await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
     await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
     const result = await acceptQuoteOfferInTransaction(
@@ -572,6 +594,7 @@ export class MarketplaceService {
         currentUser,
         actorUserId: currentUser.id,
       },
+      this.contributionHistory,
     );
 
     return {
@@ -614,27 +637,32 @@ export class MarketplaceService {
       this.permissions,
       this.notifications,
       { id, currentUser },
+      this.contributionHistory,
     );
 
     return MarketplacePresenter.toQuoteOfferResponse(rejected);
   }
 
   async findMyQuoteRequests(currentUser: AuthenticatedUser) {
-    const quotes = await this.prisma.quoteRequest.findMany({
-      where: { userId: currentUser.id },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-      orderBy: { createdAt: "desc" },
-    });
+    const quotes = await runSerializableTransaction(this.prisma, async (tx) =>
+      tx.quoteRequest.findMany({
+        where: await buildMyQuoteAccessWhere(tx, currentUser.id),
+        include: MARKETPLACE_QUOTE_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      }),
+    );
 
     return quotes.map((quote) => MarketplacePresenter.toQuoteResponse(quote));
   }
 
   async findMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const quote = await this.prisma.quoteRequest.findFirst({
-      where: { id, userId: currentUser.id },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-    });
+    const quote = await runSerializableTransaction(this.prisma, async (tx) =>
+      tx.quoteRequest.findFirst({
+        where: await buildMyQuoteAccessWhere(tx, currentUser.id, id),
+        include: MARKETPLACE_QUOTE_INCLUDE,
+      }),
+    );
 
     if (!quote) {
       throw new NotFoundException("Quote request not found");
@@ -650,7 +678,8 @@ export class MarketplaceService {
       this.permissions,
       currentUser,
       id,
-      "OWNER_ONLY",
+      "REQUESTER_ONLY",
+      this.contributionHistory,
     );
     return MarketplacePresenter.toQuoteResponse(result.quote);
   }
@@ -832,26 +861,48 @@ export class MarketplaceService {
     id: string,
   ): Promise<{ quote: QuoteWithRelations; visibility: QuoteVisibility }> {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const quote = await this.prisma.quoteRequest.findUnique({
+    const quoteSeed = await this.prisma.quoteRequest.findUnique({
       where: { id },
-      include: MARKETPLACE_QUOTE_INCLUDE,
+      select: { id: true, weddingPlanId: true },
     });
-    if (!quote) {
+    if (!quoteSeed) {
       throw new NotFoundException("Quote request not found");
     }
 
-    if (quote.weddingPlanId) {
+    if (quoteSeed.weddingPlanId) {
       const context = await this.permissions.assertPlanReadable(
-        quote.weddingPlanId,
+        quoteSeed.weddingPlanId,
         currentUser,
+      );
+      assertProviderSectionLive(context, this.permissions);
+      const quote = await findAccessiblePlanQuoteRequest(
+        this.prisma,
+        context,
+        this.permissions,
+        currentUser.id,
+        quoteSeed.id,
+        quoteSeed.weddingPlanId,
       );
       return {
         quote,
-        visibility: this.quoteVisibility(context, quote, currentUser),
+        visibility: quoteVisibilityForPlan(
+          context,
+          this.permissions,
+          currentUser.id,
+          quote,
+        ),
       };
     }
 
-    if (quote.userId !== currentUser.id) {
+    const quote = await this.prisma.quoteRequest.findFirst({
+      where: {
+        id: quoteSeed.id,
+        userId: currentUser.id,
+        weddingPlanId: null,
+      },
+      include: MARKETPLACE_QUOTE_INCLUDE,
+    });
+    if (!quote) {
       throw new NotFoundException("Quote request not found");
     }
 
@@ -872,14 +923,26 @@ export class MarketplaceService {
     }
 
     if (offer.quoteRequest.weddingPlanId) {
-      await this.permissions.assertPlanReadable(
+      const context = await this.permissions.assertPlanReadable(
         offer.quoteRequest.weddingPlanId,
         currentUser,
       );
+      assertProviderSectionLive(context, this.permissions);
+      if (
+        !context.isOwner &&
+        !(await findContributorProviderQuoteIds(
+          this.prisma,
+          offer.quoteRequest.weddingPlanId,
+          currentUser.id,
+        )).includes(offer.quoteRequestId)
+      ) {
+        throw new NotFoundException("Quote offer not found");
+      }
     } else if (offer.quoteRequest.userId !== currentUser.id) {
       throw new NotFoundException("Quote offer not found");
     }
 
     return offer;
   }
+
 }

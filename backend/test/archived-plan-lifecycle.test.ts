@@ -121,6 +121,12 @@ test('archiving a plan revokes every live pending invitation in the same transac
         return { count: 2 };
       },
     },
+    contributorHistoryScope: {
+      upsert: async () => {
+        operations.push('history-scope:archived');
+        return {};
+      },
+    },
   };
   let transactionCalls = 0;
   const service = new WeddingPlansService(
@@ -151,6 +157,9 @@ test('archiving a plan revokes every live pending invitation in the same transac
       },
       canViewMoney: () => true,
     } as any,
+    {
+      recordForContextInTransaction: async () => null,
+    } as any,
   );
 
   const result = await service.archive(requester, weddingPlanId);
@@ -162,6 +171,7 @@ test('archiving a plan revokes every live pending invitation in the same transac
     'plan:locked',
     'plan:archived',
     'invites:revoked',
+    'history-scope:archived',
     'transaction:end',
   ]);
   assert.ok(inviteMutation);
@@ -197,6 +207,7 @@ test('an archived plan cannot be selected as active under the stable lifecycle c
         sharedMember: null,
       }),
     } as any,
+    {} as any,
   );
 
   await assert.rejects(
@@ -310,6 +321,12 @@ test('accepting an invitation cannot create membership on an archived plan', asy
       createNotificationInTransaction: async () => undefined,
     } as any,
     {} as any,
+    {
+      ensureTenureInTransaction: async () => undefined,
+      recordInTransaction: async () => undefined,
+      recordForContextInTransaction: async () => undefined,
+      closeTenureInTransaction: async () => undefined,
+    } as any,
   );
 
   await assert.rejects(
@@ -360,7 +377,14 @@ test('a requester cannot cancel a quote linked to an archived plan', async () =>
       $transaction: async (operation: (client: any) => Promise<unknown>) =>
         operation(tx),
     } as any,
-    {} as any,
+    {
+      assertPlanReadableInTransaction: async () => ({
+        plan: archivedPlan,
+        isOwner: true,
+        sharedMember: null,
+      }),
+      canManageProviders: () => true,
+    } as any,
     {} as any,
   );
 

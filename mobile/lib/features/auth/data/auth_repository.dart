@@ -12,6 +12,8 @@ import '../models/auth_otp.dart';
 import '../models/auth_response.dart';
 import '../models/safe_user.dart';
 
+enum AccountDeletionServerStatus { deleted, pending, notStarted }
+
 class AuthRepository implements SessionAuthTeardownPort {
   const AuthRepository(this._apiClient, this._authStorage);
 
@@ -357,12 +359,40 @@ class AuthRepository implements SessionAuthTeardownPort {
     }
   }
 
-  /// Permanently deletes the account server-side, then clears the local
-  /// session only after the server confirms — a failed request leaves the
-  /// account and session intact so the user can retry.
-  Future<void> deleteAccount() async {
-    await _apiClient.deleteJson('/api/v1/users/me');
-    await _authStorage.clear();
+  /// Permanently deletes the account server-side.
+  ///
+  /// Local credentials and account data are owned by the central session
+  /// teardown boundary after this request succeeds.
+  Future<void> deleteAccount({required String clientRequestId}) async {
+    final response = await _apiClient.mutateJson(
+      '/api/v1/users/me',
+      const {},
+      method: 'DELETE',
+      clientRequestId: clientRequestId,
+    );
+    if (response['deleted'] != true) {
+      throw const FormatException(
+        'Account deletion response did not confirm deletion',
+      );
+    }
+  }
+
+  Future<AccountDeletionServerStatus> accountDeletionStatus({
+    required String userId,
+    required String clientRequestId,
+  }) async {
+    final response = await _apiClient.postJson(
+      '/api/v1/account-deletions/status',
+      {'userId': userId, 'clientRequestId': clientRequestId},
+    );
+    return switch (response['status']) {
+      'DELETED' => AccountDeletionServerStatus.deleted,
+      'PENDING' => AccountDeletionServerStatus.pending,
+      'NOT_STARTED' => AccountDeletionServerStatus.notStarted,
+      _ => throw const FormatException(
+        'Account deletion status response is invalid',
+      ),
+    };
   }
 
   @override

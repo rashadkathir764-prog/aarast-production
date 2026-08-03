@@ -100,6 +100,7 @@ function createHarness() {
   const outboxEvent = { create: async () => ({ id: "outbox-1" }) };
   const provider = { findUnique: async () => null };
   const conversation = { findUnique: async () => null };
+  const sharedMember = { findMany: async () => [] };
   const notificationPreference = { findUnique: async () => null };
   const queryRaw = async (query: any) => {
     const sql = Array.isArray(query?.strings)
@@ -115,6 +116,7 @@ function createHarness() {
     outboxEvent,
     provider,
     conversation,
+    sharedMember,
     $transaction: async (operation: unknown) =>
       Array.isArray(operation)
         ? Promise.all(operation)
@@ -126,6 +128,7 @@ function createHarness() {
               outboxEvent: typeof outboxEvent;
               provider: typeof provider;
               conversation: typeof conversation;
+              sharedMember: typeof sharedMember;
             }) => unknown
           )({
             $queryRaw: queryRaw,
@@ -134,6 +137,7 @@ function createHarness() {
             outboxEvent,
             provider,
             conversation,
+            sharedMember,
           }),
   } as unknown as PrismaService;
   const permissions = {} as PermissionService;
@@ -349,12 +353,14 @@ test("scheduled reminders respect notification and financial permissions", async
         receiveNotifications: true,
         canViewMoney: true,
         canManageMoney: false,
+        canManageTasks: false,
       },
       {
         userId: "task-only-member",
         receiveNotifications: true,
         canViewMoney: false,
         canManageMoney: false,
+        canManageTasks: true,
       },
     ],
   };
@@ -382,8 +388,19 @@ test("scheduled reminders respect notification and financial permissions", async
           id: "task-1",
           weddingPlanId: plan.id,
           title: "Task",
+          assigneeUserId: "task-only-member",
           dueDate,
           status: "TODO",
+        },
+      ],
+    },
+    contributionEvent: {
+      findMany: async () => [
+        {
+          entityId: "cost-1",
+          entityType: "WEDDING_COST",
+          historyScope: { weddingPlanId: plan.id },
+          contributorTenure: { actorUserId: "finance-member" },
         },
       ],
     },
@@ -454,19 +471,19 @@ test("scheduled reminders respect notification and financial permissions", async
   );
 
   const created = await service.generateDueNotifications();
-  assert.equal(created, 3);
+  assert.equal(created, 2);
   assert.equal(
     outboxTypes.filter((type) => type === OutboxEventTypes.notificationCreated)
       .length,
-    3,
+    2,
   );
   assert.equal(
     outboxTypes.filter(
       (type) => type === OutboxEventTypes.pushNotificationRequested,
     ).length,
-    2,
+    1,
   );
-  assert.equal(captured.filter((row) => row.entityType === "task").length, 2);
+  assert.equal(captured.filter((row) => row.entityType === "task").length, 1);
   assert.equal(
     captured.filter((row) => row.entityType === "payment_schedule").length,
     1,
@@ -523,7 +540,11 @@ test("revoking financial access purges stored financial notifications atomically
   };
   let purgedInTransaction = false;
   const tx = {
-    $queryRaw: async () => [{ id: existing.id }],
+    $queryRaw: async (query: unknown) => {
+      const sql =
+        (query as { strings?: readonly string[] }).strings?.join(" ") ?? "";
+      return sql.includes('FROM "PlanInvite"') ? [] : [{ id: existing.id }];
+    },
     sharedMember: {
       findFirst: async () => existing,
       update: async ({ data }: { data: Record<string, unknown> }) => ({
@@ -532,6 +553,7 @@ test("revoking financial access purges stored financial notifications atomically
         user: { id: existing.userId, name: "Member", phone: null },
       }),
     },
+    contributionEvent: { findMany: async () => [] },
   };
   const prisma = {
     sharedMember: {
@@ -568,6 +590,12 @@ test("revoking financial access purges stored financial notifications atomically
     notifications as unknown as NotificationsService,
     {
       deliver: async () => ({ channel: "WHATSAPP", status: "DELIVERED" }),
+    } as any,
+    {
+      ensureTenureInTransaction: async () => undefined,
+      recordInTransaction: async () => undefined,
+      recordForContextInTransaction: async () => undefined,
+      closeTenureInTransaction: async () => undefined,
     } as any,
   );
 

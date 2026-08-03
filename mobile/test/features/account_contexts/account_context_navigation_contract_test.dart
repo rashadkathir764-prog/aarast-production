@@ -227,9 +227,10 @@ void main() {
     final cases = <String, WeddingPlanRouteAccess>{
       '/wedding-plans/plan-1/dashboard': WeddingPlanRouteAccess.ownerDashboard,
       '/wedding-plans/plan-1/plan-center': WeddingPlanRouteAccess.viewPlan,
-      '/wedding-plans/plan-1/timeline': WeddingPlanRouteAccess.viewPlan,
+      '/wedding-plans/plan-1/timeline': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/notifications': WeddingPlanRouteAccess.viewPlan,
-      '/wedding-plans/plan-1/tasks': WeddingPlanRouteAccess.viewPlan,
+      '/wedding-plans/plan-1/contributions': WeddingPlanRouteAccess.viewPlan,
+      '/wedding-plans/plan-1/tasks': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/tasks/create': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/tasks/task-1/edit':
           WeddingPlanRouteAccess.manageTasks,

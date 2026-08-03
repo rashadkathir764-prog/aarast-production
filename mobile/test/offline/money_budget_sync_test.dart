@@ -31,6 +31,7 @@ void main() {
         endpoint: '/api/v1/wedding-plans/plan-1/money-budget',
         method: 'PUT',
         payload: {'totalBudget': '100'},
+        planId: 'plan-1',
         localEntityId: 'plan-1',
         replacePendingForEntity: true,
       );
@@ -40,6 +41,7 @@ void main() {
         endpoint: '/api/v1/wedding-plans/plan-1/money-budget',
         method: 'PUT',
         payload: {'totalBudget': '250'},
+        planId: 'plan-1',
         localEntityId: 'plan-1',
         replacePendingForEntity: true,
       );
@@ -49,6 +51,7 @@ void main() {
         endpoint: '/api/v1/wedding-plans/plan-2/money-budget',
         method: 'PUT',
         payload: {'totalBudget': '900'},
+        planId: 'plan-2',
         localEntityId: 'plan-2',
         replacePendingForEntity: true,
       );
@@ -240,6 +243,7 @@ void main() {
         endpoint: '/api/v1/costs/local-cost-1',
         method: 'PATCH',
         payload: {'relatedId': 'local-cost-1'},
+        planId: 'plan-1',
         localEntityId: 'local-cost-1',
       );
 
@@ -299,6 +303,7 @@ void main() {
             },
           ],
         },
+        planId: 'plan-1',
         localEntityId: 'plan-1',
         replacePendingForEntity: true,
       );
@@ -312,6 +317,7 @@ void main() {
           'title': 'تكلفة القاعة',
           'totalAmount': '300000',
         },
+        planId: 'plan-1',
         localEntityId: 'local-cost-1',
       );
       final pendingBeforeSync = await database.pendingSyncItems();
@@ -962,6 +968,7 @@ void main() {
       endpoint: '/api/v1/cost-payments/payment-1/reverse',
       method: 'POST',
       payload: {'reason': 'تصحيح'},
+      planId: 'plan-1',
       localEntityId: 'local-cost-payment-reversal',
     );
     final client = ApiClient(tokenProvider: () async => 'token')
@@ -1043,6 +1050,7 @@ void main() {
         endpoint: '/api/v1/payment-schedules/schedule-1/pay',
         method: 'POST',
         payload: const {},
+        planId: 'plan-1',
         localEntityId: 'local-cost-payment-1',
       );
 
@@ -1124,6 +1132,7 @@ void main() {
       endpoint: '/api/v1/costs/cost-1',
       method: 'DELETE',
       payload: const {},
+      planId: 'plan-1',
       localEntityId: 'cost-1',
     );
     final client = ApiClient(tokenProvider: () async => 'token')

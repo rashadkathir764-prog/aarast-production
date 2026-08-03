@@ -9,6 +9,11 @@ import {
   Optional,
 } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionProvenance,
+  ContributionSection,
   NotificationPriority,
   NotificationType,
   PlanInvite,
@@ -26,6 +31,8 @@ import { invitationDeliveryPersistenceFailuresTotal } from "../common/observabil
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { canonicalPlanContextKey } from "../contexts/context-key";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { NotificationsService } from "../notifications/notifications.service";
 import { enqueueConversationAccessRevoked } from "../outbox/realtime-revocation";
@@ -36,9 +43,13 @@ import {
   applicationNameFields,
   toApplicationUserContact,
 } from "../users/application-user-identity";
-import { lockUserLifecycleRowsInTransaction } from "../users/user-lifecycle-lock";
+import {
+  lockUserLifecycleRowsForUpdateInTransaction,
+  lockUserLifecycleRowsInTransaction,
+} from "../users/user-lifecycle-lock";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
+import { LeavePlanDto } from "./dto/leave-plan.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
 import {
   InvitationDeliveryResult,
@@ -46,6 +57,7 @@ import {
 } from "./invitation-delivery.service";
 import {
   assertWeddingPlanWritable,
+  livePlanAuthorizationWhere,
   PermissionService,
   PlanAccessContext,
 } from "./permission.service";
@@ -167,6 +179,17 @@ type PlanInviteWithRelations = PlanInvite & {
 
 type PermissionFlags = PlanPermissionFlags;
 
+type AccessPermissionKey = Exclude<
+  keyof PermissionFlags,
+  "receiveNotifications"
+>;
+
+interface RevocationDescriptor {
+  key: AccessPermissionKey;
+  section: ContributionSection;
+  permission: ContributionPermission;
+}
+
 type StoredPermissionRecord = PermissionFlags & {
   role: SharedMemberRole;
 };
@@ -186,6 +209,55 @@ interface InviteDeliveryAttempt {
 const inviteReissueCooldownMs = 60_000;
 const inviteReissueCooldownCode = "INVITE_REISSUE_COOLDOWN";
 const inviteDeliverySupersededCode = "INVITE_DELIVERY_ATTEMPT_SUPERSEDED";
+const inviteAuthorityRevokedCode = "INVITE_AUTHORITY_REVOKED";
+const inviteAuthorityRevokedMessage =
+  "لم تعد صلاحيات مُرسل الدعوة تسمح بقبولها";
+const inviteAuthorityInactiveCode = "INVITE_AUTHORITY_INACTIVE";
+const inviteAuthorityInactiveMessage =
+  "\u0644\u0627 \u064a\u0645\u0643\u0646 \u0642\u0628\u0648\u0644 \u0627\u0644\u062f\u0639\u0648\u0629 \u0644\u0623\u0646 \u062d\u0633\u0627\u0628 \u0635\u0627\u062d\u0628 \u0627\u0644\u0635\u0644\u0627\u062d\u064a\u0629 \u0644\u0645 \u064a\u0639\u062f \u0646\u0634\u0637\u064b\u0627";
+const memberReentryRequiresInviteCode = "MEMBER_REENTRY_REQUIRES_INVITE";
+const memberReentryRequiresInviteMessage =
+  "إعادة المشاركة بعد المغادرة تتطلب دعوة جديدة";
+const ownerCannotLeaveCode = "PLAN_OWNER_CANNOT_LEAVE";
+const ownerCannotLeaveMessage = "لا يمكن لمالك الخطة مغادرة خطته";
+
+const revocationDescriptors: readonly RevocationDescriptor[] = [
+  {
+    key: "canManageTasks",
+    section: ContributionSection.TASKS,
+    permission: ContributionPermission.MANAGE_TASKS,
+  },
+  {
+    key: "canManageGuests",
+    section: ContributionSection.GUESTS,
+    permission: ContributionPermission.MANAGE_GUESTS,
+  },
+  {
+    key: "canViewMoney",
+    section: ContributionSection.MONEY,
+    permission: ContributionPermission.VIEW_MONEY,
+  },
+  {
+    key: "canManageMoney",
+    section: ContributionSection.MONEY,
+    permission: ContributionPermission.MANAGE_MONEY,
+  },
+  {
+    key: "canManageProviders",
+    section: ContributionSection.PROVIDERS,
+    permission: ContributionPermission.MANAGE_PROVIDERS,
+  },
+  {
+    key: "canInviteMembers",
+    section: ContributionSection.MEMBERS,
+    permission: ContributionPermission.MANAGE_MEMBERS,
+  },
+  {
+    key: "canEditPlan",
+    section: ContributionSection.PLAN,
+    permission: ContributionPermission.MANAGE_PLAN,
+  },
+];
 
 @Injectable()
 export class SharingService {
@@ -196,6 +268,7 @@ export class SharingService {
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
     private readonly invitationDelivery: InvitationDeliveryService,
+    private readonly history: ContributionHistoryService,
     @Optional() private readonly realtime?: ConversationRealtimePublisher,
   ) {}
 
@@ -257,6 +330,18 @@ export class SharingService {
           "User is already shared on this wedding plan",
         );
       }
+      if (
+        await this.wasPreviouslyLeftInTransaction(tx, weddingPlanId, userId)
+      ) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            code: memberReentryRequiresInviteCode,
+            message: memberReentryRequiresInviteMessage,
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
       const created = await tx.sharedMember.create({
         data: {
           weddingPlanId,
@@ -270,6 +355,28 @@ export class SharingService {
           },
         },
       });
+      await this.history.ensureTenureInTransaction(tx, created);
+      await this.history.recordForContextInTransaction(
+        tx,
+        transactionalAccess,
+        {
+          section: ContributionSection.MEMBERS,
+          entityType: ContributionEntityType.MEMBER_ITEM,
+          entityId: created.id,
+          action: ContributionAction.CREATED,
+          snapshot: buildContributionSnapshot(
+            ContributionEntityType.MEMBER_ITEM,
+            {
+              displayName: applicationDisplayName(created.user),
+              role: created.role,
+              permissionLabels: this.permissionLabels(created),
+            },
+          ),
+          dedupeKey: `member-created:${created.id}`,
+          requiredPermission: ContributionPermission.MANAGE_MEMBERS,
+          occurredAt: created.createdAt,
+        },
+      );
       if (created.canManageProviders) {
         await this.setProviderConversationParticipation(
           tx,
@@ -324,10 +431,75 @@ export class SharingService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<PlanMemberResponse[]> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
-    const plan = await this.findPlanWithOwnerOrThrow(weddingPlanId);
+    const access = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    const liveMembershipWhere = livePlanAuthorizationWhere(
+      access,
+      currentUser.id,
+    );
+    if (access.isOwner) {
+      const plan = await this.prisma.weddingPlan.findFirst({
+        where: { id: weddingPlanId, ...liveMembershipWhere },
+        include: {
+          owner: {
+            select: { id: true, phone: true, ...applicationNameFields },
+          },
+        },
+      });
+      if (!plan) {
+        throw new NotFoundException("Wedding plan not found");
+      }
+      const members = await this.prisma.sharedMember.findMany({
+        where: {
+          weddingPlanId,
+          weddingPlan: { is: liveMembershipWhere },
+        },
+        include: {
+          user: {
+            select: { id: true, phone: true, ...applicationNameFields },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      return [
+        this.toOwnerMemberResponse(plan),
+        ...members.map((member) => this.toPlanMemberResponse(member)),
+      ];
+    }
+
+    const createdMemberIds = this.permissions.canManageMembers(access)
+      ? await this.contributedEntityIds(
+          weddingPlanId,
+          currentUser.id,
+          ContributionEntityType.MEMBER_ITEM,
+          ContributionAction.CREATED,
+        )
+      : [];
+    const allowedMemberIds = new Set(createdMemberIds);
     const members = await this.prisma.sharedMember.findMany({
-      where: { weddingPlanId },
+      where: {
+        weddingPlanId,
+        weddingPlan: { is: liveMembershipWhere },
+        OR: [
+          { userId: currentUser.id },
+          ...(createdMemberIds.length > 0
+            ? [
+                {
+                  id: { in: createdMemberIds },
+                  weddingPlan: {
+                    is: livePlanAuthorizationWhere(
+                      access,
+                      currentUser.id,
+                      ["canInviteMembers"],
+                    ),
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
       include: {
         user: {
           select: { id: true, phone: true, ...applicationNameFields },
@@ -335,11 +507,12 @@ export class SharingService {
       },
       orderBy: { createdAt: "asc" },
     });
-
-    return [
-      this.toOwnerMemberResponse(plan),
-      ...members.map((member) => this.toPlanMemberResponse(member)),
-    ];
+    return members
+      .filter(
+        (member) =>
+          member.userId === currentUser.id || allowedMemberIds.has(member.id),
+      )
+      .map((member) => this.toPlanMemberResponse(member));
   }
 
   async createInvite(
@@ -449,6 +622,29 @@ export class SharingService {
           },
           include: this.inviteIncludes(),
         });
+
+        await this.history.recordForContextInTransaction(
+          tx,
+          transactionalAccess,
+          {
+            section: ContributionSection.MEMBERS,
+            entityType: ContributionEntityType.PLAN_INVITE,
+            entityId: invite.id,
+            action: ContributionAction.INVITED,
+            snapshot: buildContributionSnapshot(
+              ContributionEntityType.PLAN_INVITE,
+              {
+                displayName: invite.name,
+                role: invite.role,
+                permissionLabels: this.permissionLabels(invite),
+                inviteState: "PENDING",
+              },
+            ),
+            dedupeKey: `plan-invite-created:${invite.id}`,
+            requiredPermission: ContributionPermission.MANAGE_MEMBERS,
+            occurredAt: invite.createdAt,
+          },
+        );
 
         if (target.user) {
           await this.notifications.createNotificationInTransaction(tx, {
@@ -577,12 +773,21 @@ export class SharingService {
     const invites = await this.prisma.planInvite.findMany({
       where: {
         weddingPlanId,
+        weddingPlan: {
+          is: livePlanAuthorizationWhere(access, currentUser.id, [
+            "canInviteMembers",
+          ]),
+        },
         ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
       },
       include: this.inviteIncludes(),
       orderBy: { createdAt: "desc" },
     });
-    return invites.map((invite) => this.toInviteResponse(invite));
+    return invites
+      .filter(
+        (invite) => access.isOwner || invite.inviterUserId === currentUser.id,
+      )
+      .map((invite) => this.toInviteResponse(invite));
   }
 
   async cancelInvite(
@@ -773,15 +978,25 @@ export class SharingService {
         planSeed.ownerUserId,
       ]);
       const actor = lifecycleUsers.find((user) => user.id === currentUser.id);
+      const inviterLifecycle = lifecycleUsers.find(
+        (user) => user.id === resolvedInvite.inviterUserId,
+      );
+      const ownerLifecycle = lifecycleUsers.find(
+        (user) => user.id === planSeed.ownerUserId,
+      );
       if (
         !actor ||
         actor.status !== UserStatus.ACTIVE ||
-        !lifecycleUsers.some(
-          (user) => user.id === resolvedInvite.inviterUserId,
-        ) ||
-        !lifecycleUsers.some((user) => user.id === planSeed.ownerUserId)
+        !inviterLifecycle ||
+        !ownerLifecycle
       ) {
         throw new NotFoundException("Invite not found");
+      }
+      if (
+        inviterLifecycle.status !== UserStatus.ACTIVE ||
+        ownerLifecycle.status !== UserStatus.ACTIVE
+      ) {
+        throw this.inviteAuthorityInactive();
       }
       const lockedPlan = await tx.$queryRaw<Array<{ id: string }>>(
         Prisma.sql`
@@ -796,12 +1011,18 @@ export class SharingService {
       }
       const plan = await tx.weddingPlan.findUnique({
         where: { id: resolvedInvite.weddingPlanId },
-        select: { ownerUserId: true, status: true },
       });
       if (!plan || plan.ownerUserId !== planSeed.ownerUserId) {
         throw new NotFoundException("Wedding plan not found");
       }
       assertWeddingPlanWritable(plan);
+
+      const delegatedInviterMember =
+        await this.lockDelegatedInviteAuthorityInTransaction(
+          tx,
+          resolvedInvite,
+          plan,
+        );
 
       const lockedInvite = await tx.$queryRaw<Array<{ id: string }>>(
         Prisma.sql`
@@ -852,9 +1073,20 @@ export class SharingService {
             "Accepted invitation membership is no longer active",
           );
         }
+        await this.history.ensureTenureInTransaction(tx, member);
+        await this.recordAcceptedInviteMemberForInviterInTransaction(
+          tx,
+          invite,
+          member,
+        );
         return { member, acceptedInvite: invite };
       }
       this.assertInviteCanBeAccepted(invite, currentUser);
+      this.assertPendingInviteAuthority(
+        invite,
+        plan,
+        delegatedInviterMember,
+      );
 
       const claimed = await tx.planInvite.updateMany({
         where: {
@@ -901,6 +1133,12 @@ export class SharingService {
           },
         },
       });
+      await this.history.ensureTenureInTransaction(tx, member);
+      await this.recordAcceptedInviteMemberForInviterInTransaction(
+        tx,
+        invite,
+        member,
+      );
       if (member.canManageProviders) {
         await this.setProviderConversationParticipation(
           tx,
@@ -1123,6 +1361,12 @@ export class SharingService {
       if (!existing || existing.userId !== targetSeed.userId) {
         throw new NotFoundException("Shared member not found");
       }
+      await this.assertMemberWithinActorScopeInTransaction(
+        tx,
+        access,
+        currentUser.id,
+        existing.id,
+      );
       this.assertPermissionCeiling(
         access,
         existing.role,
@@ -1131,6 +1375,29 @@ export class SharingService {
       const role = this.assignableRole(dto.role ?? existing.role);
       const permissionData = this.permissionDataForUpdate(existing, dto, role);
       this.assertPermissionCeiling(access, role, permissionData);
+      const revokedPermissions = this.revokedPermissions(
+        existing,
+        permissionData,
+      );
+      const authorityNarrowed = revocationDescriptors.some(
+        ({ key }) => existing[key] === true && permissionData[key] === false,
+      );
+      if (revokedPermissions.length > 0) {
+        await this.recordRevocationBoundariesInTransaction(
+          tx,
+          existing,
+          revokedPermissions,
+        );
+      }
+      if (authorityNarrowed) {
+        await this.revokePendingInvitesExceedingAuthorityInTransaction(
+          tx,
+          weddingPlanId,
+          existing.userId,
+          permissionData,
+          new Date(),
+        );
+      }
       const hadFinancialAccess = this.permissions.canViewMoney({
         plan: access.plan,
         isOwner: false,
@@ -1146,11 +1413,20 @@ export class SharingService {
       const keepsProviderConversationAccess = nextRecord.canManageProviders;
       const gainsProviderConversationAccess =
         !hadProviderConversationAccess && keepsProviderConversationAccess;
+      const authorityVersion = existing.authorityVersion ?? 1;
+      const authorityChanged =
+        role !== existing.role ||
+        revocationDescriptors.some(
+          ({ key }) => existing[key] !== permissionData[key],
+        );
       const updated = await tx.sharedMember.update({
         where: { id: existing.id },
         data: {
           ...(dto.role !== undefined ? { role } : {}),
           ...permissionData,
+          ...(authorityChanged
+            ? { authorityVersion: authorityVersion + 1 }
+            : {}),
         },
         include: {
           user: {
@@ -1244,11 +1520,15 @@ export class SharingService {
       const targetInvitePredicate = normalizedPhone
         ? Prisma.sql`
             (
-              "inviteeUserId" = ${targetSeed.userId}
+              "inviterUserId" = ${targetSeed.userId}
+              OR "inviteeUserId" = ${targetSeed.userId}
               OR "normalizedPhone" = ${normalizedPhone}
             )
           `
-        : Prisma.sql`"inviteeUserId" = ${targetSeed.userId}`;
+        : Prisma.sql`(
+            "inviterUserId" = ${targetSeed.userId}
+            OR "inviteeUserId" = ${targetSeed.userId}
+          )`;
       const pendingInviteLocks = await tx.$queryRaw<Array<{ id: string }>>(
         Prisma.sql`
           SELECT "id"
@@ -1282,6 +1562,12 @@ export class SharingService {
       if (!existing || existing.userId !== targetSeed.userId) {
         throw new NotFoundException("Shared member not found");
       }
+      await this.assertMemberWithinActorScopeInTransaction(
+        tx,
+        access,
+        currentUser.id,
+        existing.id,
+      );
       this.assertPermissionCeiling(
         access,
         existing.role,
@@ -1297,6 +1583,7 @@ export class SharingService {
             revokedAt: null,
             expiresAt: { gt: revokedAt },
             OR: [
+              { inviterUserId: existing.userId },
               { inviteeUserId: existing.userId },
               ...(normalizedPhone ? [{ normalizedPhone }] : []),
             ],
@@ -1304,9 +1591,40 @@ export class SharingService {
           data: { revokedAt },
         });
         if (revokedInvites.count !== pendingInviteIds.length) {
-          throw new ConflictException("Invitation state changed during removal");
+          throw new ConflictException(
+            "Invitation state changed during removal",
+          );
         }
       }
+      const revokedPermissions = revocationDescriptors.filter(
+        ({ key }) => existing[key] === true,
+      );
+      if (revokedPermissions.length > 0) {
+        await this.recordRevocationBoundariesInTransaction(
+          tx,
+          existing,
+          revokedPermissions,
+        );
+      }
+      await this.recordMembershipEndInTransaction(
+        tx,
+        existing,
+        ContributionAction.MEMBER_REMOVED,
+      );
+      await this.history.closeTenureInTransaction(tx, {
+        weddingPlanId,
+        actorUserId: existing.userId,
+        reason: "MEMBER_REMOVED",
+        roleAtEnd: existing.role,
+        endedAt: revokedAt,
+      });
+      await tx.user.updateMany({
+        where: {
+          id: existing.userId,
+          activeWeddingPlanId: weddingPlanId,
+        },
+        data: { activeWeddingPlanId: null },
+      });
       await tx.sharedMember.delete({ where: { id: existing.id } });
       const revokedConversationIds =
         await this.setProviderConversationParticipation(
@@ -1338,6 +1656,191 @@ export class SharingService {
       );
     }
     return { id: result.id, deleted: true };
+  }
+
+  async leaveCurrentMemberFromPlan(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    expectedMembership: LeavePlanDto,
+  ): Promise<{
+    weddingPlanId: string;
+    deleted: true;
+    alreadyLeft: boolean;
+  }> {
+    const planSeed = await this.prisma.weddingPlan.findUnique({
+      where: { id: weddingPlanId },
+      select: { ownerUserId: true },
+    });
+    if (!planSeed) throw new NotFoundException("Wedding plan not found");
+    if (planSeed.ownerUserId === currentUser.id) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.FORBIDDEN,
+          code: ownerCannotLeaveCode,
+          message: ownerCannotLeaveMessage,
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const result = await runSerializableTransaction(this.prisma, async (tx) => {
+      const lockedUsers = await lockUserLifecycleRowsForUpdateInTransaction(
+        tx,
+        [currentUser.id],
+      );
+      if (lockedUsers.length !== 1) {
+        throw new NotFoundException("Wedding plan not found");
+      }
+      const plan = await tx.weddingPlan.findUnique({
+        where: { id: weddingPlanId },
+        select: { ownerUserId: true },
+      });
+      if (!plan) throw new NotFoundException("Wedding plan not found");
+      if (plan.ownerUserId === currentUser.id) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.FORBIDDEN,
+            code: ownerCannotLeaveCode,
+            message: ownerCannotLeaveMessage,
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      const targetLock = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "SharedMember"
+          WHERE "weddingPlanId" = ${weddingPlanId}
+            AND "userId" = ${currentUser.id}
+          FOR UPDATE
+        `,
+      );
+      const existing = await tx.sharedMember.findUnique({
+        where: {
+          weddingPlanId_userId: {
+            weddingPlanId,
+            userId: currentUser.id,
+          },
+        },
+      });
+      if (!existing) {
+        if (targetLock.length > 0) {
+          throw new ConflictException("Membership state changed during leave");
+        }
+        const wasAlreadyLeft = await this.wasPreviouslyLeftInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser.id,
+        );
+        if (!wasAlreadyLeft) {
+          throw new NotFoundException("Wedding plan not found");
+        }
+        return {
+          weddingPlanId,
+          deleted: true as const,
+          alreadyLeft: true,
+          affectedUserId: currentUser.id,
+          revokedConversationIds: [] as string[],
+        };
+      }
+      if (targetLock.length !== 1) {
+        throw new ConflictException("Membership state changed during leave");
+      }
+      if (
+        existing.id !== expectedMembership.expectedMemberId ||
+        existing.authorityVersion !==
+          expectedMembership.expectedAuthorityVersion
+      ) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            code: "MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST",
+            message:
+              "تغيّرت عضويتك في الخطة. حدّث المسارات ثم أعد محاولة المغادرة.",
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: currentUser.id },
+        select: { phone: true },
+      });
+      if (!user) throw new NotFoundException("Wedding plan not found");
+      const leftAt = new Date();
+      await this.revokePendingInvitesForUserInTransaction(
+        tx,
+        weddingPlanId,
+        currentUser.id,
+        user.phone,
+        leftAt,
+      );
+
+      const revokedPermissions = revocationDescriptors.filter(
+        ({ key }) => existing[key] === true,
+      );
+      if (revokedPermissions.length > 0) {
+        await this.recordRevocationBoundariesInTransaction(
+          tx,
+          existing,
+          revokedPermissions,
+        );
+      }
+      await this.recordMembershipEndInTransaction(
+        tx,
+        existing,
+        ContributionAction.MEMBER_LEFT,
+      );
+      await this.history.closeTenureInTransaction(tx, {
+        weddingPlanId,
+        actorUserId: currentUser.id,
+        reason: "MEMBER_LEFT",
+        roleAtEnd: existing.role,
+        endedAt: leftAt,
+      });
+      await tx.user.updateMany({
+        where: { id: currentUser.id, activeWeddingPlanId: weddingPlanId },
+        data: { activeWeddingPlanId: null },
+      });
+      await tx.sharedMember.delete({ where: { id: existing.id } });
+      const revokedConversationIds =
+        await this.setProviderConversationParticipation(
+          tx,
+          weddingPlanId,
+          currentUser.id,
+          false,
+        );
+      await enqueueConversationAccessRevoked(
+        tx,
+        currentUser.id,
+        revokedConversationIds,
+      );
+      await this.notifications.purgeMoneyForMember(
+        tx,
+        currentUser.id,
+        weddingPlanId,
+      );
+      return {
+        weddingPlanId,
+        deleted: true as const,
+        alreadyLeft: false,
+        affectedUserId: currentUser.id,
+        revokedConversationIds,
+      };
+    });
+
+    if (result.revokedConversationIds.length > 0) {
+      this.realtime?.revokeConversationAccess(
+        result.affectedUserId,
+        result.revokedConversationIds,
+      );
+    }
+    return {
+      weddingPlanId: result.weddingPlanId,
+      deleted: true,
+      alreadyLeft: result.alreadyLeft,
+    };
   }
 
   async permissionsForCurrentUser(
@@ -1743,6 +2246,421 @@ export class SharingService {
     throw new NotFoundException("Invite not found");
   }
 
+  private async contributedEntityIds(
+    weddingPlanId: string,
+    actorUserId: string,
+    entityType: ContributionEntityType,
+    action: ContributionAction,
+  ): Promise<string[]> {
+    const events = await this.prisma.contributionEvent.findMany({
+      where: {
+        historyScope: { weddingPlanId },
+        contributorTenure: { actorUserId },
+        entityType,
+        action,
+        entityId: { not: null },
+      },
+      select: { entityId: true },
+      distinct: ["entityId"],
+    });
+    return events.flatMap(({ entityId }) => (entityId ? [entityId] : []));
+  }
+
+  private revokedPermissions(
+    existing: StoredPermissionRecord,
+    next: PermissionFlags,
+  ): RevocationDescriptor[] {
+    const revoked = revocationDescriptors.filter(
+      ({ key, section }) =>
+        section !== ContributionSection.MONEY &&
+        existing[key] === true &&
+        next[key] === false,
+    );
+    const hadMoneyAccess = existing.canViewMoney || existing.canManageMoney;
+    const keepsMoneyAccess = next.canViewMoney || next.canManageMoney;
+    if (hadMoneyAccess && !keepsMoneyAccess) {
+      const moneyReadDescriptor = revocationDescriptors.find(
+        ({ permission }) => permission === ContributionPermission.VIEW_MONEY,
+      );
+      if (!moneyReadDescriptor) {
+        throw new Error("Money read revocation descriptor is missing");
+      }
+      revoked.push(moneyReadDescriptor);
+    }
+    return revoked;
+  }
+
+  private async assertMemberWithinActorScopeInTransaction(
+    tx: Prisma.TransactionClient,
+    access: PlanAccessContext,
+    actorUserId: string,
+    targetMemberId: string,
+  ): Promise<void> {
+    if (access.isOwner) return;
+    const createdByActor = await tx.contributionEvent.findFirst({
+      where: {
+        historyScope: { weddingPlanId: access.plan.id },
+        contributorTenure: { actorUserId },
+        section: ContributionSection.MEMBERS,
+        entityType: ContributionEntityType.MEMBER_ITEM,
+        entityId: targetMemberId,
+        action: ContributionAction.CREATED,
+      },
+      select: { id: true },
+    });
+    if (!createdByActor) throw new NotFoundException("Shared member not found");
+  }
+
+  private async recordRevocationBoundariesInTransaction(
+    tx: Prisma.TransactionClient,
+    member: SharedMember,
+    revokedPermissions: readonly RevocationDescriptor[],
+  ): Promise<void> {
+    if (revokedPermissions.length === 0) return;
+    await this.history.ensureTenureInTransaction(tx, member);
+    const authorityVersion = member.authorityVersion ?? 1;
+    const capturedAt = new Date();
+
+    for (const descriptor of revokedPermissions) {
+      await this.history.recordInTransaction(tx, {
+        weddingPlanId: member.weddingPlanId,
+        actorUserId: member.userId,
+        section: descriptor.section,
+        entityType: ContributionEntityType.SECTION,
+        action: ContributionAction.SECTION_REVOKED,
+        snapshot: buildContributionSnapshot(ContributionEntityType.SECTION, {
+          status: "REVOKED",
+        }),
+        dedupeKey: [
+          "revoke",
+          member.id,
+          authorityVersion,
+          descriptor.permission,
+          "section",
+        ].join(":"),
+        provenance: ContributionProvenance.REVOCATION_SNAPSHOT,
+        requiredPermission: descriptor.permission,
+        authorityVersion,
+        occurredAt: capturedAt,
+      });
+    }
+  }
+
+  private async recordMembershipEndInTransaction(
+    tx: Prisma.TransactionClient,
+    member: SharedMember,
+    action:
+      | typeof ContributionAction.MEMBER_LEFT
+      | typeof ContributionAction.MEMBER_REMOVED,
+  ): Promise<void> {
+    await this.history.ensureTenureInTransaction(tx, member);
+    await this.history.recordInTransaction(tx, {
+      weddingPlanId: member.weddingPlanId,
+      actorUserId: member.userId,
+      section: ContributionSection.MEMBERS,
+      entityType: ContributionEntityType.MEMBER_ITEM,
+      entityId: member.id,
+      action,
+      snapshot: buildContributionSnapshot(ContributionEntityType.MEMBER_ITEM, {
+        role: member.role,
+        permissionLabels: this.permissionLabels(member),
+      }),
+      dedupeKey: `membership-end:${member.id}:${action}`,
+      provenance: ContributionProvenance.RUNTIME,
+      authorityVersion: member.authorityVersion ?? 1,
+      occurredAt: new Date(),
+    });
+  }
+
+  private async recordAcceptedInviteMemberForInviterInTransaction(
+    tx: Prisma.TransactionClient,
+    invite: PlanInvite,
+    member: SharedMember & { user?: ApplicationContactRecord },
+  ): Promise<void> {
+    const inviterMember = await tx.sharedMember.findUnique({
+      where: {
+        weddingPlanId_userId: {
+          weddingPlanId: invite.weddingPlanId,
+          userId: invite.inviterUserId,
+        },
+      },
+    });
+    if (!inviterMember) return;
+    await this.history.ensureTenureInTransaction(tx, inviterMember);
+    await this.history.recordInTransaction(tx, {
+      weddingPlanId: invite.weddingPlanId,
+      actorUserId: invite.inviterUserId,
+      section: ContributionSection.MEMBERS,
+      entityType: ContributionEntityType.MEMBER_ITEM,
+      entityId: member.id,
+      action: ContributionAction.CREATED,
+      snapshot: buildContributionSnapshot(ContributionEntityType.MEMBER_ITEM, {
+        displayName: member.user
+          ? applicationDisplayName(member.user)
+          : invite.name,
+        role: member.role,
+        permissionLabels: this.permissionLabels(member),
+      }),
+      dedupeKey: `invite-accepted-member:${invite.id}:${member.id}`,
+      provenance: ContributionProvenance.RUNTIME,
+      requiredPermission: ContributionPermission.MANAGE_MEMBERS,
+      authorityVersion: inviterMember.authorityVersion ?? 1,
+      occurredAt: invite.acceptedAt ?? new Date(),
+    });
+  }
+
+  private permissionLabels(
+    record: Pick<
+      SharedMember | PlanInvite,
+      | "canViewMoney"
+      | "canEditPlan"
+      | "canManageTasks"
+      | "canManageGuests"
+      | "canManageProviders"
+      | "canInviteMembers"
+      | "canManageMoney"
+    >,
+  ): string[] {
+    return revocationDescriptors
+      .filter(({ key }) => record[key] === true)
+      .map(({ permission }) => permission);
+  }
+
+  private async wasPreviouslyLeftInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    actorUserId: string,
+  ): Promise<boolean> {
+    const scope = await tx.contributorHistoryScope.findUnique({
+      where: { weddingPlanId },
+      select: { id: true },
+    });
+    if (!scope) return false;
+    const previousLeave = await tx.contributorTenure.findFirst({
+      where: {
+        historyScopeId: scope.id,
+        actorUserId,
+        endedAt: { not: null },
+        endReason: "MEMBER_LEFT",
+      },
+      select: { id: true },
+    });
+    return previousLeave !== null;
+  }
+
+  private async lockDelegatedInviteAuthorityInTransaction(
+    tx: Prisma.TransactionClient,
+    invite: Pick<PlanInvite, "weddingPlanId" | "inviterUserId">,
+    plan: WeddingPlan,
+  ): Promise<SharedMember | null> {
+    if (invite.inviterUserId === plan.ownerUserId) return null;
+
+    const locks = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "SharedMember"
+        WHERE "weddingPlanId" = ${invite.weddingPlanId}
+          AND "userId" = ${invite.inviterUserId}
+        FOR SHARE
+      `,
+    );
+    if (locks.length !== 1) return null;
+
+    return tx.sharedMember.findUnique({
+      where: {
+        weddingPlanId_userId: {
+          weddingPlanId: invite.weddingPlanId,
+          userId: invite.inviterUserId,
+        },
+      },
+    });
+  }
+
+  private assertPendingInviteAuthority(
+    invite: PlanInvite,
+    plan: WeddingPlan,
+    delegatedInviterMember: SharedMember | null,
+  ): void {
+    if (invite.inviterUserId === plan.ownerUserId) return;
+    if (
+      !delegatedInviterMember ||
+      delegatedInviterMember.weddingPlanId !== invite.weddingPlanId ||
+      delegatedInviterMember.userId !== invite.inviterUserId
+    ) {
+      throw this.inviteAuthorityRevoked();
+    }
+
+    const inviterContext: PlanAccessContext = {
+      plan,
+      isOwner: false,
+      sharedMember: delegatedInviterMember,
+    };
+    if (!this.permissions.canManageMembers(inviterContext)) {
+      throw this.inviteAuthorityRevoked();
+    }
+    try {
+      this.assertPermissionCeiling(
+        inviterContext,
+        invite.role,
+        this.permissionFlagsForRecord(invite),
+      );
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw this.inviteAuthorityRevoked();
+      }
+      throw error;
+    }
+  }
+
+  private inviteAuthorityRevoked(): HttpException {
+    return new HttpException(
+      {
+        statusCode: HttpStatus.CONFLICT,
+        code: inviteAuthorityRevokedCode,
+        message: inviteAuthorityRevokedMessage,
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+
+  private inviteAuthorityInactive(): HttpException {
+    return new HttpException(
+      {
+        statusCode: HttpStatus.CONFLICT,
+        code: inviteAuthorityInactiveCode,
+        message: inviteAuthorityInactiveMessage,
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+
+  private async revokePendingInvitesForUserInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+    rawPhone: string | null,
+    revokedAt: Date,
+  ): Promise<void> {
+    const normalizedPhone = PhoneNormalizer.normalizeOptional(rawPhone);
+    const targetPredicate = normalizedPhone
+      ? Prisma.sql`(
+          "inviterUserId" = ${userId}
+          OR "inviteeUserId" = ${userId}
+          OR "normalizedPhone" = ${normalizedPhone}
+        )`
+      : Prisma.sql`(
+          "inviterUserId" = ${userId}
+          OR "inviteeUserId" = ${userId}
+        )`;
+    const locks = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "PlanInvite"
+        WHERE "weddingPlanId" = ${weddingPlanId}
+          AND "acceptedAt" IS NULL
+          AND "declinedAt" IS NULL
+          AND "revokedAt" IS NULL
+          AND "expiresAt" > ${revokedAt}
+          AND ${targetPredicate}
+        ORDER BY "id"
+        FOR UPDATE
+      `,
+    );
+    const ids = locks.map(({ id }) => id);
+    if (ids.length === 0) return;
+    const revoked = await tx.planInvite.updateMany({
+      where: {
+        id: { in: ids },
+        weddingPlanId,
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: revokedAt },
+        OR: [
+          { inviterUserId: userId },
+          { inviteeUserId: userId },
+          ...(normalizedPhone ? [{ normalizedPhone }] : []),
+        ],
+      },
+      data: { revokedAt },
+    });
+    if (revoked.count !== ids.length) {
+      throw new ConflictException("Invitation state changed during leave");
+    }
+  }
+
+  private async revokePendingInvitesExceedingAuthorityInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    inviterUserId: string,
+    nextAuthority: PermissionFlags,
+    revokedAt: Date,
+  ): Promise<void> {
+    const pendingInvites = await tx.$queryRaw<
+      Array<
+        Pick<
+          PlanInvite,
+          | "id"
+          | "canViewMoney"
+          | "canEditPlan"
+          | "canManageTasks"
+          | "canManageGuests"
+          | "canManageProviders"
+          | "canInviteMembers"
+          | "canManageMoney"
+        >
+      >
+    >(
+      Prisma.sql`
+        SELECT
+          "id",
+          "canViewMoney",
+          "canEditPlan",
+          "canManageTasks",
+          "canManageGuests",
+          "canManageProviders",
+          "canInviteMembers",
+          "canManageMoney"
+        FROM "PlanInvite"
+        WHERE "weddingPlanId" = ${weddingPlanId}
+          AND "inviterUserId" = ${inviterUserId}
+          AND "acceptedAt" IS NULL
+          AND "declinedAt" IS NULL
+          AND "revokedAt" IS NULL
+          AND "expiresAt" > ${revokedAt}
+        ORDER BY "id"
+        FOR UPDATE
+      `,
+    );
+    const inviteIds = pendingInvites
+      .filter((invite) => {
+        if (!nextAuthority.canInviteMembers) return true;
+        return revocationDescriptors.some(
+          ({ key }) => invite[key] === true && nextAuthority[key] === false,
+        );
+      })
+      .map(({ id }) => id);
+    if (inviteIds.length === 0) return;
+
+    const revoked = await tx.planInvite.updateMany({
+      where: {
+        id: { in: inviteIds },
+        weddingPlanId,
+        inviterUserId,
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: revokedAt },
+      },
+      data: { revokedAt },
+    });
+    if (revoked.count !== inviteIds.length) {
+      throw new ConflictException(
+        "Invitation state changed during authority revocation",
+      );
+    }
+  }
+
   private async setProviderConversationParticipation(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
@@ -1827,41 +2745,20 @@ export class SharingService {
   private permissionDataForUpdate(
     existing: StoredPermissionRecord,
     dto: UpdateSharedMemberDto,
-    role: SharedMemberRole,
+    _role: SharedMemberRole,
   ): PermissionFlags {
-    const roleChanged = dto.role !== undefined && dto.role !== existing.role;
-    const defaults = rolePermissionDefaults(role);
-    const canManageMoney =
-      dto.canManageMoney ??
-      (roleChanged ? defaults.canManageMoney : existing.canManageMoney);
+    const canManageMoney = dto.canManageMoney ?? existing.canManageMoney;
     return {
       canViewMoney:
-        canManageMoney ||
-        (dto.canViewMoney ??
-          (roleChanged ? defaults.canViewMoney : existing.canViewMoney)),
-      canEditPlan:
-        dto.canEditPlan ??
-        (roleChanged ? defaults.canEditPlan : existing.canEditPlan),
-      canManageTasks:
-        dto.canManageTasks ??
-        (roleChanged ? defaults.canManageTasks : existing.canManageTasks),
-      canManageGuests:
-        dto.canManageGuests ??
-        (roleChanged ? defaults.canManageGuests : existing.canManageGuests),
-      canManageProviders:
-        dto.canManageProviders ??
-        (roleChanged
-          ? defaults.canManageProviders
-          : existing.canManageProviders),
-      canInviteMembers:
-        dto.canInviteMembers ??
-        (roleChanged ? defaults.canInviteMembers : existing.canInviteMembers),
+        canManageMoney || (dto.canViewMoney ?? existing.canViewMoney),
+      canEditPlan: dto.canEditPlan ?? existing.canEditPlan,
+      canManageTasks: dto.canManageTasks ?? existing.canManageTasks,
+      canManageGuests: dto.canManageGuests ?? existing.canManageGuests,
+      canManageProviders: dto.canManageProviders ?? existing.canManageProviders,
+      canInviteMembers: dto.canInviteMembers ?? existing.canInviteMembers,
       canManageMoney,
       receiveNotifications:
-        dto.receiveNotifications ??
-        (roleChanged
-          ? defaults.receiveNotifications
-          : existing.receiveNotifications),
+        dto.receiveNotifications ?? existing.receiveNotifications,
     };
   }
 

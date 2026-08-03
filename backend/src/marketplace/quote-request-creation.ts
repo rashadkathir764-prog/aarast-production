@@ -1,5 +1,9 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   ConversationEventType,
   Prisma,
   ProviderStatus,
@@ -7,6 +11,8 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import {
   ensureConversationContext,
@@ -38,6 +44,7 @@ interface CreateQuoteRequestTransactionInput {
 export interface QuoteRequestMutationGuard {
   currentUser: AuthenticatedUser;
   permissions: PermissionService;
+  history?: ContributionHistoryService;
 }
 
 export function createQuoteRequestInTransaction(
@@ -53,6 +60,9 @@ export function createQuoteRequestInTransaction(
   const cityId = input.data.cityId ?? null;
 
   return runSerializableTransaction(prisma, async (tx) => {
+    let planContext: Awaited<
+      ReturnType<PermissionService["assertProviderManageableInTransaction"]>
+    > | null = null;
     const providerSeed = guard
       ? await tx.provider.findUnique({
           where: { id: providerId },
@@ -78,7 +88,7 @@ export function createQuoteRequestInTransaction(
         [providerSeed?.userId, planSeed?.ownerUserId],
       );
       if (weddingPlanId) {
-        await guard.permissions.assertProviderManageableInTransaction(
+        planContext = await guard.permissions.assertProviderManageableInTransaction(
           tx,
           weddingPlanId,
           guard.currentUser,
@@ -165,6 +175,26 @@ export function createQuoteRequestInTransaction(
       data: { ...input.data, conversationId: conversation.id },
       include: MARKETPLACE_QUOTE_INCLUDE,
     });
+    if (planContext && guard?.history) {
+      await guard.history.recordForContextInTransaction(tx, planContext, {
+        section: ContributionSection.PROVIDERS,
+        entityType: ContributionEntityType.QUOTE_REQUEST,
+        entityId: quote.id,
+        action: ContributionAction.CREATED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.QUOTE_REQUEST,
+          {
+            providerDisplayLabel: quote.provider.businessName,
+            categoryLabel: quote.service?.category.nameAr,
+            requestStatus: quote.status,
+            status: quote.status,
+          },
+        ),
+        dedupeKey: `provider:quote-request:${quote.id}:created`,
+        requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
+        occurredAt: quote.createdAt,
+      });
+    }
     await recordConversationEvent(tx, {
       conversationId: conversation.id,
       quoteRequestId: quote.id,

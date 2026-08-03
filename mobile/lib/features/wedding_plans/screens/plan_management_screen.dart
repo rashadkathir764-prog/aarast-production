@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -12,12 +14,14 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/widgets/account_deletion_flow.dart';
 import '../../account_contexts/models/account_context.dart';
 import '../../account_contexts/providers/account_context_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../sharing/models/shared_member.dart';
+import '../../sharing/services/plan_leave_coordinator.dart';
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
@@ -47,6 +51,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   WeddingPlan? _localPlan;
   bool _localLoading = false;
   String? _localError;
+  String? _leavePlanClientRequestId;
 
   bool get _isLocalPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
@@ -206,6 +211,17 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
           onRefresh: () => _load(refreshContextAuthority: true),
           child: ContributorWorkspaceView(
             summary: summary,
+            effectivePermissions: DashboardPermissionSummary(
+              isOwner: false,
+              role: summary.permissions.role,
+              canViewMoney: canViewMoney,
+              canManageTasks: canManageTasks,
+              canManageGuests: canManageGuests,
+              canManageProviders: canManageProviders,
+              canManageMembers: canManageMembers,
+              canManageMoney: canManageMoney,
+              canManagePlan: false,
+            ),
             onOpenTasks: () =>
                 _openContributorRoute(AppRouter.tasks(summary.planId)),
             onOpenNotifications: () => _openContributorRoute(
@@ -214,6 +230,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
             onShowPermissions: () => _showContributorPermissions(
               summary,
               contextPermissions: contextPermissions,
+            ),
+            onOpenContributionHistory: () => _openContributorRoute(
+              AppRouter.contributionHistory(summary.planId),
             ),
             onOpenMoney: canViewMoney
                 ? () => _openContributorRoute(
@@ -403,6 +422,18 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                   ),
                   const SizedBox(height: 10),
                   _ContributorAccountActionTile(
+                    key: const Key('contributor-leave-plan'),
+                    icon: LucideIcons.userMinus,
+                    title: 'مغادرة الخطة',
+                    subtitle:
+                        'إزالة وصولك إلى هذه الخطة فقط مع بقاء الحساب مسجلاً',
+                    destructive: true,
+                    onTap: () => Navigator.of(
+                      sheetContext,
+                    ).pop(_ContributorAccountAction.leavePlan),
+                  ),
+                  const SizedBox(height: 10),
+                  _ContributorAccountActionTile(
                     key: const Key('contributor-logout-account'),
                     icon: LucideIcons.power,
                     title: 'تسجيل الخروج من الحساب',
@@ -411,6 +442,17 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                     onTap: () => Navigator.of(
                       sheetContext,
                     ).pop(_ContributorAccountAction.logoutAccount),
+                  ),
+                  const SizedBox(height: 10),
+                  _ContributorAccountActionTile(
+                    key: const Key('contributor-delete-account'),
+                    icon: LucideIcons.trash2,
+                    title: 'حذف الحساب',
+                    subtitle: 'حذف الحساب وبياناته المرتبطة نهائياً',
+                    destructive: true,
+                    onTap: () => Navigator.of(
+                      sheetContext,
+                    ).pop(_ContributorAccountAction.deleteAccount),
                   ),
                   const SizedBox(height: 14),
                   TextButton(
@@ -431,10 +473,76 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
       case _ContributorAccountAction.exitWorkspace:
         await _exitContributorWorkspace();
         return;
+      case _ContributorAccountAction.leavePlan:
+        await _confirmContributorLeavePlan();
+        return;
       case _ContributorAccountAction.logoutAccount:
         await _confirmContributorLogout();
         return;
+      case _ContributorAccountAction.deleteAccount:
+        await _confirmContributorAccountDeletion();
+        return;
     }
+  }
+
+  Future<void> _confirmContributorLeavePlan() async {
+    final planId = widget.weddingPlanId;
+    final requestId = _leavePlanClientRequestId ??= _newUuidV4();
+    final router = GoRouter.of(context);
+    final left = await showAarastBottomSheet<bool>(
+      context: context,
+      backgroundColor: ContributorWorkspaceColors.surface,
+      builder: (sheetContext) => _ContributorLeavePlanConfirmation(
+        onLeave: () async {
+          final userId = context.read<AuthController>().user?.id;
+          if (userId == null || userId.trim().isEmpty) {
+            throw StateError('Authenticated contributor is required');
+          }
+          final leaveCoordinator = context.read<PlanLeaveCoordinator>();
+          final accountContexts = context.read<AccountContextController>();
+          final membership = accountContexts.selectedContext;
+          if (membership?.role != AccountContextRole.contributor ||
+              membership?.weddingPlanId != planId ||
+              membership?.membershipId == null ||
+              membership?.membershipAuthorityVersion == null) {
+            throw StateError('Current contributor membership is required');
+          }
+          await leaveCoordinator.leavePlan(
+            userId: userId,
+            weddingPlanId: planId,
+            expectedMemberId: membership!.membershipId!,
+            expectedAuthorityVersion: membership.membershipAuthorityVersion!,
+            clientRequestId: requestId,
+            refreshAccountContexts: () async {
+              await accountContexts.exitWorkspace();
+              await accountContexts.refresh();
+            },
+          );
+        },
+      ),
+    );
+    if (left != true) return;
+
+    _leavePlanClientRequestId = null;
+    // Clearing the selected context may legitimately unmount this screen
+    // before the confirmation sheet finishes closing. Keep the app-scoped
+    // router captured above so successful leave still reaches path choice.
+    router.go(AppRouter.home);
+  }
+
+  Future<void> _confirmContributorAccountDeletion() async {
+    if (!await confirmAccountDeletion(context, keyPrefix: 'contributor') ||
+        !mounted) {
+      return;
+    }
+    final auth = context.read<AuthController>();
+    final deleted = await auth.deleteAccount();
+    if (!mounted) return;
+    if (deleted) return;
+    AarastToast.showError(
+      context,
+      auth.errorMessage ?? 'تعذّر حذف الحساب. حاول مرة أخرى.',
+    );
   }
 
   Future<void> _exitContributorWorkspace() async {
@@ -850,7 +958,143 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   }
 }
 
-enum _ContributorAccountAction { exitWorkspace, logoutAccount }
+enum _ContributorAccountAction {
+  exitWorkspace,
+  leavePlan,
+  logoutAccount,
+  deleteAccount,
+}
+
+class _ContributorLeavePlanConfirmation extends StatefulWidget {
+  const _ContributorLeavePlanConfirmation({required this.onLeave});
+
+  final Future<void> Function() onLeave;
+
+  @override
+  State<_ContributorLeavePlanConfirmation> createState() =>
+      _ContributorLeavePlanConfirmationState();
+}
+
+class _ContributorLeavePlanConfirmationState
+    extends State<_ContributorLeavePlanConfirmation> {
+  bool _isSubmitting = false;
+  String? _errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(
+                LucideIcons.userMinus,
+                color: AppTheme.danger,
+                size: 34,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'مغادرة الخطة؟',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: ContributorWorkspaceColors.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                'سيُزال وصولك إلى هذه الخطة فقط. سيبقى حسابك مسجلاً ويمكنك اختيار مسار آخر.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: ContributorWorkspaceColors.muted,
+                  fontWeight: FontWeight.w600,
+                  height: 1.45,
+                ),
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorMessage!,
+                  key: const Key('contributor-leave-plan-error'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.danger,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      key: const Key('contributor-leave-plan-confirm'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.danger,
+                      ),
+                      onPressed: _isSubmitting ? null : _leave,
+                      child: _isSubmitting
+                          ? const AarastInlineSpinner(
+                              dimension: 20,
+                              color: Colors.white,
+                            )
+                          : const Text('مغادرة الخطة'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _leave() async {
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+    try {
+      await widget.onLeave();
+      if (mounted) Navigator.of(context).pop(true);
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage =
+              'تعذّرت مغادرة الخطة. تحقق من الاتصال وحاول مرة أخرى.';
+        });
+      }
+    }
+  }
+}
+
+String _newUuidV4() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+      '${hex.substring(20)}';
+}
 
 class _ContributorAccountActionTile extends StatelessWidget {
   const _ContributorAccountActionTile({

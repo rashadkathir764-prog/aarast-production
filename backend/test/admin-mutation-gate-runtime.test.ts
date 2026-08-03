@@ -245,6 +245,8 @@ test("disabling a user persists session revocation in the same transaction", asy
   const disconnectedUsers: string[] = [];
   const now = new Date("2026-07-26T00:00:00.000Z");
   const targetId = "target-user";
+  let revokedInviteWhere: any;
+  let revokedInviteData: any;
   const tx = {
     $queryRaw: async (query: any) => {
       const lockedId = query.values?.[0];
@@ -295,6 +297,14 @@ test("disabling a user persists session revocation in the same transaction", asy
         return { count: 1 };
       },
     },
+    planInvite: {
+      updateMany: async ({ where, data }: any) => {
+        calls.push("invite-revoke");
+        revokedInviteWhere = where;
+        revokedInviteData = data;
+        return { count: 2 };
+      },
+    },
     outboxEvent: {
       create: async ({ data }: any) => {
         calls.push("outbox-create");
@@ -324,10 +334,17 @@ test("disabling a user persists session revocation in the same transaction", asy
     `lock:${currentUser.id}`,
     `lock:${targetId}`,
     "user-update",
+    "invite-revoke",
     "refresh-revoke",
     "outbox-create",
   ]);
   assert.equal(response.status, UserStatus.DISABLED);
+  assert.equal(revokedInviteWhere.inviterUserId, targetId);
+  assert.equal(revokedInviteWhere.acceptedAt, null);
+  assert.equal(revokedInviteWhere.declinedAt, null);
+  assert.equal(revokedInviteWhere.revokedAt, null);
+  assert.ok(revokedInviteWhere.expiresAt.gt instanceof Date);
+  assert.equal(revokedInviteData.revokedAt, revokedInviteWhere.expiresAt.gt);
   assert.deepEqual(outboxEvents, [
     {
       type: "USER_SESSIONS_REVOKED",

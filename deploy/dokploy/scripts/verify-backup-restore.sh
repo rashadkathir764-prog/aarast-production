@@ -144,6 +144,56 @@ SELECT
   to_regclass('"'"'"FinancialCommitment"'"'"') IS NULL,
   to_regclass('"'"'"FinancialPaymentRecord"'"'"') IS NULL,
   to_regclass('"'"'"FinancialInstallment"'"'"') IS NULL,
+  to_regclass('"'"'"ContributorHistoryScope"'"'"') IS NOT NULL,
+  to_regclass('"'"'"ContributorTenure"'"'"') IS NOT NULL,
+  to_regclass('"'"'"ContributionEvent"'"'"') IS NOT NULL,
+  to_regclass('"'"'"AccountDeletionReceipt"'"'"') IS NOT NULL,
+  EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = '"'"'public'"'"'
+      AND table_name = '"'"'SharedMember'"'"'
+      AND column_name = '"'"'authorityVersion'"'"'
+      AND is_nullable = '"'"'NO'"'"'
+  ),
+  (
+    SELECT count(*) = 4
+    FROM pg_trigger trigger_row
+    JOIN pg_class table_row ON table_row.oid = trigger_row.tgrelid
+    JOIN pg_namespace schema_row ON schema_row.oid = table_row.relnamespace
+    WHERE schema_row.nspname = '"'"'public'"'"'
+      AND NOT trigger_row.tgisinternal
+      AND (table_row.relname, trigger_row.tgname) IN (
+        ('"'"'ContributorTenure'"'"', '"'"'ContributorTenure_immutable_identity'"'"'),
+        ('"'"'ContributionEvent'"'"', '"'"'ContributionEvent_append_only'"'"'),
+        ('"'"'AccountDeletionReceipt'"'"', '"'"'AccountDeletionReceipt_immutable_update'"'"'),
+        ('"'"'AccountDeletionReceipt'"'"', '"'"'AccountDeletionReceipt_immutable_delete'"'"')
+      )
+  ),
+  NOT EXISTS (
+    SELECT 1
+    FROM pg_proc routine
+    JOIN pg_namespace schema_row ON schema_row.oid = routine.pronamespace
+    WHERE schema_row.nspname = '"'"'public'"'"'
+      AND routine.proname IN (
+        '"'"'canonical_contribution_json'"'"',
+        '"'"'safe_legacy_contribution_text'"'"'
+      )
+  ),
+  NOT EXISTS (
+    SELECT expected.name
+    FROM (VALUES
+      ('"'"'20260802090000_add_contributor_history'"'"'),
+      ('"'"'20260803110000_add_account_deletion_receipts'"'"')
+    ) AS expected(name)
+    LEFT JOIN "_prisma_migrations" applied
+      ON applied.migration_name = expected.name
+    WHERE applied.finished_at IS NULL OR applied.rolled_back_at IS NOT NULL
+  ),
+  (SELECT count(*) FROM "ContributorHistoryScope") =
+    (SELECT count(*) FROM "WeddingPlan"),
+  (SELECT count(*) FROM "ContributorTenure" WHERE "endedAt" IS NULL) =
+    (SELECT count(*) FROM "SharedMember"),
   NOT EXISTS (
     SELECT 1 FROM "BudgetCategory"
     WHERE trim("name") = '"'"''"'"' OR trim("normalizedName") = '"'"''"'"'
@@ -159,7 +209,7 @@ SELECT
     WHERE finished_at IS NULL AND rolled_back_at IS NULL
   );')
 
-[ "$RESULT" = "t|t|t|t|t|t|t|t|t|t|t|t|t|t" ] || {
+[ "$RESULT" = "t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t|t" ] || {
   echo "FAIL: restored database failed canonical schema postconditions"
   exit 1
 }

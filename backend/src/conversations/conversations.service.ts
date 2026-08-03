@@ -10,7 +10,6 @@ import {
   NotificationType,
   Prisma,
   ProviderStatus,
-  SharedMemberRole,
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
@@ -1065,8 +1064,7 @@ export class ConversationsService {
       (candidate) => candidate.userId === currentUserId,
     );
     if (!member?.canManageProviders) return null;
-    const canManageMoney =
-      member.canManageMoney || member.role === SharedMemberRole.FINANCE_MANAGER;
+    const canManageMoney = member.canManageMoney;
     return {
       side: 'CUSTOMER',
       canManageProviders: true,

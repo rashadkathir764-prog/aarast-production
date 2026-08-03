@@ -21,11 +21,18 @@ import { rolePermissionDefaults } from "../src/sharing/plan-permissions";
 import { SharingService } from "../src/sharing/sharing.service";
 
 const permissions = new PermissionService({} as any);
+const noOpContributionHistory = {
+  ensureTenureInTransaction: async () => undefined,
+  recordInTransaction: async () => undefined,
+  recordForContextInTransaction: async () => undefined,
+  closeTenureInTransaction: async () => undefined,
+};
 const sharing = new SharingService(
   {} as any,
   permissions,
   {} as any,
   {} as any,
+  noOpContributionHistory as any,
 );
 
 function memberContext(
@@ -474,6 +481,7 @@ function inviteHarness(
         options.delivery ??
         (async () => ({ channel: "WHATSAPP", status: "DELIVERED" })),
     } as any,
+    noOpContributionHistory as any,
   );
 
   return {
@@ -1096,6 +1104,7 @@ test("current-user invite context requires one live membership batch without rew
     {} as any,
     {} as any,
     {} as any,
+    noOpContributionHistory as any,
   );
 
   const listed = await service.findInvitesForCurrentUser(user);
@@ -1483,6 +1492,7 @@ test("member removal locks pending invitations before the target member and revo
         __transaction: true,
         user: {
           findUnique: async () => ({ id: target.id, phone: target.phone }),
+          updateMany: async () => ({ count: 0 }),
         },
         $queryRaw: async (query: any) => {
           const sql = Array.isArray(query?.strings)
@@ -1525,6 +1535,7 @@ test("member removal locks pending invitations before the target member and revo
     permissionService,
     notifications as any,
     {} as any,
+    noOpContributionHistory as any,
   );
 
   const removed = await service.removeMemberFromPlan(
@@ -1662,6 +1673,8 @@ test("invite create and reissue source contract stays transactional and authenti
   assert.doesNotMatch(createBlock, /createNotification\(/);
   assert.match(createBlock, /planInvite\.findFirst/);
   assert.match(createBlock, /planInvite\.create/);
+  assert.match(createBlock, /recordForContextInTransaction\(\s*tx/);
+  assert.match(createBlock, /ContributionAction\.INVITED/);
   assert.match(reissueBlock, /runSerializableTransaction/);
   assert.match(reissueBlock, /assertMemberManageableInTransaction/);
   assert.match(reissueBlock, /permissionDataForUpdate/);
@@ -1692,6 +1705,8 @@ test("direct member creation persists its notification in the same transaction",
   assert.match(createBlock, /runSerializableTransaction/);
   assert.match(createBlock, /assertMemberManageableInTransaction/);
   assert.match(createBlock, /createNotificationInTransaction\(tx/);
+  assert.match(createBlock, /recordForContextInTransaction\(\s*tx/);
+  assert.match(createBlock, /ContributionAction\.CREATED/);
   assert.doesNotMatch(createBlock, /createNotification\(/);
 });
 

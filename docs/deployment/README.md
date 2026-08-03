@@ -1,6 +1,6 @@
 # Deployment
 
-Snapshot date: 2026-07-31
+Snapshot date: 2026-08-03
 
 Deployment source files live under `deploy/dokploy/`. This folder is the compact
 documentation entry point for deployment.
@@ -47,6 +47,66 @@ post-build gate if a loopback API or the current MFA login route is missing.
   target is unavailable.
 - Container health and admin startup dependency use `/ready`, so traffic is not
   sent to an API whose required dependencies are down.
+
+## Contributor History And Account Deletion Migration Release Gate
+
+Migrations `20260802090000_add_contributor_history` and
+`20260803110000_add_account_deletion_receipts` ship as one coordinated cutover,
+not a rolling mixed-version migration. Old replicas do not enforce the
+stored-flag authority, frozen contribution-event contract, membership-bound
+self-leave, or recoverable account-deletion receipt consistently, so they must
+not accept writes after the new schema starts recording history.
+
+The required production order is:
+
+1. Enter maintenance mode, stop new API traffic, and drain all in-flight
+   requests from every old Backend replica.
+2. Confirm the database backup/restore point and keep all application writes
+   stopped.
+3. Run `npx prisma migrate deploy`; require
+   `20260802090000_add_contributor_history` and
+   `20260803110000_add_account_deletion_receipts` to finish successfully. The
+   history migration's table locks and baseline/backfill count assertions fail
+   closed rather than accepting an incomplete cutover; the receipt migration
+   installs its immutable table and mutation-rejection triggers before the new
+   account-deletion recovery route receives traffic.
+4. Deploy the contributor-history-compatible Backend image to every replica
+   while traffic remains closed. Do not leave an old replica eligible for
+   routing or background writes.
+5. Confirm `npx prisma migrate status`, `/ready`, and targeted owner/two-
+   contributor smoke checks for stored permission revocation, cross-contributor
+   isolation, immutable history, membership-bound self-leave, login/context
+   refresh, a new invitation tenure, and account deletion with lost-response
+   receipt reconciliation.
+6. Reopen traffic only after every replica is on the same compatible release
+   and all checks pass.
+
+If migration or validation fails before traffic reopens, keep maintenance mode
+and correct the migration/deployment forward or restore the coordinated
+pre-cutover database and old application release before accepting any new
+writes. Once any new `ContributionEvent` has been committed, do not roll back
+the schema, drop the history tables/enums/trigger, or run an old writer. Roll
+the application forward. A database restore to the pre-cutover point would
+discard post-cutover contribution history and other writes and therefore is
+not an ordinary rollback path.
+
+The matching mobile release gate includes a native upgrade rehearsal from the
+existing SQLCipher schema version 6 to version 7. Every plan-scoped pending sync
+row must emerge with a verified explicit `planId`; unknown or contradictory
+legacy ownership remains permanently blocked and must never be guessed from an
+endpoint, local id, cache key, nested payload, or substring. The rehearsal must
+also prove that a durable pending-leave marker survives process death, cache
+clear, and ordinary logout, hides the departed plan before context selection,
+and is removed only after server reconciliation, exact plan-graph deletion, and
+a filtered context refresh. Do not roll out the mobile build until this passes
+on both Android and iOS.
+
+Release automation must supply `AARAST_FIREBASE_API_KEY`,
+`AARAST_FIREBASE_APP_ID`, `AARAST_FIREBASE_MESSAGING_SENDER_ID`, and
+`AARAST_FIREBASE_PROJECT_ID` through the approved protected build environment.
+Recovering public client configuration from a previously signed APK is useful
+for a one-off local verification artifact but is not an acceptable repeatable
+CI or store-release configuration source.
 
 ## Admin Account Operations
 

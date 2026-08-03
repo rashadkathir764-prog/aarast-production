@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
   Patch,
   Query,
   UseGuards,
@@ -15,6 +17,7 @@ import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 import { UserLookupDto } from "./dto/user-lookup.dto";
 import { UsersService } from "./users.service";
+import { safeClientRequestId } from "../common/observability/sanitize-request-target";
 
 @Controller("api/v1/users")
 @UseGuards(JwtAuthGuard)
@@ -30,8 +33,18 @@ export class UsersController {
   }
 
   @Delete("me")
-  deleteMe(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.usersService.deleteMe(currentUser);
+  deleteMe(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Headers("x-client-request-id") rawClientRequestId: string | undefined,
+  ) {
+    const clientRequestId = safeClientRequestId(rawClientRequestId);
+    if (!clientRequestId) {
+      throw new BadRequestException({
+        code: "ACCOUNT_DELETION_REQUEST_ID_REQUIRED",
+        message: "X-Client-Request-Id is required for account deletion",
+      });
+    }
+    return this.usersService.deleteMe(currentUser, clientRequestId);
   }
 
   @Get("lookup")

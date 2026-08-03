@@ -6,7 +6,9 @@ import {
   NotFoundException,
   Optional,
 } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import {
+  ContributionScopeStatus,
   MediaUploadStatus,
   NotificationPreference,
   Prisma,
@@ -85,6 +87,20 @@ export interface UserLookupResponse {
   id: string;
   name: string;
   phone: string | null;
+}
+
+export type AccountDeletionStatus = "DELETED" | "PENDING" | "NOT_STARTED";
+const ACCOUNT_DELETION_STALE_RESERVATION_MS = 30_000;
+
+export function accountDeletionReceiptHash(
+  userId: string,
+  clientRequestId: string,
+): string {
+  return createHash("sha256")
+    .update(userId)
+    .update("\0")
+    .update(clientRequestId)
+    .digest("hex");
 }
 
 @Injectable()
@@ -206,8 +222,12 @@ export class UsersService {
    * are removed explicitly. Everything runs in one transaction: any ordering
    * mistake rolls back rather than leaving the account half-deleted.
    */
-  async deleteMe(currentUser: AuthenticatedUser): Promise<{ deleted: true }> {
+  async deleteMe(
+    currentUser: AuthenticatedUser,
+    clientRequestId: string,
+  ): Promise<{ deleted: true }> {
     const userId = currentUser.id;
+    const receiptHash = accountDeletionReceiptHash(userId, clientRequestId);
 
     const account = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -222,6 +242,12 @@ export class UsersService {
     await runRetryableTransaction(
       this.prisma,
       async (tx) => {
+        const priorReceipt = await tx.accountDeletionReceipt.findUnique({
+          where: { receiptHash },
+          select: { receiptHash: true },
+        });
+        if (priorReceipt) return;
+
         // The same advisory account lock used by presigning prevents a new
         // upload ticket from escaping this snapshot. Tickets survive User
         // deletion (userId becomes null) as durable object-deletion jobs.
@@ -241,6 +267,12 @@ export class UsersService {
           `,
         );
         if (lockedUsers.length === 0) {
+          const committedWhileWaiting =
+            await tx.accountDeletionReceipt.findUnique({
+              where: { receiptHash },
+              select: { receiptHash: true },
+            });
+          if (committedWhileWaiting) return;
           throw new NotFoundException("User not found");
         }
         if (lockedUsers[0].role === UserRole.ADMIN) {
@@ -459,6 +491,40 @@ export class UsersService {
             where: { id: { in: conversationIds } },
           });
         }
+        const tenureEndedAt = new Date();
+        if (planIds.length > 0) {
+          // Contribution history is retained independently from the live plan.
+          // Close every active tenure before the plan/member graph disappears;
+          // the append-only events and detached history scope remain intact.
+          await tx.contributorTenure.updateMany({
+            where: {
+              endedAt: null,
+              historyScope: { weddingPlanId: { in: planIds } },
+            },
+            data: {
+              endedAt: tenureEndedAt,
+              endReason: "PLAN_DELETED",
+              sharedMemberId: null,
+            },
+          });
+          await tx.contributorHistoryScope.updateMany({
+            where: { weddingPlanId: { in: planIds } },
+            data: {
+              status: ContributionScopeStatus.DELETED,
+              deletedAt: tenureEndedAt,
+            },
+          });
+        }
+        // A contributor deleting the central account closes their tenures in
+        // plans owned by other users without deleting the plan's audit trail.
+        await tx.contributorTenure.updateMany({
+          where: { actorUserId: userId, endedAt: null },
+          data: {
+            endedAt: tenureEndedAt,
+            endReason: "ACCOUNT_DELETED",
+            sharedMemberId: null,
+          },
+        });
         if (planIds.length > 0) {
           const inPlans = { weddingPlanId: { in: planIds } };
           // CostPayment is append-only during normal product work. Account
@@ -492,6 +558,13 @@ export class UsersService {
           });
         }
 
+        // The anonymous receipt commits atomically with erasure. It contains
+        // neither the former user id nor the request id and is immutable at the
+        // database boundary, so a lost HTTP response remains recoverable.
+        await tx.accountDeletionReceipt.create({
+          data: { receiptHash },
+        });
+
         // Keyed by userId / phone with no User foreign key: never cascades.
         await tx.idempotencyKey.deleteMany({ where: { userId } });
         if (currentUser.phone) {
@@ -500,7 +573,8 @@ export class UsersService {
 
         // Finally the user. Cascades refresh tokens, memberships, personal
         // conversation state/messages, and any remaining requester rows;
-        // SetNulls actor/creator fields in other owners' contexts.
+        // SetNulls actor/creator fields in other owners' contexts. Historical
+        // tenures were closed above and their immutable events are retained.
         await enqueueUserSessionsRevoked(tx, userId);
         await tx.user.delete({ where: { id: userId } });
       },
@@ -514,6 +588,89 @@ export class UsersService {
     // must be severed immediately instead of surviving until token expiry.
     this.realtime?.disconnectUser(userId);
     return { deleted: true };
+  }
+
+  async accountDeletionStatus(
+    userId: string,
+    clientRequestId: string,
+  ): Promise<{ status: AccountDeletionStatus }> {
+    const receiptHash = accountDeletionReceiptHash(userId, clientRequestId);
+    return this.prisma.$transaction(
+      async (tx) => {
+        const receipt = await tx.accountDeletionReceipt.findUnique({
+          where: { receiptHash },
+          select: { receiptHash: true },
+        });
+        if (receipt) return { status: "DELETED" as const };
+
+        const reservation = await tx.idempotencyKey.findUnique({
+          where: { userId_key: { userId, key: clientRequestId } },
+          select: {
+            id: true,
+            method: true,
+            path: true,
+            completedAt: true,
+            createdAt: true,
+          },
+        });
+        if (
+          reservation?.method === "DELETE" &&
+          reservation.path === "/api/v1/users/me"
+        ) {
+          if (
+            reservation.completedAt === null &&
+            reservation.createdAt.getTime() <=
+              Date.now() - ACCOUNT_DELETION_STALE_RESERVATION_MS
+          ) {
+            // The deletion transaction has a hard 15-second timeout. A
+            // reservation twice that old with no atomic receipt is a crashed
+            // interceptor owner. Reclaim only that exact unfinished command;
+            // deleteMe remains concurrent-safe through the User lock and the
+            // unique receipt.
+            const lockedUser = await tx.$queryRaw<Array<{ id: string }>>(
+              Prisma.sql`
+                SELECT "id"
+                FROM "User"
+                WHERE "id" = ${userId}
+                FOR UPDATE
+              `,
+            );
+            const receiptAfterLock =
+              await tx.accountDeletionReceipt.findUnique({
+                where: { receiptHash },
+                select: { receiptHash: true },
+              });
+            if (receiptAfterLock) return { status: "DELETED" as const };
+            if (lockedUser.length === 0) {
+              return { status: "NOT_STARTED" as const };
+            }
+            await tx.idempotencyKey.deleteMany({
+              where: {
+                id: reservation.id,
+                completedAt: null,
+                createdAt: {
+                  lte: new Date(
+                    Date.now() - ACCOUNT_DELETION_STALE_RESERVATION_MS,
+                  ),
+                },
+              },
+            });
+            return { status: "NOT_STARTED" as const };
+          }
+          return { status: "PENDING" as const };
+        }
+        const receiptAfterReservationRead =
+          await tx.accountDeletionReceipt.findUnique({
+            where: { receiptHash },
+            select: { receiptHash: true },
+          });
+        if (receiptAfterReservationRead) {
+          return { status: "DELETED" as const };
+        }
+        return { status: "NOT_STARTED" as const };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async lookupByPhone(

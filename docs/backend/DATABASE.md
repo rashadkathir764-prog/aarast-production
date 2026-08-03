@@ -2,7 +2,7 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-29. Route-level behavior belongs in
+Current documentation snapshot: 2026-08-02. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
@@ -34,8 +34,11 @@ Current documentation snapshot: 2026-07-29. Route-level behavior belongs in
 | PaymentSchedule | A dated, non-reserving reminder under one WeddingCost. `dueDate` is required and is the only payment-reminder date. A pending schedule never changes totals, reserves outstanding balance, or blocks a direct payment. Each schedule is independently capped by the row-locked outstanding cost on create/update. Paying creates one linked CostPayment; reversing it reopens that schedule, while fully paying the cost cancels all other pending reminders. |
 | Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
-| SharedMember | Implemented for permission-based WeddingPlan collaboration. `canViewMoney` controls all money reads and `canManageMoney` controls money writes; task, guest, provider, and member-management permissions remain separate. |
-| PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. Invite-access OTP rows reference the exact invitation through `OtpCode.planInviteId` and cascade when it is deleted. |
+| SharedMember | Implemented for permission-based WeddingPlan collaboration. Its stored booleans are the final non-owner authority; role defaults seed a new membership or invitation only and never act as a runtime fallback. `canViewMoney` controls money reads, `canManageMoney` controls money writes, and task, guest, provider, plan-edit, and member-management permissions remain separate. `authorityVersion` advances when role or authorization flags change and is captured with history events. |
+| ContributorHistoryScope | One durable history boundary per WeddingPlan. `historyCoverageStartsAt` makes the cutover explicit, lifecycle fields preserve an archived/deleted plan's audit boundary, and deleting the live plan reference sets `weddingPlanId` null rather than cascading history. |
+| ContributorTenure | One period of contributor membership inside a history scope. It binds the current `SharedMember` while active, retains a SHA-256 `actorReference` across re-invitations, records join/tracking/end state and roles, and permits only one active tenure per scope and actor reference. The direct user/member links may be nulled without deleting the historical events. |
+| ContributionEvent | Append-only, privacy-allowlisted snapshot of a contributor action or revocation boundary. It records section, entity type, optional source id, action, frozen JSON, snapshot/fingerprint hashes, provenance, required permission, policy/authority versions, occurrence time, and capture time. It is not a live relation to the source row: later source changes cannot rewrite the snapshot. |
+| PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. Invite-access OTP rows reference the exact invitation through `OtpCode.planInviteId` and cascade when it is deleted. Pending grants above a delegated inviter's newly narrowed stored ceiling are revoked in the same member-update transaction; acceptance also requires an active owner and active delegated inviter. |
 | Guest | Implemented for WeddingPlan guest management. A database unique constraint permits at most one non-null `normalizedPhone` per WeddingPlan regardless of display name; null phones remain repeatable. Stored `phone` and `normalizedPhone` are the same canonical value, enforced by a database CHECK. Migration `20260726030000_enforce_unique_guest_phone` fails closed for historical conflicts instead of merging or deleting private guest data. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
 | QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. Lifecycle mutations lock this row first, re-read its state, and update only from the expected prior state. |
@@ -72,6 +75,15 @@ Current documentation snapshot: 2026-07-29. Route-level behavior belongs in
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
+- Stored `SharedMember` permission flags are the sole non-owner authorization
+  source after creation. `SharedMember.role` supplies initial defaults only;
+  changing a role preserves omitted booleans and cannot restore an explicitly
+  revoked capability.
+- Live contributor reads require a current `SharedMember` and the relevant
+  current stored flag, then restrict rows to current assignment or qualifying
+  `ContributionEvent` ids for that actor reference across current and previous
+  tenures. The shared `weddingPlanId` is never sufficient to expose another
+  contributor's rows. History evidence does not bypass a revoked flag.
 - Account contexts are derived at read time from `WeddingPlan.ownerUserId`,
   `SharedMember`, and `Provider.userId`; there is no context table, migration,
   or backfill. One account may therefore be an owner, contributor, and provider
@@ -144,6 +156,81 @@ Current documentation snapshot: 2026-07-29. Route-level behavior belongs in
   data should be added until explicitly approved in a later phase.
 - Production migrations and Docker/Dokploy deployment work remain separate from docs-only tasks unless explicitly requested.
 - New database migrations are outside docs-only tasks.
+
+## Implemented Contributor Authority And Frozen History
+
+Migration `20260802090000_add_contributor_history` adds
+`SharedMember.authorityVersion`, the contribution enums, and the three durable
+history models. It creates one `ContributorHistoryScope` per existing plan and
+one active `ContributorTenure` per existing `SharedMember`. Count assertions
+abort the transaction if either baseline cannot be represented exactly.
+
+Runtime writes create a `ContributionEvent` in the same domain transaction as
+the contributor action. A canonical, recursively key-sorted JSON hash and an
+event fingerprint make a retry with the same tenure/dedupe key safe; reuse of
+that key for different content is a conflict. Database constraints require a
+non-empty dedupe key, positive schema/policy/authority versions, matching
+section/permission/action/provenance combinations, a JSON object no larger than
+16 KiB, and a tenure from the same history scope. Unique and query indexes cover
+one active tenure per `(historyScopeId, actorReference)`, one event per
+`(contributorTenureId, dedupeKey)`, chronological contributor reads, section
+reads, and source-entity qualification.
+
+The frozen snapshot is built from an entity-type allowlist rather than a source
+object dump. Runtime validation rejects contact/credential/payload keys and
+phone, email, bearer, token, secret, or signature-shaped values, and bounds
+string, array, object, depth, and total size. The snapshot is committed at the
+time of the contributor's qualifying create/complete/payment/invite action.
+Revoking a stored permission does not query or copy the live source row and
+does not convert an assignment-only row into history; it writes only a
+`SECTION_REVOKED` boundary before committing the authority change. A PostgreSQL
+trigger rejects every later `UPDATE` or `DELETE` of `ContributionEvent`. A
+separate tenure trigger keeps actor, plan scope, membership identity,
+join/tracking timestamps, and starting role immutable; it permits only a valid
+one-way close or the controlled user-reference detach required by account
+deletion. Event-to-scope and event-to-tenure foreign keys use `RESTRICT`, while
+`entityId` is a scalar audit reference rather than a cascading relation, so
+source-row changes cannot erase the frozen event.
+
+The migration backfill is evidence-only and deliberately incomplete:
+
+- `WeddingTask.assigneeUserId` proves a current member's task assignment and is
+  captured as `LEGACY_CAPTURED`.
+- plan-scoped `QuoteRequest.userId` proves its current member creator and is
+  captured as `LEGACY_CAPTURED`.
+- `PlanInvite.inviterUserId` proves its current member inviter and is captured
+  as `LEGACY_CAPTURED`.
+
+Each legacy row is attributed only when the directly referenced user still has
+the matching current tenure. The migration does not invent a previous tenure,
+does not infer authorship from plan membership, and explicitly does not treat
+an accepted invitation as proof of who created or managed a member. Historical
+guest, money, completion, or other activity without a direct source column
+remains unattributed. Legacy free text is omitted when it is oversized or
+matches digits, email, token, secret, or signature patterns; no production row
+is silently reassigned or deleted. `historyCoverageStartsAt` marks the point
+from which complete runtime event capture is expected.
+
+## Durable Account Deletion Receipt
+
+Migration `20260803110000_add_account_deletion_receipts` creates
+`AccountDeletionReceipt` as an anonymous completion proof for central account
+deletion. Its primary key is a 64-character lowercase SHA-256 digest over the
+former user id, a separator, and the stable high-entropy client request id. The
+transaction inserts this receipt before deleting the `User`; neither source
+identifier, phone, token, profile, nor deletion payload is retained. An index
+supports bounded operational retention by deletion time, and database triggers
+reject every receipt `UPDATE` or `DELETE` so a committed lost response can be
+reconciled without resurrecting or guessing account state.
+
+The public status query derives the same digest and returns only `DELETED`,
+`PENDING`, or `NOT_STARTED`. It reads the receipt and matching idempotency
+reservation in one database snapshot. A fresh reservation remains `PENDING`;
+an unfinished reservation older than twice the account-deletion transaction
+timeout may be reclaimed only after locking the still-live `User` and
+rechecking the receipt. This table has no foreign key to `User` by design: it
+must survive successful erasure while remaining unlinkable without both
+high-entropy source values.
 
 ## Implemented Provider Reference Foundation
 
@@ -306,7 +393,8 @@ rewrite as permission to restore a removed live model.
 | Model | Field count | Notable fields |
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
-| `User` | 49 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `AccountDeletionReceipt` | 2 | `deletedAt` |
+| `User` | 50 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 12 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
@@ -314,14 +402,17 @@ rewrite as permission to restore a removed live model.
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
-| `WeddingPlan` | 29 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 30 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 21 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
 | `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
-| `SharedMember` | 16 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
+| `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
+| `ContributorHistoryScope` | 11 | `id`, `weddingPlanId`, `historyCoverageStartsAt`, `archivedAt`, `deletedAt`, `createdAt`, `updatedAt` |
+| `ContributorTenure` | 17 | `id`, `historyScopeId`, `actorUserId`, `sharedMemberId`, `joinedAt`, `trackingStartedAt`, `endedAt`, `createdAt` |
+| `ContributionEvent` | 20 | `id`, `historyScopeId`, `contributorTenureId`, `entityId`, `occurredAt`, `capturedAt` |
 | `PlanInvite` | 30 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 14 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt`, `planInviteId` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
@@ -350,5 +441,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 44
+Total models: 48
 <!-- DOCS-SYNC:END -->

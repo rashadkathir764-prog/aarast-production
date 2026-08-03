@@ -376,6 +376,7 @@ void main() {
         endpoint: '/api/v1/wedding-plans/plan-1/costs',
         method: 'POST',
         payload: {'totalAmount': '5000'},
+        planId: 'plan-1',
         localEntityId: 'cost-1',
       );
 

@@ -5,6 +5,11 @@ import {
 import {
   AppRole,
   BudgetCategory,
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionScopeStatus,
+  ContributionSection,
   GuestAttendanceStatus,
   GuestInvitationStatus,
   GuestSide,
@@ -23,6 +28,8 @@ import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { requiredMoneyAmount } from "../common/validation/money";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -90,6 +97,7 @@ export class WeddingPlansService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly contributionHistory: ContributionHistoryService,
   ) {}
 
   async create(
@@ -250,6 +258,12 @@ export class WeddingPlansService {
           ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
         },
       });
+      await this.recordPlanContribution(
+        tx,
+        context,
+        plan,
+        ContributionAction.UPDATED,
+      );
       return { context, plan };
     });
 
@@ -287,6 +301,25 @@ export class WeddingPlansService {
           expiresAt: { gt: archivedAt },
         },
         data: { revokedAt: archivedAt },
+      });
+      await this.recordPlanContribution(
+        tx,
+        context,
+        plan,
+        ContributionAction.STATUS_CHANGED,
+      );
+      await tx.contributorHistoryScope.upsert({
+        where: { weddingPlanId: id },
+        create: {
+          weddingPlanId: id,
+          status: ContributionScopeStatus.ARCHIVED,
+          archivedAt: plan.updatedAt,
+          historyCoverageStartsAt: plan.updatedAt,
+        },
+        update: {
+          status: ContributionScopeStatus.ARCHIVED,
+          archivedAt: plan.updatedAt,
+        },
       });
       return { context, plan };
     });
@@ -900,6 +933,28 @@ export class WeddingPlansService {
       currentUser,
     );
     return this.toResponse(context.plan, context);
+  }
+
+  private async recordPlanContribution(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    plan: WeddingPlan,
+    action: ContributionAction,
+  ): Promise<void> {
+    await this.contributionHistory.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.PLAN,
+      entityType: ContributionEntityType.PLAN,
+      entityId: plan.id,
+      action,
+      snapshot: buildContributionSnapshot(ContributionEntityType.PLAN, {
+        planTitle: plan.title,
+        weddingDate: plan.weddingDate,
+        status: plan.status,
+      }),
+      dedupeKey: `plan:${plan.id}:${action.toLowerCase()}:${plan.updatedAt.toISOString()}`,
+      requiredPermission: ContributionPermission.MANAGE_PLAN,
+      occurredAt: plan.updatedAt,
+    });
   }
 
   private toResponse(

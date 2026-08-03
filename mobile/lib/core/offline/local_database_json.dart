@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,6 +13,8 @@ class JsonLocalDatabase implements LocalDatabase {
   static const _prefix = 'aarast_offline';
   static const _financeSchemaMarker = 'aarast_offline:finance_schema_version';
   static const _currentFinanceSchemaVersion = 2;
+  static const _queueSchemaMarker = 'aarast_offline:queue_schema_version';
+  static const _currentQueueSchemaVersion = 7;
 
   final SharedPreferences _preferences;
 
@@ -30,6 +32,11 @@ class JsonLocalDatabase implements LocalDatabase {
       await _ensureList(_tableKey(table));
     }
     await _ensureList(_tableKey(OfflineTables.syncQueue));
+    if ((_preferences.getInt(_queueSchemaMarker) ?? 0) <
+        _currentQueueSchemaVersion) {
+      await _migrateSyncQueuePlanOwnership();
+      await _preferences.setInt(_queueSchemaMarker, _currentQueueSchemaVersion);
+    }
   }
 
   Future<void> _removeLegacyFinanceState() async {
@@ -85,6 +92,12 @@ class JsonLocalDatabase implements LocalDatabase {
       return value['value']?.toString();
     }
     return null;
+  }
+
+  @override
+  Future<void> deleteMeta(String key) async {
+    final meta = _readMap(_metaKey)..remove(key);
+    await _writeMap(_metaKey, meta);
   }
 
   @override
@@ -207,6 +220,7 @@ class JsonLocalDatabase implements LocalDatabase {
     required String endpoint,
     required String method,
     required Map<String, dynamic> payload,
+    required String? planId,
     String? localEntityId,
     bool replacePendingForEntity = false,
     bool replaceAllPendingForEntity = false,
@@ -214,6 +228,10 @@ class JsonLocalDatabase implements LocalDatabase {
     DateTime? queueCreatedAt,
   }) async {
     final now = queueCreatedAt ?? nextSyncQueueTimestamp();
+    final normalizedPlanId = normalizeSyncQueuePlanId(
+      entityType: entityType,
+      planId: planId,
+    );
     final normalizedRequestId = clientRequestId?.trim();
     if (clientRequestId != null && normalizedRequestId!.isEmpty) {
       throw ArgumentError.value(
@@ -231,6 +249,7 @@ class JsonLocalDatabase implements LocalDatabase {
       payloadJson: jsonEncode(payload),
       status: SyncQueueItem.queued,
       retryCount: 0,
+      planId: normalizedPlanId,
       localEntityId: localEntityId,
       createdAt: now,
       updatedAt: now,
@@ -241,6 +260,7 @@ class JsonLocalDatabase implements LocalDatabase {
         (row) =>
             row['entityType'] == entityType &&
             row['localEntityId'] == localEntityId &&
+            _nonEmpty(row['planId']) == normalizedPlanId &&
             row['status'] != SyncQueueItem.synced,
       );
     } else if (replacePendingForEntity) {
@@ -248,7 +268,8 @@ class JsonLocalDatabase implements LocalDatabase {
         (row) =>
             row['entityType'] == entityType &&
             row['operation'] == operation &&
-            row['localEntityId'] == localEntityId,
+            row['localEntityId'] == localEntityId &&
+            _nonEmpty(row['planId']) == normalizedPlanId,
       );
     }
     rows.add(item.toRow());
@@ -277,28 +298,26 @@ class JsonLocalDatabase implements LocalDatabase {
 
   @override
   Future<void> deletePlanGraph(String planId) async {
-    if (planId.trim().isEmpty) return;
+    final normalizedPlanId = planId.trim();
+    if (normalizedPlanId.isEmpty) return;
     for (final table in OfflineTables.planScopedCacheTables) {
       final rows = _readList(_tableKey(table));
       rows.removeWhere(
         (row) => table == OfflineTables.cachedWeddingPlans
-            ? row['id']?.toString() == planId
-            : row['planId']?.toString() == planId,
+            ? row['id']?.toString() == normalizedPlanId
+            : row['planId']?.toString() == normalizedPlanId,
       );
       await _writeList(_tableKey(table), rows);
     }
 
     final queueRows = _readList(_tableKey(OfflineTables.syncQueue))
-      ..removeWhere(
-        (row) =>
-            row['endpoint']?.toString().contains(planId) == true ||
-            row['payloadJson']?.toString().contains(planId) == true ||
-            row['localEntityId']?.toString() == planId,
-      );
+      ..removeWhere((row) => row['planId']?.toString() == normalizedPlanId);
     await _writeList(_tableKey(OfflineTables.syncQueue), queueRows);
 
     final meta = _readMap(_metaKey)
-      ..removeWhere((key, _) => key.contains(planId));
+      ..remove('timeline:$normalizedPlanId')
+      ..remove('task-summary:$normalizedPlanId')
+      ..remove('money_budget:$normalizedPlanId');
     await _writeMap(_metaKey, meta);
   }
 
@@ -366,6 +385,7 @@ class JsonLocalDatabase implements LocalDatabase {
     var count = 0;
     for (final row in rows) {
       if (row['status'] != SyncQueueItem.blocked) continue;
+      if (isSyncQueueOwnershipQuarantineError(row['lastError'])) continue;
       row['status'] = SyncQueueItem.queued;
       row['retryCount'] = 0;
       row['lastError'] = null;
@@ -407,6 +427,7 @@ class JsonLocalDatabase implements LocalDatabase {
       row['payloadJson'] = payload.replaceAll(localId, remoteId);
       row['endpoint'] = endpoint.replaceAll(localId, remoteId);
       if (localEntityId == localId) row['localEntityId'] = remoteId;
+      if (row['planId']?.toString() == localId) row['planId'] = remoteId;
       row['updatedAt'] = now;
       changed = true;
     }
@@ -443,6 +464,47 @@ class JsonLocalDatabase implements LocalDatabase {
     if (!_preferences.containsKey(key)) {
       await _preferences.setString(key, '[]');
     }
+  }
+
+  Future<void> _migrateSyncQueuePlanOwnership() async {
+    final queueKey = _tableKey(OfflineTables.syncQueue);
+    final rows = _readList(queueKey);
+    var changed = false;
+    final now = DateTime.now().toIso8601String();
+    for (final row in rows) {
+      final entityType = row['entityType']?.toString();
+      final isPlanScoped = OfflineTables.planScopedQueueEntityTypes.contains(
+        entityType,
+      );
+      final existingPlanId = _nonEmpty(row['planId']);
+      if (!isPlanScoped) {
+        if (existingPlanId != null) {
+          row['planId'] = null;
+          row['status'] = SyncQueueItem.blocked;
+          row['lastError'] = invalidSyncQueuePlanScopeError;
+          row['updatedAt'] = now;
+          changed = true;
+        }
+        continue;
+      }
+      if (existingPlanId != null) {
+        if (row['planId'] != existingPlanId) {
+          row['planId'] = existingPlanId;
+          changed = true;
+        }
+        continue;
+      }
+      final planId = trustedLegacyQueuePlanId(row['payloadJson']);
+      if (planId != null) {
+        row['planId'] = planId;
+      } else {
+        row['status'] = SyncQueueItem.blocked;
+        row['lastError'] = unknownSyncQueuePlanOwnershipError;
+        row['updatedAt'] = now;
+      }
+      changed = true;
+    }
+    if (changed) await _writeList(queueKey, rows);
   }
 
   List<Map<String, Object?>> _readList(String key) {
@@ -497,4 +559,9 @@ class JsonLocalDatabase implements LocalDatabase {
 int _intOrZero(Object? value) {
   if (value is int) return value;
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+String? _nonEmpty(Object? value) {
+  final normalized = value?.toString().trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
 }

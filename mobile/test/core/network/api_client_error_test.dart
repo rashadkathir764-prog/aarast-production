@@ -288,5 +288,29 @@ void main() {
       expect(exception.message, aarastBackendConnectionErrorMessage);
       expect(exception.message, isNot(contains('Cannot GET')));
     });
+
+    test('task permission revocation uses the stable Arabic product copy', () {
+      final requestOptions = RequestOptions(path: '/api/v1/tasks/task-1');
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 403,
+            data: const {
+              'statusCode': 403,
+              'code': 'TASK_PERMISSION_REVOKED',
+              'message': 'You no longer have permission to complete this task',
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.statusCode, 403);
+      expect(exception.serverCode, 'TASK_PERMISSION_REVOKED');
+      expect(exception.message, 'لم تعد لديك صلاحية لتنفيذ هذه المهمة');
+      expect(exception.message, isNot(contains('permission')));
+    });
   });
 }

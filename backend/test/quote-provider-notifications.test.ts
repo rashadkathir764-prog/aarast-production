@@ -114,6 +114,11 @@ function marketplaceUserLockRows(
 function capture() {
   const sent: any[] = [];
   const notifications = {
+    resolveProviderUpdateRecipientInTransaction: async (
+      _tx: any,
+      _weddingPlanId: string | null,
+      requestedUserId: string,
+    ) => requestedUserId,
     createNotification: async (input: any) => {
       sent.push(input);
       return input;
@@ -483,7 +488,8 @@ function acceptanceHarness({
     },
   };
   const permissions = {
-    assertPlanReadable: async () => ({}),
+    assertPlanReadable: async () => ({ isOwner: true, sharedMember: null }),
+    canManageProviders: () => true,
     assertProviderManageable: async () => {
       providerPermissionChecks += 1;
       return {};
@@ -920,7 +926,8 @@ test("rejecting an offer notifies the provider rather than the requester", async
     $transaction: async (fn: any) => fn(tx),
   };
   const permissions = {
-    assertPlanReadable: async () => ({}),
+    assertPlanReadable: async () => ({ isOwner: true, sharedMember: null }),
+    canManageProviders: () => true,
     assertProviderManageable: async () => ({}),
     assertProviderManageableInTransaction: async () => ({}),
   };
@@ -980,7 +987,8 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
       $transaction: async (fn: any) => fn(tx),
     } as any,
     {
-      assertPlanReadable: async () => ({}),
+      assertPlanReadable: async () => ({ isOwner: true, sharedMember: null }),
+      canManageProviders: () => true,
       assertProviderManageable: async () => ({}),
       assertProviderManageableInTransaction: async () => ({}),
     } as any,

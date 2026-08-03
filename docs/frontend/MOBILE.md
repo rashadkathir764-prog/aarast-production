@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-07-28
+Snapshot date: 2026-08-03
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
@@ -129,6 +129,81 @@ conversations, signed image uploads, and rotating refresh sessions.
   whenever release signing changes.
 - Native Android/iOS launcher and splash assets use the current Aarast brand
   mark rather than Flutter defaults.
+
+## Contributor Workspace And Account Actions
+
+- Contributor section visibility and mutations use the intersection of the
+  selected account-context permissions and the refreshed dashboard permission
+  snapshot. Flutter does not treat a role label as authority and does not
+  download plan-wide rows for local filtering; each section consumes the
+  Backend-scoped response.
+- The live section contract requires a current membership, the current stored
+  section permission, and item-level assignment or the contributor's own
+  created/completed contribution evidence where applicable. Contribution
+  evidence from an earlier tenure can identify the same person's prior work,
+  but cannot restore a departed plan context or bypass a currently revoked
+  permission.
+- Each write-capable section card places its Arabic create action below the
+  section summary as a full-width `FilledButton.icon`. The action is omitted
+  when the current write permission is false. The contributor workspace must
+  contain no nested `FloatingActionButton`, and its contract covers 320px RTL
+  layouts at 1.3 and 2.0 text scale without clipping `إضافة مهمة`,
+  `إضافة ضيف`, or `إضافة تكلفة`.
+- `سجل مساهماتي` is a separate read-only screen backed by
+  `/api/v1/wedding-plans/:weddingPlanId/contributions`. It displays immutable,
+  privacy-allowlisted snapshots and the server coverage date. Its response
+  model has no `entityId`, and cards do not navigate to a mutable live row. The
+  client uses strict parsing and 50-item pagination; malformed rows, duplicate
+  ids, invalid dates, non-string snapshot keys, or overlapping/inconsistent
+  pages produce an explicit Arabic refresh state rather than silently losing
+  history.
+- The contributor account sheet distinguishes four operations: `الخروج من
+  المساحة` returns to context choice without ending membership; `مغادرة
+  الخطة` ends only the selected plan membership; `تسجيل الخروج من الحساب`
+  ends the device session; and `حذف الحساب` invokes the central Aarast account
+  deletion flow. Before leaving, Flutter stores a durable
+  installation/user/plan-bound cleanup marker and one client request id. An
+  ambiguous result keeps the plan quarantined across restart, cache clear, and
+  logout; replay runs before contexts load. The exact plan-scoped local graph is
+  deleted and filtered contexts are committed before the marker is removed.
+- Offline schema version 7 stores an explicit `planId` for plan-scoped queue
+  rows. Unknown or contradictory legacy ownership is permanently blocked, and
+  neither migration nor cleanup guesses a plan from endpoints, ids, nested JSON,
+  or substrings.
+- Account deletion uses the shared typed `حذف` confirmation in
+  `account_deletion_flow.dart`; provider, contributor, and general account
+  surfaces must not implement separate deletion semantics. Before the first
+  request, Flutter securely persists one account/user-bound deletion marker and
+  stable client request id, unmounts the old dashboard, and enters the safe
+  termination gate. A lost or ambiguous response is reconciled through
+  `/api/v1/account-deletions/status`; the marker is removed only after a
+  confirmed deletion and centralized local teardown, or after a definitive
+  rejection paired with `NOT_STARTED`. Local teardown is retryable without
+  changing the server request id, and only this deleted-account path removes
+  that user's durable leave markers.
+- A task write rejected after permission revocation must surface Backend HTTP
+  `403`, code `TASK_PERMISSION_REVOKED`, and the Arabic message
+  `لم تعد لديك صلاحية لتنفيذ هذه المهمة`; `Plan not found` is not the task
+  permission-revocation contract.
+
+These behaviors are present in the current source. On 2026-08-03 the final
+combined `flutter analyze` passed, all 997 Flutter tests passed, and a local
+Flutter Web runtime rendered the Arabic welcome gateway without console errors.
+Android Release built as `1.0.0+7`, verified against the Aarast upload
+signature, and produced SHA-256
+`509F54E81CBAE7CA4DD3BE9ABA086EACB1CF7D5C2D75F848C767A59741F7AC72`.
+The owner-plus-two-contributor Backend HTTP scenario and both fresh and populated
+legacy migration paths also passed. Android/iOS physical-device review remains
+open. The Release APK installed and launched on a physical Android 16 device
+without a fatal process or SQLite error, but the retained authenticated session
+correctly stopped at the explicit context-load retry state because Production
+still serves the old Backend contract (`/health=200`, new public account-
+deletion status route=`404`). The local build recovered the Firebase client
+configuration from the previously signed Aarast artifact, but the required
+Firebase dart-defines are not configured in this workspace; repeatable CI
+packaging therefore remains a release gate. The SQLCipher schema-v6-to-v7
+migration remains a post-deployment Android/iOS device gate even though shared
+JSON migration and SQLite ownership source contracts pass locally.
 
 ## Plan Management
 

@@ -163,6 +163,91 @@ void main() {
     await auth.captureFinished.future;
     expect(lease.hasSensitiveCredentials, isFalse);
   });
+
+  test(
+    'confirmed account deletion clears local scopes without remote logout',
+    () async {
+      final events = <String>[];
+      final auth = _FakeAuthTeardown(events);
+      final push = _FakePushTeardown(events);
+      final coordinator = SessionTeardownCoordinator(
+        auth: auth,
+        push: push,
+        clearLocalAccountData: () async => events.add('local-cache'),
+        clearGuestDraft: () async => events.add('local-draft'),
+        clearDeletedAccountState: (userId) async {
+          expect(userId, 'user-a');
+          events.add('deleted-account-state');
+        },
+      );
+
+      final result = await coordinator.terminate(
+        coordinator.begin('user-a'),
+        remoteSessionAlreadyDestroyed: true,
+      );
+
+      expect(events, [
+        'auth-begin',
+        'push-begin',
+        'auth-local',
+        'local-cache',
+        'local-draft',
+        'push-local',
+        'deleted-account-state',
+      ]);
+      expect(result.authRemote, SessionRemoteTeardownOutcome.skipped);
+      expect(result.pushRemote, SessionRemoteTeardownOutcome.skipped);
+      expect(coordinator.activeLease, isNull);
+    },
+  );
+
+  test(
+    'deleted-account residue failure retries only that final local stage',
+    () async {
+      final events = <String>[];
+      final auth = _FakeAuthTeardown(events);
+      final push = _FakePushTeardown(events);
+      var deletedStateAttempts = 0;
+      final coordinator = SessionTeardownCoordinator(
+        auth: auth,
+        push: push,
+        clearLocalAccountData: () async => events.add('local-cache'),
+        clearGuestDraft: () async => events.add('local-draft'),
+        clearDeletedAccountState: (_) async {
+          deletedStateAttempts += 1;
+          events.add('deleted-account-state-$deletedStateAttempts');
+          if (deletedStateAttempts == 1) {
+            throw StateError('controlled deleted-account residue failure');
+          }
+        },
+      );
+      final lease = coordinator.begin('user-a');
+
+      await expectLater(
+        coordinator.terminate(lease, remoteSessionAlreadyDestroyed: true),
+        throwsA(
+          isA<SessionLocalTeardownException>().having(
+            (error) => error.stage,
+            'stage',
+            SessionLocalTeardownStage.deletedAccountState,
+          ),
+        ),
+      );
+      await coordinator.terminate(lease, remoteSessionAlreadyDestroyed: true);
+
+      expect(events, [
+        'auth-begin',
+        'push-begin',
+        'auth-local',
+        'local-cache',
+        'local-draft',
+        'push-local',
+        'deleted-account-state-1',
+        'deleted-account-state-2',
+      ]);
+      expect(coordinator.activeLease, isNull);
+    },
+  );
 }
 
 class _FakeAuthTeardown implements SessionAuthTeardownPort {

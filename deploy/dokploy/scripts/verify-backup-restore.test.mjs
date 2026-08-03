@@ -129,3 +129,25 @@ test('restore verifier enforces the canonical money schema', () => {
     assert.match(source, new RegExp(`to_regclass\\([^\\n]+${removed}[^\\n]+IS NULL`));
   }
 });
+
+test('restore verifier enforces the coordinated contributor cutover schema', () => {
+  for (const required of [
+    'ContributorHistoryScope',
+    'ContributorTenure',
+    'ContributionEvent',
+    'AccountDeletionReceipt',
+    'authorityVersion',
+    'ContributorTenure_immutable_identity',
+    'ContributionEvent_append_only',
+    'AccountDeletionReceipt_immutable_update',
+    'AccountDeletionReceipt_immutable_delete',
+    '20260802090000_add_contributor_history',
+    '20260803110000_add_account_deletion_receipts',
+    'canonical_contribution_json',
+    'safe_legacy_contribution_text',
+  ]) {
+    assert.equal(source.includes(required), true, required);
+  }
+  assert.match(source, /count\(\*\) FROM "ContributorHistoryScope"/);
+  assert.match(source, /count\(\*\) FROM "ContributorTenure" WHERE "endedAt" IS NULL/);
+});

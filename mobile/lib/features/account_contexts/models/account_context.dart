@@ -68,6 +68,8 @@ class AccountContext {
     required this.role,
     required this.weddingPlanId,
     required this.providerId,
+    required this.membershipId,
+    required this.membershipAuthorityVersion,
     required this.persona,
     required this.displayName,
     required this.lifecycle,
@@ -83,6 +85,11 @@ class AccountContext {
     final role = _parseRole(_requiredString(json, 'role'));
     final weddingPlanId = _requiredNullableString(json, 'weddingPlanId');
     final providerId = _requiredNullableString(json, 'providerId');
+    final membershipId = _requiredNullableString(json, 'membershipId');
+    final membershipAuthorityVersion = _requiredNullableInt(
+      json,
+      'membershipAuthorityVersion',
+    );
     final persona = _parsePersona(_requiredNullableString(json, 'persona'));
     final displayName = _requiredString(json, 'displayName');
     final lifecycle = _requiredString(json, 'lifecycle');
@@ -104,6 +111,8 @@ class AccountContext {
       role: role,
       weddingPlanId: weddingPlanId,
       providerId: providerId,
+      membershipId: membershipId,
+      membershipAuthorityVersion: membershipAuthorityVersion,
       persona: persona,
       displayName: displayName,
       lifecycle: lifecycle,
@@ -121,6 +130,8 @@ class AccountContext {
   final AccountContextRole role;
   final String? weddingPlanId;
   final String? providerId;
+  final String? membershipId;
+  final int? membershipAuthorityVersion;
   final AccountContextPersona? persona;
   final String displayName;
   final String lifecycle;
@@ -177,6 +188,19 @@ class AccountContext {
         'Plan context exposes provider-only capabilities',
       );
     }
+    if (role == AccountContextRole.owner) {
+      if (membershipId != null || membershipAuthorityVersion != null) {
+        throw const FormatException(
+          'Owner context cannot expose contributor membership identity',
+        );
+      }
+    } else if (membershipId == null ||
+        membershipAuthorityVersion == null ||
+        membershipAuthorityVersion! < 1) {
+      throw const FormatException(
+        'Contributor context requires a valid membership identity',
+      );
+    }
     if (!isPlanning &&
         (!permissions.canViewPlan ||
             permissions.canEditPlan ||
@@ -200,6 +224,11 @@ class AccountContext {
     }
     if (contextKey != 'provider:$currentProviderId') {
       throw const FormatException('Provider context key is not canonical');
+    }
+    if (membershipId != null || membershipAuthorityVersion != null) {
+      throw const FormatException(
+        'Provider context cannot expose contributor membership identity',
+      );
     }
     final expected = switch (lifecycle) {
       'ACTIVE' => (
@@ -288,6 +317,16 @@ String? _requiredNullableString(Map<String, dynamic> json, String key) {
   if (value is! String || value.isEmpty || value.trim() != value) {
     throw FormatException('Invalid $key');
   }
+  return value;
+}
+
+int? _requiredNullableInt(Map<String, dynamic> json, String key) {
+  if (!json.containsKey(key)) {
+    throw FormatException('Missing $key');
+  }
+  final value = json[key];
+  if (value == null) return null;
+  if (value is! int) throw FormatException('Invalid $key');
   return value;
 }
 

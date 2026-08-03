@@ -78,6 +78,7 @@ void main() {
       endpoint: '/wedding-plans/plan-1/tasks',
       method: 'POST',
       payload: {'title': 'مهمة'},
+      planId: 'plan-1',
       localEntityId: 'local-1',
     );
     final adapter = _ScriptedAdapter([(_) => _ok('{"id":"remote-1"}')]);
@@ -99,6 +100,7 @@ void main() {
       endpoint: '/wedding-plans/plan-1/tasks',
       method: 'POST',
       payload: {'title': 'مهمة'},
+      planId: 'plan-1',
     );
     final adapter = _ScriptedAdapter([(_) => _ok('{"id":"remote-1"}')]);
     final service = _service(database, adapter);
@@ -117,6 +119,7 @@ void main() {
       endpoint: '/wedding-plans/plan-1/tasks',
       method: 'POST',
       payload: {'title': ''},
+      planId: 'plan-1',
     );
     final adapter = _ScriptedAdapter([
       (_) => _status(400, '{"message":"title should not be empty"}'),
@@ -153,6 +156,7 @@ void main() {
       endpoint: '/wedding-plans/plan-1/tasks',
       method: 'POST',
       payload: {'title': 'مهمة مصححة'},
+      planId: 'plan-1',
       localEntityId: 'local-task-1',
     );
     final adapter = _ScriptedAdapter([
@@ -182,6 +186,7 @@ void main() {
         endpoint: '/wedding-plans/plan-1/tasks-a',
         method: 'POST',
         payload: {'title': 'أ'},
+        planId: 'plan-1',
       );
       await database.enqueueSync(
         entityType: 'task',
@@ -189,6 +194,7 @@ void main() {
         endpoint: '/wedding-plans/plan-1/tasks-b',
         method: 'POST',
         payload: {'title': 'ب'},
+        planId: 'plan-1',
       );
       // First item hits a connection error; loop must break before item two.
       final adapter = _ScriptedAdapter([
@@ -217,6 +223,7 @@ void main() {
       endpoint: '/wedding-plans/plan-1/tasks',
       method: 'POST',
       payload: {'title': 'مهمة'},
+      planId: 'plan-1',
     );
     // Force the row to the edge of the retry budget, then fail with a 500
     // (retryable class) — the +1 crosses maxAutoRetries and blocks it.
@@ -252,6 +259,7 @@ void main() {
         endpoint: '/x',
         method: 'POST',
         payload: {'title': 'قيد الانتظار'},
+        planId: 'plan-1',
       );
       final adapter = _ScriptedAdapter([(_) => _ok('{}')]);
       final service = _service(database, adapter);

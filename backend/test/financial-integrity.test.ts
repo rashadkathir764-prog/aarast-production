@@ -367,7 +367,11 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
     $transaction: async (operation: (client: any) => unknown) => operation(tx),
   };
   const permissions = {
-    assertMoneyManageableInTransaction: async () => ({}),
+    assertMoneyManageableInTransaction: async () => ({
+      isOwner: true,
+      sharedMember: null,
+      plan: { id: "plan-1", currency: "YER" },
+    }),
   };
 
   const result = await new WeddingCostsService(
@@ -440,7 +444,11 @@ test("each payment reminder is bounded by the current remaining cost without res
     $transaction: async (operation: (client: any) => unknown) => operation(tx),
   };
   const permissions = {
-    assertMoneyManageableInTransaction: async () => ({}),
+    assertMoneyManageableInTransaction: async () => ({
+      isOwner: true,
+      sharedMember: null,
+      plan: { id: "plan-1", currency: "YER" },
+    }),
   };
   const service = new WeddingCostsService(prisma as any, permissions as any);
 

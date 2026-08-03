@@ -15,6 +15,7 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
+import { LeavePlanDto } from "./dto/leave-plan.dto";
 import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";
 import { VerifyInviteOtpDto } from "./dto/verify-invite-otp.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
@@ -71,6 +72,19 @@ export class ApiV1WeddingPlanMembersController {
     @Param("weddingPlanId") weddingPlanId: string,
   ) {
     return this.sharingService.findMembersForPlan(currentUser, weddingPlanId);
+  }
+
+  @Delete("me")
+  leavePlan(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Body() dto: LeavePlanDto,
+  ) {
+    return this.sharingService.leaveCurrentMemberFromPlan(
+      currentUser,
+      weddingPlanId,
+      dto,
+    );
   }
 
   @Patch(":memberId")

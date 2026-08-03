@@ -74,6 +74,9 @@ export class MoneyBudgetService {
             weddingPlanId,
             currentUser,
           );
+        if (!context.isOwner) {
+          throw new NotFoundException("Wedding plan not found");
+        }
         const costsCount = await tx.weddingCost.count({
           where: { weddingPlanId },
         });

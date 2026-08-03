@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../prisma/prisma.module";
+import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { SharingModule } from "../sharing/sharing.module";
 import {
@@ -17,7 +18,12 @@ import {
 import { MarketplaceService } from "./marketplace.service";
 
 @Module({
-  imports: [PrismaModule, SharingModule, NotificationsModule],
+  imports: [
+    PrismaModule,
+    SharingModule,
+    NotificationsModule,
+    ContributionHistoryModule,
+  ],
   controllers: [
     CitiesController,
     GovernoratesController,

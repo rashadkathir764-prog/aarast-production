@@ -183,7 +183,10 @@ async function main() {
       },
     });
     bareUserId = bareUser.id;
-    await users.deleteMe({ id: bareUser.id, phone: barePhone } as never);
+    await users.deleteMe(
+      { id: bareUser.id, phone: barePhone } as never,
+      "smoke-delete-bare-user",
+    );
     assertCheck(
       (await prisma.user.count({ where: { id: bareUser.id } })) === 0,
       'account with no plan deletes cleanly',
@@ -661,7 +664,7 @@ async function main() {
       ],
     });
 
-    await users.deleteMe(currentUser);
+    await users.deleteMe(currentUser, "smoke-delete-owner");
     assertCheck(
       (await prisma.user.count({ where: { id: user.id } })) === 0,
       'account row is deleted after the complete Restrict chain',
@@ -845,7 +848,7 @@ async function main() {
       'deleting the plan owner preserves the provider account and business',
     );
 
-    await users.deleteMe(sentinelCurrent);
+    await users.deleteMe(sentinelCurrent, "smoke-delete-sentinel");
     sentinelUserId = '';
     const preservedClientCost = await prisma.weddingCost.findUnique({
       where: { id: clientCost.id },
@@ -894,7 +897,10 @@ async function main() {
           account.id &&
           (await prisma.user.count({ where: { id: account.id } })) > 0
         ) {
-          await users.deleteMe({ id: account.id, phone: account.phone } as never);
+          await users.deleteMe(
+            { id: account.id, phone: account.phone } as never,
+            `smoke-delete-${account.id}`,
+          );
         }
       }
       const ownedKeys = [

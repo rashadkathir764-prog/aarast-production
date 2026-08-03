@@ -557,6 +557,7 @@ function validateSmokeScripts(values) {
   const scripts = values.length > 0 ? values : ['all-smoke.js'];
   const externalTargets = new Set([
     '--admin-runtime',
+    '--contributor-history-migration',
     '--guest-phone-migration',
     '--load-test',
   ]);
@@ -748,7 +749,11 @@ async function main(args = process.argv.slice(2)) {
     }
     console.log(`Managed smoke run: ${identity.runId}`);
     console.log(`Isolated database: ${identity.databaseName}`);
-    if (scripts.includes('--guest-phone-migration')) {
+    const databaseOnlySmoke = new Map([
+      ['--contributor-history-migration', 'contributor-history-migration-smoke.js'],
+      ['--guest-phone-migration', 'guest-phone-migration-smoke.js'],
+    ]).get(scripts[0]);
+    if (databaseOnlySmoke) {
       await executeManagedDatabaseRun({
         createDatabase: () =>
           createDatabase(discovery, identity, abortController.signal),
@@ -759,7 +764,7 @@ async function main(args = process.argv.slice(2)) {
             [
               '-r',
               isolationHook,
-              path.join(__dirname, 'guest-phone-migration-smoke.js'),
+              path.join(__dirname, databaseOnlySmoke),
             ],
             {
               cwd: backendRoot,

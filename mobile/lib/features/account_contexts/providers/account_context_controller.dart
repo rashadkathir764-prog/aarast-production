@@ -10,6 +10,8 @@ import '../models/account_context.dart';
 
 typedef SetActiveWeddingPlan = Future<void> Function(String planId);
 typedef ReadActiveWeddingPlanId = Future<String?> Function();
+typedef BeforeAccountContextsRefresh = Future<Set<String>> Function();
+typedef AfterAccountContextsRefresh = Future<void> Function();
 typedef ResetAccountContextState =
     FutureOr<void> Function(
       AccountContext? previousContext,
@@ -24,12 +26,16 @@ class AccountContextController extends ChangeNotifier {
     String? userId,
     ReadActiveWeddingPlanId? readActiveWeddingPlanId,
     ResetAccountContextState? resetContextState,
+    BeforeAccountContextsRefresh? beforeRefresh,
+    AfterAccountContextsRefresh? afterRefresh,
   }) : _contextsApi = contextsApi,
        _authStorage = authStorage,
        _setActiveWeddingPlan = setActiveWeddingPlan,
        _userId = userId,
        _readActiveWeddingPlanId = readActiveWeddingPlanId,
-       _resetContextStateCallback = resetContextState;
+       _resetContextStateCallback = resetContextState,
+       _beforeRefresh = beforeRefresh,
+       _afterRefresh = afterRefresh;
 
   static const _contextChangedNotice = 'تم تحديث المسار المتاح لحماية بياناتك.';
   static const _genericLoadFailure =
@@ -43,6 +49,8 @@ class AccountContextController extends ChangeNotifier {
   final String? _userId;
   final ReadActiveWeddingPlanId? _readActiveWeddingPlanId;
   final ResetAccountContextState? _resetContextStateCallback;
+  final BeforeAccountContextsRefresh? _beforeRefresh;
+  final AfterAccountContextsRefresh? _afterRefresh;
 
   List<AccountContext> _contexts = const [];
   AccountContext? _selectedContext;
@@ -97,8 +105,25 @@ class AccountContextController extends ChangeNotifier {
     _notifyListeners();
 
     try {
-      final freshContexts = await _contextsApi.listContexts();
+      final beforeRefresh = _beforeRefresh;
+      final blockedPlanIds = beforeRefresh == null
+          ? const <String>{}
+          : await beforeRefresh();
       if (!_isCurrent(generation)) return;
+      final serverContexts = await _contextsApi.listContexts();
+      if (!_isCurrent(generation)) return;
+      // A pending leave is a local deny boundary. The API may still return the
+      // membership while the original DELETE has an ambiguous network result;
+      // never expose or select that plan until the durable replay resolves.
+      final freshContexts = blockedPlanIds.isEmpty
+          ? serverContexts
+          : serverContexts
+                .where(
+                  (context) =>
+                      context.weddingPlanId == null ||
+                      !blockedPlanIds.contains(context.weddingPlanId),
+                )
+                .toList(growable: false);
 
       final selected = _selectFallback(
         freshContexts,
@@ -174,6 +199,7 @@ class AccountContextController extends ChangeNotifier {
           (selected == null || selected.contextKey != previousKey)) {
         _noticeMessage = _contextChangedNotice;
       }
+      await _afterRefresh?.call();
     } on ApiException {
       if (_isCurrent(generation)) {
         _errorMessage = _genericLoadFailure;

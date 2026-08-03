@@ -9,6 +9,7 @@ enum SessionLocalTeardownStage {
   accountCache,
   guestDraft,
   pushRegistration,
+  deletedAccountState,
 }
 
 enum SessionRemoteTeardownOutcome { completed, failed, timedOut, skipped }
@@ -109,6 +110,7 @@ class SessionTeardownLease {
   bool _accountCacheCleared = false;
   bool _guestDraftCleared = false;
   bool _pushRegistrationCleared = false;
+  bool _deletedAccountStateCleared = false;
 
   bool get hasSensitiveCredentials => auth.hasSensitiveCredentials;
 }
@@ -130,6 +132,7 @@ class SessionTeardownCoordinator {
     required SessionAuthTeardownPort auth,
     required Future<void> Function() clearLocalAccountData,
     required Future<void> Function() clearGuestDraft,
+    Future<void> Function(String userId)? clearDeletedAccountState,
     SessionPushTeardownPort? push,
     this.credentialCaptureTimeout = const Duration(seconds: 2),
     this.localStageTimeout = const Duration(seconds: 5),
@@ -140,12 +143,14 @@ class SessionTeardownCoordinator {
        _auth = auth,
        _push = push,
        _clearLocalAccountData = clearLocalAccountData,
-       _clearGuestDraft = clearGuestDraft;
+       _clearGuestDraft = clearGuestDraft,
+       _clearDeletedAccountState = clearDeletedAccountState;
 
   final SessionAuthTeardownPort _auth;
   final SessionPushTeardownPort? _push;
   final Future<void> Function() _clearLocalAccountData;
   final Future<void> Function() _clearGuestDraft;
+  final Future<void> Function(String userId)? _clearDeletedAccountState;
   final Duration credentialCaptureTimeout;
   final Duration localStageTimeout;
   final Duration remoteTimeout;
@@ -182,14 +187,27 @@ class SessionTeardownCoordinator {
     return lease;
   }
 
-  Future<SessionTeardownResult> terminate(SessionTeardownLease lease) async {
+  Future<SessionTeardownResult> terminate(
+    SessionTeardownLease lease, {
+    bool remoteSessionAlreadyDestroyed = false,
+  }) async {
     if (!identical(_activeLease, lease)) {
       throw StateError('The teardown lease is no longer active');
     }
 
-    await _captureRemoteCredentials(lease);
-    await _runLocalCleanup(lease);
-    final result = await _drainRemoteTeardown(lease);
+    if (!remoteSessionAlreadyDestroyed) {
+      await _captureRemoteCredentials(lease);
+    }
+    await _runLocalCleanup(
+      lease,
+      clearDeletedAccountState: remoteSessionAlreadyDestroyed,
+    );
+    final result = remoteSessionAlreadyDestroyed
+        ? const SessionTeardownResult(
+            authRemote: SessionRemoteTeardownOutcome.skipped,
+            pushRemote: SessionRemoteTeardownOutcome.skipped,
+          )
+        : await _drainRemoteTeardown(lease);
     lease.auth.clearSensitiveCredentials();
     if (identical(_activeLease, lease)) {
       _activeLease = null;
@@ -249,7 +267,10 @@ class SessionTeardownCoordinator {
     }
   }
 
-  Future<void> _runLocalCleanup(SessionTeardownLease lease) async {
+  Future<void> _runLocalCleanup(
+    SessionTeardownLease lease, {
+    required bool clearDeletedAccountState,
+  }) async {
     if (!lease._authStorageCleared) {
       await _runLocalStage(
         SessionLocalTeardownStage.authStorage,
@@ -278,6 +299,16 @@ class SessionTeardownCoordinator {
         () => _push!.clearLocalRegistration(pushLease),
       );
       lease._pushRegistrationCleared = true;
+    }
+    final deletedAccountClear = _clearDeletedAccountState;
+    if (clearDeletedAccountState &&
+        !lease._deletedAccountStateCleared &&
+        deletedAccountClear != null) {
+      await _runLocalStage(
+        SessionLocalTeardownStage.deletedAccountState,
+        () => deletedAccountClear(lease.userId),
+      );
+      lease._deletedAccountStateCleared = true;
     }
   }
 

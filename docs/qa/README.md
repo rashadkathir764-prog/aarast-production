@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-31
+Snapshot date: 2026-08-03
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -216,6 +216,182 @@ the live service, package, and quote-offer create/update routes, require `400`,
 and prove that no new row or partial update reached PostgreSQL. Source tests
 must also keep admin service writes and marketplace filters on the same central
 money validator.
+
+## Contributor Access And Frozen History Gate - 2026-08-02
+
+This is one cross-layer release gate, not a Flutter visibility test. The test
+environment must use an isolated PostgreSQL database and real Backend HTTP
+responses. The final report must bind results to the exact revision and state
+whether each item is PASS, FAIL, or BLOCKED.
+
+### Migration And Historical Data
+
+- Apply `20260802090000_add_contributor_history` to both a fresh isolated
+  database and an upgraded database containing representative legacy plans,
+  members, tasks, quotes, invites, guests, and money rows. Run migration deploy
+  twice to prove terminal behavior without resetting or using `db push`.
+- Verify one history scope per plan, one active tenure per current member, the
+  partial uniqueness rule for actor reference within a scope, per-tenure
+  dedupe, section/entity checks, snapshot size/hash checks, lifecycle checks,
+  and the trigger that rejects every `ContributionEvent` UPDATE or DELETE.
+- Inspect legacy attribution row by row. Only direct task assignment, quote
+  creation, and invite creation with a matching current tenure may be
+  backfilled. Accepted membership alone and old guest/money rows must remain
+  unattributed. Unsafe legacy text must be omitted, not rewritten or silently
+  assigned to a contributor.
+- Record `historyCoverageStartsAt` and communicate that pre-cutover work is not
+  claimed unless explicit legacy evidence produced a `LEGACY_EXPLICIT` event.
+
+### Stored Authority And Live Data Isolation
+
+- Create one owner and two contributors in the same plan. Give them different
+  stored permissions, including an explicit `false` on a role whose invitation
+  defaults would otherwise grant the section. Changing only the role must not
+  overwrite that explicit false or re-grant the permission.
+- For tasks, guests, money, providers/quotes, members, dashboard aggregates,
+  notifications, direct detail routes, and mutation routes, prove Contributor A
+  receives only rows assigned to A or supported by A's own allowed
+  created/completed contribution evidence. Contributor B's rows and counts must
+  be absent from the raw HTTP payload, not merely hidden by Flutter.
+- A current membership and the current stored section flag are mandatory even
+  when a qualifying contribution exists in the current or a previous tenure.
+  After revocation, new rows, later updates, dashboard details/counts,
+  notifications, direct ids, conversations, and mutations for that section
+  must be inaccessible immediately.
+- Task mutation after revocation must return HTTP `403`, stable code
+  `TASK_PERMISSION_REVOKED`, and `لم تعد لديك صلاحية لتنفيذ هذه المهمة`.
+  It must not return the misleading `Plan not found`. Other privacy-sensitive
+  not-found contracts remain unchanged unless their API contract explicitly
+  defines a typed denial.
+- Repeat the permission update concurrently with a read and a write. The
+  transaction/lock order must make one authority version win without a window
+  that leaks a post-revocation row or permits a stale mutation.
+- Create pending invitations under a delegated member, then narrow one stored
+  permission while leaving `canInviteMembers=true`. Invitations above the new
+  ceiling must become `CANCELLED` in the same transaction; invitations still
+  inside the ceiling remain pending. Disabling either the plan owner or the
+  delegated inviter must make acceptance fail atomically with
+  `INVITE_AUTHORITY_INACTIVE` and no membership/history/notification write.
+
+### Immutable Snapshot And Privacy
+
+- Before revocation, let Contributor A create and complete representative
+  records in every supported section and save the snapshot returned for each
+  action. Also assign an owner-created item without letting A act on it. Revoke
+  one section and verify that no live row is queried or copied during
+  revocation, the assignment-only item is absent from history, the original
+  action-time snapshots remain, and one `SECTION_REVOKED` boundary is appended
+  before the stored permission change commits.
+- Save each returned snapshot and hash, then let the owner edit or delete the
+  original live record. Reload history and compare exact JSON and hash values;
+  the frozen record must not change and must not depend on the live row.
+- Contributor A may list only A's history. Contributor B must receive no event,
+  contributor reference, snapshot, count, or entity correlation belonging to
+  A. The owner may query plan history according to the owner contract.
+- Raw list and summary responses must expose no live `entityId`, phone, email,
+  token, authorization value, request body/header/query, message, note,
+  attachment, address, or contact field. Test forbidden keys, forbidden values,
+  excessive depth/count/size, canonical hashing, dedupe replay, and conflicting
+  dedupe-key rejection.
+- Re-inviting the same account creates a new tenure. Historical events remain
+  attached to their original tenure, while actor reference may identify that
+  person's qualifying prior work only after the new membership and current
+  permission gates pass.
+
+### Leave Plan And Delete Account
+
+- Call `DELETE /api/v1/wedding-plans/:weddingPlanId/members/me` with a stable
+  client request id. Verify one transaction revokes matching pending invites,
+  retains prior action-time history, records `MEMBER_LEFT`, closes the tenure, clears
+  `activeWeddingPlanId`, removes membership and live conversation/notification
+  access, and preserves immutable plan history. Replay the same request and
+  require the same terminal result without duplicate history or side effects.
+- Before the DELETE leaves the device, persist an installation/user/plan-bound
+  cleanup marker containing the stable request id. An ambiguous response,
+  process death, cache clear, or ordinary logout must retain the marker and
+  quarantine the plan. Replay it before contexts load, delete the exact local
+  plan graph, refresh filtered contexts, and only then remove the marker. A
+  definitive non-retryable 4xx removes the marker and surfaces the error.
+- Every plan-scoped offline queue row must contain an explicit `planId` and the
+  final send guard must reject missing, contradictory, or cross-plan ownership
+  without issuing a request. Legacy migration may trust only matching top-level
+  `planId`/`weddingPlanId` strings; it must never infer ownership from endpoint,
+  local entity id, cache key, nested JSON, or substring matching. Prove deleting
+  `plan-1` cannot delete or coalesce a `plan-10` row.
+- After leave, refresh contexts, restart/re-login, and prove the contributor
+  plan no longer appears. A new verified invitation may create a new tenure and
+  restore only the newly granted live permissions; the old membership or
+  pending bearer must not return.
+- Exercise central account deletion as an owner/groom, provider, contributor,
+  and multi-context account. Mobile surfaces must reuse the same typed
+  confirmation and Backend endpoint. Contributor tenures in other owners'
+  plans close with `ACCOUNT_DELETED`, the User reference detaches, immutable
+  plan history remains, and no deleted account context can be restored.
+- Before the first account-delete request, require a secure durable marker with
+  one stable high-entropy client request id and unmount all dashboards. Simulate
+  a committed DELETE whose HTTP response is lost, restart the client, and prove
+  `POST /api/v1/account-deletions/status` returns `DELETED` from the immutable
+  anonymous receipt. A fresh in-flight reservation returns `PENDING`; only a
+  definitive rejection plus `NOT_STARTED` may clear the marker and restore the
+  still-live account. The status response must never reveal account fields or
+  deletion-graph details.
+- Keep `الخروج من المساحة`, `مغادرة الخطة`, account logout, and final account
+  deletion as four distinct tests. None may be accepted as evidence for
+  another.
+
+### Flutter And Live Scenario
+
+- Widget tests must render the real contributor workspace at 320px RTL with
+  1.3 and 2.0 text scale. Create actions stay inside their cards as full-width
+  Arabic `FilledButton.icon` controls, no `FloatingActionButton` is mounted,
+  labels are not clipped, and revoked actions/sections disappear after an
+  authority refresh without leaving stale data.
+- The history screen must cover loading, empty, populated, Arabic error/retry,
+  plan switching, stale-response rejection, coverage notice, and read-only
+  cards with no live-entity navigation. Its strict DTO must reject malformed
+  rows, duplicate ids, invalid dates, non-string keys, and overlapping or
+  inconsistent pagination instead of silently dropping or truncating history.
+  Account-action tests must cover leave
+  success, ambiguous retry with one request id, failure, context refresh,
+  logout, and central account deletion.
+- Run Backend and Flutter against the same isolated runtime. With the owner and
+  two contributors above, revoke A, edit the owner's original rows, prove A's
+  snapshot is unchanged, prove B sees none of A's data, leave as A, re-login,
+  and accept a new invitation. Capture raw API responses and the visible mobile
+  states for every step.
+
+Focused source tests are necessary but not sufficient. The 2026-08-03 local
+receipt records `npm run check` PASS, `npm test` with 651 tests (650 passed, one
+intentional skip, zero failures), all 74 migrations on a fresh isolated
+database plus the populated-legacy upgrade path PASS, the live
+owner-plus-two-contributor scenario at 28/28 PASS, the managed
+account-deletion smoke PASS, `flutter analyze` PASS, and all 997 Flutter tests
+PASS. A real Flutter Web runtime also rendered the Arabic welcome gateway
+without console errors. Android Release packaging passed as `1.0.0+7`, the APK
+signature verified against the Aarast upload identity, and the exact artifact
+SHA-256 is
+`509F54E81CBAE7CA4DD3BE9ABA086EACB1CF7D5C2D75F848C767A59741F7AC72`.
+
+The Android artifact installed and launched on a physical SM S938B running
+Android 16 without a fatal process or database error, but this is not an
+accepted contributor-flow pass. Production `/health` returned `200` while the
+new public `/api/v1/account-deletions/status` contract returned `404`, and the
+retained authenticated session consequently showed the explicit Arabic
+context-load retry state. Deploy the coordinated Backend migrations and
+compatible Backend release before repeating the owner/two-contributor device
+matrix; do not introduce a Flutter fallback to the old contract.
+
+The remaining release gates are that post-deployment Android scenario, an iOS
+physical-device scenario, and a repeatable CI release configuration. This local
+APK reused the Firebase client configuration embedded in the previously signed
+Aarast artifact; the workspace still does not define
+`AARAST_FIREBASE_API_KEY`, `AARAST_FIREBASE_APP_ID`,
+`AARAST_FIREBASE_MESSAGING_SENDER_ID`, or `AARAST_FIREBASE_PROJECT_ID`. Do not
+approve rollout until those values are supplied through the approved secret
+channel, the native gates pass, and the coordinated migration cutover is
+completed. Native Android/iOS acceptance must additionally rehearse the
+SQLCipher schema-v6-to-v7 upgrade and verify that unknown legacy queue rows
+remain permanently blocked rather than guessed or sent.
 
 ## Mobile Changes
 

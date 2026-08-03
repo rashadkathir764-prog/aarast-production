@@ -1,4 +1,13 @@
-﻿import 'dart:convert';
+import 'dart:convert';
+
+import 'offline_tables.dart';
+
+const unknownSyncQueuePlanOwnershipError = 'LOCAL_QUEUE_PLAN_OWNERSHIP_UNKNOWN';
+const invalidSyncQueuePlanScopeError = 'LOCAL_QUEUE_PLAN_SCOPE_INVALID';
+
+bool isSyncQueueOwnershipQuarantineError(Object? error) =>
+    error == unknownSyncQueuePlanOwnershipError ||
+    error == invalidSyncQueuePlanScopeError;
 
 int _lastSyncQueueMicros = 0;
 
@@ -28,6 +37,7 @@ class SyncQueueItem {
     required this.retryCount,
     required this.createdAt,
     required this.updatedAt,
+    this.planId,
     this.localEntityId,
     this.lastError,
   });
@@ -43,6 +53,7 @@ class SyncQueueItem {
       status: row['status']?.toString() ?? queued,
       retryCount: _intOrZero(row['retryCount']),
       lastError: row['lastError']?.toString(),
+      planId: _nonEmptyString(row['planId']),
       localEntityId: row['localEntityId']?.toString(),
       createdAt: _dateOrNow(row['createdAt']),
       updatedAt: _dateOrNow(row['updatedAt']),
@@ -70,6 +81,7 @@ class SyncQueueItem {
   final String status;
   final int retryCount;
   final String? lastError;
+  final String? planId;
   final String? localEntityId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -96,11 +108,110 @@ class SyncQueueItem {
       'status': status,
       'retryCount': retryCount,
       'lastError': lastError,
+      'planId': planId,
       'localEntityId': localEntityId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
+}
+
+String? normalizeSyncQueuePlanId({
+  required String entityType,
+  required String? planId,
+}) {
+  final normalized = _nonEmptyString(planId);
+  final isPlanScoped = OfflineTables.planScopedQueueEntityTypes.contains(
+    entityType,
+  );
+  if (isPlanScoped && normalized == null) {
+    throw ArgumentError.value(
+      planId,
+      'planId',
+      'is required for plan-scoped queue entity "$entityType"',
+    );
+  }
+  if (!isPlanScoped && normalized != null) {
+    throw ArgumentError.value(
+      planId,
+      'planId',
+      'must be null for account-scoped queue entity "$entityType"',
+    );
+  }
+  return normalized;
+}
+
+/// Reads ownership from legacy queue payloads without consulting endpoints,
+/// cached rows, or local entity ids. A row is attributable only when a
+/// top-level `planId` or `weddingPlanId` is a non-empty JSON string. If both
+/// fields exist they must agree exactly; otherwise ownership is ambiguous and
+/// the caller must quarantine the row.
+String? trustedLegacyQueuePlanId(Object? payloadJson) {
+  final decoded = _decodeQueuePayloadMap(payloadJson);
+  if (decoded == null) return null;
+  return _trustedTopLevelPlanId(decoded);
+}
+
+/// Final replay integrity check for schema-v7 rows.
+///
+/// The explicit queue [planId] remains authoritative. When the payload also
+/// carries a top-level `planId` or `weddingPlanId`, it must be a valid string
+/// and agree with that authority. Nested values and endpoints are deliberately
+/// ignored and are never used to infer ownership.
+bool hasInvalidRuntimeSyncQueuePlanOwnership({
+  required String? planId,
+  required Object? payloadJson,
+}) {
+  final decoded = _decodeQueuePayloadMap(payloadJson);
+  if (decoded == null) return true;
+
+  final hasPlanId = decoded.containsKey('planId');
+  final hasWeddingPlanId = decoded.containsKey('weddingPlanId');
+  if (!hasPlanId && !hasWeddingPlanId) return false;
+
+  final payloadPlanId = _trustedTopLevelPlanId(decoded);
+  if (payloadPlanId == null) return true;
+  return payloadPlanId != _nonEmptyString(planId);
+}
+
+Map<Object?, Object?>? _decodeQueuePayloadMap(Object? payloadJson) {
+  if (payloadJson is! String || payloadJson.trim().isEmpty) return null;
+  Object? decoded;
+  try {
+    decoded = jsonDecode(payloadJson);
+  } on FormatException {
+    return null;
+  }
+  return decoded is Map ? decoded : null;
+}
+
+String? _trustedTopLevelPlanId(Map<Object?, Object?> decoded) {
+  final hasPlanId = decoded.containsKey('planId');
+  final hasWeddingPlanId = decoded.containsKey('weddingPlanId');
+  if (!hasPlanId && !hasWeddingPlanId) return null;
+
+  final planId = hasPlanId ? _strictJsonId(decoded['planId']) : null;
+  final weddingPlanId = hasWeddingPlanId
+      ? _strictJsonId(decoded['weddingPlanId'])
+      : null;
+  if ((hasPlanId && planId == null) ||
+      (hasWeddingPlanId && weddingPlanId == null)) {
+    return null;
+  }
+  if (planId != null && weddingPlanId != null && planId != weddingPlanId) {
+    return null;
+  }
+  return planId ?? weddingPlanId;
+}
+
+String? _strictJsonId(Object? value) {
+  if (value is! String) return null;
+  return _nonEmptyString(value);
+}
+
+String? _nonEmptyString(Object? value) {
+  final normalized = value?.toString().trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
 }
 
 int _intOrZero(Object? value) {

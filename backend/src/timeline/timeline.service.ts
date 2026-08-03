@@ -1,13 +1,19 @@
 import { Injectable } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
   PaymentSchedule,
   PaymentScheduleStatus,
   WeddingTask,
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  livePlanAuthorizationWhere,
+  PermissionService,
+} from "../sharing/permission.service";
 
 export interface TimelineTaskResponse {
   id: string;
@@ -43,6 +49,7 @@ export class TimelineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly contributorScope: ContributorScopeService,
   ) {}
 
   async getForPlan(
@@ -54,29 +61,93 @@ export class TimelineService {
       currentUser,
     );
     const canViewMoney = this.permissions.canViewMoney(context);
+    const isContributor = !context.isOwner && Boolean(context.sharedMember);
+    const canManageTasks = this.permissions.canManageTasks(context);
+    const taskPlanAuthorization = livePlanAuthorizationWhere(
+      context,
+      currentUser.id,
+      ["canManageTasks"],
+    );
+    const moneyPlanAuthorization = canViewMoney
+      ? livePlanAuthorizationWhere(context, currentUser.id, ["canViewMoney"])
+      : null;
+    const contributionIds =
+      isContributor && canManageTasks
+        ? new Set(
+            await this.contributorScope.qualifyingEntityIds(
+              weddingPlanId,
+              currentUser.id,
+              [ContributionEntityType.TASK],
+              [ContributionAction.CREATED, ContributionAction.COMPLETED],
+            ),
+          )
+        : null;
+    const moneyCostIds =
+      isContributor && canViewMoney
+        ? new Set(
+            await this.contributorScope.qualifyingEntityIds(
+              weddingPlanId,
+              currentUser.id,
+              [ContributionEntityType.WEDDING_COST],
+              [
+                ContributionAction.CREATED,
+                ContributionAction.COMPLETED,
+                ContributionAction.PAYMENT_RECORDED,
+              ],
+            ),
+          )
+        : null;
 
-    const [tasks, paymentSchedules] = await Promise.all([
-      this.prisma.weddingTask.findMany({
-        where: {
-          weddingPlanId,
-          dueDate: { not: null },
-          status: {
-            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-          },
-        },
-        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-      }),
-      canViewMoney
+    const [taskRows, paymentRows] = await Promise.all([
+      isContributor && !canManageTasks
+        ? Promise.resolve([])
+        : this.prisma.weddingTask.findMany({
+            where: {
+              weddingPlanId,
+              weddingPlan: { is: taskPlanAuthorization },
+              dueDate: { not: null },
+              status: {
+                notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
+              },
+              ...(contributionIds
+                ? {
+                    OR: [
+                      { assigneeUserId: currentUser.id },
+                      { id: { in: [...contributionIds] } },
+                    ],
+                  }
+                : {}),
+            },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+          }),
+      canViewMoney && (!isContributor || (moneyCostIds?.size ?? 0) > 0)
         ? this.prisma.paymentSchedule.findMany({
             where: {
               status: PaymentScheduleStatus.PENDING,
-              weddingCost: { weddingPlanId, status: { not: "CANCELLED" } },
+              weddingCost: {
+                weddingPlanId,
+                weddingPlan: { is: moneyPlanAuthorization! },
+                status: { not: "CANCELLED" },
+                ...(moneyCostIds
+                  ? { id: { in: [...moneyCostIds] } }
+                  : {}),
+              },
             },
             include: { weddingCost: { select: { title: true } } },
             orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
         : Promise.resolve([]),
     ]);
+    const tasks = taskRows.filter(
+      (task) =>
+        contributionIds === null ||
+        task.assigneeUserId === currentUser.id ||
+        contributionIds.has(task.id),
+    );
+    const paymentSchedules = paymentRows.filter(
+      (schedule) =>
+        moneyCostIds === null || moneyCostIds.has(schedule.weddingCostId),
+    );
 
     return {
       weddingDate: context.plan.weddingDate,

@@ -32,6 +32,7 @@ import { ConversationsModule } from "./conversations/conversations.module";
 import { MediaModule } from "./media/media.module";
 import { OutboxModule } from "./outbox/outbox.module";
 import { ContextsModule } from "./contexts/contexts.module";
+import { ContributionHistoryModule } from "./contribution-history/contribution-history.module";
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { ContextsModule } from "./contexts/contexts.module";
     ConversationsModule,
     MediaModule,
     ContextsModule,
+    ContributionHistoryModule,
   ],
   controllers: [HealthController, MetricsController],
   providers: [

@@ -55,6 +55,8 @@ export interface AvailableContext {
   role: AvailableContextRole;
   weddingPlanId: string | null;
   providerId: string | null;
+  membershipId: string | null;
+  membershipAuthorityVersion: number | null;
   persona: WeddingPersona | null;
   displayName: string;
   lifecycle: ContextLifecycle;
@@ -229,6 +231,8 @@ export class ContextsService {
       role,
       weddingPlanId: plan.id,
       providerId: null,
+      membershipId: sharedMember?.id ?? null,
+      membershipAuthorityVersion: sharedMember?.authorityVersion ?? null,
       persona: plan.persona,
       displayName: plan.title,
       lifecycle: plan.status,
@@ -261,6 +265,8 @@ export class ContextsService {
       role: AvailableContextRole.PROVIDER,
       weddingPlanId: null,
       providerId: provider.id,
+      membershipId: null,
+      membershipAuthorityVersion: null,
       persona: null,
       displayName: provider.businessName,
       lifecycle: provider.status,

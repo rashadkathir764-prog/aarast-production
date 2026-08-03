@@ -31,6 +31,7 @@ void main() {
       endpoint: '/user-a-private-write',
       method: 'POST',
       payload: {'title': 'private A'},
+      planId: 'plan-user-a',
     );
 
     final oldSync = service.syncPendingChanges();
@@ -45,6 +46,7 @@ void main() {
       endpoint: '/user-b-private-write',
       method: 'POST',
       payload: {'title': 'private B'},
+      planId: 'plan-user-b',
     );
 
     adapter.releaseFirst.complete();

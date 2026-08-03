@@ -39,6 +39,7 @@ class ContributorWorkspaceView extends StatelessWidget {
     required this.onOpenTasks,
     required this.onOpenNotifications,
     required this.onShowPermissions,
+    this.effectivePermissions,
     this.onOpenMoney,
     this.onOpenGuests,
     this.onOpenProviders,
@@ -46,6 +47,7 @@ class ContributorWorkspaceView extends StatelessWidget {
     this.onCreateTask,
     this.onAddGuest,
     this.onAddCost,
+    this.onOpenContributionHistory,
     super.key,
   });
 
@@ -53,6 +55,7 @@ class ContributorWorkspaceView extends StatelessWidget {
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenNotifications;
   final VoidCallback onShowPermissions;
+  final DashboardPermissionSummary? effectivePermissions;
   final VoidCallback? onOpenMoney;
   final VoidCallback? onOpenGuests;
   final VoidCallback? onOpenProviders;
@@ -60,6 +63,7 @@ class ContributorWorkspaceView extends StatelessWidget {
   final VoidCallback? onCreateTask;
   final VoidCallback? onAddGuest;
   final VoidCallback? onAddCost;
+  final VoidCallback? onOpenContributionHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +98,16 @@ class ContributorWorkspaceView extends StatelessWidget {
       const SizedBox(height: AppTheme.gapSm),
       _ContributorUpdatesCard(summary: summary, onOpen: onOpenNotifications),
       const SizedBox(height: AppTheme.gapMd),
+      if (onOpenContributionHistory != null) ...[
+        _ContributorHistoryCard(
+          onTap: onOpenContributionHistory!,
+          contributionCount: summary.contributionHistory.values.fold<int>(
+            0,
+            (total, count) => total + count,
+          ),
+        ),
+        const SizedBox(height: AppTheme.gapMd),
+      ],
       _ContributorPermissionsCard(onTap: onShowPermissions),
       const SizedBox(height: 32),
     ];
@@ -107,23 +121,24 @@ class ContributorWorkspaceView extends StatelessWidget {
   }
 
   List<_ContributorSectionData> _sections() {
-    final permissions = summary.permissions;
+    final permissions = effectivePermissions ?? summary.permissions;
     return [
-      _ContributorSectionData(
-        keyName: 'tasks',
-        title: 'المهام',
-        value: summary.totalTasks == 0
-            ? 'لا توجد مهام'
-            : '${summary.totalTasks - summary.completedTasks} غير مكتملة',
-        caption: permissions.canManageTasks
-            ? 'متابعة المهام وتحديثها'
-            : 'مشاهدة مهام الخطة',
-        icon: LucideIcons.listChecks,
-        tint: ContributorWorkspaceColors.wineSoft,
-        onTap: onOpenTasks,
-        actionLabel: permissions.canManageTasks ? 'إضافة' : null,
-        onAction: permissions.canManageTasks ? onCreateTask : null,
-      ),
+      if (permissions.canManageTasks)
+        _ContributorSectionData(
+          keyName: 'tasks',
+          title: 'المهام',
+          value: summary.totalTasks == 0
+              ? 'لا توجد مهام'
+              : '${summary.totalTasks - summary.completedTasks} غير مكتملة',
+          caption: permissions.canManageTasks
+              ? 'متابعة المهام وتحديثها'
+              : 'مشاهدة مهام الخطة',
+          icon: LucideIcons.listChecks,
+          tint: ContributorWorkspaceColors.wineSoft,
+          onTap: onOpenTasks,
+          actionLabel: permissions.canManageTasks ? 'إضافة مهمة' : null,
+          onAction: permissions.canManageTasks ? onCreateTask : null,
+        ),
       if (permissions.canViewMoney && onOpenMoney != null)
         _ContributorSectionData(
           keyName: 'money',
@@ -147,7 +162,7 @@ class ContributorWorkspaceView extends StatelessWidget {
           icon: LucideIcons.users,
           tint: ContributorWorkspaceColors.guestsTint,
           onTap: onOpenGuests!,
-          actionLabel: 'إضافة',
+          actionLabel: 'إضافة ضيف',
           onAction: onAddGuest,
         ),
       if (permissions.canManageProviders && onOpenProviders != null)
@@ -176,7 +191,8 @@ class ContributorWorkspaceView extends StatelessWidget {
   }
 
   _ContributorNextAction? _nextAction() {
-    if (summary.overdueTasks > 0) {
+    final permissions = effectivePermissions ?? summary.permissions;
+    if (permissions.canManageTasks && summary.overdueTasks > 0) {
       return _ContributorNextAction(
         eyebrow: 'يحتاج انتباهك الآن',
         title: summary.overdueTasks == 1
@@ -187,7 +203,7 @@ class ContributorWorkspaceView extends StatelessWidget {
         onTap: onOpenTasks,
       );
     }
-    if (summary.todayTasks > 0) {
+    if (permissions.canManageTasks && summary.todayTasks > 0) {
       return _ContributorNextAction(
         eyebrow: 'مهام اليوم',
         title: summary.todayTasks == 1
@@ -198,7 +214,7 @@ class ContributorWorkspaceView extends StatelessWidget {
         onTap: onOpenTasks,
       );
     }
-    if (summary.permissions.canViewMoney &&
+    if (permissions.canViewMoney &&
         (summary.duePaymentSchedulesCount ?? 0) > 0 &&
         onOpenMoney != null) {
       return _ContributorNextAction(
@@ -210,7 +226,7 @@ class ContributorWorkspaceView extends StatelessWidget {
         onTap: onOpenMoney!,
       );
     }
-    if (summary.permissions.canManageProviders &&
+    if (permissions.canManageProviders &&
         summary.receivedQuotes > 0 &&
         onOpenProviders != null) {
       return _ContributorNextAction(
@@ -233,6 +249,66 @@ class ContributorWorkspaceView extends StatelessWidget {
       );
     }
     return null;
+  }
+}
+
+class _ContributorHistoryCard extends StatelessWidget {
+  const _ContributorHistoryCard({
+    required this.onTap,
+    required this.contributionCount,
+  });
+
+  final VoidCallback onTap;
+  final int contributionCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      key: const Key('contributor-history-card'),
+      color: ContributorWorkspaceColors.surface,
+      border: Border.all(color: ContributorWorkspaceColors.border),
+      onTap: onTap,
+      child: Row(
+        children: [
+          const Icon(
+            LucideIcons.history,
+            color: ContributorWorkspaceColors.oxblood,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  contributionCount > 0
+                      ? 'سجل مساهماتي • $contributionCount'
+                      : 'سجل مساهماتي',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: ContributorWorkspaceColors.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'نسخة محفوظة من الأعمال التي أنشأتها أو أُسندت إليك أو أنجزتها.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ContributorWorkspaceColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(
+            LucideIcons.chevronLeft,
+            color: ContributorWorkspaceColors.muted,
+            size: 18,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -502,49 +578,8 @@ class _ContributorSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: ContributorWorkspaceColors.wineSoft,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          ),
-          child: Icon(
-            icon,
-            color: ContributorWorkspaceColors.oxblood,
-            size: 19,
-          ),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: ContributorWorkspaceColors.ink,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: ContributorWorkspaceColors.muted,
-                  fontWeight: FontWeight.w600,
-                  height: 1.35,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (actionLabel != null && onAction != null) ...[
-          const SizedBox(width: 8),
-          TextButton(
+    final action = actionLabel != null && onAction != null
+        ? TextButton(
             onPressed: onAction,
             style: TextButton.styleFrom(
               foregroundColor: ContributorWorkspaceColors.oxblood,
@@ -552,9 +587,73 @@ class _ContributorSectionHeader extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
             child: Text(actionLabel!),
-          ),
-        ],
-      ],
+          )
+        : null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stackAction =
+            action != null &&
+            constraints.maxWidth.isFinite &&
+            constraints.maxWidth < 360;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ContributorWorkspaceColors.wineSoft,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: ContributorWorkspaceColors.oxblood,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: ContributorWorkspaceColors.ink,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: ContributorWorkspaceColors.muted,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (action != null && !stackAction) ...[
+                  const SizedBox(width: 8),
+                  action,
+                ],
+              ],
+            ),
+            if (stackAction) ...[
+              const SizedBox(height: 4),
+              Align(alignment: AlignmentDirectional.centerStart, child: action),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -566,6 +665,29 @@ class _ContributorSectionsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (sections.isEmpty) {
+      return const KeyedSubtree(
+        key: Key('contributor-sections-panel'),
+        child: AarastCard(
+          key: Key('contributor-no-live-sections'),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                LucideIcons.archive,
+                color: ContributorWorkspaceColors.bronze,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'لا توجد أقسام مباشرة متاحة حاليًا. يمكنك الرجوع إلى سجل مساهماتك المحفوظ أدناه.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final useGrid =
@@ -621,24 +743,18 @@ class _ContributorSectionRow extends StatelessWidget {
       radius: AppTheme.radiusXl,
       border: Border.all(color: ContributorWorkspaceColors.border),
       onTap: section.onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        child: Stack(
-          children: [
-            PositionedDirectional(
-              start: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(width: 4, color: section.tint),
-            ),
-            Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(
-                16,
-                16,
-                16,
-                hasAction ? 68 : 16,
-              ),
-              child: Row(
+      child: Container(
+        decoration: BoxDecoration(
+          border: BorderDirectional(
+            start: BorderSide(width: 4, color: section.tint),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
@@ -730,24 +846,35 @@ class _ContributorSectionRow extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            if (hasAction)
-              PositionedDirectional(
-                end: 12,
-                bottom: 12,
-                child: FloatingActionButton.extended(
-                  key: Key('contributor-${section.keyName}-add-action'),
-                  heroTag: 'contributor-${section.keyName}-quick-add',
-                  onPressed: section.onAction,
-                  backgroundColor: ContributorWorkspaceColors.oxblood,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  extendedPadding: const EdgeInsets.symmetric(horizontal: 14),
-                  icon: const Icon(LucideIcons.plus, size: 17),
-                  label: Text(section.actionLabel!),
+              if (hasAction) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: Key('contributor-${section.keyName}-add-action'),
+                    onPressed: section.onAction,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ContributorWorkspaceColors.oxblood,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      textStyle: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    icon: const Icon(LucideIcons.plus, size: 18),
+                    label: Text(
+                      section.actionLabel!,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
-              ),
-          ],
+              ],
+            ],
+          ),
         ),
       ),
     );

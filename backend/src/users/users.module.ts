@@ -5,6 +5,7 @@ import { SharingModule } from "../sharing/sharing.module";
 import { ConversationRealtimeModule } from "../conversations/conversation-realtime.module";
 import { UsersController } from "./users.controller";
 import { UsersService } from "./users.service";
+import { AccountDeletionStatusController } from "./account-deletion-status.controller";
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { UsersService } from "./users.service";
     MediaModule,
     ConversationRealtimeModule,
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, AccountDeletionStatusController],
   providers: [UsersService],
 })
 export class UsersModule {}

@@ -297,6 +297,7 @@ class MarketplaceApi {
         endpoint: '/api/v1/providers/$providerId/favorite',
         method: 'POST',
         payload: const {},
+        planId: null,
         localEntityId: providerId,
       );
       await _offline.refreshStatus();
@@ -321,6 +322,7 @@ class MarketplaceApi {
         endpoint: '/api/v1/providers/$providerId/favorite',
         method: 'DELETE',
         payload: const {},
+        planId: null,
         localEntityId: providerId,
       );
       await _offline.refreshStatus();

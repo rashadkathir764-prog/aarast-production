@@ -342,6 +342,10 @@ function createHarness(
               },
             },
     },
+    sharedMember: { findMany: async () => [] },
+    weddingTask: { findMany: async () => [] },
+    contributionEvent: { findMany: async () => [] },
+    paymentSchedule: { findMany: async () => [] },
     notification,
     weddingPlan: {
       findMany: async () => [
@@ -729,6 +733,11 @@ test('plan dashboard notification previews reuse the lifecycle visibility predic
       isOwner: true,
       sharedMember: null,
     }),
+    assertPlanReadableInTransaction: async () => ({
+      plan,
+      isOwner: true,
+      sharedMember: null,
+    }),
     canViewMoney: () => false,
     canManageMoney: () => true,
     canManageTasks: () => true,
@@ -743,6 +752,10 @@ test('plan dashboard notification previews reuse the lifecycle visibility predic
       return visibility;
     },
   };
+
+  (prisma as any).$transaction = async (
+    operation: (tx: unknown) => Promise<unknown>,
+  ) => operation(prisma as any);
 
   await new DashboardService(
     prisma as any,

@@ -10,17 +10,23 @@ import '../network/api_client.dart';
 import 'cache_policy.dart';
 import 'local_database.dart';
 import 'offline_tables.dart';
+import 'pending_plan_cleanup.dart';
 import 'sync_queue.dart';
 import 'sync_status.dart';
 
 class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
-  OfflineSyncService({required this.database, required this.apiClient});
+  OfflineSyncService({
+    required this.database,
+    required this.apiClient,
+    PendingPlanCleanupStore? pendingPlanCleanupStore,
+  }) : _pendingPlanCleanupStore = pendingPlanCleanupStore;
 
   static const _lastSyncedAtKey = 'last_synced_at';
   static const _cacheOwnerUserIdKey = 'cache_owner_user_id';
 
   final LocalDatabase database;
   final ApiClient apiClient;
+  final PendingPlanCleanupStore? _pendingPlanCleanupStore;
 
   SyncState _state = SyncState.synced;
   int _pendingCount = 0;
@@ -31,6 +37,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   int _sessionGeneration = 0;
   String? _cacheOwnerUserId;
   Future<void> _cacheMutationTail = Future<void>.value();
+  final Set<String> _quarantinedPlanIds = <String>{};
+  Completer<void>? _activeSyncCompletion;
 
   SyncState get state => _state;
   int get pendingCount => _pendingCount;
@@ -155,6 +163,26 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     });
   }
 
+  /// Prevents queued writes for [planId] from starting and waits for a write
+  /// that was already on the wire to settle before membership is revoked.
+  Future<void> quiescePlan(String planId) async {
+    final normalized = planId.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(planId, 'planId', 'must not be empty');
+    }
+    _quarantinedPlanIds.add(normalized);
+    final activeSync = _activeSyncCompletion;
+    if (activeSync != null) await activeSync.future;
+  }
+
+  void releasePlanQuarantine(String planId) {
+    final normalized = planId.trim();
+    if (normalized.isEmpty) return;
+    if (_quarantinedPlanIds.remove(normalized) && _cacheOwnerUserId != null) {
+      unawaited(syncPendingChanges());
+    }
+  }
+
   Future<void> _wipeLocalState() async {
     await database.wipeAll();
     _state = SyncState.synced;
@@ -203,6 +231,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     if (_cacheOwnerUserId == userId) return;
     _sessionGeneration += 1;
     _cacheOwnerUserId = userId;
+    _quarantinedPlanIds.clear();
   }
 
   Future<void> _enqueueCacheMutation(Future<void> Function() mutation) {
@@ -234,6 +263,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     _syncInFlight = true;
+    final syncCompletion = Completer<void>();
+    _activeSyncCompletion = syncCompletion;
     final sessionGeneration = _sessionGeneration;
     final cacheOwnerUserId = _cacheOwnerUserId;
     appLogEvent(
@@ -251,6 +282,12 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
       final items = await database.pendingSyncItems();
+      final pendingCleanupStore = _pendingPlanCleanupStore;
+      if (pendingCleanupStore != null) {
+        _quarantinedPlanIds.addAll(
+          await pendingCleanupStore.planIdsForUser(cacheOwnerUserId),
+        );
+      }
       if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) return;
       if (items.isEmpty) {
         final blockedItems = await database.blockedSyncItems();
@@ -281,12 +318,42 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         // rewritten local ids inside dependent endpoints/payloads, and using
         // the original snapshot would immediately replay those stale ids.
         final refreshedItems = await database.pendingSyncItems();
+        if (pendingCleanupStore != null) {
+          _quarantinedPlanIds.addAll(
+            await pendingCleanupStore.planIdsForUser(cacheOwnerUserId),
+          );
+        }
         SyncQueueItem? item;
         for (final candidate in refreshedItems) {
-          if (!processedItemIds.contains(candidate.id)) {
-            item = candidate;
-            break;
+          if (processedItemIds.contains(candidate.id)) continue;
+          final isPlanScoped = OfflineTables.planScopedQueueEntityTypes
+              .contains(candidate.entityType);
+          final hasValidPlanOwnership = isPlanScoped
+              ? candidate.planId != null
+              : candidate.planId == null;
+          final hasInvalidPayloadOwnership =
+              hasInvalidRuntimeSyncQueuePlanOwnership(
+                planId: candidate.planId,
+                payloadJson: candidate.payloadJson,
+              );
+          if (!hasValidPlanOwnership || hasInvalidPayloadOwnership) {
+            await database.markSyncItemBlocked(
+              candidate.id,
+              isPlanScoped && candidate.planId == null
+                  ? unknownSyncQueuePlanOwnershipError
+                  : invalidSyncQueuePlanScopeError,
+            );
+            processedItemIds.add(candidate.id);
+            blockedAny = true;
+            continue;
           }
+          if (candidate.planId != null &&
+              _quarantinedPlanIds.contains(candidate.planId)) {
+            processedItemIds.add(candidate.id);
+            continue;
+          }
+          item = candidate;
+          break;
         }
         if (item == null) break;
         processedItemIds.add(item.id);
@@ -375,6 +442,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         },
       );
       _syncInFlight = false;
+      if (identical(_activeSyncCompletion, syncCompletion)) {
+        _activeSyncCompletion = null;
+      }
+      if (!syncCompletion.isCompleted) syncCompletion.complete();
       if (sessionGeneration != _sessionGeneration &&
           _cacheOwnerUserId != null) {
         unawaited(syncPendingChanges());

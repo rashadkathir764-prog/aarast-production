@@ -490,6 +490,12 @@ AccountContext _context(
     'role': role.name.toUpperCase(),
     'weddingPlanId': planId,
     'providerId': providerId,
+    'membershipId': role == AccountContextRole.contributor
+        ? 'membership-1'
+        : null,
+    'membershipAuthorityVersion': role == AccountContextRole.contributor
+        ? 1
+        : null,
     'persona': null,
     'displayName': isProvider ? 'مزود الاختبار' : 'خطة الاختبار',
     'lifecycle': isProvider ? lifecycle : 'PLANNING',

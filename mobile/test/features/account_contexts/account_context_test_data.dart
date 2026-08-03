@@ -4,6 +4,8 @@ Map<String, dynamic> accountContextJson({
   required AccountContextRole role,
   String planId = 'plan-1',
   String providerId = 'provider-1',
+  String? membershipId,
+  int membershipAuthorityVersion = 1,
   String? displayName,
   String? lifecycle,
   AccountContextPersona? persona,
@@ -36,6 +38,12 @@ Map<String, dynamic> accountContextJson({
     'role': role.name.toUpperCase(),
     'weddingPlanId': isProvider ? null : planId,
     'providerId': isProvider ? providerId : null,
+    'membershipId': role == AccountContextRole.contributor
+        ? membershipId ?? 'member-$planId'
+        : null,
+    'membershipAuthorityVersion': role == AccountContextRole.contributor
+        ? membershipAuthorityVersion
+        : null,
     'persona': isProvider ? null : persona?.name.toUpperCase(),
     'displayName':
         displayName ?? (isProvider ? 'Provider $providerId' : 'Plan $planId'),
@@ -68,6 +76,8 @@ AccountContext accountContext({
   required AccountContextRole role,
   String planId = 'plan-1',
   String providerId = 'provider-1',
+  String? membershipId,
+  int membershipAuthorityVersion = 1,
   String? displayName,
   String? lifecycle,
   AccountContextPersona? persona,
@@ -80,6 +90,8 @@ AccountContext accountContext({
       role: role,
       planId: planId,
       providerId: providerId,
+      membershipId: membershipId,
+      membershipAuthorityVersion: membershipAuthorityVersion,
       displayName: displayName,
       lifecycle: lifecycle,
       persona: persona,

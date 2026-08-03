@@ -18,10 +18,12 @@ import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
+import 'core/offline/pending_plan_cleanup.dart';
 import 'core/push/push_messaging_gateway.dart';
 import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
 import 'core/session/session_boundary.dart';
+import 'core/session/pending_account_deletion.dart';
 import 'core/session/session_scoped_change_notifier.dart';
 import 'core/session/session_teardown_coordinator.dart';
 import 'core/storage/auth_storage.dart';
@@ -50,6 +52,8 @@ import 'features/settings/data/settings_api.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/sharing/data/sharing_api.dart';
 import 'features/sharing/providers/sharing_provider.dart';
+import 'features/sharing/providers/contribution_history_provider.dart';
+import 'features/sharing/services/plan_leave_coordinator.dart';
 import 'features/tasks/data/task_timeline_api.dart';
 import 'features/tasks/providers/task_timeline_provider.dart';
 import 'features/wedding_plans/data/wedding_plans_api.dart';
@@ -126,6 +130,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
 
   ApiConfig.validateForStartup();
   const sensitiveValueVault = SecureSensitiveValueVault();
+  final pendingAccountDeletionStore = PendingAccountDeletionStore(
+    sensitiveValueVault,
+  );
   final authStorage = AuthStorage(
     preferences,
     tokenVault: const SecureTokenVault(),
@@ -166,9 +173,11 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     runApp(const _SecureOfflineStorageFailureApp());
     return;
   }
+  final pendingPlanCleanupStore = PendingPlanCleanupStore(preferences);
   final offlineSyncService = OfflineSyncService(
     database: localDatabase,
     apiClient: apiClient,
+    pendingPlanCleanupStore: pendingPlanCleanupStore,
   );
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();
@@ -184,6 +193,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     push: pushNotificationsController,
     clearLocalAccountData: offlineSyncService.clearLocalData,
     clearGuestDraft: guestOnboardingStorage.clearDraft,
+    clearDeletedAccountState: (userId) async {
+      await pendingPlanCleanupStore.removeForUser(userId);
+      await pendingAccountDeletionStore.removeForDeletedUser(userId);
+    },
   );
   final accountContextsApi = AccountContextsApi(apiClient);
   apiClient.refreshSession = authRepository.refreshSession;
@@ -214,6 +227,11 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     offline: offlineSyncService,
   );
   final sharingApi = SharingApi(apiClient, offline: offlineSyncService);
+  final planLeaveCoordinator = PlanLeaveCoordinator(
+    sharingApi: sharingApi,
+    offlineSync: offlineSyncService,
+    store: pendingPlanCleanupStore,
+  );
   final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
   final yemenAdministrativeApi = YemenAdministrativeApi(
     apiClient,
@@ -253,6 +271,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         Provider<FinanceApi>.value(value: financeApi),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         Provider<SharingApi>.value(value: sharingApi),
+        Provider<PlanLeaveCoordinator>.value(value: planLeaveCoordinator),
         Provider<MarketplaceApi>.value(value: marketplaceApi),
         ChangeNotifierProvider(
           create: (_) =>
@@ -273,8 +292,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
               offlineSyncService: offlineSyncService,
               guestOnboardingStorage: guestOnboardingStorage,
               sessionTeardownCoordinator: sessionTeardownCoordinator,
-              clearPushOnSessionEnd:
-                  pushNotificationsController.clearLocalRegistrationForAccount,
+              pendingAccountDeletionStore: pendingAccountDeletionStore,
             );
             // A mid-session 401 anywhere forces a clean re-login instead of
             // degrading every screen into misleading errors.
@@ -295,6 +313,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         financeApi: financeApi,
         taskTimelineApi: taskTimelineApi,
         sharingApi: sharingApi,
+        planLeaveCoordinator: planLeaveCoordinator,
         marketplaceApi: marketplaceApi,
         providerDashboardApi: providerDashboardApi,
         chatApi: chatApi,
@@ -379,6 +398,7 @@ class _AarastSessionProviders extends StatelessWidget {
     required this.financeApi,
     required this.taskTimelineApi,
     required this.sharingApi,
+    required this.planLeaveCoordinator,
     required this.marketplaceApi,
     required this.providerDashboardApi,
     required this.chatApi,
@@ -396,6 +416,7 @@ class _AarastSessionProviders extends StatelessWidget {
   final FinanceApi financeApi;
   final TaskTimelineApi taskTimelineApi;
   final SharingApi sharingApi;
+  final PlanLeaveCoordinator planLeaveCoordinator;
   final MarketplaceApi marketplaceApi;
   final ProviderDashboardApi providerDashboardApi;
   final ChatApi chatApi;
@@ -545,6 +566,20 @@ class _AarastSessionProviders extends StatelessWidget {
           ),
           ChangeNotifierProxyProvider<
             AccountContextController,
+            ContributionHistoryProvider
+          >(
+            create: (_) => _bindPlanScope(
+              ContributionHistoryProvider(sharingApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => ContributionHistoryProvider(sharingApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            AccountContextController,
             NotificationsProvider
           >(
             create: (_) => _bindPlanScope(
@@ -626,6 +661,14 @@ class _AarastSessionProviders extends StatelessWidget {
           await offlineSyncService.clearPlanContext(previousPlanId);
         }
       },
+      beforeRefresh: userId == null
+          ? null
+          : () => planLeaveCoordinator.preparePendingForUser(userId),
+      afterRefresh: userId == null
+          ? null
+          : () => planLeaveCoordinator.completeAfterContextsRefreshForUser(
+              userId,
+            ),
     );
     if (shouldRefresh) {
       unawaited(controller.refresh(allowInitialSingleContext: true));

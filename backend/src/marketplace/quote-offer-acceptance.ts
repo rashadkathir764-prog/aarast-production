@@ -4,6 +4,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   ConversationEventType,
   PlanProviderLinkStatus,
   Prisma,
@@ -11,6 +15,8 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -49,6 +55,7 @@ export async function acceptQuoteOfferInTransaction(
   permissions: PermissionService,
   notifications: NotificationsService,
   input: AcceptQuoteOfferInput,
+  history?: ContributionHistoryService,
 ) {
   const { id, weddingPlanId } = input;
   return runSerializableTransaction(prisma, async (tx) => {
@@ -83,11 +90,17 @@ export async function acceptQuoteOfferInTransaction(
         offerSeed.provider.userId,
       ],
     );
-    await permissions.assertProviderAndMoneyManageableInTransaction(
+    const planContext = await permissions.assertProviderAndMoneyManageableInTransaction(
       tx,
       weddingPlanId,
       input.currentUser,
     );
+    if (
+      !planContext.isOwner &&
+      offerSeed.quoteRequest.userId !== input.currentUser.id
+    ) {
+      throw new NotFoundException("Quote offer not found");
+    }
 
     const providerLock = await tx.$queryRaw<Array<{ id: string }>>(
       Prisma.sql`
@@ -354,6 +367,67 @@ export async function acceptQuoteOfferInTransaction(
         status: PlanProviderLinkStatus.ACTIVE,
       },
     });
+
+    if (history) {
+      const occurredAt = new Date();
+      await history.recordForContextInTransaction(tx, planContext, {
+        section: ContributionSection.PROVIDERS,
+        entityType: ContributionEntityType.QUOTE_REQUEST,
+        entityId: current.quoteRequestId,
+        action: ContributionAction.STATUS_CHANGED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.QUOTE_REQUEST,
+          {
+            providerDisplayLabel: current.provider.businessName,
+            categoryLabel: current.quoteRequest.service?.category.nameAr,
+            requestStatus: QuoteRequestStatus.ACCEPTED,
+            status: QuoteRequestStatus.ACCEPTED,
+          },
+        ),
+        dedupeKey: `provider:quote-request:${current.quoteRequestId}:accepted`,
+        requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
+        occurredAt,
+      });
+      await history.recordForContextInTransaction(tx, planContext, {
+        section: ContributionSection.PROVIDERS,
+        entityType: ContributionEntityType.PLAN_PROVIDER_LINK,
+        entityId: link.id,
+        action: ContributionAction.CREATED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.PLAN_PROVIDER_LINK,
+          {
+            providerDisplayLabel: current.provider.businessName,
+            categoryLabel: current.quoteRequest.service?.category.nameAr,
+            requestStatus: QuoteRequestStatus.ACCEPTED,
+            status: link.status,
+          },
+        ),
+        dedupeKey: `provider:plan-provider-link:${link.id}:active`,
+        requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
+        occurredAt,
+      });
+      await history.recordForContextInTransaction(tx, planContext, {
+        section: ContributionSection.MONEY,
+        entityType: ContributionEntityType.WEDDING_COST,
+        entityId: cost.id,
+        action: ContributionAction.CREATED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.WEDDING_COST,
+          {
+            title: cost.title,
+            categoryLabel: cost.budgetCategory.name,
+            currency: plan.currency,
+            totalAmount: cost.totalAmount,
+            paidAmount: cost.paidAmount,
+            status: cost.status,
+            relevantDate: cost.createdAt,
+          },
+        ),
+        dedupeKey: `money:wedding-cost:${cost.id}:quote-accepted`,
+        requiredPermission: ContributionPermission.MANAGE_MONEY,
+        occurredAt: cost.createdAt,
+      });
+    }
 
     if (acceptedNow) {
       await notifications.createNotificationInTransaction(

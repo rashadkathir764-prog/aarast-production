@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-31
+Snapshot date: 2026-08-03
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -334,6 +334,111 @@ HSTS, idempotent storage/bootstrap recreation, and blocked staging access to
 the host and production networks. This remains an OTP-only staging acceptance
 surface, not the production API. The running fresh 24-hour observation remains
 mandatory before wider use.
+
+## Contributor Isolation And Frozen History Workstream - 2026-08-02
+
+The current uncommitted worktree contains a production-oriented contributor
+access redesign. PostgreSQL is the authority: role defaults are applied only
+when an invitation or membership is created, while the stored `SharedMember`
+booleans remain authoritative afterward. Current membership plus the current
+section permission is required before Backend may return live data. Within an
+allowed section, task, guest, money, provider/quote, member, dashboard, and
+notification queries are constrained to assignment or the current
+contributor's own recorded actions instead of every row sharing the same
+`weddingPlanId`. Historical actions from the same actor may span multiple
+tenures, but do not reactivate a departed membership or override a revoked
+permission.
+
+The new schema and migration add `authorityVersion`,
+`ContributorHistoryScope`, `ContributorTenure`, and append-only
+`ContributionEvent`. Events use a privacy allowlist, a 16KB database limit,
+canonical snapshot and event hashes, per-tenure dedupe keys, lifecycle and
+section/entity constraints, lookup indexes, and a database trigger that rejects
+UPDATE or DELETE. Every qualifying contributor action stores its allowlisted
+snapshot at action time. Permission revocation never re-reads or copies a live
+row; it appends only a deterministic `SECTION_REVOKED` boundary before changing
+authority. An owner-created assignment on which the contributor never acted is
+therefore not invented as historical work. Later edits to an original row
+cannot alter an already committed snapshot. Contributor list and summary APIs
+return those snapshots without exposing a live entity id; a contributor
+receives only their own history while the plan owner may inspect plan history.
+
+Legacy migration is deliberately evidence-only. It creates the history scopes
+and current tenures at cutover, and backfills only a direct task assignment,
+quote creation, or invite creation that can be matched to a current tenure.
+Accepted membership alone and old guest/money rows are left unattributed;
+sensitive-looking legacy text is omitted. This policy avoids silently
+inventing a creator or executor for production data that never stored one.
+
+Migration `20260803110000_add_account_deletion_receipts` adds an anonymous,
+append-only `AccountDeletionReceipt`. The account deletion transaction writes
+one SHA-256 receipt derived from the former user id and the stable client
+request id before erasing the `User`; neither source identifier is retained in
+the receipt. Database triggers reject receipt updates and deletes. Flutter
+persists the stable deletion request in secure storage before the first network
+call, unmounts every account dashboard, and reconciles a lost response through
+the throttled public status endpoint before it can restore a session or clear
+the marker.
+
+The source also separates four account actions in the contributor plan center:
+leaving the workspace keeps membership, `مغادرة الخطة` transactionally ends
+only the selected membership, account logout ends the device session, and
+central account deletion removes the whole Aarast account. Self-leave revokes
+matching pending invites, closes the
+tenure with `MEMBER_LEFT`, clears the selected active plan, removes live
+conversation/notification access, and keeps immutable plan history. A repeated
+leave is designed to return the prior terminal result. Flutter retains the
+leave intent in a durable installation/user/plan-bound marker before issuing
+the request, reuses one client request id across ambiguous retries, quarantines
+the plan until the server result is reconciled, and replays pending cleanup
+before account contexts load. It clears the exact plan-scoped local graph and
+refreshes filtered contexts before removing that marker. Definitive client
+errors remove the marker and remain visible. Account deletion uses the shared
+typed confirmation used by other roles and removes only the deleted user's
+pending leave markers as a retryable centralized teardown stage; ordinary
+logout does not discard them.
+
+The contributor workspace now uses full-width Arabic `FilledButton.icon`
+actions inside permitted section cards; it does not embed a
+`FloatingActionButton.extended`. A read-only `سجل مساهماتي` screen presents the
+frozen snapshots and coverage date without a route back to the live entity.
+Task permission denial has the stable HTTP `403` code
+`TASK_PERMISSION_REVOKED` and Arabic message
+`لم تعد لديك صلاحية لتنفيذ هذه المهمة`.
+
+The final local verification on 2026-08-03 recorded `npm test` with 651 tests
+(650 passed, one intentional skip, zero failures), `flutter analyze` with zero
+issues, and all 997 Flutter tests passing. The contributor-history migration
+passed on a fresh 74-migration database and in a separate populated legacy
+upgrade rehearsal that applied every prior migration before the target
+migration. A managed Backend HTTP scenario passed all 28 checks with one owner,
+two contributors, different permissions, revocation followed by owner edits,
+cross-contributor isolation, frozen history, leave, re-login, and a new
+invitation. The managed account-deletion smoke also passed for no-plan, owner,
+shared-contributor, and provider data lifecycles. Flutter Web rendered the
+Arabic welcome gateway in a real local runtime without console errors. Android
+Release was rebuilt from this worktree for the production API, signed by the
+Aarast upload identity, and verified as `1.0.0+7`; its SHA-256 is
+`509F54E81CBAE7CA4DD3BE9ABA086EACB1CF7D5C2D75F848C767A59741F7AC72`.
+
+This workstream is still not release-complete. The signed Release APK installed
+successfully as an in-place update on an SM S938B running Android 16, launched
+`MainActivity`, kept its process alive, and emitted no fatal Flutter/Android or
+SQLite error during the startup check. Its authenticated context load stopped
+at the explicit Arabic retry state because Production is still on the old
+Backend contract: the device and workstation both reached `/health=200`, while
+the new public `/api/v1/account-deletions/status` route returned `404`. The
+owner/two-contributor physical flow therefore cannot be accepted until the
+coordinated Backend migrations and compatible Backend release are deployed.
+No iOS physical-device pass is available. The local Release artifact reused
+the Firebase client configuration already embedded in the previously signed
+Aarast artifact; the four required Firebase dart-defines are still absent from
+the workspace environment, so CI/release configuration remains non-repeatable
+until those values are supplied through the approved secret channel. The
+native SQLCipher schema-v6-to-v7 queue ownership upgrade also still requires a
+completed post-deployment rehearsal on Android and iOS; shared JSON migration
+and the SQLite source contract are covered locally. No Staging or Production
+migration/deployment of this uncommitted worktree is claimed.
 
 ## Verification Status
 

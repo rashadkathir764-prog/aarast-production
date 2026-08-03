@@ -44,6 +44,8 @@ class DashboardSummary {
     this.dataScope = 'ACCOUNT_BACKED',
     this.accountBacked = true,
     required this.planId,
+    this.membershipId,
+    this.membershipAuthorityVersion,
     required this.title,
     this.currency = 'YER',
     required this.status,
@@ -88,6 +90,7 @@ class DashboardSummary {
     this.duePaymentSchedulesCount,
     this.generatedAt,
     this.currentUserRole,
+    this.contributionHistory = const {},
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -102,6 +105,12 @@ class DashboardSummary {
       dataScope: json['dataScope']?.toString() ?? 'ACCOUNT_BACKED',
       accountBacked: json['accountBacked'] != false,
       planId: json['planId'].toString(),
+      membershipId: json['membershipId'] is String
+          ? json['membershipId'] as String
+          : null,
+      membershipAuthorityVersion: _intOrNull(
+        json['membershipAuthorityVersion'],
+      ),
       title: json['title'].toString(),
       currency: json['currency']?.toString() ?? 'YER',
       weddingDate: _dateTimeOrNull(json['weddingDate']),
@@ -199,6 +208,7 @@ class DashboardSummary {
       currentUserRole:
           json['currentUserRole']?.toString() ??
           participantSummary['currentUserRole']?.toString(),
+      contributionHistory: _intMapOrEmpty(json['contributionHistory']),
       permissions: DashboardPermissionSummary.fromJson(
         _mapOrEmpty(json['permissions']),
       ),
@@ -208,6 +218,8 @@ class DashboardSummary {
   final String dataScope;
   final bool accountBacked;
   final String planId;
+  final String? membershipId;
+  final int? membershipAuthorityVersion;
   final String title;
   final String currency;
   final DateTime? weddingDate;
@@ -251,6 +263,7 @@ class DashboardSummary {
   final List<DashboardFinancialWarning> financialWarnings;
   final DateTime? generatedAt;
   final String? currentUserRole;
+  final Map<String, int> contributionHistory;
   final DashboardPermissionSummary permissions;
 
   bool get canViewMoney => permissions.canViewMoney;

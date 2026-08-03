@@ -1,4 +1,4 @@
-﻿import 'sync_queue.dart';
+import 'sync_queue.dart';
 
 abstract class LocalDatabase {
   Future<void> initialize();
@@ -6,6 +6,8 @@ abstract class LocalDatabase {
   Future<void> setMeta(String key, String value);
 
   Future<String?> getMeta(String key);
+
+  Future<void> deleteMeta(String key);
 
   Future<void> saveCachedItem({
     required String table,
@@ -52,6 +54,10 @@ abstract class LocalDatabase {
     required String endpoint,
     required String method,
     required Map<String, dynamic> payload,
+
+    /// Explicit queue ownership. Plan-scoped entity types require a non-null
+    /// id; account-scoped types require an explicit null.
+    required String? planId,
     String? localEntityId,
     bool replacePendingForEntity = false,
     bool replaceAllPendingForEntity = false,

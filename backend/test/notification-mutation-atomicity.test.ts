@@ -360,6 +360,7 @@ test("scheduler re-reads recipients after member revocation", async () => {
       ],
     },
     paymentSchedule: { findMany: async () => [] },
+    contributionEvent: { findMany: async () => [] },
     notificationPreference: { findMany: async () => [] },
     notification: {
       createManyAndReturn: async ({ data }: any) => {
@@ -387,7 +388,7 @@ test("scheduler re-reads recipients after member revocation", async () => {
   assert.equal(planReads, 2);
 });
 
-test("list and unread count include a defensive live-money predicate", async () => {
+test("list and unread count include defensive live task and money predicates", async () => {
   const whereInputs: any[] = [];
   const notificationModel = {
     count: async ({ where }: any) => {
@@ -402,7 +403,24 @@ test("list and unread count include a defensive live-money predicate", async () 
   const prisma = {
     provider: { findUnique: async () => null },
     notification: notificationModel,
-    $transaction: async (operations: unknown[]) => Promise.all(operations),
+    sharedMember: {
+      findMany: async () => [
+        {
+          weddingPlanId: planId,
+          canManageTasks: true,
+          canViewMoney: true,
+        },
+      ],
+    },
+    weddingTask: {
+      findMany: async () => [{ id: "task-live", weddingPlanId: planId }],
+    },
+    contributionEvent: { findMany: async () => [] },
+    paymentSchedule: { findMany: async () => [] },
+    $transaction: async (operation: unknown) =>
+      typeof operation === "function"
+        ? (operation as (client: unknown) => unknown)(prisma)
+        : Promise.all(operation as unknown[]),
   };
   const service = new NotificationsService(
     prisma as any,
@@ -417,7 +435,9 @@ test("list and unread count include a defensive live-money predicate", async () 
   for (const where of whereInputs) {
     const serialized = JSON.stringify(where);
     assert.match(serialized, /payment_schedule/);
+    assert.match(serialized, /task/);
     assert.match(serialized, /sharedMembers/);
+    assert.match(serialized, /canManageTasks/);
     assert.match(serialized, /canViewMoney/);
     assert.match(serialized, /SHARING_INVITATION/);
     assert.match(serialized, /plan_invite/);
@@ -545,6 +565,7 @@ test("scheduler re-reads task and schedule lifecycle rows after locking", async 
           : [];
       },
     },
+    contributionEvent: { findMany: async () => [] },
     notificationPreference: { findMany: async () => [] },
     notification: {
       createManyAndReturn: async () => {

@@ -7,52 +7,11 @@ import '../../../core/offline/offline_tables.dart';
 import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
+import 'finance_api_contracts.dart';
 import 'finance_local_data_source.dart';
 import 'finance_money_rules.dart';
 
-class LocalFinancePlanContext {
-  const LocalFinancePlanContext({this.estimatedBudget, this.currency});
-
-  final String? estimatedBudget;
-  final String? currency;
-}
-
-typedef LocalFinancePlanContextLoader =
-    Future<LocalFinancePlanContext?> Function(String weddingPlanId);
-
-class MoneyBudgetReplaceResult {
-  const MoneyBudgetReplaceResult({
-    required this.summary,
-    required this.categories,
-    required this.idMap,
-  });
-
-  factory MoneyBudgetReplaceResult.fromJson(Map<String, dynamic> json) {
-    final summaryJson = json['summary'];
-    final categoriesJson = json['categories'];
-    final idMapJson = json['idMap'];
-    if (summaryJson is! Map || categoriesJson is! List || idMapJson is! Map) {
-      throw const ApiException(aarastBackendConnectionErrorMessage);
-    }
-    return MoneyBudgetReplaceResult(
-      summary: MoneySummary.fromJson(Map<String, dynamic>.from(summaryJson)),
-      categories: categoriesJson
-          .whereType<Map>()
-          .map(
-            (item) => BudgetCategory.fromJson(Map<String, dynamic>.from(item)),
-          )
-          .toList(growable: false),
-      idMap: {
-        for (final entry in idMapJson.entries)
-          entry.key.toString(): entry.value.toString(),
-      },
-    );
-  }
-
-  final MoneySummary summary;
-  final List<BudgetCategory> categories;
-  final Map<String, String> idMap;
-}
+export 'finance_api_contracts.dart';
 
 class FinanceApi {
   const FinanceApi(
@@ -238,6 +197,7 @@ class FinanceApi {
         operation: 'create',
         mutation: mutation,
         localId: local.id,
+        planId: planId,
       );
       return local;
     }
@@ -273,6 +233,7 @@ class FinanceApi {
         operation: 'update',
         mutation: mutation,
         localId: category.id,
+        planId: category.weddingPlanId,
       );
       return local;
     }
@@ -291,6 +252,7 @@ class FinanceApi {
         operation: 'update',
         mutation: mutation,
         localId: category.id,
+        planId: category.weddingPlanId,
       );
       return local;
     }
@@ -324,6 +286,7 @@ class FinanceApi {
         operation: 'delete',
         mutation: mutation,
         localId: category.id,
+        planId: category.weddingPlanId,
       );
       return;
     }
@@ -344,6 +307,7 @@ class FinanceApi {
         operation: 'delete',
         mutation: mutation,
         localId: category.id,
+        planId: category.weddingPlanId,
       );
     }
   }
@@ -498,6 +462,7 @@ class FinanceApi {
         operation: 'create',
         mutation: mutation,
         localId: local.id,
+        planId: planId,
       );
       return local;
     }
@@ -538,6 +503,7 @@ class FinanceApi {
         operation: 'update',
         mutation: mutation,
         localId: cost.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -553,6 +519,7 @@ class FinanceApi {
         operation: 'update',
         mutation: mutation,
         localId: cost.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -576,6 +543,7 @@ class FinanceApi {
         operation: 'delete',
         mutation: mutation,
         localId: cost.id,
+        planId: cost.weddingPlanId,
       );
       return;
     }
@@ -590,6 +558,7 @@ class FinanceApi {
         operation: 'delete',
         mutation: mutation,
         localId: cost.id,
+        planId: cost.weddingPlanId,
       );
     }
   }
@@ -613,6 +582,7 @@ class FinanceApi {
         operation: 'cancel',
         mutation: mutation,
         localId: cost.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -628,6 +598,7 @@ class FinanceApi {
         operation: 'cancel',
         mutation: mutation,
         localId: cost.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -784,6 +755,7 @@ class FinanceApi {
         operation: 'create',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -799,6 +771,7 @@ class FinanceApi {
         operation: 'create',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -836,6 +809,7 @@ class FinanceApi {
         operation: 'reverse',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -855,6 +829,7 @@ class FinanceApi {
         operation: 'reverse',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -939,6 +914,7 @@ class FinanceApi {
         operation: 'create',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -954,6 +930,7 @@ class FinanceApi {
         operation: 'create',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -994,6 +971,7 @@ class FinanceApi {
         operation: 'update',
         mutation: mutation,
         localId: schedule.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -1013,6 +991,7 @@ class FinanceApi {
         operation: 'update',
         mutation: mutation,
         localId: schedule.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -1044,6 +1023,7 @@ class FinanceApi {
         operation: 'delete',
         mutation: mutation,
         localId: schedule.id,
+        planId: _requiredPlanId(schedule.weddingPlanId),
       );
       return;
     }
@@ -1064,6 +1044,7 @@ class FinanceApi {
         operation: 'delete',
         mutation: mutation,
         localId: schedule.id,
+        planId: _requiredPlanId(schedule.weddingPlanId),
       );
     }
   }
@@ -1088,6 +1069,7 @@ class FinanceApi {
         operation: 'cancel',
         mutation: mutation,
         localId: schedule.id,
+        planId: _requiredPlanId(schedule.weddingPlanId),
       );
       return local;
     }
@@ -1103,6 +1085,7 @@ class FinanceApi {
         operation: 'cancel',
         mutation: mutation,
         localId: schedule.id,
+        planId: _requiredPlanId(schedule.weddingPlanId),
       );
       return local;
     }
@@ -1143,6 +1126,7 @@ class FinanceApi {
         operation: 'pay',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -1168,6 +1152,7 @@ class FinanceApi {
         operation: 'pay',
         mutation: mutation,
         localId: local.id,
+        planId: cost.weddingPlanId,
       );
       return local;
     }
@@ -1461,11 +1446,22 @@ class FinanceApi {
     await _offline?.database.saveCachedItem(table: table, json: json);
   }
 
+  String _requiredPlanId(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      throw const FormatException(
+        'Plan-scoped finance row is missing weddingPlanId',
+      );
+    }
+    return normalized;
+  }
+
   Future<void> _queue({
     required String entityType,
     required String operation,
     required _FinanceMutation mutation,
     required String localId,
+    required String planId,
   }) async {
     final offline = _offline;
     if (offline == null) return;
@@ -1475,6 +1471,7 @@ class FinanceApi {
       endpoint: mutation.endpoint,
       method: mutation.method,
       payload: mutation.payload,
+      planId: planId,
       localEntityId: localId,
       clientRequestId: mutation.clientRequestId,
     );
@@ -1493,6 +1490,7 @@ class FinanceApi {
       endpoint: mutation.endpoint,
       method: mutation.method,
       payload: mutation.payload,
+      planId: planId,
       localEntityId: planId,
       replacePendingForEntity: true,
       clientRequestId: mutation.clientRequestId,

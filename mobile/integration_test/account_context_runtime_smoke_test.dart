@@ -475,6 +475,12 @@ AccountContext _context({
     role: role,
     weddingPlanId: weddingPlanId,
     providerId: null,
+    membershipId: role == AccountContextRole.contributor
+        ? 'member-$weddingPlanId'
+        : null,
+    membershipAuthorityVersion: role == AccountContextRole.contributor
+        ? 1
+        : null,
     persona: null,
     displayName: displayName,
     lifecycle: 'PLANNING',

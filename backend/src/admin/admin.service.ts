@@ -60,7 +60,10 @@ import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dt
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
-import { authorizeAdminUserStatusChange } from './admin-user-status';
+import {
+  authorizeAdminUserStatusChange,
+  revokePendingInvitesIssuedByUserInTransaction,
+} from './admin-user-status';
 
 interface Pagination {
   page: number;
@@ -577,6 +580,7 @@ export class AdminService {
         data: { status: UserStatus.DISABLED },
         select: this.userSelect(true),
       });
+      await revokePendingInvitesIssuedByUserInTransaction(tx, target.id, now);
       await tx.refreshToken.updateMany({
         where: { userId: target.id, revokedAt: null },
         data: { revokedAt: now },

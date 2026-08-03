@@ -8,6 +8,7 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 import '../models/plan_access_permissions.dart';
+import '../models/contribution_history.dart';
 
 class SharingApi {
   const SharingApi(this._apiClient, {OfflineSyncService? offline})
@@ -236,6 +237,42 @@ class SharingApi {
     await _apiClient.deleteJson(
       '/api/v1/wedding-plans/$weddingPlanId/members/$id',
     );
+  }
+
+  /// Leaves the authenticated member's current plan membership.
+  ///
+  /// This is deliberately online-only: callers retain [clientRequestId] for a
+  /// user-triggered retry after an ambiguous response, rather than placing a
+  /// membership removal in the planning offline queue.
+  Future<void> leaveCurrentPlan({
+    required String weddingPlanId,
+    required String expectedMemberId,
+    required int expectedAuthorityVersion,
+    required String clientRequestId,
+  }) async {
+    await _apiClient.mutateJson(
+      '/api/v1/wedding-plans/$weddingPlanId/members/me',
+      {
+        'expectedMemberId': expectedMemberId,
+        'expectedAuthorityVersion': expectedAuthorityVersion,
+      },
+      method: 'DELETE',
+      clientRequestId: clientRequestId,
+    );
+  }
+
+  Future<ContributionHistoryResponse> getContributionHistory(
+    String weddingPlanId, {
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final json = await _apiClient.getJson(
+      Uri(
+        path: '/api/v1/wedding-plans/$weddingPlanId/contributions',
+        queryParameters: {'limit': '$limit', 'offset': '$offset'},
+      ).toString(),
+    );
+    return ContributionHistoryResponse.fromJson(json);
   }
 
   Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {

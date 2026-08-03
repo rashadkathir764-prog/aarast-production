@@ -50,6 +50,7 @@ import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
 import '../../features/sharing/screens/sharing_screen.dart';
+import '../../features/sharing/screens/contribution_history_screen.dart';
 import '../../features/sharing/models/shared_member.dart';
 import '../../features/support/screens/support_screen.dart';
 import '../../features/tasks/models/wedding_task.dart';
@@ -297,6 +298,10 @@ class AppRouter {
 
   static String planNotifications(String id) {
     return '/wedding-plans/$id/notifications';
+  }
+
+  static String contributionHistory(String id) {
+    return '/wedding-plans/$id/contributions';
   }
 
   static String addSharedMember(String id) {
@@ -889,7 +894,7 @@ class AppRouter {
             final id = state.pathParameters['id'] ?? '';
             return WeddingPlanContextGate(
               weddingPlanId: id,
-              requiredAccess: WeddingPlanRouteAccess.viewPlan,
+              requiredAccess: WeddingPlanRouteAccess.manageTasks,
               child: TaskTimelineScreen(weddingPlanId: id),
             );
           },
@@ -914,6 +919,17 @@ class AppRouter {
               weddingPlanId: id,
               requiredAccess: WeddingPlanRouteAccess.viewPlan,
               child: NotificationsScreen(weddingPlanId: id),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/contributions',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.viewPlan,
+              child: ContributionHistoryScreen(weddingPlanId: id),
             );
           },
         ),
@@ -959,14 +975,9 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
   return switch (section) {
     'dashboard' => WeddingPlanRouteAccess.ownerDashboard,
     'plan-center' ||
-    'timeline' ||
-    'notifications' => WeddingPlanRouteAccess.viewPlan,
-    'tasks' =>
-      segments.length >= 4 &&
-              (segments[3] == 'create' ||
-                  (segments.length >= 5 && segments[4] == 'edit'))
-          ? WeddingPlanRouteAccess.manageTasks
-          : WeddingPlanRouteAccess.viewPlan,
+    'notifications' ||
+    'contributions' => WeddingPlanRouteAccess.viewPlan,
+    'timeline' || 'tasks' => WeddingPlanRouteAccess.manageTasks,
     'guests' => WeddingPlanRouteAccess.manageGuests,
     'providers' => WeddingPlanRouteAccess.manageProviders,
     'sharing' => WeddingPlanRouteAccess.inviteMembers,

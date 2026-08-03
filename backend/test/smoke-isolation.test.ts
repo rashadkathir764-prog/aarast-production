@@ -237,12 +237,59 @@ test('only known internal or explicitly managed external scripts are accepted', 
   assert.deepEqual(validateSmokeScripts([]), ['all-smoke.js']);
   assert.deepEqual(validateSmokeScripts(['auth-smoke.js']), ['auth-smoke.js']);
   assert.deepEqual(validateSmokeScripts(['--admin-runtime']), ['--admin-runtime']);
+  assert.deepEqual(
+    validateSmokeScripts(['--contributor-history-migration']),
+    ['--contributor-history-migration'],
+  );
   assert.deepEqual(validateSmokeScripts(['--load-test']), ['--load-test']);
   assert.throws(() => validateSmokeScripts(['../auth-smoke.js']), /Unknown/);
   assert.throws(
     () => validateSmokeScripts(['--admin-runtime', 'auth-smoke.js']),
     /own isolated lifecycle/,
   );
+  assert.throws(
+    () => validateSmokeScripts([
+      '--contributor-history-migration',
+      'auth-smoke.js',
+    ]),
+    /own isolated lifecycle/,
+  );
+});
+
+test('contributor history upgrade smoke rehearses the legacy-to-target boundary', () => {
+  const backendPackage = JSON.parse(
+    readFileSync(join(backendRoot, 'package.json'), 'utf8'),
+  );
+  assert.equal(
+    backendPackage.scripts['smoke:contributor-history-migration'],
+    'node scripts/smoke/run-isolated-smoke.js --contributor-history-migration',
+  );
+
+  const source = readFileSync(
+    join(
+      backendRoot,
+      'scripts',
+      'smoke',
+      'contributor-history-migration-smoke.js',
+    ),
+    'utf8',
+  );
+  for (const required of [
+    '20260802090000_add_contributor_history',
+    'assertPreMigrationState',
+    'seedLegacyFixtures',
+    'assertEvidenceOnlyBackfill',
+    'assertCanonicalHashes',
+    'assertPrivacySanitization',
+    'assertAppendOnlyAndConstraints',
+    'LEGACY_CONFIRMED_ASSIGNMENT',
+    'LEGACY_CONFIRMED_CREATION',
+    'LEGACY_CONFIRMED_INVITER',
+  ]) {
+    assert.equal(source.includes(required), true, required);
+  }
+  assert.doesNotMatch(source, /LEGACY_CONFIRMED_ACCEPTED_MEMBER/);
+  assert.doesNotMatch(source, /migrate\s+reset|db\s+push/i);
 });
 
 test('official mutating smoke and load commands use managed isolation', () => {

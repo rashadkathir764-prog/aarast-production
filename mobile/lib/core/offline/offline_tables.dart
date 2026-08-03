@@ -55,6 +55,20 @@
     cachedBookings,
   ];
 
+  static const planScopedQueueEntityTypes = {
+    'wedding_plan',
+    'plan_member',
+    'guest',
+    'task',
+    'budget_category',
+    'money_budget',
+    'cost',
+    'cost_payment',
+    'payment_schedule',
+    'booking',
+    'quote_request',
+  };
+
   static String? tableForEntityType(String entityType) {
     return switch (entityType) {
       'user' => currentUserProfile,

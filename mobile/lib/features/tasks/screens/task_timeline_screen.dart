@@ -298,29 +298,33 @@ class _TaskTimelineContent extends StatelessWidget {
       isBusy: provider.isSubmitting,
       onMarkDone: task.isDone
           ? null
-          : () => _markDoneWithUndo(context, provider, task),
-      onReopen: task.isDone ? () => _reopenTask(context, provider, task) : null,
+          : () => unawaited(_markDoneWithUndo(context, provider, task)),
+      onReopen: task.isDone
+          ? () => unawaited(_reopenTask(context, provider, task))
+          : null,
       onEdit: () =>
           context.push(AppRouter.editTask(weddingPlanId, task.id), extra: task),
       onDelete: () => _confirmDelete(context, provider, task),
     );
   }
 
-  void _markDoneWithUndo(
+  Future<void> _markDoneWithUndo(
     BuildContext context,
     TaskTimelineProvider provider,
     WeddingTask task,
-  ) {
+  ) async {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     final previousStatus = task.status;
 
-    unawaited(
-      provider.markTaskDone(weddingPlanId, task).then((success) {
-        if (!success && context.mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        }
-      }),
-    );
+    final success = await provider.markTaskDone(weddingPlanId, task);
+    if (!context.mounted) return;
+    if (!success) {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'تعذر إنجاز المهمة.',
+      );
+      return;
+    }
 
     AarastToast.showSuccess(
       context,
@@ -337,22 +341,23 @@ class _TaskTimelineContent extends StatelessWidget {
     );
   }
 
-  void _reopenTask(
+  Future<void> _reopenTask(
     BuildContext context,
     TaskTimelineProvider provider,
     WeddingTask task,
-  ) {
+  ) async {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-    unawaited(
-      provider.reopenTask(weddingPlanId, task).then((success) {
-        if (!success && context.mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        }
-      }),
-    );
-
-    AarastToast.showSuccess(context, 'تمت إعادة فتح المهمة');
+    final success = await provider.reopenTask(weddingPlanId, task);
+    if (!context.mounted) return;
+    if (success) {
+      AarastToast.showSuccess(context, 'تمت إعادة فتح المهمة');
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'تعذر إعادة فتح المهمة.',
+      );
+    }
   }
 
   Future<void> _confirmDelete(

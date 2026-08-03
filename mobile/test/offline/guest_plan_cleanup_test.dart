@@ -43,6 +43,7 @@ void main() {
       endpoint: '/api/v1/wedding-plans/guest-plan-1/tasks',
       method: 'POST',
       payload: {'weddingPlanId': 'guest-plan-1'},
+      planId: 'guest-plan-1',
     );
     await database.enqueueSync(
       entityType: 'task',
@@ -50,6 +51,7 @@ void main() {
       endpoint: '/api/v1/wedding-plans/account-plan-1/tasks',
       method: 'POST',
       payload: {'weddingPlanId': 'account-plan-1'},
+      planId: 'account-plan-1',
     );
 
     await database.deletePlanGraph('guest-plan-1');
@@ -86,4 +88,40 @@ void main() {
     expect(await database.getMeta('timeline:guest-plan-1'), isNull);
     expect(await database.getMeta('timeline:account-plan-1'), isNotNull);
   });
+
+  test(
+    'plan cleanup never deletes another queue item by substring match',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final database = JsonLocalDatabase(preferences);
+      await database.initialize();
+
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'update',
+        endpoint: '/api/v1/tasks/task-a',
+        method: 'PATCH',
+        payload: {'weddingPlanId': 'plan-1'},
+        planId: 'plan-1',
+        localEntityId: 'task-a',
+      );
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'update',
+        endpoint: '/api/v1/tasks/task-b',
+        method: 'PATCH',
+        payload: {
+          'weddingPlanId': 'plan-10',
+          'title': 'النص يذكر plan-1 لكنه لا يملكه',
+        },
+        planId: 'plan-10',
+        localEntityId: 'task-b',
+      );
+
+      await database.deletePlanGraph('plan-1');
+
+      final remaining = await database.pendingSyncItems();
+      expect(remaining.map((item) => item.localEntityId), ['task-b']);
+    },
+  );
 }

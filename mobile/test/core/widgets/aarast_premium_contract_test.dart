@@ -235,6 +235,7 @@ void main() {
         'lib/features/guests/screens/guest_list_screen.dart',
         'lib/features/sharing/screens/sharing_screen.dart',
         'lib/features/sharing/screens/add_shared_member_screen.dart',
+        'lib/features/sharing/screens/contribution_history_screen.dart',
         'lib/features/sharing/screens/edit_shared_member_screen.dart',
         'lib/features/sharing/screens/invite_decision_screen.dart',
         'lib/features/sharing/screens/shared_wedding_plans_screen.dart',

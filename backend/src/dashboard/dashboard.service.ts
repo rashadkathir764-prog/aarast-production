@@ -6,12 +6,17 @@ import {
   PlanProviderLinkStatus,
   ProviderStatus,
   QuoteRequestStatus,
+  Prisma,
   SharedMemberRole,
   WeddingCostStatus,
   WeddingPlanStatus,
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import type { ContributionHistorySummaryResponse } from "../contribution-history/contribution-history.contracts";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -21,13 +26,14 @@ import {
 } from "../sharing/permission.service";
 import { weddingLocationResponse } from "../wedding-plans/wedding-location";
 import {
-  applicationNameFields,
-  toApplicationUserContact,
-} from "../users/application-user-identity";
-import {
   DashboardPermissionSummary,
   WeddingPlanDashboardSummaryResponse,
 } from "./dashboard.contracts";
+import {
+  dashboardTaskVisibilityWhere,
+  resolveDashboardContributorDataScope,
+} from "./dashboard-contributor-scope";
+import { loadDashboardHomeSections } from "./dashboard-home-queries";
 import {
   buildFinancialWarnings,
   buildImportantItems,
@@ -59,6 +65,8 @@ export class DashboardService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    private readonly contributorScope?: ContributorScopeService,
+    private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 
   async getHome(currentUser: AuthenticatedUser) {
@@ -70,28 +78,17 @@ export class DashboardService {
       orderBy: [{ weddingDate: "asc" }, { createdAt: "desc" }],
     });
 
-    const [marketplaceSummary, moneySummary, upcomingTasks, sharedMembers] =
-      await Promise.all([
-        this.getMarketplaceSummary(currentUser.id),
-        currentWeddingPlan
-          ? this.getMoneyHomeSummary(currentWeddingPlan.id)
-          : Promise.resolve(null),
-        currentWeddingPlan
-          ? this.getUpcomingTasks(currentWeddingPlan.id)
-          : Promise.resolve([]),
-        currentWeddingPlan
-          ? this.getSharedMembers(currentWeddingPlan.id)
-          : Promise.resolve([]),
-      ]);
+    const sections = await loadDashboardHomeSections(
+      this.prisma,
+      currentUser.id,
+      currentWeddingPlan?.id ?? null,
+    );
 
     return {
       currentWeddingPlan: currentWeddingPlan
         ? toPlanResponse(currentWeddingPlan)
         : null,
-      moneySummary,
-      upcomingTasks,
-      sharedMembers,
-      marketplaceSummary,
+      ...sections,
     };
   }
 
@@ -99,16 +96,48 @@ export class DashboardService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<WeddingPlanDashboardSummaryResponse> {
-    const context = await this.permissions.assertPlanReadable(
+    return runRetryableTransaction(
+      this.prisma,
+      (tx) =>
+        this.getWeddingPlanDashboardSummaryInTransaction(
+          tx,
+          currentUser,
+          weddingPlanId,
+        ),
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  }
+
+  private async getWeddingPlanDashboardSummaryInTransaction(
+    tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<WeddingPlanDashboardSummaryResponse> {
+    const context = await this.permissions.assertPlanReadableInTransaction(
+      tx,
       weddingPlanId,
       currentUser,
     );
-    const today = this.startOfToday();
-    const endOfToday = this.endOfToday(today);
+    const today = startOfRiyadhDay();
+    const endOfToday = endOfRiyadhDay(today);
     const dueSoonEnd = new Date(endOfToday.getTime() + 7 * 86_400_000);
     const canViewMoney = this.permissions.canViewMoney(context);
+    const contributorIds = context.isOwner
+      ? null
+      : await resolveDashboardContributorDataScope({
+          tx,
+          context,
+          weddingPlanId,
+          actorUserId: currentUser.id,
+          canViewMoney,
+          contributorScope: this.requiredContributorScope(),
+        });
+    const taskVisibilityWhere = dashboardTaskVisibilityWhere(
+      contributorIds,
+      currentUser.id,
+    );
     const notificationVisibility =
-      await this.notifications.visibilityWhereForUser(currentUser.id);
+      await this.notifications.visibilityWhereForUser(currentUser.id, tx);
     const notificationWhere = {
       userId: currentUser.id,
       weddingPlanId,
@@ -146,20 +175,24 @@ export class DashboardService {
       latestImportantNotification,
     ] = await Promise.all([
       canViewMoney
-        ? this.prisma.weddingCost.findMany({
+        ? tx.weddingCost.findMany({
             where: {
               weddingPlanId,
+              ...(contributorIds ? { id: { in: contributorIds.costIds } } : {}),
               status: { not: WeddingCostStatus.CANCELLED },
             },
             select: { id: true, totalAmount: true, paidAmount: true },
           })
         : Promise.resolve([]),
       canViewMoney
-        ? this.prisma.paymentSchedule.findMany({
+        ? tx.paymentSchedule.findMany({
             where: {
               status: PaymentScheduleStatus.PENDING,
               weddingCost: {
                 weddingPlanId,
+                ...(contributorIds
+                  ? { id: { in: contributorIds.costIds } }
+                  : {}),
                 status: { not: WeddingCostStatus.CANCELLED },
               },
             },
@@ -167,9 +200,10 @@ export class DashboardService {
             orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
         : Promise.resolve([]),
-      this.prisma.weddingTask.findMany({
+      tx.weddingTask.findMany({
         where: {
           weddingPlanId,
+          ...taskVisibilityWhere,
           dueDate: { lte: endOfToday },
           status: {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
@@ -178,73 +212,111 @@ export class DashboardService {
         orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
         take: 2,
       }),
-      this.prisma.weddingTask.findFirst({
+      tx.weddingTask.findFirst({
         where: {
           weddingPlanId,
+          ...taskVisibilityWhere,
           status: {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
         orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       }),
-      this.prisma.weddingTask.count({ where: { weddingPlanId } }),
-      this.prisma.weddingTask.count({
-        where: { weddingPlanId, status: WeddingTaskStatus.DONE },
-      }),
-      this.prisma.weddingTask.count({
+      tx.weddingTask.count({
         where: {
           weddingPlanId,
+          ...taskVisibilityWhere,
+        },
+      }),
+      tx.weddingTask.count({
+        where: {
+          weddingPlanId,
+          ...taskVisibilityWhere,
+          status: WeddingTaskStatus.DONE,
+        },
+      }),
+      tx.weddingTask.count({
+        where: {
+          weddingPlanId,
+          ...taskVisibilityWhere,
           status: {
             in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS],
           },
         },
       }),
-      this.prisma.weddingTask.count({
+      tx.weddingTask.count({
         where: {
           weddingPlanId,
+          ...taskVisibilityWhere,
           dueDate: { lt: today },
           status: {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
       }),
-      this.prisma.weddingTask.count({
+      tx.weddingTask.count({
         where: {
           weddingPlanId,
+          ...taskVisibilityWhere,
           dueDate: { gte: today, lte: endOfToday },
           status: {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
       }),
-      this.prisma.guest.count({ where: { weddingPlanId } }),
-      this.prisma.guest.count({
-        where: { weddingPlanId, status: GuestStatus.CONFIRMED },
-      }),
-      this.prisma.guest.count({
+      tx.guest.count({
         where: {
           weddingPlanId,
+          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
+        },
+      }),
+      tx.guest.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
+          status: GuestStatus.CONFIRMED,
+        },
+      }),
+      tx.guest.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
           status: { in: [GuestStatus.PENDING, GuestStatus.INVITED] },
         },
       }),
-      this.prisma.guest.count({
-        where: { weddingPlanId, status: GuestStatus.DECLINED },
-      }),
-      this.prisma.guest.count({
+      tx.guest.count({
         where: {
           weddingPlanId,
+          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
+          status: GuestStatus.DECLINED,
+        },
+      }),
+      tx.guest.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
           OR: [{ phone: null }, { phone: "" }, { name: "" }],
         },
       }),
-      this.prisma.planProviderLink.count({
+      tx.planProviderLink.count({
         where: {
           weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { quoteRequestId: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
           status: PlanProviderLinkStatus.ACTIVE,
         },
       }),
-      this.prisma.planProviderLink.findMany({
+      tx.planProviderLink.findMany({
         where: {
           weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { quoteRequestId: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
           status: PlanProviderLinkStatus.ACTIVE,
           provider: { status: ProviderStatus.ACTIVE },
         },
@@ -269,46 +341,94 @@ export class DashboardService {
         orderBy: { createdAt: "desc" },
         take: 3,
       }),
-      this.prisma.quoteRequest.count({ where: { weddingPlanId } }),
-      this.prisma.quoteRequest.count({
+      tx.quoteRequest.count({
         where: {
           weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { id: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
+        },
+      }),
+      tx.quoteRequest.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { id: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
           status: {
             in: [QuoteRequestStatus.SENT, QuoteRequestStatus.VIEWED],
           },
         },
       }),
-      this.prisma.quoteRequest.count({
-        where: { weddingPlanId, status: QuoteRequestStatus.RESPONDED },
-      }),
-      this.prisma.quoteRequest.count({
-        where: { weddingPlanId, status: QuoteRequestStatus.ACCEPTED },
-      }),
-      this.prisma.quoteRequest.count({
+      tx.quoteRequest.count({
         where: {
           weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { id: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
+          status: QuoteRequestStatus.RESPONDED,
+        },
+      }),
+      tx.quoteRequest.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { id: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
+          status: QuoteRequestStatus.ACCEPTED,
+        },
+      }),
+      tx.quoteRequest.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds
+            ? contributorIds.providersEnabled
+              ? { id: { in: contributorIds.quoteIds } }
+              : { id: { in: [] as string[] } }
+            : {}),
           status: {
             in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED],
           },
         },
       }),
-      this.prisma.sharedMember.count({ where: { weddingPlanId } }),
-      this.prisma.planInvite.count({
+      tx.sharedMember.count({
         where: {
           weddingPlanId,
+          ...(contributorIds
+            ? {
+                OR: [
+                  { userId: currentUser.id },
+                  { id: { in: contributorIds.memberIds } },
+                ],
+              }
+            : {}),
+        },
+      }),
+      tx.planInvite.count({
+        where: {
+          weddingPlanId,
+          ...(contributorIds ? { id: { in: contributorIds.inviteIds } } : {}),
           acceptedAt: null,
           declinedAt: null,
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
       }),
-      this.prisma.notification.count({
+      tx.notification.count({
         where: {
           ...notificationWhere,
           readAt: null,
         },
       }),
-      this.prisma.notification.count({
+      tx.notification.count({
         where: {
           ...notificationWhere,
           priority: {
@@ -316,12 +436,12 @@ export class DashboardService {
           },
         },
       }),
-      this.prisma.notification.findMany({
+      tx.notification.findMany({
         where: notificationWhere,
         orderBy: { createdAt: "desc" },
         take: 3,
       }),
-      this.prisma.notification.findFirst({
+      tx.notification.findFirst({
         where: {
           ...notificationWhere,
           priority: {
@@ -350,9 +470,8 @@ export class DashboardService {
       ? actionableSchedules.length
       : null;
 
-    const budgetTotalNumber = canViewMoney
-      ? resolveBudgetTotal(context.plan)
-      : null;
+    const budgetTotalNumber =
+      canViewMoney && context.isOwner ? resolveBudgetTotal(context.plan) : null;
     const confirmedCostNumber = canViewMoney
       ? costs.reduce((sum, cost) => sum + decimalToNumber(cost.totalAmount), 0)
       : null;
@@ -390,7 +509,12 @@ export class DashboardService {
       receivedQuotes,
       pendingInvites,
       hasLocation: location !== null,
-      hasBudget: budgetTotalNumber !== null && budgetTotalNumber > 0,
+      // A contributor must not learn whether the owner configured a plan-wide
+      // budget, nor receive a misleading SET_BUDGET action for a value they
+      // are not allowed to inspect.
+      hasBudget:
+        !context.isOwner ||
+        (budgetTotalNumber !== null && budgetTotalNumber > 0),
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
@@ -400,11 +524,21 @@ export class DashboardService {
     const notificationPreviews = latestNotifications.map((notification) =>
       toNotificationPreview(notification),
     );
+    const contributionHistory: ContributionHistorySummaryResponse | null =
+      context.isOwner
+        ? null
+        : await this.requiredContributionHistory().summary(
+            currentUser,
+            weddingPlanId,
+          );
 
     return {
       dataScope: "ACCOUNT_BACKED",
       accountBacked: true,
       planId: context.plan.id,
+      membershipId: context.sharedMember?.id ?? null,
+      membershipAuthorityVersion:
+        context.sharedMember?.authorityVersion ?? null,
       title: context.plan.title,
       currency: context.plan.currency,
       weddingDate: context.plan.weddingDate,
@@ -516,124 +650,26 @@ export class DashboardService {
       generatedAt: new Date(),
       currentUserRole,
       permissions: this.permissionSummary(context),
+      contributionHistory,
     };
   }
 
-  private async getMarketplaceSummary(userId: string) {
-    const [featuredProvidersCount, favoriteProvidersCount, quoteRequestsCount] =
-      await Promise.all([
-        this.prisma.provider.count({
-          where: { status: "ACTIVE", isFeatured: true },
-        }),
-        this.prisma.favoriteProvider.count({ where: { userId } }),
-        this.prisma.quoteRequest.count({ where: { userId } }),
-      ]);
-
-    return {
-      featuredProvidersCount,
-      favoriteProvidersCount,
-      quoteRequestsCount,
-    };
+  private requiredContributorScope(): ContributorScopeService {
+    if (!this.contributorScope) {
+      throw new Error(
+        "ContributorScopeService is required for contributor dashboard access",
+      );
+    }
+    return this.contributorScope;
   }
 
-  private async getMoneyHomeSummary(weddingPlanId: string) {
-    const [plan, costs] = await Promise.all([
-      this.prisma.weddingPlan.findUniqueOrThrow({
-        where: { id: weddingPlanId },
-        select: { estimatedBudget: true, currency: true },
-      }),
-      this.prisma.weddingCost.findMany({
-        where: {
-          weddingPlanId,
-          status: { not: WeddingCostStatus.CANCELLED },
-        },
-        select: { totalAmount: true, paidAmount: true },
-      }),
-    ]);
-    const confirmedCost = costs.reduce(
-      (sum, cost) => sum + decimalToNumber(cost.totalAmount),
-      0,
-    );
-    const paid = costs.reduce(
-      (sum, cost) => sum + decimalToNumber(cost.paidAmount),
-      0,
-    );
-    const totalBudget = plan.estimatedBudget
-      ? decimalToNumber(plan.estimatedBudget)
-      : null;
-    return {
-      currency: plan.currency,
-      totalBudget: moneyOrNull(totalBudget),
-      confirmedCost: moneyOrNull(confirmedCost),
-      paid: moneyOrNull(paid),
-      outstanding: moneyOrNull(confirmedCost - paid),
-      remainingBudget:
-        totalBudget === null ? null : moneyOrNull(totalBudget - confirmedCost),
-      costsCount: costs.length,
-    };
-  }
-
-  private async getUpcomingTasks(weddingPlanId: string) {
-    const tasks = await this.prisma.weddingTask.findMany({
-      where: {
-        weddingPlanId,
-        status: {
-          notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-        },
-      },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-      take: 5,
-    });
-
-    return tasks.map((task) => ({
-      id: task.id,
-      weddingPlanId: task.weddingPlanId,
-      title: task.title,
-      description: task.description,
-      dueDate: task.dueDate,
-      taskCategory: task.taskCategory,
-      reminderAt: task.reminderAt,
-      status: task.status,
-      priority: task.priority,
-    }));
-  }
-
-  private async getSharedMembers(weddingPlanId: string) {
-    const members = await this.prisma.sharedMember.findMany({
-      where: { weddingPlanId },
-      include: {
-        user: {
-          select: { id: true, phone: true, ...applicationNameFields },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    return members.map((member) => ({
-      id: member.id,
-      weddingPlanId: member.weddingPlanId,
-      userId: member.userId,
-      user: toApplicationUserContact(member.user),
-      role: member.role,
-      canViewMoney: member.canViewMoney || member.canManageMoney,
-      canEditPlan: member.canEditPlan,
-      canManageTasks: member.canManageTasks,
-      canManageGuests: member.canManageGuests,
-      canManageProviders: member.canManageProviders,
-      canInviteMembers: member.canInviteMembers,
-      canManageMoney: member.canManageMoney,
-      receiveNotifications: member.receiveNotifications,
-      createdAt: member.createdAt,
-      updatedAt: member.updatedAt,
-    }));
-  }
-
-  private startOfToday(): Date {
-    return startOfRiyadhDay();
-  }
-
-  private endOfToday(today: Date): Date {
-    return endOfRiyadhDay(today);
+  private requiredContributionHistory(): ContributionHistoryService {
+    if (!this.contributionHistory) {
+      throw new Error(
+        "ContributionHistoryService is required for contributor dashboard access",
+      );
+    }
+    return this.contributionHistory;
   }
 
   private currentUserRole(

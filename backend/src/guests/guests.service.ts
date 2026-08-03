@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   Guest,
   GuestAttendanceStatus,
   GuestGroup,
@@ -16,9 +20,18 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ListQueryDto, pageArgs } from "../common/pagination/list-query.dto";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../common/prisma/serializable-transaction";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  PermissionService,
+  PlanAccessContext,
+} from "../sharing/permission.service";
 import { BulkGuestsDto } from "./dto/bulk-guests.dto";
 import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
 import { CreateGuestDto } from "./dto/create-guest.dto";
@@ -92,6 +105,8 @@ export class GuestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly contributionHistory: ContributionHistoryService,
+    private readonly contributorScope: ContributorScopeService,
   ) {}
 
   async findForPlan(
@@ -99,31 +114,76 @@ export class GuestsService {
     weddingPlanId: string,
     query?: ListQueryDto,
   ): Promise<GuestResponse[]> {
-    const context = await this.permissions.assertPlanReadable(
-      weddingPlanId,
-      currentUser,
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+        const includePrivateDetails = this.permissions.canManageGuests(context);
+        const [contributorScope, groupScope] = await Promise.all([
+          this.liveGuestScope(tx, context, currentUser.id),
+          this.liveGroupScope(tx, context, currentUser.id),
+        ]);
+        if (contributorScope !== null && !includePrivateDetails) return [];
+
+        const guests = await tx.guest.findMany({
+          where: {
+            weddingPlanId,
+            ...(contributorScope ? { id: { in: [...contributorScope] } } : {}),
+          },
+          orderBy: [{ createdAt: "desc" }],
+          ...pageArgs(query),
+        });
+
+        return guests
+          .filter(
+            (guest) =>
+              contributorScope === null || contributorScope.has(guest.id),
+          )
+          .map((guest) =>
+            this.toResponse(guest, includePrivateDetails, groupScope),
+          );
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
-    const includePrivateDetails = this.permissions.canManageGuests(context);
-
-    const guests = await this.prisma.guest.findMany({
-      where: { weddingPlanId },
-      orderBy: [{ createdAt: "desc" }],
-      ...pageArgs(query),
-    });
-
-    return guests.map((guest) => this.toResponse(guest, includePrivateDetails));
   }
 
   async findOne(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<GuestResponse> {
-    const guest = await this.findGuestOrThrow(id);
-    const context = await this.permissions.assertPlanReadable(
-      guest.weddingPlanId,
-      currentUser,
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const guest = await tx.guest.findUnique({ where: { id } });
+        if (!guest) throw new NotFoundException("Guest not found");
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          guest.weddingPlanId,
+          currentUser,
+        );
+        await this.assertLiveGuestReadable(
+          tx,
+          context,
+          currentUser.id,
+          guest,
+        );
+        const groupScope = await this.liveGroupScope(
+          tx,
+          context,
+          currentUser.id,
+        );
+        return this.toResponse(
+          guest,
+          this.permissions.canManageGuests(context),
+          groupScope,
+        );
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
-    return this.toResponse(guest, this.permissions.canManageGuests(context));
   }
 
   async create(
@@ -133,12 +193,25 @@ export class GuestsService {
   ): Promise<GuestResponse> {
     const guest = await this.catchDuplicateGuestConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
-        await this.permissions.assertGuestManageableInTransaction(
+        const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
           weddingPlanId,
           currentUser,
         );
-        return this.createGuestInTransaction(tx, weddingPlanId, dto);
+        const created = await this.createGuestInTransaction(
+          tx,
+          weddingPlanId,
+          dto,
+          context,
+          currentUser.id,
+        );
+        await this.recordGuestContribution(
+          tx,
+          context,
+          created,
+          ContributionAction.CREATED,
+        );
+        return created;
       }),
     );
 
@@ -159,16 +232,27 @@ export class GuestsService {
 
     const created = await this.catchDuplicateGuestConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
-        await this.permissions.assertGuestManageableInTransaction(
+        const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
           weddingPlanId,
           currentUser,
         );
         const guests: Guest[] = [];
         for (const item of dto.items) {
-          guests.push(
-            await this.createGuestInTransaction(tx, weddingPlanId, item),
+          const guest = await this.createGuestInTransaction(
+            tx,
+            weddingPlanId,
+            item,
+            context,
+            currentUser.id,
           );
+          await this.recordGuestContribution(
+            tx,
+            context,
+            guest,
+            ContributionAction.CREATED,
+          );
+          guests.push(guest);
         }
         return guests;
       }),
@@ -192,22 +276,30 @@ export class GuestsService {
 
     const guest = await this.catchDuplicateGuestConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
-        await this.permissions.assertGuestManageableInTransaction(
+        const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
           existing.weddingPlanId,
           currentUser,
         );
         if (dto.groupId !== undefined) {
-          await this.assertGroupBelongsToPlan(
+          await this.assertGroupLinkableInTransaction(
             tx,
             dto.groupId,
             existing.weddingPlanId,
+            context,
+            currentUser.id,
           );
         }
         const current = await this.findGuestInTransactionOrThrow(
           tx,
           id,
           existing.weddingPlanId,
+        );
+        await this.assertGuestInMutationScope(
+          tx,
+          context,
+          currentUser.id,
+          current,
         );
         const name =
           dto.name !== undefined
@@ -224,7 +316,7 @@ export class GuestsService {
           excludeGuestId: current.id,
         });
 
-        return tx.guest.update({
+        const updated = await tx.guest.update({
           where: { id },
           data: {
             ...(dto.name !== undefined
@@ -271,6 +363,9 @@ export class GuestsService {
               : {}),
           },
         });
+        const action = this.guestUpdateAction(current, updated);
+        await this.recordGuestContribution(tx, context, updated, action);
+        return updated;
       }),
     );
 
@@ -283,12 +378,28 @@ export class GuestsService {
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findGuestOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertGuestManageableInTransaction(
+      const context = await this.permissions.assertGuestManageableInTransaction(
         tx,
         existing.weddingPlanId,
         currentUser,
       );
-      await this.findGuestInTransactionOrThrow(tx, id, existing.weddingPlanId);
+      const current = await this.findGuestInTransactionOrThrow(
+        tx,
+        id,
+        existing.weddingPlanId,
+      );
+      await this.assertGuestInMutationScope(
+        tx,
+        context,
+        currentUser.id,
+        current,
+      );
+      await this.recordGuestContribution(
+        tx,
+        context,
+        current,
+        ContributionAction.DELETED,
+      );
       await tx.guest.delete({ where: { id } });
     });
     return { id, deleted: true };
@@ -298,17 +409,36 @@ export class GuestsService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<GuestGroupResponse[]> {
-    const context = await this.permissions.assertPlanReadable(
-      weddingPlanId,
-      currentUser,
-    );
-    const includePrivateDetails = this.permissions.canManageGuests(context);
-    const groups = await this.prisma.guestGroup.findMany({
-      where: { weddingPlanId },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    });
-    return groups.map((group) =>
-      this.toGroupResponse(group, includePrivateDetails),
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+        const includePrivateDetails = this.permissions.canManageGuests(context);
+        const contributorScope = await this.liveGroupScope(
+          tx,
+          context,
+          currentUser.id,
+        );
+        if (contributorScope !== null && !includePrivateDetails) return [];
+        const groups = await tx.guestGroup.findMany({
+          where: {
+            weddingPlanId,
+            ...(contributorScope ? { id: { in: [...contributorScope] } } : {}),
+          },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        });
+        return groups
+          .filter(
+            (group) =>
+              contributorScope === null || contributorScope.has(group.id),
+          )
+          .map((group) => this.toGroupResponse(group, includePrivateDetails));
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
   }
 
@@ -319,12 +449,12 @@ export class GuestsService {
   ): Promise<GuestGroupResponse> {
     const group = await this.catchDuplicateGroupConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
-        await this.permissions.assertGuestManageableInTransaction(
+        const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
           weddingPlanId,
           currentUser,
         );
-        return tx.guestGroup.create({
+        const created = await tx.guestGroup.create({
           data: {
             weddingPlanId,
             name: this.requiredText(dto.name, "name"),
@@ -332,6 +462,13 @@ export class GuestsService {
             sortOrder: dto.sortOrder ?? 0,
           },
         });
+        await this.recordGuestGroupContribution(
+          tx,
+          context,
+          created,
+          ContributionAction.CREATED,
+        );
+        return created;
       }),
     );
     return this.toGroupResponse(group);
@@ -345,17 +482,23 @@ export class GuestsService {
     const existing = await this.findGroupOrThrow(id);
     const group = await this.catchDuplicateGroupConflict(
       runSerializableTransaction(this.prisma, async (tx) => {
-        await this.permissions.assertGuestManageableInTransaction(
+        const context = await this.permissions.assertGuestManageableInTransaction(
           tx,
           existing.weddingPlanId,
           currentUser,
         );
-        await this.findGroupInTransactionOrThrow(
+        const current = await this.findGroupInTransactionOrThrow(
           tx,
           id,
           existing.weddingPlanId,
         );
-        return tx.guestGroup.update({
+        await this.assertGroupInMutationScope(
+          tx,
+          context,
+          currentUser.id,
+          current,
+        );
+        const updated = await tx.guestGroup.update({
           where: { id },
           data: {
             ...(dto.name !== undefined
@@ -369,6 +512,13 @@ export class GuestsService {
               : {}),
           },
         });
+        await this.recordGuestGroupContribution(
+          tx,
+          context,
+          updated,
+          ContributionAction.UPDATED,
+        );
+        return updated;
       }),
     );
     return this.toGroupResponse(group);
@@ -380,12 +530,28 @@ export class GuestsService {
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findGroupOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertGuestManageableInTransaction(
+      const context = await this.permissions.assertGuestManageableInTransaction(
         tx,
         existing.weddingPlanId,
         currentUser,
       );
-      await this.findGroupInTransactionOrThrow(tx, id, existing.weddingPlanId);
+      const current = await this.findGroupInTransactionOrThrow(
+        tx,
+        id,
+        existing.weddingPlanId,
+      );
+      await this.assertGroupInMutationScope(
+        tx,
+        context,
+        currentUser.id,
+        current,
+      );
+      await this.recordGuestGroupContribution(
+        tx,
+        context,
+        current,
+        ContributionAction.DELETED,
+      );
       await tx.guestGroup.delete({ where: { id } });
     });
     return { id, deleted: true };
@@ -395,41 +561,72 @@ export class GuestsService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<GuestsSummaryResponse> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
-    const [guests, groupsCount] = await Promise.all([
-      this.prisma.guest.findMany({
-        where: { weddingPlanId },
-        include: { group: { select: { name: true } } },
-      }),
-      this.prisma.guestGroup.count({ where: { weddingPlanId } }),
-    ]);
-    const bySide = this.emptySideCounts();
-    const byInvitationStatus = this.emptyInvitationStatusCounts();
-    const byAttendanceStatus = this.emptyAttendanceStatusCounts();
-    const byGroup: Record<string, number> = {};
-    let seatsTotal = 0;
-    let companionsTotal = 0;
-    let missingPhoneCount = 0;
-    let missingNameCount = 0;
-    let incompleteGuestsCount = 0;
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+        const canManageGuests = this.permissions.canManageGuests(context);
+        const [guestScope, groupScope] = await Promise.all([
+          this.liveGuestScope(tx, context, currentUser.id),
+          this.liveGroupScope(tx, context, currentUser.id),
+        ]);
+        const [guestRows, groupsCount] =
+          guestScope !== null && !canManageGuests
+            ? [[], 0]
+            : await Promise.all([
+                tx.guest.findMany({
+                  where: {
+                    weddingPlanId,
+                    ...(guestScope ? { id: { in: [...guestScope] } } : {}),
+                  },
+                  include: { group: { select: { name: true } } },
+                }),
+                tx.guestGroup.count({
+                  where: {
+                    weddingPlanId,
+                    ...(groupScope ? { id: { in: [...groupScope] } } : {}),
+                  },
+                }),
+              ]);
+        const guests = guestRows.filter(
+          (guest) => guestScope === null || guestScope.has(guest.id),
+        );
+        const bySide = this.emptySideCounts();
+        const byInvitationStatus = this.emptyInvitationStatusCounts();
+        const byAttendanceStatus = this.emptyAttendanceStatusCounts();
+        const byGroup: Record<string, number> = {};
+        let seatsTotal = 0;
+        let companionsTotal = 0;
+        let missingPhoneCount = 0;
+        let missingNameCount = 0;
+        let incompleteGuestsCount = 0;
 
-    for (const guest of guests) {
-      bySide[guest.side]++;
-      byInvitationStatus[guest.invitationStatus]++;
-      byAttendanceStatus[guest.attendanceStatus]++;
-      seatsTotal += guest.seatsCount;
-      companionsTotal += guest.companionsCount;
-      const groupKey = guest.group?.name ?? "ungrouped";
-      byGroup[groupKey] = (byGroup[groupKey] ?? 0) + 1;
-      if (!guest.phone) missingPhoneCount++;
-      if (!guest.name.trim()) missingNameCount++;
-      if (this.isIncompleteGuest(guest)) incompleteGuestsCount++;
-    }
-    const confirmed = byAttendanceStatus[GuestAttendanceStatus.CONFIRMED];
-    const declined = byAttendanceStatus[GuestAttendanceStatus.DECLINED];
-    const pending = byAttendanceStatus[GuestAttendanceStatus.PENDING];
+        for (const guest of guests) {
+          bySide[guest.side]++;
+          byInvitationStatus[guest.invitationStatus]++;
+          byAttendanceStatus[guest.attendanceStatus]++;
+          seatsTotal += guest.seatsCount;
+          companionsTotal += guest.companionsCount;
+          const canReadGroup =
+            groupScope === null ||
+            (guest.groupId !== null && groupScope.has(guest.groupId));
+          const groupKey = canReadGroup
+            ? (guest.group?.name ?? "ungrouped")
+            : "ungrouped";
+          byGroup[groupKey] = (byGroup[groupKey] ?? 0) + 1;
+          if (!guest.phone) missingPhoneCount++;
+          if (!guest.name.trim()) missingNameCount++;
+          if (this.isIncompleteGuest(guest)) incompleteGuestsCount++;
+        }
+        const confirmed = byAttendanceStatus[GuestAttendanceStatus.CONFIRMED];
+        const declined = byAttendanceStatus[GuestAttendanceStatus.DECLINED];
+        const pending = byAttendanceStatus[GuestAttendanceStatus.PENDING];
 
-    return {
+        return {
       weddingPlanId,
       totalGuests: guests.length,
       confirmedGuests: confirmed,
@@ -463,7 +660,170 @@ export class GuestsService {
       byGroup,
       byInvitationStatus,
       byAttendanceStatus,
-    };
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  }
+
+  private isContributor(context: PlanAccessContext): boolean {
+    return !context.isOwner && Boolean(context.sharedMember);
+  }
+
+  private async liveGuestScope(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    actorUserId: string,
+  ): Promise<Set<string> | null> {
+    if (!this.isContributor(context)) return null;
+    if (!this.permissions.canManageGuests(context)) return new Set<string>();
+    return new Set(
+      await this.contributorScope.qualifyingEntityIdsInTransaction(
+        tx,
+        context.plan.id,
+        actorUserId,
+        [ContributionEntityType.GUEST],
+        [ContributionAction.CREATED],
+      ),
+    );
+  }
+
+  private async liveGroupScope(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    actorUserId: string,
+  ): Promise<Set<string> | null> {
+    if (!this.isContributor(context)) return null;
+    if (!this.permissions.canManageGuests(context)) return new Set<string>();
+    return new Set(
+      await this.contributorScope.qualifyingEntityIdsInTransaction(
+        tx,
+        context.plan.id,
+        actorUserId,
+        [ContributionEntityType.GUEST_GROUP],
+        [ContributionAction.CREATED],
+      ),
+    );
+  }
+
+  private async assertLiveGuestReadable(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    actorUserId: string,
+    guest: Guest,
+  ): Promise<void> {
+    if (!this.isContributor(context)) return;
+    if (!this.permissions.canManageGuests(context)) {
+      throw new NotFoundException("Guest not found");
+    }
+    const ids = await this.contributorScope.qualifyingEntityIdsInTransaction(
+      tx,
+      guest.weddingPlanId,
+      actorUserId,
+      [ContributionEntityType.GUEST],
+      [ContributionAction.CREATED],
+    );
+    if (!ids.includes(guest.id)) throw new NotFoundException("Guest not found");
+  }
+
+  private async assertGuestInMutationScope(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    actorUserId: string,
+    guest: Guest,
+  ): Promise<void> {
+    if (!this.isContributor(context)) return;
+    const ids = await this.contributorScope.qualifyingEntityIdsInTransaction(
+      tx,
+      guest.weddingPlanId,
+      actorUserId,
+      [ContributionEntityType.GUEST],
+      [ContributionAction.CREATED],
+    );
+    if (!ids.includes(guest.id)) throw new NotFoundException("Guest not found");
+  }
+
+  private async assertGroupInMutationScope(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    actorUserId: string,
+    group: GuestGroup,
+  ): Promise<void> {
+    if (!this.isContributor(context)) return;
+    const ids = await this.contributorScope.qualifyingEntityIdsInTransaction(
+      tx,
+      group.weddingPlanId,
+      actorUserId,
+      [ContributionEntityType.GUEST_GROUP],
+      [ContributionAction.CREATED],
+    );
+    if (!ids.includes(group.id)) {
+      throw new NotFoundException("Guest group not found");
+    }
+  }
+
+  private guestUpdateAction(
+    previous: Guest,
+    next: Guest,
+  ): ContributionAction {
+    if (
+      previous.status !== next.status ||
+      previous.invitationStatus !== next.invitationStatus ||
+      previous.attendanceStatus !== next.attendanceStatus
+    ) {
+      return ContributionAction.STATUS_CHANGED;
+    }
+    return ContributionAction.UPDATED;
+  }
+
+  private async recordGuestContribution(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    guest: Guest,
+    action: ContributionAction,
+  ): Promise<void> {
+    await this.contributionHistory.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.GUESTS,
+      entityType: ContributionEntityType.GUEST,
+      entityId: guest.id,
+      action,
+      snapshot: buildContributionSnapshot(ContributionEntityType.GUEST, {
+        displayName: guest.name,
+        side: guest.side,
+        invitationStatus: guest.invitationStatus,
+        attendanceStatus: guest.attendanceStatus,
+      }),
+      dedupeKey: `guest:${guest.id}:${action.toLowerCase()}:${guest.updatedAt.toISOString()}`,
+      requiredPermission: ContributionPermission.MANAGE_GUESTS,
+      occurredAt:
+        action === ContributionAction.CREATED
+          ? guest.createdAt
+          : guest.updatedAt,
+    });
+  }
+
+  private async recordGuestGroupContribution(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    group: GuestGroup,
+    action: ContributionAction,
+  ): Promise<void> {
+    await this.contributionHistory.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.GUESTS,
+      entityType: ContributionEntityType.GUEST_GROUP,
+      entityId: group.id,
+      action,
+      snapshot: buildContributionSnapshot(
+        ContributionEntityType.GUEST_GROUP,
+        { displayName: group.name },
+      ),
+      dedupeKey: `guest-group:${group.id}:${action.toLowerCase()}:${group.updatedAt.toISOString()}`,
+      requiredPermission: ContributionPermission.MANAGE_GUESTS,
+      occurredAt:
+        action === ContributionAction.CREATED
+          ? group.createdAt
+          : group.updatedAt,
+    });
   }
 
   private isIncompleteGuest(guest: {
@@ -477,8 +837,16 @@ export class GuestsService {
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
     dto: CreateGuestDto,
+    context: PlanAccessContext,
+    actorUserId: string,
   ): Promise<Guest> {
-    await this.assertGroupBelongsToPlan(tx, dto.groupId, weddingPlanId);
+    await this.assertGroupLinkableInTransaction(
+      tx,
+      dto.groupId,
+      weddingPlanId,
+      context,
+      actorUserId,
+    );
     const name = this.requiredText(dto.name, "name");
     const normalizedName = this.normalizeGuestName(name);
     const phone = PhoneNormalizer.normalizeOptional(dto.phone);
@@ -646,6 +1014,31 @@ export class GuestsService {
     }
   }
 
+  private async assertGroupLinkableInTransaction(
+    tx: Prisma.TransactionClient,
+    groupId: string | null | undefined,
+    weddingPlanId: string,
+    context: PlanAccessContext,
+    actorUserId: string,
+  ): Promise<void> {
+    const normalizedId = this.optionalId(groupId);
+    if (!normalizedId) return;
+    await this.assertGroupBelongsToPlan(tx, normalizedId, weddingPlanId);
+    if (!this.isContributor(context)) return;
+
+    const groupIds =
+      await this.contributorScope.qualifyingEntityIdsInTransaction(
+        tx,
+        weddingPlanId,
+        actorUserId,
+        [ContributionEntityType.GUEST_GROUP],
+        [ContributionAction.CREATED],
+      );
+    if (!groupIds.includes(normalizedId)) {
+      throw new NotFoundException("Guest group not found");
+    }
+  }
+
   private async catchDuplicateGuestConflict<T>(
     promise: Promise<T>,
   ): Promise<T> {
@@ -722,11 +1115,15 @@ export class GuestsService {
   private toResponse(
     guest: Guest,
     includePrivateDetails = true,
+    readableGroupIds: Set<string> | null = null,
   ): GuestResponse {
+    const canReadGroup =
+      readableGroupIds === null ||
+      (guest.groupId !== null && readableGroupIds.has(guest.groupId));
     return {
       id: guest.id,
       weddingPlanId: guest.weddingPlanId,
-      groupId: guest.groupId,
+      groupId: canReadGroup ? guest.groupId : null,
       name: guest.name,
       // Phone is PII: only members who can manage guests may read it. Pure
       // read-only members (e.g. VIEWER) see the guest without the number.

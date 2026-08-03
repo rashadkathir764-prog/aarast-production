@@ -641,13 +641,13 @@ class ApiException implements Exception {
     final serverMessage = _extractServerMessage(data);
     final retryAfterSeconds = _extractRetryAfterSeconds(data);
 
-    // Stable authentication codes are translated at the network boundary so
+    // Stable product error codes are translated at the network boundary so
     // screens that call repositories directly never leak backend English.
-    // Keep the code as well so the auth UI can offer the correct safe action.
-    final localizedAuthMessage = _localizedAuthMessage(serverCode);
-    if (localizedAuthMessage != null) {
+    // Keep the code as well so each feature can offer the correct safe action.
+    final localizedMessage = _localizedServerMessage(serverCode);
+    if (localizedMessage != null) {
       return ApiException(
-        localizedAuthMessage,
+        localizedMessage,
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
@@ -786,8 +786,9 @@ class ApiException implements Exception {
     return null;
   }
 
-  static String? _localizedAuthMessage(String? code) {
+  static String? _localizedServerMessage(String? code) {
     return switch (code) {
+      'TASK_PERMISSION_REVOKED' => 'لم تعد لديك صلاحية لتنفيذ هذه المهمة',
       'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>

@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
   Notification,
   NotificationPreference,
   NotificationPriority,
@@ -11,7 +13,6 @@ import {
   PaymentScheduleStatus,
   Prisma,
   ProviderStatus,
-  SharedMemberRole,
   UserStatus,
   WeddingPlanStatus,
   WeddingTask,
@@ -28,7 +29,10 @@ import {
   isProviderOperational,
   PROVIDER_PORTAL_ROUTE,
 } from "../provider-dashboard/provider-access-policy";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  PermissionService,
+  PlanAccessContext,
+} from "../sharing/permission.service";
 import { isPushNotificationType } from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
@@ -103,7 +107,13 @@ type OwnedProviderLifecycle = {
 
 type NotificationVisibilityClient = Pick<
   Prisma.TransactionClient,
-  "conversation"
+  | "conversation"
+  | "contributionEvent"
+  | "notification"
+  | "paymentSchedule"
+  | "provider"
+  | "sharedMember"
+  | "weddingTask"
 >;
 
 @Injectable()
@@ -128,24 +138,35 @@ export class NotificationsService {
       this.positiveInteger(limitValue ?? "20", "limit"),
       50,
     );
-    const visibility = await this.visibilityWhereForUser(currentUser.id);
-    const where: Prisma.NotificationWhereInput = {
-      userId: currentUser.id,
-      archivedAt: null,
-      ...(type ? { type } : {}),
-      ...(unreadOnly ? { readAt: null } : {}),
-      ...(planId ? { weddingPlanId: planId } : {}),
-      ...(visibility ? { AND: visibility } : {}),
-    };
-    const [total, notifications] = await this.prisma.$transaction([
-      this.prisma.notification.count({ where }),
-      this.prisma.notification.findMany({
-        where,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-    ]);
+    const { total, notifications } = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const provider = await this.findOwnedProviderLifecycle(currentUser.id, tx);
+        const visibility = await this.notificationVisibilityWhere(
+          currentUser.id,
+          provider,
+          tx,
+        );
+        const where: Prisma.NotificationWhereInput = {
+          userId: currentUser.id,
+          archivedAt: null,
+          ...(type ? { type } : {}),
+          ...(unreadOnly ? { readAt: null } : {}),
+          ...(planId ? { weddingPlanId: planId } : {}),
+          AND: visibility,
+        };
+        const [count, rows] = await Promise.all([
+          tx.notification.count({ where }),
+          tx.notification.findMany({
+            where,
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+        ]);
+        return { total: count, notifications: rows };
+      },
+    );
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
     return {
@@ -163,15 +184,22 @@ export class NotificationsService {
     weddingPlanId?: string,
   ): Promise<{ count: number }> {
     const planId = this.optionalText(weddingPlanId);
-    const visibility = await this.visibilityWhereForUser(currentUser.id);
-    const count = await this.prisma.notification.count({
-      where: {
-        userId: currentUser.id,
-        readAt: null,
-        archivedAt: null,
-        ...(planId ? { weddingPlanId: planId } : {}),
-        ...(visibility ? { AND: visibility } : {}),
-      },
+    const count = await runSerializableTransaction(this.prisma, async (tx) => {
+      const provider = await this.findOwnedProviderLifecycle(currentUser.id, tx);
+      const visibility = await this.notificationVisibilityWhere(
+        currentUser.id,
+        provider,
+        tx,
+      );
+      return tx.notification.count({
+        where: {
+          userId: currentUser.id,
+          readAt: null,
+          archivedAt: null,
+          ...(planId ? { weddingPlanId: planId } : {}),
+          AND: visibility,
+        },
+      });
     });
 
     return { count };
@@ -181,8 +209,10 @@ export class NotificationsService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<NotificationResponse> {
-    const notification = await this.findOwnedOrThrow(currentUser, id);
-    return this.toResponse(notification);
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const notification = await this.findOwnedOrThrow(currentUser, id, tx);
+      return this.toResponse(notification);
+    });
   }
 
   async markRead(
@@ -237,9 +267,10 @@ export class NotificationsService {
       ) {
         throw new NotFoundException("Wedding plan not found");
       }
-      const visibility = this.notificationVisibilityWhere(
+      const visibility = await this.notificationVisibilityWhere(
         currentUser.id,
         provider,
+        tx,
       );
       const planVisibility: Prisma.NotificationWhereInput = planId
         ? { weddingPlanId: planId }
@@ -399,6 +430,39 @@ export class NotificationsService {
     return this.toResponse(created);
   }
 
+  async resolveProviderUpdateRecipientInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string | null,
+    requestedUserId: string,
+  ): Promise<string> {
+    if (!weddingPlanId) return requestedUserId;
+
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "SharedMember"
+        WHERE "weddingPlanId" = ${weddingPlanId}
+          AND "userId" = ${requestedUserId}
+        FOR SHARE
+      `,
+    );
+    const plan = await tx.weddingPlan.findUnique({
+      where: { id: weddingPlanId },
+      select: {
+        ownerUserId: true,
+        sharedMembers: {
+          where: { userId: requestedUserId },
+          select: { canManageProviders: true },
+        },
+      },
+    });
+    if (!plan) throw new NotFoundException("Wedding plan not found");
+    if (plan.ownerUserId === requestedUserId) return requestedUserId;
+    return plan.sharedMembers[0]?.canManageProviders
+      ? requestedUserId
+      : plan.ownerUserId;
+  }
+
   async createForPlanParticipants(
     weddingPlanId: string,
     input: PlanParticipantNotificationInput,
@@ -417,6 +481,13 @@ export class NotificationsService {
       tx: Prisma.TransactionClient,
     ) => Promise<PlanParticipantNotificationInput | null>,
     excludedUserIds: string[] = [],
+    recipientScopeFactory?: (
+      tx: Prisma.TransactionClient,
+      plan: {
+        ownerUserId: string;
+        sharedMembers: Array<{ userId: string; canManageTasks: boolean }>;
+      },
+    ) => Promise<ReadonlySet<string>>,
   ): Promise<NotificationResponse[]> {
     const operation = async (
       tx: Prisma.TransactionClient,
@@ -427,7 +498,7 @@ export class NotificationsService {
           ownerUserId: true,
           sharedMembers: {
             where: { receiveNotifications: true },
-            select: { userId: true },
+            select: { userId: true, canManageTasks: true },
           },
         },
       });
@@ -479,7 +550,7 @@ export class NotificationsService {
           status: true,
           sharedMembers: {
             where: { receiveNotifications: true },
-            select: { userId: true },
+            select: { userId: true, canManageTasks: true },
           },
         },
       });
@@ -492,6 +563,9 @@ export class NotificationsService {
 
       const input = await inputFactory(tx);
       if (!input) return [];
+      const scopedRecipients = recipientScopeFactory
+        ? await recipientScopeFactory(tx, plan)
+        : null;
       const excluded = new Set(excludedUserIds);
       const userIds = [
         ...new Set([
@@ -500,7 +574,10 @@ export class NotificationsService {
         ]),
       ]
         .filter(
-          (userId) => activeLockedUserIds.has(userId) && !excluded.has(userId),
+          (userId) =>
+            activeLockedUserIds.has(userId) &&
+            !excluded.has(userId) &&
+            (!scopedRecipients || scopedRecipients.has(userId)),
         )
         .sort();
       const notifications: NotificationResponse[] = [];
@@ -549,6 +626,7 @@ export class NotificationsService {
     ) {
       return;
     }
+    let lockedTask: WeddingTask | null = null;
     await this.createForPlanParticipantsAtomically(
       task.weddingPlanId,
       async (tx) => {
@@ -568,9 +646,61 @@ export class NotificationsService {
         if (!currentTask || currentTask.weddingPlanId !== task.weddingPlanId) {
           return null;
         }
+        lockedTask = currentTask;
         return this.taskDueNotificationInput(currentTask);
       },
+      [],
+      async (tx, plan) =>
+        this.taskDueRecipientIdsInTransaction(tx, plan, lockedTask),
     );
+  }
+
+  private async taskDueRecipientIdsInTransaction(
+    tx: Prisma.TransactionClient,
+    plan: {
+      ownerUserId: string;
+      sharedMembers: Array<{ userId: string; canManageTasks: boolean }>;
+    },
+    task: WeddingTask | null,
+  ): Promise<ReadonlySet<string>> {
+    const recipients = new Set([plan.ownerUserId]);
+    if (!task) return recipients;
+    const taskMembers = plan.sharedMembers.filter(
+      (member) => member.canManageTasks,
+    );
+    if (taskMembers.length === 0) return recipients;
+    const events = await tx.contributionEvent.findMany({
+      where: {
+        historyScope: { weddingPlanId: task.weddingPlanId },
+        contributorTenure: {
+          actorUserId: { in: taskMembers.map((member) => member.userId) },
+        },
+        entityType: ContributionEntityType.TASK,
+        entityId: task.id,
+        action: {
+          in: [ContributionAction.CREATED, ContributionAction.COMPLETED],
+        },
+      },
+      select: {
+        contributorTenure: { select: { actorUserId: true } },
+      },
+    });
+    const contributors = new Set(
+      events.flatMap((event) =>
+        event.contributorTenure.actorUserId
+          ? [event.contributorTenure.actorUserId]
+          : [],
+      ),
+    );
+    for (const member of taskMembers) {
+      if (
+        task.assigneeUserId === member.userId ||
+        contributors.has(member.userId)
+      ) {
+        recipients.add(member.userId);
+      }
+    }
+    return recipients;
   }
 
   private taskDueNotificationInput(
@@ -819,6 +949,65 @@ export class NotificationsService {
           }),
         ]);
 
+        const contributorEvents = await tx.contributionEvent.findMany({
+          where: {
+            historyScope: { weddingPlanId: { in: planIds } },
+            contributorTenure: {
+              actorUserId: { in: recipientUserIds },
+            },
+            entityId: { not: null },
+            OR: [
+              {
+                entityType: ContributionEntityType.TASK,
+                action: {
+                  in: [
+                    ContributionAction.CREATED,
+                    ContributionAction.COMPLETED,
+                  ],
+                },
+              },
+              {
+                entityType: ContributionEntityType.WEDDING_COST,
+                action: {
+                  in: [
+                    ContributionAction.CREATED,
+                    ContributionAction.COMPLETED,
+                    ContributionAction.PAYMENT_RECORDED,
+                  ],
+                },
+              },
+            ],
+          },
+          select: {
+            entityId: true,
+            entityType: true,
+            historyScope: { select: { weddingPlanId: true } },
+            contributorTenure: { select: { actorUserId: true } },
+          },
+        });
+        const contributedTaskIdsByRecipient = new Map<string, Set<string>>();
+        const contributedCostIdsByRecipient = new Map<string, Set<string>>();
+        for (const event of contributorEvents) {
+          if (
+            !event.entityId ||
+            !event.historyScope.weddingPlanId ||
+            !event.contributorTenure.actorUserId
+          ) {
+            continue;
+          }
+          const key = this.planRecipientScopeKey(
+            event.historyScope.weddingPlanId,
+            event.contributorTenure.actorUserId,
+          );
+          const target =
+            event.entityType === ContributionEntityType.TASK
+              ? contributedTaskIdsByRecipient
+              : contributedCostIdsByRecipient;
+          const ids = target.get(key) ?? new Set<string>();
+          ids.add(event.entityId);
+          target.set(key, ids);
+        }
+
         const plansById = new Map(lockedPlans.map((plan) => [plan.id, plan]));
         const preferencesByUserId = new Map(
           preferences.map((preference) => [preference.userId, preference]),
@@ -833,7 +1022,17 @@ export class NotificationsService {
             : NotificationType.TASK_DUE_SOON;
           const recipients = new Set([
             plan.ownerUserId,
-            ...plan.sharedMembers.map((member) => member.userId),
+            ...plan.sharedMembers
+              .filter((member) => {
+                if (!member.canManageTasks) return false;
+                if (task.assigneeUserId === member.userId) return true;
+                return Boolean(
+                  contributedTaskIdsByRecipient
+                    .get(this.planRecipientScopeKey(plan.id, member.userId))
+                    ?.has(task.id),
+                );
+              })
+              .map((member) => member.userId),
           ]);
           for (const userId of recipients) {
             if (
@@ -876,12 +1075,12 @@ export class NotificationsService {
           const recipients = [
             plan.ownerUserId,
             ...plan.sharedMembers
-              .filter((member) =>
-                this.permissions.canViewMoney({
-                  plan,
-                  isOwner: false,
-                  sharedMember: member,
-                }),
+              .filter(
+                (member) =>
+                  member.canViewMoney &&
+                  contributedCostIdsByRecipient
+                    .get(this.planRecipientScopeKey(plan.id, member.userId))
+                    ?.has(schedule.weddingCostId) === true,
               )
               .map((member) => member.userId),
           ];
@@ -1024,20 +1223,23 @@ export class NotificationsService {
 
   async visibilityWhereForUser(
     userId: string,
+    client: NotificationVisibilityClient = this.prisma,
   ): Promise<Prisma.NotificationWhereInput | null> {
-    const provider = await this.findOwnedProviderLifecycle(userId);
-    return this.notificationVisibilityWhere(userId, provider);
+    const provider = await this.findOwnedProviderLifecycle(userId, client);
+    return this.notificationVisibilityWhere(userId, provider, client);
   }
 
-  private notificationVisibilityWhere(
+  private async notificationVisibilityWhere(
     userId: string,
     provider: OwnedProviderLifecycle,
-  ): Prisma.NotificationWhereInput {
+    client: NotificationVisibilityClient,
+  ): Promise<Prisma.NotificationWhereInput> {
     const providerVisibility =
       this.providerNotificationVisibilityWhere(provider);
     const visibility = [
       this.planNotificationVisibilityWhere(userId, provider),
       this.moneyNotificationVisibilityWhere(userId),
+      await this.entityNotificationVisibilityWhere(client, userId),
     ];
     if (providerVisibility) visibility.push(providerVisibility);
     return { AND: visibility };
@@ -1106,7 +1308,6 @@ export class NotificationsService {
                       OR: [
                         { canViewMoney: true },
                         { canManageMoney: true },
-                        { role: SharedMemberRole.FINANCE_MANAGER },
                       ],
                     },
                   },
@@ -1117,6 +1318,223 @@ export class NotificationsService {
         },
       ],
     };
+  }
+
+  private async entityNotificationVisibilityWhere(
+    client: NotificationVisibilityClient,
+    userId: string,
+  ): Promise<Prisma.NotificationWhereInput> {
+    const memberships = await client.sharedMember.findMany({
+      where: { userId },
+      select: {
+        weddingPlanId: true,
+        canManageTasks: true,
+        canViewMoney: true,
+      },
+    });
+    const taskMemberships = memberships.filter(
+      (member) => member.canManageTasks,
+    );
+    const moneyMemberships = memberships.filter((member) => member.canViewMoney);
+    const relevantPlanIds = [
+      ...new Set(
+        [...taskMemberships, ...moneyMemberships].map(
+          (member) => member.weddingPlanId,
+        ),
+      ),
+    ];
+
+    const [assignedTasks, events] = await Promise.all([
+      taskMemberships.length === 0
+        ? Promise.resolve([])
+        : client.weddingTask.findMany({
+            where: {
+              weddingPlanId: {
+                in: taskMemberships.map((member) => member.weddingPlanId),
+              },
+              assigneeUserId: userId,
+            },
+            select: { id: true, weddingPlanId: true },
+          }),
+      relevantPlanIds.length === 0
+        ? Promise.resolve([])
+        : client.contributionEvent.findMany({
+            where: {
+              historyScope: { weddingPlanId: { in: relevantPlanIds } },
+              contributorTenure: { actorUserId: userId },
+              entityId: { not: null },
+              OR: [
+                {
+                  entityType: ContributionEntityType.TASK,
+                  action: {
+                    in: [
+                      ContributionAction.CREATED,
+                      ContributionAction.COMPLETED,
+                    ],
+                  },
+                },
+                {
+                  entityType: ContributionEntityType.WEDDING_COST,
+                  action: {
+                    in: [
+                      ContributionAction.CREATED,
+                      ContributionAction.COMPLETED,
+                      ContributionAction.PAYMENT_RECORDED,
+                    ],
+                  },
+                },
+              ],
+            },
+            select: {
+              entityId: true,
+              entityType: true,
+              historyScope: { select: { weddingPlanId: true } },
+            },
+          }),
+    ]);
+
+    const taskIdsByPlan = new Map<string, Set<string>>();
+    const costIdsByPlan = new Map<string, Set<string>>();
+    for (const task of assignedTasks) {
+      this.addScopedEntityId(taskIdsByPlan, task.weddingPlanId, task.id);
+    }
+    for (const event of events) {
+      if (!event.entityId || !event.historyScope.weddingPlanId) continue;
+      if (event.entityType === ContributionEntityType.TASK) {
+        this.addScopedEntityId(
+          taskIdsByPlan,
+          event.historyScope.weddingPlanId,
+          event.entityId,
+        );
+      } else if (event.entityType === ContributionEntityType.WEDDING_COST) {
+        this.addScopedEntityId(
+          costIdsByPlan,
+          event.historyScope.weddingPlanId,
+          event.entityId,
+        );
+      }
+    }
+
+    const costClauses = [...costIdsByPlan.entries()].flatMap(
+      ([weddingPlanId, ids]) =>
+        ids.size === 0
+          ? []
+          : [
+              {
+                weddingCost: {
+                  weddingPlanId,
+                  id: { in: [...ids] },
+                },
+              },
+            ],
+    );
+    const paymentSchedules =
+      costClauses.length === 0
+        ? []
+        : await client.paymentSchedule.findMany({
+            where: { OR: costClauses },
+            select: {
+              id: true,
+              weddingCost: { select: { weddingPlanId: true } },
+            },
+          });
+    const scheduleIdsByPlan = new Map<string, Set<string>>();
+    for (const schedule of paymentSchedules) {
+      this.addScopedEntityId(
+        scheduleIdsByPlan,
+        schedule.weddingCost.weddingPlanId,
+        schedule.id,
+      );
+    }
+
+    const taskClauses = taskMemberships.flatMap((member) => {
+      const ids = taskIdsByPlan.get(member.weddingPlanId);
+      if (!ids || ids.size === 0) return [];
+      return [
+        {
+          AND: [
+            { weddingPlanId: member.weddingPlanId },
+            { entityId: { in: [...ids] } },
+            {
+              weddingPlan: {
+                is: {
+                  sharedMembers: {
+                    some: { userId, canManageTasks: true },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ];
+    });
+    const paymentClauses = moneyMemberships.flatMap((member) => {
+      const ids = scheduleIdsByPlan.get(member.weddingPlanId);
+      if (!ids || ids.size === 0) return [];
+      return [
+        {
+          AND: [
+            { weddingPlanId: member.weddingPlanId },
+            { entityId: { in: [...ids] } },
+            {
+              weddingPlan: {
+                is: {
+                  sharedMembers: {
+                    some: { userId, canViewMoney: true },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ];
+    });
+
+    return {
+      OR: [
+        { entityType: null },
+        { entityType: { notIn: ["task", "payment_schedule"] } },
+        {
+          AND: [
+            { entityType: "task" },
+            {
+              OR: [
+                { weddingPlan: { is: { ownerUserId: userId } } },
+                ...taskClauses,
+              ],
+            },
+          ],
+        },
+        {
+          AND: [
+            { entityType: "payment_schedule" },
+            {
+              OR: [
+                { weddingPlan: { is: { ownerUserId: userId } } },
+                ...paymentClauses,
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  private addScopedEntityId(
+    target: Map<string, Set<string>>,
+    weddingPlanId: string,
+    entityId: string,
+  ): void {
+    const ids = target.get(weddingPlanId) ?? new Set<string>();
+    ids.add(entityId);
+    target.set(weddingPlanId, ids);
+  }
+
+  private planRecipientScopeKey(
+    weddingPlanId: string,
+    userId: string,
+  ): string {
+    return `${weddingPlanId}\u0000${userId}`;
   }
 
   private async lockOwnedForMutation(
@@ -1133,6 +1551,7 @@ export class NotificationsService {
 
     let canViewMoney = false;
     let provider: OwnedProviderLifecycle | undefined;
+    let planContext: PlanAccessContext | null = null;
     const seedData = this.notificationData(seed);
     const seedDeclaresProviderAudience =
       seedData?.recipientAudience === "PROVIDER";
@@ -1165,10 +1584,17 @@ export class NotificationsService {
           seed.weddingPlanId,
           currentUser,
         );
+        planContext = context;
         canViewMoney = this.permissions.canViewMoney(context);
         if (this.isMoneyNotification(seed) && !canViewMoney) {
           throw new NotFoundException("Notification not found");
         }
+        await this.assertScopedEntityNotificationVisible(
+          tx,
+          context,
+          currentUser.id,
+          seed,
+        );
       }
     } else {
       await assertActiveMutationActorInTransaction(tx, currentUser.id);
@@ -1200,6 +1626,14 @@ export class NotificationsService {
     );
     if (this.isMoneyNotification(notification) && !canViewMoney) {
       throw new NotFoundException("Notification not found");
+    }
+    if (planContext) {
+      await this.assertScopedEntityNotificationVisible(
+        tx,
+        planContext,
+        currentUser.id,
+        notification,
+      );
     }
     return notification;
   }
@@ -1395,15 +1829,114 @@ export class NotificationsService {
     );
   }
 
+  private async assertScopedEntityNotificationVisible(
+    client: NotificationVisibilityClient,
+    context: PlanAccessContext,
+    userId: string,
+    notification: Pick<Notification, "entityType" | "entityId" | "weddingPlanId">,
+  ): Promise<void> {
+    if (context.isOwner) return;
+    const weddingPlanId = notification.weddingPlanId;
+    const entityId = notification.entityId;
+    if (!weddingPlanId || !entityId) {
+      if (
+        notification.entityType === "task" ||
+        notification.entityType === "payment_schedule"
+      ) {
+        throw new NotFoundException("Notification not found");
+      }
+      return;
+    }
+
+    if (notification.entityType === "task") {
+      if (!this.permissions.canManageTasks(context)) {
+        throw new NotFoundException("Notification not found");
+      }
+      const contributedTaskIds = await this.qualifyingContributionEntityIds(
+        client,
+        weddingPlanId,
+        userId,
+        ContributionEntityType.TASK,
+        [ContributionAction.CREATED, ContributionAction.COMPLETED],
+      );
+      const task = await client.weddingTask.findFirst({
+        where: {
+          id: entityId,
+          weddingPlanId,
+          OR: [
+            { assigneeUserId: userId },
+            { id: { in: contributedTaskIds } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!task) throw new NotFoundException("Notification not found");
+      return;
+    }
+
+    if (notification.entityType === "payment_schedule") {
+      if (!this.permissions.canViewMoney(context)) {
+        throw new NotFoundException("Notification not found");
+      }
+      const contributedCostIds = await this.qualifyingContributionEntityIds(
+        client,
+        weddingPlanId,
+        userId,
+        ContributionEntityType.WEDDING_COST,
+        [
+          ContributionAction.CREATED,
+          ContributionAction.COMPLETED,
+          ContributionAction.PAYMENT_RECORDED,
+        ],
+      );
+      if (contributedCostIds.length === 0) {
+        throw new NotFoundException("Notification not found");
+      }
+      const schedule = await client.paymentSchedule.findFirst({
+        where: {
+          id: entityId,
+          weddingCost: {
+            weddingPlanId,
+            id: { in: contributedCostIds },
+          },
+        },
+        select: { id: true },
+      });
+      if (!schedule) throw new NotFoundException("Notification not found");
+    }
+  }
+
+  private async qualifyingContributionEntityIds(
+    client: Pick<NotificationVisibilityClient, "contributionEvent">,
+    weddingPlanId: string,
+    userId: string,
+    entityType: ContributionEntityType,
+    actions: readonly ContributionAction[],
+  ): Promise<string[]> {
+    const events = await client.contributionEvent.findMany({
+      where: {
+        historyScope: { weddingPlanId },
+        contributorTenure: { actorUserId: userId },
+        entityType,
+        action: { in: [...actions] },
+        entityId: { not: null },
+      },
+      select: { entityId: true },
+      distinct: ["entityId"],
+    });
+    return events.flatMap((event) => (event.entityId ? [event.entityId] : []));
+  }
+
   private async findOwnedOrThrow(
     currentUser: AuthenticatedUser,
     id: string,
+    client: Prisma.TransactionClient,
   ): Promise<Notification> {
     const [notification, provider] = await Promise.all([
-      this.prisma.notification.findFirst({
+      client.notification.findFirst({
         where: { id, userId: currentUser.id },
       }),
-      this.findOwnedProviderLifecycle(currentUser.id),
+      this.findOwnedProviderLifecycle(currentUser.id, client),
     ]);
 
     if (!notification) {
@@ -1414,6 +1947,7 @@ export class NotificationsService {
       notification,
       currentUser.id,
       provider,
+      client,
     );
     if (
       this.isOperationalProviderAudienceNotification(notification, provider)
@@ -1425,17 +1959,23 @@ export class NotificationsService {
       notification.weddingPlanId &&
       !this.isPlanInviteNotification(notification)
     ) {
-      if (this.isMoneyNotification(notification)) {
-        await this.permissions.assertMoneyReadable(
-          notification.weddingPlanId,
-          currentUser,
-        );
-      } else {
-        await this.permissions.assertPlanReadable(
-          notification.weddingPlanId,
-          currentUser,
-        );
+      const context = await this.permissions.assertPlanReadableInTransaction(
+        client,
+        notification.weddingPlanId,
+        currentUser,
+      );
+      if (
+        this.isMoneyNotification(notification) &&
+        !this.permissions.canViewMoney(context)
+      ) {
+        throw new NotFoundException("Notification not found");
       }
+      await this.assertScopedEntityNotificationVisible(
+        client,
+        context,
+        currentUser.id,
+        notification,
+      );
     } else if (this.isMoneyNotification(notification)) {
       throw new NotFoundException("Notification not found");
     }
@@ -1445,8 +1985,9 @@ export class NotificationsService {
 
   private async findOwnedProviderLifecycle(
     userId: string,
+    client: Pick<NotificationVisibilityClient, "provider"> = this.prisma,
   ): Promise<OwnedProviderLifecycle> {
-    return this.prisma.provider.findUnique({
+    return client.provider.findUnique({
       where: { userId },
       select: { id: true, status: true },
     });

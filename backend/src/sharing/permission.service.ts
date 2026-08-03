@@ -1,12 +1,12 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import {
   Prisma,
   SharedMember,
-  SharedMemberRole,
   UserStatus,
   WeddingPlan,
   WeddingPlanStatus,
@@ -24,7 +24,42 @@ export interface PlanAccessContext {
   sharedMember: SharedMember | null;
 }
 
+export type LivePlanPermission =
+  | "canViewMoney"
+  | "canManageMoney"
+  | "canManageTasks"
+  | "canManageGuests"
+  | "canManageProviders"
+  | "canInviteMembers"
+  | "canEditPlan";
+
+export function livePlanAuthorizationWhere(
+  context: PlanAccessContext,
+  currentUserId: string,
+  requiredPermissions: readonly LivePlanPermission[] = [],
+): Prisma.WeddingPlanWhereInput {
+  if (context.isOwner) return { ownerUserId: currentUserId };
+  const member = context.sharedMember;
+  if (!member || member.userId !== currentUserId) {
+    throw new NotFoundException("Wedding plan not found");
+  }
+  return {
+    sharedMembers: {
+      some: {
+        id: member.id,
+        userId: currentUserId,
+        ...Object.fromEntries(
+          requiredPermissions.map((permission) => [permission, true]),
+        ),
+      },
+    },
+  };
+}
+
 export const PLAN_ARCHIVED_READ_ONLY = "PLAN_ARCHIVED_READ_ONLY";
+export const TASK_PERMISSION_REVOKED = "TASK_PERMISSION_REVOKED";
+export const TASK_PERMISSION_REVOKED_MESSAGE =
+  "لم تعد لديك صلاحية لتنفيذ هذه المهمة";
 
 export function isWeddingPlanWritable(
   plan: Pick<WeddingPlan, "status">,
@@ -175,7 +210,7 @@ export class PermissionService {
       return context;
     }
 
-    throw new NotFoundException("Wedding plan not found");
+    throw taskPermissionRevoked();
   }
 
   async assertTaskManageableInTransaction(
@@ -191,6 +226,9 @@ export class PermissionService {
     if (this.canManageTasks(context)) {
       assertWeddingPlanWritable(context.plan);
       return context;
+    }
+    if (context.sharedMember) {
+      throw taskPermissionRevoked();
     }
     throw new NotFoundException("Wedding plan not found");
   }
@@ -239,7 +277,7 @@ export class PermissionService {
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext> {
-    const context = await this.getPlanAccessContextWithClient(
+    const context = await this.assertPlanReadableInTransaction(
       tx,
       weddingPlanId,
       currentUser,
@@ -379,60 +417,27 @@ export class PermissionService {
 
   canViewMoney(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
-
-    const member = context.sharedMember;
-    if (!member) return false;
-    return Boolean(member.canViewMoney || this.canManageMoney(context));
+    return Boolean(context.sharedMember?.canViewMoney);
   }
 
   canManageTasks(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
-    const member = context.sharedMember;
-    return Boolean(
-      member?.canManageTasks ||
-      member?.role === SharedMemberRole.GROOM ||
-      member?.role === SharedMemberRole.BRIDE ||
-      member?.role === SharedMemberRole.FAMILY ||
-      member?.role === SharedMemberRole.MANAGER ||
-      member?.role === SharedMemberRole.EDITOR ||
-      member?.role === SharedMemberRole.HELPER ||
-      member?.role === SharedMemberRole.CONTRIBUTOR,
-    );
+    return Boolean(context.sharedMember?.canManageTasks);
   }
 
   canManageGuests(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
-    const member = context.sharedMember;
-    return Boolean(
-      member?.canManageGuests ||
-      member?.role === SharedMemberRole.GROOM ||
-      member?.role === SharedMemberRole.BRIDE ||
-      member?.role === SharedMemberRole.FAMILY ||
-      member?.role === SharedMemberRole.MANAGER ||
-      member?.role === SharedMemberRole.EDITOR ||
-      member?.role === SharedMemberRole.HELPER,
-    );
+    return Boolean(context.sharedMember?.canManageGuests);
   }
 
   canManageMoney(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
-    const member = context.sharedMember;
-    return Boolean(
-      member?.canManageMoney ||
-      member?.role === SharedMemberRole.FINANCE_MANAGER,
-    );
+    return Boolean(context.sharedMember?.canManageMoney);
   }
 
   canManagePlan(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
-    const member = context.sharedMember;
-    return Boolean(
-      member?.canEditPlan ||
-      member?.role === SharedMemberRole.GROOM ||
-      member?.role === SharedMemberRole.BRIDE ||
-      member?.role === SharedMemberRole.MANAGER ||
-      member?.role === SharedMemberRole.EDITOR,
-    );
+    return Boolean(context.sharedMember?.canEditPlan);
   }
 
   canManageProviders(context: PlanAccessContext): boolean {
@@ -443,6 +448,25 @@ export class PermissionService {
   canManageMembers(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
     return Boolean(context.sharedMember?.canInviteMembers);
+  }
+
+  /**
+   * Database predicate for the final live-domain read. The earlier access
+   * lookup chooses response semantics; this predicate makes current stored
+   * membership and flags part of the same SQL statement that returns data.
+   * A removed member or a committed permission revocation therefore cannot
+   * pass on a stale role/default cached by application code.
+   */
+  livePlanAuthorizationWhere(
+    context: PlanAccessContext,
+    currentUserId: string,
+    requiredPermissions: readonly LivePlanPermission[] = [],
+  ): Prisma.WeddingPlanWhereInput {
+    return livePlanAuthorizationWhere(
+      context,
+      currentUserId,
+      requiredPermissions,
+    );
   }
 
   private async getLockedPlanAccessContext(
@@ -609,4 +633,12 @@ export class PermissionService {
     }
     return seed.ownerUserId;
   }
+}
+
+function taskPermissionRevoked(): ForbiddenException {
+  return new ForbiddenException({
+    statusCode: 403,
+    code: TASK_PERMISSION_REVOKED,
+    message: TASK_PERMISSION_REVOKED_MESSAGE,
+  });
 }

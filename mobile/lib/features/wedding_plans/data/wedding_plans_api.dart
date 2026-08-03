@@ -185,6 +185,7 @@ class WeddingPlansApi {
         endpoint: '/api/v1/wedding-plans',
         method: 'POST',
         payload: payload,
+        planId: localId,
         localEntityId: localId,
       );
       await _offline.refreshStatus();
@@ -240,6 +241,7 @@ class WeddingPlansApi {
         endpoint: '/api/v1/wedding-plans/$id',
         method: 'PATCH',
         payload: data,
+        planId: id,
         localEntityId: id,
       );
       await _offline.refreshStatus();

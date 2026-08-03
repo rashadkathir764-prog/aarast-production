@@ -46,3 +46,20 @@ export async function authorizeAdminUserStatusChange(
   }
   return target;
 }
+
+export async function revokePendingInvitesIssuedByUserInTransaction(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  revokedAt: Date,
+): Promise<void> {
+  await tx.planInvite.updateMany({
+    where: {
+      inviterUserId: userId,
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: { gt: revokedAt },
+    },
+    data: { revokedAt },
+  });
+}

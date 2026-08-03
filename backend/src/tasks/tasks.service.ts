@@ -1,13 +1,19 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   NotificationPriority,
   NotificationType,
   Prisma,
+  SharedMember,
   WeddingTask,
   WeddingTaskChecklistItem,
   WeddingTaskPriority,
@@ -17,9 +23,18 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ListQueryDto, pageArgs } from "../common/pagination/list-query.dto";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  livePlanAuthorizationWhere,
+  PermissionService,
+  PlanAccessContext,
+  TASK_PERMISSION_REVOKED,
+  TASK_PERMISSION_REVOKED_MESSAGE,
+} from "../sharing/permission.service";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreateTaskDto } from "./dto/create-task.dto";
@@ -85,6 +100,8 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    private readonly contributionHistory: ContributionHistoryService,
+    private readonly contributorScope: ContributorScopeService,
   ) {}
 
   async create(
@@ -93,12 +110,12 @@ export class TasksService {
     dto: CreateTaskDto,
   ): Promise<TaskResponse> {
     const task = await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertTaskManageableInTransaction(
+      const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         weddingPlanId,
         currentUser,
       );
-      return tx.weddingTask.create({
+      const created = await tx.weddingTask.create({
         data: {
           weddingPlanId,
           assigneeUserId: null,
@@ -114,6 +131,12 @@ export class TasksService {
           priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
         },
       });
+      await this.recordTaskContribution(tx, context, created, {
+        action: ContributionAction.CREATED,
+        dedupeKey: `task:${created.id}:created:${created.createdAt.toISOString()}`,
+        occurredAt: created.createdAt,
+      });
+      return created;
     });
     await this.notifyTaskDueBestEffort(task);
 
@@ -130,14 +153,43 @@ export class TasksService {
       currentUser,
     );
     const canManageTasks = this.permissions.canManageTasks(context);
+    const contributorScope = await this.liveTaskScope(
+      context,
+      currentUser.id,
+    );
+    if (contributorScope !== null && !canManageTasks) return [];
+    const livePlanAuthorization =
+      livePlanAuthorizationWhere(
+        context,
+        currentUser.id,
+        ["canManageTasks"],
+      );
 
     const tasks = await this.prisma.weddingTask.findMany({
-      where: { weddingPlanId },
+      where: {
+        weddingPlanId,
+        weddingPlan: { is: livePlanAuthorization },
+        ...(contributorScope
+          ? {
+              OR: [
+                { assigneeUserId: currentUser.id },
+                { id: { in: [...contributorScope] } },
+              ],
+            }
+          : {}),
+      },
       orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       ...pageArgs(query),
     });
 
-    return tasks.map((task) => this.toResponse(task, canManageTasks));
+    return tasks
+      .filter(
+        (task) =>
+          contributorScope === null ||
+          task.assigneeUserId === currentUser.id ||
+          contributorScope.has(task.id),
+      )
+      .map((task) => this.toResponse(task, canManageTasks));
   }
 
   async findOne(
@@ -149,7 +201,37 @@ export class TasksService {
       task.weddingPlanId,
       currentUser,
     );
-    return this.toResponse(task, this.permissions.canManageTasks(context));
+    const canManageTasks = this.permissions.canManageTasks(context);
+    const contributorScope = await this.liveTaskScope(
+      context,
+      currentUser.id,
+    );
+    if (contributorScope !== null && !canManageTasks) {
+      throw this.taskPermissionDenied();
+    }
+    const visibleTask = await this.prisma.weddingTask.findFirst({
+      where: {
+        id,
+        weddingPlanId: task.weddingPlanId,
+        weddingPlan: {
+          is: livePlanAuthorizationWhere(
+            context,
+            currentUser.id,
+            ["canManageTasks"],
+          ),
+        },
+        ...(contributorScope
+          ? {
+              OR: [
+                { assigneeUserId: currentUser.id },
+                { id: { in: [...contributorScope] } },
+              ],
+            }
+          : {}),
+      },
+    });
+    if (!visibleTask) throw new NotFoundException("Task not found");
+    return this.toResponse(visibleTask, canManageTasks);
   }
 
   async update(
@@ -160,13 +242,18 @@ export class TasksService {
     const existing = await this.findTaskOrThrow(id);
     const manualResponsibility = this.manualResponsibilityUpdate(dto);
     const task = await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertTaskManageableInTransaction(
+      const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         existing.weddingPlanId,
         currentUser,
       );
-      await this.findTaskInTransactionOrThrow(tx, id, existing.weddingPlanId);
-      return tx.weddingTask.update({
+      const current = await this.findTaskInTransactionOrThrow(
+        tx,
+        id,
+        existing.weddingPlanId,
+      );
+      await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
+      const updated = await tx.weddingTask.update({
         where: { id },
         data: {
           ...(dto.title !== undefined
@@ -189,6 +276,12 @@ export class TasksService {
           ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
         },
       });
+      const action = this.taskUpdateAction(current.status, updated.status);
+      await this.recordTaskContribution(tx, context, updated, {
+        action,
+        dedupeKey: `task:${updated.id}:${action.toLowerCase()}:${updated.updatedAt.toISOString()}`,
+      });
+      return updated;
     });
     await this.notifyTaskDueBestEffort(task);
 
@@ -209,18 +302,24 @@ export class TasksService {
         existing.weddingPlanId,
         currentUser,
       );
-      const assigneeReceivesNotifications = assigneeUserId
+      const assigneeAccess = assigneeUserId
         ? await this.assertAssigneeBelongsToPlanInTransaction(
             tx,
             context.plan.ownerUserId,
             existing.weddingPlanId,
             assigneeUserId,
           )
-        : false;
+        : { receiveNotifications: false, member: null };
       const currentTask = await this.findTaskInTransactionOrThrow(
         tx,
         id,
         existing.weddingPlanId,
+      );
+      await this.assertTaskInMutationScope(
+        tx,
+        context,
+        currentUser.id,
+        currentTask,
       );
       const updated = await tx.weddingTask.update({
         where: { id },
@@ -232,12 +331,53 @@ export class TasksService {
                 responsiblePhone: null,
                 responsibleSource: null,
               }
-            : {}),
+          : {}),
         },
       });
+      if (currentTask.assigneeUserId !== assigneeUserId) {
+        const actorAction = assigneeUserId
+          ? ContributionAction.ASSIGNED
+          : ContributionAction.UNASSIGNED;
+        await this.recordTaskContribution(tx, context, updated, {
+          action: actorAction,
+          dedupeKey: `task:${updated.id}:${actorAction.toLowerCase()}:actor:${currentUser.id}:${updated.updatedAt.toISOString()}`,
+        });
+        if (
+          assigneeAccess.member &&
+          assigneeAccess.member.userId !== context.sharedMember?.userId
+        ) {
+          await this.recordTaskForMember(
+            tx,
+            assigneeAccess.member,
+            updated,
+            ContributionAction.ASSIGNED,
+          );
+        }
+        if (
+          currentTask.assigneeUserId &&
+          currentTask.assigneeUserId !== context.sharedMember?.userId
+        ) {
+          const previousMember = await tx.sharedMember.findUnique({
+            where: {
+              weddingPlanId_userId: {
+                weddingPlanId: existing.weddingPlanId,
+                userId: currentTask.assigneeUserId,
+              },
+            },
+          });
+          if (previousMember) {
+            await this.recordTaskForMember(
+              tx,
+              previousMember,
+              updated,
+              ContributionAction.UNASSIGNED,
+            );
+          }
+        }
+      }
       if (
         assigneeUserId &&
-        assigneeReceivesNotifications &&
+        assigneeAccess.receiveNotifications &&
         assigneeUserId !== currentUser.id &&
         assigneeUserId !== currentTask.assigneeUserId
       ) {
@@ -274,13 +414,23 @@ export class TasksService {
   ): Promise<ChecklistItemResponse> {
     const task = await this.findTaskOrThrow(taskId);
     const item = await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertTaskManageableInTransaction(
+      const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         task.weddingPlanId,
         currentUser,
       );
-      await this.findTaskInTransactionOrThrow(tx, taskId, task.weddingPlanId);
-      return tx.weddingTaskChecklistItem.create({
+      const currentTask = await this.findTaskInTransactionOrThrow(
+        tx,
+        taskId,
+        task.weddingPlanId,
+      );
+      await this.assertTaskInMutationScope(
+        tx,
+        context,
+        currentUser.id,
+        currentTask,
+      );
+      const created = await tx.weddingTaskChecklistItem.create({
         data: {
           taskId,
           title: this.requiredText(dto.title, "title"),
@@ -288,6 +438,13 @@ export class TasksService {
           sortOrder: dto.sortOrder ?? 0,
         },
       });
+      await this.recordChecklistContribution(
+        tx,
+        context,
+        created,
+        ContributionAction.CREATED,
+      );
+      return created;
     });
 
     return this.toChecklistItemResponse(item);
@@ -303,18 +460,28 @@ export class TasksService {
     const updated = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
-        await this.permissions.assertTaskManageableInTransaction(
+        const context = await this.permissions.assertTaskManageableInTransaction(
           tx,
           item.task.weddingPlanId,
           currentUser,
         );
-        await this.findTaskInTransactionOrThrow(
+        const currentTask = await this.findTaskInTransactionOrThrow(
           tx,
           taskId,
           item.task.weddingPlanId,
         );
-        await this.findChecklistItemInTransactionOrThrow(tx, taskId, itemId);
-        return tx.weddingTaskChecklistItem.update({
+        await this.assertTaskInMutationScope(
+          tx,
+          context,
+          currentUser.id,
+          currentTask,
+        );
+        const currentItem = await this.findChecklistItemInTransactionOrThrow(
+          tx,
+          taskId,
+          itemId,
+        );
+        const result = await tx.weddingTaskChecklistItem.update({
           where: { id: itemId },
           data: {
             ...(dto.title !== undefined
@@ -326,6 +493,14 @@ export class TasksService {
               : {}),
           },
         });
+        const action =
+          !currentItem.isDone && result.isDone
+            ? ContributionAction.COMPLETED
+            : currentItem.isDone && !result.isDone
+              ? ContributionAction.REOPENED
+              : ContributionAction.UPDATED;
+        await this.recordChecklistContribution(tx, context, result, action);
+        return result;
       },
     );
 
@@ -339,17 +514,33 @@ export class TasksService {
   ): Promise<{ id: string; deleted: true }> {
     const item = await this.findChecklistItemOrThrow(taskId, itemId);
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertTaskManageableInTransaction(
+      const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         item.task.weddingPlanId,
         currentUser,
       );
-      await this.findTaskInTransactionOrThrow(
+      const currentTask = await this.findTaskInTransactionOrThrow(
         tx,
         taskId,
         item.task.weddingPlanId,
       );
-      await this.findChecklistItemInTransactionOrThrow(tx, taskId, itemId);
+      await this.assertTaskInMutationScope(
+        tx,
+        context,
+        currentUser.id,
+        currentTask,
+      );
+      const currentItem = await this.findChecklistItemInTransactionOrThrow(
+        tx,
+        taskId,
+        itemId,
+      );
+      await this.recordChecklistContribution(
+        tx,
+        context,
+        currentItem,
+        ContributionAction.DELETED,
+      );
       await tx.weddingTaskChecklistItem.delete({ where: { id: itemId } });
     });
     return { id: itemId, deleted: true };
@@ -359,13 +550,47 @@ export class TasksService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<TaskSummaryResponse> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    const canManageTasks = this.permissions.canManageTasks(context);
+    const contributorScope = await this.liveTaskScope(
+      context,
+      currentUser.id,
+    );
+    const livePlanAuthorization =
+      livePlanAuthorizationWhere(
+        context,
+        currentUser.id,
+        ["canManageTasks"],
+      );
 
     const today = this.startOfToday();
     const endOfToday = this.endOfToday(today);
-    const tasks = await this.prisma.weddingTask.findMany({
-      where: { weddingPlanId },
-    });
+    const rows =
+      contributorScope !== null && !canManageTasks
+        ? []
+        : await this.prisma.weddingTask.findMany({
+             where: {
+               weddingPlanId,
+               weddingPlan: { is: livePlanAuthorization },
+              ...(contributorScope
+                ? {
+                    OR: [
+                      { assigneeUserId: currentUser.id },
+                      { id: { in: [...contributorScope] } },
+                    ],
+                  }
+                : {}),
+            },
+          });
+    const tasks = rows.filter(
+      (task) =>
+        contributorScope === null ||
+        task.assigneeUserId === currentUser.id ||
+        contributorScope.has(task.id),
+    );
 
     const byStatus = this.emptyStatusCounts();
     const byPriority = this.emptyPriorityCounts();
@@ -438,12 +663,21 @@ export class TasksService {
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findTaskOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertTaskManageableInTransaction(
+      const context = await this.permissions.assertTaskManageableInTransaction(
         tx,
         existing.weddingPlanId,
         currentUser,
       );
-      await this.findTaskInTransactionOrThrow(tx, id, existing.weddingPlanId);
+      const current = await this.findTaskInTransactionOrThrow(
+        tx,
+        id,
+        existing.weddingPlanId,
+      );
+      await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
+      await this.recordTaskContribution(tx, context, current, {
+        action: ContributionAction.DELETED,
+        dedupeKey: `task:${current.id}:deleted:${current.updatedAt.toISOString()}`,
+      });
       await tx.weddingTask.delete({ where: { id } });
     });
     return { id, deleted: true };
@@ -530,8 +764,13 @@ export class TasksService {
     planOwnerUserId: string,
     weddingPlanId: string,
     assigneeUserId: string,
-  ): Promise<boolean> {
-    if (planOwnerUserId === assigneeUserId) return true;
+  ): Promise<{
+    receiveNotifications: boolean;
+    member: SharedMember | null;
+  }> {
+    if (planOwnerUserId === assigneeUserId) {
+      return { receiveNotifications: true, member: null };
+    }
 
     await tx.$queryRaw(
       Prisma.sql`
@@ -554,7 +793,140 @@ export class TasksService {
     if (!member) {
       throw new BadRequestException("assigneeUserId must belong to the plan");
     }
-    return member.receiveNotifications;
+    if (!member.canManageTasks) {
+      throw new BadRequestException(
+        "assigneeUserId must have task permission",
+      );
+    }
+    return { receiveNotifications: member.receiveNotifications, member };
+  }
+
+  private isContributor(context: PlanAccessContext): boolean {
+    return !context.isOwner && Boolean(context.sharedMember);
+  }
+
+  private async liveTaskScope(
+    context: PlanAccessContext,
+    actorUserId: string,
+  ): Promise<Set<string> | null> {
+    if (!this.isContributor(context)) return null;
+    if (!this.permissions.canManageTasks(context)) return new Set<string>();
+    return new Set(
+      await this.contributorScope.qualifyingEntityIds(
+        context.plan.id,
+        actorUserId,
+        [ContributionEntityType.TASK],
+        [ContributionAction.CREATED, ContributionAction.COMPLETED],
+      ),
+    );
+  }
+
+  private async assertTaskInMutationScope(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    actorUserId: string,
+    task: WeddingTask,
+  ): Promise<void> {
+    if (!this.isContributor(context)) return;
+    if (task.assigneeUserId === actorUserId) return;
+    const ids = await this.contributorScope.qualifyingEntityIdsInTransaction(
+      tx,
+      task.weddingPlanId,
+      actorUserId,
+      [ContributionEntityType.TASK],
+      [ContributionAction.CREATED, ContributionAction.COMPLETED],
+    );
+    if (!ids.includes(task.id)) throw new NotFoundException("Task not found");
+  }
+
+  private taskUpdateAction(
+    previous: WeddingTaskStatus,
+    next: WeddingTaskStatus,
+  ): ContributionAction {
+    if (previous !== WeddingTaskStatus.DONE && next === WeddingTaskStatus.DONE) {
+      return ContributionAction.COMPLETED;
+    }
+    if (previous === WeddingTaskStatus.DONE && next !== WeddingTaskStatus.DONE) {
+      return ContributionAction.REOPENED;
+    }
+    if (previous !== next) return ContributionAction.STATUS_CHANGED;
+    return ContributionAction.UPDATED;
+  }
+
+  private async recordTaskContribution(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    task: WeddingTask,
+    input: {
+      action: ContributionAction;
+      dedupeKey: string;
+      occurredAt?: Date;
+    },
+  ): Promise<void> {
+    await this.contributionHistory.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.TASKS,
+      entityType: ContributionEntityType.TASK,
+      entityId: task.id,
+      action: input.action,
+      snapshot: buildContributionSnapshot(ContributionEntityType.TASK, task),
+      dedupeKey: input.dedupeKey,
+      requiredPermission: ContributionPermission.MANAGE_TASKS,
+      occurredAt: input.occurredAt ?? task.updatedAt,
+    });
+  }
+
+  private async recordTaskForMember(
+    tx: Prisma.TransactionClient,
+    member: SharedMember,
+    task: WeddingTask,
+    action: ContributionAction,
+  ): Promise<void> {
+    await this.contributionHistory.ensureTenureInTransaction(tx, member);
+    await this.contributionHistory.recordInTransaction(tx, {
+      weddingPlanId: member.weddingPlanId,
+      actorUserId: member.userId,
+      section: ContributionSection.TASKS,
+      entityType: ContributionEntityType.TASK,
+      entityId: task.id,
+      action,
+      snapshot: buildContributionSnapshot(ContributionEntityType.TASK, task),
+      dedupeKey: `task:${task.id}:${action.toLowerCase()}:member:${member.id}:${task.updatedAt.toISOString()}`,
+      requiredPermission: ContributionPermission.MANAGE_TASKS,
+      authorityVersion: member.authorityVersion,
+      occurredAt: task.updatedAt,
+    });
+  }
+
+  private async recordChecklistContribution(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    item: WeddingTaskChecklistItem,
+    action: ContributionAction,
+  ): Promise<void> {
+    await this.contributionHistory.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.TASKS,
+      entityType: ContributionEntityType.TASK_CHECKLIST_ITEM,
+      entityId: item.id,
+      action,
+      snapshot: buildContributionSnapshot(
+        ContributionEntityType.TASK_CHECKLIST_ITEM,
+        {
+          title: item.title,
+          status: item.isDone ? "DONE" : "TODO",
+        },
+      ),
+      dedupeKey: `task-checklist:${item.id}:${action.toLowerCase()}:${item.updatedAt.toISOString()}`,
+      requiredPermission: ContributionPermission.MANAGE_TASKS,
+      occurredAt: item.updatedAt,
+    });
+  }
+
+  private taskPermissionDenied(): ForbiddenException {
+    return new ForbiddenException({
+      statusCode: 403,
+      code: TASK_PERMISSION_REVOKED,
+      message: TASK_PERMISSION_REVOKED_MESSAGE,
+    });
   }
 
   private async notifyTaskDueBestEffort(task: WeddingTask): Promise<void> {

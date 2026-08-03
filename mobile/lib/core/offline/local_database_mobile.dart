@@ -35,7 +35,7 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   static const _legacyDatabaseName = 'aarast_offline.db';
   static const _databaseName = 'aarast_offline_secure_v1.db';
-  static const _databaseVersion = 6;
+  static const _databaseVersion = 7;
 
   final SharedPreferences _preferences;
   final OfflineDatabaseKeyVault _keyVault;
@@ -82,6 +82,9 @@ class SqliteLocalDatabase implements LocalDatabase {
           batch.delete(OfflineTables.cachedProviderCategories);
           await batch.commit();
         }
+        if (oldVersion < 7) {
+          await _addSyncQueuePlanOwnership(db);
+        }
       },
     );
   }
@@ -116,6 +119,15 @@ class SqliteLocalDatabase implements LocalDatabase {
       limit: 1,
     );
     return rows.isEmpty ? null : rows.first['value']?.toString();
+  }
+
+  @override
+  Future<void> deleteMeta(String key) async {
+    await _db.delete(
+      OfflineTables.localMeta,
+      where: 'key = ?',
+      whereArgs: [key],
+    );
   }
 
   @override
@@ -239,6 +251,7 @@ class SqliteLocalDatabase implements LocalDatabase {
     required String endpoint,
     required String method,
     required Map<String, dynamic> payload,
+    required String? planId,
     String? localEntityId,
     bool replacePendingForEntity = false,
     bool replaceAllPendingForEntity = false,
@@ -246,6 +259,10 @@ class SqliteLocalDatabase implements LocalDatabase {
     DateTime? queueCreatedAt,
   }) async {
     final now = queueCreatedAt ?? nextSyncQueueTimestamp();
+    final normalizedPlanId = normalizeSyncQueuePlanId(
+      entityType: entityType,
+      planId: planId,
+    );
     final normalizedRequestId = clientRequestId?.trim();
     if (clientRequestId != null && normalizedRequestId!.isEmpty) {
       throw ArgumentError.value(
@@ -263,6 +280,7 @@ class SqliteLocalDatabase implements LocalDatabase {
       payloadJson: jsonEncode(payload),
       status: SyncQueueItem.queued,
       retryCount: 0,
+      planId: normalizedPlanId,
       localEntityId: localEntityId,
       createdAt: now,
       updatedAt: now,
@@ -274,16 +292,23 @@ class SqliteLocalDatabase implements LocalDatabase {
           where:
               'entityType = ? AND '
               'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
+              'AND planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'} '
               'AND status != ?',
-          whereArgs: [entityType, ?localEntityId, SyncQueueItem.synced],
+          whereArgs: [
+            entityType,
+            ?localEntityId,
+            ?normalizedPlanId,
+            SyncQueueItem.synced,
+          ],
         );
       } else if (replacePendingForEntity) {
         await txn.delete(
           OfflineTables.syncQueue,
           where:
               'entityType = ? AND operation = ? AND '
-              'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'}',
-          whereArgs: [entityType, operation, ?localEntityId],
+              'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'} '
+              'AND planId ${normalizedPlanId == null ? 'IS NULL' : '= ?'}',
+          whereArgs: [entityType, operation, ?localEntityId, ?normalizedPlanId],
         );
       }
       await txn.insert(OfflineTables.syncQueue, item.toRow());
@@ -309,7 +334,8 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   @override
   Future<void> deletePlanGraph(String planId) async {
-    if (planId.trim().isEmpty) return;
+    final normalizedPlanId = planId.trim();
+    if (normalizedPlanId.isEmpty) return;
     await _db.transaction((txn) async {
       for (final table in OfflineTables.planScopedCacheTables) {
         await txn.delete(
@@ -317,20 +343,25 @@ class SqliteLocalDatabase implements LocalDatabase {
           where: table == OfflineTables.cachedWeddingPlans
               ? 'id = ?'
               : 'planId = ?',
-          whereArgs: [planId],
+          whereArgs: [normalizedPlanId],
         );
       }
-      final pattern = '%$planId%';
       await txn.delete(
         OfflineTables.syncQueue,
-        where: 'endpoint LIKE ? OR payloadJson LIKE ? OR localEntityId = ?',
-        whereArgs: [pattern, pattern, planId],
+        where: 'planId = ?',
+        whereArgs: [normalizedPlanId],
       );
-      await txn.delete(
-        OfflineTables.localMeta,
-        where: 'key LIKE ?',
-        whereArgs: [pattern],
-      );
+      for (final key in [
+        'timeline:$normalizedPlanId',
+        'task-summary:$normalizedPlanId',
+        'money_budget:$normalizedPlanId',
+      ]) {
+        await txn.delete(
+          OfflineTables.localMeta,
+          where: 'key = ?',
+          whereArgs: [key],
+        );
+      }
     });
   }
 
@@ -403,8 +434,14 @@ class SqliteLocalDatabase implements LocalDatabase {
         'lastError': null,
         'updatedAt': DateTime.now().toIso8601String(),
       },
-      where: 'status = ?',
-      whereArgs: [SyncQueueItem.blocked],
+      where:
+          'status = ? AND '
+          '(lastError IS NULL OR lastError NOT IN (?, ?))',
+      whereArgs: [
+        SyncQueueItem.blocked,
+        unknownSyncQueuePlanOwnershipError,
+        invalidSyncQueuePlanScopeError,
+      ],
     );
   }
 
@@ -438,6 +475,7 @@ class SqliteLocalDatabase implements LocalDatabase {
             'endpoint': endpoint.replaceAll(localId, remoteId),
             if (row['localEntityId']?.toString() == localId)
               'localEntityId': remoteId,
+            if (row['planId']?.toString() == localId) 'planId': remoteId,
             'updatedAt': DateTime.now().toIso8601String(),
           },
           where: 'id = ?',
@@ -506,6 +544,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
   endpoint TEXT NOT NULL,
   method TEXT NOT NULL,
   payloadJson TEXT NOT NULL,
+  planId TEXT,
   status TEXT NOT NULL,
   retryCount INTEGER NOT NULL DEFAULT 0,
   lastError TEXT,
@@ -514,6 +553,10 @@ CREATE TABLE ${OfflineTables.syncQueue} (
   updatedAt TEXT NOT NULL
 )
 ''');
+    batch.execute(
+      'CREATE INDEX sync_queue_plan_id_idx '
+      'ON ${OfflineTables.syncQueue}(planId)',
+    );
 
     _cacheTable(
       batch,
@@ -643,6 +686,40 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.localMeta,
       where: 'key LIKE ? OR key LIKE ?',
       whereArgs: const ['expense_summary:%', 'money_summary:%'],
+    );
+  }
+
+  static Future<void> _addSyncQueuePlanOwnership(Database db) async {
+    await db.execute(
+      'ALTER TABLE ${OfflineTables.syncQueue} ADD COLUMN planId TEXT',
+    );
+    final rows = await db.query(
+      OfflineTables.syncQueue,
+      columns: const ['id', 'entityType', 'payloadJson'],
+    );
+    final now = DateTime.now().toIso8601String();
+    for (final row in rows) {
+      final entityType = row['entityType']?.toString();
+      if (!OfflineTables.planScopedQueueEntityTypes.contains(entityType)) {
+        continue;
+      }
+      final planId = trustedLegacyQueuePlanId(row['payloadJson']);
+      await db.update(
+        OfflineTables.syncQueue,
+        planId == null
+            ? {
+                'status': SyncQueueItem.blocked,
+                'lastError': unknownSyncQueuePlanOwnershipError,
+                'updatedAt': now,
+              }
+            : {'planId': planId},
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+    }
+    await db.execute(
+      'CREATE INDEX sync_queue_plan_id_idx '
+      'ON ${OfflineTables.syncQueue}(planId)',
     );
   }
 

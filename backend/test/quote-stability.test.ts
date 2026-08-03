@@ -257,6 +257,9 @@ test("backend rejects acceptance of an expired pending offer", async () => {
   };
   const service = new MarketplaceService(
     {
+      contributionEvent: {
+        findMany: async () => [{ entityId: quoteId }],
+      },
       quoteOffer: { findUnique: async () => offer },
       $transaction: async (operation: (client: any) => Promise<unknown>) =>
         operation(tx),
@@ -266,7 +269,9 @@ test("backend rejects acceptance of an expired pending offer", async () => {
       assertProviderManageable: async () => ({}),
       assertMoneyManageable: async () => ({}),
       assertProviderAndMoneyManageableInTransaction: async () => ({}),
+      canManageProviders: () => true,
     } as any,
+    {} as any,
     {} as any,
   );
   await assert.rejects(
@@ -367,6 +372,11 @@ test("concurrent provider submissions create exactly one offer", async () => {
     },
   };
   const notifications = {
+    resolveProviderUpdateRecipientInTransaction: async (
+      _tx: any,
+      _weddingPlanId: string | null,
+      requestedUserId: string,
+    ) => requestedUserId,
     createNotificationInTransaction: async (_tx: any, input: any) => input,
   };
   const service = new ProviderDashboardService(

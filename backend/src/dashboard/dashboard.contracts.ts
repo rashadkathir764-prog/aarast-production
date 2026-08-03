@@ -9,6 +9,7 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { WeddingLocationResponse } from "../wedding-plans/wedding-location";
+import type { ContributionHistorySummaryResponse } from "../contribution-history/contribution-history.contracts";
 
 export interface DashboardPermissionSummary {
   isOwner: boolean;
@@ -26,6 +27,8 @@ export interface WeddingPlanDashboardSummaryResponse {
   dataScope: "ACCOUNT_BACKED";
   accountBacked: true;
   planId: string;
+  membershipId: string | null;
+  membershipAuthorityVersion: number | null;
   title: string;
   currency: string;
   weddingDate: Date | null;
@@ -134,6 +137,7 @@ export interface WeddingPlanDashboardSummaryResponse {
   generatedAt: Date;
   currentUserRole: "OWNER" | SharedMemberRole | null;
   permissions: DashboardPermissionSummary;
+  contributionHistory: ContributionHistorySummaryResponse | null;
 }
 
 export type DashboardImportantItemType =

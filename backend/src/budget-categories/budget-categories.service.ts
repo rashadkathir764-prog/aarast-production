@@ -4,12 +4,28 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { BudgetCategory, Prisma } from "@prisma/client";
+import {
+  BudgetCategory,
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
+  Prisma,
+} from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { requiredMoneyAmount } from "../common/validation/money";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../common/prisma/serializable-transaction";
 import { PrismaService } from "../prisma/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  PermissionService,
+  type PlanAccessContext,
+} from "../sharing/permission.service";
 import { CreateBudgetCategoryDto } from "./dto/create-budget-category.dto";
 import { UpdateBudgetCategoryDto } from "./dto/update-budget-category.dto";
 
@@ -30,6 +46,8 @@ export class BudgetCategoriesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly contributorScope?: ContributorScopeService,
+    private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 
   async create(
@@ -62,6 +80,24 @@ export class BudgetCategoriesService {
           },
           include: { _count: { select: { weddingCosts: true } } },
         });
+        const history = this.historyForContext(context);
+        if (history) await history.recordForContextInTransaction(
+          tx,
+          context,
+          {
+            section: ContributionSection.MONEY,
+            entityType: ContributionEntityType.BUDGET_CATEGORY,
+            entityId: category.id,
+            action: ContributionAction.CREATED,
+            snapshot: buildContributionSnapshot(
+              ContributionEntityType.BUDGET_CATEGORY,
+              { title: category.name },
+            ),
+            dedupeKey: `money:budget-category:${category.id}:created`,
+            requiredPermission: ContributionPermission.MANAGE_MONEY,
+            occurredAt: category.createdAt,
+          },
+        );
         return this.toResponse(category);
       });
     } catch (error) {
@@ -73,13 +109,57 @@ export class BudgetCategoriesService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<BudgetCategoryResponse[]> {
-    await this.permissions.assertMoneyReadable(weddingPlanId, currentUser);
-    const categories = await this.prisma.budgetCategory.findMany({
-      where: { weddingPlanId },
-      include: { _count: { select: { weddingCosts: true } } },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    });
-    return categories.map((category) => this.toResponse(category));
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const access =
+          await this.permissions.assertMoneyReadableInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const [categoryIds, costIds] = access.isOwner
+          ? [null, null]
+          : await Promise.all([
+              this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+                tx,
+                weddingPlanId,
+                currentUser.id,
+                [ContributionEntityType.BUDGET_CATEGORY],
+                [ContributionAction.CREATED],
+              ),
+              this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+                tx,
+                weddingPlanId,
+                currentUser.id,
+                [ContributionEntityType.WEDDING_COST],
+                [
+                  ContributionAction.CREATED,
+                  ContributionAction.COMPLETED,
+                  ContributionAction.PAYMENT_RECORDED,
+                ],
+              ),
+            ]);
+        const categories = await tx.budgetCategory.findMany({
+          where: {
+            weddingPlanId,
+            ...(categoryIds ? { id: { in: categoryIds } } : {}),
+          },
+          include: {
+            _count: {
+              select: {
+                weddingCosts: costIds
+                  ? { where: { id: { in: costIds } } }
+                  : true,
+              },
+            },
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        });
+        return categories.map((category) => this.toResponse(category));
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async update(
@@ -88,6 +168,11 @@ export class BudgetCategoriesService {
     dto: UpdateBudgetCategoryDto,
   ): Promise<BudgetCategoryResponse> {
     const existing = await this.findCategoryOrThrow(id);
+    await this.assertScopedCategory(
+      currentUser,
+      existing.weddingPlanId,
+      id,
+    );
     try {
       return await runSerializableTransaction(this.prisma, async (tx) => {
         const context =
@@ -96,6 +181,7 @@ export class BudgetCategoriesService {
             existing.weddingPlanId,
             currentUser,
           );
+        await this.assertScopedCategoryInTransaction(tx, context, id);
         const locked = await tx.budgetCategory.findUnique({ where: { id } });
         if (!locked || locked.weddingPlanId !== existing.weddingPlanId) {
           throw new NotFoundException("Budget category not found");
@@ -115,6 +201,19 @@ export class BudgetCategoriesService {
           dto.name === undefined
             ? locked.name
             : this.requiredText(dto.name, "name");
+        const scopedCostIds = context.isOwner
+          ? null
+          : await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+              tx,
+              locked.weddingPlanId,
+              currentUser.id,
+              [ContributionEntityType.WEDDING_COST],
+              [
+                ContributionAction.CREATED,
+                ContributionAction.COMPLETED,
+                ContributionAction.PAYMENT_RECORDED,
+              ],
+            );
         const category = await tx.budgetCategory.update({
           where: { id },
           data: {
@@ -122,8 +221,37 @@ export class BudgetCategoriesService {
             normalizedName: this.normalizedName(name),
             allocatedAmount: allocation,
           },
-          include: { _count: { select: { weddingCosts: true } } },
+          include: {
+            _count: {
+              select: {
+                weddingCosts: scopedCostIds
+                  ? { where: { id: { in: scopedCostIds } } }
+                  : true,
+              },
+            },
+          },
         });
+        const history = this.historyForContext(context);
+        if (history) await history.recordForContextInTransaction(
+          tx,
+          context,
+          {
+            section: ContributionSection.MONEY,
+            entityType: ContributionEntityType.BUDGET_CATEGORY,
+            entityId: category.id,
+            action: ContributionAction.UPDATED,
+            snapshot: buildContributionSnapshot(
+              ContributionEntityType.BUDGET_CATEGORY,
+              {
+                title: category.name,
+                amount: category.allocatedAmount,
+              },
+            ),
+            dedupeKey: `money:budget-category:${category.id}:updated:${category.updatedAt.toISOString()}`,
+            requiredPermission: ContributionPermission.MANAGE_MONEY,
+            occurredAt: category.updatedAt,
+          },
+        );
         return this.toResponse(category);
       });
     } catch (error) {
@@ -136,12 +264,18 @@ export class BudgetCategoriesService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const category = await this.findCategoryOrThrow(id);
+    await this.assertScopedCategory(
+      currentUser,
+      category.weddingPlanId,
+      id,
+    );
     await runSerializableTransaction(this.prisma, async (tx) => {
-      await this.permissions.assertMoneyManageableForUpdateInTransaction(
+      const context = await this.permissions.assertMoneyManageableForUpdateInTransaction(
         tx,
         category.weddingPlanId,
         currentUser,
       );
+      await this.assertScopedCategoryInTransaction(tx, context, id);
       const locked = await tx.budgetCategory.findUnique({ where: { id } });
       if (!locked || locked.weddingPlanId !== category.weddingPlanId) {
         throw new NotFoundException("Budget category not found");
@@ -154,6 +288,23 @@ export class BudgetCategoriesService {
           "Move or delete this category costs before deleting the category",
         );
       }
+      const history = this.historyForContext(context);
+      if (history) await history.recordForContextInTransaction(
+        tx,
+        context,
+        {
+          section: ContributionSection.MONEY,
+          entityType: ContributionEntityType.BUDGET_CATEGORY,
+          entityId: locked.id,
+          action: ContributionAction.DELETED,
+          snapshot: buildContributionSnapshot(
+            ContributionEntityType.BUDGET_CATEGORY,
+            { title: locked.name, amount: locked.allocatedAmount },
+          ),
+          dedupeKey: `money:budget-category:${locked.id}:deleted`,
+          requiredPermission: ContributionPermission.MANAGE_MONEY,
+        },
+      );
       await tx.budgetCategory.delete({ where: { id } });
     });
     return { id, deleted: true };
@@ -194,6 +345,66 @@ export class BudgetCategoriesService {
     });
     if (!category) throw new NotFoundException("Budget category not found");
     return category;
+  }
+
+  private requiredContributorScope(): ContributorScopeService {
+    if (!this.contributorScope) {
+      throw new Error(
+        "ContributorScopeService is required for contributor category access",
+      );
+    }
+    return this.contributorScope;
+  }
+
+  private historyForContext(
+    context: PlanAccessContext,
+  ): ContributionHistoryService | null {
+    if (context.isOwner) return null;
+    if (!this.contributionHistory) {
+      throw new Error(
+        "ContributionHistoryService is required for contributor category writes",
+      );
+    }
+    return this.contributionHistory;
+  }
+
+  private async assertScopedCategory(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    categoryId: string,
+  ): Promise<void> {
+    const access = await this.permissions.assertMoneyReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    if (access.isOwner) return;
+    const categoryIds =
+      await this.requiredContributorScope().qualifyingEntityIds(
+        weddingPlanId,
+        currentUser.id,
+        [ContributionEntityType.BUDGET_CATEGORY],
+        [ContributionAction.CREATED],
+      );
+    if (categoryIds.includes(categoryId)) return;
+    throw new NotFoundException("Budget category not found");
+  }
+
+  private async assertScopedCategoryInTransaction(
+    tx: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    categoryId: string,
+  ): Promise<void> {
+    if (context.isOwner || !context.sharedMember) return;
+    const categoryIds =
+      await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+        tx,
+        context.plan.id,
+        context.sharedMember.userId,
+        [ContributionEntityType.BUDGET_CATEGORY],
+        [ContributionAction.CREATED],
+      );
+    if (categoryIds.includes(categoryId)) return;
+    throw new NotFoundException("Budget category not found");
   }
 
   private requiredText(value: string, field: string) {

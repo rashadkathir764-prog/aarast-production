@@ -40,6 +40,8 @@ void main() {
       );
       expect(contributor.role, AccountContextRole.contributor);
       expect(contributor.contextKey, 'plan:plan-1:contributor');
+      expect(contributor.membershipId, 'member-plan-1');
+      expect(contributor.membershipAuthorityVersion, 1);
 
       final expected = <String, AccountContextAccessMode>{
         'PENDING': AccountContextAccessMode.limited,
@@ -89,6 +91,14 @@ void main() {
         {
           ...accountContextJson(role: AccountContextRole.provider),
           'weddingPlanId': 'plan-1',
+        },
+        {
+          ...accountContextJson(role: AccountContextRole.contributor),
+          'membershipId': null,
+        },
+        {
+          ...accountContextJson(role: AccountContextRole.contributor),
+          'membershipAuthorityVersion': 0,
         },
       ];
 

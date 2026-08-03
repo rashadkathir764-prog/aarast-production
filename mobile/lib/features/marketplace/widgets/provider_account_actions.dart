@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/widgets/account_deletion_flow.dart';
 
 class ProviderAccountActions extends StatefulWidget {
   const ProviderAccountActions({
@@ -321,96 +322,16 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
 
   Future<void> _confirmDeleteAccount() async {
     if (_isBusy) return;
-    var confirmationText = '';
-    final confirmed =
-        await showAarastBottomSheet<bool>(
-          context: context,
-          isScrollControlled: true,
-          builder: (sheetContext) => StatefulBuilder(
-            builder: (sheetContext, setSheetState) => Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    18,
-                    20,
-                    20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        LucideIcons.trash2,
-                        size: 36,
-                        color: AppTheme.danger,
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'حذف حسابك نهائيًا؟',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(sheetContext).textTheme.titleLarge
-                            ?.copyWith(
-                              color: AppTheme.ink,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'سيُحذف الحساب وملف المزوّد والخدمات والصور وكل بياناتك نهائيًا. لا يمكن التراجع بعد الحذف.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppTheme.muted,
-                          fontWeight: FontWeight.w700,
-                          height: 1.45,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        key: const Key('provider-delete-account-input'),
-                        textAlign: TextAlign.center,
-                        decoration: const InputDecoration(
-                          labelText: 'اكتب «حذف» للتأكيد',
-                        ),
-                        onChanged: (value) =>
-                            setSheetState(() => confirmationText = value),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () =>
-                                  Navigator.pop(sheetContext, false),
-                              child: const Text('إلغاء'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton.icon(
-                              key: const Key('provider-delete-account-confirm'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppTheme.danger,
-                              ),
-                              onPressed: confirmationText.trim() == 'حذف'
-                                  ? () => Navigator.pop(sheetContext, true)
-                                  : null,
-                              icon: const Icon(LucideIcons.trash2),
-                              label: const Text('حذف نهائي'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ) ==
-        true;
-    if (!confirmed || !mounted) return;
+    final sharedConfirmed = await confirmAccountDeletion(
+      context,
+      keyPrefix: 'provider',
+    );
+    if (!sharedConfirmed || !mounted) return;
+    await _performConfirmedAccountDeletion();
+  }
 
+  Future<void> _performConfirmedAccountDeletion() async {
+    if (_isBusy) return;
     setState(() {
       _isDeleting = true;
       _statusMessage = null;
@@ -427,7 +348,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
       if (!mounted) return;
       setState(() {
         _statusIsError = true;
-        _statusMessage = 'تعذر حذف الحساب. حاول مرة أخرى.';
+        _statusMessage = 'تعذّر حذف الحساب. حاول مرة أخرى.';
       });
     } finally {
       if (mounted) setState(() => _isDeleting = false);

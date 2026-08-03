@@ -144,10 +144,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
     final auth = context.read<AuthController>();
     final deleted = await auth.deleteAccount();
     if (!mounted) return deleted ? null : 'تعذر حذف الحساب.';
-    if (deleted) {
-      context.go(AppRouter.login);
-      return null;
-    }
+    if (deleted) return null;
     return auth.errorMessage ?? 'تعذر حذف الحساب. حاول مرة أخرى.';
   }
 

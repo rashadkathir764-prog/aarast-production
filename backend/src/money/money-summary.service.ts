@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
   CostPaymentType,
   PaymentScheduleStatus,
   Prisma,
   WeddingCostStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -24,6 +27,7 @@ export class MoneySummaryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly contributorScope?: ContributorScopeService,
   ) {}
 
   async getSummary(currentUser: AuthenticatedUser, weddingPlanId: string) {
@@ -36,14 +40,44 @@ export class MoneySummaryService {
             weddingPlanId,
             currentUser,
           );
+        const contributionScope = access.isOwner
+          ? null
+          : {
+              costIds: await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+                tx,
+                weddingPlanId,
+                currentUser.id,
+                [ContributionEntityType.WEDDING_COST],
+                [
+                  ContributionAction.CREATED,
+                  ContributionAction.COMPLETED,
+                  ContributionAction.PAYMENT_RECORDED,
+                ],
+              ),
+              categoryIds: await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+                tx,
+                weddingPlanId,
+                currentUser.id,
+                [ContributionEntityType.BUDGET_CATEGORY],
+                [ContributionAction.CREATED],
+              ),
+            };
         return buildMoneySummaryInTransaction(
           tx,
           this.permissions,
           access,
+          contributionScope,
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+  }
+
+  private requiredContributorScope(): ContributorScopeService {
+    if (!this.contributorScope) {
+      throw new Error("ContributorScopeService is required for contributor money summaries");
+    }
+    return this.contributorScope;
   }
 }
 
@@ -51,6 +85,10 @@ export async function buildMoneySummaryInTransaction(
   tx: Prisma.TransactionClient,
   permissions: PermissionService,
   access: PlanAccessContext,
+  contributionScope: {
+    costIds: readonly string[];
+    categoryIds: readonly string[];
+  } | null = null,
 ) {
   const weddingPlanId = access.plan.id;
   const [plan, categories, costs, payments, schedules] = await Promise.all([
@@ -59,12 +97,20 @@ export async function buildMoneySummaryInTransaction(
       select: { estimatedBudget: true, currency: true },
     }),
     tx.budgetCategory.findMany({
-      where: { weddingPlanId },
+      where: {
+        weddingPlanId,
+        ...(contributionScope
+          ? { id: { in: [...contributionScope.categoryIds] } }
+          : {}),
+      },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
     tx.weddingCost.findMany({
       where: {
         weddingPlanId,
+        ...(contributionScope
+          ? { id: { in: [...contributionScope.costIds] } }
+          : {}),
         status: { not: WeddingCostStatus.CANCELLED },
       },
       select: {
@@ -78,6 +124,9 @@ export async function buildMoneySummaryInTransaction(
       where: {
         weddingCost: {
           weddingPlanId,
+          ...(contributionScope
+            ? { id: { in: [...contributionScope.costIds] } }
+            : {}),
           status: { not: WeddingCostStatus.CANCELLED },
         },
       },
@@ -87,6 +136,9 @@ export async function buildMoneySummaryInTransaction(
       where: {
         weddingCost: {
           weddingPlanId,
+          ...(contributionScope
+            ? { id: { in: [...contributionScope.costIds] } }
+            : {}),
           status: { not: WeddingCostStatus.CANCELLED },
         },
       },
@@ -125,7 +177,10 @@ export async function buildMoneySummaryInTransaction(
     (sum, category) => sum.plus(category.allocatedAmount ?? zero()),
     zero(),
   );
-  const totalBudget = plan.estimatedBudget;
+  // The plan-wide budget belongs to the owner. A contributor receives only
+  // totals derived from their own scoped costs/categories, never a value (or
+  // a remaining/unallocated derivative) based on the owner's budget.
+  const totalBudget = contributionScope ? null : plan.estimatedBudget;
   const now = new Date();
   const today = startOfTodayInRiyadh(now);
   const dueSoonEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);

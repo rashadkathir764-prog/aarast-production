@@ -1,13 +1,26 @@
-import { ConflictException, NotFoundException } from "@nestjs/common";
 import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   ConversationEventType,
   QuoteRequestStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { PrismaService } from "../prisma/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  assertWeddingPlanWritable,
+  PermissionService,
+} from "../sharing/permission.service";
 import {
   assertQuoteRequestTransition,
   lockQuoteRequestTransitionRow,
@@ -21,10 +34,11 @@ import {
   assertProviderAccountUnchanged,
   lockMarketplaceMutationUsers,
   lockMarketplaceProvider,
-  lockWritableMarketplacePlan,
 } from "./marketplace-write-locks";
 
-export type QuoteCancellationAccess = "PLAN_OR_OWNER" | "OWNER_ONLY";
+export type QuoteCancellationAccess =
+  | "PLAN_OR_REQUESTER"
+  | "REQUESTER_ONLY";
 
 export function cancelQuoteRequestInTransaction(
   prisma: PrismaService,
@@ -32,11 +46,14 @@ export function cancelQuoteRequestInTransaction(
   currentUser: AuthenticatedUser,
   id: string,
   access: QuoteCancellationAccess,
+  history?: ContributionHistoryService,
 ) {
   return runSerializableTransaction(prisma, async (tx) => {
     const seed = await tx.quoteRequest.findFirst({
       where:
-        access === "OWNER_ONLY" ? { id, userId: currentUser.id } : { id },
+        access === "REQUESTER_ONLY"
+          ? { id, userId: currentUser.id }
+          : { id },
       select: {
         userId: true,
         weddingPlanId: true,
@@ -56,25 +73,64 @@ export function cancelQuoteRequestInTransaction(
       [seed.userId, seed.weddingPlan?.ownerUserId, seed.provider.userId],
     );
     let visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY;
-    if (access === "PLAN_OR_OWNER") {
-      if (seed.weddingPlanId) {
-        const context =
-          await permissions.assertProviderManageableInTransaction(
-            tx,
-            seed.weddingPlanId,
-            currentUser,
-          );
-        if (seed.userId !== currentUser.id) {
-          visibility = {
-            budget: permissions.canViewMoney(context),
-            contact: permissions.canManageProviders(context),
-          };
-        }
-      } else if (seed.userId !== currentUser.id) {
+    let planContext: Awaited<
+      ReturnType<PermissionService["assertPlanReadableInTransaction"]>
+    > | null = null;
+    if (seed.weddingPlanId) {
+      const context = await permissions.assertPlanReadableInTransaction(
+        tx,
+        seed.weddingPlanId,
+        currentUser,
+      );
+      if (!permissions.canManageProviders(context)) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: "PROVIDER_PERMISSION_REVOKED",
+          message: "Provider access has been revoked",
+        });
+      }
+      assertWeddingPlanWritable(context.plan);
+      planContext = context;
+      if (
+        access === "PLAN_OR_REQUESTER" &&
+        !context.isOwner &&
+        seed.userId !== currentUser.id
+      ) {
         throw new NotFoundException("Quote request not found");
       }
-    } else if (seed.weddingPlanId) {
-      await lockWritableMarketplacePlan(tx, seed.weddingPlanId);
+      if (!context.isOwner) {
+        const currentTenureEvent = await tx.contributionEvent.findFirst({
+          where: {
+            historyScope: { weddingPlanId: seed.weddingPlanId },
+            contributorTenure: {
+              actorUserId: currentUser.id,
+            },
+            entityType: ContributionEntityType.QUOTE_REQUEST,
+            entityId: id,
+            action: {
+              in: [
+                ContributionAction.CREATED,
+                ContributionAction.LEGACY_CAPTURED,
+              ],
+            },
+          },
+          select: { id: true },
+        });
+        if (!currentTenureEvent) {
+          throw new NotFoundException("Quote request not found");
+        }
+      }
+      if (seed.userId !== currentUser.id) {
+        visibility = {
+          budget: permissions.canViewMoney(context),
+          contact: permissions.canManageProviders(context),
+        };
+      }
+    } else if (
+      access === "PLAN_OR_REQUESTER" &&
+      seed.userId !== currentUser.id
+    ) {
+      throw new NotFoundException("Quote request not found");
     }
 
     const provider = await lockMarketplaceProvider(tx, seed.providerId);
@@ -132,6 +188,26 @@ export function cancelQuoteRequestInTransaction(
       dedupeKey: `quote-request:${existing.id}:cancelled`,
       data: { status: QuoteRequestStatus.CANCELLED },
     });
+    if (planContext && history) {
+      await history.recordForContextInTransaction(tx, planContext, {
+        section: ContributionSection.PROVIDERS,
+        entityType: ContributionEntityType.QUOTE_REQUEST,
+        entityId: quote.id,
+        action: ContributionAction.STATUS_CHANGED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.QUOTE_REQUEST,
+          {
+            providerDisplayLabel: quote.provider.businessName,
+            categoryLabel: quote.service?.category.nameAr,
+            requestStatus: quote.status,
+            status: quote.status,
+          },
+        ),
+        dedupeKey: `provider:quote-request:${quote.id}:cancelled`,
+        requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
+        occurredAt: cancelledAt,
+      });
+    }
     return { quote, visibility };
   });
 }

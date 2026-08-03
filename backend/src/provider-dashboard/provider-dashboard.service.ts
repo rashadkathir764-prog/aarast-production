@@ -840,10 +840,16 @@ export class ProviderDashboardService {
           dedupeKey: `quote-request:${existing.id}:rejected`,
           data: { status: QuoteRequestStatus.REJECTED },
         });
+        const recipientId =
+          await this.notifications.resolveProviderUpdateRecipientInTransaction(
+            tx,
+            existing.weddingPlanId,
+            existing.userId,
+          );
         await this.notifications.createNotificationInTransaction(
           tx,
           providerRejectedRequestNotification({
-            requesterId: existing.userId,
+            requesterId: recipientId,
             weddingPlanId: existing.weddingPlanId,
             quoteRequestId: existing.id,
             providerId: provider.id,
@@ -946,10 +952,16 @@ export class ProviderDashboardService {
         data: { status: QuoteOfferStatus.PENDING },
       });
 
+      const recipientId =
+        await this.notifications.resolveProviderUpdateRecipientInTransaction(
+          tx,
+          quote.weddingPlanId,
+          quote.userId,
+        );
       await this.notifications.createNotificationInTransaction(
         tx,
         quoteOfferReceivedNotification({
-          requesterId: quote.userId,
+          requesterId: recipientId,
           weddingPlanId: quote.weddingPlanId,
           quoteRequestId,
           quoteOfferId: created.id,

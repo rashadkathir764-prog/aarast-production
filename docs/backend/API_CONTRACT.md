@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-29.
+Current documentation snapshot: 2026-08-03.
 
 Source status:
 
@@ -309,9 +309,19 @@ Additional current auth/profile routes:
 - `POST /api/v1/auth/otp/verify`
 - `PATCH /api/v1/users/me`
 - `DELETE /api/v1/users/me`
-  - deletes an ordinary wedding-app account and its owned data;
+  - requires a valid, stable `X-Client-Request-Id`; a missing or malformed
+    value returns `400` with `ACCOUNT_DELETION_REQUEST_ID_REQUIRED`;
+  - deletes an ordinary wedding-app account and its owned data in the same
+    transaction that commits an anonymous immutable deletion receipt;
   - refuses deletion when the database identity is an administrator, so an
     application bearer can never erase the separate administrator identity.
+- `POST /api/v1/account-deletions/status`
+  - is intentionally unauthenticated because the successful command removes
+    the account and its session;
+  - is throttled to 10 requests per minute and accepts only
+    `{ userId, clientRequestId }` safe opaque identifiers;
+  - returns only `{ status: "DELETED" | "PENDING" | "NOT_STARTED" }` and no
+    account, profile, or deletion-graph data.
 - `GET /api/v1/users/lookup?weddingPlanId=<planId>&phone=<phone>`
   - requires an authenticated owner/member with permission to invite members
 - `GET /api/v1/users/me/settings`
@@ -319,6 +329,18 @@ Additional current auth/profile routes:
 - `GET /api/v1/me`
 
 OTP/profile routes are account and settings helpers. They do not add payment, booking, financing, AI, or chat behavior.
+
+Account-deletion retries must reuse the exact same client request id. The
+Backend hashes `userId + NUL + clientRequestId` and stores only that SHA-256
+digest in `AccountDeletionReceipt`, atomically before the User row is erased.
+`DELETED` means the matching immutable receipt committed. `PENDING` means the
+matching DELETE idempotency reservation is still live. `NOT_STARTED` means
+neither a receipt nor a live matching reservation exists. A reservation older
+than 30 seconds may be reclaimed only after locking the still-live User and
+rechecking the receipt; the account-deletion transaction itself has a
+15-second timeout. A lost HTTP response must therefore be reconciled through
+the status route before the client restores a dashboard, clears its durable
+deletion marker, or retries with a different id.
 
 The settings response includes the persisted content preferences plus an
 additive `channelCapabilities` object:
@@ -488,6 +510,11 @@ and adds:
   provider profile/status visibility without mutation.
 - `capabilities`: `canViewProviderProfile`, `canManageProviderProfile`, and
   `canUseProviderOperations`.
+- `membershipId` and `membershipAuthorityVersion`: the exact live
+  `SharedMember` incarnation and stored authority version for contributor
+  contexts; both are `null` for owner and provider contexts. They bind a
+  durable self-leave request to the membership the user actually chose to
+  leave, so a delayed replay cannot remove a later re-invited membership.
 
 `permissions` remains for compatibility and route-specific client decisions.
 For an archived plan, readable historical permissions remain truthful while
@@ -501,6 +528,8 @@ Owner example:
   "role": "OWNER",
   "weddingPlanId": "clx123",
   "providerId": null,
+  "membershipId": null,
+  "membershipAuthorityVersion": null,
   "persona": "GROOM",
   "displayName": "خطة زفاف محمد",
   "lifecycle": "PLANNING",
@@ -534,6 +563,8 @@ Contributor example:
   "role": "CONTRIBUTOR",
   "weddingPlanId": "clx456",
   "providerId": null,
+  "membershipId": "member-clx456-user-7",
+  "membershipAuthorityVersion": 7,
   "persona": "BRIDE",
   "displayName": "خطة زفاف أحمد",
   "lifecycle": "PLANNING",
@@ -567,6 +598,8 @@ Provider example:
   "role": "PROVIDER",
   "weddingPlanId": null,
   "providerId": "7c5301cb-0194-4f44-bb62-18dc9025bb52",
+  "membershipId": null,
+  "membershipAuthorityVersion": null,
   "persona": null,
   "displayName": "قاعة السعادة",
   "lifecycle": "ACTIVE",
@@ -751,6 +784,9 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
 - `planProviders`: providers actually linked to the current WeddingPlan.
 - `importantNotifications`: latest user-owned notifications for this WeddingPlan.
 - `generatedAt`: server timestamp used by the mobile sync/status copy.
+- `membershipId` and `membershipAuthorityVersion`: the same current
+  contributor-membership identity returned by `/api/v1/contexts`, or `null`
+  for an owner. Clients must not construct or guess these values.
 
 Dashboard `remainingBudget` and the money-card usage ratio use confirmed cost:
 the sum of non-cancelled WeddingCost totals. CostPayment rows change the
@@ -1153,9 +1189,31 @@ Create request:
 }
 ```
 
-Owners can manage tasks. Shared task management follows the live
-`PermissionService.canManageTasks` policy: explicit `canManageTasks`, or one of
-`GROOM`, `BRIDE`, `FAMILY`, `MANAGER`, `EDITOR`, `HELPER`, or `CONTRIBUTOR`.
+Owners can manage tasks. For every non-owner, the stored
+`SharedMember.canManageTasks` boolean is the final live authority. A role may
+seed the boolean only when a new member or invitation is created; the role is
+not a runtime permission fallback and changing it does not restore a stored
+`false` value. The same stored-flag rule applies to guests, providers, money,
+plan editing, and member management.
+
+A current shared member whose task permission was revoked receives this stable
+response from task mutations instead of the misleading plan-not-found error:
+
+```json
+{
+  "statusCode": 403,
+  "code": "TASK_PERMISSION_REVOKED",
+  "message": "لم تعد لديك صلاحية لتنفيذ هذه المهمة"
+}
+```
+
+The task list and task detail routes are contributor-scoped in the Backend. A
+non-owner needs a current membership and current `canManageTasks = true`, and
+then receives only tasks currently assigned to that user or tasks evidenced as
+that contributor's own created/completed work. The evidence lookup spans the
+same contributor's current and previous tenures; it does not admit another
+member's rows merely because both users share the same `weddingPlanId`. Flutter
+must not receive a broader list and hide it locally.
 
 All seven task mutation shapes—create, update, assign, delete, and checklist
 create/update/delete—run inside retryable `SERIALIZABLE` transactions. Lock
@@ -1210,6 +1268,7 @@ Protected routes:
 - `GET /api/v1/wedding-plans/:weddingPlanId/members`
 - `PATCH /api/v1/wedding-plans/:weddingPlanId/members/:memberId`
 - `DELETE /api/v1/wedding-plans/:weddingPlanId/members/:memberId`
+- `DELETE /api/v1/wedding-plans/:weddingPlanId/members/me`
 - `GET /api/v1/shared/wedding-plans`
 - `GET /api/v1/wedding-plans/:weddingPlanId/members`
 - `PATCH /api/v1/wedding-plans/:weddingPlanId/members/:memberId`
@@ -1223,6 +1282,21 @@ Protected routes:
 - `POST /api/v1/invites/:token/accept`
 - `POST /api/v1/invites/:token/decline`
 - `GET /api/v1/wedding-plans/:weddingPlanId/permissions/me`
+- `GET /api/v1/wedding-plans/:weddingPlanId/contributions`
+- `GET /api/v1/wedding-plans/:weddingPlanId/contributions/summary`
+
+The permission booleans persisted on `SharedMember` and the permission snapshot
+persisted on `PlanInvite` are authoritative. `rolePermissionDefaults()` is used
+only when a new member or invitation is created. Member updates and invitation
+reissues preserve every omitted stored boolean even if `role` changes. In
+particular, `CONTRIBUTOR` cannot implicitly re-grant a task, guest, provider, or
+money permission that was explicitly stored as `false`. A non-owner may still
+delegate only within the ceiling formed by that actor's current stored flags.
+When any stored flag narrows, the same serializable member-update transaction
+locks the actor's live pending invitations in id order and revokes every grant
+that exceeds the new ceiling. A stale delegated invitation therefore reaches a
+terminal `CANCELLED` state instead of remaining `PENDING`. Repeating the same
+authority state is idempotent and does not rewrite terminal invitation history.
 
 Invite token preview is not a public endpoint. The invite detail route requires
 an authenticated user and returns only invitations targeted to that user id or
@@ -1254,6 +1328,11 @@ authoritative and is never overwritten from an older invitation snapshot;
 acceptance creates membership only when none exists. This prevents a stale
 invite from restoring revoked provider or financial permissions and prevents
 acceptance after an archive that commits first.
+The locked plan owner and the delegated inviter, when present, must both still
+have `User.status = ACTIVE`. Otherwise acceptance returns HTTP `409`, code
+`INVITE_AUTHORITY_INACTIVE`, and creates no membership, contribution event, or
+notification. Disabling an account transactionally revokes its issued pending
+invitations before its sessions are revoked.
 If the same invitee retries the same live token or authenticated invite-id
 handle after the acceptance committed but its response was lost, the endpoint
 returns the current accepted invite, authoritative membership, and canonical
@@ -1427,9 +1506,14 @@ The `user` object is safe display data only. It must not include `passwordHash`,
 
 The owner, or a member explicitly holding `canInviteMembers`, can manage shared
 members. A non-owner cannot grant any effective role or permission above their
-own current ceiling; role-implied permissions are included in that comparison.
+own current stored-permission ceiling; the role label itself grants no runtime
+permission in that comparison.
 The owner cannot add themselves as a shared member, unknown phone numbers are
-rejected without auto-creating users, and duplicate members are rejected.
+rejected without auto-creating users, and duplicate members are rejected. A
+former tenure ended by `MEMBER_LEFT` cannot be reopened through direct member
+creation: the route returns HTTP `409`, code
+`MEMBER_REENTRY_REQUIRES_INVITE`; a new explicit invitation and acceptance are
+required.
 
 Member creation, invitation creation/cancellation/reissue, member update, and
 member removal all recheck the actor inside a retryable `SERIALIZABLE`
@@ -1449,12 +1533,103 @@ as membership deletion and prevents an older pending link from recreating
 access. Accepted, declined, revoked, and expired invitation history is not
 rewritten.
 
+`DELETE /api/v1/wedding-plans/:weddingPlanId/members/me` is the contributor's
+plan-leave operation; it is separate from account deletion. It runs in one
+retryable `SERIALIZABLE` transaction and, for that plan only, retains the
+member's already-recorded action-time snapshots, records `MEMBER_LEFT`, closes the active
+contributor tenure, revokes matching pending invitations, clears
+`User.activeWeddingPlanId` when it points to that plan, deletes the live
+`SharedMember`, revokes provider-conversation participation, and purges private
+money notifications. The frozen contribution rows remain part of the plan's
+history. A new invitation later creates a new membership tenure rather than
+reopening the ended one.
+
+The DELETE body is required and contains the membership identity obtained from
+the current contexts/dashboard response:
+
+```json
+{
+  "expectedMemberId": "member-clx456-user-7",
+  "expectedAuthorityVersion": 7
+}
+```
+
+Both values must still match the row locked inside the leave transaction. A
+different member id or authority version returns HTTP `409`, code
+`MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST`, and the Arabic message
+`تغيّرت عضويتك في الخطة. حدّث المسارات ثم أعد محاولة المغادرة.` No membership
+is deleted in that case. This prevents a lost-response replay from deleting a
+new membership created by a later invitation.
+
+The leave route participates in the standard `X-Client-Request-Id` replay
+contract. It is also domain-idempotent after the exact membership has already
+left: a repeat returns success with `deleted: true` and `alreadyLeft: true`
+only when no current membership exists and retained tenure evidence proves the
+prior leave. The first successful leave returns `alreadyLeft: false`. If a new
+membership now exists, the required expected identity fails with the `409`
+contract above instead of treating the old request as a leave for the new
+tenure.
+The plan owner cannot use this route and receives HTTP `403`, code
+`PLAN_OWNER_CANNOT_LEAVE`, and message `لا يمكن لمالك الخطة مغادرة خطته`.
+
 Invite routes support explicit acceptance and decline flows. OTP verification
 must not call either action implicitly. They do not create chat or broad social
 collaboration features.
 Phone and user-id invitations require the authenticated account's verified
 phone. Email-only invitations are rejected until verified-email ownership is
 implemented; an unverified email string is never treated as identity proof.
+
+## Contributor Live Scope And Frozen History
+
+Every non-owner plan surface is filtered by the Backend. A current
+`SharedMember` and the relevant current stored permission are required before
+live section data is returned. Inside that gate, task, guest, money, provider,
+dashboard, and related detail queries restrict entity ids to current assignment
+or to `ContributionEvent` evidence owned by that user. Evidence is joined by
+the contributor reference across current and previous `ContributorTenure` rows,
+so a newly invited tenure can see that same person's qualifying live items only
+after the new membership has the current section permission. A historical
+event is never authority by itself, and no same-plan shortcut exposes another
+contributor's entities.
+
+Returning live queries also carry the current membership and stored flag in
+their final SQL predicate. Multi-query money summaries, cost/payment/schedule
+reads, dashboard reads, and other aggregate surfaces use the transaction-based
+permission boundary so a committed revocation cannot pass through an earlier
+in-memory context. Quote detail never returns its unguarded seed row; member and
+invite lists revalidate current member-management authority in the final query.
+
+Every qualifying contributor action creates its privacy-allowlisted frozen
+snapshot inside the same domain transaction that performs the action. A later
+permission revocation never re-reads or re-snapshots the live entity and never
+turns an assignment-only row into historical contribution evidence. It writes
+only a deterministic `SECTION_REVOKED` authority-boundary event before the
+stored permission update; the earlier created/completed/payment/invite events
+remain the historical record. Later owner edits to the original task, guest,
+financial item, provider item, or member item cannot alter those append-only
+events. Phone numbers, email addresses,
+tokens, messages, notes, attachments, headers, query/body payloads, and values
+matching credential/contact patterns are rejected from a snapshot.
+
+`GET /api/v1/wedding-plans/:weddingPlanId/contributions` supports optional
+`section`, `limit` (1 to 100, default 50), `offset` (default 0), and
+`contributorUserId`. Owners may read the plan history and optionally filter by
+contributor. A current non-owner member always receives only that member's own
+reference across all tenures; a supplied `contributorUserId` cannot widen the
+result. The response contains `historyCoverageStartsAt`, `total`, and events
+with `id`, hashed `contributorReference`, `section`, `entityType`, `action`, the
+frozen `snapshot`, `provenance`, `occurredAt`, and `capturedAt`. It deliberately
+does not expose the source `entityId`, a raw contributor user id, or a live
+entity projection.
+
+`GET /api/v1/wedding-plans/:weddingPlanId/contributions/summary` returns a
+distinct contributed-entity count for every contribution section. Owners may
+optionally pass `contributorUserId`; non-owners are always scoped to themselves.
+Both history routes require either plan ownership or a current membership. A
+member whose section permission is revoked keeps access to their own frozen
+history while the live section is blocked. After self-leave or owner removal,
+the former contributor no longer has plan-route access; the append-only history
+remains available to the plan owner and survives a later re-invitation.
 
 ## Guests
 
@@ -2131,6 +2306,7 @@ configuration, and smoke checks.
 | GET | `/admin/users/:id` | `admin.getUser` | 🔒 |
 | PATCH | `/admin/users/:id/activate` | `admin.activateUser` | 🔒 |
 | PATCH | `/admin/users/:id/disable` | `admin.disableUser` | 🔒 |
+| POST | `/api/v1/account-deletions/status` | `account-deletion-status.status` |  |
 | POST | `/api/v1/auth/admin/login` | `auth.startAdminLogin` |  |
 | POST | `/api/v1/auth/admin/login/complete` | `auth.completeAdminLogin` |  |
 | POST | `/api/v1/auth/admin/logout` | `auth.logoutAdmin` |  |
@@ -2275,6 +2451,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.create` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/contributions` | `contribution-history.list` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/contributions/summary` | `contribution-history.summary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/cost-payments` | `wedding-costs.list` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.list` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.create` | 🔒 |
@@ -2292,6 +2470,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/wedding-plans/:weddingPlanId/members` | `sharing.createMember` | 🔒 |
 | DELETE | `/api/v1/wedding-plans/:weddingPlanId/members/:memberId` | `sharing.removeMember` | 🔒 |
 | PATCH | `/api/v1/wedding-plans/:weddingPlanId/members/:memberId` | `sharing.updateMember` | 🔒 |
+| DELETE | `/api/v1/wedding-plans/:weddingPlanId/members/me` | `sharing.leavePlan` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/payment-schedules/due` | `wedding-costs.due` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/permissions/me` | `sharing.permissionsForMe` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/quote-requests` | `marketplace.findQuoteRequests` | 🔒 |

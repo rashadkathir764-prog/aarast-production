@@ -69,6 +69,7 @@ void main() {
       endpoint: '/wedding-plans/plan-1/tasks',
       method: 'POST',
       payload: {'title': 'Offline task'},
+      planId: 'plan-1',
       localEntityId: 'local-task-1',
     );
 

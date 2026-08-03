@@ -15,6 +15,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/widgets/account_deletion_flow.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../notifications/providers/notifications_provider.dart';
@@ -283,94 +284,23 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   static Future<void> _deleteAccount(BuildContext context) async {
-    final confirmed = await showAarastBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const MoreSheetHandle(),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: AppTheme.dangerSoft,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                    ),
-                    child: const Icon(
-                      LucideIcons.trash2,
-                      color: AppTheme.danger,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'حذف الحساب نهائياً',
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(
-                          color: AppTheme.ink,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'سيُحذف حسابك وكل بياناتك — خطط العرس والميزانيات والتكاليف والدفعات '
-                    'والمهام وقوائم الضيوف — نهائياً ولا يمكن التراجع.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(sheetContext).textTheme.bodyMedium
-                        ?.copyWith(
-                          color: AppTheme.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AarastButton(
-                          label: 'إلغاء',
-                          variant: AarastButtonVariant.secondary,
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(false),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AarastButton(
-                          label: 'حذف نهائي',
-                          icon: LucideIcons.trash2,
-                          variant: AarastButtonVariant.danger,
-                          onPressed: () => Navigator.of(sheetContext).pop(true),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    if (!await confirmAccountDeletion(context, keyPrefix: 'more') ||
+        !context.mounted) {
+      return;
+    }
+    await _performConfirmedAccountDeletion(context);
+  }
 
-    if (confirmed != true || !context.mounted) return;
-
+  static Future<void> _performConfirmedAccountDeletion(
+    BuildContext context,
+  ) async {
     final auth = context.read<AuthController>();
     final deleted = await auth.deleteAccount();
     if (!context.mounted) return;
-    if (deleted) {
-      context.go(AppRouter.login);
-    } else {
+    if (!deleted) {
       AarastToast.showError(
         context,
-        auth.errorMessage ?? 'تعذر حذف الحساب. حاول مرة أخرى.',
+        auth.errorMessage ?? 'تعذّر حذف الحساب. حاول مرة أخرى.',
       );
     }
   }

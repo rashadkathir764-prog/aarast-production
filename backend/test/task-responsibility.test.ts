@@ -12,6 +12,16 @@ import { TasksService } from "../src/tasks/tasks.service";
 
 const now = new Date("2026-07-11T00:00:00.000Z");
 
+const contributionHistory = {
+  recordForContextInTransaction: async () => undefined,
+  ensureTenureInTransaction: async () => undefined,
+  recordInTransaction: async () => undefined,
+};
+const contributorScope = {
+  qualifyingEntityIds: async () => [],
+  qualifyingEntityIdsInTransaction: async () => [],
+};
+
 function task(overrides: Record<string, unknown> = {}) {
   return {
     id: "task-1",
@@ -54,6 +64,8 @@ test("account task creation persists optional manual responsibility", async () =
     {
       notifyTaskDue: async () => undefined,
     } as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
 
   const result = await service.create({ id: "user-1" } as any, "plan-1", {
@@ -90,6 +102,8 @@ test("assigning a plan participant clears manual responsibility", async () => {
   const permissions = {
     assertTaskManageableInTransaction: async () => ({
       plan: { ownerUserId: "user-1" },
+      isOwner: true,
+      sharedMember: null,
     }),
   };
   const service = new TasksService(
@@ -98,6 +112,8 @@ test("assigning a plan participant clears manual responsibility", async () => {
     {
       notifyTaskDue: async () => undefined,
     } as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
 
   await service.assign({ id: "user-1" } as any, "task-1", {
@@ -126,8 +142,15 @@ test("assigning a notification-enabled contributor creates one durable task noti
     },
     sharedMember: {
       findUnique: async () => ({
+        id: "member-contributor-1",
+        weddingPlanId: "plan-1",
         userId: "contributor-1",
+        role: "CONTRIBUTOR",
+        canManageTasks: true,
+        authorityVersion: 1,
         receiveNotifications: true,
+        createdAt: now,
+        updatedAt: now,
       }),
     },
     $queryRaw: async () => [{ id: "locked" }],
@@ -137,6 +160,8 @@ test("assigning a notification-enabled contributor creates one durable task noti
   const permissions = {
     assertTaskManageableInTransaction: async () => ({
       plan: { ownerUserId: "owner-1" },
+      isOwner: true,
+      sharedMember: null,
     }),
   };
   const notifications = {
@@ -149,6 +174,8 @@ test("assigning a notification-enabled contributor creates one durable task noti
     prisma as any,
     permissions as any,
     notifications as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
 
   await service.assign({ id: "owner-1" } as any, "task-1", {
@@ -185,8 +212,15 @@ test("reassigning the same contributor does not duplicate the task notification"
     },
     sharedMember: {
       findUnique: async () => ({
+        id: "member-contributor-1",
+        weddingPlanId: "plan-1",
         userId: "contributor-1",
+        role: "CONTRIBUTOR",
+        canManageTasks: true,
+        authorityVersion: 1,
         receiveNotifications: true,
+        createdAt: now,
+        updatedAt: now,
       }),
     },
     $queryRaw: async () => [{ id: "locked" }],
@@ -198,6 +232,8 @@ test("reassigning the same contributor does not duplicate the task notification"
     {
       assertTaskManageableInTransaction: async () => ({
         plan: { ownerUserId: "owner-1" },
+        isOwner: true,
+        sharedMember: null,
       }),
     } as any,
     {
@@ -206,6 +242,8 @@ test("reassigning the same contributor does not duplicate the task notification"
         notificationCount += 1;
       },
     } as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
 
   await service.assign({ id: "owner-1" } as any, "task-1", {
@@ -215,7 +253,7 @@ test("reassigning the same contributor does not duplicate the task notification"
   assert.equal(notificationCount, 0);
 });
 
-test("read-only plan members never receive a manual responsible phone", async () => {
+test("read-only plan members receive no live task rows", async () => {
   const prisma = {
     weddingTask: {
       findMany: async () => [
@@ -240,14 +278,14 @@ test("read-only plan members never receive a manual responsible phone", async ()
     {
       notifyTaskDue: async () => undefined,
     } as any,
+    contributionHistory as any,
+    contributorScope as any,
   );
 
-  const [result] = await service.findForPlan(
+  const result = await service.findForPlan(
     { id: "viewer-1" } as any,
     "plan-1",
   );
 
-  assert.equal(result.responsibleName, "محمد");
-  assert.equal(result.responsiblePhone, null);
-  assert.equal(result.responsibleSource, "manual");
+  assert.deepEqual(result, []);
 });

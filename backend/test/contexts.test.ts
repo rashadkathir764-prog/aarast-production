@@ -69,6 +69,7 @@ function membership(
     canManageProviders?: boolean;
     canInviteMembers?: boolean;
     canManageMoney?: boolean;
+    authorityVersion?: number;
   } = {},
 ) {
   return {
@@ -84,6 +85,7 @@ function membership(
     canInviteMembers: options.canInviteMembers ?? false,
     canManageMoney: options.canManageMoney ?? false,
     receiveNotifications: true,
+    authorityVersion: options.authorityVersion ?? 1,
     createdAt: now,
     updatedAt: now,
     weddingPlan,
@@ -180,6 +182,8 @@ test("contributor-only account exposes current stored permissions", async () => 
   prisma.memberships.push(
     membership(sharedPlan, {
       role: SharedMemberRole.FINANCE_MANAGER,
+      canViewMoney: true,
+      canManageMoney: true,
       canManageProviders: true,
     }),
   );
@@ -188,6 +192,8 @@ test("contributor-only account exposes current stored permissions", async () => 
 
   assert.equal(context.contextKey, "plan:plan-shared:contributor");
   assert.equal(context.role, AvailableContextRole.CONTRIBUTOR);
+  assert.equal(context.membershipId, "member-plan-shared");
+  assert.equal(context.membershipAuthorityVersion, 1);
   assert.equal(context.permissions.canViewMoney, true);
   assert.equal(context.permissions.canManageMoney, true);
   assert.equal(context.permissions.canManageProviders, true);
@@ -552,7 +558,11 @@ test("findActive returns null when the stored plan no longer exists", async () =
       },
     },
   };
-  const service = new WeddingPlansService(prisma as any, {} as any);
+  const service = new WeddingPlansService(
+    prisma as any,
+    {} as any,
+    {} as any,
+  );
 
   const active = await service.findActive(currentUser);
 
@@ -585,6 +595,7 @@ test("findActive never chooses another available plan after access loss", async 
   const service = new WeddingPlansService(
     prisma as any,
     permissions as any,
+    {} as any,
   );
 
   const active = await service.findActive(currentUser);

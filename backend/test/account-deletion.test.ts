@@ -135,6 +135,31 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
         return {};
       },
     },
+    contributorTenure: {
+      updateMany: async ({ data }: any) => {
+        calls.push(`contributorTenure.${data.endReason}`);
+        return { count: 1 };
+      },
+    },
+    contributorHistoryScope: {
+      updateMany: async ({ where, data }: any) => {
+        calls.push("contributorHistoryScope.DELETED");
+        assert.deepEqual(where, {
+          weddingPlanId: { in: [...planIds].sort() },
+        });
+        assert.equal(data.status, "DELETED");
+        assert.ok(data.deletedAt instanceof Date);
+        return { count: planIds.length };
+      },
+    },
+    accountDeletionReceipt: {
+      findUnique: async () => null,
+      create: async ({ data }: any) => {
+        calls.push("accountDeletionReceipt.create");
+        assert.match(data.receiptHash, /^[0-9a-f]{64}$/);
+        return data;
+      },
+    },
     idempotencyKey: del("idempotencyKey"),
     otpCode: del("otpCode"),
     user: {
@@ -184,7 +209,7 @@ test("application account deletion can never erase an administrator identity", a
   );
 
   await assert.rejects(
-    () => service.deleteMe({ id: "admin", phone: null } as any),
+    () => service.deleteMe({ id: "admin", phone: null } as any, "delete-admin"),
     ForbiddenException,
   );
   assert.equal(transactions, 0);
@@ -199,7 +224,9 @@ test("account deletion rolls back when durable media scheduling fails", async ()
     },
   });
 
-  await assert.rejects(() => svc.deleteMe({ id: "u1", phone: null } as any));
+  await assert.rejects(() =>
+    svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1"),
+  );
   assert.deepEqual(calls, []);
 });
 
@@ -211,10 +238,10 @@ test("account deletion clears plan children before plans and deletes the user la
   });
   const svc = serviceFor(tx);
 
-  const result = await svc.deleteMe({
-    id: "u1",
-    phone: "+967700000000",
-  } as any);
+  const result = await svc.deleteMe(
+    { id: "u1", phone: "+967700000000" } as any,
+    "delete-u1",
+  );
   assert.deepEqual(result, { deleted: true });
 
   const at = (name: string) => calls.indexOf(name);
@@ -243,6 +270,19 @@ test("account deletion clears plan children before plans and deletes the user la
   assert.ok(at("weddingCost") < at("budgetCategory"));
   // The Restrict edge is cleared before the owned Conversation/Plan graph.
   assert.ok(at("quoteRequest") < at("conversation"));
+  assert.ok(
+    at("contributorTenure.PLAN_DELETED") < at("sharedMember"),
+    "owned-plan contributor tenures close before memberships are deleted",
+  );
+  assert.ok(
+    at("contributorHistoryScope.DELETED") >= 0 &&
+      at("contributorHistoryScope.DELETED") < at("weddingPlan"),
+    "owned-plan history scopes become DELETED before their plan links are detached",
+  );
+  assert.ok(
+    at("contributorTenure.ACCOUNT_DELETED") < at("user.delete"),
+    "the deleting contributor tenure closes before user deletion",
+  );
   assert.ok(at("conversation") < at("weddingPlan"));
   assert.ok(
     at("conversationAttachmentMedia") < at("conversation"),
@@ -264,6 +304,7 @@ test("account deletion clears plan children before plans and deletes the user la
     "the durable realtime revocation is enqueued before the user is deleted",
   );
   assert.ok(at("idempotencyKey") >= 0);
+  assert.ok(at("accountDeletionReceipt.create") < at("idempotencyKey"));
   assert.ok(at("otpCode") >= 0);
   assert.ok(at("weddingPlan") < at("user.delete"));
   assert.equal(calls[calls.length - 1], "user.delete");
@@ -276,7 +317,10 @@ test("account deletion with no owned plans still erases account-level data", asy
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: "+967700000000" } as any);
+  await svc.deleteMe(
+    { id: "u1", phone: "+967700000000" } as any,
+    "delete-u1",
+  );
 
   // No plan children or plan rows were touched.
   assert.equal(calls.includes("weddingPlan"), false);
@@ -294,7 +338,7 @@ test("account deletion without a phone skips OTP cleanup", async () => {
   const { tx, calls } = recordingTx([]);
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any);
+  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
 
   assert.equal(calls.includes("otpCode"), false);
   assert.ok(calls.includes("idempotencyKey"));
@@ -310,7 +354,7 @@ test("account deletion disconnects live realtime sessions only after commit", as
     { disconnectUser: (userId) => disconnected.push(userId) },
   );
 
-  await svc.deleteMe({ id: "u1", phone: null } as any);
+  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
 
   assert.equal(calls[calls.length - 1], "user.delete");
   assert.deepEqual(disconnected, ["u1"]);
@@ -327,7 +371,7 @@ test("deleting a provider account purges its quote conversations without touchin
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any);
+  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
 
   const at = (name: string) => calls.indexOf(name);
   assert.ok(at("quoteRequest") < at("conversation"));
@@ -343,7 +387,7 @@ test("deleting a shared member removes only that member's request and preserves 
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any);
+  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
 
   assert.ok(calls.includes("quoteRequest"));
   assert.equal(calls.includes("conversation"), false);
@@ -361,7 +405,7 @@ test("account deletion refreshes every surviving provider reviewed by the user",
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any);
+  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
 
   const providerLock = queries.find((query) =>
     query.text.includes('FROM "Provider"'),
@@ -408,7 +452,7 @@ test("account deletion retries a deadlock without changing its read-committed me
     { scheduleAllOwnedMediaDeletion: async () => [] } as any,
   );
 
-  assert.deepEqual(await service.deleteMe({ id: "u1", phone: null } as any), {
+  assert.deepEqual(await service.deleteMe({ id: "u1", phone: null } as any, "delete-u1"), {
     deleted: true,
   });
   assert.equal(attempts, 2);

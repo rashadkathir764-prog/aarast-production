@@ -33,7 +33,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('contributor-sections-panel')), findsOneWidget);
-    expect(find.byKey(const Key('contributor-tasks-section')), findsOneWidget);
+    expect(find.byKey(const Key('contributor-tasks-section')), findsNothing);
+    expect(
+      find.byKey(const Key('contributor-no-live-sections')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('contributor-money-section')), findsNothing);
     expect(find.byKey(const Key('contributor-guests-section')), findsNothing);
     expect(
@@ -179,6 +183,73 @@ void main() {
     expect(find.byKey(const Key('contributor-tasks-section')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'contributor add action is an in-card Arabic button at 320px and 2.0 text',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 1000);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 1000),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: _TestApp(
+            child: ContributorWorkspaceView(
+              summary: _summary(
+                permissions: const DashboardPermissionSummary(
+                  isOwner: false,
+                  role: 'MANAGER',
+                  canViewMoney: true,
+                  canManageTasks: true,
+                  canManageGuests: true,
+                  canManageProviders: false,
+                  canManageMembers: false,
+                  canManageMoney: true,
+                  canManagePlan: false,
+                ),
+              ),
+              onOpenTasks: () {},
+              onOpenNotifications: () {},
+              onShowPermissions: () {},
+              onOpenMoney: () {},
+              onOpenGuests: () {},
+              onCreateTask: () {},
+              onAddGuest: () {},
+              onAddCost: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final action = find.byKey(const Key('contributor-tasks-add-action'));
+      final card = find.byKey(const Key('contributor-tasks-section'));
+      await tester.scrollUntilVisible(
+        action,
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(action, findsOneWidget);
+      expect(tester.widget<FilledButton>(action), isA<FilledButton>());
+      expect(find.text('إضافة مهمة'), findsOneWidget);
+
+      final actionRect = tester.getRect(action);
+      final cardRect = tester.getRect(card);
+      expect(actionRect.left, greaterThanOrEqualTo(cardRect.left));
+      expect(actionRect.right, lessThanOrEqualTo(cardRect.right));
+      expect(actionRect.top, greaterThanOrEqualTo(cardRect.top));
+      expect(actionRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+      expect(actionRect.width, greaterThanOrEqualTo(cardRect.width - 40));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _TestApp extends StatelessWidget {

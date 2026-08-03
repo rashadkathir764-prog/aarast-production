@@ -1,10 +1,16 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   ConversationEventType,
   QuoteOfferStatus,
   QuoteRequestStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -32,10 +38,14 @@ export async function rejectQuoteOfferInTransaction(
   permissions: PermissionService,
   notifications: NotificationsService,
   input: RejectQuoteOfferInput,
+  history?: ContributionHistoryService,
 ) {
   const { id, currentUser } = input;
 
   return runSerializableTransaction(prisma, async (tx) => {
+    let planContext: Awaited<
+      ReturnType<PermissionService["assertProviderManageableInTransaction"]>
+    > | null = null;
     const seed = await tx.quoteOffer.findUnique({
       where: { id },
       select: {
@@ -63,11 +73,14 @@ export async function rejectQuoteOfferInTransaction(
       ],
     );
     if (seed.quoteRequest.weddingPlanId) {
-      await permissions.assertProviderManageableInTransaction(
+      planContext = await permissions.assertProviderManageableInTransaction(
         tx,
         seed.quoteRequest.weddingPlanId,
         currentUser,
       );
+      if (!planContext.isOwner && seed.quoteRequest.userId !== currentUser.id) {
+        throw new NotFoundException("Quote offer not found");
+      }
     } else if (seed.quoteRequest.userId !== currentUser.id) {
       throw new NotFoundException("Quote offer not found");
     }
@@ -158,6 +171,24 @@ export async function rejectQuoteOfferInTransaction(
       dedupeKey: `quote-request:${current.quoteRequestId}:rejected`,
       data: { status: QuoteRequestStatus.REJECTED },
     });
+    if (planContext && history) {
+      await history.recordForContextInTransaction(tx, planContext, {
+        section: ContributionSection.PROVIDERS,
+        entityType: ContributionEntityType.QUOTE_REQUEST,
+        entityId: current.quoteRequestId,
+        action: ContributionAction.STATUS_CHANGED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.QUOTE_REQUEST,
+          {
+            requestStatus: QuoteRequestStatus.REJECTED,
+            status: QuoteRequestStatus.REJECTED,
+          },
+        ),
+        dedupeKey: `provider:quote-request:${current.quoteRequestId}:rejected`,
+        requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
+        occurredAt: rejectedAt,
+      });
+    }
 
     const providerAccount = await tx.provider.findUnique({
       where: { id: current.providerId },

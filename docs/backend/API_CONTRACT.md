@@ -1191,10 +1191,11 @@ Create request:
 
 Owners can manage tasks. For every non-owner, the stored
 `SharedMember.canManageTasks` boolean is the final live authority. A role may
-seed the boolean only when a new member or invitation is created; the role is
-not a runtime permission fallback and changing it does not restore a stored
-`false` value. The same stored-flag rule applies to guests, providers, money,
-plan editing, and member management.
+seed the boolean only when an invitation is created. Direct member creation is
+fail-closed: every omitted authorization flag is stored as `false`, regardless
+of role. The role is not a runtime permission fallback and changing it does not
+restore a stored `false` value. The same stored-flag rule applies to guests,
+providers, money, plan editing, and member management.
 
 A current shared member whose task permission was revoked receives this stable
 response from task mutations instead of the misleading plan-not-found error:
@@ -1287,8 +1288,9 @@ Protected routes:
 
 The permission booleans persisted on `SharedMember` and the permission snapshot
 persisted on `PlanInvite` are authoritative. `rolePermissionDefaults()` is used
-only when a new member or invitation is created. Member updates and invitation
-reissues preserve every omitted stored boolean even if `role` changes. In
+only when a new invitation is created. Direct member creation stores explicit
+flags and fail-closed `false` values for omitted authorization fields. Member
+updates and invitation reissues preserve every omitted stored boolean even if `role` changes. In
 particular, `CONTRIBUTOR` cannot implicitly re-grant a task, guest, provider, or
 money permission that was explicitly stored as `false`. A non-owner may still
 delegate only within the ceiling formed by that actor's current stored flags.
@@ -2027,9 +2029,10 @@ joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
 participant and forces current sockets out of the room. This permission is
 strong because it exposes the prior conversation history and allows sending as
 the plan; money fields still require money permissions. Role defaults populate
-the stored flag when a member or invite is created or changes role, but an
-explicit stored `false` is authoritative for both provider APIs and
-conversations; a role name never silently restores the capability. Revoked
+the stored flag only when an invitation is created. Direct member creation
+stores an omitted provider-management flag as `false`, and later role changes
+preserve it. An explicit stored `false` is authoritative for both provider APIs
+and conversations; a role name never silently restores the capability. Revoked
 participants are reactivated only by an explicit provider-management permission
 grant, never as a side effect of opening, reading, marking read, or sending.
 

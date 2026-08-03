@@ -257,9 +257,13 @@ async function run() {
     check('viewer outstanding total is hidden', res.body?.outstandingTotal === null);
     check('viewer due payment schedules are hidden', res.body?.duePaymentSchedulesCount === null);
     check('viewer importantItems hides payment schedule details', !res.body?.importantItems?.some((item) => item.type === 'PAYMENT_SCHEDULE_DUE'));
-    check('viewer still sees non-finance task count', res.body?.totalTasks === 3);
-    check('viewer still sees guest count', res.body?.guestCount === 2);
-    check('viewer still sees incomplete guest count', res.body?.incompleteGuestsCount === 1);
+    check('viewer without task permission receives zero task count', res.body?.totalTasks === 0);
+    check('viewer without task permission receives zero completed tasks', res.body?.completedTasks === 0);
+    check('viewer without task permission receives zero due tasks', res.body?.todayTasks === 0 && res.body?.overdueTasks === 0);
+    check('viewer importantItems hides task details', !res.body?.importantItems?.some((item) => item.type === 'TASK_OVERDUE'));
+    check('viewer without guest permission receives zero guest count', res.body?.guestCount === 0);
+    check('viewer without guest permission receives zero confirmed guests', res.body?.confirmedGuests === 0);
+    check('viewer without guest permission receives zero incomplete guests', res.body?.incompleteGuestsCount === 0);
     check('viewer summary does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

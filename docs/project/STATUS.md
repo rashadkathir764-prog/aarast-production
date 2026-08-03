@@ -339,8 +339,9 @@ mandatory before wider use.
 
 The current uncommitted worktree contains a production-oriented contributor
 access redesign. PostgreSQL is the authority: role defaults are applied only
-when an invitation or membership is created, while the stored `SharedMember`
-booleans remain authoritative afterward. Current membership plus the current
+when an invitation is created, while direct member creation stores omitted
+authorization flags as `false` and the stored `SharedMember` booleans remain
+authoritative afterward. Current membership plus the current
 section permission is required before Backend may return live data. Within an
 allowed section, task, guest, money, provider/quote, member, dashboard, and
 notification queries are constrained to assignment or the current

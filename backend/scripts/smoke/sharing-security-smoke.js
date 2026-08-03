@@ -269,13 +269,20 @@ async function run() {
     {
       userId: manager.user.id,
       role: "MANAGER",
+      canEditPlan: true,
+      canManageTasks: true,
+      canManageGuests: true,
       canInviteMembers: true,
     },
     owner.token,
   );
   check(
     "owner explicitly delegates invite management",
-    managerMember.status === 201,
+    managerMember.status === 201 &&
+      managerMember.body?.canEditPlan === true &&
+      managerMember.body?.canManageTasks === true &&
+      managerMember.body?.canManageGuests === true &&
+      managerMember.body?.canInviteMembers === true,
   );
 
   const lookupQuery = new URLSearchParams({
@@ -543,8 +550,8 @@ async function run() {
     manager.token,
   );
   check(
-    "delegated manager cannot modify superior authority",
-    downgradeSuperior.status === 400,
+    "delegated manager cannot discover or modify superior authority",
+    downgradeSuperior.status === 404,
   );
 
   const removeSuperior = await request(
@@ -554,14 +561,26 @@ async function run() {
     manager.token,
   );
   check(
-    "delegated manager cannot remove superior authority",
-    removeSuperior.status === 400,
+    "delegated manager cannot discover or remove superior authority",
+    removeSuperior.status === 404,
   );
 
   const concurrent = await Promise.all([
     request("POST", `/api/v1/invites/${rawToken}/accept`, null, target.token),
     request("POST", `/api/v1/invites/${rawToken}/accept`, null, target.token),
   ]);
+  const concurrentFailures = concurrent
+    .filter((response) => response.status !== 201)
+    .map((response) => ({
+      status: response.status,
+      code: response.body?.code,
+      message: response.body?.message,
+    }));
+  if (concurrentFailures.length > 0) {
+    console.error(
+      `Concurrent invite acceptance diagnostic: ${JSON.stringify(concurrentFailures)}`,
+    );
+  }
   check(
     "concurrent invite acceptance and its replay both return success",
     concurrent.every((response) => response.status === 201),

@@ -102,7 +102,7 @@ open; this plan must not be read as release approval.
 
 **Produces:** Stored-flag-only runtime checks, authority version increments, deterministic revocation boundary markers before flag changes, and stable permission errors.
 
-- [ ] Keep role defaults only in invitation/new-membership materialization; later role changes preserve omitted stored flags and never restore an explicitly revoked permission.
+- [ ] Keep role defaults only in invitation materialization; direct member creation stores omitted authorization flags as `false`, and later role changes preserve omitted stored flags and never restore an explicitly revoked permission.
 - [ ] Return stored flags from every runtime `can*` method for non-owners.
 - [ ] Preserve existing action-time snapshots and append only a deterministic section boundary inside the membership update transaction for true-to-false live-read changes; never query or re-snapshot live entities during revocation.
 - [ ] Increment and expose `authorityVersion`.

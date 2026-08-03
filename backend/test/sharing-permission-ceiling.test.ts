@@ -1353,6 +1353,63 @@ test("a lost invite-accept response can be retried without changing newer member
   );
 });
 
+test("accepted invite contribution uses the persisted acceptance instant on the first write", async () => {
+  const recorded: Array<Record<string, any>> = [];
+  const service = new SharingService(
+    {} as any,
+    new PermissionService({} as any),
+    {} as any,
+    {} as any,
+    {
+      ensureTenureInTransaction: async () => undefined,
+      recordInTransaction: async (
+        _tx: Record<string, any>,
+        input: Record<string, any>,
+      ) => {
+        recorded.push(input);
+      },
+    } as any,
+  );
+  const acceptedAt = new Date("2026-08-03T12:00:00.000Z");
+  const inviter = {
+    id: "member-inviter",
+    weddingPlanId: "plan-1",
+    userId: "inviter-1",
+    role: SharedMemberRole.MANAGER,
+    ...rolePermissionDefaults(SharedMemberRole.MANAGER),
+    canInviteMembers: true,
+    authorityVersion: 4,
+  };
+  const acceptedMember = {
+    id: "member-accepted",
+    weddingPlanId: "plan-1",
+    userId: "target-1",
+    role: SharedMemberRole.EDITOR,
+    ...rolePermissionDefaults(SharedMemberRole.EDITOR),
+    authorityVersion: 1,
+    user: sharingUser("target-1", "+967777000099", "target"),
+  };
+
+  await (service as any).recordAcceptedInviteMemberForInviterInTransaction(
+    {
+      sharedMember: {
+        findUnique: async () => inviter,
+      },
+    },
+    {
+      id: "invite-1",
+      weddingPlanId: "plan-1",
+      inviterUserId: "inviter-1",
+      acceptedAt: null,
+    },
+    acceptedMember,
+    acceptedAt,
+  );
+
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0]?.occurredAt, acceptedAt);
+});
+
 test("decline is concurrent and lost-response idempotent only for the verified invitee", async () => {
   const harness = inviteHarness();
   const outsider = sharingUser(

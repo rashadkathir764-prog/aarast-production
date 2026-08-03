@@ -244,7 +244,12 @@ async function run() {
     const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, {
       title: 'Blocked shared task',
     }, sharedToken);
-    check('shared VIEWER cannot create task before permission', res.status === 404);
+    check(
+      'shared VIEWER receives the stable task-permission denial before grant',
+      res.status === 403 &&
+        res.body?.code === 'TASK_PERMISSION_REVOKED' &&
+        res.body?.message === 'لم تعد لديك صلاحية لتنفيذ هذه المهمة',
+    );
   }
 
   {

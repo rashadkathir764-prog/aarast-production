@@ -10,7 +10,7 @@ WhatsApp assignment and contributor deep links are explicitly outside this chang
 
 ## Authorization Rules
 
-- `rolePermissionDefaults()` seeds flags only when an invitation or new membership is created. Later role changes preserve omitted stored flags and never restore an explicitly revoked permission.
+- `rolePermissionDefaults()` seeds flags only when an invitation is created. Direct member creation stores omitted authorization flags as `false`. Later role changes preserve omitted stored flags and never restore an explicitly revoked permission.
 - Runtime authorization for every non-owner member uses the stored flags only.
 - Owners retain full plan authority.
 - A non-owner live section read requires the section's stored read flag:

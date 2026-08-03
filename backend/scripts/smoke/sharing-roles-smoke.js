@@ -192,16 +192,34 @@ async function run() {
     }, owner.token);
     check('owner updates editor to finance manager - HTTP 200', res.status === 200);
     check('finance role updated', res.body?.role === 'FINANCE_MANAGER');
-    check('finance manager can view money by default', res.body?.canViewMoney === true);
-    check('finance manager can manage money', res.body?.canManageMoney === true);
+    check('role-only update preserves stored money read denial', res.body?.canViewMoney === false);
+    check('role-only update preserves stored money write denial', res.body?.canManageMoney === false);
   }
 
   {
     const res = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
-      name: 'Finance Managed Category',
+      name: 'Role Only Must Stay Denied',
       allocatedAmount: '100000.00',
     }, editor.token);
-    check('finance manager can create budget category', res.status === 201);
+    check('role-only finance update cannot create a budget category', res.status === 404);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${planId}/members/${editorMemberId}`, {
+      canViewMoney: true,
+      canManageMoney: true,
+    }, owner.token);
+    check('owner explicitly grants finance permissions - HTTP 200', res.status === 200);
+    check('explicit finance read permission is stored', res.body?.canViewMoney === true);
+    check('explicit finance write permission is stored', res.body?.canManageMoney === true);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
+      name: 'Explicit Finance Grant',
+      allocatedAmount: '100000.00',
+    }, editor.token);
+    check('explicitly authorized finance manager can create a budget category', res.status === 201);
   }
 
   {

@@ -284,7 +284,7 @@ export class SharingService {
     const plan = access.plan;
     const user = await this.findTargetUser(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
-    const permissionData = this.permissionDataForCreate(role, dto);
+    const permissionData = this.permissionDataForDirectMemberCreate(dto);
     this.assertPermissionCeiling(access, role, permissionData);
     const userId = user.id;
 
@@ -1078,6 +1078,7 @@ export class SharingService {
           tx,
           invite,
           member,
+          invite.acceptedAt,
         );
         return { member, acceptedInvite: invite };
       }
@@ -1138,6 +1139,7 @@ export class SharingService {
         tx,
         invite,
         member,
+        acceptedAt,
       );
       if (member.canManageProviders) {
         await this.setProviderConversationParticipation(
@@ -2376,6 +2378,7 @@ export class SharingService {
     tx: Prisma.TransactionClient,
     invite: PlanInvite,
     member: SharedMember & { user?: ApplicationContactRecord },
+    occurredAt: Date,
   ): Promise<void> {
     const inviterMember = await tx.sharedMember.findUnique({
       where: {
@@ -2405,7 +2408,7 @@ export class SharingService {
       provenance: ContributionProvenance.RUNTIME,
       requiredPermission: ContributionPermission.MANAGE_MEMBERS,
       authorityVersion: inviterMember.authorityVersion ?? 1,
-      occurredAt: invite.acceptedAt ?? new Date(),
+      occurredAt,
     });
   }
 
@@ -2739,6 +2742,22 @@ export class SharingService {
       canManageMoney,
       receiveNotifications:
         dto.receiveNotifications ?? defaults.receiveNotifications,
+    };
+  }
+
+  private permissionDataForDirectMemberCreate(
+    dto: CreateSharedMemberDto,
+  ): PermissionFlags {
+    const canManageMoney = dto.canManageMoney ?? false;
+    return {
+      canViewMoney: canManageMoney || (dto.canViewMoney ?? false),
+      canEditPlan: dto.canEditPlan ?? false,
+      canManageTasks: dto.canManageTasks ?? false,
+      canManageGuests: dto.canManageGuests ?? false,
+      canManageProviders: dto.canManageProviders ?? false,
+      canInviteMembers: dto.canInviteMembers ?? false,
+      canManageMoney,
+      receiveNotifications: dto.receiveNotifications ?? true,
     };
   }
 

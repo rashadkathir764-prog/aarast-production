@@ -242,8 +242,7 @@ async function run() {
       },
       manager.token,
     );
-    check('money manager atomically updates the budget', managerBudget.status === 200);
-    check('manager budget update preserves category identity', managerBudget.body?.categories?.some((item) => item.id === hallCategoryId && item.name === 'Wedding hall'));
+    check('contributor cannot replace the owner plan budget', managerBudget.status === 404);
 
     const cost = await request(
       'POST',
@@ -259,7 +258,7 @@ async function run() {
       owner.token,
     );
     check('owner creates a wedding cost with an initial payment', cost.status === 201 && typeof cost.body?.id === 'string');
-    check('created cost inherits the selected category', cost.body?.budgetCategoryId === hallCategoryId && cost.body?.categoryName === 'Wedding hall');
+    check('rejected contributor budget update leaves the owner category unchanged', cost.body?.budgetCategoryId === hallCategoryId && cost.body?.categoryName === 'Hall');
     check('created cost reports paid and remaining balances', cost.body?.paidAmount === '250000' && cost.body?.remainingAmount === '150000');
     const costId = cost.body?.id;
     if (!costId) throw new Error('cost setup failed');
@@ -282,7 +281,7 @@ async function run() {
       viewer.token,
     );
     check('money viewer reads paginated costs', listForViewer.status === 200 && Array.isArray(listForViewer.body?.items));
-    check('money viewer sees the created cost', listForViewer.body?.items?.some((item) => item.id === costId));
+    check('money viewer cannot see an owner-created cost outside their contribution scope', !listForViewer.body?.items?.some((item) => item.id === costId));
 
     const viewerCostWrite = await request(
       'PATCH',
@@ -292,17 +291,43 @@ async function run() {
     );
     check('read-only money viewer cannot edit a cost', viewerCostWrite.status === 404);
 
+    const managerCategory = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/budget-categories`,
+      { name: 'Manager category' },
+      manager.token,
+    );
+    check(
+      'money contributor creates an isolated category',
+      managerCategory.status === 201 && typeof managerCategory.body?.id === 'string',
+    );
+    const managerCategoryId = managerCategory.body?.id;
+    if (!managerCategoryId) throw new Error('manager category setup failed');
+
+    const managerCategories = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/budget-categories`,
+      null,
+      manager.token,
+    );
+    check(
+      'money contributor sees only their own category',
+      managerCategories.status === 200 &&
+        managerCategories.body?.length === 1 &&
+        managerCategories.body?.[0]?.id === managerCategoryId,
+    );
+
     const managerCost = await request(
       'POST',
       `/api/v1/wedding-plans/${planId}/costs`,
       {
-        budgetCategoryId: attireCategoryId,
+        budgetCategoryId: managerCategoryId,
         title: 'Temporary manager cost',
         totalAmount: '100000',
       },
       manager.token,
     );
-    check('money manager creates a cost', managerCost.status === 201 && typeof managerCost.body?.id === 'string');
+    check('money contributor creates a cost in their own category', managerCost.status === 201 && typeof managerCost.body?.id === 'string');
     const managerCostId = managerCost.body?.id;
     if (!managerCostId) throw new Error('manager cost setup failed');
 

@@ -395,3 +395,19 @@ test('direct data-writing smoke entrypoints fail closed before creating fixtures
     );
   }
 });
+
+test('conversation fixture cleanup closes contribution history before deleting memberships', () => {
+  const source = readFileSync(
+    join(backendRoot, 'scripts', 'smoke', 'conversation-unification-smoke.js'),
+    'utf8',
+  );
+  const closeTenures = source.indexOf('await tx.contributorTenure.updateMany(');
+  const deleteMembers = source.indexOf('await tx.sharedMember.deleteMany(');
+
+  assert.notEqual(closeTenures, -1, 'active contributor tenures must be closed');
+  assert.notEqual(deleteMembers, -1, 'fixture memberships must be deleted');
+  assert.ok(closeTenures < deleteMembers, 'tenures must close before memberships are deleted');
+  assert.match(source, /endReason:\s*'PLAN_DELETED'/);
+  assert.match(source, /sharedMemberId:\s*null/);
+  assert.match(source, /tx\.contributorHistoryScope\.updateMany\([\s\S]*status:\s*'DELETED'/);
+});

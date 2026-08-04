@@ -268,6 +268,27 @@ async function cleanupFixture() {
   ])];
 
   await prisma.$transaction(async (tx) => {
+    const tenureEndedAt = new Date();
+    if (planIds.length) {
+      await tx.contributorTenure.updateMany({
+        where: {
+          endedAt: null,
+          historyScope: { weddingPlanId: { in: planIds } },
+        },
+        data: {
+          endedAt: tenureEndedAt,
+          endReason: 'PLAN_DELETED',
+          sharedMemberId: null,
+        },
+      });
+      await tx.contributorHistoryScope.updateMany({
+        where: { weddingPlanId: { in: planIds } },
+        data: {
+          status: 'DELETED',
+          deletedAt: tenureEndedAt,
+        },
+      });
+    }
     if (aggregateIds.length) await tx.outboxEvent.deleteMany({ where: { aggregateId: { in: aggregateIds } } });
     if (userIds.length || planIds.length) {
       await tx.notification.deleteMany({

@@ -105,6 +105,11 @@ test('restore verifier supports current backup formats and migration rehearsal',
   assert.match(source, /pg_restore --list/);
   assert.match(source, /--exit-on-error --no-owner --no-privileges/);
   assert.match(source, /gzip -dc/);
+  assert.match(source, /OWNER TO/);
+  assert.match(source, /\(TO\|FROM\)/);
+  assert.match(source, /ALTER DEFAULT PRIVILEGES FOR ROLE/);
+  assert.match(source, /SET \(ROLE\|SESSION AUTHORIZATION\)/);
+  assert.match(source, /PUBLIC\|CURRENT_USER\|SESSION_USER\|CURRENT_ROLE/);
   assert.equal((source.match(/run_candidate_migrations/g) ?? []).length, 3);
   assert.match(source, /prisma migrate deploy/);
   assert.match(source, /prisma migrate status/);

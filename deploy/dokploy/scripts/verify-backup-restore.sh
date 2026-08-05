@@ -104,13 +104,22 @@ if docker exec "$CONTAINER" pg_restore --list /backup/input >/dev/null 2>&1; the
     -U postgres -d "$DATABASE" /backup/input
 else
   echo "Restoring plain SQL backup..."
-  # Plain dumps may preserve object owners. Recreate only syntactically safe
-  # owner roles inside this disposable cluster before restoring.
-  dump_sql | grep -oE 'OWNER TO "?[A-Za-z0-9_]+"?' | \
-    sed -E 's/OWNER TO "?([A-Za-z0-9_]+)"?/\1/' | sort -u | \
+  # Plain dumps may preserve object owners and ACL grantees. Recreate every
+  # syntactically safe referenced role inside this disposable cluster before
+  # restoring. This includes runtime roles referenced only by GRANT statements
+  # and migrator roles referenced by ALTER DEFAULT PRIVILEGES.
+  dump_sql | sed -nE \
+    -e 's/.*OWNER TO "?([A-Za-z0-9_]+)"?;$/\1/p' \
+    -e 's/.* (TO|FROM) "?([A-Za-z0-9_]+)"?;$/\2/p' \
+    -e 's/^ALTER DEFAULT PRIVILEGES FOR ROLE "?([A-Za-z0-9_]+)"?.*$/\1/p' \
+    -e 's/^SET (ROLE|SESSION AUTHORIZATION) "?([A-Za-z0-9_]+)"?;$/\2/p' | \
+    sort -u | \
     while IFS= read -r role; do
-      [ -n "$role" ] || continue
-      [ "$role" = postgres ] && continue
+      case "$role" in
+        ""|postgres|PUBLIC|CURRENT_USER|SESSION_USER|CURRENT_ROLE)
+          continue
+          ;;
+      esac
       docker exec "$CONTAINER" psql -U postgres -d "$DATABASE" \
         -v ON_ERROR_STOP=1 -qc "CREATE ROLE \"$role\";" 2>/dev/null || true
     done

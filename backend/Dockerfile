@@ -50,14 +50,18 @@ LABEL org.opencontainers.image.revision="${AARAST_GIT_REVISION}"
 
 RUN apk add --no-cache openssl
 # The Node base image ships npm 10.9.8, which currently carries vulnerable
-# bundled packages (brace-expansion, picomatch, sigstore, and tar). Keep the
+# bundled packages (brace-expansion, ip-address, picomatch, sigstore, and tar). Keep the
 # runtime toolchain on the fixed npm release used by the supply-chain gate.
-RUN npm install --global npm@12.0.1 --no-fund --no-audit \
+RUN npm install --global npm@12.0.2 --no-fund --no-audit \
     && mkdir -p /tmp/npm-fix \
-    && npm pack brace-expansion@5.0.8 --pack-destination /tmp/npm-fix --silent \
+    && npm pack brace-expansion@5.0.9 --pack-destination /tmp/npm-fix --silent \
+    && npm pack ip-address@10.3.1 --pack-destination /tmp/npm-fix --silent \
     && rm -rf /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
-    && tar -xzf /tmp/npm-fix/brace-expansion-5.0.8.tgz -C /usr/local/lib/node_modules/npm/node_modules \
+    && tar -xzf /tmp/npm-fix/brace-expansion-5.0.9.tgz -C /usr/local/lib/node_modules/npm/node_modules \
     && mv /usr/local/lib/node_modules/npm/node_modules/package /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
+    && rm -rf /usr/local/lib/node_modules/npm/node_modules/ip-address \
+    && tar -xzf /tmp/npm-fix/ip-address-10.3.1.tgz -C /usr/local/lib/node_modules/npm/node_modules \
+    && mv /usr/local/lib/node_modules/npm/node_modules/package /usr/local/lib/node_modules/npm/node_modules/ip-address \
     && rm -rf /tmp/npm-fix \
     && npm cache clean --force
 

@@ -33,6 +33,7 @@
     "smoke:otp-profile": "node scripts/smoke/run-isolated-smoke.js otp-profile-smoke.js",
     "smoke:openwa-otp": "node scripts/smoke/openwa-otp-smoke.js",
     "smoke:marketplace": "node scripts/smoke/run-isolated-smoke.js marketplace-smoke.js",
+    "smoke:reference-catalog": "node scripts/smoke/run-isolated-smoke.js reference-catalog-smoke.js",
     "smoke:providers-quotes": "node scripts/smoke/run-isolated-smoke.js providers-quotes-smoke.js",
     "smoke:quote-stability": "node scripts/smoke/run-isolated-smoke.js quote-stability-smoke.js",
     "smoke:conversation-unification": "node scripts/smoke/run-isolated-smoke.js conversation-unification-smoke.js",

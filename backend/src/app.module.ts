@@ -33,6 +33,7 @@ import { MediaModule } from "./media/media.module";
 import { OutboxModule } from "./outbox/outbox.module";
 import { ContextsModule } from "./contexts/contexts.module";
 import { ContributionHistoryModule } from "./contribution-history/contribution-history.module";
+import { CatalogsModule } from "./catalogs/catalogs.module";
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { ContributionHistoryModule } from "./contribution-history/contribution-h
     MediaModule,
     ContextsModule,
     ContributionHistoryModule,
+    CatalogsModule,
   ],
   controllers: [HealthController, MetricsController],
   providers: [

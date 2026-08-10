@@ -97,6 +97,7 @@ const managedCommandArguments = new Map([
   ['smoke:guests-apis', 'guests-apis-smoke.js'],
   ['smoke:otp-profile', 'otp-profile-smoke.js'],
   ['smoke:marketplace', 'marketplace-smoke.js'],
+  ['smoke:reference-catalog', 'reference-catalog-smoke.js'],
   ['smoke:providers-quotes', 'providers-quotes-smoke.js'],
   ['smoke:quote-stability', 'quote-stability-smoke.js'],
   ['smoke:conversation-unification', 'conversation-unification-smoke.js'],

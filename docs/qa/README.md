@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-08-03
+Snapshot date: 2026-08-10
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -17,6 +17,23 @@ The sync check detects generated reference drift. The docs verifier checks
 documented routes, migration references, snapshot freshness, and Markdown
 links. `git diff --check` catches whitespace errors. The active source list and
 archive rules are owned by `docs/README.md`.
+
+## Latest Full Working-Tree Gate — 2026-08-10
+
+- Backend check/test/build/Prisma validation and source guard: PASS.
+- Reference-catalog managed smoke on a disposable 75-migration database: PASS.
+- Admin type-check/test/honesty/container/build/managed runtime smoke: PASS.
+- Mobile analysis and `flutter test --no-pub`: PASS, 1134/1134.
+- Generated-doc sync, docs verification, archive preservation, and whitespace
+  check: PASS.
+- Existing local Compose readiness: FAIL (`/ready=503`). MinIO is reachable, but
+  the Backend bucket check returns `InvalidAccessKeyId`; source smokes are
+  isolated evidence and do not convert that runtime to PASS.
+- Dependency audits: Backend production dependencies PASS with zero findings;
+  Admin has two moderate React Router advisories requiring a tested v7 migration;
+  Mobile upgrades remain a separate compatibility pass.
+- Physical iOS and exhaustive Android secondary/offline-mutation coverage:
+  BLOCKED/OPEN as detailed in `MOBILE_QA.md`.
 
 ## Backend Changes
 
@@ -36,6 +53,7 @@ npm test
 npm run smoke:auth-verification
 npm run smoke:sharing-security
 npm run smoke:marketplace
+npm run smoke:reference-catalog
 npm run smoke:phase2-provider-rating-concurrency
 npm run smoke:provider-dashboard
 npm run smoke:private-chat-media
@@ -571,6 +589,32 @@ regresses, stop rollout and return to the last accepted signed mobile artifact.
 This slice has no backend API or database migration, so do not roll back backend
 or schema state. Record the exact release/artifact used for rollback and rerun
 the regression gate before resuming rollout.
+
+## Dynamic Catalog And Geography Gate
+
+Any managed-reference change must prove all of the following before release:
+
+- Prisma validation, Backend type-check/build, and an isolated migration run
+  against a disposable PostgreSQL database;
+- `npm run smoke:reference-catalog` passes against the managed disposable
+  database and verifies first-load catalog seeding plus version-aware fetch;
+- public bootstrap returns only the published active revision, returns
+  `unchanged: true` for the current version, and changes version only after a
+  publication or another included reference update;
+- draft editing does not change the Mobile-visible payload, historical publish
+  performs rollback, and disable creates an inactive published revision rather
+  than deleting history;
+- every Admin write requires `CATALOG_WRITE`, every Admin read requires
+  `CATALOG_READ`, and the audit log records attempt plus terminal outcome;
+- locality create/update rejects a parent in another district and every direct
+  or indirect cycle; disable preserves existing plan/provider text;
+- Mobile cold-start, matching-version, corrupt-cache, network-failure, empty
+  remote persona, groom/bride audience, and manual-locality fallback paths;
+- Admin and Mobile RTL layouts at 320px/420px and enlarged text, including
+  empty, loading, error, inactive, unpublished, and rollback states.
+
+Security roles, permissions, payment states, booking states, and finance
+calculation semantics must fail review if exposed as editable catalog rows.
 
 ## Admin Web Changes
 

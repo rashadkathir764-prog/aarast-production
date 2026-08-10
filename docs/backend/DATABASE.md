@@ -16,6 +16,10 @@ Current documentation snapshot: 2026-08-02. Route-level behavior belongs in
 | City | Compatibility catalog currently referenced by providers, services, and quote requests. It supports existing market filtering but is not a synonym for a governorate or district. |
 | Governorate | Authoritative Yemen first-level administrative reference with stable source code, Arabic/English names, center coordinates, active state, and ordered districts. The seeded set contains 22 units including `أمانة العاصمة`. |
 | District | Authoritative second-level administrative reference related to one Governorate by `governorateId`, with a stable source code, Arabic/English names, and center coordinates. The seeded set contains 335 districts. |
+| AdministrativeLocality | Optional third-level Yemen reference under one District. `type` distinguishes area, isolation, neighborhood, and zone; `parentId` supports a same-district hierarchy. Codes are stable, changes are soft-disabled, and public reads return active rows only. |
+| ReferenceCatalog | Named, versioned container for flexible product reference data that may change without a mobile release. It is not used for security roles or financial lifecycle states. |
+| ReferenceCatalogItem | Stable logical item key with pointers to the current draft revision and published revision. |
+| ReferenceCatalogItemRevision | Append-only content snapshot containing Arabic/English labels, grouping, icon key, order, groom/bride/customer/provider audiences, recommendation and active flags, plus bounded JSON metadata. |
 | Favorite | Lets users save providers or services for later comparison. |
 | Review | Captures user feedback about a provider/service reference. Reviews are implemented as provider-reference support, not as paid marketplace monetization. |
 | Package | Represents bundled provider offerings, such as full hall packages or photography packages. |
@@ -424,7 +428,11 @@ rewrite as permission to restore a removed live model.
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `Governorate` | 11 | `id`, `createdAt`, `updatedAt` |
-| `District` | 12 | `id`, `governorateId`, `createdAt`, `updatedAt` |
+| `District` | 13 | `id`, `governorateId`, `createdAt`, `updatedAt` |
+| `AdministrativeLocality` | 16 | `id`, `districtId`, `parentId`, `createdAt`, `updatedAt` |
+| `ReferenceCatalog` | 9 | `id`, `createdAt`, `updatedAt` |
+| `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
+| `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
 | `Provider` | 37 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `cityId`, `createdAt`, `updatedAt` |
@@ -442,5 +450,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 48
+Total models: 52
 <!-- DOCS-SYNC:END -->

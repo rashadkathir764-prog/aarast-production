@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Snapshot date: 2026-07-28
+Snapshot date: 2026-08-10
 
 ## Principles
 
@@ -19,6 +19,9 @@ Snapshot date: 2026-07-28
   and `mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart`.
 - API config: `mobile/lib/core/config/api_config.dart`.
 - Offline/cache: `mobile/lib/core/offline/` and related feature repositories.
+- Dynamic references: `mobile/lib/features/catalogs/` loads the versioned
+  public catalog bootstrap, stores the last valid payload in `local_meta`, and
+  keeps hardcoded Money starter data only as a cold-start/failure fallback.
 - Feature flags: `mobile/lib/core/config/app_feature_flags.dart`.
 - Auth action gating: `mobile/lib/features/auth/utils/auth_action_guard.dart`.
 - Session recovery: `mobile/lib/core/network/api_client.dart` and secure
@@ -47,6 +50,12 @@ Snapshot date: 2026-07-28
 - Offline pending/sync states.
 - Shared-member privacy states.
 - Provider/user navigation separation.
+- Published reference-catalog audience filtering for groom, bride, customer,
+  and provider contexts; an invalid or empty remote Money persona falls back
+  to the bundled safe catalog rather than an empty screen.
+- Location entry must request governorate, then district, then typed locality
+  suggestions. Area/neighborhood fields retain manual entry when the catalog
+  is incomplete or offline.
 - Provider portal state remains separate from the wedding-user shell.
 - Quote entry performs read-only conversation lookup. The chat timeline merges
   message and quote/offer event pages, recovers durable activity after

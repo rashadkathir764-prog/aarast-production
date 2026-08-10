@@ -1,6 +1,6 @@
 # Backend Status And Risks
 
-Snapshot date: 2026-07-14
+Snapshot date: 2026-08-10
 
 ## Implemented Areas
 
@@ -51,6 +51,16 @@ Snapshot date: 2026-07-14
   notification/conversation events atomically.
 - Admin conversation-report list and status moderation without message-body
   exposure.
+- Versioned reference catalogs with immutable revisions, explicit publish,
+  historical rollback, audience targeting, and soft-disable. Public bootstrap
+  returns one stable version and omits duplicate payload for a matching client
+  version.
+- Typed Yemen geography with Governorate, District, and district-bound
+  AdministrativeLocality levels for area, isolation, neighborhood, and zone.
+  Parentage is same-district and cycle-safe; disable preserves historical text.
+- Contributor history, membership-bound plan leaving, recoverable anonymous
+  account-deletion receipts, and device-scoped Firebase push installations are
+  present in the current schema and guarded source/tests.
 
 ## Integrated Runtime Contract
 
@@ -93,6 +103,12 @@ template are approved and a real device receives a code.
 - Cost/payment mutations require concurrency and idempotency smoke. The release
   gate must prove that concurrent payment, schedule-payment, and reversal
   requests cannot overpay a cost or duplicate ledger rows.
+- The currently running local Compose backend is process-live but not ready:
+  `/live=200` and `/ready=503`. PostgreSQL and Redis are up and MinIO is reachable
+  from Backend, but the bucket check returns `InvalidAccessKeyId`; local
+  Backend/MinIO credentials are out of sync. Rebuild with aligned private
+  credentials and rerun readiness before treating that container as current
+  source or release evidence.
 
 ## Verification
 
@@ -104,7 +120,15 @@ npm run check
 npm run build
 npm test
 npm run smoke:all
+npm run smoke:reference-catalog
 ```
 
 Smoke checks require the matching local runtime and environment. Report them as
 BLOCKED rather than PASS when dependencies are unavailable.
+
+Latest local source evidence on 2026-08-10: `npm run check`, guarded unit tests,
+build, Prisma validation, Phase 0 source guard, managed reference-catalog smoke,
+and managed Admin runtime smoke PASS. Both managed smokes applied all 75
+migrations to disposable databases and cleaned their owned resources. The
+existing long-running Compose container remains not-ready as described above.
+The Backend production dependency audit reports zero vulnerabilities.

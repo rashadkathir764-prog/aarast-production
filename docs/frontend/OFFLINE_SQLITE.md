@@ -46,10 +46,15 @@ their separate secure token vault.
 
 ## Tables
 
-- `local_meta`: small cached endpoint payloads such as summaries, timelines, shared plans, last sync time.
+- `local_meta`: small cached endpoint payloads such as summaries, timelines,
+  shared plans, last sync time, the versioned catalog bootstrap, and
+  district-scoped locality suggestions.
 - `sync_queue`: pending offline writes with endpoint, method, payload, status, retry count, and last error.
 - `current_user_profile`: safe current-user profile only; no passwords, OTP codes, or raw secrets.
 - `cached_wedding_plans`: local wedding-plan list/detail cache.
+- `cached_dashboard_summaries`: full plan summary cache used by Home and the
+  operational Wedding Day view, including time/location, permission snapshot,
+  important items, and provider previews already returned by the API.
 - `cached_plan_members`: shared-member/member permission cache.
 - `cached_tasks`: task/timeline task cache with dirty and deleted flags.
 - `cached_budget_categories`: local budget category cache.
@@ -67,6 +72,20 @@ their separate secure token vault.
 ## Read Strategy
 
 Feature API classes remain the boundary used by UI providers. On successful remote reads, API classes update the local cache. On network failure, they return cached rows when available and mark sync state as offline. If no cache exists, the existing Arabic error flow is preserved.
+
+Database schema version 8 adds `cached_dashboard_summaries`. The Wedding Day
+route can cold-start without a network connection from the last successful full
+dashboard summary plus cached tasks. It never invents a provider phone,
+permission, time, or location that was not present in those cached contracts.
+Remote images are not part of this offline guarantee.
+
+The dynamic reference bootstrap stores both its stable server `version` and
+the last complete JSON payload in `local_meta`. A matching-version response
+does not rewrite the payload. Network failure uses only a previously parsed
+payload; corrupt JSON is removed. Money starter UI still owns a bundled
+persona-safe fallback so first launch cannot become blank. District locality
+lists are cached independently under a district-scoped key and never replace
+the authoritative governorate/district tables.
 
 Costs, payments, and payment schedules use separate cache tables but one domain
 contract. A payment and schedule always reference one cached cost; category and

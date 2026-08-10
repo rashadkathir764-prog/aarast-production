@@ -359,9 +359,45 @@ Before visual polish is accepted:
 
 This phase does not authorize visual polish before product/architecture readiness.
 
-## 13. Manual QA Report Template
+## 13. Latest Mobile V3 Local Evidence — 2026-08-10
 
-## 13. Release Configuration and Native Identity QA
+- PASS — `flutter analyze --no-pub`: no issues.
+- PASS — `flutter test --exclude-tags golden`: 1084/1084.
+- PASS — `flutter test --tags golden --concurrency=1`: 50/50 reviewed Goldens.
+- PASS — `flutter test --no-pub`: 1134/1134 combined tests.
+- PASS — Release Web build with the documented public HTTPS API origin.
+- PASS — debug APK build with the documented public HTTPS API origin.
+- PASS — the latest debug APK installed and cold-launched on Samsung SM-S938B
+  at 1440x3120 and 1.15 text scale. Home, Money, Tasks, Guests, and Providers
+  rendered; the post-navigation fatal/Flutter/RenderFlex/SQLite scan was clean.
+- PASS — a cached owner dashboard cold-launched in airplane mode without a
+  fatal, Flutter, RenderFlex, or SQLite error; connectivity was restored after
+  the check.
+- OPEN — physical secondary/auth/form states and offline mutation/sync recovery
+  still require a complete device checklist; root-tab and offline cold-start
+  smoke are not that checklist.
+- BLOCKED — physical iOS: the available host is Windows.
+
+Automated widget and offline-sync results are not a substitute for these two
+physical-device gates.
+
+### Soft Royal V2 evidence — 2026-08-10
+
+- PASS — `flutter analyze --no-pub`.
+- PASS — 1084/1084 non-Golden tests.
+- PASS — 50/50 reviewed Golden tests after a full visual contact-sheet review.
+- PASS — 41/41 focused contrast, native-brand, source-guard, accessibility, and
+  responsive-boundary tests.
+- PASS — docs sync and docs verification.
+- PASS — debug APK build and data-preserving install on Samsung SM-S938B.
+- PASS — focused physical Home review with the app foregrounded.
+- PASS — final Home plan-moment review after the responsive height and stacked
+  date/location refinement; the 320px Golden remains overflow-free.
+- OPEN — exhaustive physical secondary routes, short-height forms, offline
+  mutation/sync recovery, and notification receipt/tap behavior.
+- BLOCKED — physical iOS on the available Windows host.
+
+## 14. Release Configuration and Native Identity QA
 
 Automated/local gate:
 
@@ -385,7 +421,7 @@ External/manual gate:
 Do not mark the store release gate PASS when artifact signing/certificate
 verification was skipped or intentionally deferred.
 
-## 14. Manual QA Report Template
+## 15. Manual QA Report Template
 
 ```text
 QA Date:
@@ -418,7 +454,7 @@ Overall Verdict:
 PASS / FAIL / BLOCKED
 ```
 
-## 15. Acceptance Criteria
+## 16. Acceptance Criteria
 
 - QA levels are defined.
 - Required commands by change type are defined.
@@ -428,14 +464,14 @@ PASS / FAIL / BLOCKED
 - Release configuration evidence distinguishes local automation from external
   signing, deployment, and physical-device checks.
 
-## 16. Risks
+## 17. Risks
 
 - Static Flutter checks can pass while the post-login or guest dashboard is visibly broken.
 - Route regressions can hide behind unused paths unless every nav item is tapped.
 - Privacy bugs need role-specific manual checks.
 - Offline bugs often appear only after restart or failed sync.
 
-## 17. Next Implementation Notes
+## 18. Next Implementation Notes
 
 - Next stage should be tracked in the active frontend or release plan, not in an
   archived mobile-architecture file.

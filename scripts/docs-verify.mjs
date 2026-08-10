@@ -113,13 +113,71 @@ function getRegisteredAdminRoutes() {
   if (!existsSync(appDir)) return set;
   for (const f of walk(appDir, '.tsx')) {
     if (!/(App|Routes)\.tsx$/.test(f)) continue;
-    const src = read(f);
-    const matches = src.matchAll(/path=['"]([^'"]+)['"]/g);
-    for (const m of matches) {
-      if (m[1] && m[1].startsWith('/')) set.add(m[1]);
-    }
+    collectRegisteredAdminRoutes(read(f), set);
   }
   return set;
+}
+
+function collectRegisteredAdminRoutes(src, routes) {
+  const stack = [];
+  const routeTag = /<\/?Route\b/g;
+  let match;
+
+  while ((match = routeTag.exec(src)) !== null) {
+    if (match[0].startsWith('</')) {
+      if (stack.length) stack.pop();
+      continue;
+    }
+
+    const tagEnd = findRegisteredAdminRouteTagEnd(src, match.index);
+    if (tagEnd < 0) continue;
+    const tag = src.slice(match.index, tagEnd + 1);
+    routeTag.lastIndex = tagEnd + 1;
+
+    const path = tag.match(/\bpath\s*=\s*['"]([^'"]+)['"]/)?.[1];
+    const isSelfClosing = /\/\s*>$/.test(tag);
+    const parent = [...stack].reverse().find(Boolean);
+    const absolutePath =
+      path && path !== '*' && path !== 'index'
+        ? path.startsWith('/')
+          ? path
+          : `${parent === '/' ? '' : parent ?? ''}/${path}`.replace(/\/{2,}/g, '/')
+        : null;
+
+    if (absolutePath) routes.add(absolutePath);
+    if (!isSelfClosing) {
+      stack.push(absolutePath ?? parent ?? null);
+    }
+  }
+}
+
+function findRegisteredAdminRouteTagEnd(src, start) {
+  let braceDepth = 0;
+  let quote = null;
+
+  for (let index = start + '<Route'.length; index < src.length; index += 1) {
+    const char = src[index];
+    if (quote) {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '\'' || char === '"' || char === '`') {
+      quote = char;
+    } else if (char === '{') {
+      braceDepth += 1;
+    } else if (char === '}') {
+      braceDepth = Math.max(0, braceDepth - 1);
+    } else if (char === '>' && braceDepth === 0) {
+      return index;
+    }
+  }
+
+  return -1;
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +379,31 @@ function endpointDriftCheck() {
   }
 }
 
+function adminRouteReferenceCheck() {
+  const generatedPath = join(root, 'docs', 'frontend', 'ADMIN_ROUTES.md');
+  if (!existsSync(generatedPath)) {
+    report('error', relative(root, generatedPath), null, 'Generated Admin route reference is missing.');
+    return;
+  }
+
+  const documented = new Set(
+    [...read(generatedPath).matchAll(/^- `([^`]+)`$/gm)].map((match) => match[1]),
+  );
+  const registered = getRegisteredAdminRoutes();
+
+  for (const route of registered) {
+    if (!documented.has(route)) {
+      report('error', relative(root, generatedPath), null, `Missing registered Admin route \`${route}\`.`);
+    }
+  }
+
+  for (const route of documented) {
+    if (!registered.has(route)) {
+      report('error', relative(root, generatedPath), null, `Documents unknown Admin route \`${route}\`.`);
+    }
+  }
+}
+
 function normalizeEndpointPath(path) {
   return path
     .replace(/\{[^}]+\}/g, ':param')
@@ -330,6 +413,7 @@ function normalizeEndpointPath(path) {
 
 function main() {
   endpointDriftCheck();
+  adminRouteReferenceCheck();
   findUnversionedProductApiMentions();
   findStaleSnapshots();
   findBrokenMigrationReferences();

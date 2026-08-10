@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-08-03
+Snapshot date: 2026-08-10
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
@@ -101,7 +101,74 @@ conversations, signed image uploads, and rotating refresh sessions.
   browser-administrator role.
 - Guest/local planning can exist, but protected cloud/share/provider writes must
   remain account-gated.
-- Premium-screen work is active and tracked in `docs/frontend/PREMIUM_ROADMAP.md`.
+- Mobile Experience System V3 is the active visual contract. Its foundations
+  live under `mobile/lib/core/experience_v3/`; the former Premium/Royal
+  palette, compatibility aliases, and shared editorial hero are removed from
+  active Mobile code. White owns every primary screen and color is limited to
+  small semantic accents. The owner shell separates a compact plan-context
+  anchor from a white five-destination dock that keeps every label visible.
+  Home is a smart one-screen brief with one calculated next decision and a
+  truthful continuous 2x2 metric surface. Its deterministic Plan Pulse
+  reconciles real task, guest, provider, and money attention; it is not an AI
+  claim. Money, Guests, Tasks, and Providers start with
+  compact white summaries so working content remains above the fold. Empty,
+  error, setup, utility, cost, and task states prefer continuous rows and
+  dividers over nested cards; authentication and common forms use filled
+  fields with a focus line and progressive disclosure. Routes, APIs,
+  permissions, and offline ownership remain unchanged.
+  The plan-level `+ إضافة` control is the single creation entry and orders its
+  four real routes (task, guest, cost, quote) by current urgency and recent
+  session use. It floats at the lower RTL side above navigation, shows a
+  contextual label on task/guest/money roots, compacts while scrolling down,
+  and stays absent when the current route or permission cannot create. The
+  compact header now identifies plan, destination, and the deterministic
+  wedding stage without increasing its height. Home renders only one
+  deterministic priority at a time. Task,
+  guest, and payment rows expose one truthful contextual action while keeping
+  secondary mutations in overflow menus; pending guests use `تحديث الرد`, not
+  a fake reminder action. Durable task, guest, quote, plan, sharing, provider,
+  budget, cost, payment, and schedule forms securely autosave account-scoped
+  drafts, restore values after navigation/interruption, and clear them only
+  after successful submit or account teardown. Password and OTP input is never
+  persisted. Every non-auth domain form starts with one Focus decision and uses
+  a fixed keyboard-safe primary action; progressive detail and live summaries
+  appear where they resolve a real user decision.
+  Guest, participant, notification, and settings collections now use one
+  shared continuous-row hierarchy rather than a card per record. More is
+  limited to two utility groups and isolates logout/deletion in an
+  account-action sheet. Provider details put real media immediately after
+  identity, then trust/price, services, and the quote decision while packages,
+  about, and reviews open progressively. Failed media renders a designed state.
+  Home, Tasks, and Guests share the thin `AarastV3PlanPath` product signature
+  and the matching Home metrics use quiet shared-element transitions.
+  A shared date-stage engine resolves `بداية التخطيط`, `مرحلة التخطيط`,
+  `الشهر الأخير`, `الأسبوع الأخير`, `يوم العرس`, and `إغلاق الخطة` from the
+  real wedding date. The same stage appears in plan chrome, Home, Tasks, Guests,
+  Money, and Providers and adapts priority and quick-add ordering; it is
+  deterministic, offline-safe, and never claims AI readiness. Tasks,
+  notifications, and payment schedules share the same
+  `الآن / اليوم / هذا الأسبوع / لاحقًا / مكتمل` time grammar. Saved providers
+  use one two-or-three-column comparison surface instead of repeated full
+  provider cards. Successful forms use one non-blocking receipt and either a
+  truthful next action or an automatic return to the logical destination.
+  Production Mobile code contains no
+  gradients or decorative box shadows; the source contract enforces this.
+  The current 50-Golden catalog has been reviewed against the flat-white V3
+  foundation. Active routes also resolve one runtime screen contract carrying
+  purpose, archetype, state support, privacy, offline, and one-hand metadata;
+  unmapped routes fail visibly instead of inheriting a silent generic design.
+  Complete physical loading/error/offline/read-only coverage at both 320px and
+  420px remains an open release gate. See
+  `docs/frontend/DESIGN_SYSTEM.md` and
+  `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx`.
+- `/wedding-plans/:id/wedding-day` is the permission-aware Wedding Day command
+  view. Home exposes it only from seven days before the event through the day
+  after. It uses real plan time/location, urgent unfinished tasks, responsible
+  contacts, and existing providers; missing provider contact data is not
+  invented. Mobile schema version 8 caches the complete dashboard summary, so
+  date/time/location, permission snapshot, important items, and provider
+  previews remain available with cached tasks after a cold offline start. This
+  adds no backend, booking, payment-processing, or open-messaging contract.
 - Product builds require a public HTTPS API origin and cannot enable the
   development login bypass. Android refuses debug signing for Release.
 - Canonical invitation links are
@@ -166,10 +233,11 @@ conversations, signed image uploads, and rotating refresh sessions.
   ambiguous result keeps the plan quarantined across restart, cache clear, and
   logout; replay runs before contexts load. The exact plan-scoped local graph is
   deleted and filtered contexts are committed before the marker is removed.
-- Offline schema version 7 stores an explicit `planId` for plan-scoped queue
+- Offline schema version 8 stores an explicit `planId` for plan-scoped queue
   rows. Unknown or contradictory legacy ownership is permanently blocked, and
   neither migration nor cleanup guesses a plan from endpoints, ids, nested JSON,
-  or substrings.
+  or substrings. Version 8 also adds the plan-scoped full dashboard-summary
+  cache used by Home and Wedding Day; it does not expand the write queue.
 - Account deletion uses the shared typed `حذف` confirmation in
   `account_deletion_flow.dart`; provider, contributor, and general account
   surfaces must not implement separate deletion semantics. Before the first
@@ -186,15 +254,21 @@ conversations, signed image uploads, and rotating refresh sessions.
   `لم تعد لديك صلاحية لتنفيذ هذه المهمة`; `Plan not found` is not the task
   permission-revocation contract.
 
-These behaviors are present in the current source. On 2026-08-03 the final
-combined `flutter analyze` passed, all 997 Flutter tests passed, and a local
+These behaviors are present in the current source. On 2026-08-10 the latest
+branch-closure gate passed `flutter analyze` and `flutter test --no-pub` with
+1134/1134 tests (1084 non-Golden plus 50 reviewed Goldens), Release Web, and a
+public-API debug APK build. The APK installed and cold-launched on a Samsung
+SM-S938B at 1440x3120 and 1.15 text scale; Home, Money, Tasks, Guests, and
+Providers rendered without Flutter, RenderFlex, SQLite, or fatal runtime
+errors. On 2026-08-03 the earlier final
+combined gate also passed all 997 Flutter tests, and a local
 Flutter Web runtime rendered the Arabic welcome gateway without console errors.
 Android Release built as `1.0.0+7`, verified against the Aarast upload
 signature, and produced SHA-256
 `509F54E81CBAE7CA4DD3BE9ABA086EACB1CF7D5C2D75F848C767A59741F7AC72`.
 The owner-plus-two-contributor Backend HTTP scenario and both fresh and populated
-legacy migration paths also passed. Android/iOS physical-device review remains
-open. The Release APK installed and launched on a physical Android 16 device
+legacy migration paths also passed. The earlier Release APK installed and
+launched on a physical Android 16 device
 without a fatal process or SQLite error, but the retained authenticated session
 correctly stopped at the explicit context-load retry state because Production
 still serves the old Backend contract (`/health=200`, new public account-
@@ -203,7 +277,15 @@ configuration from the previously signed Aarast artifact, but the required
 Firebase dart-defines are not configured in this workspace; repeatable CI
 packaging therefore remains a release gate. The SQLCipher schema-v6-to-v7
 migration remains a post-deployment Android/iOS device gate even though shared
-JSON migration and SQLite ownership source contracts pass locally.
+JSON migration and SQLite ownership source contracts pass locally. The latest
+2026-08-10 debug APK installed and passed the owner root-tab smoke on the
+connected Samsung device. Home was reviewed again after the plan moment was
+expanded to its 146-176px responsive range with date above location. A cached
+owner dashboard also passed an airplane-mode cold start without fatal, Flutter,
+layout, or SQLite errors. Exhaustive
+secondary/auth/form coverage and offline mutation/sync recovery remain open
+physical Android gates; physical iOS remains blocked on the available Windows
+host.
 
 ## Plan Management
 

@@ -254,52 +254,76 @@ function extractAdminRoutes() {
   if (!existsSync(appDir)) return [];
   for (const f of walk(appDir, '.tsx')) {
     if (!candidates.some((c) => f.endsWith(c))) continue;
-    const src = read(f);
-    const lines = src.split('\n');
-    // Maintain a stack of absolute paths opened by `<Route path="...">`. Push
-    // on opening tag, pop on closing tag. Self-closing `<Route ... />` does
-    // both in a single line; multi-line children reopen at the next inner
-    // Route. Relative child paths resolve against the top of the stack.
-    const stack = [];
-    for (const raw of lines) {
-      const line = raw.trim();
-
-      // Self-closing route: <Route path="..." element=... />
-      const self = line.match(/^<Route\s+path=['"]([^'"]+)['"]/);
-      const closing = /^<\/Route>/.test(line);
-
-      if (self && line.endsWith('/>')) {
-        const p = self[1];
-        if (p === '*' || p === 'index') continue;
-        const abs = resolveAdminPath(stack, p);
-        if (abs) routes.add(abs);
-        continue;
-      }
-
-      if (closing && stack.length) {
-        stack.pop();
-        continue;
-      }
-
-      if (self) {
-        const p = self[1];
-        if (p === '*' || p === 'index') continue;
-        const abs = resolveAdminPath(stack, p);
-        if (abs) {
-          routes.add(abs);
-          // Open a child scope so subsequent relative paths nest under this one.
-          if (p.startsWith('/')) stack.push(abs.replace(/\/$/, '') || '/');
-          else stack.push(abs);
-        }
-      }
-    }
+    collectAdminRoutes(read(f), routes);
   }
   return [...routes].sort();
 }
 
+function collectAdminRoutes(src, routes) {
+  // React Router declarations in this project are formatted across multiple
+  // lines and contain JSX inside `element={...}`. Scan each Route opening tag
+  // while tracking braces so a `>` from a child component never closes Route.
+  const stack = [];
+  const routeTag = /<\/?Route\b/g;
+  let match;
+
+  while ((match = routeTag.exec(src)) !== null) {
+    if (match[0].startsWith('</')) {
+      if (stack.length) stack.pop();
+      continue;
+    }
+
+    const tagEnd = findAdminRouteTagEnd(src, match.index);
+    if (tagEnd < 0) continue;
+    const tag = src.slice(match.index, tagEnd + 1);
+    routeTag.lastIndex = tagEnd + 1;
+
+    const path = tag.match(/\bpath\s*=\s*['"]([^'"]+)['"]/)?.[1];
+    const isSelfClosing = /\/\s*>$/.test(tag);
+    const absolutePath =
+      path && path !== '*' && path !== 'index'
+        ? resolveAdminPath(stack, path)
+        : null;
+
+    if (absolutePath) routes.add(absolutePath);
+    if (!isSelfClosing) {
+      stack.push(absolutePath ?? stack.at(-1) ?? null);
+    }
+  }
+}
+
+function findAdminRouteTagEnd(src, start) {
+  let braceDepth = 0;
+  let quote = null;
+
+  for (let index = start + '<Route'.length; index < src.length; index += 1) {
+    const char = src[index];
+    if (quote) {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '\'' || char === '"' || char === '`') {
+      quote = char;
+    } else if (char === '{') {
+      braceDepth += 1;
+    } else if (char === '}') {
+      braceDepth = Math.max(0, braceDepth - 1);
+    } else if (char === '>' && braceDepth === 0) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 function resolveAdminPath(stack, p) {
   if (p.startsWith('/')) return p;
-  const parent = stack[stack.length - 1];
+  const parent = [...stack].reverse().find(Boolean);
   if (!parent) return '/' + p;
   const base = parent === '/' ? '' : parent.replace(/\/$/, '');
   return (base + '/' + p).replace(/\/{2,}/g, '/');

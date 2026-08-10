@@ -15,25 +15,23 @@ import 'package:provider/provider.dart';
 
 void main() {
   group('one money system cleanup', () {
-    testWidgets('first money visit permits cost entry before budget setup', (
+    testWidgets('first money visit opens the guided budget starter', (
       tester,
     ) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.noBudget()));
       await tester.pumpAndSettle();
 
-      expect(find.text('الميزانية غير محددة'), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('money-empty-add-cost')),
+        find.byKey(const ValueKey('money-starter-submit')),
         findsOneWidget,
       );
-      expect(find.text('تحديد الميزانية'), findsWidgets);
-      expect(find.byTooltip('إدارة الميزانية'), findsNothing);
-      expect(find.byKey(const ValueKey('money-settings-menu')), findsOneWidget);
-      expect(find.text('إضافة تكلفة'), findsOneWidget);
-      expect(find.text('التصنيفات'), findsNothing);
-      expect(find.text('أحدث التكاليف'), findsNothing);
-      expect(find.text('آخر الدفعات'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('money-starter-manual')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('money-empty-add-cost')), findsNothing);
+      expect(find.byKey(const ValueKey('money-settings-menu')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -54,18 +52,20 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('hero and settings stay compact at large text', (tester) async {
+    testWidgets('hero and settings stay usable at 2.0 text scale', (
+      tester,
+    ) async {
       _setPhoneView(tester);
       await tester.pumpWidget(
-        _wrap(_FakeFinanceApi.withCosts(), textScale: 1.6),
+        _wrap(_FakeFinanceApi.withCosts(), textScale: 2.0),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('الميزانية الكلية'), findsOneWidget);
+      expect(find.text('الميزانية'), findsOneWidget);
       expect(find.text('المتاح من الميزانية'), findsOneWidget);
-      expect(find.text('المدفوع'), findsWidgets);
+      expect(find.text('دُفع فعليًا'), findsOneWidget);
       expect(find.text('التكاليف'), findsOneWidget);
-      expect(find.text('المتبقي للدفع'), findsWidgets);
+      expect(find.text('غير مدفوع'), findsWidgets);
       expect(find.text('إضافة تكلفة'), findsNothing);
       expect(
         find.byKey(const ValueKey('money-destination-budget')),
@@ -116,7 +116,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('money root shows each cost record once', (tester) async {
+    testWidgets('money root shows only the three latest costs', (tester) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.withCosts()));
       await tester.pumpAndSettle();
@@ -126,13 +126,12 @@ void main() {
         findsNothing,
       );
       expect(find.text('إضافة تكلفة'), findsNothing);
-      for (var index = 1; index <= 4; index++) {
-        expect(find.text('تكلفة $index'), findsOneWidget);
-      }
+      expect(find.byType(CostCard), findsNWidgets(3));
+      expect(find.text('عرض كل التكاليف'), findsOneWidget);
     });
 
     test('payment status palette stays calm and distinct', () {
-      expect(moneyStatusMeta('OPEN').color, AppTheme.muted);
+      expect(moneyStatusMeta('OPEN').color, AppTheme.textSecondary);
       expect(moneyStatusMeta('OPEN').background, AppTheme.dangerSoft);
       expect(moneyStatusMeta('PARTIALLY_PAID').color, AppTheme.warning);
       expect(
@@ -141,10 +140,10 @@ void main() {
       );
       expect(moneyStatusMeta('PAID').color, AppTheme.success);
       expect(moneyStatusMeta('PAID').background, AppTheme.successSoft);
-      expect(moneyStatusMeta('CANCELLED').color, AppTheme.muted);
+      expect(moneyStatusMeta('CANCELLED').color, AppTheme.textSecondary);
       expect(
         moneyStatusMeta('CANCELLED').background,
-        AppTheme.muted.withValues(alpha: .10),
+        AppTheme.textSecondary.withValues(alpha: .10),
       );
     });
 
@@ -219,11 +218,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('المال'), findsOneWidget);
+      expect(find.text('المتاح من الميزانية'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('embedded money root owns an opaque ivory surface', (
+    testWidgets('embedded money root owns an opaque soft-white surface', (
       tester,
     ) async {
       _setPhoneView(tester);
@@ -239,7 +238,7 @@ void main() {
         find.byKey(const PageStorageKey('money-overview-list')),
       );
       final padding = list.padding! as EdgeInsets;
-      expect(surface.color, AppTheme.ivory);
+      expect(surface.color, AppTheme.canvas);
       expect(
         padding.bottom,
         greaterThanOrEqualTo(196),
@@ -333,6 +332,7 @@ Widget _wrap(
           weddingPlanId: planId,
           sharedMember: sharedMember,
           embedded: embedded,
+          personaCode: 'groom',
         ),
       ),
     ),

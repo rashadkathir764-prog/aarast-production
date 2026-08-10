@@ -9,6 +9,7 @@ import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
+import 'package:aarast_mobile/features/shell/widgets/aarast_plan_chrome.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,17 +36,17 @@ void main() {
     expect(summary.progressPercent, 0);
     expect(summary.seed.selectedCategories, ['hall', 'photo']);
 
-    final royalSummary = summary.toDashboardSummary();
-    expect(royalSummary.title, 'خطة زفاف صنعاء');
-    expect(royalSummary.city, 'صنعاء - السبعين');
-    expect(royalSummary.location?['fullLabel'], 'صنعاء - السبعين - حدة');
-    expect(royalSummary.budgetTotal, '1000000');
-    expect(royalSummary.remainingBudget, '1000000');
-    expect(royalSummary.totalTasks, 0);
-    expect(royalSummary.guestCount, 0);
-    expect(royalSummary.providerCount, 0);
-    expect(royalSummary.currentUserRole, 'GUEST');
-    expect(royalSummary.permissions.role, 'GUEST_LOCAL');
+    final dashboardSummary = summary.toDashboardSummary();
+    expect(dashboardSummary.title, 'خطة زفاف صنعاء');
+    expect(dashboardSummary.city, 'صنعاء - السبعين');
+    expect(dashboardSummary.location?['fullLabel'], 'صنعاء - السبعين - حدة');
+    expect(dashboardSummary.budgetTotal, '1000000');
+    expect(dashboardSummary.remainingBudget, '1000000');
+    expect(dashboardSummary.totalTasks, 0);
+    expect(dashboardSummary.guestCount, 0);
+    expect(dashboardSummary.providerCount, 0);
+    expect(dashboardSummary.currentUserRole, 'GUEST');
+    expect(dashboardSummary.permissions.role, 'GUEST_LOCAL');
   });
 
   test(
@@ -119,7 +120,7 @@ void main() {
         storage,
         database: database,
       ).loadSummary();
-      final royalSummary = summary!.toDashboardSummary();
+      final dashboardSummary = summary!.toDashboardSummary();
 
       expect(summary.guestCount, 2);
       expect(summary.incompleteGuestCount, 1);
@@ -128,16 +129,16 @@ void main() {
       expect(summary.paidTotal, '500000');
       expect(summary.outstandingTotal, '2000000');
       expect(summary.duePaymentSchedulesCount, 1);
-      expect(royalSummary.remainingBudget, '-1500000');
-      expect(royalSummary.incompleteGuestsCount, 1);
-      expect(royalSummary.unreadNotificationsCount, 0);
-      expect(royalSummary.importantNotifications, isEmpty);
+      expect(dashboardSummary.remainingBudget, '-1500000');
+      expect(dashboardSummary.incompleteGuestsCount, 1);
+      expect(dashboardSummary.unreadNotificationsCount, 0);
+      expect(dashboardSummary.importantNotifications, isEmpty);
       expect(
-        royalSummary.importantItems.map((item) => item.type),
+        dashboardSummary.importantItems.map((item) => item.type),
         contains('PAYMENT_SCHEDULE_DUE'),
       );
       expect(
-        royalSummary.recentActivity.map((item) => item.type),
+        dashboardSummary.recentActivity.map((item) => item.type),
         containsAll(['LOCAL_GUEST', 'LOCAL_TASK', 'LOCAL_MONEY_COST']),
       );
     },
@@ -158,16 +159,15 @@ void main() {
         ),
       );
 
-      expect(find.text(summary.seed.title), findsOneWidget);
-      // الترويسة الفخمة ترحّب بدور المستخدم ضمن تحية شخصية
-      // («‹تحية›، العريس») بدل شعار العلامة المفرد في الودجت القديم.
+      expect(find.text(summary.seed.title), findsAtLeastNWidgets(1));
+      // الترويسة ترحّب بدور المستخدم وتعرض أولوية الخطة دون أرقام وهمية.
       expect(find.textContaining('العريس'), findsOneWidget);
       expect(find.text('وضع تجربة التصميم'), findsNothing);
 
-      final syncAction = find.byKey(const Key('royal-local-sync-action'));
+      final syncAction = find.byKey(const Key('aarast-local-sync-action'));
       await tester.dragUntilVisible(
         syncAction,
-        find.byKey(const Key('royal-home-guest-plan-test')),
+        find.byKey(const ValueKey('aarast-home-guest-plan-test')),
         const Offset(0, -500),
       );
 
@@ -227,7 +227,10 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text(summary.seed.title), warnIfMissed: false);
+    await tester.tap(
+      find.byKey(const ValueKey('aarast-dashboard-plan-moment')),
+      warnIfMissed: false,
+    );
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
@@ -271,8 +274,11 @@ void main() {
       ),
     );
 
-    // Tap the bottom nav "المال" instead of swiping the carousel
-    await tester.tap(find.text('المال'), warnIfMissed: false);
+    final moneyNav = find.descendant(
+      of: find.byType(AarastPlanNavigationBar),
+      matching: find.text('المال'),
+    );
+    await tester.tap(moneyNav, warnIfMissed: false);
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
@@ -287,8 +293,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    expect(find.text('المهام'), findsWidgets);
-    await tester.tap(find.text('المهام').first, warnIfMissed: false);
+    final tasksNav = find.descendant(
+      of: find.byType(AarastPlanNavigationBar),
+      matching: find.text('المهام'),
+    );
+    await tester.tap(tasksNav, warnIfMissed: false);
 
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
@@ -331,7 +340,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('royal-smart-fab')));
+    await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
@@ -359,7 +368,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('royal-smart-fab')));
+    await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }

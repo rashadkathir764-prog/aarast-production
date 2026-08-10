@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../models/marketplace_models.dart';
 
-class ProviderDetailsSections extends StatelessWidget {
+class ProviderDetailsSections extends StatefulWidget {
   const ProviderDetailsSections({
     required this.provider,
     required this.services,
@@ -23,19 +24,60 @@ class ProviderDetailsSections extends StatelessWidget {
   final ValueChanged<MarketplaceService> onRequestQuote;
 
   @override
+  State<ProviderDetailsSections> createState() =>
+      _ProviderDetailsSectionsState();
+}
+
+class _ProviderDetailsSectionsState extends State<ProviderDetailsSections> {
+  bool _showMore = false;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _section(_AboutSection(provider: provider)),
-        const _SectionDivider(),
         _section(
-          _ServicesSection(services: services, onRequestQuote: onRequestQuote),
+          _ServicesSection(
+            services: widget.services,
+            onRequestQuote: widget.onRequestQuote,
+          ),
         ),
         const _SectionDivider(),
-        _section(_PackagesSection(packages: packages)),
-        const _SectionDivider(),
-        _section(_ReviewsSection(reviews: reviews)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: OutlinedButton.icon(
+            onPressed: () => setState(() => _showMore = !_showMore),
+            icon: Icon(
+              _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+              size: 18,
+            ),
+            label: Text(
+              _showMore
+                  ? 'إخفاء التفاصيل الإضافية'
+                  : 'الباقات والتفاصيل والتقييمات',
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : AarastV3Motion.standard,
+          curve: AarastV3Motion.curve,
+          alignment: Alignment.topCenter,
+          child: !_showMore
+              ? const SizedBox.shrink()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _SectionDivider(),
+                    _section(_PackagesSection(packages: widget.packages)),
+                    const _SectionDivider(),
+                    _section(_AboutSection(provider: widget.provider)),
+                    const _SectionDivider(),
+                    _section(_ReviewsSection(reviews: widget.reviews)),
+                  ],
+                ),
+        ),
       ],
     );
   }
@@ -78,10 +120,10 @@ class _EditorialSectionHeader extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: AppTheme.burgundySoft,
+            color: AppTheme.brandMuted,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, size: 16, color: AppTheme.burgundy),
+          child: Icon(icon, size: 16, color: AppTheme.brand),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -91,7 +133,7 @@ class _EditorialSectionHeader extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.ink,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -100,7 +142,7 @@ class _EditorialSectionHeader extends StatelessWidget {
                 Text(
                   subtitle!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
                   ),
@@ -155,7 +197,7 @@ class _AboutSectionState extends State<_AboutSection> {
                 ? TextOverflow.ellipsis
                 : TextOverflow.clip,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w600,
               height: 1.75,
             ),
@@ -213,14 +255,14 @@ class _ContactDetail extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusPill),
         border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppTheme.goldDeep),
+          Icon(icon, size: 14, color: AppTheme.brand),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -228,7 +270,7 @@ class _ContactDetail extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -309,7 +351,7 @@ class _ServiceLine extends StatelessWidget {
                 Text(
                   service.title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -319,7 +361,7 @@ class _ServiceLine extends StatelessWidget {
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -330,7 +372,7 @@ class _ServiceLine extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       height: 1.4,
                     ),
                   ),
@@ -342,7 +384,7 @@ class _ServiceLine extends StatelessWidget {
           Tooltip(
             message: 'طلب عرض لهذه الخدمة',
             child: Material(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceRaised,
               shape: CircleBorder(
                 side: BorderSide(color: AppTheme.border.withValues(alpha: 0.9)),
               ),
@@ -354,7 +396,7 @@ class _ServiceLine extends StatelessWidget {
                   child: Icon(
                     LucideIcons.arrowLeft,
                     size: 19,
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                   ),
                 ),
               ),
@@ -413,9 +455,9 @@ class _PackageBlock extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.goldSoft),
+        border: Border.all(color: AppTheme.brandMuted),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -423,7 +465,7 @@ class _PackageBlock extends StatelessWidget {
           Text(
             item.title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -433,7 +475,7 @@ class _PackageBlock extends StatelessWidget {
               serviceTitle,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
             ),
           ],
           if (hasPrice) ...[
@@ -443,7 +485,7 @@ class _PackageBlock extends StatelessWidget {
               textDirection: TextDirection.ltr,
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -453,7 +495,7 @@ class _PackageBlock extends StatelessWidget {
             Text(
               description,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 height: 1.5,
               ),
             ),
@@ -483,13 +525,13 @@ class _FeatureChip extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 230),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.ivory,
+        color: AppTheme.canvas,
         borderRadius: BorderRadius.circular(AppTheme.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.check, size: 13, color: AppTheme.goldDeep),
+          const Icon(LucideIcons.check, size: 13, color: AppTheme.brand),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -498,7 +540,7 @@ class _FeatureChip extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
                 context,
-              ).textTheme.labelMedium?.copyWith(color: AppTheme.ink),
+              ).textTheme.labelMedium?.copyWith(color: AppTheme.textPrimary),
             ),
           ),
         ],
@@ -563,7 +605,7 @@ class _ReviewLine extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.star, color: AppTheme.gold, size: 17),
+              const Icon(LucideIcons.star, color: AppTheme.focus, size: 17),
               const SizedBox(width: 5),
               Text(
                 '${review.rating}/5',
@@ -577,7 +619,7 @@ class _ReviewLine extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -590,7 +632,7 @@ class _ReviewLine extends StatelessWidget {
               comment,
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 height: 1.55,
               ),
             ),
@@ -617,13 +659,13 @@ class _EditorialEmpty extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: AppTheme.pearl,
+        color: AppTheme.canvas,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AppTheme.goldDeep),
+          Icon(icon, size: 20, color: AppTheme.brand),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -632,7 +674,7 @@ class _EditorialEmpty extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -640,7 +682,7 @@ class _EditorialEmpty extends StatelessWidget {
                 Text(
                   message,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     height: 1.45,
                   ),
                 ),

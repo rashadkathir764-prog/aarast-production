@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
@@ -158,11 +159,10 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.text('المهام'), findsWidgets);
-    // ملاحظة: أُزيلت فقرة التطمين المكررة من الترويسة في إعادة تصميم Premium
+    expect(find.text('تقدّم المهام'), findsOneWidget);
+    // ملاحظة: أُزيلت فقرة التطمين المكررة من ترويسة V3.
     // (تُقال مرة واحدة في الـ onboarding لا في كل شاشة).
     expect(find.text('تأكيد القاعة'), findsWidgets);
-    expect(find.text('تقدّم المهام'), findsOneWidget);
     expect(find.text('حساب محفوظ'), findsNothing);
     expect(find.text('تخطيط محلي'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -290,6 +290,7 @@ void main() {
       _textFormFieldWithLabel('عنوان المهمة'),
       'تأكيد قائمة المدعوين',
     );
+    await _openTaskDetails(tester);
     expect(find.text('المسؤول عن المهمة'), findsOneWidget);
     expect(find.text('أنا'), findsWidgets);
     await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'محمد');
@@ -333,6 +334,7 @@ void main() {
       ),
     );
 
+    await _openTaskDetails(tester);
     expect(find.text('المسؤول عن المهمة'), findsOneWidget);
     expect(find.text('مشارك من الخطة'), findsOneWidget);
     await tester.tap(find.text('اختر مشاركاً موجوداً'));
@@ -370,6 +372,7 @@ void main() {
       _textFormFieldWithLabel('عنوان المهمة'),
       'تأكيد القاعة',
     );
+    await _openTaskDetails(tester);
     await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'محمد');
     final submit = find.text('حفظ المهمة');
     await tester.ensureVisible(submit);
@@ -421,6 +424,7 @@ void main() {
       _textFormFieldWithLabel('عنوان المهمة'),
       'تأكيد القاعة',
     );
+    await _openTaskDetails(tester);
     await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'انا');
     final submit = find.text('حفظ المهمة');
     await tester.ensureVisible(submit);
@@ -454,6 +458,7 @@ void main() {
       ),
     );
 
+    await _openTaskDetails(tester);
     await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'سالم');
     await tester.enterText(_textFormFieldWithLabel('رقم المسؤول'), '777654321');
     await tester.pumpAndSettle();
@@ -504,7 +509,7 @@ void main() {
     expect(find.text('تقدّم المهام'), findsOneWidget);
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor,
-      Colors.white,
+      AppTheme.canvas,
     );
     expect(tester.takeException(), isNull);
   });
@@ -620,6 +625,13 @@ Finder _textFormFieldWithLabel(String label) {
   return find
       .ancestor(of: find.text(label), matching: find.byType(TextFormField))
       .first;
+}
+
+Future<void> _openTaskDetails(WidgetTester tester) async {
+  final disclosure = find.text('المسؤول والتفاصيل');
+  await tester.ensureVisible(disclosure);
+  await tester.tap(disclosure);
+  await tester.pumpAndSettle();
 }
 
 SharedMember _member({

@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -171,6 +172,9 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('طلب عرض سعر'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.filePlus2), findsOneWidget);
 
     await expectLater(
       find.byType(ProviderDetailsScreen),

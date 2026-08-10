@@ -47,7 +47,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
       title: 'سجل مساهماتي',
       subtitle: 'نسخة تاريخية محفوظة لا تتغير بتعديلات الخطة اللاحقة',
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: _load,
         child: _body(provider),
       ),
@@ -165,11 +165,11 @@ class _CoverageNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.burgundy.withValues(alpha: 0.06),
+      color: AppTheme.brand.withValues(alpha: 0.06),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(LucideIcons.shieldCheck, color: AppTheme.burgundy),
+          const Icon(LucideIcons.shieldCheck, color: AppTheme.brand),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -210,8 +210,8 @@ class _ContributionEventCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundColor: AppTheme.burgundy.withValues(alpha: 0.08),
-            foregroundColor: AppTheme.burgundy,
+            backgroundColor: AppTheme.brand.withValues(alpha: 0.08),
+            foregroundColor: AppTheme.brand,
             child: Icon(_sectionIcon(event.section), size: 19),
           ),
           const SizedBox(width: 12),
@@ -229,7 +229,7 @@ class _ContributionEventCard extends StatelessWidget {
                 Text(
                   '${_actionLabel(event.action)} • ${_sectionLabel(event.section)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

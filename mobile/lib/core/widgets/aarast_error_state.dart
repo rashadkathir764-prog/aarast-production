@@ -1,9 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-import 'package:lucide_icons/lucide_icons.dart';
-
+import '../experience_v3/aarast_v3.dart';
 import '../theme/app_theme.dart';
-import 'aarast_ui.dart';
 
 class AarastErrorState extends StatelessWidget {
   const AarastErrorState({
@@ -21,62 +19,34 @@ class AarastErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.dangerSoft,
-      border: Border.all(color: AppTheme.dangerSoft),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppTheme.dangerSoft,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                ),
-                child: const Icon(
-                  LucideIcons.alertCircle,
-                  color: AppTheme.danger,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            message,
-            textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.45,
-            ),
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: 16),
-            AarastButton(
-              label: retryLabel,
-              icon: LucideIcons.refreshCw,
-              variant: AarastButtonVariant.secondary,
+    return AarastV3StateSurface(
+      kind: AarastV3ScreenStateKind.error,
+      title: title,
+      message: message,
+      preferInlineAction: true,
+      action: onRetry == null
+          ? null
+          : TextButton(
               onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.danger,
+                backgroundColor: AppTheme.dangerSoft,
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+                ),
+              ),
+              child: Text(
+                retryLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ],
-        ],
-      ),
     );
   }
 }

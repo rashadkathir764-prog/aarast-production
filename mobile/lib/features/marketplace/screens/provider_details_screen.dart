@@ -76,7 +76,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         top: false,
         child: DecoratedBox(
           decoration: const BoxDecoration(
-            color: AppTheme.ivory,
+            color: AppTheme.surfaceRaised,
             border: Border(top: BorderSide(color: AppTheme.border)),
           ),
           child: Padding(
@@ -94,13 +94,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                       widget.providerId,
                     );
                 return Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                    border: Border.all(color: AppTheme.border),
-                    boxShadow: AppTheme.softShadow(opacity: 0.12),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,7 +108,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                                 child: Text(
                                   'آخر طلب لهذا المورد',
                                   style: TextStyle(
-                                    color: AppTheme.muted,
+                                    color: AppTheme.textSecondary,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -138,10 +132,9 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                           ],
                           Expanded(
                             child: AarastButton(
-                              label: loadingQuote
-                                  ? 'تحميل حالة الطلب...'
-                                  : _primaryQuoteActionLabel(latest),
-                              expand: false,
+                              label: _primaryQuoteActionLabel(latest),
+                              icon: LucideIcons.filePlus2,
+                              isLoading: loadingQuote,
                               onPressed: loadingQuote
                                   ? null
                                   : () => _openPrimaryQuoteAction(

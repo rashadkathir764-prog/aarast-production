@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -20,7 +21,7 @@ class ProviderHomeTab extends StatelessWidget {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final profile = dashboard.profile;
     return RefreshIndicator(
-      color: AppTheme.burgundy,
+      color: AppTheme.brand,
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -122,14 +123,14 @@ class _ProviderLifecycleNotice extends StatelessWidget {
                 status == 'NEEDS_CHANGES'
                     ? LucideIcons.fileEdit
                     : LucideIcons.shieldAlert,
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -140,7 +141,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
           Text(
             note == null || note.isEmpty ? defaultMessage : note,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               height: 1.6,
             ),
           ),
@@ -166,66 +167,104 @@ class _ProviderIdentityHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 210,
+      padding: const EdgeInsets.all(AarastV3Space.x4),
       decoration: BoxDecoration(
-        color: AppTheme.burgundy,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        image: profile.coverUrl == null
-            ? null
-            : DecorationImage(
-                image: NetworkImage(profile.coverUrl!),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  AppTheme.burgundy.withValues(alpha: 0.58),
-                  BlendMode.srcOver,
-                ),
-              ),
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+        border: Border.all(color: AarastV3Color.line),
       ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: AppTheme.surface,
-                backgroundImage: profile.logoUrl == null
-                    ? null
-                    : NetworkImage(profile.logoUrl!),
-                child: profile.logoUrl == null
-                    ? const Icon(
-                        LucideIcons.store,
-                        color: AppTheme.gold,
-                        size: 30,
-                      )
-                    : null,
-              ),
-              const Spacer(),
-              AarastStatusPill(
-                label: _providerStatus(profile.status),
-                icon: LucideIcons.shieldCheck,
-                color: Colors.white,
-                backgroundColor: Colors.white.withValues(alpha: 0.14),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            profile.businessName,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
+          Container(
+            width: 64,
+            height: 72,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AarastV3Color.paper,
+              borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+              border: Border.all(color: AarastV3Color.line),
+              image: profile.logoUrl == null
+                  ? null
+                  : DecorationImage(
+                      image: NetworkImage(profile.logoUrl!),
+                      fit: BoxFit.cover,
+                    ),
             ),
+            child: profile.logoUrl == null
+                ? const Icon(
+                    LucideIcons.store,
+                    color: AarastV3Color.primary,
+                    size: 26,
+                  )
+                : null,
           ),
-          const SizedBox(height: 5),
-          Text(
-            profile.city?.nameAr ?? 'ملف مزوّد أعرست',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: AarastV3Space.x4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'استوديو العمل',
+                        style: AarastV3Type.label(
+                          context,
+                        ).copyWith(color: AarastV3Color.primary),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AarastV3Space.x2,
+                        vertical: AarastV3Space.x1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AarastV3Color.mintSoft,
+                        borderRadius: BorderRadius.circular(
+                          AarastV3Radius.pill,
+                        ),
+                      ),
+                      child: Text(
+                        _providerStatus(profile.status),
+                        style: AarastV3Type.label(
+                          context,
+                        ).copyWith(color: AarastV3Color.mint),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AarastV3Space.x2),
+                Text(
+                  profile.businessName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AarastV3Type.title(
+                    context,
+                  ).copyWith(color: AarastV3Color.ink),
+                ),
+                const SizedBox(height: AarastV3Space.x2),
+                Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.mapPin,
+                      color: AarastV3Color.textMuted,
+                      size: 15,
+                    ),
+                    const SizedBox(width: AarastV3Space.x1),
+                    Expanded(
+                      child: Text(
+                        profile.city?.nameAr ?? 'المدينة غير محددة',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AarastV3Type.body(
+                          context,
+                        ).copyWith(color: AarastV3Color.textMuted),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -264,12 +303,16 @@ class _ProviderMetrics extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return AarastCard(
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AarastV3Color.line)),
+          ),
           child: Row(
             children: [
               Icon(
                 item.$3,
-                color: index.isEven ? AppTheme.burgundy : AppTheme.gold,
+                color: index.isEven ? AppTheme.brand : AppTheme.focus,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -280,7 +323,7 @@ class _ProviderMetrics extends StatelessWidget {
                     Text(
                       item.$1,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.ink,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -289,7 +332,7 @@ class _ProviderMetrics extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -317,7 +360,7 @@ class _QuickActions extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () => onOpenTab(1),
             icon: const Icon(LucideIcons.inbox),
-            label: const Text('الطلبات'),
+            label: const Text('عرض الطلبات'),
           ),
         ),
         const SizedBox(width: 8),
@@ -343,7 +386,7 @@ class _QuoteSummaryTile extends StatelessWidget {
     return AarastCard(
       child: Row(
         children: [
-          const Icon(LucideIcons.mailQuestion, color: AppTheme.gold),
+          const Icon(LucideIcons.mailQuestion, color: AppTheme.focus),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -351,7 +394,7 @@ class _QuoteSummaryTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),

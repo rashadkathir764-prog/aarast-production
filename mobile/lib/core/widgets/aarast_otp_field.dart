@@ -11,7 +11,7 @@ import '../theme/app_theme.dart';
 enum AarastOtpFieldState { idle, error, success }
 
 /// لوحة نجاح التحقق الموحّدة — تحلّ محل محتوى بطاقة الإدخال عند نجاح
-/// الرمز في كل شاشات التحقق: عنوان، رسالة، وعلامة ✓ خضراء متوهجة تدخل
+/// الرمز في كل شاشات التحقق: عنوان، رسالة، وعلامة ✓ خضراء تدخل
 /// بحركة قصيرة (تُتخطى مع "تقليل الحركة").
 class AarastOtpSuccessPanel extends StatelessWidget {
   const AarastOtpSuccessPanel({
@@ -35,13 +35,6 @@ class AarastOtpSuccessPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.success,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.success.withValues(alpha: 0.45),
-            blurRadius: 26,
-            spreadRadius: 2,
-          ),
-        ],
       ),
       child: const Icon(LucideIcons.check, color: Colors.white, size: 36),
     );
@@ -56,7 +49,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
           title,
           textAlign: TextAlign.center,
           style: textTheme.titleLarge?.copyWith(
-            color: AppTheme.ink,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -65,7 +58,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
           subtitle,
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
             height: 1.45,
           ),
@@ -97,7 +90,7 @@ class AarastOtpSuccessPanel extends StatelessWidget {
 /// حقل رمز التحقق الموحّد — نفس التجربة في كل شاشات التحقق:
 /// خانات منفصلة بصرياً فوق حقل إدخال واحد (يدعم اللصق والملء التلقائي
 /// من رسالة SMS عبر [AutofillHints.oneTimeCode])، اهتزاز أحمر عند الخطأ
-/// مع مسح تلقائي وإعادة تركيز، وتوهج أخضر مع ✓ عند النجاح، مع haptics
+/// مع مسح تلقائي وإعادة تركيز، وحد أخضر مع ✓ عند النجاح، مع haptics
 /// واحترام إعداد تقليل الحركة.
 class AarastOtpField extends StatefulWidget {
   const AarastOtpField({
@@ -269,7 +262,7 @@ class _AarastOtpFieldState extends State<AarastOtpField>
       AarastOtpFieldState.error => AppTheme.danger,
       AarastOtpFieldState.success => AppTheme.success,
       AarastOtpFieldState.idle =>
-        isActive && _focusNode.hasFocus ? AppTheme.burgundy : AppTheme.border,
+        isActive && _focusNode.hasFocus ? AppTheme.brand : AppTheme.border,
     };
   }
 
@@ -277,26 +270,7 @@ class _AarastOtpFieldState extends State<AarastOtpField>
     return switch (widget.state) {
       AarastOtpFieldState.error => AppTheme.dangerSoft,
       AarastOtpFieldState.success => AppTheme.successSoft,
-      AarastOtpFieldState.idle => AppTheme.surfaceElevated,
-    };
-  }
-
-  List<BoxShadow> _glow() {
-    return switch (widget.state) {
-      AarastOtpFieldState.success => [
-        BoxShadow(
-          color: AppTheme.success.withValues(alpha: 0.35),
-          blurRadius: 14,
-          spreadRadius: 1,
-        ),
-      ],
-      AarastOtpFieldState.error => [
-        BoxShadow(
-          color: AppTheme.danger.withValues(alpha: 0.22),
-          blurRadius: 10,
-        ),
-      ],
-      AarastOtpFieldState.idle => const [],
+      AarastOtpFieldState.idle => AppTheme.surfaceRaised,
     };
   }
 
@@ -315,7 +289,7 @@ class _AarastOtpFieldState extends State<AarastOtpField>
         color: switch (widget.state) {
           AarastOtpFieldState.error => AppTheme.danger,
           AarastOtpFieldState.success => AppTheme.success,
-          AarastOtpFieldState.idle => AppTheme.burgundyDeep,
+          AarastOtpFieldState.idle => AppTheme.textPrimary,
         },
         fontWeight: FontWeight.w900,
       ),
@@ -358,7 +332,6 @@ class _AarastOtpFieldState extends State<AarastOtpField>
                   ? 1.5
                   : 1,
             ),
-            boxShadow: _glow(),
           ),
           child: isSuccess && char.isEmpty
               ? const Icon(LucideIcons.check, color: AppTheme.success, size: 22)

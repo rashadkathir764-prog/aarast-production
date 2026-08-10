@@ -337,7 +337,7 @@ class _OtpScreenState extends State<OtpScreen> {
             heading,
             textAlign: TextAlign.center,
             style: textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
               height: 1.18,
             ),
@@ -347,7 +347,7 @@ class _OtpScreenState extends State<OtpScreen> {
             subtitle,
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.45,
             ),
@@ -455,7 +455,7 @@ class _OtpNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.ivory,
+        color: AppTheme.canvas,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: AppTheme.border),
       ),
@@ -463,7 +463,7 @@ class _OtpNotice extends StatelessWidget {
         message,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
           height: 1.4,
         ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/plan_role_permissions.dart';
@@ -100,6 +101,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           title: 'ليس لديك صلاحية إدارة المشاركين',
           message: 'تعديل الأعضاء أو حذفهم متاح للمصرح لهم فقط.',
           icon: LucideIcons.shieldAlert,
+          tone: AarastEmptyStateTone.restricted,
         ),
       );
     }
@@ -326,6 +328,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     }
 
     if (removed) {
+      AarastToast.showSuccess(context, 'تمت إزالة العضو من الخطة.');
       if (context.canPop()) {
         context.pop();
       } else {

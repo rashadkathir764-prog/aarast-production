@@ -258,6 +258,69 @@ void main() {
       },
     );
 
+    test(
+      'getDashboardSummary restores the complete day view offline',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final database = JsonLocalDatabase(preferences);
+        await database.initialize();
+        final connectedClient = _client(
+          (_) => {
+            ..._dashboardSummaryJson(),
+            'weddingDate': '2026-08-09T18:30:00.000Z',
+            'location': {'city': 'صنعاء', 'venue': 'قاعة أعرست'},
+            'planProviders': [
+              {
+                'id': 'plan-provider-1',
+                'providerId': 'provider-1',
+                'businessName': 'استديو النور',
+                'serviceTitle': 'تصوير العرس',
+                'ratingAverage': '4.8',
+                'ratingCount': 20,
+                'status': 'ACTIVE',
+              },
+            ],
+          },
+        );
+        final connectedOffline = OfflineSyncService(
+          database: database,
+          apiClient: connectedClient,
+        );
+        await WeddingPlansApi(
+          connectedClient,
+          offline: connectedOffline,
+        ).getDashboardSummary('plan-1');
+
+        final offlineClient = ApiClient(tokenProvider: () async => 'token');
+        offlineClient.dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) => handler.reject(
+              DioException.connectionError(
+                requestOptions: options,
+                reason: 'offline',
+              ),
+            ),
+          ),
+        );
+        final offline = OfflineSyncService(
+          database: database,
+          apiClient: offlineClient,
+        );
+
+        final summary = await WeddingPlansApi(
+          offlineClient,
+          offline: offline,
+        ).getDashboardSummary('plan-1');
+
+        expect(summary.weddingDate?.hour, 18);
+        expect(summary.location?['venue'], 'قاعة أعرست');
+        expect(summary.planProviders.single.businessName, 'استديو النور');
+        expect(summary.permissions.canManageTasks, isTrue);
+        expect(offline.state.name, 'offline');
+      },
+    );
+
     test('DashboardSummary parses hidden money permissions safely', () {
       final summary = DashboardSummary.fromJson({
         ..._dashboardSummaryJson(),

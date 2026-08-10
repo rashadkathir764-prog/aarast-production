@@ -84,10 +84,25 @@ class WeddingPlansApi {
   }
 
   Future<DashboardSummary> getDashboardSummary(String planId) async {
-    final json = await _apiClient.getJson(
-      '/api/v1/wedding-plans/$planId/dashboard-summary',
-    );
-    return DashboardSummary.fromJson(json);
+    try {
+      final json = await _apiClient.getJson(
+        '/api/v1/wedding-plans/$planId/dashboard-summary',
+      );
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedDashboardSummaries,
+        json: {...json, 'id': planId, 'planId': planId},
+      );
+      await _offline?.refreshStatus();
+      return DashboardSummary.fromJson(json);
+    } on Object catch (error) {
+      final cached = await _cachedItemOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedDashboardSummaries,
+        id: planId,
+      );
+      if (cached != null) return DashboardSummary.fromJson(cached);
+      rethrow;
+    }
   }
 
   Future<List<WeddingPlan>> getMyWeddingPlans() async {

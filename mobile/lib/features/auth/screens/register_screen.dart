@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -69,7 +70,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final marketplace = context.watch<ProviderMarketplaceProvider>();
-    final textTheme = Theme.of(context).textTheme;
     final providerMode = _accountType == _AccountType.provider;
 
     return AuthWeddingScaffold(
@@ -82,33 +82,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 8),
-            const AuthBrandMark(compact: true),
-            const SizedBox(height: 18),
-            Text(
-              providerMode ? 'طلب الانضمام كمزود' : 'إنشاء حساب',
-              textAlign: TextAlign.center,
-              style: textTheme.headlineSmall?.copyWith(
-                color: AppTheme.ink,
-                fontWeight: FontWeight.w900,
-                height: 1.18,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              providerMode
-                  ? 'أرسل بيانات نشاطك وسيتم مراجعة الطلب قبل ظهور لوحة المزود.'
-                  : 'ابدأ رحلتك بخطة زفاف واضحة ومرتبة.',
-              textAlign: TextAlign.center,
-              style: textTheme.bodyMedium?.copyWith(
-                color: AppTheme.muted,
-                fontWeight: FontWeight.w700,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 18),
+            _RegisterNarrative(providerMode: providerMode),
+            const SizedBox(height: AarastV3Space.x3),
             AuthPanel(
-              padding: EdgeInsets.all(providerMode ? 16 : 20),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -119,10 +96,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       setState(() => _accountType = value);
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   if (providerMode) ...[
                     const _ProviderModeNote(),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                   ],
                   AuthTextField(
                     controller: _nameController,
@@ -145,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   AuthTextField(
                     controller: _phoneController,
                     label: providerMode ? 'رقم التواصل' : 'رقم الهاتف',
@@ -167,7 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   if (providerMode) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     _ProviderReferenceFields(
                       marketplace: marketplace,
                       cityId: _safeCityId(marketplace),
@@ -176,17 +153,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onCategoryChanged: (value) =>
                           setState(() => _categoryId = value),
                     ),
-                    const SizedBox(height: 14),
-                    AuthTextField(
-                      controller: _descriptionController,
-                      label: 'نبذة مختصرة',
-                      hint: 'الخدمات، المدينة، وما يميز نشاطك',
+                    const SizedBox(height: 10),
+                    AarastDisclosureCard(
+                      title: 'نبذة النشاط',
+                      subtitle: 'أضف الخدمات وما يميزك عند الحاجة',
                       icon: LucideIcons.fileText,
-                      maxLines: 3,
-                      textInputAction: TextInputAction.next,
+                      child: AuthTextField(
+                        controller: _descriptionController,
+                        label: 'نبذة مختصرة',
+                        hint: 'الخدمات، المدينة، وما يميز نشاطك',
+                        icon: LucideIcons.fileText,
+                        maxLines: 3,
+                        textInputAction: TextInputAction.next,
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   AuthTextField(
                     controller: _passwordController,
                     label: 'كلمة المرور',
@@ -214,22 +196,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   if (auth.errorMessage != null) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     AuthInlineError(message: auth.errorMessage!),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   AarastButton(
                     label: providerMode ? 'إرسال طلب الانضمام' : 'إنشاء حساب',
                     icon: providerMode
                         ? LucideIcons.contact
                         : LucideIcons.userPlus,
                     isLoading: auth.isSubmitting,
+                    compact: true,
                     onPressed: _submit,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             AuthFooterLink(
               prefix: 'لديك حساب بالفعل؟',
               action: 'تسجيل الدخول',
@@ -317,6 +300,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
+class _RegisterNarrative extends StatelessWidget {
+  const _RegisterNarrative({required this.providerMode});
+
+  final bool providerMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = providerMode ? AarastV3Color.cobalt : AarastV3Color.primary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const AuthBrandMark(compact: true),
+            const SizedBox(width: AarastV3Space.x3),
+            Container(width: 28, height: 2, color: AarastV3Color.signal),
+            const SizedBox(width: AarastV3Space.x2),
+            Expanded(
+              child: Text(
+                providerMode ? 'بوابة المزوّد' : 'حسابك في أعرست',
+                style: AarastV3Type.label(context).copyWith(color: accent),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AarastV3Space.x3),
+        Text(
+          providerMode ? 'أنشئ حساب مزوّد' : 'أنشئ حسابك',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: AarastV3Color.ink,
+            fontFamily: AppTheme.displayFontFamily,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+        Text(
+          providerMode
+              ? 'بيانات النشاط الأساسية أولاً، ثم تراجع الإدارة الطلب.'
+              : 'ثلاثة حقول فقط تفصلك عن مساحة زفافك.',
+          style: AarastV3Type.body(context),
+        ),
+      ],
+    );
+  }
+}
+
 class _AccountTypeSegmentedControl extends StatelessWidget {
   const _AccountTypeSegmentedControl({
     required this.value,
@@ -335,17 +364,17 @@ class _AccountTypeSegmentedControl extends StatelessWidget {
           'نوع الحساب',
           textAlign: TextAlign.right,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.ink,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            border: Border.all(color: AppTheme.border),
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(
+            border: Border.symmetric(
+              horizontal: BorderSide(color: AppTheme.border),
+            ),
           ),
           child: Row(
             children: [
@@ -394,9 +423,9 @@ class _SegmentOption extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.burgundy : Colors.transparent,
+          color: selected ? AppTheme.brand : Colors.transparent,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Row(
@@ -405,7 +434,7 @@ class _SegmentOption extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: selected ? Colors.white : AppTheme.muted,
+              color: selected ? Colors.white : AppTheme.textSecondary,
             ),
             const SizedBox(width: 6),
             Flexible(
@@ -414,7 +443,7 @@ class _SegmentOption extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: selected ? Colors.white : AppTheme.muted,
+                  color: selected ? Colors.white : AppTheme.textSecondary,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -431,14 +460,13 @@ class _ProviderModeNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AarastCard(
-      padding: EdgeInsets.all(14),
-      color: AppTheme.ivory,
+    return const Padding(
+      padding: EdgeInsetsDirectional.only(start: 2),
       child: Text(
         'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود.',
         textAlign: TextAlign.right,
         style: TextStyle(
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w800,
           height: 1.45,
         ),
@@ -478,8 +506,8 @@ class _ProviderDropdown extends StatelessWidget {
         floatingLabelBehavior: FloatingLabelBehavior.always,
         prefixIcon: Icon(icon),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 13,
+          horizontal: 14,
+          vertical: 10,
         ),
       ),
       items: items,
@@ -548,7 +576,7 @@ class _ProviderReferenceFields extends StatelessWidget {
           onChanged: onCityChanged,
           validator: (value) => value == null ? 'اختر المدينة' : null,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _ProviderDropdown(
           fieldKey: const Key('provider-category-dropdown'),
           value: categoryId,
@@ -580,13 +608,16 @@ class _ProviderReferenceLoading extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LinearProgressIndicator(minHeight: 3),
+          AarastV3ProgressLine(
+            height: 3,
+            semanticsLabel: 'تحميل المدن والفئات',
+          ),
           SizedBox(height: 10),
           Text(
             'جارٍ تحميل المدن والفئات…',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w800,
             ),
           ),

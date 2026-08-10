@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/theme/aarast_design_tokens.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// عرض الضيوف — مصدر حقيقة واحد للألوان والتسميات والأيقونات.
 
@@ -24,13 +24,13 @@ String guestStatusLabel(String status) {
 
 Color guestStatusColor(String status, String attendanceStatus) {
   if (attendanceStatus == 'CONFIRMED' || status == 'CONFIRMED') {
-    return AarastDesignTokens.success;
+    return AppTheme.success;
   }
   if (attendanceStatus == 'DECLINED' || status == 'DECLINED') {
-    return AarastDesignTokens.danger;
+    return AppTheme.danger;
   }
-  if (status == 'PENDING') return AarastDesignTokens.gold;
-  return AarastDesignTokens.burgundy;
+  if (status == 'PENDING') return AppTheme.focus;
+  return AppTheme.brand;
 }
 
 IconData guestStatusIcon(String status, String attendanceStatus) {

@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -27,6 +33,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   final _descriptionController = TextEditingController();
   String? _cityId;
   String? _categoryId;
+  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
@@ -39,11 +46,13 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           await AuthActionGuard.hasAccount(context);
       if (!mounted || !hasAccount) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
+      _configureDraft();
     });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _businessNameController.dispose();
     _phoneController.dispose();
     _descriptionController.dispose();
@@ -61,6 +70,18 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       title: 'طلب الانضمام كمزود',
       subtitle: 'أضف نشاطك ليصل إليك عملاء يبحثون عن خدمات الزفاف.',
       resizeToAvoidBottomInset: true,
+      bottomNavigationBar:
+          !hasProfile &&
+              !(auth.status == AuthStatus.unauthenticated &&
+                  !AppFeatureFlags.devBypassLoginGatesForUxExploration) &&
+              !(dashboard.isLoading && dashboard.profile == null)
+          ? AarastV3FormActionBar(
+              label: 'إرسال طلب الانضمام',
+              icon: LucideIcons.send,
+              loading: dashboard.isSubmitting,
+              onPressed: dashboard.isSubmitting ? null : _submit,
+            )
+          : null,
       actions: [
         IconButton(
           tooltip: 'رجوع',
@@ -95,102 +116,106 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
               onDashboard: () => context.go(AppRouter.providerDashboard),
             )
           else ...[
-            const _ApplyIntroCard(),
-            const SizedBox(height: 16),
-            AarastCard(
-              color: AppTheme.surface,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const AarastSectionHeader(
-                      title: 'بيانات النشاط',
-                      icon: LucideIcons.store,
+            const AarastV3FocusPrompt(
+              question: 'ما النشاط الذي تريد عرضه في أعرست؟',
+              supportingText:
+                  'أدخل بيانات النشاط الحقيقية للمراجعة؛ الإرسال لا يعني قبولًا أو حجزًا مؤكدًا.',
+              icon: LucideIcons.store,
+            ),
+            if (_draft != null) ...[
+              const SizedBox(height: 8),
+              AarastV3DraftStatusLine(status: _draft!.status),
+            ],
+            const SizedBox(height: 10),
+            Form(
+              key: _formKey,
+              child: AarastV3FormSurface(
+                title: 'بيانات النشاط',
+                children: [
+                  TextFormField(
+                    controller: _businessNameController,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم النشاط / اسم المزود',
+                      prefixIcon: Icon(LucideIcons.badge),
                     ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _businessNameController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم النشاط / اسم المزود',
-                        prefixIcon: Icon(LucideIcons.badge),
-                      ),
-                      validator: (value) =>
-                          value == null || value.trim().length < 2
-                          ? 'اكتب اسم النشاط'
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    ContactPhoneField(
-                      phoneController: _phoneController,
-                      label: 'رقم التواصل',
-                      optional: false,
-                      requireYemeni: true,
-                    ),
-                    const SizedBox(height: 14),
-                    _ApplyDropdown(
-                      value: _safeCityId(marketplace),
-                      label: 'المدينة',
-                      icon: LucideIcons.mapPin,
-                      items: marketplace.cities
-                          .map(
-                            (city) => DropdownMenuItem(
-                              value: city.id,
-                              child: Text(city.nameAr),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(() => _cityId = value),
-                      validator: (value) =>
-                          value == null ? 'اختر المدينة' : null,
-                    ),
-                    const SizedBox(height: 14),
-                    _ApplyDropdown(
-                      value: _safeCategoryId(marketplace),
-                      label: 'فئة الخدمة',
-                      icon: LucideIcons.shapes,
-                      items: marketplace.categories
-                          .map(
-                            (category) => DropdownMenuItem(
-                              value: category.id,
-                              child: Text(category.nameAr),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(() => _categoryId = value),
-                      validator: (value) =>
-                          value == null ? 'اختر فئة الخدمة' : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
+                    validator: (value) =>
+                        value == null || value.trim().length < 2
+                        ? 'اكتب اسم النشاط'
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+                  ContactPhoneField(
+                    phoneController: _phoneController,
+                    label: 'رقم التواصل',
+                    optional: false,
+                    requireYemeni: true,
+                  ),
+                  const SizedBox(height: 10),
+                  _ApplyDropdown(
+                    value: _safeCityId(marketplace),
+                    label: 'المدينة',
+                    icon: LucideIcons.mapPin,
+                    items: marketplace.cities
+                        .map(
+                          (city) => DropdownMenuItem(
+                            value: city.id,
+                            child: Text(city.nameAr),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _cityId = value);
+                      _draft?.changed();
+                    },
+                    validator: (value) => value == null ? 'اختر المدينة' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  _ApplyDropdown(
+                    value: _safeCategoryId(marketplace),
+                    label: 'فئة الخدمة',
+                    icon: LucideIcons.shapes,
+                    items: marketplace.categories
+                        .map(
+                          (category) => DropdownMenuItem(
+                            value: category.id,
+                            child: Text(category.nameAr),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _categoryId = value);
+                      _draft?.changed();
+                    },
+                    validator: (value) =>
+                        value == null ? 'اختر فئة الخدمة' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  AarastDisclosureCard(
+                    title: 'أضف نبذة قصيرة',
+                    subtitle: 'ما يميز خدمتك ومناطق التغطية عند الحاجة',
+                    icon: LucideIcons.fileText,
+                    child: TextFormField(
                       controller: _descriptionController,
-                      maxLines: 4,
+                      minLines: 2,
+                      maxLines: 3,
                       maxLength: 280,
                       decoration: const InputDecoration(
-                        labelText: 'نبذة مختصرة',
-                        hintText: 'اكتب ما يميز خدمتك ومناطق التغطية...',
+                        labelText: 'نبذة النشاط',
                         prefixIcon: Icon(LucideIcons.fileText),
                       ),
                     ),
-                    if (marketplace.cities.isEmpty ||
-                        marketplace.categories.isEmpty) ...[
-                      const SizedBox(height: 12),
-                      const _ReferenceDataWarning(),
-                    ],
-                    if (dashboard.errorMessage != null) ...[
-                      const SizedBox(height: 12),
-                      _InlineError(message: dashboard.errorMessage!),
-                    ],
-                    const SizedBox(height: 18),
-                    AarastButton(
-                      label: 'إرسال طلب الانضمام',
-                      icon: LucideIcons.send,
-                      isLoading: dashboard.isSubmitting,
-                      onPressed: dashboard.isSubmitting ? null : _submit,
-                    ),
+                  ),
+                  if (marketplace.cities.isEmpty ||
+                      marketplace.categories.isEmpty) ...[
+                    const SizedBox(height: 12),
+                    const _ReferenceDataWarning(),
                   ],
-                ),
+                  if (dashboard.errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    _InlineError(message: dashboard.errorMessage!),
+                  ],
+                ],
               ),
             ),
           ],
@@ -214,6 +239,31 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         : null;
   }
 
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'provider:application:new',
+      fields: {
+        'businessName': _businessNameController,
+        'phone': _phoneController,
+        'description': _descriptionController,
+      },
+      readExtras: () => {'cityId': _cityId, 'categoryId': _categoryId},
+      restoreExtras: (data) {
+        if (!mounted) return;
+        setState(() {
+          _cityId = data['cityId']?.toString();
+          _categoryId = data['categoryId']?.toString();
+        });
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() ||
         _cityId == null ||
@@ -235,12 +285,15 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
 
     if (!mounted) return;
     if (ok) {
+      await _draft?.clear();
+      if (!mounted) return;
       final auth = context.read<AuthController>();
       final accountContexts = context.read<AccountContextController>();
       await auth.refreshCurrentUser();
       if (!mounted) return;
       await accountContexts.refresh();
       if (!mounted) return;
+      AarastFormSuccess.show(context, message: 'تم إرسال طلب الانضمام.');
       context.go(AppRouter.providerApplyStatus);
     }
   }
@@ -282,34 +335,6 @@ class ProviderApplyStatusScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           const _ProviderReviewNote(),
-        ],
-      ),
-    );
-  }
-}
-
-class _ApplyIntroCard extends StatelessWidget {
-  const _ApplyIntroCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AarastCard(
-      color: AppTheme.ivory,
-      child: Row(
-        children: [
-          Icon(LucideIcons.shieldCheck, color: AppTheme.gold),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود ويمكنك إدارة الخدمات والباقات وطلبات عروض الأسعار.',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: AppTheme.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -382,7 +407,7 @@ class _ReferenceDataWarning extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.burgundySoft,
+      color: AppTheme.brandMuted,
       child: Text(
         'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
         textAlign: TextAlign.center,
@@ -398,17 +423,17 @@ class _ProviderReviewNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.surface,
+      color: AppTheme.surfaceRaised,
       child: Row(
         children: [
-          Icon(LucideIcons.info, color: AppTheme.burgundy),
+          Icon(LucideIcons.info, color: AppTheme.brand),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'لن يتم اعتماد المزود تلقائيًا. الظهور في نتائج البحث يعتمد على حالة الموافقة من النظام.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),
@@ -428,7 +453,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.burgundySoft,
+      color: AppTheme.brandMuted,
       border: Border.all(color: AppTheme.danger.withAlpha(55)),
       child: Text(
         message,

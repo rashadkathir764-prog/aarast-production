@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
@@ -54,6 +56,34 @@ class YemenAdministrativeApi {
         return cached.map(YemenDistrict.fromJson).toList(growable: false);
       }
       rethrow;
+    }
+  }
+
+  Future<List<YemenLocality>> getLocalities(String districtId) async {
+    final cacheKey = 'aarast.geo.localities.v1.$districtId';
+    try {
+      final items = await _getList('/api/v1/districts/$districtId/localities');
+      await _offline?.database.setMeta(cacheKey, jsonEncode(items));
+      return items.map(YemenLocality.fromJson).toList(growable: false);
+    } on Object catch (error) {
+      final offline = _offline;
+      if (!CachePolicy.shouldUseCache(error) || offline == null) rethrow;
+      await offline.noteNetworkFailure((error as ApiException).message);
+      final raw = await offline.database.getMeta(cacheKey);
+      if (raw == null) rethrow;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is! List) rethrow;
+        return decoded
+            .whereType<Map>()
+            .map(
+              (item) => YemenLocality.fromJson(Map<String, dynamic>.from(item)),
+            )
+            .toList(growable: false);
+      } on FormatException {
+        await offline.database.deleteMeta(cacheKey);
+        rethrow;
+      }
     }
   }
 

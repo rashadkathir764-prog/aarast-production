@@ -268,6 +268,73 @@ class DashboardSummary {
 
   bool get canViewMoney => permissions.canViewMoney;
 
+  DashboardSummary copyWithPulse({
+    int? progressPercentage,
+    int? totalTasks,
+    int? completedTasks,
+    int? overdueTasks,
+    int? todayTasks,
+    int? guestCount,
+    int? confirmedGuests,
+    int? pendingGuests,
+    int? declinedGuests,
+    int? incompleteGuestsCount,
+  }) {
+    return DashboardSummary(
+      dataScope: dataScope,
+      accountBacked: accountBacked,
+      planId: planId,
+      membershipId: membershipId,
+      membershipAuthorityVersion: membershipAuthorityVersion,
+      title: title,
+      currency: currency,
+      status: status,
+      progressPercentage: progressPercentage ?? this.progressPercentage,
+      totalTasks: totalTasks ?? this.totalTasks,
+      completedTasks: completedTasks ?? this.completedTasks,
+      overdueTasks: overdueTasks ?? this.overdueTasks,
+      todayTasks: todayTasks ?? this.todayTasks,
+      guestCount: guestCount ?? this.guestCount,
+      confirmedGuests: confirmedGuests ?? this.confirmedGuests,
+      pendingGuests: pendingGuests ?? this.pendingGuests,
+      declinedGuests: declinedGuests ?? this.declinedGuests,
+      incompleteGuestsCount:
+          incompleteGuestsCount ?? this.incompleteGuestsCount,
+      providerCount: providerCount,
+      quoteRequestsCount: quoteRequestsCount,
+      pendingQuoteRequests: pendingQuoteRequests,
+      receivedQuotes: receivedQuotes,
+      acceptedProviders: acceptedProviders,
+      quoteStatusBreakdown: quoteStatusBreakdown,
+      nextProviderAction: nextProviderAction,
+      participantCount: participantCount,
+      pendingInvites: pendingInvites,
+      unreadNotificationsCount: unreadNotificationsCount,
+      highPriorityNotificationsCount: highPriorityNotificationsCount,
+      importantItems: importantItems,
+      recentActivity: recentActivity,
+      planProviders: planProviders,
+      importantNotifications: importantNotifications,
+      nextPaymentScheduleDue: nextPaymentScheduleDue,
+      moneySummary: moneySummary,
+      financialWarnings: financialWarnings,
+      permissions: permissions,
+      weddingDate: weddingDate,
+      city: city,
+      location: location,
+      daysRemaining: daysRemaining,
+      budgetTotal: budgetTotal,
+      confirmedCostTotal: confirmedCostTotal,
+      paidTotal: paidTotal,
+      outstandingTotal: outstandingTotal,
+      remainingBudget: remainingBudget,
+      duePaymentSchedulesCount: duePaymentSchedulesCount,
+      generatedAt: generatedAt,
+      currentUserRole: currentUserRole,
+      contributionHistory: contributionHistory,
+    );
+  }
+
   bool get hasUrgentTodayItems {
     return overdueTasks > 0 ||
         todayTasks > 0 ||

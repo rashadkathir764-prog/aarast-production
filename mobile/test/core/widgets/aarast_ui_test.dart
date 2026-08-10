@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('AarastPageScaffold renders premium shell at small width', (
+  testWidgets('AarastPageScaffold renders semantic shell at small width', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -30,7 +30,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('AarastScaffold and loading state share the premium surface', (
+  testWidgets('AarastScaffold and loading state share the semantic surface', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -65,6 +65,80 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('شاشة إنتاجية'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AarastSurface stays quiet unless elevation is requested', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: AarastSurface(child: Text('Surface content')),
+        ),
+      ),
+    );
+
+    final surface = tester.widget<AnimatedContainer>(
+      find.descendant(
+        of: find.byType(AarastSurface),
+        matching: find.byType(AnimatedContainer),
+      ),
+    );
+    final decoration = surface.decoration! as BoxDecoration;
+
+    expect(decoration.color, AppTheme.surfaceRaised);
+    expect(decoration.boxShadow, isNull);
+    expect(find.text('Surface content'), findsOneWidget);
+  });
+
+  testWidgets('empty and error states remain readable at 320px and 2x text', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 760);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              const AarastEmptyState(
+                title: 'خطتك هادئة الآن',
+                message: 'لا يوجد ما يحتاج انتباهك في هذه اللحظة.',
+                tone: AarastEmptyStateTone.positive,
+              ),
+              const SizedBox(height: 16),
+              AarastErrorState(
+                title: 'تعذر تحميل البيانات',
+                message: 'تحقق من الاتصال ثم حاول مرة أخرى.',
+                onRetry: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('خطتك هادئة الآن'), findsOneWidget);
+    expect(find.text('تعذر تحميل البيانات'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AarastErrorState),
+        matching: find.byType(TextButton),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

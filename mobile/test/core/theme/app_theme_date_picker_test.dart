@@ -6,10 +6,10 @@ void main() {
   test('date pickers use one white surface without Material tint', () {
     final theme = AppTheme.light().datePickerTheme;
 
-    expect(theme.backgroundColor, AppTheme.surface);
-    expect(theme.headerBackgroundColor, AppTheme.surface);
-    expect(theme.rangePickerBackgroundColor, AppTheme.surface);
-    expect(theme.rangePickerHeaderBackgroundColor, AppTheme.surface);
+    expect(theme.backgroundColor, AppTheme.surfaceRaised);
+    expect(theme.headerBackgroundColor, AppTheme.surfaceRaised);
+    expect(theme.rangePickerBackgroundColor, AppTheme.surfaceRaised);
+    expect(theme.rangePickerHeaderBackgroundColor, AppTheme.surfaceRaised);
     expect(theme.surfaceTintColor, Colors.transparent);
     expect(theme.rangePickerSurfaceTintColor, Colors.transparent);
     expect(theme.elevation, 6);

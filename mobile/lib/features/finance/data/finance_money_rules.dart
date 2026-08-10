@@ -51,7 +51,7 @@ abstract final class FinanceMoneyRules {
     final paid = value(cost['paidAmount']);
     final remaining = (total - paid).clamp(0, total);
     if (amount > remaining) {
-      throw const ApiException('المبلغ يتجاوز الباقي على التكلفة.');
+      throw const ApiException('المبلغ يتجاوز غير المدفوع على التكلفة.');
     }
   }
 
@@ -60,7 +60,7 @@ abstract final class FinanceMoneyRules {
     required num remainingAmount,
   }) {
     if (amount > remainingAmount) {
-      throw const ApiException('مبلغ الموعد يتجاوز الباقي على التكلفة.');
+      throw const ApiException('مبلغ الموعد يتجاوز غير المدفوع على التكلفة.');
     }
   }
 

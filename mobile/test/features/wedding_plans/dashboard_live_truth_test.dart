@@ -1,5 +1,5 @@
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
-import 'package:aarast_mobile/features/wedding_plans/widgets/premium/aarast_money_glance_card.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -73,7 +73,7 @@ void main() {
     );
   });
 
-  testWidgets('money glance shows the unified three figures at 320px', (
+  testWidgets('smart money card stays truthful and private at 320px', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 720);
@@ -118,21 +118,52 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: AarastMoneyGlanceCard(summary: summary, onOpenMoney: () {}),
+          body: AarastDashboardView(
+            summary: summary,
+            userName: 'العريس',
+            bottomPadding: 24,
+            onNotifications: () {},
+            onProfile: () {},
+            onOpenPlan: () {},
+            onOpenMoney: () {},
+            onOpenTasks: () {},
+            onOpenProviders: () {},
+            onOpenGuests: () {},
+            onOpenSharing: () {},
+            onOpenWeddingDay: () {},
+            onOpenNextStep: () {},
+            onOpenImportantItem: (_) {},
+          ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('الميزانية'), findsAtLeastNWidgets(1));
-    expect(find.text('التكاليف المؤكدة'), findsOneWidget);
-    expect(find.text('المتبقي'), findsOneWidget);
-    expect(find.textContaining('مستخدم 90%'), findsOneWidget);
-    final moneyFigures = tester
-        .widgetList<RichText>(find.byType(RichText))
-        .map((widget) => widget.text.toPlainText())
-        .where((text) => text.contains('ر.س'));
-    expect(moneyFigures, hasLength(3));
+    expect(find.text('المال'), findsOneWidget);
+    expect(find.text('المتاح من الميزانية'), findsOneWidget);
+    expect(find.text('التكاليف'), findsOneWidget);
+    expect(find.text('المدفوع'), findsOneWidget);
+    expect(find.text('غير المدفوع'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('dashboard-money-privacy-toggle')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('dashboard-money-privacy-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('••••'), findsNWidgets(4));
+    expect(find.text('من ميزانية ••••'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(
+            find.byKey(const ValueKey('aarast-dashboard-money-card')),
+          )
+          .label,
+      contains('المبالغ مخفية مؤقتًا'),
+    );
   });
 
   test('dashboard compact response does not require full entity lists', () {

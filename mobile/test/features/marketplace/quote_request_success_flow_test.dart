@@ -10,7 +10,8 @@ void main() {
 
     expect(source, isNot(contains('class _QuoteSentState')));
     expect(source, isNot(contains('setState(() => _sent = true)')));
-    expect(source, contains("AarastToast.showSuccess"));
+    expect(source, contains('AarastFormSuccess.show'));
+    expect(source, isNot(contains('AarastToast.showSuccess')));
     expect(source, isNot(contains("context.pop(true)")));
     expect(source, contains('marketplace.lastCreatedQuote'));
     expect(source, contains('?.selectedContext;'));

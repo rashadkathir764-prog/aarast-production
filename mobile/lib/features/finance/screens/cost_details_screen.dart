@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -29,11 +30,19 @@ class CostDetailsScreen extends StatefulWidget {
 
 class _CostDetailsScreenState extends State<CostDetailsScreen> {
   bool _isLoadingDetails = true;
+  final _scrollController = ScrollController();
+  final _paymentsKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _load({bool refreshMoney = false}) async {
@@ -67,10 +76,20 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
       subtitle: cost?.title ?? 'كل ما يخص التكلفة في مكان واحد.',
       showBack: true,
       onBack: _goBack,
+      actions: [
+        if (cost != null && provider.canManageMoney && !cost.isCancelled)
+          _CostMoreMenu(
+            canCancel: !cost.hasActivePayments,
+            disabled: provider.isSubmitting,
+            onEdit: () => _editCost(cost),
+            onCancel: () => _confirmCancel(cost),
+          ),
+      ],
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () => _load(refreshMoney: true),
         child: ListView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 32),
           children: [
@@ -102,6 +121,15 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                 const SizedBox(height: 12),
               ],
               _CostHero(cost: cost, currency: currency),
+              const SizedBox(height: 12),
+              if (provider.canManageMoney && !cost.isCancelled)
+                _CostPrimaryDecision(
+                  cost: cost,
+                  hasPendingSchedule: pendingSchedules.isNotEmpty,
+                  onPay: () => _openRecordPayment(cost),
+                  onSchedule: () => _openScheduleCreate(cost),
+                  onViewPayments: _scrollToPayments,
+                ),
               const SizedBox(height: 14),
               _CostContextCard(
                 cost: cost,
@@ -129,38 +157,23 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 14),
-              if (!provider.canManageMoney)
+              if (!provider.canManageMoney) ...[
+                const SizedBox(height: 14),
                 const MoneyMessageBanner(
                   message:
                       'هذه التفاصيل للعرض فقط. إجراءات التعديل والدفع متاحة لمدير المال.',
-                )
-              else
-                _CostActions(
-                  cost: cost,
-                  isSubmitting: provider.isSubmitting,
-                  onEdit: () => _editCost(cost),
-                  onCancel: () => _confirmCancel(cost),
                 ),
+              ],
               const SizedBox(height: 22),
-              AarastSectionHeader(
-                title: 'الدفعات',
-                subtitle: payments.isEmpty
-                    ? 'لا توجد دفعات مسجلة لهذه التكلفة.'
-                    : '${payments.length} حركة محفوظة في السجل.',
-                icon: LucideIcons.banknote,
-                actionLabel:
-                    provider.canManageMoney &&
-                        !cost.isCancelled &&
-                        moneyValue(cost.remainingAmount) > 0
-                    ? 'تسجيل دفعة'
-                    : null,
-                onAction:
-                    provider.canManageMoney &&
-                        !cost.isCancelled &&
-                        moneyValue(cost.remainingAmount) > 0
-                    ? () => _openRecordPayment(cost)
-                    : null,
+              KeyedSubtree(
+                key: _paymentsKey,
+                child: AarastSectionHeader(
+                  title: 'الدفعات',
+                  subtitle: payments.isEmpty
+                      ? 'لا توجد دفعات مسجلة لهذه التكلفة.'
+                      : '${payments.length} حركة محفوظة في السجل.',
+                  icon: LucideIcons.banknote,
+                ),
               ),
               const SizedBox(height: 10),
               if (payments.isEmpty)
@@ -243,6 +256,17 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     if (changed == true && mounted) await _load(refreshMoney: true);
   }
 
+  Future<void> _scrollToPayments() async {
+    final paymentsContext = _paymentsKey.currentContext;
+    if (paymentsContext == null) return;
+    await Scrollable.ensureVisible(
+      paymentsContext,
+      duration: AppTheme.motionMedium,
+      curve: AppTheme.motionCurve,
+      alignment: 0.08,
+    );
+  }
+
   Future<void> _openRecordPayment(WeddingCost cost) async {
     final changed = await context.push<bool>(
       AppRouter.moneyPaymentCreate(widget.weddingPlanId, cost.id),
@@ -288,7 +312,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
       builder: (dialogContext) => AarastDialog(
         icon: Icon(
           danger ? LucideIcons.alertTriangle : LucideIcons.info,
-          color: danger ? AppTheme.danger : AppTheme.burgundy,
+          color: danger ? AppTheme.danger : AppTheme.brand,
         ),
         title: Text(title),
         content: Text(message),
@@ -333,7 +357,7 @@ class _CostHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(color: AppTheme.border),
       ),
@@ -347,7 +371,7 @@ class _CostHero extends StatelessWidget {
                 child: Text(
                   'الإجمالي',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -363,19 +387,17 @@ class _CostHero extends StatelessWidget {
             child: MoneyAmountText(
               amount: cost.totalAmount,
               currency: currency,
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
           ),
           const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 7,
-              color: cost.isPaid ? AppTheme.success : AppTheme.burgundy,
-              backgroundColor: AppTheme.border,
-            ),
+          AarastV3ProgressLine(
+            value: progress,
+            height: 7,
+            color: cost.isPaid ? AppTheme.success : AppTheme.brand,
+            backgroundColor: AppTheme.border,
+            semanticsLabel: 'نسبة سداد التكلفة',
           ),
           const SizedBox(height: 12),
           Row(
@@ -396,7 +418,7 @@ class _CostHero extends StatelessWidget {
               ),
               Expanded(
                 child: _CostHeroValue(
-                  label: 'الباقي',
+                  label: 'غير مدفوع',
                   amount: cost.remainingAmount,
                   currency: currency,
                   color: moneyValue(cost.remainingAmount) > 0
@@ -433,7 +455,7 @@ class _CostHeroValue extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -532,14 +554,14 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppTheme.burgundy),
+          Icon(icon, size: 18, color: AppTheme.brand),
           const SizedBox(width: 9),
           SizedBox(
             width: 96,
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -549,7 +571,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -559,7 +581,7 @@ class _InfoRow extends StatelessWidget {
             const Icon(
               LucideIcons.externalLink,
               size: 17,
-              color: AppTheme.burgundy,
+              color: AppTheme.brand,
             ),
           ],
         ],
@@ -578,63 +600,107 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _CostActions extends StatelessWidget {
-  const _CostActions({
+class _CostPrimaryDecision extends StatelessWidget {
+  const _CostPrimaryDecision({
     required this.cost,
-    required this.isSubmitting,
+    required this.hasPendingSchedule,
+    required this.onPay,
+    required this.onSchedule,
+    required this.onViewPayments,
+  });
+
+  final WeddingCost cost;
+  final bool hasPendingSchedule;
+  final VoidCallback onPay;
+  final VoidCallback onSchedule;
+  final VoidCallback onViewPayments;
+
+  @override
+  Widget build(BuildContext context) {
+    final needsPayment = moneyValue(cost.remainingAmount) > 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton.icon(
+          key: const ValueKey('money-cost-primary-action'),
+          onPressed: needsPayment ? onPay : onViewPayments,
+          icon: Icon(needsPayment ? LucideIcons.banknote : LucideIcons.history),
+          label: Text(needsPayment ? 'تسجيل دفعة' : 'عرض الدفعات'),
+        ),
+        if (needsPayment && !hasPendingSchedule) ...[
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: onSchedule,
+            icon: const Icon(LucideIcons.calendarPlus, size: 18),
+            label: const Text('لا يوجد موعد قادم · أضف موعد دفع'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CostMoreMenu extends StatelessWidget {
+  const _CostMoreMenu({
+    required this.canCancel,
+    required this.disabled,
     required this.onEdit,
     required this.onCancel,
   });
 
-  final WeddingCost cost;
-  final bool isSubmitting;
+  final bool canCancel;
+  final bool disabled;
   final VoidCallback onEdit;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
-    if (cost.isCancelled) {
-      return const MoneyMessageBanner(
-        message: 'هذه التكلفة ملغاة وسجلها محفوظ للرجوع إليه.',
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.empty,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'إدارة التكلفة',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+    return PopupMenuButton<_CostMenuAction>(
+      enabled: !disabled,
+      tooltip: 'المزيد',
+      icon: const Icon(LucideIcons.moreHorizontal),
+      onSelected: (action) {
+        switch (action) {
+          case _CostMenuAction.edit:
+            onEdit();
+          case _CostMenuAction.cancel:
+            onCancel();
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: _CostMenuAction.edit,
+          child: Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: isSubmitting ? null : onEdit,
-                icon: const Icon(LucideIcons.pencil),
-                label: const Text('تعديل'),
-              ),
-              if (!cost.hasActivePayments)
-                OutlinedButton.icon(
-                  onPressed: isSubmitting ? null : onCancel,
-                  icon: const Icon(LucideIcons.circleSlash2),
-                  label: const Text('إلغاء'),
-                ),
+              Icon(LucideIcons.pencil, size: 18),
+              SizedBox(width: 10),
+              Flexible(child: Text('تعديل التكلفة')),
             ],
           ),
-        ],
-      ),
+        ),
+        if (canCancel)
+          const PopupMenuItem(
+            value: _CostMenuAction.cancel,
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.circleSlash2,
+                  size: 18,
+                  color: AppTheme.danger,
+                ),
+                SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'إلغاء التكلفة',
+                    style: TextStyle(color: AppTheme.danger),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
+
+enum _CostMenuAction { edit, cancel }

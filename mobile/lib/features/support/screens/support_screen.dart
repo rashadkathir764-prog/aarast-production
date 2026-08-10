@@ -27,8 +27,8 @@ class SupportScreen extends StatelessWidget {
           const SizedBox(height: 12),
           AarastCard(
             padding: EdgeInsets.zero,
-            color: AppTheme.ivory,
-            border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+            color: AppTheme.canvas,
+            border: Border.all(color: AppTheme.brandMuted.withAlpha(80)),
             child: Column(
               children: [
                 _SupportLinkRow(
@@ -37,14 +37,14 @@ class SupportScreen extends StatelessWidget {
                   icon: LucideIcons.settings,
                   onTap: () => context.push(AppRouter.settings),
                 ),
-                Divider(height: 1, color: AppTheme.burgundySoft.withAlpha(150)),
+                Divider(height: 1, color: AppTheme.brandMuted.withAlpha(150)),
                 _SupportLinkRow(
                   title: 'فتح التنبيهات',
                   subtitle: 'الدعوات وعروض الأسعار والمهام المهمة',
                   icon: LucideIcons.bell,
                   onTap: () => context.push(AppRouter.notifications),
                 ),
-                Divider(height: 1, color: AppTheme.burgundySoft.withAlpha(150)),
+                Divider(height: 1, color: AppTheme.brandMuted.withAlpha(150)),
                 _SupportLinkRow(
                   title: 'الخطط المشتركة',
                   subtitle: 'صلاحياتك في الخطط المشتركة معك',
@@ -80,9 +80,9 @@ class _DiagnosticReportCardState extends State<_DiagnosticReportCard> {
     final service = _readService();
     final isAvailable = service?.isAvailable == true;
     return AarastCard(
-      color: AppTheme.ivory,
+      color: AppTheme.canvas,
       padding: const EdgeInsets.all(14),
-      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+      border: Border.all(color: AppTheme.brandMuted.withAlpha(80)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -91,7 +91,7 @@ class _DiagnosticReportCardState extends State<_DiagnosticReportCard> {
             children: [
               const Icon(
                 LucideIcons.fileSearch,
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -102,7 +102,7 @@ class _DiagnosticReportCardState extends State<_DiagnosticReportCard> {
                     Text(
                       'تقرير تشخيصي بموافقتك',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.burgundyDeep,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -112,7 +112,7 @@ class _DiagnosticReportCardState extends State<_DiagnosticReportCard> {
                           ? 'يرسل أحداثاً تقنية منقحة بعد موافقتك فقط، ولا ينشئ ملفاً على الجهاز.'
                           : 'إرسال التقارير غير مفعّل في إعدادات هذه النسخة.',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         height: 1.45,
                       ),
                     ),
@@ -205,8 +205,8 @@ class _QuickHelpCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+      color: AppTheme.canvas,
+      border: Border.all(color: AppTheme.brandMuted.withAlpha(80)),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: const Column(
@@ -217,7 +217,7 @@ class _QuickHelpCard extends StatelessWidget {
               child: Text(
                 'حلول سريعة',
                 style: TextStyle(
-                  color: AppTheme.burgundyDeep,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -260,7 +260,7 @@ class _HelpTile extends StatelessWidget {
         question,
         textAlign: TextAlign.right,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -271,7 +271,7 @@ class _HelpTile extends StatelessWidget {
             answer,
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               height: 1.5,
             ),
           ),
@@ -290,20 +290,20 @@ class _SafetyStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.gold.withAlpha(26),
+        color: AppTheme.focus.withAlpha(26),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(LucideIcons.shieldAlert, size: 15, color: AppTheme.gold),
+          const Icon(LucideIcons.shieldAlert, size: 15, color: AppTheme.focus),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'لا تشارك كلمة المرور أو رمز التحقق أو تفاصيل مالية حساسة '
               'عند طلب المساعدة.',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 height: 1.4,
               ),
             ),
@@ -340,10 +340,10 @@ class _SupportLinkRow extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: AppTheme.burgundySoft,
+                color: AppTheme.brandMuted,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
-              child: Icon(icon, color: AppTheme.burgundy, size: 18),
+              child: Icon(icon, color: AppTheme.brand, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -355,7 +355,7 @@ class _SupportLinkRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -365,7 +365,7 @@ class _SupportLinkRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -375,7 +375,7 @@ class _SupportLinkRow extends StatelessWidget {
             const SizedBox(width: 8),
             const Icon(
               LucideIcons.chevronLeft,
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               size: 18,
             ),
           ],
@@ -391,7 +391,7 @@ class _SupportBoundaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.ivory,
+      color: AppTheme.canvas,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -401,14 +401,14 @@ class _SupportBoundaryCard extends StatelessWidget {
               const Icon(
                 LucideIcons.shieldCheck,
                 size: 17,
-                color: AppTheme.gold,
+                color: AppTheme.focus,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'حدود الدعم في هذه النسخة',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.burgundyDeep,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -445,14 +445,14 @@ class _BoundaryLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(LucideIcons.checkCircle, color: AppTheme.gold, size: 15),
+          const Icon(LucideIcons.checkCircle, color: AppTheme.focus, size: 15),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w600,
                 height: 1.45,
               ),

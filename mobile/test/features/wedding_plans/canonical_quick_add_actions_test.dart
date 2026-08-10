@@ -18,6 +18,7 @@ import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan_stage.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/quick_add_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -120,15 +121,49 @@ void main() {
           openRoute: open,
         );
 
-        expect(actions.map((a) => a.label).toList(), <String>['إضافة تكلفة']);
+        expect(actions.map((a) => a.label).toList(), <String>[
+          'إضافة تكلفة',
+          'إضافة تصنيف',
+        ]);
 
         for (final action in actions) {
           action.onTap();
         }
 
-        expect(calls, <String>[AppRouter.moneyCostCreate('plan-money')]);
+        expect(calls, <String>[
+          AppRouter.moneyCostCreate('plan-money'),
+          AppRouter.moneyCategoryCreate('plan-money'),
+        ]);
       },
     );
+
+    test('money context exposes contextual payment and schedule actions', () {
+      var paymentCalls = 0;
+      var scheduleCalls = 0;
+      Future<void> open(String route, {bool refreshDashboard = false}) async {}
+
+      final actions = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'plan-money-actions',
+        canManageMoney: true,
+        contextOrder: QuickAddContext.money,
+        onRecordPayment: () => paymentCalls += 1,
+        onAddPaymentSchedule: () => scheduleCalls += 1,
+        openRoute: open,
+      );
+
+      expect(actions.map((action) => action.label), <String>[
+        'إضافة تكلفة',
+        'تسجيل دفعة',
+        'إضافة موعد دفع',
+        'إضافة تصنيف',
+      ]);
+
+      actions.singleWhere((action) => action.id == 'payment').onTap();
+      actions.singleWhere((action) => action.id == 'schedule').onTap();
+      expect(paymentCalls, 1);
+      expect(scheduleCalls, 1);
+    });
 
     test('forwards refreshDashboardOnMoney to money-changing opens', () {
       final calls = <String>[];
@@ -199,6 +234,103 @@ void main() {
         'طلب عرض سعر',
       );
     });
+
+    test('state urgency wins, then the last useful action is remembered', () {
+      Future<void> open(String route, {bool refreshDashboard = false}) async {}
+
+      final urgent = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'smart-plan',
+        canManageMoney: true,
+        signals: const QuickAddSignals(overdueTasks: 2, providerCount: 1),
+        openRoute: open,
+      );
+      expect(urgent.first.label, 'إضافة مهمة');
+      expect(urgent.first.recommended, isTrue);
+
+      final neutral = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'recent-plan',
+        canManageMoney: true,
+        signals: const QuickAddSignals(providerCount: 1),
+        openRoute: open,
+      );
+      neutral.singleWhere((action) => action.id == 'quote').onTap();
+
+      final reordered = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'recent-plan',
+        canManageMoney: true,
+        signals: const QuickAddSignals(providerCount: 1),
+        openRoute: open,
+      );
+      expect(reordered.first.id, 'quote');
+      expect(reordered.first.recommended, isTrue);
+    });
+
+    test('wedding stage adapts the recommended creation action', () {
+      Future<void> open(String route, {bool refreshDashboard = false}) async {}
+
+      final foundation = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'stage-foundation',
+        canManageMoney: true,
+        signals: const QuickAddSignals(
+          stage: WeddingPlanStage.foundation,
+          providerCount: 1,
+        ),
+        openRoute: open,
+      );
+      final finalMonth = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'stage-final-month',
+        canManageMoney: true,
+        signals: const QuickAddSignals(
+          stage: WeddingPlanStage.finalMonth,
+          providerCount: 1,
+        ),
+        openRoute: open,
+      );
+      final weddingDay = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'stage-wedding-day',
+        canManageMoney: true,
+        signals: const QuickAddSignals(
+          stage: WeddingPlanStage.weddingDay,
+          providerCount: 0,
+        ),
+        openRoute: open,
+      );
+
+      expect(foundation.first.id, 'task');
+      expect(finalMonth.first.id, 'guest');
+      expect(weddingDay.first.id, 'task');
+      expect(foundation.first.recommended, isTrue);
+    });
+
+    test(
+      'remembers a real action even when dashboard signals are unavailable',
+      () {
+        Future<void> open(
+          String route, {
+          bool refreshDashboard = false,
+        }) async {}
+
+        final actions = buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'offline-plan',
+          canManageMoney: false,
+          openRoute: open,
+        );
+        actions.singleWhere((action) => action.id == 'guest').onTap();
+
+        expect(lastCanonicalQuickAddActionId('offline-plan'), 'guest');
+        expect(
+          lastCanonicalQuickAddAction('offline-plan', actions)?.id,
+          'guest',
+        );
+      },
+    );
 
     test('never exposes financial actions without money management', () {
       Future<void> open(String route, {bool refreshDashboard = false}) async {}
@@ -279,7 +411,7 @@ void main() {
     );
 
     testWidgets(
-      'route-owned plan shell keeps an opaque ivory surface during tab changes',
+      'route-owned plan shell keeps an opaque semantic canvas during tab changes',
       (tester) async {
         final router = _buildPlanShellRouter(
           initialLocation: AppRouter.planProviders('plan-7'),
@@ -293,7 +425,7 @@ void main() {
           final shellScaffold = tester
               .widgetList<Scaffold>(find.byType(Scaffold))
               .singleWhere((scaffold) => scaffold.bottomNavigationBar != null);
-          expect(shellScaffold.backgroundColor, AppTheme.ivory);
+          expect(shellScaffold.backgroundColor, AppTheme.canvas);
           expect(shellScaffold.backgroundColor?.a, 1);
         }
 
@@ -315,11 +447,11 @@ void main() {
       await tester.pump();
 
       expect(find.text('costs'), findsOneWidget);
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
     });
 
     testWidgets(
-      'money root keeps the add-cost FAB available before and after budget setup',
+      'money root hides the competing FAB during setup and restores it afterward',
       (tester) async {
         Future<void> pumpWith({required bool hasBudget}) async {
           final router = _buildPlanShellRouter(
@@ -335,16 +467,11 @@ void main() {
         }
 
         await pumpWith(hasBudget: false);
-        var fab = find.byKey(const ValueKey('royal-smart-fab'));
-        expect(fab, findsOneWidget);
-        await tester.tap(fab);
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 400));
-        expect(find.text('إضافة تكلفة'), findsOneWidget);
-        expect(find.text('إضافة تصنيف'), findsNothing);
+        var fab = find.byKey(const ValueKey('aarast-quick-action'));
+        expect(fab, findsNothing);
 
         await pumpWith(hasBudget: true);
-        fab = find.byKey(const ValueKey('royal-smart-fab'));
+        fab = find.byKey(const ValueKey('aarast-quick-action'));
         expect(fab, findsOneWidget);
         expect(tester.takeException(), isNull);
       },
@@ -362,7 +489,7 @@ void main() {
 
       expect(find.text('guests'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('royal-smart-fab')));
+      await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -381,33 +508,33 @@ void main() {
       await _pumpPlanShellRouter(tester, router);
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsOneWidget);
       expect(find.byIcon(Icons.more_horiz), findsNothing);
       expect(find.byIcon(Icons.more_vert), findsNothing);
 
       await _tapNavIcon(tester, LucideIcons.wallet);
       expect(router.state.uri.path, AppRouter.money('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.listChecks);
       expect(router.state.uri.path, AppRouter.tasks('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.users);
       expect(router.state.uri.path, AppRouter.guestList('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.store);
       expect(router.state.uri.path, AppRouter.planProviders('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.home);
       expect(router.state.uri.path, AppRouter.weddingPlanDashboard('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -617,6 +744,9 @@ class _ShellFinanceProvider extends FinanceProvider {
 
   @override
   String? get loadedPlanId => 'plan-7';
+
+  @override
+  bool get hasLoadedMoney => true;
 
   @override
   bool get canManageMoney => true;

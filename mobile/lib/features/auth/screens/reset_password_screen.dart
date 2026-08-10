@@ -73,12 +73,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
           Text(
             'استعادة كلمة المرور',
             textAlign: TextAlign.center,
             style: textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
               height: 1.18,
             ),
@@ -95,18 +95,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             },
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           switch (_step) {
             _ResetStep.phone => _buildPhoneStep(),
             _ResetStep.confirm => _buildConfirmStep(),
             _ResetStep.done => _buildDoneStep(),
           },
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           if (_step != _ResetStep.done)
             AuthFooterLink(
               prefix: 'تذكرت كلمة المرور؟',
@@ -147,14 +147,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               },
             ),
             if (_errorMessage != null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               AuthInlineError(message: _errorMessage!),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             AarastButton(
               label: 'إرسال رمز الاستعادة',
               icon: LucideIcons.messageSquare,
               isLoading: _isSubmitting,
+              compact: true,
               onPressed: _isSubmitting ? null : _requestCode,
             ),
           ],
@@ -186,14 +187,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         children: [
           if (_otpNoticeMessage != null) ...[
             _OtpNotice(message: _otpNoticeMessage!),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
           ],
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               'رمز التحقق',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -215,7 +216,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               }
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           AuthTextField(
             controller: _passwordController,
             label: 'كلمة المرور الجديدة',
@@ -241,7 +242,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           AuthTextField(
             controller: _confirmPasswordController,
             label: 'تأكيد كلمة المرور',
@@ -257,7 +258,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             },
           ),
           if (_errorMessage != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             AuthInlineError(message: _errorMessage!),
           ],
           if (_errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF') ...[
@@ -271,11 +272,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               label: const Text('إنشاء حساب جديد بهذا الرقم'),
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           AarastButton(
             label: 'تغيير كلمة المرور',
             icon: LucideIcons.rotateCcw,
             isLoading: _isSubmitting,
+            compact: true,
             onPressed: _isSubmitting ? null : _confirmReset,
           ),
           const SizedBox(height: 10),
@@ -320,7 +322,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             'تم تغيير كلمة المرور',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -329,7 +331,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             'أُغلقت كل الجلسات السابقة لحمايتك. ادخل الآن بكلمة مرورك الجديدة.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.5,
             ),
@@ -501,15 +503,15 @@ class _OtpNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.goldSoft,
+        color: AppTheme.brandMuted,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.35)),
+        border: Border.all(color: AppTheme.focus.withValues(alpha: 0.35)),
       ),
       child: Text(
         message,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w800,
           height: 1.45,
         ),

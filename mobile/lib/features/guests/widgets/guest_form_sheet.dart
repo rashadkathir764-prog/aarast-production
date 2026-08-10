@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_duplicate_utils.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
@@ -14,6 +19,7 @@ class GuestFormSheet extends StatefulWidget {
     required this.groups,
     required this.blockDuplicatePhone,
     this.guest,
+    this.draftScope,
     super.key,
   });
 
@@ -21,12 +27,14 @@ class GuestFormSheet extends StatefulWidget {
   final List<Guest> existingGuests;
   final List<GuestGroup> groups;
   final bool blockDuplicatePhone;
+  final String? draftScope;
 
   @override
   State<GuestFormSheet> createState() => _GuestFormSheetState();
 }
 
 class _GuestFormSheetState extends State<GuestFormSheet> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _notesController;
@@ -35,7 +43,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   late String? _groupId;
   late int _seatsCount;
   late int _companionsCount;
-  String? _sheetError;
+  AarastFormDraftCoordinator? _draft;
+  bool _didConfigureDraft = false;
+  bool _restoringDraft = false;
 
   @override
   void initState() {
@@ -46,6 +56,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     _notesController = TextEditingController(text: guest?.notes ?? '');
     _nameController.addListener(_handleContactChanged);
     _phoneController.addListener(_handleContactChanged);
+    _notesController.addListener(_handleContactChanged);
     _side = _supportedSide(guest?.side);
     _status = guest?.status ?? 'INVITED';
     _groupId =
@@ -58,6 +69,25 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didConfigureDraft) return;
+    _didConfigureDraft = true;
+    final scope = widget.draftScope?.trim();
+    if (scope == null || scope.isEmpty) return;
+    final store = context.read<AarastFormDraftStore?>();
+    if (store == null) return;
+    _draft = AarastFormDraftCoordinator(
+      store: store,
+      scope: scope,
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_restoreDraft());
+  }
+
+  @override
   void dispose() {
     _nameController
       ..removeListener(_handleContactChanged)
@@ -65,12 +95,70 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     _phoneController
       ..removeListener(_handleContactChanged)
       ..dispose();
-    _notesController.dispose();
+    _notesController
+      ..removeListener(_handleContactChanged)
+      ..dispose();
+    _draft?.dispose();
     super.dispose();
   }
 
   void _handleContactChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    _scheduleDraft();
+  }
+
+  Future<void> _restoreDraft() async {
+    final data = await _draft?.restore();
+    if (!mounted || data == null) return;
+    _restoringDraft = true;
+    _nameController.text = data['name']?.toString() ?? _nameController.text;
+    _phoneController.text = data['phone']?.toString() ?? _phoneController.text;
+    _notesController.text = data['notes']?.toString() ?? _notesController.text;
+    final side = data['side']?.toString();
+    final status = data['status']?.toString();
+    final groupId = data['groupId']?.toString();
+    setState(() {
+      if (side != null && _sideValues.contains(side)) _side = side;
+      if (status != null && _statusValues.contains(status)) _status = status;
+      if (groupId != null &&
+          widget.groups.any((group) => group.id == groupId)) {
+        _groupId = groupId;
+      }
+      _seatsCount = _draftInt(data['seatsCount'], _seatsCount).clamp(1, 20);
+      _companionsCount = _draftInt(
+        data['companionsCount'],
+        _companionsCount,
+      ).clamp(0, 20);
+      if (_companionsCount >= _seatsCount) {
+        _seatsCount = (_companionsCount + 1).clamp(1, 20);
+      }
+    });
+    _restoringDraft = false;
+  }
+
+  int _draftInt(Object? value, int fallback) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  void _scheduleDraft() {
+    if (_restoringDraft) return;
+    _draft?.schedule({
+      'name': _nameController.text,
+      'phone': _phoneController.text,
+      'notes': _notesController.text,
+      'side': _side,
+      'status': _status,
+      'groupId': _groupId,
+      'seatsCount': _seatsCount,
+      'companionsCount': _companionsCount,
+    });
+  }
+
+  void _mutate(VoidCallback change) {
+    setState(change);
+    _scheduleDraft();
   }
 
   Guest? get _duplicatePhoneGuest {
@@ -92,26 +180,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   }
 
   void _submit() {
+    if (!_formKey.currentState!.validate()) return;
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      setState(() => _sheetError = 'اسم الضيف مطلوب');
-      return;
-    }
-
-    if (_duplicatePhoneGuest != null && widget.blockDuplicatePhone) {
-      setState(() => _sheetError = 'هذا الضيف موجود مسبقًا');
-      return;
-    }
-
-    String? phone;
-    try {
-      phone = PhoneNumberUtils.normalizeOptional(_phoneController.text);
-    } on FormatException {
-      setState(() => _sheetError = PhoneNumberUtils.invalidMessage);
-      return;
-    }
-
-    setState(() => _sheetError = null);
+    final phone = PhoneNumberUtils.normalizeOptional(_phoneController.text);
     Navigator.of(context).pop(
       GuestFormResult(
         name: name,
@@ -131,163 +202,194 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     final guest = widget.guest;
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          16,
-          20,
-          20 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const GuestSheetHandle(),
-                const SizedBox(height: 18),
-                Text(
-                  guest == null ? 'إضافة ضيف' : 'تعديل ضيف',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الضيف',
-                    prefixIcon: Icon(LucideIcons.user),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ContactPhoneField(
-                  nameController: _nameController,
-                  phoneController: _phoneController,
-                  label: 'رقم الجوال (اختياري)',
-                  duplicateMessage: _duplicatePhoneGuest == null
-                      ? null
-                      : 'هذا الضيف موجود مسبقًا',
-                  onDraftChanged: (_) {
-                    if (!mounted) return;
-                    setState(() => _sheetError = null);
-                  },
-                ),
-                if (_hasSoftNameDuplicate) ...[
-                  const SizedBox(height: 4),
-                  const Text(
-                    'يوجد ضيف بنفس الاسم دون رقم. يمكنك المتابعة إذا كان شخصًا آخر.',
-                    style: TextStyle(
-                      color: AppTheme.gold,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                _ChipPickerRow(
-                  label: 'الطرف',
-                  options: [
-                    for (final item in _sideValues)
-                      _ChipOption(value: item, label: guestSideLabel(item)),
-                  ],
-                  selected: _side,
-                  onSelected: (value) => setState(() => _side = value),
-                ),
-                const SizedBox(height: 12),
-                if (widget.groups.isNotEmpty) ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: _groupId,
-                    items: [
-                      const DropdownMenuItem(
-                        value: '',
-                        child: Text('بدون مجموعة'),
-                      ),
-                      for (final group in widget.groups)
-                        DropdownMenuItem(
-                          value: group.id,
-                          child: Text(group.name),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      setState(
-                        () => _groupId = value?.isEmpty == true ? null : value,
-                      );
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'المجموعة',
-                      prefixIcon: Icon(LucideIcons.folderOpen),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                _ChipPickerRow(
-                  label: 'حالة الرد',
-                  options: [
-                    for (final item in _statusValues)
-                      _ChipOption(value: item, label: _statusLabel(item)),
-                  ],
-                  selected: _status,
-                  onSelected: (value) => setState(() => _status = value),
-                ),
-                const SizedBox(height: 12),
-                _StepperRow(
-                  label: 'الحضور المتوقع: $_seatsCount',
-                  onMinus: _seatsCount > 1
-                      ? () => setState(() {
-                          _seatsCount--;
-                          if (_companionsCount >= _seatsCount) {
-                            _companionsCount = _seatsCount - 1;
-                          }
-                        })
-                      : null,
-                  onPlus: _seatsCount < 20
-                      ? () => setState(() => _seatsCount++)
-                      : null,
-                ),
-                const SizedBox(height: 8),
-                _StepperRow(
-                  label: 'عدد المرافقين: $_companionsCount',
-                  onMinus: _companionsCount > 0
-                      ? () => setState(() => _companionsCount--)
-                      : null,
-                  onPlus: _companionsCount < 20
-                      ? () => setState(() {
-                          _companionsCount++;
-                          if (_seatsCount < _companionsCount + 1) {
-                            _seatsCount = _companionsCount + 1;
-                          }
-                        })
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _notesController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظات (اختياري)',
-                    prefixIcon: Icon(LucideIcons.stickyNote),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(LucideIcons.check, size: 18),
-                  label: Text(guest == null ? 'إضافة ضيف' : 'حفظ التعديل'),
-                ),
-                if (_sheetError != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    _sheetError!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppTheme.danger,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ],
+      child: AarastV3BottomSheetFormLayout(
+        header: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const GuestSheetHandle(),
+            const SizedBox(height: AppTheme.space8),
+            _GuestFormHeader(
+              editing: guest != null,
+              onClose: () => Navigator.of(context).pop(),
             ),
+            if (_draft != null) ...[
+              const SizedBox(height: AppTheme.space8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AarastV3DraftStatusLine(status: _draft!.status),
+              ),
+            ],
+          ],
+        ),
+        action: AarastV3PrimaryAction(
+          label: guest == null ? 'إضافة ضيف' : 'حفظ التعديل',
+          icon: LucideIcons.check,
+          onPressed: _submit,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const AarastV3FocusPrompt(
+                question: 'من الضيف الذي تريد إضافته؟',
+                supportingText:
+                    'الاسم يكفي للبدء؛ أكمل الهاتف والرد والمقاعد عندما تعرفها.',
+                icon: LucideIcons.userPlus,
+              ),
+              const SizedBox(height: AppTheme.space10),
+              TextFormField(
+                controller: _nameController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'اسم الضيف',
+                  prefixIcon: Icon(LucideIcons.user),
+                ),
+                validator: (value) =>
+                    value?.trim().isEmpty == true ? 'اسم الضيف مطلوب' : null,
+              ),
+              const SizedBox(height: AppTheme.space10),
+              ContactPhoneField(
+                nameController: _nameController,
+                phoneController: _phoneController,
+                label: 'رقم الجوال',
+                duplicateMessage: _duplicatePhoneGuest == null
+                    ? null
+                    : 'هذا الضيف موجود مسبقًا',
+                duplicateIsBlocking: widget.blockDuplicatePhone,
+                onDraftChanged: (_) {
+                  if (!mounted) return;
+                  setState(() {});
+                  _scheduleDraft();
+                },
+              ),
+              if (_hasSoftNameDuplicate) ...[
+                const SizedBox(height: AppTheme.space4),
+                const Text(
+                  'يوجد اسم مشابه بلا رقم؛ يمكنك المتابعة إن كان شخصاً آخر.',
+                  style: TextStyle(
+                    color: AppTheme.warning,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppTheme.space10),
+              AarastV3Disclosure(
+                title: 'تفاصيل إضافية',
+                subtitle: 'الطرف والرد والمقاعد والمجموعة',
+                icon: LucideIcons.slidersHorizontal,
+                initiallyExpanded:
+                    guest != null ||
+                    _groupId != null ||
+                    _notesController.text.trim().isNotEmpty ||
+                    _side != 'OTHER' ||
+                    _status != 'INVITED' ||
+                    _seatsCount != 1 ||
+                    _companionsCount != 0,
+                child: Column(
+                  children: [
+                    _CompactDecisionSurface(
+                      children: [
+                        _ChipPickerRow(
+                          label: 'الطرف',
+                          options: [
+                            for (final item in _sideValues)
+                              _ChipOption(
+                                value: item,
+                                label: guestSideLabel(item),
+                              ),
+                          ],
+                          selected: _side,
+                          onSelected: (value) => _mutate(() => _side = value),
+                        ),
+                        const SizedBox(height: AppTheme.space8),
+                        _ChipPickerRow(
+                          label: 'حالة الرد',
+                          options: [
+                            for (final item in _statusValues)
+                              _ChipOption(
+                                value: item,
+                                label: _statusLabel(item),
+                              ),
+                          ],
+                          selected: _status,
+                          onSelected: (value) => _mutate(() => _status = value),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CompactStepper(
+                            label: 'المقاعد',
+                            value: _seatsCount,
+                            onMinus: _seatsCount > 1
+                                ? () => _mutate(() {
+                                    _seatsCount--;
+                                    if (_companionsCount >= _seatsCount) {
+                                      _companionsCount = _seatsCount - 1;
+                                    }
+                                  })
+                                : null,
+                            onPlus: _seatsCount < 20
+                                ? () => _mutate(() => _seatsCount++)
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.space8),
+                        Expanded(
+                          child: _CompactStepper(
+                            label: 'المرافقون',
+                            value: _companionsCount,
+                            onMinus: _companionsCount > 0
+                                ? () => _mutate(() => _companionsCount--)
+                                : null,
+                            onPlus: _companionsCount < 20
+                                ? () => _mutate(() {
+                                    _companionsCount++;
+                                    if (_seatsCount < _companionsCount + 1) {
+                                      _seatsCount = _companionsCount + 1;
+                                    }
+                                  })
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space8),
+                    _GuestOptionalDetails(
+                      groups: widget.groups,
+                      groupId: _groupId,
+                      onGroupChanged: (value) {
+                        _mutate(
+                          () =>
+                              _groupId = value?.isEmpty == true ? null : value,
+                        );
+                      },
+                      notesController: _notesController,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTheme.space10),
+              AarastV3LiveSummary(
+                items: [
+                  AarastV3SummaryItem(
+                    label: 'الضيف',
+                    value: _nameController.text.trim().isEmpty
+                        ? 'لم يُكتب بعد'
+                        : _nameController.text.trim(),
+                  ),
+                  AarastV3SummaryItem(
+                    label: 'الرد',
+                    value: _statusLabel(_status),
+                  ),
+                  AarastV3SummaryItem(label: 'المقاعد', value: '$_seatsCount'),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -335,6 +437,132 @@ class GuestSheetHandle extends StatelessWidget {
   }
 }
 
+class _GuestFormHeader extends StatelessWidget {
+  const _GuestFormHeader({required this.editing, required this.onClose});
+
+  final bool editing;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppTheme.inkSurface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+          ),
+          child: const Icon(
+            LucideIcons.userPlus,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: AppTheme.space12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                editing ? 'تعديل ضيف' : 'ضيف جديد',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.textPrimary,
+                  fontFamily: AppTheme.displayFontFamily,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                'الاسم أولاً، والبقية حسب حاجتك.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: onClose,
+          tooltip: 'إغلاق',
+          icon: const Icon(LucideIcons.x),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactDecisionSurface extends StatelessWidget {
+  const _CompactDecisionSurface({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.space8),
+      decoration: const BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(color: AppTheme.border),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _GuestOptionalDetails extends StatelessWidget {
+  const _GuestOptionalDetails({
+    required this.groups,
+    required this.groupId,
+    required this.onGroupChanged,
+    required this.notesController,
+  });
+
+  final List<GuestGroup> groups;
+  final String? groupId;
+  final ValueChanged<String?> onGroupChanged;
+  final TextEditingController notesController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (groups.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            initialValue: groupId,
+            items: [
+              const DropdownMenuItem(value: '', child: Text('بدون مجموعة')),
+              for (final group in groups)
+                DropdownMenuItem(value: group.id, child: Text(group.name)),
+            ],
+            onChanged: onGroupChanged,
+            decoration: const InputDecoration(
+              labelText: 'المجموعة',
+              prefixIcon: Icon(LucideIcons.folderOpen),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space8),
+        ],
+        TextFormField(
+          controller: notesController,
+          minLines: 1,
+          maxLines: 2,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'ملاحظة قصيرة',
+            prefixIcon: Icon(LucideIcons.stickyNote),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ChipOption {
   const _ChipOption({required this.value, required this.label});
 
@@ -363,47 +591,58 @@ class _ChipPickerRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: textTheme.labelMedium?.copyWith(color: AppTheme.muted),
+          style: textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
         ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        const SizedBox(height: 4),
+        Row(
           children: [
-            for (final option in options)
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => onSelected(option.value),
-                  borderRadius: BorderRadius.circular(999),
-                  child: Ink(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: option.value == selected
-                          ? AppTheme.burgundy
-                          : AppTheme.surface,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: option.value == selected
-                            ? AppTheme.burgundy
-                            : AppTheme.border,
+            for (var index = 0; index < options.length; index++) ...[
+              if (index > 0) const SizedBox(width: AppTheme.space6),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final option = options[index];
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => onSelected(option.value),
+                        borderRadius: BorderRadius.circular(999),
+                        child: Ink(
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          decoration: BoxDecoration(
+                            color: option.value == selected
+                                ? AppTheme.brand
+                                : AppTheme.surfaceRaised,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: option.value == selected
+                                  ? AppTheme.brand
+                                  : AppTheme.border,
+                            ),
+                          ),
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                option.label,
+                                maxLines: 1,
+                                style: textTheme.labelMedium?.copyWith(
+                                  color: option.value == selected
+                                      ? Colors.white
+                                      : AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      option.label,
-                      style: textTheme.labelMedium?.copyWith(
-                        color: option.value == selected
-                            ? Colors.white
-                            : AppTheme.ink,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
+            ],
           ],
         ),
       ],
@@ -411,49 +650,84 @@ class _ChipPickerRow extends StatelessWidget {
   }
 }
 
-class _StepperRow extends StatelessWidget {
-  const _StepperRow({
+class _CompactStepper extends StatelessWidget {
+  const _CompactStepper({
     required this.label,
+    required this.value,
     required this.onMinus,
     required this.onPlus,
   });
 
   final String label;
+  final int value;
   final VoidCallback? onMinus;
   final VoidCallback? onPlus;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space6),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.border)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.ink,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          _StepperButton(
+            icon: LucideIcons.minus,
+            onPressed: onMinus,
+            tooltip: 'تقليل العدد',
+          ),
+          SizedBox(
+            width: 24,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ),
-          IconButton(
-            onPressed: onMinus,
-            icon: const Icon(LucideIcons.minusCircle),
-            tooltip: 'تقليل العدد',
-          ),
-          IconButton(
+          _StepperButton(
+            icon: LucideIcons.plus,
             onPressed: onPlus,
-            icon: const Icon(LucideIcons.plusCircle),
             tooltip: 'زيادة العدد',
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  const _StepperButton({
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+      icon: Icon(icon, size: 17),
     );
   }
 }

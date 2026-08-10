@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/notifications/data/notifications_api.dart';
@@ -18,7 +19,7 @@ void main() {
 
     expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
     expect(find.text('سجّل الدخول لعرض التنبيهات'), findsOneWidget);
-    expect(find.text('لا توجد تنبيهات مهمة الآن.'), findsNothing);
+    expect(find.text(AarastV3Copy.quietNotificationsTitle), findsNothing);
     expect(fakeApi.getNotificationsCalls, 0);
     expect(fakeApi.getUnreadCountCalls, 0);
     expect(tester.takeException(), isNull);
@@ -36,7 +37,7 @@ void main() {
 
     expect(find.byKey(const Key('sharing-auth-gate')), findsNothing);
     expect(find.text('تنبيهات الخطة المحفوظة'), findsOneWidget);
-    expect(find.text('لا توجد تنبيهات مهمة الآن.'), findsOneWidget);
+    expect(find.text(AarastV3Copy.quietNotificationsTitle), findsOneWidget);
     expect(fakeApi.getNotificationsCalls, 0);
     expect(fakeApi.getUnreadCountCalls, 0);
     expect(tester.takeException(), isNull);

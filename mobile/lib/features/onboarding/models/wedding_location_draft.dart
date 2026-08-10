@@ -31,7 +31,10 @@
         : cleanCity ?? cleanDistrict;
     final areaOrNeighborhood = cityLooksDuplicated
         ? cleanNeighborhood
-        : cleanNeighborhood ?? cleanDistrict;
+        : _join([
+            if (!_sameText(cityOrDistrict, cleanDistrict)) cleanDistrict,
+            cleanNeighborhood,
+          ]);
 
     return WeddingLocationDraft(
       governorate: cleanGovernorate,

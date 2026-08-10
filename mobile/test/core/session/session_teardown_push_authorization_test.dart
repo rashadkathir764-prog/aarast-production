@@ -72,6 +72,10 @@ class _AvailablePushGateway implements PushMessagingGateway {
   Stream<void> get notificationTaps => const Stream<void>.empty();
 
   @override
+  Stream<PushForegroundNotification> get foregroundNotifications =>
+      const Stream<PushForegroundNotification>.empty();
+
+  @override
   Stream<void> get tokenChanges => const Stream<void>.empty();
 
   @override

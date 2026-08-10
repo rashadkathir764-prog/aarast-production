@@ -52,8 +52,30 @@ void main() {
     expect(manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
     expect(launchBackground, contains('@drawable/launch_image'));
     expect(android12Style, contains('@drawable/ic_launcher_foreground'));
-    expect(colors, contains('#FCF8F5'));
+    expect(colors, contains('#FFFEFD'));
     expect(storyboard, contains('image="LaunchImage"'));
-    expect(storyboard, contains('red="0.9882352941"'));
+    expect(storyboard, contains('green="0.9960784314"'));
+  });
+
+  test('Android push uses the branded high-importance heads-up channel', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    final activity = File(
+      'android/app/src/main/kotlin/com/aarast/aarast_mobile/MainActivity.kt',
+    ).readAsStringSync();
+    final notificationIcon = File(
+      'android/app/src/main/res/drawable/ic_stat_aarast.xml',
+    ).readAsStringSync();
+    final colors = File(
+      'android/app/src/main/res/values/colors.xml',
+    ).readAsStringSync();
+
+    expect(manifest, contains('android:value="aarast_updates"'));
+    expect(manifest, contains('android:resource="@drawable/ic_stat_aarast"'));
+    expect(activity, contains('NotificationManager.IMPORTANCE_HIGH'));
+    expect(activity, contains('setShowBadge(true)'));
+    expect(notificationIcon, contains('M12,2.4L14.15,9.85'));
+    expect(colors, contains('#800020'));
   });
 }

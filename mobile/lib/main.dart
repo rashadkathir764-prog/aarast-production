@@ -14,6 +14,7 @@ import 'core/config/observability_config.dart';
 import 'core/diagnostics/app_logger.dart';
 import 'core/diagnostics/diagnostic_report_sender.dart';
 import 'core/diagnostics/sentry_log_sink.dart';
+import 'core/forms/aarast_form_draft_store.dart';
 import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
@@ -36,6 +37,8 @@ import 'features/auth/providers/auth_controller.dart';
 import 'features/chat/data/chat_api.dart';
 import 'features/chat/data/chat_realtime_client.dart';
 import 'features/chat/providers/chat_provider.dart';
+import 'features/catalogs/data/reference_catalog_api.dart';
+import 'features/catalogs/providers/reference_catalog_provider.dart';
 import 'features/finance/data/finance_api.dart';
 import 'features/finance/providers/finance_provider.dart';
 import 'features/guests/data/guests_api.dart';
@@ -153,6 +156,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     preferences,
     sensitiveValueVault: sensitiveValueVault,
   );
+  final formDraftStore = AarastFormDraftStore(
+    vault: sensitiveValueVault,
+    authStorage: authStorage,
+  );
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
   late final LocalDatabase localDatabase;
   try {
@@ -191,7 +198,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   final sessionTeardownCoordinator = SessionTeardownCoordinator(
     auth: authRepository,
     push: pushNotificationsController,
-    clearLocalAccountData: offlineSyncService.clearLocalData,
+    clearLocalAccountData: () async {
+      await offlineSyncService.clearLocalData();
+      await formDraftStore.clearAll();
+    },
     clearGuestDraft: guestOnboardingStorage.clearDraft,
     clearDeletedAccountState: (userId) async {
       await pendingPlanCleanupStore.removeForUser(userId);
@@ -237,6 +247,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     apiClient,
     offline: offlineSyncService,
   );
+  final referenceCatalogApi = ReferenceCatalogApi(
+    apiClient,
+    offlineSyncService,
+  );
   final providerDashboardApi = ProviderDashboardApi(apiClient);
   final mediaUploadApi = MediaUploadApi(apiClient);
   final chatApi = ChatApi(apiClient);
@@ -257,6 +271,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         Provider<MemoryRingBufferSink>.value(value: memoryLogSink),
         Provider<DiagnosticReportService>.value(value: diagnosticReportService),
         Provider<AuthStorage>.value(value: authStorage),
+        Provider<AarastFormDraftStore>.value(value: formDraftStore),
         Provider<GuestOnboardingStorage>.value(value: guestOnboardingStorage),
         Provider<ApiClient>.value(value: apiClient),
         Provider<LocalDatabase>.value(value: localDatabase),
@@ -277,6 +292,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
           create: (_) =>
               YemenAdministrativeProvider(yemenAdministrativeApi)
                 ..loadGovernorates(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ReferenceCatalogProvider(referenceCatalogApi)..load(),
         ),
         Provider<ProviderDashboardApi>.value(value: providerDashboardApi),
         Provider<MediaUploadApi>.value(value: mediaUploadApi),

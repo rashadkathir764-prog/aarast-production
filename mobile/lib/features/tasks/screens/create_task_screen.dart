@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/phone/phone_number_utils.dart';
@@ -13,10 +18,13 @@ import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../sharing/providers/sharing_provider.dart';
+import '../../wedding_plans/utils/plan_pulse_sync.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../widgets/create_task_components.dart';
+
+part 'create_task_screen_draft.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({
@@ -50,29 +58,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   String? _selectedAssigneePhone;
   String? _selectedAssigneeRole;
   ContactPhoneSource _responsibleSource = ContactPhoneSource.manual;
-  bool _didPrefill = false;
-  bool _didRequestMembers = false;
-
-  // مصدر واحد لأيقونات التصنيف — نفس أيقونات Lucide المستخدمة في بطاقة
-  // المهمة (taskCategoryIcon) حتى يبقى التصنيف متطابقًا بين القائمة والنموذج.
-  static final _categories = [
-    const CreateTaskCategory('GENERAL', 'عامة', LucideIcons.layoutGrid),
-    CreateTaskCategory('VENUE', 'القاعة', taskCategoryIcon('VENUE')),
-    CreateTaskCategory('GUESTS', 'الضيوف', taskCategoryIcon('GUESTS')),
-    CreateTaskCategory('MONEY', 'المال', taskCategoryIcon('MONEY')),
-    CreateTaskCategory('PROVIDERS', 'الموردين', taskCategoryIcon('PROVIDERS')),
-    CreateTaskCategory('ATTIRE', 'الملابس', taskCategoryIcon('ATTIRE')),
-    CreateTaskCategory(
-      'PHOTOGRAPHY',
-      'التصوير',
-      taskCategoryIcon('PHOTOGRAPHY'),
-    ),
-    CreateTaskCategory('CATERING', 'الضيافة', taskCategoryIcon('CATERING')),
-    CreateTaskCategory('DECOR', 'الزينة', taskCategoryIcon('DECOR')),
-    CreateTaskCategory('DOCUMENTS', 'المستندات', taskCategoryIcon('DOCUMENTS')),
-  ];
-
-  bool get _isEditMode => widget.taskId != null || widget.initialTask != null;
+  bool _didPrefill = false, _didRequestMembers = false;
+  AarastFormDraftCoordinator? _draft;
+  bool _didConfigureDraft = false;
+  bool _restoringDraft = false;
 
   @override
   void initState() {
@@ -81,11 +70,20 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (task != null) {
       _prefillTask(task);
     }
+    for (final controller in [
+      _titleController,
+      _descriptionController,
+      _responsibleNameController,
+      _responsiblePhoneController,
+    ]) {
+      controller.addListener(_handleTextChanged);
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _configureDraft();
     _loadMembersIfAvailable();
 
     if (!_isEditMode || _didPrefill) return;
@@ -104,10 +102,17 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _responsibleNameController.dispose();
-    _responsiblePhoneController.dispose();
+    for (final controller in [
+      _titleController,
+      _descriptionController,
+      _responsibleNameController,
+      _responsiblePhoneController,
+    ]) {
+      controller
+        ..removeListener(_handleTextChanged)
+        ..dispose();
+    }
+    _draft?.dispose();
     super.dispose();
   }
 
@@ -139,10 +144,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.burgundy,
+                        primary: AppTheme.brand,
                         onPrimary: Colors.white,
-                        surface: AppTheme.surface,
-                        onSurface: AppTheme.ink,
+                        surface: AppTheme.surfaceRaised,
+                        onSurface: AppTheme.textPrimary,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -166,7 +171,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       },
     );
 
-    if (selected != null && mounted) setState(() => _dueDate = selected);
+    if (selected != null && mounted) {
+      _mutateDraft(() => _dueDate = selected);
+    }
   }
 
   Future<void> _showCategoryPicker() async {
@@ -191,7 +198,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     icon: LucideIcons.tag,
                   ),
                   const SizedBox(height: 14),
-                  for (final category in _categories)
+                  for (final category in _createTaskCategories)
                     CreateTaskCategoryRow(
                       category: category,
                       selected: category.id == _category,
@@ -205,32 +212,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       },
     );
 
-    if (selected != null && mounted) setState(() => _category = selected);
-  }
-
-  void _prefillTask(WeddingTask task) {
-    _titleController.text = task.title;
-    _descriptionController.text = task.description ?? '';
-    _responsibleNameController.text = task.responsibleLabel;
-    _responsiblePhoneController.text =
-        task.responsiblePhone ?? task.assigneePhone ?? '';
-    _selectedAssigneeUserId = task.assigneeUserId;
-    _selectedAssigneeName = task.assigneeName;
-    _selectedAssigneePhone = task.assigneePhone;
-    _selectedAssigneeRole = task.assigneeRole;
-    _responsibleSource = contactPhoneSourceFromTask(task);
-    _dueDate = task.dueDate;
-    _priority = task.priority;
-    _category = _categoryExists(task.taskCategory)
-        ? task.taskCategory!
-        : 'GENERAL';
-    _status = task.status;
-    _didPrefill = true;
-  }
-
-  bool _categoryExists(String? id) {
-    if (id == null || id.isEmpty) return false;
-    return _categories.any((category) => category.id == id);
+    if (selected != null && mounted) {
+      _mutateDraft(() => _category = selected);
+    }
   }
 
   @override
@@ -238,7 +222,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     final provider = context.watch<TaskTimelineProvider>();
     final sharingProvider = context.watch<SharingProvider?>();
     final currentUserId = context.watch<AuthController?>()?.user?.id;
-    final category = _categories.firstWhere((item) => item.id == _category);
+    final category = _createTaskCategories.firstWhere(
+      (item) => item.id == _category,
+    );
     final participants = sharedMembersForPlan(
       sharingProvider?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
@@ -251,29 +237,23 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     return AarastScreenFrame(
       maxWidth: 480,
+      bottomNavigationBar: AarastV3FormActionBar(
+        maxWidth: 480,
+        label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
+        icon: _isEditMode ? LucideIcons.save : LucideIcons.calendarCheck,
+        loading: provider.isSubmitting,
+        onPressed: provider.isSubmitting ? null : _submit,
+      ),
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: _goBack,
-                    icon: const Icon(LucideIcons.arrowRight),
-                    tooltip: 'رجوع',
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _isEditMode ? 'تعديل المهمة' : 'إضافة مهمة',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.burgundyDark,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+              child: AarastPageHeader(
+                title: _isEditMode ? 'تعديل المهمة' : 'مهمة جديدة',
+                subtitle: 'اكتب المطلوب، ثم حدّد متى وأولوية التنفيذ.',
+                showBack: true,
+                onBack: _goBack,
               ),
             ),
           ),
@@ -285,113 +265,136 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const CreateTaskHero(),
-                    const SizedBox(height: 14),
-                    AarastCard(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: _titleController,
-                            textAlign: TextAlign.right,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'عنوان المهمة',
-                              hintText: 'مثال: تأكيد قائمة المدعوين',
-                              prefixIcon: Icon(LucideIcons.pencil),
+                    if (_draft != null) ...[
+                      AarastV3DraftStatusLine(status: _draft!.status),
+                      const SizedBox(height: AppTheme.space10),
+                    ],
+                    const AarastV3FocusPrompt(
+                      question: 'ما المهمة التي تريد حسمها؟',
+                      supportingText:
+                          'اكتب القرار أولًا، ثم أضف الموعد والمسؤول بقدر ما تعرفه الآن.',
+                      icon: LucideIcons.listChecks,
+                    ),
+                    const SizedBox(height: AppTheme.space10),
+                    AarastV3FormSurface(
+                      children: [
+                        Column(
+                          children: [
+                            TextFormField(
+                              controller: _titleController,
+                              textAlign: TextAlign.right,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'عنوان المهمة',
+                                hintText: 'مثال: تأكيد قائمة المدعوين',
+                                prefixIcon: Icon(LucideIcons.pencil),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'عنوان المهمة مطلوب';
+                                }
+                                return null;
+                              },
                             ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'عنوان المهمة مطلوب';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final categoryField = CreateTaskSelectorField(
-                                label: 'الفئة',
-                                value: category.label,
-                                icon: category.icon,
-                                selected: true,
-                                onTap: _showCategoryPicker,
-                              );
-                              final dateField = CreateTaskSelectorField(
-                                label: 'التاريخ',
-                                value: _dueDate == null
-                                    ? 'لم يحدد بعد'
-                                    : formatTaskDueDate(_dueDate!),
-                                icon: LucideIcons.calendar,
-                                selected: _dueDate != null,
-                                onTap: _showCalendarPicker,
-                              );
+                            const SizedBox(height: AppTheme.space10),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final categoryField = CreateTaskSelectorField(
+                                  label: 'الفئة',
+                                  value: category.label,
+                                  icon: category.icon,
+                                  selected: true,
+                                  onTap: _showCategoryPicker,
+                                );
+                                final dateField = CreateTaskSelectorField(
+                                  label: 'التاريخ',
+                                  value: _dueDate == null
+                                      ? 'لم يحدد بعد'
+                                      : formatTaskDueDate(_dueDate!),
+                                  icon: LucideIcons.calendar,
+                                  selected: _dueDate != null,
+                                  onTap: _showCalendarPicker,
+                                );
 
-                              if (constraints.maxWidth < 280) {
-                                return Column(
+                                if (constraints.maxWidth < 280) {
+                                  return Column(
+                                    children: [
+                                      categoryField,
+                                      const SizedBox(height: AppTheme.space10),
+                                      dateField,
+                                    ],
+                                  );
+                                }
+
+                                return Row(
                                   children: [
-                                    categoryField,
-                                    const SizedBox(height: 12),
-                                    dateField,
+                                    Expanded(child: categoryField),
+                                    const SizedBox(width: AppTheme.space10),
+                                    Expanded(child: dateField),
                                   ],
                                 );
-                              }
-
-                              return Row(
-                                children: [
-                                  Expanded(child: categoryField),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: dateField),
-                                ],
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          const Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Text(
-                              'أولوية المهمة',
-                              style: TextStyle(
-                                color: AppTheme.ink,
-                                fontWeight: FontWeight.w900,
+                              },
+                            ),
+                            const SizedBox(height: AppTheme.space12),
+                            const Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                'أولوية المهمة',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              CreateTaskPriorityChip(
-                                label: 'منخفضة',
-                                icon: LucideIcons.leaf,
-                                color: AppTheme.success,
-                                selected: _priority == 'LOW',
-                                onTap: () {
-                                  setState(() => _priority = 'LOW');
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              CreateTaskPriorityChip(
-                                label: 'متوسطة',
-                                icon: LucideIcons.gripHorizontal,
-                                color: AppTheme.gold,
-                                selected: _priority == 'MEDIUM',
-                                onTap: () {
-                                  setState(() => _priority = 'MEDIUM');
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              CreateTaskPriorityChip(
-                                label: 'عاجلة',
-                                icon: LucideIcons.zap,
-                                color: AppTheme.danger,
-                                selected: _priority == 'HIGH',
-                                onTap: () {
-                                  setState(() => _priority = 'HIGH');
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
+                            const SizedBox(height: AppTheme.space8),
+                            Row(
+                              children: [
+                                CreateTaskPriorityChip(
+                                  label: 'منخفضة',
+                                  icon: LucideIcons.leaf,
+                                  color: AppTheme.success,
+                                  selected: _priority == 'LOW',
+                                  onTap: () {
+                                    _mutateDraft(() => _priority = 'LOW');
+                                  },
+                                ),
+                                const SizedBox(width: AppTheme.space6),
+                                CreateTaskPriorityChip(
+                                  label: 'متوسطة',
+                                  icon: LucideIcons.gripHorizontal,
+                                  color: AppTheme.focus,
+                                  selected: _priority == 'MEDIUM',
+                                  onTap: () {
+                                    _mutateDraft(() => _priority = 'MEDIUM');
+                                  },
+                                ),
+                                const SizedBox(width: AppTheme.space6),
+                                CreateTaskPriorityChip(
+                                  label: 'عاجلة',
+                                  icon: LucideIcons.zap,
+                                  color: AppTheme.danger,
+                                  selected: _priority == 'HIGH',
+                                  onTap: () {
+                                    _mutateDraft(() => _priority = 'HIGH');
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space10),
+                    CreateTaskDetailsDisclosure(
+                      initiallyExpanded:
+                          _descriptionController.text.trim().isNotEmpty ||
+                          _selectedAssigneeUserId != null ||
+                          !isSelfTaskLabel(_responsibleNameController.text),
+                      summary: _responsibleNameController.text.trim().isEmpty
+                          ? 'أنا · بدون ملاحظات'
+                          : '${_responsibleNameController.text.trim()} · تفاصيل إضافية',
+                      child: Column(
+                        children: [
                           CreateTaskResponsibleSection(
                             participants: participants,
                             selectedAssigneeUserId:
@@ -408,38 +411,32 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             onDraftChanged: _handleResponsibleDraft,
                             onInvite: _inviteResponsibleAsParticipant,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: AppTheme.space10),
                           TextFormField(
                             controller: _descriptionController,
                             textAlign: TextAlign.right,
-                            maxLines: 4,
+                            minLines: 2,
+                            maxLines: 3,
+                            textInputAction: TextInputAction.done,
                             decoration: const InputDecoration(
-                              labelText: 'ملاحظات (اختياري)',
-                              hintText:
-                                  'أضف أي تفاصيل تساعدك على تنفيذ المهمة...',
+                              labelText: 'ملاحظة قصيرة',
+                              hintText: 'ما الذي يجب تذكره عند التنفيذ؟',
                               alignLabelWithHint: true,
                             ),
                           ),
-                          if (provider.errorMessage != null) ...[
-                            const SizedBox(height: 14),
-                            AarastStatusPill(
-                              label: provider.errorMessage!,
-                              color: AppTheme.danger,
-                              icon: LucideIcons.alertCircle,
-                            ),
-                          ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    AarastButton(
-                      label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
-                      icon: _isEditMode
-                          ? LucideIcons.save
-                          : LucideIcons.calendarCheck,
-                      isLoading: provider.isSubmitting,
-                      onPressed: _submit,
-                    ),
+                    const SizedBox(height: AppTheme.space14),
+                    _buildLiveSummary(),
+                    if (provider.errorMessage != null) ...[
+                      const SizedBox(height: AppTheme.space10),
+                      AarastStatusPill(
+                        label: provider.errorMessage!,
+                        color: AppTheme.danger,
+                        icon: LucideIcons.alertCircle,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -448,6 +445,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ],
       ),
     );
+  }
+
+  void _handleTextChanged() {
+    _scheduleDraft();
+    if (mounted) setState(() {});
   }
 
   void _goBack() {
@@ -551,10 +553,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
 
     if (saved && mounted) {
-      final notice = provider.noticeMessage;
-      if (notice != null) {
-        AarastToast.showSuccess(context, notice);
-      }
+      publishTaskPlanPulse(
+        context,
+        weddingPlanId: widget.weddingPlanId,
+        summary: provider.summary,
+      );
+      await _draft?.clear();
+      if (!mounted) return;
+      _showSaveSuccess(provider);
       _goBack();
     }
   }
@@ -606,6 +612,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       _responsiblePhoneController.text = selected.user?.phone ?? '';
       _responsibleSource = ContactPhoneSource.planContact;
     });
+    _scheduleDraft();
   }
 
   void _handleResponsibleDraft(ContactPhoneDraft draft) {
@@ -615,6 +622,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _clearSelectedParticipant(updateState: false);
       }
     });
+    _scheduleDraft();
   }
 
   void _clearSelectedParticipant({bool updateState = true}) {
@@ -630,6 +638,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     if (updateState) {
       setState(clear);
+      _scheduleDraft();
     } else {
       clear();
     }

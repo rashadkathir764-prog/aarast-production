@@ -63,7 +63,7 @@ class _SharedWeddingPlansScreenState extends State<SharedWeddingPlansScreen> {
       subtitle: 'الخطط التي منحك أصحابها صلاحية الوصول إليها',
       showBack: true,
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () {
           if (_showLoginGate ||
               provider.authGateKind == SharingAuthGateKind.sessionExpired) {
@@ -150,7 +150,7 @@ class _SharedPlansContent extends StatelessWidget {
           '${provider.sharedPlans.length} خطة مشتركة معك',
           textAlign: TextAlign.right,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.deepBurgundy,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.w800,
           ),
         ),

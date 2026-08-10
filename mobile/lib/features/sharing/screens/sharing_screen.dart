@@ -6,8 +6,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -214,7 +214,7 @@ class _SharingScreenState extends State<SharingScreen>
       subtitle: 'شارك الخطة وحدد ما يمكن لكل عضو رؤيته أو إدارته',
       showBack: true,
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () => _refreshSharingAccessAndLoad(
           showPageLoader: false,
           preserveCurrentState: true,
@@ -363,6 +363,7 @@ class _SharingContent extends StatelessWidget {
             message:
                 'يمكنك متابعة الخطة، لكن إضافة الأعضاء وتعديلهم متاحة للمصرح لهم فقط.',
             icon: LucideIcons.shieldAlert,
+            tone: AarastEmptyStateTone.restricted,
           ),
         ],
       );
@@ -390,7 +391,7 @@ class _SharingContent extends StatelessWidget {
         .toList();
 
     return ListView(
-      children: AarastStagger.children(context, [
+      children: [
         const _PrivacyStrip(),
         const SizedBox(height: 12),
         AarastButton(
@@ -431,7 +432,7 @@ class _SharingContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceRaised,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.border),
             ),
@@ -439,23 +440,31 @@ class _SharingContent extends StatelessWidget {
               'الخطة خاصة بك الآن. استخدم زر إضافة عضو لإضافة شخص موثوق.',
               style: Theme.of(
                 context,
-              ).textTheme.labelMedium?.copyWith(color: AppTheme.muted),
+              ).textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
               textAlign: TextAlign.center,
             ),
           ),
-        for (final member in provider.members)
-          SharedMemberCard(
-            member: member,
-            onTap: member.isOwner
-                ? null
-                : () {
-                    provider.selectMember(member);
-                    context.push(
-                      AppRouter.editSharedMember(weddingPlanId, member.id),
-                    );
-                  },
+        if (provider.members.isNotEmpty)
+          AarastV3ContinuousSurface(
+            children: [
+              for (final member in provider.members)
+                SharedMemberCard(
+                  member: member,
+                  onTap: member.isOwner
+                      ? null
+                      : () {
+                          provider.selectMember(member);
+                          context.push(
+                            AppRouter.editSharedMember(
+                              weddingPlanId,
+                              member.id,
+                            ),
+                          );
+                        },
+                ),
+            ],
           ),
-      ]),
+      ],
     );
   }
 }
@@ -471,7 +480,7 @@ class _SectionTitle extends StatelessWidget {
       text,
       textAlign: TextAlign.right,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        color: AppTheme.deepBurgundy,
+        color: AppTheme.textPrimary,
         fontWeight: FontWeight.w800,
       ),
     );
@@ -488,18 +497,18 @@ class _PrivacyStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.gold.withAlpha(26),
+        color: AppTheme.focus.withAlpha(26),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.lock, size: 15, color: AppTheme.gold),
+          const Icon(LucideIcons.lock, size: 15, color: AppTheme.focus),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'المال خاص افتراضيًا — لا يظهر لأي عضو إلا بصلاحية تمنحها.',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 height: 1.4,
               ),
             ),
@@ -574,10 +583,14 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.gold.withAlpha(26),
+              color: AppTheme.focus.withAlpha(26),
               shape: BoxShape.circle,
             ),
-            child: const Icon(LucideIcons.send, size: 15, color: AppTheme.gold),
+            child: const Icon(
+              LucideIcons.send,
+              size: 15,
+              color: AppTheme.focus,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -590,7 +603,7 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   )
@@ -600,7 +613,7 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -614,7 +627,7 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -630,13 +643,17 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
             icon: const Icon(
               LucideIcons.refreshCw,
               size: 18,
-              color: AppTheme.burgundy,
+              color: AppTheme.brand,
             ),
           ),
           IconButton(
             tooltip: 'إلغاء الدعوة',
             onPressed: widget.onCancel,
-            icon: const Icon(LucideIcons.x, size: 18, color: AppTheme.muted),
+            icon: const Icon(
+              LucideIcons.x,
+              size: 18,
+              color: AppTheme.textSecondary,
+            ),
           ),
         ],
       ),

@@ -36,9 +36,16 @@ void main() {
     expect(find.text('المخصص'), findsOneWidget);
     expect(find.text('التكاليف'), findsWidgets);
     expect(find.text('المدفوع'), findsWidgets);
-    expect(find.text('الباقي عليك'), findsOneWidget);
+    expect(find.text('غير مدفوع'), findsWidgets);
     expect(find.text('حجز الصالة'), findsWidgets);
     expect(find.text('إضافة تكلفة'), findsOneWidget);
+    final overflow = find.byKey(const ValueKey('money-category-overflow'));
+    expect(overflow, findsOneWidget);
+    expect(
+      tester.getCenter(overflow).dx,
+      lessThan(tester.getCenter(find.text('الصالة').first).dx),
+    );
+    expect(tester.getCenter(overflow).dx, lessThan(72));
     expect(tester.takeException(), isNull);
   });
 }

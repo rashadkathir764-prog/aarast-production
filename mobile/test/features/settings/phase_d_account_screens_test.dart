@@ -51,11 +51,16 @@ void main() {
         final source = File(
           'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
         ).readAsStringSync();
+        final sharedForm = File(
+          'lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart',
+        ).readAsStringSync();
 
         expect(source, isNot(contains("TextEditingController(text: 'YER')")));
         expect(source, isNot(contains("? 'YER'")));
-        expect(source, contains('currencyLabelAr'));
-        expect(source, contains('currencyCodeFromDisplayInput'));
+        expect(source, contains('WeddingPlanCreationFields('));
+        expect(source, contains('currency: _currency'));
+        expect(sharedForm, contains("value: 'YER', child: Text('ر.ي')"));
+        expect(sharedForm, contains("value: 'SAR', child: Text('ر.س')"));
         expect(currencyLabelAr(defaultCurrencyCode), 'ر.ي');
         expect(currencyCodeFromDisplayInput('ر.ي'), defaultCurrencyCode);
         expect(currencyCodeFromDisplayInput('ر.س'), 'SAR');
@@ -85,15 +90,22 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('إنشاء خطة زفاف'), findsOneWidget);
+      expect(find.text('ميزانية أولية'), findsOneWidget);
+      await tester.ensureVisible(find.text('ميزانية أولية'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ميزانية أولية'));
+      await tester.pumpAndSettle();
       expect(find.textContaining('ر.ي'), findsWidgets);
       expect(find.textContaining('YER'), findsNothing);
-      expect(find.text('تفاصيل العنوان الاختيارية'), findsOneWidget);
-      expect(find.text('اكتب الحي أو المنطقة'), findsNothing);
+      expect(find.text('تفاصيل عنوان إضافية'), findsOneWidget);
+      expect(find.text('المنطقة أو العزلة'), findsOneWidget);
+      expect(find.text('الحي'), findsOneWidget);
+      expect(find.text('الشارع أو أقرب معلم'), findsNothing);
 
-      await tester.tap(find.text('تفاصيل العنوان الاختيارية'));
+      await tester.tap(find.text('تفاصيل عنوان إضافية'));
       await tester.pumpAndSettle();
 
-      expect(find.text('اكتب الحي أو المنطقة'), findsOneWidget);
+      expect(find.text('الشارع أو أقرب معلم'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

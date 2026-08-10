@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
@@ -11,6 +17,7 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart';
 
 class RecordCostPaymentScreen extends StatefulWidget {
@@ -35,15 +42,20 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
   final _noteController = TextEditingController();
   DateTime _paidAt = DateTime.now();
   bool _isLoadingDetails = true;
+  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _load();
+      if (mounted) _configureDraft();
+    });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _amountController.dispose();
     _methodController.dispose();
     _noteController.dispose();
@@ -73,6 +85,19 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
       subtitle: cost?.title ?? 'سجّل المبلغ الذي دُفع فعلًا.',
       showBack: true,
       onBack: () => context.pop(),
+      bottomNavigationBar:
+          cost != null &&
+              provider.canManageMoney &&
+              !cost.isCancelled &&
+              !cost.isPaid &&
+              available > 0
+          ? AarastV3FormActionBar(
+              label: 'حفظ الدفعة',
+              icon: LucideIcons.check,
+              loading: provider.isSubmitting,
+              onPressed: () => _submit(cost),
+            )
+          : null,
       child: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
@@ -107,6 +132,17 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
               error: true,
             )
           else ...[
+            const AarastV3FocusPrompt(
+              question: 'كم دفعت فعلًا؟',
+              supportingText:
+                  'سجّل المبلغ وتاريخه؛ ويمكن إضافة طريقة الدفع والملاحظة عند الحاجة.',
+              icon: LucideIcons.banknote,
+            ),
+            if (_draft != null) ...[
+              const SizedBox(height: 8),
+              AarastV3DraftStatusLine(status: _draft!.status),
+            ],
+            const SizedBox(height: 14),
             _PaymentLimitCard(cost: cost, currency: currency),
             const SizedBox(height: 14),
             if (available <= 0)
@@ -116,66 +152,80 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
             else
               Form(
                 key: _formKey,
-                child: MoneySectionCard(
-                  title: 'بيانات الدفعة',
-                  subtitle: 'سجّل القيمة والتاريخ كما حدثا فعليًا.',
-                  icon: LucideIcons.banknote,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextFormField(
-                        key: const Key('cost-payment-amount'),
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        textInputAction: TextInputAction.next,
-                        decoration: InputDecoration(
-                          labelText: 'مبلغ الدفعة',
-                          prefixIcon: const Icon(LucideIcons.banknote),
-                          suffixText: currencyLabelAr(currency),
-                        ),
-                        validator: (value) => _validateAmount(value, available),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    MoneySectionCard(
+                      title: 'قيمة الدفعة',
+                      subtitle: 'المبلغ وتاريخ حدوثه فقط.',
+                      icon: LucideIcons.banknote,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            key: const Key('cost-payment-amount'),
+                            controller: _amountController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [MoneyInputFormatter()],
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'مبلغ الدفعة',
+                              prefixIcon: const Icon(LucideIcons.banknote),
+                              suffixText: currencyLabelAr(currency),
+                            ),
+                            validator: (value) =>
+                                _validateAmount(value, available),
+                          ),
+                          const SizedBox(height: AppTheme.space10),
+                          _DateButton(
+                            label: 'تاريخ الدفع',
+                            date: _paidAt,
+                            onTap: _pickPaidAt,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 14),
-                      _DateButton(
-                        label: 'تاريخ الدفع',
-                        date: _paidAt,
-                        onTap: _pickPaidAt,
+                    ),
+                    const SizedBox(height: AppTheme.space10),
+                    MoneyDisclosureCard(
+                      title: 'تفاصيل إضافية',
+                      subtitle: 'طريقة الدفع أو ملاحظة قصيرة',
+                      icon: LucideIcons.fileText,
+                      initiallyExpanded:
+                          _methodController.text.trim().isNotEmpty ||
+                          _noteController.text.trim().isNotEmpty,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _methodController,
+                            maxLength: 80,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'طريقة الدفع',
+                              hintText: 'نقداً، تحويل، بطاقة…',
+                              prefixIcon: Icon(LucideIcons.walletCards),
+                            ),
+                          ),
+                          const SizedBox(height: AppTheme.space8),
+                          TextFormField(
+                            controller: _noteController,
+                            minLines: 2,
+                            maxLines: 3,
+                            maxLength: 1000,
+                            decoration: const InputDecoration(
+                              labelText: 'ملاحظة قصيرة',
+                              prefixIcon: Icon(LucideIcons.fileText),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _methodController,
-                        maxLength: 80,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'طريقة الدفع (اختياري)',
-                          hintText: 'نقدًا، تحويل، بطاقة…',
-                          prefixIcon: Icon(LucideIcons.walletCards),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: _noteController,
-                        minLines: 2,
-                        maxLines: 4,
-                        maxLength: 1000,
-                        decoration: const InputDecoration(
-                          labelText: 'ملاحظة (اختياري)',
-                          prefixIcon: Icon(LucideIcons.fileText),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            const SizedBox(height: 18),
-            AarastButton(
-              label: 'حفظ الدفعة',
-              icon: LucideIcons.check,
-              isLoading: provider.isSubmitting,
-              onPressed: available <= 0 ? null : () => _submit(cost),
-            ),
+            const SizedBox(height: AppTheme.space14),
           ],
         ],
       ),
@@ -186,7 +236,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
     final parsed = num.tryParse(value?.replaceAll(',', '').trim() ?? '');
     if (parsed == null || parsed <= 0) return 'أدخل مبلغًا أكبر من صفر.';
     if (parsed > available) {
-      return 'المبلغ يتجاوز الباقي على التكلفة.';
+      return 'المبلغ يتجاوز غير المدفوع على التكلفة.';
     }
     return null;
   }
@@ -200,7 +250,10 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
       lastDate: DateTime(now.year, now.month, now.day),
       locale: const Locale('ar'),
     );
-    if (picked != null && mounted) setState(() => _paidAt = picked);
+    if (picked != null && mounted) {
+      setState(() => _paidAt = picked);
+      _draft?.changed();
+    }
   }
 
   Future<void> _submit(WeddingCost cost) async {
@@ -212,7 +265,35 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
       method: _methodController.text.trim(),
       note: _noteController.text.trim(),
     );
-    if (result != null && mounted) context.pop(true);
+    if (result != null && mounted) {
+      await _draft?.clear();
+      if (!mounted) return;
+      AarastFormSuccess.show(context, message: 'تم تسجيل الدفعة.');
+      context.pop(true);
+    }
+  }
+
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'cost-payment:${widget.weddingPlanId}:${widget.costId}:new',
+      fields: {
+        'amount': _amountController,
+        'method': _methodController,
+        'note': _noteController,
+      },
+      readExtras: () => {'paidAt': _paidAt.toIso8601String()},
+      restoreExtras: (data) {
+        if (!mounted) return;
+        final restored = DateTime.tryParse(data['paidAt']?.toString() ?? '');
+        if (restored != null) setState(() => _paidAt = restored);
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
   }
 }
 
@@ -269,7 +350,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
       showBack: true,
       onBack: () => context.pop(),
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () => _load(refreshMoney: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -374,9 +455,9 @@ class _PaymentLimitCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'الباقي على التكلفة',
+            'غير مدفوع على التكلفة',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -486,7 +567,7 @@ class _PaymentInfoLine extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -496,7 +577,7 @@ class _PaymentInfoLine extends StatelessWidget {
             child: Text(
               value,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),

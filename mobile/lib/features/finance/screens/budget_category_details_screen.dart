@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
@@ -48,8 +50,10 @@ class _BudgetCategoryDetailsScreenState
       showBack: true,
       onBack: () => context.pop(),
       actions: [
+        const MoneyPrivacyButton(compact: true),
         if (category != null && provider.canManageMoney)
           PopupMenuButton<String>(
+            key: const ValueKey('money-category-overflow'),
             tooltip: 'إجراءات التصنيف',
             onSelected: (value) => _onAction(value, category),
             itemBuilder: (context) => [
@@ -62,11 +66,22 @@ class _BudgetCategoryDetailsScreenState
                 ),
               ),
             ],
-            icon: const Icon(LucideIcons.moreVertical),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            iconSize: 19,
+            splashRadius: 20,
+            color: AppTheme.surfaceRaised,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            icon: const Icon(
+              LucideIcons.moreVertical,
+              color: AppTheme.textSecondary,
+            ),
           ),
       ],
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 28),
@@ -168,7 +183,10 @@ class _BudgetCategoryDetailsScreenState
     );
     if (confirmed != true || !mounted) return;
     final ok = await context.read<FinanceProvider>().deleteCategory(category);
-    if (ok && mounted) context.pop(true);
+    if (ok && mounted) {
+      AarastToast.showSuccess(context, 'تم حذف التصنيف.');
+      context.pop(true);
+    }
   }
 }
 
@@ -192,7 +210,7 @@ class _CategoryHero extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceRaised,
             borderRadius: BorderRadius.circular(AppTheme.radiusXl),
             border: Border.all(
               color: over
@@ -206,7 +224,7 @@ class _CategoryHero extends StatelessWidget {
               Text(
                 category.allocatedAmount == null ? 'المخصص غير محدد' : 'المخصص',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -216,7 +234,7 @@ class _CategoryHero extends StatelessWidget {
                   'يمكنك إضافة مخصص من تعديل التصنيف.',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppTheme.ink),
+                  ).textTheme.bodyMedium?.copyWith(color: AppTheme.textPrimary),
                 )
               else
                 FittedBox(
@@ -226,19 +244,17 @@ class _CategoryHero extends StatelessWidget {
                     amount: category.allocatedAmount,
                     currency: currency,
                     style: Theme.of(context).textTheme.headlineLarge,
-                    color: over ? AppTheme.danger : AppTheme.ink,
+                    color: over ? AppTheme.danger : AppTheme.textPrimary,
                   ),
                 ),
               if (category.allocatedAmount != null) ...[
                 const SizedBox(height: 13),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 7,
-                    color: over ? AppTheme.danger : AppTheme.burgundy,
-                    backgroundColor: AppTheme.border,
-                  ),
+                AarastV3ProgressLine(
+                  value: progress,
+                  height: 7,
+                  color: over ? AppTheme.danger : AppTheme.brand,
+                  backgroundColor: AppTheme.border,
+                  semanticsLabel: 'استهلاك مخصص التصنيف',
                 ),
               ],
               const SizedBox(height: 15),
@@ -249,7 +265,7 @@ class _CategoryHero extends StatelessWidget {
                       label: 'التكاليف',
                       amount: category.confirmedCost,
                       currency: currency,
-                      color: over ? AppTheme.danger : AppTheme.burgundy,
+                      color: over ? AppTheme.danger : AppTheme.brand,
                     ),
                   ),
                   const _CategoryDivider(),
@@ -264,7 +280,7 @@ class _CategoryHero extends StatelessWidget {
                   const _CategoryDivider(),
                   Expanded(
                     child: _CategoryValue(
-                      label: 'الباقي عليك',
+                      label: 'غير مدفوع',
                       amount: category.outstanding,
                       currency: currency,
                       color: AppTheme.warning,
@@ -324,7 +340,7 @@ class _CategoryValue extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),

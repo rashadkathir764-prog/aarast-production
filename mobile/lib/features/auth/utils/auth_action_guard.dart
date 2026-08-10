@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
@@ -62,7 +63,7 @@ class AuthActionGuard {
 
     await showAarastBottomSheet<void>(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.surfaceRaised,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -79,14 +80,14 @@ class AuthActionGuard {
                   const Icon(
                     LucideIcons.refreshCw,
                     size: 42,
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                   ),
                   const SizedBox(height: 14),
                   Text(
                     'هذه الخطوة تحتاج حساباً',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -95,7 +96,7 @@ class AuthActionGuard {
                     reason,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
                       height: 1.45,
                     ),
@@ -193,38 +194,16 @@ class AuthGatePanel extends StatelessWidget {
       key: const Key('sharing-auth-gate'),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const SizedBox(height: 72),
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        const SizedBox(height: AarastV3Space.x5),
+        AarastV3StateSurface(
+          kind: AarastV3ScreenStateKind.locked,
+          icon: icon,
+          title: title,
+          message: body,
+          action: Wrap(
+            spacing: AarastV3Space.x2,
+            runSpacing: AarastV3Space.x2,
             children: [
-              Icon(icon, size: 44, color: AppTheme.burgundy),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.ink,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                body,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppTheme.muted,
-                  fontWeight: FontWeight.w700,
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 18),
               FilledButton.icon(
                 key: const Key('sharing-auth-gate-login'),
                 onPressed: () => context.go(
@@ -233,15 +212,13 @@ class AuthGatePanel extends StatelessWidget {
                 icon: const Icon(LucideIcons.logIn),
                 label: const Text('تسجيل الدخول'),
               ),
-              if (canPop) ...[
-                const SizedBox(height: 8),
+              if (canPop)
                 OutlinedButton.icon(
                   key: const Key('sharing-auth-gate-back'),
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(LucideIcons.chevronRight),
                   label: const Text('رجوع'),
                 ),
-              ],
             ],
           ),
         ),

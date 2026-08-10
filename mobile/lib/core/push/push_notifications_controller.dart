@@ -37,6 +37,9 @@ class PushNotificationsController extends ChangeNotifier
 
   bool get isAvailable => _initialized && _gateway.isAvailable;
   bool get hasPendingNotificationsOpen => _pendingNotificationsOpen;
+  Stream<PushForegroundNotification> get foregroundNotifications => isAvailable
+      ? _gateway.foregroundNotifications
+      : const Stream<PushForegroundNotification>.empty();
 
   Future<void> initialize() async {
     if (_initialized) return;

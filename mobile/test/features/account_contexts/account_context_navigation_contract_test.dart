@@ -177,6 +177,7 @@ void main() {
 
     for (final path in [
       '/wedding-plans/:id/plan-center',
+      '/wedding-plans/:id/wedding-day',
       '/wedding-plans/:id/tasks/create',
       '/wedding-plans/:id/tasks/:taskId/edit',
       '/wedding-plans/:id/timeline',
@@ -227,6 +228,7 @@ void main() {
     final cases = <String, WeddingPlanRouteAccess>{
       '/wedding-plans/plan-1/dashboard': WeddingPlanRouteAccess.ownerDashboard,
       '/wedding-plans/plan-1/plan-center': WeddingPlanRouteAccess.viewPlan,
+      '/wedding-plans/plan-1/wedding-day': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/timeline': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/notifications': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/contributions': WeddingPlanRouteAccess.viewPlan,

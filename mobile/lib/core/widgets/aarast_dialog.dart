@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/aarast_design_tokens.dart';
+import '../theme/app_theme.dart';
 
 /// نافذة حوار موحّدة لهوية أعّرست.
 ///
@@ -27,24 +27,24 @@ class AarastDialog extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
-        backgroundColor: AarastDesignTokens.surfaceElevated,
+        backgroundColor: AppTheme.surfaceRaised,
         surfaceTintColor: Colors.transparent,
-        shadowColor: AarastDesignTokens.ink.withValues(alpha: 0.12),
+        shadowColor: AppTheme.inkSurface.withValues(alpha: 0.18),
         elevation: 12,
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         titlePadding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 8),
         contentPadding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 12),
         actionsPadding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
-          side: const BorderSide(color: AarastDesignTokens.border),
+          borderRadius: BorderRadius.circular(AppTheme.radiusOverlay),
+          side: const BorderSide(color: AppTheme.border),
         ),
         titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: AarastDesignTokens.title,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w800,
         ),
         contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AarastDesignTokens.ink,
+          color: AppTheme.textPrimary,
           height: 1.5,
         ),
         icon: icon,

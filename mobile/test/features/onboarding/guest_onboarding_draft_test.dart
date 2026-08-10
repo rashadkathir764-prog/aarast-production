@@ -106,6 +106,40 @@ void main() {
       expect(location.toJson()['displayLabel'], location.fullLabel);
     });
 
+    test('keeps area and neighborhood in their visible hierarchy', () {
+      final location = WeddingLocationDraft.fromLegacyFields(
+        governorate: 'عدن',
+        city: 'المنصورة',
+        district: 'كابوتا',
+        neighborhood: 'حي التقنية',
+      );
+
+      expect(location.shortLabel, 'عدن - المنصورة');
+      expect(location.areaOrNeighborhood, 'كابوتا - حي التقنية');
+      expect(location.mediumLabel, 'عدن - المنصورة - كابوتا - حي التقنية');
+      expect(location.toJson()['areaOrNeighborhood'], 'كابوتا - حي التقنية');
+    });
+
+    test('quick setup preserves area and neighborhood separately', () {
+      final draft = GuestOnboardingDraft.quickLocalPlanSetup(
+        planName: 'عرسنا',
+        persona: GuestPersona.groom,
+        location: const WeddingLocationDraft(
+          governorate: 'عدن',
+          cityOrDistrict: 'المنصورة',
+          areaOrNeighborhood: 'كابوتا - حي التقنية',
+        ),
+        area: 'كابوتا',
+        neighborhood: 'حي التقنية',
+        weddingDate: DateTime(2026, 12, 1),
+        currency: 'YER',
+      );
+
+      expect(draft.district, 'كابوتا');
+      expect(draft.neighborhood, 'حي التقنية');
+      expect(draft.weddingLocation.areaOrNeighborhood, 'كابوتا - حي التقنية');
+    });
+
     test('stores wedding date or unknown date state', () {
       final knownDate = DateTime(2026, 12, 1);
       final dated = const GuestOnboardingDraft.empty().copyWith(
@@ -210,7 +244,10 @@ void main() {
           GuestOnboardingDraft.quickLocalPlanSetup(
             planName: 'My Wedding',
             persona: GuestPersona.groom,
-            location: 'Sanaa',
+            location: const WeddingLocationDraft(
+              governorate: 'Sanaa',
+              cityOrDistrict: 'Sanaa',
+            ),
             weddingDate: DateTime(2026, 12, 1),
             currency: 'YER',
           ).copyWith(
@@ -231,7 +268,10 @@ void main() {
           GuestOnboardingDraft.quickLocalPlanSetup(
                 planName: 'Legacy Wedding',
                 persona: GuestPersona.bride,
-                location: 'Aden',
+                location: const WeddingLocationDraft(
+                  governorate: 'Aden',
+                  cityOrDistrict: 'Aden',
+                ),
                 weddingDate: DateTime(2026, 12, 20),
                 currency: 'YER',
               )

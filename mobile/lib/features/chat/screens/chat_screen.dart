@@ -333,12 +333,12 @@ class _ChatHeader extends StatelessWidget {
               icon: const Icon(LucideIcons.arrowRight),
             ),
             CircleAvatar(
-              backgroundColor: AppTheme.burgundySoft,
+              backgroundColor: AppTheme.brandMuted,
               backgroundImage: conversation?.provider.logoUrl == null
                   ? null
                   : NetworkImage(conversation!.provider.logoUrl!),
               child: conversation?.provider.logoUrl == null
-                  ? const Icon(LucideIcons.store, color: AppTheme.burgundy)
+                  ? const Icon(LucideIcons.store, color: AppTheme.brand)
                   : null,
             ),
             const SizedBox(width: 10),
@@ -351,7 +351,7 @@ class _ChatHeader extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -360,7 +360,7 @@ class _ChatHeader extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -428,20 +428,20 @@ class _ConversationEventCard extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 360),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceRaised,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               border: Border.all(color: AppTheme.border),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(details.$1, size: 18, color: AppTheme.burgundy),
+                Icon(details.$1, size: 18, color: AppTheme.brand),
                 const SizedBox(width: 9),
                 Flexible(
                   child: Text(
                     details.$2,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -451,7 +451,7 @@ class _ConversationEventCard extends StatelessWidget {
                   const Icon(
                     LucideIcons.chevronLeft,
                     size: 17,
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                   ),
                 ],
               ],
@@ -494,7 +494,7 @@ class _MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: mine ? AppTheme.burgundy : AppTheme.surface,
+          color: mine ? AppTheme.brand : AppTheme.surfaceRaised,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -516,7 +516,7 @@ class _MessageBubble extends StatelessWidget {
             Text(
               message.body,
               style: TextStyle(
-                color: mine ? Colors.white : AppTheme.ink,
+                color: mine ? Colors.white : AppTheme.textPrimary,
                 height: 1.4,
                 fontWeight: FontWeight.w700,
               ),
@@ -526,7 +526,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 'جارٍ الإرسال...',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: mine ? Colors.white70 : AppTheme.muted,
+                  color: mine ? Colors.white70 : AppTheme.textSecondary,
                 ),
               ),
             ] else if (read) ...[
@@ -534,7 +534,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 'تمت القراءة',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: mine ? Colors.white70 : AppTheme.muted,
+                  color: mine ? Colors.white70 : AppTheme.textSecondary,
                 ),
               ),
             ],
@@ -696,7 +696,7 @@ class _Composer extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
         decoration: const BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceRaised,
           border: Border(top: BorderSide(color: AppTheme.border)),
         ),
         child: Column(
@@ -704,7 +704,7 @@ class _Composer extends StatelessWidget {
             if (attachment != null)
               Row(
                 children: [
-                  const Icon(LucideIcons.image, color: AppTheme.gold),
+                  const Icon(LucideIcons.image, color: AppTheme.focus),
                   const SizedBox(width: 8),
                   const Expanded(child: Text('الصورة جاهزة للإرسال')),
                   IconButton(
@@ -738,7 +738,7 @@ class _Composer extends StatelessWidget {
                   tooltip: 'إرسال',
                   onPressed: isBusy ? null : onSend,
                   icon: isBusy
-                      ? const AarastInlineSpinner(color: AppTheme.surface)
+                      ? const AarastInlineSpinner(color: AppTheme.surfaceRaised)
                       : const Icon(LucideIcons.send),
                 ),
               ],
@@ -762,7 +762,10 @@ class _ProviderNotJoinedNotice extends StatelessWidget {
         child: Text(
           'المورد لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );
@@ -781,7 +784,10 @@ class _ConversationUnavailableNotice extends StatelessWidget {
         child: Text(
           'لا يمكن إرسال رسائل جديدة في هذه المحادثة الآن.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/theme/aarast_motion.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -60,10 +60,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'الإعدادات',
       subtitle: 'تفضيلات الحساب والتنبيهات',
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: _refreshAccountAndLoad,
         child: ListView(
-          children: AarastStagger.children(context, [
+          children: [
             _AccountCard(
               name: auth.user?.name ?? 'مستخدم أعرست',
               phone: auth.user?.phone,
@@ -134,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 90),
-          ]),
+          ],
         ),
       ),
     );
@@ -151,64 +151,41 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return AarastCard(
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Container(
+    return AarastV3ContinuousSurface(
+      children: [
+        AarastV3ListRow(
+          title: name,
+          subtitle: phone?.trim().isNotEmpty == true
+              ? null
+              : email?.trim().isNotEmpty == true
+              ? email!.trim()
+              : 'حساب أعرست',
+          details: phone?.trim().isNotEmpty == true
+              ? AarastPhoneText(
+                  phone: phone!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                )
+              : null,
+          leading: Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppTheme.goldSoft.withAlpha(120),
+              color: AppTheme.brandMuted.withAlpha(120),
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
-            child: const Icon(LucideIcons.user, color: AppTheme.gold, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                if (phone?.trim().isNotEmpty == true)
-                  AarastPhoneText(
-                    phone: phone!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                else
-                  Text(
-                    email?.trim().isNotEmpty == true
-                        ? email!.trim()
-                        : 'حساب أعرست',
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
+            child: const Icon(
+              LucideIcons.user,
+              color: AppTheme.focus,
+              size: 18,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -224,81 +201,58 @@ class _NotificationSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const _SettingsHeader(
-            icon: LucideIcons.bellRing,
-            title: 'تفضيلات التنبيهات',
-            compact: true,
-          ),
-          const _GroupLabel('طريقة وصول التنبيهات'),
-          _DeliveryStatusRow(
-            key: const Key('settings-in-app-delivery-status'),
-            icon: LucideIcons.checkCircle,
-            title: 'تنبيهات داخل التطبيق',
-            body: settings.channelCapabilities.inAppAvailable
-                ? 'متاحة دائماً داخل صندوق التنبيهات.'
-                : 'غير متاحة حالياً.',
-            available: settings.channelCapabilities.inAppAvailable,
-          ),
-          _DeliveryStatusRow(
-            key: const Key('settings-external-delivery-status'),
-            icon: LucideIcons.bell,
-            title: 'إشعارات الجهاز',
-            body: settings.channelCapabilities.push.supported
-                ? 'متاحة للرسائل والمهام عند السماح بها من إعدادات الجهاز.'
-                : 'غير متاحة حالياً على هذا الجهاز.',
-            available: settings.channelCapabilities.push.supported,
-          ),
-          const _GroupLabel('ما الذي تريد متابعته'),
-          _SwitchRow(
-            key: const Key('settings-task-reminders-switch'),
-            title: 'تذكير المهام',
-            value: settings.taskRemindersEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(taskRemindersEnabled: value)),
-          ),
-          _SwitchRow(
-            key: const Key('settings-payment-reminders-switch'),
-            title: 'تذكير مواعيد الدفع',
-            value: settings.paymentRemindersEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(paymentRemindersEnabled: value)),
-          ),
-          _SwitchRow(
-            key: const Key('settings-provider-messages-switch'),
-            title: 'رسائل الموردين وعروض الأسعار',
-            value: settings.providerMessagesEnabled,
-            onChanged: (value) =>
-                onChanged(settings.copyWith(providerMessagesEnabled: value)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GroupLabel extends StatelessWidget {
-  const _GroupLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 2),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: AppTheme.muted,
-          fontWeight: FontWeight.w800,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const AarastV3SectionHeader(
+          title: 'تفضيلات التنبيهات',
+          subtitle: 'الوصول والمتابعة في مكان واحد',
         ),
-      ),
+        const SizedBox(height: AarastV3Space.x2),
+        AarastV3ContinuousSurface(
+          children: [
+            _DeliveryStatusRow(
+              key: const Key('settings-in-app-delivery-status'),
+              icon: LucideIcons.checkCircle,
+              title: 'تنبيهات داخل التطبيق',
+              body: settings.channelCapabilities.inAppAvailable
+                  ? 'متاحة دائماً داخل صندوق التنبيهات.'
+                  : 'غير متاحة حالياً.',
+              available: settings.channelCapabilities.inAppAvailable,
+            ),
+            _DeliveryStatusRow(
+              key: const Key('settings-external-delivery-status'),
+              icon: LucideIcons.bell,
+              title: 'إشعارات الجهاز',
+              body: settings.channelCapabilities.push.supported
+                  ? 'متاحة للرسائل والمهام عند السماح بها من إعدادات الجهاز.'
+                  : 'غير متاحة حالياً على هذا الجهاز.',
+              available: settings.channelCapabilities.push.supported,
+            ),
+            _SwitchRow(
+              key: const Key('settings-task-reminders-switch'),
+              title: 'تذكير المهام',
+              value: settings.taskRemindersEnabled,
+              onChanged: (value) =>
+                  onChanged(settings.copyWith(taskRemindersEnabled: value)),
+            ),
+            _SwitchRow(
+              key: const Key('settings-payment-reminders-switch'),
+              title: 'تذكير مواعيد الدفع',
+              value: settings.paymentRemindersEnabled,
+              onChanged: (value) =>
+                  onChanged(settings.copyWith(paymentRemindersEnabled: value)),
+            ),
+            _SwitchRow(
+              key: const Key('settings-provider-messages-switch'),
+              title: 'رسائل الموردين وعروض الأسعار',
+              value: settings.providerMessagesEnabled,
+              onChanged: (value) =>
+                  onChanged(settings.copyWith(providerMessagesEnabled: value)),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -319,46 +273,26 @@ class _DeliveryStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = available ? AppTheme.success : AppTheme.muted;
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(0, 8, 0, 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  body,
-                  textAlign: TextAlign.start,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    final color = available ? AppTheme.success : AppTheme.textSecondary;
+    return AarastV3ListRow(
+      title: title,
+      subtitle: body,
+      accent: color,
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        ),
+        child: Icon(icon, size: 16, color: color),
+      ),
+      status: Text(
+        available ? 'متاح' : 'غير متاح',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -371,27 +305,19 @@ class _StaticPreferencesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.languages, size: 16, color: AppTheme.gold),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'لغة التطبيق: العربية · آخر حفظ: '
-              '${formatArabicCompactDate(updatedAt)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: AppTheme.ink),
-            ),
+    return AarastV3ContinuousSurface(
+      children: [
+        AarastV3ListRow(
+          title: 'لغة التطبيق: العربية',
+          meta: 'آخر حفظ: ${formatArabicCompactDate(updatedAt)}',
+          accent: AppTheme.focus,
+          leading: const Icon(
+            LucideIcons.languages,
+            size: 18,
+            color: AppTheme.focus,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -410,62 +336,27 @@ class _SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.start,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+    return AarastV3ListRow(
+      title: title,
+      accent: value ? AppTheme.brand : AppTheme.textSecondary,
+      action: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: Colors.white,
+        activeTrackColor: AppTheme.brand,
+        inactiveThumbColor: AppTheme.surfaceRaised,
+        inactiveTrackColor: AppTheme.surfaceMuted,
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTheme.brand
+              : AppTheme.borderStrong,
         ),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: AppTheme.burgundy,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        thumbIcon: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const Icon(LucideIcons.check, size: 14, color: AppTheme.brand)
+              : null,
         ),
-      ],
-    );
-  }
-}
-
-class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader({
-    required this.icon,
-    required this.title,
-    this.compact = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: compact
-          ? EdgeInsets.zero
-          : const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Row(
-        children: [
-          Icon(icon, color: AppTheme.burgundy, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.burgundyDeep,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }

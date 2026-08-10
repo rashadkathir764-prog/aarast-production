@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
@@ -26,6 +31,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
   final _priceController = TextEditingController();
   final _itemsController = TextEditingController();
   String? _serviceId;
+  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
@@ -33,11 +39,13 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
+      _configureDraft();
     });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
@@ -57,6 +65,14 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       title: 'إضافة باقة',
       subtitle: 'اجمعي أكثر عرض يطلبه العملاء في باقة واضحة.',
       resizeToAvoidBottomInset: true,
+      bottomNavigationBar: canManageListing
+          ? AarastV3FormActionBar(
+              label: 'إضافة الباقة',
+              icon: LucideIcons.plus,
+              loading: dashboard.isSubmitting,
+              onPressed: dashboard.isSubmitting ? null : _submit,
+            )
+          : null,
       actions: [
         IconButton(
           tooltip: 'رجوع',
@@ -91,30 +107,60 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
-                  const _PackageIntro(),
-                  const SizedBox(height: 16),
-                  AarastCard(
-                    color: AppTheme.surface,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextFormField(
-                          controller: _titleController,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم الباقة',
-                            prefixIcon: Icon(LucideIcons.package),
-                          ),
-                          validator: (value) =>
-                              value == null || value.trim().length < 2
-                              ? 'اكتب اسم الباقة'
-                              : null,
+                  const AarastV3FocusPrompt(
+                    question: 'ما العرض الذي تريد جمعه في باقة واحدة؟',
+                    supportingText:
+                        'ابدأ باسم واضح وسعر حقيقي؛ وأضف المزايا والخدمة المرتبطة عند الحاجة.',
+                    icon: LucideIcons.package,
+                  ),
+                  if (_draft != null) ...[
+                    const SizedBox(height: 8),
+                    AarastV3DraftStatusLine(status: _draft!.status),
+                  ],
+                  const SizedBox(height: 10),
+                  AarastV3FormSurface(
+                    children: [
+                      TextFormField(
+                        controller: _titleController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'اسم الباقة',
+                          prefixIcon: Icon(LucideIcons.package),
                         ),
-                        const SizedBox(height: 14),
+                        validator: (value) =>
+                            value == null || value.trim().length < 2
+                            ? 'اكتب اسم الباقة'
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.right,
+                        decoration: InputDecoration(
+                          labelText: 'السعر',
+                          suffixText: currencyLabelAr(defaultCurrencyCode),
+                          prefixIcon: Icon(LucideIcons.wallet),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  AarastDisclosureCard(
+                    title: 'محتوى الباقة',
+                    subtitle: 'الخدمة المرتبطة والوصف والمميزات',
+                    icon: LucideIcons.listChecks,
+                    initiallyExpanded:
+                        _serviceId != null ||
+                        _descriptionController.text.isNotEmpty ||
+                        _itemsController.text.isNotEmpty,
+                    child: Column(
+                      children: [
                         DropdownButtonFormField<String>(
                           initialValue: _safeServiceId(services),
                           decoration: const InputDecoration(
-                            labelText: 'خدمة مرتبطة اختياري',
+                            labelText: 'الخدمة المرتبطة',
                             prefixIcon: Icon(LucideIcons.wand),
                           ),
                           items: [
@@ -128,55 +174,40 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                                 child: Text(service.title),
                               ),
                           ],
-                          onChanged: (value) =>
-                              setState(() => _serviceId = value),
+                          onChanged: (value) {
+                            setState(() => _serviceId = value);
+                            _draft?.changed();
+                          },
                         ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _priceController,
-                          keyboardType: TextInputType.number,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.right,
-                          decoration: InputDecoration(
-                            labelText: 'السعر',
-                            suffixText: currencyLabelAr(defaultCurrencyCode),
-                            prefixIcon: Icon(LucideIcons.wallet),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         TextFormField(
                           controller: _descriptionController,
+                          minLines: 2,
                           maxLines: 3,
                           maxLength: 220,
                           decoration: const InputDecoration(
-                            labelText: 'الوصف',
+                            labelText: 'وصف مختصر',
                             prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         TextFormField(
                           controller: _itemsController,
-                          maxLines: 5,
+                          minLines: 3,
+                          maxLines: 4,
                           decoration: const InputDecoration(
                             labelText: 'المميزات',
-                            hintText: 'اكتب كل ميزة في سطر مستقل',
+                            hintText: 'كل ميزة في سطر',
                             prefixIcon: Icon(LucideIcons.listChecks),
                           ),
-                        ),
-                        if (dashboard.errorMessage != null) ...[
-                          const SizedBox(height: 12),
-                          _InlineError(message: dashboard.errorMessage!),
-                        ],
-                        const SizedBox(height: 18),
-                        AarastButton(
-                          label: 'إضافة الباقة',
-                          icon: LucideIcons.plus,
-                          isLoading: dashboard.isSubmitting,
-                          onPressed: dashboard.isSubmitting ? null : _submit,
                         ),
                       ],
                     ),
                   ),
+                  if (dashboard.errorMessage != null) ...[
+                    const SizedBox(height: 10),
+                    _InlineError(message: dashboard.errorMessage!),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -189,6 +220,29 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
     return services.any((service) => service.id == _serviceId)
         ? _serviceId
         : null;
+  }
+
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'provider:package:new',
+      fields: {
+        'title': _titleController,
+        'description': _descriptionController,
+        'price': _priceController,
+        'items': _itemsController,
+      },
+      readExtras: () => {'serviceId': _serviceId},
+      restoreExtras: (data) {
+        if (!mounted) return;
+        setState(() => _serviceId = data['serviceId']?.toString());
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
   }
 
   Future<void> _submit() async {
@@ -210,7 +264,15 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
 
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'تمت إضافة الباقة');
+      await _draft?.clear();
+      if (!mounted) return;
+      final router = GoRouter.of(context);
+      AarastFormSuccess.show(
+        context,
+        message: 'تمت إضافة الباقة.',
+        nextLabel: 'إضافة أخرى',
+        onNext: () => router.push(AppRouter.providerPackageNew),
+      );
       context.go(AppRouter.providerDashboard);
     }
   }
@@ -218,34 +280,6 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
 
 bool _canManageProviderListing(String? status) {
   return status == 'ACTIVE' || status == 'APPROVED';
-}
-
-class _PackageIntro extends StatelessWidget {
-  const _PackageIntro();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AarastCard(
-      color: AppTheme.ivory,
-      child: Row(
-        children: [
-          Icon(LucideIcons.gift, color: AppTheme.gold),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'الباقات تساعد العملاء على مقارنة العروض بسرعة. لا تضع وعود دفع أو حجز مؤكد هنا.',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: AppTheme.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InlineError extends StatelessWidget {
@@ -256,7 +290,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.burgundySoft,
+      color: AppTheme.brandMuted,
       border: Border.all(color: AppTheme.danger.withAlpha(55)),
       child: Text(
         message,

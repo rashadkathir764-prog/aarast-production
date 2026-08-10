@@ -12,6 +12,7 @@ import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
+import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,11 +92,47 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('26%'), findsOneWidget);
+    expect(find.textContaining('26%'), findsOneWidget);
     expect(find.text('دفعة متأخرة'), findsOneWidget);
+    expect(find.text('تسجيل دفعة'), findsOneWidget);
     await expectLater(
       find.byType(MoneyOverviewScreen),
       matchesGoldenFile('goldens/money_overview.png'),
+    );
+  });
+
+  testWidgets('money — budget category action (420)', (tester) async {
+    tester.view.physicalSize = const Size(420, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<FinanceProvider>(
+        create: (_) => FinanceProvider(_FakeFinanceApi()),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MoneyBudgetScreen(weddingPlanId: _planId),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final addCategory = find.byKey(const ValueKey('money-budget-add-category'));
+    await tester.dragUntilVisible(
+      addCategory,
+      find.byType(ListView),
+      const Offset(0, -220),
+    );
+    await tester.pumpAndSettle();
+
+    expect(addCategory, findsOneWidget);
+    await expectLater(
+      find.byType(MoneyBudgetScreen),
+      matchesGoldenFile('goldens/money_budget_category_action.png'),
     );
   });
 }

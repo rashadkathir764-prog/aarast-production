@@ -25,11 +25,11 @@ Widget _header() {
         children: [
           const IconButton(
             onPressed: null,
-            icon: Icon(LucideIcons.arrowRight, color: AppTheme.ink),
+            icon: Icon(LucideIcons.arrowRight, color: AppTheme.textPrimary),
           ),
           const CircleAvatar(
-            backgroundColor: AppTheme.burgundySoft,
-            child: Icon(LucideIcons.store, color: AppTheme.burgundy),
+            backgroundColor: AppTheme.brandMuted,
+            child: Icon(LucideIcons.store, color: AppTheme.brand),
           ),
           const SizedBox(width: 10),
           const Expanded(
@@ -41,7 +41,7 @@ Widget _header() {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
                   ),
@@ -50,12 +50,12 @@ Widget _header() {
                   'خطة زفاف رشا ومحمد · طلبان',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(LucideIcons.moreVertical, color: AppTheme.ink),
+          const Icon(LucideIcons.moreVertical, color: AppTheme.textPrimary),
         ],
       ),
     ),
@@ -70,7 +70,7 @@ Widget _bubble({required String body, required bool mine, bool read = false}) {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: mine ? AppTheme.burgundy : AppTheme.surface,
+        color: mine ? AppTheme.brand : AppTheme.surfaceRaised,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(16),
           topRight: const Radius.circular(16),
@@ -85,7 +85,7 @@ Widget _bubble({required String body, required bool mine, bool read = false}) {
           Text(
             body,
             style: TextStyle(
-              color: mine ? Colors.white : AppTheme.ink,
+              color: mine ? Colors.white : AppTheme.textPrimary,
               height: 1.4,
               fontWeight: FontWeight.w700,
             ),
@@ -95,7 +95,7 @@ Widget _bubble({required String body, required bool mine, bool read = false}) {
             Text(
               'تمت القراءة',
               style: TextStyle(
-                color: mine ? Colors.white70 : AppTheme.muted,
+                color: mine ? Colors.white70 : AppTheme.textSecondary,
                 fontSize: 10,
               ),
             ),
@@ -113,26 +113,30 @@ Widget _eventCard(String label, IconData icon) {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: AppTheme.burgundy),
+          Icon(icon, size: 18, color: AppTheme.brand),
           const SizedBox(width: 9),
           Flexible(
             child: Text(
               label,
               style: const TextStyle(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(LucideIcons.chevronLeft, size: 17, color: AppTheme.muted),
+          const Icon(
+            LucideIcons.chevronLeft,
+            size: 17,
+            color: AppTheme.textSecondary,
+          ),
         ],
       ),
     ),
@@ -143,14 +147,14 @@ Widget _composer() {
   return Container(
     padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
     decoration: const BoxDecoration(
-      color: AppTheme.surface,
+      color: AppTheme.surfaceRaised,
       border: Border(top: BorderSide(color: AppTheme.border)),
     ),
     child: Row(
       children: [
         const IconButton(
           onPressed: null,
-          icon: Icon(LucideIcons.imagePlus, color: AppTheme.ink),
+          icon: Icon(LucideIcons.imagePlus, color: AppTheme.textPrimary),
         ),
         Expanded(
           child: TextField(
@@ -182,8 +186,8 @@ Widget _conversationTile({
         children: [
           const CircleAvatar(
             radius: 27,
-            backgroundColor: AppTheme.burgundySoft,
-            child: Icon(LucideIcons.store, color: AppTheme.burgundy),
+            backgroundColor: AppTheme.brandMuted,
+            child: Icon(LucideIcons.store, color: AppTheme.brand),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -195,7 +199,7 @@ Widget _conversationTile({
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
                   ),
@@ -206,7 +210,7 @@ Widget _conversationTile({
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -216,7 +220,9 @@ Widget _conversationTile({
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: providerJoined ? AppTheme.muted : AppTheme.gold,
+                    color: providerJoined
+                        ? AppTheme.textSecondary
+                        : AppTheme.focus,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
                   ),
@@ -230,7 +236,7 @@ Widget _conversationTile({
               height: 24,
               padding: const EdgeInsets.symmetric(horizontal: 7),
               decoration: BoxDecoration(
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
                 borderRadius: BorderRadius.circular(999),
               ),
               alignment: Alignment.center,
@@ -245,7 +251,7 @@ Widget _conversationTile({
               ),
             )
           else
-            const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+            const Icon(LucideIcons.chevronLeft, color: AppTheme.textSecondary),
         ],
       ),
     ),
@@ -265,7 +271,7 @@ Future<void> _pumpList(WidgetTester tester, {required Size size}) async {
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            backgroundColor: AppTheme.ivory,
+            backgroundColor: AppTheme.canvas,
             body: ListView(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
               children: [
@@ -317,7 +323,7 @@ Future<void> _pump(WidgetTester tester, {required Size size}) async {
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            backgroundColor: AppTheme.ivory,
+            backgroundColor: AppTheme.canvas,
             body: Column(
               children: [
                 _header(),

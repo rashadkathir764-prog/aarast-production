@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../experience_v3/aarast_v3.dart';
 import '../theme/app_theme.dart';
 import 'offline_sync_service.dart';
 import 'sync_status.dart';
@@ -23,62 +24,106 @@ class OfflineStatusBanner extends StatelessWidget {
     if (!shouldShow) return const SizedBox.shrink();
 
     final color = switch (state) {
-      SyncState.offline => AppTheme.danger,
-      SyncState.syncError => AppTheme.danger,
-      SyncState.syncing => AppTheme.ink,
-      _ => AppTheme.gold,
+      SyncState.offline => AarastV3Color.amber,
+      SyncState.syncError => AarastV3Color.danger,
+      SyncState.syncing => AarastV3Color.cobalt,
+      _ => AarastV3Color.primary,
     };
     final label = switch (state) {
-      SyncState.offline => 'بدون اتصال',
-      SyncState.syncing => 'جار المزامنة',
+      SyncState.offline => 'دون اتصال — عملك محفوظ على الجهاز',
+      SyncState.syncing => 'جارٍ حفظ آخر التغييرات',
       SyncState.syncError => 'تعذر مزامنة البيانات الآن',
-      _ => 'بانتظار المزامنة',
+      _ => 'سيُحفظ عند عودة الاتصال',
     };
     final lastSync = service.lastSyncedAt == null
         ? 'آخر بيانات محفوظة'
         : 'آخر مزامنة: ${_shortTime(service.lastSyncedAt!)}';
 
-    return Align(
-      alignment: AlignmentDirectional.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Material(
-          elevation: 3,
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: AppTheme.surface.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: color.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  state == SyncState.syncing
-                      ? LucideIcons.refreshCw
-                      : LucideIcons.cloudOff,
-                  color: color,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '$label • $lastSync',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppTheme.ink,
-                      fontWeight: FontWeight.w900,
+    final canRetry = state == SyncState.syncError || service.blockedCount > 0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
+      child: Align(
+        alignment: AlignmentDirectional.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Semantics(
+            container: true,
+            liveRegion: true,
+            label: '$label. $lastSync',
+            child: Container(
+              key: const ValueKey('aarast-sync-status'),
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 8, 8),
+              decoration: BoxDecoration(
+                color: AarastV3Color.paper,
+                borderRadius: BorderRadius.circular(AarastV3Radius.control),
+                border: Border.all(color: AarastV3Color.line),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      state == SyncState.syncing
+                          ? LucideIcons.refreshCw
+                          : canRetry
+                          ? LucideIcons.cloudCog
+                          : LucideIcons.cloudOff,
+                      color: color,
+                      size: 16,
                     ),
                   ),
-                ),
-                if (service.unsyncedCount > 0) ...[
-                  const SizedBox(width: 8),
-                  _CountPill(count: service.unsyncedCount, color: color),
+                  const SizedBox(width: AarastV3Space.x2),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: AarastV3Color.ink,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        Text(
+                          lastSync,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: AarastV3Color.textMuted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (service.unsyncedCount > 0) ...[
+                    const SizedBox(width: AarastV3Space.x2),
+                    _CountPill(count: service.unsyncedCount, color: color),
+                  ],
+                  if (canRetry) ...[
+                    const SizedBox(width: AarastV3Space.x1),
+                    IconButton(
+                      onPressed: service.isSyncing
+                          ? null
+                          : service.retryBlockedChanges,
+                      tooltip: 'إعادة محاولة المزامنة',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(LucideIcons.refreshCw, size: 17),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -106,19 +151,23 @@ class OfflinePendingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.goldSoft,
+        color: AarastV3Color.primarySoft,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.goldSoft),
+        border: Border.all(color: AarastV3Color.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.refreshCwOff, color: AppTheme.gold, size: 14),
+          const Icon(
+            LucideIcons.refreshCwOff,
+            color: AarastV3Color.primary,
+            size: 14,
+          ),
           const SizedBox(width: 4),
           Text(
             'بانتظار المزامنة',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.gold,
+              color: AarastV3Color.primary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -146,18 +195,18 @@ class OfflineSyncNowTile extends StatelessWidget {
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-          color: AppTheme.ivory,
+          color: AppTheme.canvas,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Icon(
           service.isSyncing ? LucideIcons.refreshCw : LucideIcons.cloudCog,
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
         ),
       ),
       title: Text(
         service.blockedCount > 0 ? 'إعادة محاولة المزامنة' : 'مزامنة الآن',
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -168,11 +217,14 @@ class OfflineSyncNowTile extends StatelessWidget {
             ? 'بانتظار المزامنة: ${service.pendingCount}'
             : 'تمت المزامنة بنجاح',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppTheme.muted,
+          color: AppTheme.textSecondary,
           fontWeight: FontWeight.w700,
         ),
       ),
-      trailing: const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+      trailing: const Icon(
+        LucideIcons.chevronLeft,
+        color: AppTheme.textSecondary,
+      ),
     );
   }
 }

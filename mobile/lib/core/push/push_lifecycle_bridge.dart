@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../features/auth/providers/auth_controller.dart';
 import '../routing/app_router.dart';
+import '../widgets/aarast_toast.dart';
+import 'push_messaging_gateway.dart';
 import 'push_notifications_controller.dart';
 
 class AarastPushLifecycleBridge extends StatefulWidget {
@@ -28,11 +30,33 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
   String? _lastBoundUserId;
   bool _permissionScheduled = false;
   bool _navigationScheduled = false;
+  StreamSubscription<PushForegroundNotification>? _foregroundSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_foregroundSubscription != null) return;
+    try {
+      _foregroundSubscription = context
+          .read<PushNotificationsController>()
+          .foregroundNotifications
+          .listen((notification) {
+            if (!mounted) return;
+            AarastToast.showNotification(
+              context,
+              title: notification.title,
+              message: notification.message,
+            );
+          });
+    } on ProviderNotFoundException {
+      // Isolated shell tests may omit the production push controller.
+    }
   }
 
   @override
@@ -97,6 +121,7 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_foregroundSubscription?.cancel());
     super.dispose();
   }
 }

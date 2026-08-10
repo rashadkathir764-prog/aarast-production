@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_header_actions.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/home_dashboard_provider.dart';
 
@@ -28,7 +29,7 @@ class HomeLoadingSkeleton extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppTheme.surface.withAlpha(180),
+        color: AppTheme.surfaceRaised.withAlpha(180),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(color: AppTheme.border),
       ),
@@ -78,6 +79,7 @@ class HomeErrorCard extends StatelessWidget {
 class HomeTopHeader extends StatelessWidget {
   const HomeTopHeader({
     required this.userName,
+    this.avatarUrl,
     required this.notificationCount,
     required this.onNotifications,
     required this.onProfile,
@@ -85,6 +87,7 @@ class HomeTopHeader extends StatelessWidget {
   });
 
   final String? userName;
+  final String? avatarUrl;
   final int notificationCount;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
@@ -106,7 +109,7 @@ class HomeTopHeader extends StatelessWidget {
                 children: [
                   const Icon(
                     LucideIcons.heart,
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
@@ -117,7 +120,7 @@ class HomeTopHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
-                            color: AppTheme.title,
+                            color: AppTheme.textPrimary,
                             fontFamily: AppTheme.displayFontFamily,
                             fontWeight: FontWeight.w800,
                             height: 1.1,
@@ -132,7 +135,7 @@ class HomeTopHeader extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -140,84 +143,21 @@ class HomeTopHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        _HeaderCircleIcon(
+        AarastHeaderIconAction(
+          key: const ValueKey('home-notifications-action'),
           icon: LucideIcons.bell,
-          badgeCount: notificationCount,
+          label: 'التنبيهات',
           onTap: onNotifications,
+          badgeCount: notificationCount,
         ),
-        const SizedBox(width: 10),
-        _HeaderCircleIcon(
-          icon: LucideIcons.user,
-          borderColor: AppTheme.gold,
+        const SizedBox(width: 4),
+        AarastHeaderAvatarAction(
+          key: const ValueKey('home-profile-action'),
+          userName: userName,
+          avatarUrl: avatarUrl,
           onTap: onProfile,
         ),
       ],
-    );
-  }
-}
-
-class _HeaderCircleIcon extends StatelessWidget {
-  const _HeaderCircleIcon({
-    required this.icon,
-    required this.onTap,
-    this.badgeCount,
-    this.borderColor,
-  });
-
-  final IconData icon;
-  final int? badgeCount;
-  final Color? borderColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 28,
-      child: SizedBox(
-        width: 48,
-        height: 48,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceElevated,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderColor ?? AppTheme.border),
-                  boxShadow: AppTheme.softShadow(opacity: 0.06),
-                ),
-                child: Icon(icon, color: AppTheme.gold, size: 23),
-              ),
-            ),
-            if (badgeCount != null && badgeCount! > 0)
-              Positioned(
-                top: -2,
-                left: -2,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppTheme.danger,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.surface, width: 2),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    textDirection: TextDirection.ltr,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -253,9 +193,12 @@ class HomeNoPlanWelcome extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.goldSoft.withAlpha(200), width: 1.2),
+        border: Border.all(
+          color: AppTheme.brandMuted.withAlpha(200),
+          width: 1.2,
+        ),
         boxShadow: AppTheme.softShadow(opacity: 0.08),
       ),
       child: Column(
@@ -269,7 +212,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                 child: Icon(
                   LucideIcons.flower2,
                   size: 160,
-                  color: AppTheme.gold.withAlpha(25),
+                  color: AppTheme.focus.withAlpha(25),
                 ),
               ),
               Row(
@@ -278,14 +221,14 @@ class HomeNoPlanWelcome extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppTheme.ivory,
+                      color: AppTheme.canvas,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.gold.withAlpha(80)),
+                      border: Border.all(color: AppTheme.focus.withAlpha(80)),
                       boxShadow: AppTheme.softShadow(opacity: 0.05),
                     ),
                     child: const Icon(
                       LucideIcons.heart,
-                      color: AppTheme.gold,
+                      color: AppTheme.focus,
                       size: 22,
                     ),
                   ),
@@ -296,7 +239,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.title,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                         height: 1.2,
                       ),
@@ -310,7 +253,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
           Text(
             'أنشئ خطة زفافك الأولى وسنرتب لك الميزانية والمهام والضيوف ومزوّدي الخدمات في مكان واحد.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w600,
               height: 1.55,
             ),
@@ -326,15 +269,11 @@ class HomeNoPlanWelcome extends StatelessWidget {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: AppTheme.ivory,
+                      color: AppTheme.canvas,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppTheme.border),
                     ),
-                    child: Icon(
-                      feature.icon,
-                      color: AppTheme.burgundy,
-                      size: 16,
-                    ),
+                    child: Icon(feature.icon, color: AppTheme.brand, size: 16),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -345,7 +284,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                           feature.title,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
-                                color: AppTheme.ink,
+                                color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
@@ -354,7 +293,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                           feature.subtitle,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: AppTheme.muted,
+                                color: AppTheme.textSecondary,
                                 fontWeight: FontWeight.w600,
                                 height: 1.4,
                               ),
@@ -371,7 +310,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
             height: 50,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.burgundy,
+                backgroundColor: AppTheme.brand,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
@@ -393,7 +332,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
           TextButton(
             onPressed: () => context.push(AppRouter.weddingPlans),
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.burgundy,
+              foregroundColor: AppTheme.brand,
               minimumSize: const Size.fromHeight(40),
             ),
             child: Text(
@@ -479,7 +418,7 @@ class _SharedPlanRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceRaised,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: AppTheme.border),
         ),
@@ -489,10 +428,10 @@ class _SharedPlanRow extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppTheme.burgundySoft,
+                color: AppTheme.brandMuted,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(LucideIcons.users, color: AppTheme.burgundy),
+              child: const Icon(LucideIcons.users, color: AppTheme.brand),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -504,7 +443,7 @@ class _SharedPlanRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -513,14 +452,14 @@ class _SharedPlanRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+            const Icon(LucideIcons.chevronLeft, color: AppTheme.textSecondary),
           ],
         ),
       ),

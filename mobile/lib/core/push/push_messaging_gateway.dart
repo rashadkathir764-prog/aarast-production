@@ -9,12 +9,24 @@ import 'firebase_push_config.dart';
 
 enum PushAuthorizationStatus { authorized, denied, notDetermined }
 
+class PushForegroundNotification {
+  const PushForegroundNotification({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+}
+
 abstract interface class PushMessagingGateway {
   bool get isAvailable;
 
   Stream<void> get tokenChanges;
 
   Stream<void> get notificationTaps;
+
+  Stream<PushForegroundNotification> get foregroundNotifications;
 
   Future<void> initialize();
 
@@ -58,6 +70,15 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
   Stream<void> get notificationTaps => _initialized
       ? FirebaseMessaging.onMessageOpenedApp.map((_) {})
       : const Stream<void>.empty();
+
+  @override
+  Stream<PushForegroundNotification> get foregroundNotifications {
+    if (!_initialized) return const Stream<PushForegroundNotification>.empty();
+    return FirebaseMessaging.onMessage
+        .map(_foregroundNotificationFromMessage)
+        .where((notification) => notification != null)
+        .map((notification) => notification!);
+  }
 
   @override
   Future<void> initialize() async {
@@ -121,5 +142,20 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
         PushAuthorizationStatus.notDetermined,
       AuthorizationStatus.denied => PushAuthorizationStatus.denied,
     };
+  }
+
+  PushForegroundNotification? _foregroundNotificationFromMessage(
+    RemoteMessage message,
+  ) {
+    final notification = message.notification;
+    final rawTitle = notification?.title ?? message.data['title']?.toString();
+    final rawMessage = notification?.body ?? message.data['body']?.toString();
+    final title = rawTitle?.trim() ?? '';
+    final body = rawMessage?.trim() ?? '';
+    if (title.isEmpty && body.isEmpty) return null;
+    return PushForegroundNotification(
+      title: title.isEmpty ? 'إشعار جديد' : title,
+      message: body.isEmpty ? 'لديك تحديث جديد في أعرست.' : body,
+    );
   }
 }

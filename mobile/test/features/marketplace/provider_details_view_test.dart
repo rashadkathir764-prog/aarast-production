@@ -48,12 +48,15 @@ void main() {
     await _pumpView(tester, width: 320, height: 900, textScale: 1.3);
 
     expect(find.text('لا توجد خدمات منشورة'), findsOneWidget);
+    expect(find.text('لا توجد باقات منشورة حاليًا.'), findsNothing);
+    await tester.tap(find.text('الباقات والتفاصيل والتقييمات'));
+    await tester.pumpAndSettle();
     expect(find.text('لا توجد باقات منشورة حاليًا.'), findsOneWidget);
     expect(find.text('القاعات'), findsWidgets);
     expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
-      250,
+      lessThan(250),
     );
     expect(find.textContaining('لا توجد صور منشورة'), findsOneWidget);
     final reviewsEmpty = find.text('لا توجد تقييمات بعد.');
@@ -90,6 +93,7 @@ void main() {
     );
 
     final showAll = find.text('عرض الكل');
+    expect(find.text('تعذّر تحميل الصورة'), findsOneWidget);
     await tester.ensureVisible(showAll);
     await tester.tap(showAll);
     await tester.pump();
@@ -116,7 +120,7 @@ void main() {
       expect(find.text('عرض الكل'), findsNothing);
       expect(
         tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
-        342,
+        lessThan(250),
       );
       expect(tester.takeException(), isNull);
     },

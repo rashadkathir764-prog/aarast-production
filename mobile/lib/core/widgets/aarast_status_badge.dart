@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
@@ -6,7 +6,7 @@ class AarastStatusBadge extends StatelessWidget {
   const AarastStatusBadge({
     required this.label,
     this.icon,
-    this.color = AppTheme.burgundy,
+    this.color = AppTheme.brand,
     this.backgroundColor,
     super.key,
   });

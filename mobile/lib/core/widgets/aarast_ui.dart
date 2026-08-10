@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../experience_v3/aarast_v3.dart';
 import '../theme/app_theme.dart';
 import '../theme/aarast_motion.dart';
 import 'aarast_pressable.dart';
@@ -18,6 +19,7 @@ export 'aarast_phone_text.dart';
 export 'aarast_pressable.dart';
 export 'aarast_skeleton.dart';
 export 'aarast_status_badge.dart';
+export 'aarast_surface.dart';
 
 /// غلاف الصفحات الموحّد — مبني فوق [AarastScreenFrame] حتى تتطابق كل
 /// الشاشات في الخلفية والحدود والـ SafeArea، ويضيف ترويسة فاخرة اختيارية.
@@ -141,7 +143,7 @@ class AarastScreenFrame extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: backgroundColor ?? AppTheme.ivory,
+        backgroundColor: backgroundColor ?? AppTheme.canvas,
         extendBody: extendBody,
         bottomNavigationBar: bottomNavigationBar,
         floatingActionButton: floatingActionButton,
@@ -202,11 +204,7 @@ class AarastPageHeader extends StatelessWidget {
                   textAlign: TextAlign.right,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontFamily: AppTheme.displayFontFamily,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AarastV3Type.title(context),
                 ),
               if (subtitle != null) ...[
                 const SizedBox(height: 6),
@@ -215,10 +213,7 @@ class AarastPageHeader extends StatelessWidget {
                   textAlign: TextAlign.right,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AarastV3Type.body(context),
                 ),
               ],
             ],
@@ -238,8 +233,8 @@ class AarastCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.margin = EdgeInsets.zero,
-    this.color = AppTheme.surface,
-    this.radius = AppTheme.radiusLg,
+    this.color = AppTheme.surfaceRaised,
+    this.radius = AppTheme.radiusSurface,
     this.border,
     this.onTap,
     super.key,
@@ -261,7 +256,7 @@ class AarastCard extends StatelessWidget {
       width: double.infinity,
       margin: margin,
       padding: padding,
-      decoration: AppTheme.premiumCardDecoration(
+      decoration: AppTheme.surfaceDecoration(
         color: color,
         radius: radius,
         border: border,
@@ -276,6 +271,36 @@ class AarastCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(radius),
       clip: false,
       child: content,
+    );
+  }
+}
+
+/// Keeps optional form details available without making the primary task feel
+/// like a long administrative form.
+class AarastDisclosureCard extends StatelessWidget {
+  const AarastDisclosureCard({
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.icon = LucideIcons.slidersHorizontal,
+    this.initiallyExpanded = false,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final bool initiallyExpanded;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastV3Disclosure(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      initiallyExpanded: initiallyExpanded,
+      child: child,
     );
   }
 }
@@ -302,8 +327,11 @@ class AarastSectionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (icon != null) ...[
-          Icon(icon, color: AppTheme.burgundy, size: 20),
-          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Icon(icon, color: AppTheme.brand, size: 22),
+          ),
+          const SizedBox(width: 10),
         ],
         Expanded(
           child: Column(
@@ -313,7 +341,7 @@ class AarastSectionHeader extends StatelessWidget {
                 title,
                 textAlign: TextAlign.right,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.ink,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -325,7 +353,7 @@ class AarastSectionHeader extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                     height: 1.4,
                   ),
@@ -344,7 +372,7 @@ class AarastSectionHeader extends StatelessWidget {
 class AarastStatusPill extends StatelessWidget {
   const AarastStatusPill({
     required this.label,
-    this.color = AppTheme.burgundy,
+    this.color = AppTheme.brand,
     this.backgroundColor,
     this.icon,
     super.key,
@@ -391,12 +419,15 @@ class AarastStatusPill extends StatelessWidget {
   }
 }
 
+enum AarastEmptyStateTone { neutral, positive, warning, restricted }
+
 class AarastEmptyState extends StatelessWidget {
   const AarastEmptyState({
     required this.title,
     required this.message,
     this.icon = LucideIcons.inbox,
     this.action,
+    this.tone = AarastEmptyStateTone.neutral,
     super.key,
   });
 
@@ -404,42 +435,22 @@ class AarastEmptyState extends StatelessWidget {
   final String message;
   final IconData icon;
   final Widget? action;
+  final AarastEmptyStateTone tone;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: AppTheme.burgundySoft,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            ),
-            child: Icon(icon, color: AppTheme.burgundy, size: 28),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
-          ),
-          if (action != null) ...[const SizedBox(height: 18), action!],
-        ],
-      ),
+    final kind = switch (tone) {
+      AarastEmptyStateTone.neutral => AarastV3ScreenStateKind.empty,
+      AarastEmptyStateTone.positive => AarastV3ScreenStateKind.ready,
+      AarastEmptyStateTone.warning => AarastV3ScreenStateKind.pending,
+      AarastEmptyStateTone.restricted => AarastV3ScreenStateKind.locked,
+    };
+    return AarastV3StateSurface(
+      kind: kind,
+      title: title,
+      message: message,
+      icon: icon,
+      action: action,
     );
   }
 }

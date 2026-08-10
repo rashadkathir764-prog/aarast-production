@@ -168,14 +168,14 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                 const Icon(
                   LucideIcons.arrowRightFromLine,
                   size: 34,
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                 ),
                 const SizedBox(height: 14),
                 Text(
                   'الخروج من مساحة المزوّد؟',
                   textAlign: TextAlign.center,
                   style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -184,7 +184,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                   'ستعود إلى شاشة اختيار المسار، وسيبقى حسابك مسجلًا على هذا الجهاز.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -256,7 +256,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                   'الخروج من حساب المزوّد؟',
                   textAlign: TextAlign.center,
                   style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -265,7 +265,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                   'ستحتاج إلى تسجيل الدخول مجدداً للوصول إلى لوحة المزوّد.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -362,7 +362,7 @@ class _ProviderAccountTile extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.onTap,
-    this.color = AppTheme.burgundy,
+    this.color = AppTheme.brand,
     this.trailing,
     super.key,
   });
@@ -388,13 +388,13 @@ class _ProviderAccountTile extends StatelessWidget {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          color: AppTheme.muted,
+          color: AppTheme.textSecondary,
           fontWeight: FontWeight.w600,
         ),
       ),
       trailing:
           trailing ??
-          const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+          const Icon(LucideIcons.chevronLeft, color: AppTheme.textSecondary),
       enabled: onTap != null,
       onTap: onTap,
     );

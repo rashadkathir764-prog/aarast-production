@@ -59,7 +59,7 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
       return const QuoteStatusPresentation(
         label: 'جاهز للإرسال',
         icon: LucideIcons.send,
-        color: AppTheme.gold,
+        color: AppTheme.focus,
       );
     case 'PENDING_PROVIDER':
     case 'SENT':
@@ -67,14 +67,14 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
       return const QuoteStatusPresentation(
         label: 'بانتظار رد المورد',
         icon: LucideIcons.hourglass,
-        color: AppTheme.ink,
+        color: AppTheme.textPrimary,
       );
     case 'RECEIVED':
     case 'RESPONDED':
       return const QuoteStatusPresentation(
         label: 'وصل عرض سعر',
         icon: LucideIcons.mail,
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
       );
     case 'ACCEPTED':
       return const QuoteStatusPresentation(
@@ -92,19 +92,19 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
       return const QuoteStatusPresentation(
         label: 'ملغي',
         icon: LucideIcons.xCircle,
-        color: AppTheme.muted,
+        color: AppTheme.textSecondary,
       );
     case 'EXPIRED':
       return const QuoteStatusPresentation(
         label: 'منتهي',
         icon: LucideIcons.calendarX,
-        color: AppTheme.muted,
+        color: AppTheme.textSecondary,
       );
     default:
       return const QuoteStatusPresentation(
         label: 'مسودة',
         icon: LucideIcons.fileEdit,
-        color: AppTheme.gold,
+        color: AppTheme.focus,
       );
   }
 }

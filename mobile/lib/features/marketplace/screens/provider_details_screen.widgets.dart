@@ -29,8 +29,8 @@ class _ContactIconButton extends StatelessWidget {
           onPressed: onTap,
           style: OutlinedButton.styleFrom(
             padding: EdgeInsets.zero,
-            foregroundColor: AppTheme.burgundy,
-            backgroundColor: AppTheme.surface,
+            foregroundColor: AppTheme.brand,
+            backgroundColor: AppTheme.surfaceRaised,
             side: const BorderSide(color: AppTheme.border),
             shape: const CircleBorder(),
           ),

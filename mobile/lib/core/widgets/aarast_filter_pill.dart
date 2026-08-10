@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 
 /// شريحة الفلترة الموحدة عبر كل التبويبات (المهام/الضيوف/الموردون/المال).
 ///
-/// المحدد = لون صلب بظل ناعم ونص أبيض؛ غير المحدد = خلفية ناعمة
+/// المحدد = لون صلب ونص أبيض؛ غير المحدد = خلفية ناعمة
 /// (`softColor`) بنص ملون، أو سطح أبيض بحدود عند تركها الافتراضية.
 class AarastFilterPill extends StatelessWidget {
   const AarastFilterPill({
@@ -12,8 +12,8 @@ class AarastFilterPill extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
-    this.color = AppTheme.burgundy,
-    this.softColor = AppTheme.surface,
+    this.color = AppTheme.brand,
+    this.softColor = AppTheme.surfaceRaised,
     super.key,
   });
 
@@ -26,14 +26,14 @@ class AarastFilterPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = softColor == AppTheme.surface;
+    final onSurface = softColor == AppTheme.surfaceRaised;
     final disabled = onTap == null;
     final foreground = selected
         ? Colors.white
         : disabled
-        ? AppTheme.disabled
+        ? AppTheme.textDisabled
         : onSurface
-        ? AppTheme.ink
+        ? AppTheme.textPrimary
         : color;
     final borderColor = selected
         ? color
@@ -55,15 +55,6 @@ class AarastFilterPill extends StatelessWidget {
             color: selected ? color : softColor,
             borderRadius: BorderRadius.circular(AppTheme.radiusPill),
             border: Border.all(color: borderColor),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.22),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -75,7 +66,7 @@ class AarastFilterPill extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : onSurface
-                      ? AppTheme.burgundy
+                      ? AppTheme.brand
                       : color,
                 ),
                 const SizedBox(width: 6),

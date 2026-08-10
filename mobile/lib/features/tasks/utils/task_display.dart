@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/theme/aarast_design_tokens.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/wedding_task.dart';
 
@@ -19,11 +19,11 @@ bool isTaskLate(WeddingTask task, {DateTime? now}) {
 
 Color taskPriorityColor(String priority) {
   return switch (priority) {
-    'LOW' => AarastDesignTokens.success,
-    'MEDIUM' => AarastDesignTokens.gold,
-    'HIGH' => AarastDesignTokens.danger,
-    'URGENT' => AarastDesignTokens.danger,
-    _ => AarastDesignTokens.muted,
+    'LOW' => AppTheme.success,
+    'MEDIUM' => AppTheme.focus,
+    'HIGH' => AppTheme.danger,
+    'URGENT' => AppTheme.danger,
+    _ => AppTheme.textSecondary,
   };
 }
 

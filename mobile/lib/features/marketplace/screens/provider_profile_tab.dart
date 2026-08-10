@@ -61,7 +61,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
                 Text(
                   profile.businessName,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -71,7 +71,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
                       ? profile.description!.trim()
                       : 'أضف نبذة توضح ما يميز نشاطك وخدماتك.',
                   style: const TextStyle(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     height: 1.5,
                     fontWeight: FontWeight.w700,
                   ),
@@ -231,7 +231,7 @@ class _ProviderReviewsSection extends StatelessWidget {
                               ? review.userName!.trim()
                               : 'عميل أعرست',
                           style: const TextStyle(
-                            color: AppTheme.ink,
+                            color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -239,8 +239,8 @@ class _ProviderReviewsSection extends StatelessWidget {
                       AarastStatusPill(
                         label: '${review.rating}/5',
                         icon: LucideIcons.star,
-                        color: AppTheme.gold,
-                        backgroundColor: AppTheme.goldSoft,
+                        color: AppTheme.focus,
+                        backgroundColor: AppTheme.brandMuted,
                       ),
                     ],
                   ),
@@ -249,7 +249,7 @@ class _ProviderReviewsSection extends StatelessWidget {
                     Text(
                       review.comment!.trim(),
                       style: const TextStyle(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         height: 1.5,
                       ),
                     ),
@@ -293,11 +293,11 @@ class _ProfileMediaCard extends StatelessWidget {
                 child: Container(
                   height: 150,
                   width: double.infinity,
-                  color: AppTheme.burgundySoft,
+                  color: AppTheme.brandMuted,
                   child: profile.coverUrl == null
                       ? const Icon(
                           LucideIcons.image,
-                          color: AppTheme.burgundy,
+                          color: AppTheme.brand,
                           size: 36,
                         )
                       : Image.network(profile.coverUrl!, fit: BoxFit.cover),
@@ -320,14 +320,14 @@ class _ProfileMediaCard extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 39,
-                      backgroundColor: AppTheme.surface,
+                      backgroundColor: AppTheme.surfaceRaised,
                       backgroundImage: profile.logoUrl == null
                           ? null
                           : NetworkImage(profile.logoUrl!),
                       child: profile.logoUrl == null
                           ? const Icon(
                               LucideIcons.store,
-                              color: AppTheme.gold,
+                              color: AppTheme.focus,
                               size: 30,
                             )
                           : null,

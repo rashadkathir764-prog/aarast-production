@@ -316,7 +316,7 @@ void main() {
       'lib/core/offline/local_database_mobile.dart',
     ).readAsStringSync();
 
-    expect(source, contains('static const _databaseVersion = 7;'));
+    expect(source, contains('static const _databaseVersion = 8;'));
     expect(source, contains('planId TEXT,'));
     expect(source, contains('sync_queue_plan_id_idx'));
     expect(source, contains("trustedLegacyQueuePlanId(row['payloadJson'])"));

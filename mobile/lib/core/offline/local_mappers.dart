@@ -41,6 +41,12 @@ LocalCacheRow buildCacheRow({
         'ownerId': _string(json['ownerUserId']),
         'status': _string(json['status']) ?? 'PLANNING',
       });
+    case OfflineTables.cachedDashboardSummaries:
+      base.addAll({
+        'planId': _string(json['planId']) ?? _string(json['id']),
+        'title': _string(json['title']),
+        'weddingDate': _string(json['weddingDate']),
+      });
     case OfflineTables.cachedPlanMembers:
       base.addAll({
         'planId': _string(json['weddingPlanId']),

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
@@ -27,7 +28,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final quotes = dashboard.quoteRequests.where(_matches).toList();
     return RefreshIndicator(
-      color: AppTheme.burgundy,
+      color: AppTheme.brand,
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -143,7 +144,7 @@ class _ProviderRequestCard extends StatelessWidget {
                 child: Text(
                   quote.service?.title ?? 'طلب عرض سعر',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -157,7 +158,10 @@ class _ProviderRequestCard extends StatelessWidget {
               quote.message!.trim(),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppTheme.muted, height: 1.45),
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                height: 1.45,
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -214,13 +218,22 @@ Future<void> _showOfferDialog(BuildContext context, QuoteRequest quote) async {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                AarastV3FocusPrompt(
+                  question: existingOffer == null
+                      ? 'ما العرض الحقيقي الذي ستقدمه؟'
+                      : 'ما الذي تريد تعديله في عرضك؟',
+                  supportingText:
+                      'اكتب المبلغ والتفاصيل بوضوح؛ هذا عرض سعر وليس تأكيد حجز أو دفع.',
+                  icon: LucideIcons.fileCheck,
+                ),
+                const SizedBox(height: 14),
                 if (quote.weddingPlanTitle?.trim().isNotEmpty == true) ...[
                   Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(
                       'الخطة: ${quote.weddingPlanTitle}',
                       style: const TextStyle(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

@@ -26,7 +26,8 @@ class AccountContextEntryGate extends StatelessWidget {
         return const AarastScaffold(child: AarastScreenLoading());
       case AccountContextEntryState.error:
         return AarastScaffold(
-          child: Center(
+          child: Align(
+            alignment: Alignment.topCenter,
             child: AarastErrorState(
               title: 'تعذر تحميل المسارات',
               message: controller.errorMessage!,

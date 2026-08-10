@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
-/// Premium pressable wrapper used across the Aarast Dashboard and key cards.
+/// Semantic pressable wrapper used across Aarast operational surfaces.
 ///
 /// Combines:
 /// - Subtle scale feedback (0.985 on press) using [AnimatedScale]
 /// - Light haptic feedback (`HapticFeedback.selectionClick`) on tap
 /// - Opaque hit-testing so the entire bounding box is tappable
 ///
-/// Use this anywhere a card or chip needs to feel tappable and premium.
+/// Use this anywhere a surface or compact control needs clear tap feedback.
 class AarastPressable extends StatefulWidget {
   const AarastPressable({
     required this.child,
     this.onTap,
+    this.onLongPress,
+    this.longPressSemanticLabel,
     this.semanticLabel,
+    this.selected,
     this.focusNode,
     this.autofocus = false,
     this.borderRadius,
@@ -25,8 +29,11 @@ class AarastPressable extends StatefulWidget {
   });
 
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final Widget child;
   final String? semanticLabel;
+  final String? longPressSemanticLabel;
+  final bool? selected;
   final FocusNode? focusNode;
   final bool autofocus;
   final BorderRadius? borderRadius;
@@ -53,6 +60,16 @@ class _AarastPressableState extends State<AarastPressable> {
     onTap();
   }
 
+  void _handleLongPress() {
+    final onLongPress = widget.onLongPress;
+    if (onLongPress == null) return;
+    _setPressed(false);
+    if (widget.haptic) {
+      HapticFeedback.mediumImpact();
+    }
+    onLongPress();
+  }
+
   void _setPressed(bool pressed) {
     if (_pressed == pressed) return;
     setState(() => _pressed = pressed);
@@ -73,7 +90,7 @@ class _AarastPressableState extends State<AarastPressable> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = widget.onTap != null;
+    final enabled = widget.onTap != null || widget.onLongPress != null;
     final radius = widget.borderRadius;
     final effectiveRadius = radius ?? BorderRadius.circular(20);
     final reduceMotion =
@@ -108,9 +125,19 @@ class _AarastPressableState extends State<AarastPressable> {
       enabled: enabled,
       focusable: enabled,
       focused: enabled ? _hasFocus : null,
+      selected: widget.selected,
       label: widget.semanticLabel,
       excludeSemantics: widget.semanticLabel != null,
-      onTap: enabled ? _handleTap : null,
+      onTap: widget.onTap != null ? _handleTap : null,
+      customSemanticsActions:
+          widget.onLongPress != null &&
+              widget.longPressSemanticLabel?.trim().isNotEmpty == true
+          ? <CustomSemanticsAction, VoidCallback>{
+              CustomSemanticsAction(
+                label: widget.longPressSemanticLabel!.trim(),
+              ): _handleLongPress,
+            }
+          : null,
       child: FocusableActionDetector(
         enabled: enabled,
         focusNode: widget.focusNode,
@@ -135,7 +162,8 @@ class _AarastPressableState extends State<AarastPressable> {
           onTapDown: enabled ? (_) => _setPressed(true) : null,
           onTapUp: enabled ? (_) => _setPressed(false) : null,
           onTapCancel: enabled ? () => _setPressed(false) : null,
-          onTap: enabled ? _handleTap : null,
+          onTap: widget.onTap != null ? _handleTap : null,
+          onLongPress: widget.onLongPress != null ? _handleLongPress : null,
           child: focusAwareCore,
         ),
       ),

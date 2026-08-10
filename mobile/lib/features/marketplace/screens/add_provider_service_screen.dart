@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -26,6 +31,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
   final _priceUnitController = TextEditingController(text: 'حسب الخدمة');
   String? _categoryId;
   String? _cityId;
+  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
@@ -34,11 +40,13 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
       context.read<ProviderDashboardProvider>().loadDashboard();
+      _configureDraft();
     });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _basePriceController.dispose();
@@ -58,6 +66,14 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       title: 'إضافة خدمة',
       subtitle: 'أضف خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
       resizeToAvoidBottomInset: true,
+      bottomNavigationBar: canManageListing
+          ? AarastV3FormActionBar(
+              label: 'إضافة الخدمة',
+              icon: LucideIcons.plus,
+              loading: dashboard.isSubmitting,
+              onPressed: dashboard.isSubmitting ? null : _submit,
+            )
+          : null,
       actions: [
         IconButton(
           tooltip: 'رجوع',
@@ -92,50 +108,81 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
-                  const _ServiceIntro(),
-                  const SizedBox(height: 16),
-                  AarastCard(
-                    color: AppTheme.surface,
+                  const AarastV3FocusPrompt(
+                    question: 'ما الخدمة التي سيجدها العميل هنا؟',
+                    supportingText:
+                        'اكتب اسمًا مفهومًا واختر الفئة؛ السعر والوصف يساعدان المقارنة دون وعود حجز.',
+                    icon: LucideIcons.wand,
+                  ),
+                  if (_draft != null) ...[
+                    const SizedBox(height: 8),
+                    AarastV3DraftStatusLine(status: _draft!.status),
+                  ],
+                  const SizedBox(height: 10),
+                  AarastV3FormSurface(
+                    children: [
+                      TextFormField(
+                        controller: _titleController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'اسم الخدمة',
+                          prefixIcon: Icon(LucideIcons.wand),
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().length < 2
+                            ? 'اكتب اسم الخدمة'
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: _safeCategoryId(marketplace),
+                        decoration: const InputDecoration(
+                          labelText: 'الفئة',
+                          prefixIcon: Icon(LucideIcons.shapes),
+                        ),
+                        items: marketplace.categories
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.nameAr),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() => _categoryId = value);
+                          _draft?.changed();
+                        },
+                        validator: (value) =>
+                            value == null ? 'اختر الفئة' : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _basePriceController,
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.right,
+                        decoration: InputDecoration(
+                          labelText: 'السعر من',
+                          suffixText: currencyLabelAr(defaultCurrencyCode),
+                          prefixIcon: Icon(LucideIcons.wallet),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  AarastDisclosureCard(
+                    title: 'تفاصيل تساعد العميل',
+                    subtitle: 'المدينة والوصف وملاحظة السعر',
+                    icon: LucideIcons.fileText,
+                    initiallyExpanded:
+                        _cityId != null ||
+                        _descriptionController.text.isNotEmpty,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextFormField(
-                          controller: _titleController,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم الخدمة',
-                            prefixIcon: Icon(LucideIcons.wand),
-                          ),
-                          validator: (value) =>
-                              value == null || value.trim().length < 2
-                              ? 'اكتب اسم الخدمة'
-                              : null,
-                        ),
-                        const SizedBox(height: 14),
-                        DropdownButtonFormField<String>(
-                          initialValue: _safeCategoryId(marketplace),
-                          decoration: const InputDecoration(
-                            labelText: 'الفئة',
-                            prefixIcon: Icon(LucideIcons.shapes),
-                          ),
-                          items: marketplace.categories
-                              .map(
-                                (category) => DropdownMenuItem(
-                                  value: category.id,
-                                  child: Text(category.nameAr),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) =>
-                              setState(() => _categoryId = value),
-                          validator: (value) =>
-                              value == null ? 'اختر الفئة' : null,
-                        ),
-                        const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
                           initialValue: _safeCityId(marketplace),
                           decoration: const InputDecoration(
-                            labelText: 'مدينة الخدمة اختياري',
+                            labelText: 'مدينة الخدمة',
                             prefixIcon: Icon(LucideIcons.mapPin),
                           ),
                           items: [
@@ -149,53 +196,37 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                                 child: Text(city.nameAr),
                               ),
                           ],
-                          onChanged: (value) => setState(() => _cityId = value),
+                          onChanged: (value) {
+                            setState(() => _cityId = value);
+                            _draft?.changed();
+                          },
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         TextFormField(
                           controller: _descriptionController,
-                          maxLines: 4,
+                          minLines: 2,
+                          maxLines: 3,
                           maxLength: 280,
                           decoration: const InputDecoration(
-                            labelText: 'الوصف',
-                            hintText: 'ما الذي تشمل الخدمة؟',
+                            labelText: 'ماذا تشمل الخدمة؟',
                             prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _basePriceController,
-                          keyboardType: TextInputType.number,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.right,
-                          decoration: InputDecoration(
-                            labelText: 'السعر من',
-                            suffixText: currencyLabelAr(defaultCurrencyCode),
-                            prefixIcon: Icon(LucideIcons.wallet),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         TextFormField(
                           controller: _priceUnitController,
                           decoration: const InputDecoration(
-                            labelText: 'مدة الخدمة / ملاحظات السعر',
+                            labelText: 'ملاحظة السعر أو المدة',
                             prefixIcon: Icon(LucideIcons.timer),
                           ),
-                        ),
-                        if (dashboard.errorMessage != null) ...[
-                          const SizedBox(height: 12),
-                          _InlineError(message: dashboard.errorMessage!),
-                        ],
-                        const SizedBox(height: 18),
-                        AarastButton(
-                          label: 'إضافة الخدمة',
-                          icon: LucideIcons.plus,
-                          isLoading: dashboard.isSubmitting,
-                          onPressed: dashboard.isSubmitting ? null : _submit,
                         ),
                       ],
                     ),
                   ),
+                  if (dashboard.errorMessage != null) ...[
+                    const SizedBox(height: 10),
+                    _InlineError(message: dashboard.errorMessage!),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -217,6 +248,32 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
         : null;
   }
 
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'provider:service:new',
+      fields: {
+        'title': _titleController,
+        'description': _descriptionController,
+        'basePrice': _basePriceController,
+        'priceUnit': _priceUnitController,
+      },
+      readExtras: () => {'categoryId': _categoryId, 'cityId': _cityId},
+      restoreExtras: (data) {
+        if (!mounted) return;
+        setState(() {
+          _categoryId = data['categoryId']?.toString();
+          _cityId = data['cityId']?.toString();
+        });
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _categoryId == null) return;
     final ok = await context.read<ProviderDashboardProvider>().createService(
@@ -231,7 +288,15 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
 
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'تمت إضافة الخدمة');
+      await _draft?.clear();
+      if (!mounted) return;
+      final router = GoRouter.of(context);
+      AarastFormSuccess.show(
+        context,
+        message: 'تمت إضافة الخدمة.',
+        nextLabel: 'إضافة أخرى',
+        onNext: () => router.push(AppRouter.providerServiceNew),
+      );
       context.go(AppRouter.providerDashboard);
     }
   }
@@ -239,34 +304,6 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
 
 bool _canManageProviderListing(String? status) {
   return status == 'ACTIVE' || status == 'APPROVED';
-}
-
-class _ServiceIntro extends StatelessWidget {
-  const _ServiceIntro();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AarastCard(
-      color: AppTheme.ivory,
-      child: Row(
-        children: [
-          Icon(LucideIcons.sparkles, color: AppTheme.gold),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'اكتب خدمة حقيقية وواضحة. بعد الحفظ ارفع صورها ورتب معرضها من تبويب الخدمات في لوحة المزود.',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: AppTheme.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InlineError extends StatelessWidget {
@@ -277,7 +314,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.burgundySoft,
+      color: AppTheme.brandMuted,
       border: Border.all(color: AppTheme.danger.withAlpha(55)),
       child: Text(
         message,

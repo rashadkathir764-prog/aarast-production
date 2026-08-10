@@ -82,19 +82,32 @@ void main() {
     );
   });
 
-  test('More profile card wires avatar picker and iOS permissions', () {
+  test('avatar is wired from one account source across More and Home', () {
     final moreSource = File(
       'lib/features/more/screens/more_screen.dart',
+    ).readAsStringSync();
+    final homeSource = File(
+      'lib/features/home/screens/home_screen.dart',
+    ).readAsStringSync();
+    final dashboardSource = File(
+      'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    ).readAsStringSync();
+    final moreComponentsSource = File(
+      'lib/features/more/widgets/more_screen_components.dart',
     ).readAsStringSync();
     final iosInfo = File('ios/Runner/Info.plist').readAsStringSync();
 
     expect(moreSource, contains('avatarUrl: user?.avatarUrl'));
+    expect(homeSource, contains('avatarUrl: auth.user?.avatarUrl'));
+    expect(dashboardSource, contains('avatarUrl: auth.user?.avatarUrl'));
     expect(moreSource, contains('ImagePicker().pickImage'));
     expect(moreSource, contains('ImageSource.camera'));
     expect(moreSource, contains('ImageSource.gallery'));
     expect(moreSource, contains('updateAvatar('));
     expect(moreSource, contains('_avatarMaxBytes = 5 * 1024 * 1024'));
     expect(moreSource, contains('AuthActionGuard.requireAccount'));
+    expect(moreSource, isNot(contains('NotificationsProvider')));
+    expect(moreComponentsSource, isNot(contains('LucideIcons.bell')));
     expect(iosInfo, contains('NSCameraUsageDescription'));
     expect(iosInfo, contains('NSPhotoLibraryUsageDescription'));
     expect(iosInfo, contains('NSPhotoLibraryAddUsageDescription'));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -10,55 +11,26 @@ import '../../../shared/widgets/contact_phone_field.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/wedding_task.dart';
 
-class CreateTaskHero extends StatelessWidget {
-  const CreateTaskHero({super.key});
+class CreateTaskDetailsDisclosure extends StatelessWidget {
+  const CreateTaskDetailsDisclosure({
+    required this.initiallyExpanded,
+    required this.summary,
+    required this.child,
+    super.key,
+  });
+
+  final bool initiallyExpanded;
+  final String summary;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      color: AppTheme.burgundySoft.withAlpha(120),
-      border: Border.all(color: AppTheme.burgundy.withAlpha(35)),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            ),
-            child: const Icon(
-              LucideIcons.clipboardCheck,
-              color: AppTheme.burgundy,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'نظّم كل تفصيل بخطوة مدروسة',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.burgundyDark,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'المهام الواضحة تجعل يومك أسهل وأهدأ.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return AarastV3Disclosure(
+      title: 'المسؤول والتفاصيل',
+      subtitle: summary,
+      icon: LucideIcons.userCog,
+      initiallyExpanded: initiallyExpanded,
+      child: child,
     );
   }
 }
@@ -101,11 +73,10 @@ class CreateTaskResponsibleSection extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppTheme.space12),
       decoration: BoxDecoration(
-        color: AppTheme.ivory,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.goldSoft),
+        color: AppTheme.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTheme.radiusControl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,7 +85,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
             children: [
               const Icon(
                 LucideIcons.userCheck,
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
                 size: 21,
               ),
               const SizedBox(width: 8),
@@ -122,7 +93,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
                 child: Text(
                   'المسؤول عن المهمة',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -173,7 +144,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
                 style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.burgundy,
+                  foregroundColor: AppTheme.brand,
                   visualDensity: VisualDensity.compact,
                 ),
                 onPressed: onInvite,
@@ -210,17 +181,17 @@ class CreateTaskParticipantRow extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.burgundySoft : AppTheme.surface,
+            color: selected ? AppTheme.brandMuted : AppTheme.surfaceRaised,
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             border: Border.all(
-              color: selected ? AppTheme.burgundy : AppTheme.border,
+              color: selected ? AppTheme.brand : AppTheme.border,
             ),
           ),
           child: Row(
             children: [
               Icon(
                 selected ? LucideIcons.checkCircle : LucideIcons.user,
-                color: selected ? AppTheme.burgundy : AppTheme.gold,
+                color: selected ? AppTheme.brand : AppTheme.focus,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -233,7 +204,7 @@ class CreateTaskParticipantRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppTheme.ink,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       )
@@ -243,7 +214,7 @@ class CreateTaskParticipantRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppTheme.ink,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -252,7 +223,7 @@ class CreateTaskParticipantRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -283,16 +254,16 @@ class CreateTaskParticipantBadge extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
-            color: AppTheme.goldSoft,
+            color: AppTheme.brandMuted,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppTheme.goldSoft),
+            border: Border.all(color: AppTheme.brandMuted),
           ),
           child: Text(
             'مشارك في الخطة',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.burgundy,
+              color: AppTheme.brand,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -324,41 +295,49 @@ class CreateTaskSelectorField extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceRaised,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.burgundy : AppTheme.border,
+            color: selected ? AppTheme.brand : AppTheme.border,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
-            const SizedBox(width: 10),
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? AppTheme.brand : AppTheme.focus,
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
+            const Icon(
+              LucideIcons.chevronDown,
+              size: 17,
+              color: AppTheme.textSecondary,
+            ),
           ],
         ),
       ),
@@ -389,16 +368,20 @@ class CreateTaskPriorityChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 11),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(25) : AppTheme.surface,
+            color: selected ? color.withAlpha(25) : AppTheme.surfaceRaised,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             border: Border.all(color: selected ? color : AppTheme.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: selected ? color : AppTheme.muted, size: 16),
+              Icon(
+                icon,
+                color: selected ? color : AppTheme.textSecondary,
+                size: 16,
+              ),
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
@@ -406,7 +389,7 @@ class CreateTaskPriorityChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? color : AppTheme.muted,
+                    color: selected ? color : AppTheme.textSecondary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -437,26 +420,24 @@ class CreateTaskCategoryRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: AarastCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        color: selected ? AppTheme.burgundySoft : AppTheme.surface,
-        border: Border.all(
-          color: selected ? AppTheme.burgundy : AppTheme.border,
-        ),
+        color: selected ? AppTheme.brandMuted : AppTheme.surfaceRaised,
+        border: Border.all(color: selected ? AppTheme.brand : AppTheme.border),
         onTap: onTap,
         child: Row(
           children: [
-            Icon(category.icon, color: AppTheme.burgundy),
+            Icon(category.icon, color: AppTheme.brand),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 category.label,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: selected ? AppTheme.burgundy : AppTheme.ink,
+                  color: selected ? AppTheme.brand : AppTheme.textPrimary,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             if (selected)
-              const Icon(LucideIcons.checkCircle, color: AppTheme.burgundy),
+              const Icon(LucideIcons.checkCircle, color: AppTheme.brand),
           ],
         ),
       ),

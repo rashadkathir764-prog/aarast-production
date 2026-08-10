@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
@@ -28,7 +29,7 @@ void main() {
       const MoneyOverviewScreen(weddingPlanId: localPlanId),
     );
 
-    expect(find.text('المال'), findsOneWidget);
+    expect(find.byKey(const ValueKey('money-starter-setup')), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });
@@ -41,7 +42,7 @@ void main() {
       const TaskTimelineScreen(weddingPlanId: localPlanId),
     );
 
-    expect(find.text('المهام'), findsWidgets);
+    expect(find.text('تقدّم المهام'), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });
@@ -55,12 +56,7 @@ void main() {
     );
 
     expect(find.text('الضيوف'), findsWidgets);
-    expect(
-      find.text(
-        'لا يوجد ضيوف بعد. أضف ضيفًا عندما تكون لديك بيانات حضور فعلية.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text(AarastV3Copy.firstGuestMessage), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });
@@ -74,7 +70,7 @@ void main() {
       );
 
       expect(find.text('التنبيهات'), findsOneWidget);
-      expect(find.text('لا توجد تنبيهات مهمة الآن.'), findsOneWidget);
+      expect(find.text(AarastV3Copy.quietNotificationsTitle), findsOneWidget);
       expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
       expect(find.text('وضع تجربة التصميم'), findsNothing);
     },

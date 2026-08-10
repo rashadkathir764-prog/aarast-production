@@ -119,6 +119,7 @@ export function UsersPage() {
 
       <SectionCard className="filters-card">
         <SearchInput
+          label="بحث في حسابات المنصة"
           value={search}
           onChange={setSearch}
           onSubmit={submitSearch}
@@ -138,6 +139,7 @@ export function UsersPage() {
             />
           ) : (
             <DataTable
+              label="حسابات المنصة"
               columns={[
                 'الاسم',
                 'الهاتف',

@@ -142,6 +142,7 @@ export function ConversationReportsPage() {
           />
         ) : (
           <DataTable
+            label="بلاغات المحادثات"
             columns={[
               'المبلّغ',
               'المزود',

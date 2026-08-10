@@ -391,6 +391,292 @@ async function run() {
     !hasPasswordHash(res.body),
   );
 
+  const catalogSuffix = randomBytes(5).toString("hex");
+  const catalogKey = `runtime-smoke-${catalogSuffix}`;
+  const initialCatalogName = `تصنيف تشغيل ${catalogSuffix}`;
+  const updatedCatalogName = `تصنيف تشغيل محدث ${catalogSuffix}`;
+
+  res = await request("/admin/reference-catalogs");
+  check(
+    "admin managed catalog list returns the Money catalog",
+    res.status === 200 &&
+      Array.isArray(res.body) &&
+      res.body.some((catalog) => catalog.key === "money.starter.categories"),
+    String(res.status),
+  );
+
+  res = await request("/api/v1/catalogs/bootstrap", { auth: false });
+  const catalogVersionBeforeDraft = res.body?.version;
+  check(
+    "public catalog bootstrap is available",
+    res.status === 200 && typeof catalogVersionBeforeDraft === "string",
+    String(res.status),
+  );
+
+  res = await request("/admin/reference-catalogs/money.starter.categories/items", {
+    method: "POST",
+    body: {
+      key: catalogKey,
+      nameAr: initialCatalogName,
+      groupKey: "runtime-smoke",
+      groupNameAr: "اختبار التشغيل",
+      icon: "shield-check",
+      sortOrder: 9999,
+      showForGroom: true,
+      showForBride: false,
+      showForCustomer: true,
+      showForProvider: false,
+      isActive: true,
+    },
+  });
+  const catalogItemId = res.body?.id;
+  check(
+    "admin creates an unpublished catalog draft",
+    res.status === 201 &&
+      typeof catalogItemId === "string" &&
+      res.body?.currentRevision === 1 &&
+      res.body?.publishedRevision === 0,
+    String(res.status),
+  );
+
+  res = await request("/api/v1/catalogs/bootstrap", { auth: false });
+  check(
+    "draft creation does not change the public catalog version",
+    res.status === 200 && res.body?.version === catalogVersionBeforeDraft,
+    String(res.status),
+  );
+  check(
+    "unpublished draft is absent from the public payload",
+    !res.body?.catalogs
+      ?.flatMap((catalog) => catalog.items ?? [])
+      .some((item) => item.key === catalogKey),
+  );
+
+  if (typeof catalogItemId === "string") {
+    res = await request(
+      `/admin/reference-catalogs/money.starter.categories/items/${encodeURIComponent(catalogItemId)}/publish`,
+      { method: "POST", body: {} },
+    );
+    check(
+      "admin publishes the first catalog revision",
+      res.status === 201 && res.body?.publishedRevision === 1,
+      String(res.status),
+    );
+
+    res = await request("/api/v1/catalogs/bootstrap", { auth: false });
+    const versionAfterFirstPublish = res.body?.version;
+    check(
+      "publication changes the public catalog version",
+      res.status === 200 &&
+        typeof versionAfterFirstPublish === "string" &&
+        versionAfterFirstPublish !== catalogVersionBeforeDraft,
+      String(res.status),
+    );
+    check(
+      "published revision appears in the public payload",
+      res.body?.catalogs
+        ?.flatMap((catalog) => catalog.items ?? [])
+        .some(
+          (item) => item.key === catalogKey && item.nameAr === initialCatalogName,
+        ),
+    );
+
+    res = await request(
+      `/admin/reference-catalogs/money.starter.categories/items/${encodeURIComponent(catalogItemId)}`,
+      { method: "PATCH", body: { nameAr: updatedCatalogName } },
+    );
+    check(
+      "admin edit creates a second unpublished revision",
+      res.status === 200 &&
+        res.body?.currentRevision === 2 &&
+        res.body?.publishedRevision === 1,
+      String(res.status),
+    );
+
+    res = await request("/api/v1/catalogs/bootstrap", { auth: false });
+    check(
+      "editing a draft keeps the published content unchanged",
+      res.body?.version === versionAfterFirstPublish &&
+        res.body?.catalogs
+          ?.flatMap((catalog) => catalog.items ?? [])
+          .some(
+            (item) =>
+              item.key === catalogKey && item.nameAr === initialCatalogName,
+          ),
+    );
+
+    res = await request(
+      `/admin/reference-catalogs/money.starter.categories/items/${encodeURIComponent(catalogItemId)}/publish`,
+      { method: "POST", body: { revision: 2 } },
+    );
+    check(
+      "admin publishes the edited catalog revision",
+      res.status === 201 && res.body?.publishedRevision === 2,
+      String(res.status),
+    );
+
+    res = await request(
+      `/admin/reference-catalogs/money.starter.categories/items/${encodeURIComponent(catalogItemId)}/publish`,
+      { method: "POST", body: { revision: 1 } },
+    );
+    check(
+      "admin can roll back by publishing a historical revision",
+      res.status === 201 && res.body?.publishedRevision === 1,
+      String(res.status),
+    );
+
+    res = await request("/api/v1/catalogs/bootstrap", { auth: false });
+    check(
+      "rollback restores the historical public content",
+      res.body?.catalogs
+        ?.flatMap((catalog) => catalog.items ?? [])
+        .some(
+          (item) => item.key === catalogKey && item.nameAr === initialCatalogName,
+        ),
+    );
+
+    res = await request(
+      `/admin/reference-catalogs/money.starter.categories/items/${encodeURIComponent(catalogItemId)}`,
+      { method: "DELETE" },
+    );
+    check(
+      "admin disable publishes an inactive revision without deleting history",
+      res.status === 200 &&
+        res.body?.published?.isActive === false &&
+        Array.isArray(res.body?.revisions) &&
+        res.body.revisions.length === 3,
+      String(res.status),
+    );
+
+    res = await request("/api/v1/catalogs/bootstrap", { auth: false });
+    check(
+      "disabled catalog item disappears from the public payload",
+      !res.body?.catalogs
+        ?.flatMap((catalog) => catalog.items ?? [])
+        .some((item) => item.key === catalogKey),
+    );
+  }
+
+  const geographySuffix = randomBytes(4).toString("hex").toUpperCase();
+  res = await request("/admin/governorates", {
+    method: "POST",
+    body: {
+      code: `SMG-${geographySuffix}`,
+      nameAr: `محافظة اختبار ${geographySuffix}`,
+      nameEn: `Smoke Governorate ${geographySuffix}`,
+      sortOrder: 9999,
+    },
+  });
+  const smokeGovernorateId = res.body?.id;
+  check(
+    "admin creates a governorate",
+    res.status === 201 && typeof smokeGovernorateId === "string",
+    String(res.status),
+  );
+
+  let smokeDistrictId;
+  if (typeof smokeGovernorateId === "string") {
+    res = await request(
+      `/admin/governorates/${encodeURIComponent(smokeGovernorateId)}/districts`,
+      {
+        method: "POST",
+        body: {
+          code: `SMD-${geographySuffix}`,
+          nameAr: `مديرية اختبار ${geographySuffix}`,
+          nameEn: `Smoke District ${geographySuffix}`,
+          sortOrder: 9999,
+        },
+      },
+    );
+    smokeDistrictId = res.body?.id;
+    check(
+      "admin creates a district under the governorate",
+      res.status === 201 && typeof smokeDistrictId === "string",
+      String(res.status),
+    );
+  }
+
+  let smokeLocalityId;
+  if (typeof smokeDistrictId === "string") {
+    res = await request(
+      `/admin/districts/${encodeURIComponent(smokeDistrictId)}/localities`,
+      {
+        method: "POST",
+        body: {
+          code: `SML-${geographySuffix}`,
+          type: "NEIGHBORHOOD",
+          nameAr: `حي اختبار ${geographySuffix}`,
+          nameEn: `Smoke Neighborhood ${geographySuffix}`,
+          sortOrder: 1,
+        },
+      },
+    );
+    smokeLocalityId = res.body?.id;
+    check(
+      "admin creates a neighborhood under the district",
+      res.status === 201 && typeof smokeLocalityId === "string",
+      String(res.status),
+    );
+
+    res = await request(
+      `/api/v1/districts/${encodeURIComponent(smokeDistrictId)}/localities`,
+      { auth: false },
+    );
+    check(
+      "published locality is immediately visible to Mobile",
+      res.status === 200 &&
+        Array.isArray(res.body) &&
+        res.body.some((item) => item.id === smokeLocalityId),
+      String(res.status),
+    );
+  }
+
+  if (typeof smokeLocalityId === "string") {
+    res = await request(`/admin/localities/${encodeURIComponent(smokeLocalityId)}`, {
+      method: "DELETE",
+    });
+    check(
+      "admin soft-disables the neighborhood",
+      res.status === 200 && res.body?.isActive === false,
+      String(res.status),
+    );
+
+    res = await request(
+      `/api/v1/districts/${encodeURIComponent(smokeDistrictId)}/localities`,
+      { auth: false },
+    );
+    check(
+      "disabled neighborhood is hidden from Mobile",
+      res.status === 200 &&
+        Array.isArray(res.body) &&
+        !res.body.some((item) => item.id === smokeLocalityId),
+      String(res.status),
+    );
+  }
+
+  if (typeof smokeDistrictId === "string") {
+    res = await request(`/admin/districts/${encodeURIComponent(smokeDistrictId)}`, {
+      method: "DELETE",
+    });
+    check(
+      "admin soft-disables the district",
+      res.status === 200 && res.body?.isActive === false,
+      String(res.status),
+    );
+  }
+
+  if (typeof smokeGovernorateId === "string") {
+    res = await request(
+      `/admin/governorates/${encodeURIComponent(smokeGovernorateId)}`,
+      { method: "DELETE" },
+    );
+    check(
+      "admin soft-disables the governorate",
+      res.status === 200 && res.body?.isActive === false,
+      String(res.status),
+    );
+  }
+
   res = await request("/admin/providers/applications?limit=5");
   check(
     "admin provider applications list returns paginated items",

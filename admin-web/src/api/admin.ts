@@ -320,6 +320,128 @@ export type CatalogPayload = {
   sortOrder?: number;
 };
 
+export type ReferenceCatalogSummary = {
+  id: string;
+  key: string;
+  nameAr: string;
+  description: string | null;
+  version: number;
+  isActive: boolean;
+  itemsCount: number;
+  publishedCount: number;
+  pendingCount: number;
+  updatedAt: string;
+};
+
+export type ReferenceCatalogRevision = {
+  revision: number;
+  groupKey: string | null;
+  groupNameAr: string | null;
+  groupSubtitleAr: string | null;
+  nameAr: string;
+  nameEn: string | null;
+  icon: string | null;
+  sortOrder: number;
+  showForGroom: boolean;
+  showForBride: boolean;
+  showForCustomer: boolean;
+  showForProvider: boolean;
+  isRecommended: boolean;
+  isActive: boolean;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ReferenceCatalogItem = {
+  id: string;
+  key: string;
+  currentRevision: number;
+  publishedRevision: number;
+  hasUnpublishedChanges: boolean;
+  current: ReferenceCatalogRevision;
+  published: ReferenceCatalogRevision | null;
+  revisions: Array<{
+    revision: number;
+    nameAr: string;
+    isActive: boolean;
+    createdAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReferenceCatalog = Omit<
+  ReferenceCatalogSummary,
+  'itemsCount' | 'publishedCount' | 'pendingCount'
+> & {
+  items: ReferenceCatalogItem[];
+};
+
+export type ReferenceCatalogItemPayload = {
+  key?: string;
+  nameAr?: string;
+  nameEn?: string | null;
+  groupKey?: string | null;
+  groupNameAr?: string | null;
+  groupSubtitleAr?: string | null;
+  icon?: string | null;
+  sortOrder?: number;
+  showForGroom?: boolean;
+  showForBride?: boolean;
+  showForCustomer?: boolean;
+  showForProvider?: boolean;
+  isRecommended?: boolean;
+  isActive?: boolean;
+  metadata?: Record<string, string | number | boolean | null> | null;
+};
+
+export type Governorate = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  latitude: number | null;
+  longitude: number | null;
+  isActive: boolean;
+  sortOrder: number;
+  _count?: { districts: number };
+};
+
+export type District = Omit<Governorate, '_count'> & {
+  governorateId: string;
+  _count?: { localities: number };
+};
+
+export type AdministrativeLocalityType =
+  | 'AREA'
+  | 'ISOLATION'
+  | 'NEIGHBORHOOD'
+  | 'ZONE';
+
+export type AdministrativeLocality = Omit<
+  Governorate,
+  'nameEn' | '_count'
+> & {
+  districtId: string;
+  parentId: string | null;
+  type: AdministrativeLocalityType;
+  nameEn: string | null;
+};
+
+export type AdministrativeLocationPayload = {
+  code?: string;
+  nameAr?: string;
+  nameEn?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isActive?: boolean;
+  sortOrder?: number;
+  governorateId?: string;
+  districtId?: string;
+  parentId?: string | null;
+  type?: AdministrativeLocalityType;
+};
+
 export function getStats() {
   return apiRequest<AdminStats>('/admin/dashboard/stats');
 }
@@ -532,6 +654,144 @@ export function updateCity(id: string, payload: CatalogPayload) {
 
 export function deleteCity(id: string) {
   return apiRequest<City>(`/admin/cities/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getReferenceCatalogs() {
+  return apiRequest<ReferenceCatalogSummary[]>('/admin/reference-catalogs');
+}
+
+export function getReferenceCatalog(key: string) {
+  return apiRequest<ReferenceCatalog>(
+    `/admin/reference-catalogs/${encodeURIComponent(key)}`,
+  );
+}
+
+export function createReferenceCatalogItem(
+  catalogKey: string,
+  payload: ReferenceCatalogItemPayload,
+) {
+  return apiRequest<ReferenceCatalogItem>(
+    `/admin/reference-catalogs/${encodeURIComponent(catalogKey)}/items`,
+    { method: 'POST', body: payload },
+  );
+}
+
+export function updateReferenceCatalogItem(
+  catalogKey: string,
+  id: string,
+  payload: ReferenceCatalogItemPayload,
+) {
+  return apiRequest<ReferenceCatalogItem>(
+    `/admin/reference-catalogs/${encodeURIComponent(catalogKey)}/items/${id}`,
+    { method: 'PATCH', body: payload },
+  );
+}
+
+export function publishReferenceCatalogItem(
+  catalogKey: string,
+  id: string,
+  revision?: number,
+) {
+  return apiRequest<ReferenceCatalogItem>(
+    `/admin/reference-catalogs/${encodeURIComponent(catalogKey)}/items/${id}/publish`,
+    { method: 'POST', body: revision ? { revision } : {} },
+  );
+}
+
+export function disableReferenceCatalogItem(catalogKey: string, id: string) {
+  return apiRequest<ReferenceCatalogItem>(
+    `/admin/reference-catalogs/${encodeURIComponent(catalogKey)}/items/${id}`,
+    { method: 'DELETE' },
+  );
+}
+
+export function getGovernorates() {
+  return apiRequest<Governorate[]>('/admin/governorates');
+}
+
+export function createGovernorate(payload: AdministrativeLocationPayload) {
+  return apiRequest<Governorate>('/admin/governorates', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function updateGovernorate(
+  id: string,
+  payload: AdministrativeLocationPayload,
+) {
+  return apiRequest<Governorate>(`/admin/governorates/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export function disableGovernorate(id: string) {
+  return apiRequest<Governorate>(`/admin/governorates/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getDistricts(governorateId: string) {
+  return apiRequest<District[]>(
+    `/admin/governorates/${governorateId}/districts`,
+  );
+}
+
+export function createDistrict(
+  governorateId: string,
+  payload: AdministrativeLocationPayload,
+) {
+  return apiRequest<District>(
+    `/admin/governorates/${governorateId}/districts`,
+    { method: 'POST', body: payload },
+  );
+}
+
+export function updateDistrict(
+  id: string,
+  payload: AdministrativeLocationPayload,
+) {
+  return apiRequest<District>(`/admin/districts/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export function disableDistrict(id: string) {
+  return apiRequest<District>(`/admin/districts/${id}`, { method: 'DELETE' });
+}
+
+export function getLocalities(districtId: string) {
+  return apiRequest<AdministrativeLocality[]>(
+    `/admin/districts/${districtId}/localities`,
+  );
+}
+
+export function createLocality(
+  districtId: string,
+  payload: AdministrativeLocationPayload,
+) {
+  return apiRequest<AdministrativeLocality>(
+    `/admin/districts/${districtId}/localities`,
+    { method: 'POST', body: payload },
+  );
+}
+
+export function updateLocality(
+  id: string,
+  payload: AdministrativeLocationPayload,
+) {
+  return apiRequest<AdministrativeLocality>(`/admin/localities/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export function disableLocality(id: string) {
+  return apiRequest<AdministrativeLocality>(`/admin/localities/${id}`, {
     method: 'DELETE',
   });
 }

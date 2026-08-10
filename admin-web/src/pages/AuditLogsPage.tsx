@@ -95,6 +95,7 @@ export function AuditLogsPage() {
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
+            label="بحث في سجل العمليات"
             value={action}
             onChange={setAction}
             onSubmit={submitFilters}
@@ -133,6 +134,7 @@ export function AuditLogsPage() {
           />
         ) : (
           <DataTable
+            label="سجل عمليات الإدارة"
             columns={[
               'الوقت',
               'المسؤول',

@@ -1,82 +1,59 @@
-import { useAuth } from '../auth/AuthProvider';
+import { type RefObject } from 'react';
+import { Link } from 'react-router-dom';
 import { Menu } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
+import { resolveAdminLocation } from './adminNavigation';
 
 type TopbarProps = {
+  isMenuOpen: boolean;
+  menuButtonRef: RefObject<HTMLButtonElement>;
   onMenuClick: () => void;
-  onLogout: () => void;
 };
 
-export function Topbar({ onMenuClick }: TopbarProps) {
+export function Topbar({
+  isMenuOpen,
+  menuButtonRef,
+  onMenuClick,
+}: TopbarProps) {
   const { user } = useAuth();
+  const { pathname } = useLocation();
   const avatarInitial = (user?.name?.trim().charAt(0) || 'A').toUpperCase();
+  const location = resolveAdminLocation(pathname);
 
   return (
-    <header
-      className="topbar"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '10px 24px',
-        background: '#ffffff',
-        borderRadius: '100px',
-        border: '1px solid #EFECE6',
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.015)',
-        margin: '16px 24px 0 24px',
-        boxSizing: 'border-box',
-      }}
-      dir="rtl"
-    >
+    <header className="topbar" dir="rtl">
       <button
+        ref={menuButtonRef}
         className="menu-button"
         type="button"
         onClick={onMenuClick}
-        aria-label="فتح القائمة"
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: '#4A1525',
-          padding: 4,
-        }}
+        aria-label={isMenuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+        aria-controls="admin-navigation-drawer"
+        aria-expanded={isMenuOpen}
       >
-        <Menu size={22} strokeWidth={1.8} />
+        <Menu size={22} strokeWidth={1.8} aria-hidden="true" />
       </button>
 
-      <div
-        className="topbar__profile"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          marginInlineStart: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
-          <strong style={{ fontSize: '13px', color: '#2B2A2A', fontWeight: 600 }}>
-            {user?.name ?? 'مدير النظام'}
-          </strong>
-          <span style={{ fontSize: '11px', color: '#8A7A81', marginTop: '1px' }}>
-            مدير النظام
-          </span>
-        </div>
+      <nav className="topbar__location" aria-label="مسار الصفحة" aria-live="polite">
+        <span>لوحة الإدارة / {location.group}</span>
+        {location.isDetail ? (
+          <div className="topbar__breadcrumb">
+            <Link to={location.route}>{location.parentTitle}</Link>
+            <span aria-hidden="true">/</span>
+            <strong aria-current="page">{location.title}</strong>
+          </div>
+        ) : (
+          <strong aria-current="page">{location.title}</strong>
+        )}
+      </nav>
 
-        <div
-          role="img"
-          aria-label="Admin avatar"
-          style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '50%',
-            display: 'grid',
-            placeItems: 'center',
-            background: '#4A1525',
-            color: '#ffffff',
-            fontSize: '16px',
-            fontWeight: 700,
-            border: '1px solid #EFECE6',
-          }}
-        >
+      <div className="topbar__profile">
+        <div>
+          <strong>{user?.name ?? 'مدير النظام'}</strong>
+          <span>مدير النظام</span>
+        </div>
+        <div className="topbar__avatar" role="img" aria-label="صورة مدير النظام">
           {avatarInitial}
         </div>
       </div>

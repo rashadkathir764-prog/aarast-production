@@ -124,6 +124,7 @@ export function ProvidersPage() {
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
+            label="بحث في الموردين"
             value={search}
             onChange={setSearch}
             onSubmit={submitSearch}
@@ -180,6 +181,7 @@ export function ProvidersPage() {
             />
           ) : (
             <DataTable
+              label="قائمة الموردين"
               columns={[
                 'المورد',
                 'الحالة',

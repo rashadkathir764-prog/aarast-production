@@ -1,83 +1,112 @@
-import { NavLink } from 'react-router-dom';
-import {
-  Crown,
-  BarChart3,
-  Inbox,
-  LayoutGrid,
-  LogOut,
-  MapPin,
-  MessageSquareText,
-  ShieldAlert,
-  ShieldCheck,
-  PackageSearch,
-  Star,
-  Tag,
-  UserCircle,
-  Users,
-} from 'lucide-react';
+import { type RefObject } from 'react';
+import { LogOut, ShieldCheck, X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { hasAdminPermission } from '../auth/adminPermissions';
 import {
-  AdminPermission,
-  hasAdminPermission,
-} from '../auth/adminPermissions';
-
-const links = [
-  { to: '/', label: 'لوحة التحكم', permission: AdminPermission.DASHBOARD_READ, icon: <LayoutGrid size={20} strokeWidth={1.5} />, end: true },
-  { to: '/users', label: 'المستخدمون', permission: AdminPermission.USERS_READ, icon: <UserCircle size={20} strokeWidth={1.5} /> },
-  { to: '/providers', label: 'الموردون', permission: AdminPermission.PROVIDERS_READ, icon: <Users size={20} strokeWidth={1.5} /> },
-  { to: '/providers/applications', label: 'طلبات الموردين', permission: AdminPermission.PROVIDERS_READ, icon: <Inbox size={20} strokeWidth={1.5} /> },
-  { to: '/services', label: 'الخدمات', permission: AdminPermission.SERVICES_READ, icon: <PackageSearch size={20} strokeWidth={1.5} /> },
-  { to: '/reviews', label: 'التقييمات', permission: AdminPermission.REVIEWS_READ, icon: <Star size={20} strokeWidth={1.5} /> },
-  { to: '/conversation-reports', label: 'بلاغات المحادثات', permission: AdminPermission.CONVERSATION_REPORTS_READ, icon: <ShieldAlert size={20} strokeWidth={1.5} /> },
-  { to: '/notifications', label: 'الإشعارات', permission: AdminPermission.NOTIFICATIONS_READ, icon: <MessageSquareText size={20} strokeWidth={1.5} /> },
-  { to: '/reports', label: 'التقارير', permission: AdminPermission.REPORTS_READ, icon: <BarChart3 size={20} strokeWidth={1.5} /> },
-  { to: '/categories', label: 'فئات الموردين', permission: AdminPermission.CATALOG_READ, icon: <Tag size={20} strokeWidth={1.5} /> },
-  { to: '/cities', label: 'المدن والمناطق', permission: AdminPermission.CATALOG_READ, icon: <MapPin size={20} strokeWidth={1.5} /> },
-  { to: '/audit-logs', label: 'سجل التدقيق', permission: AdminPermission.AUDIT_READ, icon: <ShieldCheck size={20} strokeWidth={1.5} /> },
-];
+  adminNavigationGroups,
+  type AdminNavigationItem,
+} from './adminNavigation';
 
 type SidebarProps = {
+  closeButtonRef: RefObject<HTMLButtonElement>;
   isOpen: boolean;
+  onClose: () => void;
   onNavigate: () => void;
   onLogout: () => void;
 };
 
-export function Sidebar({ isOpen, onNavigate, onLogout }: SidebarProps) {
-  const { user } = useAuth();
+function NavigationLink({
+  link,
+  pathname,
+  onNavigate,
+}: {
+  link: AdminNavigationItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const Icon = link.icon;
+  const isActive = link.isActive(pathname);
+
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-      <div className="brand" style={{ flexDirection: 'column', padding: '20px 0', gap: '8px' }}>
-        <Crown size={36} color="var(--color-gold-200)" strokeWidth={1.5} />
-        <div style={{ textAlign: 'center' }}>
-          <strong style={{ fontSize: '38px', fontFamily: 'var(--font-family)' }}>أعرست</strong>
-          <span style={{ fontSize: '13px', letterSpacing: '0.5px', marginTop: '2px' }}>لوحة الإدارة</span>
+    <Link
+      to={link.route}
+      className={isActive ? 'active' : undefined}
+      aria-current={isActive ? 'page' : undefined}
+      onClick={onNavigate}
+    >
+      <span className="nav-icon" aria-hidden="true">
+        <Icon size={20} strokeWidth={1.8} />
+      </span>
+      <span>{link.label}</span>
+    </Link>
+  );
+}
+
+export function Sidebar({
+  closeButtonRef,
+  isOpen,
+  onClose,
+  onNavigate,
+  onLogout,
+}: SidebarProps) {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+
+  return (
+    <aside
+      id="admin-navigation-drawer"
+      className={`sidebar ${isOpen ? 'open' : ''}`}
+      aria-label="التنقل الرئيسي"
+    >
+      <div className="brand">
+        <span className="brand__mark" aria-hidden="true">
+          <ShieldCheck size={22} strokeWidth={1.8} />
+        </span>
+        <div>
+          <strong>أعرست</strong>
+          <span>لوحة الإدارة</span>
         </div>
+        <button
+          ref={closeButtonRef}
+          className="sidebar__close"
+          type="button"
+          aria-label="إغلاق القائمة"
+          onClick={onClose}
+        >
+          <X size={20} strokeWidth={1.8} aria-hidden="true" />
+        </button>
       </div>
-      <nav aria-label="التنقل الرئيسي" style={{ marginTop: '10px' }}>
-        {links.filter((link) => hasAdminPermission(user, link.permission)).map((link, index) => (
-          <NavLink
-            key={`${link.to}-${index}`}
-            to={link.to}
-            className={({ isActive }) => (isActive ? 'active' : undefined)}
-            end={link.end ?? link.to === '/'}
-            onClick={onNavigate}
-            style={{ minHeight: '48px', padding: '0 16px', borderRadius: '10px' }}
-          >
-            <span className="nav-icon" aria-hidden="true" style={{ background: 'transparent', width: 'auto', marginRight: '-4px' }}>
-              {link.icon}
-            </span>
-            <span style={{ fontWeight: 600, fontSize: '15px' }}>{link.label}</span>
-          </NavLink>
-        ))}
+
+      <nav aria-label="التنقل الرئيسي">
+        {adminNavigationGroups.map((group) => {
+          const visibleLinks = group.links.filter((link) =>
+            hasAdminPermission(user, link.permission),
+          );
+          if (visibleLinks.length === 0) return null;
+
+          return (
+            <div className="sidebar__group" key={group.label}>
+              <p className="sidebar__group-label">{group.label}</p>
+              {visibleLinks.map((link) => (
+                <NavigationLink
+                  key={link.route}
+                  link={link}
+                  pathname={pathname}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
+
       <div className="sidebar__bottom">
-        <div className="sidebar__note" style={{ minHeight: '130px', border: '1px solid rgba(199, 155, 63, 0.3)', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M54.627 0l.83.83-54.627 54.627-.83-.83L54.627 0zm-5.858 0l.83.83-48.77 48.77-.83-.83L48.77 0zm-5.858 0l.83.83-42.91 42.91-.83-.83L42.91 0zm-5.858 0l.83.83-37.053 37.053-.83-.83L37.053 0z\' fill=\'%23c79b3f\' fill-opacity=\'0.1\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")' }}>
-          <Crown size={28} color="var(--color-gold-500)" style={{ marginBottom: '4px' }} strokeWidth={1.5} />
-          <span style={{ fontSize: '18px', fontWeight: 900, color: 'var(--color-gold-200)' }}>أعرست</span>
-          <strong style={{ fontSize: '14px', color: '#fff', maxWidth: '140px', lineHeight: 1.6 }}>نجعل مناسباتكم أكثر تميزاً</strong>
-        </div>
-        <button className="sidebar__logout" type="button" onClick={onLogout} style={{ fontWeight: 600, color: 'rgba(255, 248, 234, 0.78)', background: 'transparent', border: 'none', display: 'flex', gap: '8px', padding: '12px', justifyContent: 'center', transition: 'color 0.2s' }}>
-          <LogOut size={18} />
+        <p className="sidebar__note">
+          مساحة تشغيلية هادئة لمتابعة الطلبات والكتالوج وسلامة الحسابات.
+        </p>
+        <button className="sidebar__logout" type="button" onClick={onLogout}>
+          <LogOut size={18} aria-hidden="true" />
           تسجيل الخروج
         </button>
       </div>

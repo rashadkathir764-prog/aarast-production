@@ -13,13 +13,14 @@ deploy/monitoring/secrets/*
 dist/
 build/
 coverage/
-mobile/test/failures/
+mobile/test/**/failures/
 
 # Flutter and Dart generated files
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+mobile/devtools_options.yaml
 
 # Android signing — the upload keystore and its passwords must NEVER be
 # committed. Losing or leaking this key compromises the Play listing.

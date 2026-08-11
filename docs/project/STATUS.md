@@ -413,9 +413,9 @@ Backend/Admin/public acceptance are complete as recorded above.
   branch cleanup. `main` remains the default branch.
 - `origin/codex/guest-invitation-campaigns` remains preserved and quarantined:
   it contains a large unique WIP commit outside the approved current scope.
-- Nineteen open Dependabot branches remain because each is tied to an open
-  dependency PR and requires independent compatibility testing; they were not
-  treated as disposable branches.
+- Open Dependabot branches remain because each is tied to an open dependency PR
+  and requires independent compatibility testing; their automated count may
+  change at any time, so they are not treated as disposable branches.
 
 ## Release Judgment
 

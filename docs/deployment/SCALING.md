@@ -24,7 +24,19 @@ in code versus what requires real infrastructure.
 - **Graceful shutdown**: SIGTERM drains in-flight requests
   (`enableShutdownHooks`), so rolling deploys drop nothing.
 - **Observability**: every instance exposes `/metrics`; the
-  `deploy/monitoring` stack aggregates them.
+  `deploy/monitoring` source stack can aggregate them after it is explicitly
+  configured and deployed. In the 2026-08-11 production acceptance snapshot,
+  `METRICS_TOKEN` and `SENTRY_DSN` were not configured and no
+  Prometheus/Grafana/Alertmanager containers were running.
+
+## Current Production Footprint
+
+The accepted 2026-08-11 deployment is a healthy single-server Dokploy topology:
+one Backend, one Admin Web, one fail-closed public site, PostgreSQL, Redis,
+S3-compatible media, and the PostgreSQL backup sidecar. It proves the current
+single-instance application and recovery path, not multi-server high
+availability. Do not describe the source monitoring stack, horizontal scaling,
+Postgres HA, or fleet capacity as deployed.
 
 ## Measured single-instance capacity
 
@@ -62,8 +74,9 @@ environment instead of trusting this table.
    Dokploy). Socket.IO needs either sticky sessions or
    websocket-only transport; the Redis adapter handles cross-replica
    event delivery either way.
-5. **Run the load test against the balanced endpoint** and watch the
-   Grafana dashboard (`deploy/monitoring`) while it runs: p95, 5xx
+5. **Run the load test against the balanced endpoint** and, after deploying the
+   monitoring stack, watch the Grafana dashboard (`deploy/monitoring`) while it
+   runs: p95, 5xx
    ratio, event-loop lag.
 
 ## Backup and restore

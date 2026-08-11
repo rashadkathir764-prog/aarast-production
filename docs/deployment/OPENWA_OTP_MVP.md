@@ -1,11 +1,24 @@
 # Temporary OpenWA OTP MVP Gate
 
-Snapshot date: 2026-07-12
+Snapshot date: 2026-08-11
 
 This is a temporary, risk-accepted MVP transport. Meta Cloud API remains the
 target production channel. OpenWA is unofficial and may be blocked by WhatsApp;
 it must use a dedicated disposable number and must never be presented as a
 zero-risk replacement for Meta.
+
+## Current Production Exception
+
+The deployed Backend currently reports `AUTH_OTP_MODE=openwa` and remains
+healthy, but no final evidence records the complete real-device OTP delivery and
+verification, history/privacy inspection, disconnect recovery, accelerated
+credential rotation, or 24-hour stability gate below. This is an unaccepted
+operational exception, not proof that OpenWA is production-approved.
+
+Freeze wider OTP and Admin login rollout until the manual acceptance gate passes
+and is recorded. If the gate cannot be completed, switch to `disabled` or the
+approved Meta `whatsapp` channel; do not compensate with development echo codes
+or a mobile fallback.
 
 ## Non-Negotiable Source Gate
 
@@ -37,9 +50,10 @@ zero-risk replacement for Meta.
   after delivery. Deleting a stored row after sending does not satisfy this
   requirement.
 
-Until those gates pass, keep `AUTH_OTP_MODE=disabled` or `whatsapp`. Aarast
-readiness deliberately reports `openwa: down` against an ordinary upstream
-instance.
+The approved steady state before those gates pass is
+`AUTH_OTP_MODE=disabled` or `whatsapp`. The current `openwa` selection is the
+documented exception above and must not be treated as accepted. Aarast readiness
+deliberately reports `openwa: down` against an ordinary upstream instance.
 
 ## Aarast Runtime Contract
 

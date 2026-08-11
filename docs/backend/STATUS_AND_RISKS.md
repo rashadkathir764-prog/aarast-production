@@ -2,8 +2,9 @@
 
 Snapshot date: 2026-08-11
 
-Snapshot source: the checked-out 2026-08-11 release-candidate content. Resolve
-its immutable revision with `git rev-parse HEAD`.
+Snapshot source: the checked-out canonical `main` content after the 2026-08-11
+production deployment and documentation closure. Resolve its immutable
+revision with `git rev-parse HEAD`.
 
 ## Implemented Areas
 
@@ -12,7 +13,7 @@ its immutable revision with `git rev-parse HEAD`.
   WhatsApp OTP delivery, profile, settings, user lookup, and avatar handling.
 - WeddingPlan, onboarding, dashboard summary, money, tasks, timeline, guests,
   sharing, permissions, and notifications.
-- The money contract is being consolidated before launch to one optional
+- The money contract is consolidated before launch around one optional
   general budget, `BudgetCategory`, `WeddingCost`, append-only `CostPayment`,
   and dated `PaymentSchedule`. There are no compatibility endpoints for the
   removed finance models.
@@ -82,13 +83,31 @@ Conversation/media, refresh sessions, and admin report moderation are wired
 through the active schema, modules, routes, clients, and source tests. The local
 Compose runtime includes PostgreSQL, Redis, and MinIO-compatible storage so
 real upload/verify/private-chat and Socket.IO paths are covered by HTTP smoke.
-Production still requires the matching migrations and configuration plus a
-signed physical-device reconnect/logout pass against the deployed environment.
+Production revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` now runs the
+matching schema and configuration. The signed physical-device reconnect/logout,
+OTP, and Push acceptance passes remain open against that deployed environment.
 
 The Backend was rebuilt locally for this snapshot: `/live=200` and
 `/ready=200`, with database, Redis, and media all `up`. This is local runtime
-evidence only; it does not establish a Production deployment or Production
-readiness.
+evidence. Separately, the deployed Backend passed external `/live` and `/ready`,
+all 76 migrations, the exact-image backup/restore rehearsal, and the live
+contributor-history relational postconditions. Those production facts do not
+replace physical-device or external-channel acceptance.
+
+## Production Receipt
+
+- Application revision:
+  `900897a90e8b030c7c3ddfdc55cc2669b64f2e87`.
+- Backend image:
+  `sha256:313e77263d5ed61f1a67f78381e2389a92f61ff1b45eeb33df3822b2ec9dfc1e`.
+- Container health: healthy, zero restarts, no OOM termination at acceptance.
+- Database: all 76 migrations applied; 15 live plans and 15 linked history
+  scopes; zero missing scopes, lifecycle mismatches, missing active tenures, or
+  unfinished migrations.
+- Fresh backup SHA-256:
+  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`;
+  checksum, catalog, isolated restore, second migration pass, schema, and
+  relational postconditions PASS against the exact image.
 
 The verified registration slice also requires the current OTP migration and
 `smoke:auth-verification` against the matching backend image. Live WhatsApp
@@ -99,9 +118,10 @@ template are approved and a real device receives a code.
 
 - Rebuild/restart the exact Docker image and rerun all smoke groups after any
   backend, migration, or media-policy change before claiming runtime readiness.
-- Production admin login remains unavailable until the Meta WhatsApp OTP
-  channel is approved and configured; development echo codes are forbidden in
-  production.
+- Production currently selects the temporary OpenWA OTP channel, but real-device
+  delivery/verification, privacy-history, rotation, recovery, and stability
+  acceptance is not recorded as passed. Freeze wider OTP/admin-login rollout
+  until that gate closes or switch to an approved disabled/Meta channel.
 - Tighten provider quote permissions before broad shared-plan quote decisions.
 - Keep JWT and storage secrets environment-only.
 - Recheck guest read privacy decisions before broad release.
@@ -117,8 +137,8 @@ template are approved and a real device receives a code.
   requests cannot overpay a cost or duplicate ledger rows.
 - Rebuild and repeat `/live` and `/ready` after any backend, dependency, or
   media-policy change. The current local ready result does not replace
-  Production deployment, migration, device, or external-service acceptance
-  evidence.
+  the recorded production receipt, and neither result replaces device or
+  external-service acceptance evidence.
 
 ## Verification
 
@@ -138,8 +158,9 @@ BLOCKED rather than PASS when dependencies are unavailable.
 
 Latest local source evidence on 2026-08-11: `npm run check`, guarded unit tests,
 build, Prisma validation, Phase 0 source guard, managed reference-catalog smoke,
-and managed Admin runtime smoke PASS. Both managed smokes applied all 75
+and managed Admin runtime smoke PASS. Both managed smokes applied all 76
 migrations to disposable databases and cleaned their owned resources. The
-current local rebuilt Backend also reports `/live=200` and `/ready=200`, with
-database, Redis, and media `up`; this is not evidence of a Production publish.
-The Backend production dependency audit reports zero vulnerabilities.
+current local rebuilt Backend reports `/live=200` and `/ready=200`, with
+database, Redis, and media `up`. The independent production receipt above
+records the actual publish and recovery evidence. The Backend production
+dependency audit reports zero vulnerabilities.

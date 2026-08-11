@@ -1,6 +1,6 @@
 # Scope And Phases
 
-Snapshot date: 2026-07-23
+Snapshot date: 2026-08-11
 
 This is the compact phase source. Older phase files were archived during the
 2026-07 documentation consolidation.
@@ -34,12 +34,17 @@ Current implemented scope includes:
   account quota, and abandoned-upload cleanup.
 - Rotating refresh sessions and mobile single-retry behavior.
 
-## Release Validation In Flight
+## Release Validation State
 
 The integrated provider portal, conversation/media, and refresh-session slices
-have local Compose/MinIO-backed smoke coverage. A release claim still requires
-the matching deployed environment plus signed physical-device reconnect,
-secure-storage, and session QA.
+have local Compose/MinIO-backed smoke coverage. The matching Backend/Admin/public
+environment, all migrations, and backup/restore gate are deployed and accepted
+at application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87`.
+
+Release approval still requires signed physical-device reconnect,
+secure-storage, session, OTP, Push, offline/interruption, Android association,
+iOS, Sentry, AAB/store, and store-review evidence as applicable. The deployed
+web/API environment does not imply Mobile store acceptance.
 
 ## Current Phase Discipline
 

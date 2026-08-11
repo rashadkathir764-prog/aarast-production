@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -24,7 +24,9 @@ From `backend/`:
 ```powershell
 npm run check
 npm run build
+npm test
 npm run smoke:all
+npx prisma validate
 ```
 
 Database-writing smoke and load commands are managed by

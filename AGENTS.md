@@ -2,7 +2,7 @@
 
 These rules apply to AI agents and automation working on Aarast / اعّرست.
 
-## Current Agent Checklist - 2026-06-14
+## Current Agent Checklist - 2026-08-11
 
 - Inspect before editing: read the approved docs and confirm the actual code/config state.
 - Do not commit, push, branch, checkout, reset, or create worktrees unless the user explicitly requests Git work.

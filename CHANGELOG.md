@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-11 - Production Deployment, Modernization Closure, And Handoff
+
+- Consolidated the prelaunch money domain around optional general budget,
+  `BudgetCategory`, `WeddingCost`, append-only `CostPayment`, and dated
+  `PaymentSchedule`; removed obsolete debt/expense compatibility surfaces.
+- Completed the current Arabic-first Mobile and Admin hardening wave, including
+  truthful marketplace/loading states, offline ownership and diagnostics,
+  contributor access/history boundaries, account deletion recovery, React
+  Router 7, and zero-finding Backend/Admin dependency audits.
+- Added versioned reference catalogs, typed Yemen geography, contributor-history
+  scope/tenure invariants, and repair migration
+  `20260811180000_backfill_missing_contributor_history_scopes`.
+- Deployed immutable Backend, Admin Web, and fail-closed public-site images at
+  application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` through
+  Dokploy. External API/Admin/public checks passed; all 76 migrations are
+  current and all 15 live plans have linked contributor-history scopes.
+- Verified a fresh custom-format production backup through checksum, catalog,
+  isolated restore against the exact Backend image, an idempotent second
+  migration pass, schema checks, and relational postconditions.
+- Built and verified the signed direct-install Android APK `1.0.0+8` from exact
+  Mobile source revision `2ffbe95d7a8e412ead47220536046501f4ac86bf`; it is
+  non-debuggable and its upload signer matches deployed Android association.
+  It is not a store AAB and does not close physical-device or store gates.
+- Merged the audited remediation and production history-scope hotfix through
+  green CI, removed fully merged temporary branches, and preserved the unique
+  `codex/guest-invitation-campaigns` WIP as a quarantined remote branch plus a
+  verified local bundle.
+- Added `docs/HANDOFF.md` and synchronized active status, Backend risk,
+  deployment, OpenWA, scaling, QA, release, privacy, and store documentation to
+  the observed repository and production state. Archived `.md.txt` material
+  remains historical only.
+
 ## 2026-07-17 - Confirmed WhatsApp OTP And Invite Handoff
 
 - Hardened the private OpenWA delivery contract so Aarast accepts a send only when the transport returns both a non-empty message ID and `deliveryStatus: SENT`; explicit pre-send rejection is separated from an uncertain post-send outcome so valid OTPs are neither consumed early nor reported as definitely delivered.

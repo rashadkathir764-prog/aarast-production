@@ -20,8 +20,9 @@ are reference-only and will be retired with the P2 visual migration.
 1. `README.md`
 2. `AGENTS.md`
 3. `docs/README.md`
-4. `docs/project/STATUS.md`
-5. Area-specific docs below
+4. `docs/HANDOFF.md`
+5. `docs/project/STATUS.md`
+6. Area-specific docs below
 
 When docs and implementation disagree, inspect the current source/config before
 changing behavior.
@@ -36,6 +37,7 @@ changing behavior.
 
 ### Project
 
+- `docs/HANDOFF.md`
 - `docs/project/PRODUCT.md`
 - `docs/project/SCOPE_AND_PHASES.md`
 - `docs/project/STATUS.md`
@@ -92,6 +94,7 @@ changing behavior.
 
 | Area | Source |
 | --- | --- |
+| Project continuation and owner handoff | `docs/HANDOFF.md` |
 | Product identity and exclusions | `docs/project/PRODUCT.md` |
 | Scope and phase discipline | `docs/project/SCOPE_AND_PHASES.md` |
 | Current status | `docs/project/STATUS.md` |

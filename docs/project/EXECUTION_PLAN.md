@@ -217,10 +217,11 @@ macOS remain release gates; they are not recorded as product PASS.
 - Backend check/test/build/Prisma validation, reference-catalog isolated smoke,
   Admin type-check/test/honesty/build/container/runtime smoke, Mobile analysis
   and 1134 tests, documentation sync/verification, and whitespace checks PASS.
-- The reference-catalog and geography migration applies as migration 75 on a
-  fresh disposable PostgreSQL database. Draft edits remain private until
-  publish, rollback republishes history, disable preserves history, and locality
-  changes appear to Mobile only while active.
+- The reference-catalog and geography migration applied as migration 75 at that
+  historical checkpoint. The later history-scope repair is migration 76 and is
+  included in the current full and production gates. Draft edits remain private
+  until publish, rollback republishes history, disable preserves history, and
+  locality changes appear to Mobile only while active.
 - At that checkpoint, local Compose `/ready` returned `503` because the media
   bucket check rejected its credentials. This historical result was closed by
   the 2026-08-11 current-source rebuild described below.

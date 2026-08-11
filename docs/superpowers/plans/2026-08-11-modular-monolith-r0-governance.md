@@ -1204,14 +1204,14 @@ test('application, schema, migration, deployment, and unknown paths fail', () =>
   assert.deepEqual(findUnexpectedPaths([
     'backend/src/auth/auth.service.ts',
     'backend/prisma/schema.prisma',
-    'backend/prisma/migrations/20260101000000_bad/migration.sql',
+    'backend/prisma/migrations/not-a-real-migration/migration.sql',
     'mobile/lib/main.dart',
     'admin-web/src/App.tsx',
     'deploy/compose.yml',
     'unexpected.txt',
   ]), [
     'admin-web/src/App.tsx',
-    'backend/prisma/migrations/20260101000000_bad/migration.sql',
+    'backend/prisma/migrations/not-a-real-migration/migration.sql',
     'backend/prisma/schema.prisma',
     'backend/src/auth/auth.service.ts',
     'deploy/compose.yml',

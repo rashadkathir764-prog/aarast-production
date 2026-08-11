@@ -432,6 +432,73 @@ test('valid configurable export grammar accepts ordered combinators', () => {
   }]);
 });
 
+test('valid immediate import accepts a direct as prefix', () => {
+  assert.deepEqual(parseDartDirectives("import 'a.dart' as prefix;"), [{
+    kind: 'import',
+    uris: ['a.dart'],
+  }]);
+});
+
+test('valid import prefix accepts the typeIdentifier special word dynamic', () => {
+  assert.deepEqual(parseDartDirectives("import 'a.dart' as dynamic;"), [{
+    kind: 'import',
+    uris: ['a.dart'],
+  }]);
+});
+
+test('valid URI test accepts built-in identifier library in a dotted name', () => {
+  assert.deepEqual(parseDartDirectives(
+    "import 'a.dart' if (dart.library.io) 'b.dart';",
+  ), [{
+    kind: 'import',
+    uris: ['a.dart', 'b.dart'],
+  }]);
+});
+
+test('allowed built-in and contextual identifiers remain valid in identifier positions', () => {
+  assert.deepEqual(parseDartDirectives([
+    "import 'a.dart' as async show library, type hide of;",
+    'part of library.of.type;',
+  ].join('\n')), [
+    { kind: 'import', uris: ['a.dart'] },
+    { kind: 'part-of', uris: [], name: 'library.of.type' },
+  ]);
+});
+
+const reservedDirectiveIdentifiers = [
+  {
+    name: 'URI-test first component if',
+    source: "import 'a.dart' if (if.foo) 'smuggled.dart';",
+  },
+  {
+    name: 'URI-test inner component if',
+    source: "import 'a.dart' if (dart.if.foo) 'smuggled.dart';",
+  },
+  { name: 'import prefix if', source: "import 'a.dart' as if;" },
+  { name: 'show name if', source: "import 'a.dart' show if;" },
+  { name: 'hide name if', source: "import 'a.dart' hide if;" },
+  { name: 'name-style part-of if', source: 'part of if.foo;' },
+  {
+    name: 'URI-test first component true',
+    source: "export 'a.dart' if (true.library) 'smuggled.dart';",
+  },
+  {
+    name: 'URI-test inner component null',
+    source: "export 'a.dart' if (dart.null) 'smuggled.dart';",
+  },
+  { name: 'import prefix return', source: "import 'a.dart' as return;" },
+  { name: 'built-in non-type prefix library', source: "import 'a.dart' as library;" },
+  { name: 'show name true', source: "export 'a.dart' show true;" },
+  { name: 'hide name null', source: "export 'a.dart' hide null;" },
+  { name: 'name-style part-of return', source: 'part of return.library;' },
+];
+
+for (const item of reservedDirectiveIdentifiers) {
+  test(`invalid Dart directive identifier fails closed in ${item.name}`, () => {
+    assert.throws(() => parseDartDirectives(item.source), /invalid Dart source/);
+  });
+}
+
 const malformedDirectiveGrammar = [
   "import as 'child.dart';",
   "import deferred as prefix 'child.dart';",

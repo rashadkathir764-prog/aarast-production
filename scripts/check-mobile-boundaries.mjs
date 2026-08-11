@@ -5,6 +5,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const SCHEMA_VERSION = 1;
 const SOURCE_REVISION = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
 const PROJECT_PACKAGE_PREFIX = 'package:aarast_mobile/';
+const DART_RESERVED_WORDS = new Set([
+  'assert', 'break', 'case', 'catch', 'class', 'const', 'continue',
+  'default', 'do', 'else', 'enum', 'extends', 'false', 'final', 'finally',
+  'for', 'if', 'in', 'is', 'new', 'null', 'rethrow', 'return', 'super',
+  'switch', 'this', 'throw', 'true', 'try', 'var', 'void', 'while', 'with',
+]);
+const DART_BUILT_IN_IDENTIFIERS = new Set([
+  'abstract', 'as', 'covariant', 'deferred', 'dynamic', 'export',
+  'external', 'extension', 'factory', 'Function', 'get', 'implements',
+  'import', 'interface', 'late', 'library', 'mixin', 'operator', 'part',
+  'required', 'set', 'static', 'typedef',
+]);
+const DART_CONTEXTUAL_IDENTIFIERS = new Set([
+  'async', 'hide', 'of', 'on', 'show', 'sync', 'await', 'yield', 'type',
+]);
 const RECORD_KINDS = new Set(['core-to-feature', 'direct-cross-feature']);
 const ERROR_KINDS = new Set([
   'unresolved-local-target',
@@ -21,11 +36,31 @@ const RECORD_FIELDS = [
 ];
 
 function isIdentifierStart(character) {
+  // Keep the scanner's existing ASCII lexical surface explicit. Unicode
+  // identifier support would require a separate lexer change and fixtures.
   return character !== undefined && /[A-Za-z_$]/.test(character);
 }
 
 function isIdentifierPart(character) {
   return character !== undefined && /[A-Za-z0-9_$]/.test(character);
+}
+
+function dartIdentifierKind(value) {
+  if (DART_RESERVED_WORDS.has(value)) return 'reserved';
+  if (DART_BUILT_IN_IDENTIFIERS.has(value)) return 'built-in';
+  if (DART_CONTEXTUAL_IDENTIFIERS.has(value)) return 'contextual';
+  return 'ordinary';
+}
+
+function isDartIdentifierToken(token) {
+  return token?.type === 'identifier' && token.identifierKind !== 'reserved';
+}
+
+function isDartTypeIdentifierToken(token) {
+  if (!isDartIdentifierToken(token)) return false;
+  return token.identifierKind === 'ordinary'
+    || token.identifierKind === 'contextual'
+    || token.value === 'dynamic';
 }
 
 function invalidDartSource() {
@@ -195,6 +230,7 @@ function tokenizeDart(sourceText) {
       tokens.push({
         type: 'identifier',
         value: sourceText.slice(start, index),
+        identifierKind: dartIdentifierKind(sourceText.slice(start, index)),
         topLevel,
       });
       continue;
@@ -226,11 +262,11 @@ function readStringLiteral(tokens, start) {
 }
 
 function readDottedIdentifierList(tokens, start) {
-  if (tokens[start]?.type !== 'identifier') return null;
+  if (!isDartIdentifierToken(tokens[start])) return null;
   const values = [tokens[start].value];
   let end = start + 1;
   while (tokens[end]?.value === '.') {
-    if (tokens[end + 1]?.type !== 'identifier') invalidDartSource();
+    if (!isDartIdentifierToken(tokens[end + 1])) invalidDartSource();
     values.push(tokens[end + 1].value);
     end += 2;
   }
@@ -272,10 +308,10 @@ function readCombinators(tokens, start) {
     && (tokens[end].value === 'show' || tokens[end].value === 'hide')
   ) {
     end += 1;
-    if (tokens[end]?.type !== 'identifier') invalidDartSource();
+    if (!isDartIdentifierToken(tokens[end])) invalidDartSource();
     end += 1;
     while (tokens[end]?.value === ',') {
-      if (tokens[end + 1]?.type !== 'identifier') invalidDartSource();
+      if (!isDartIdentifierToken(tokens[end + 1])) invalidDartSource();
       end += 2;
     }
   }
@@ -294,7 +330,7 @@ function parseImportOrExport(kind, body) {
     }
     if (body[end]?.type === 'identifier' && body[end].value === 'as') {
       end += 1;
-      if (body[end]?.type !== 'identifier') invalidDartSource();
+      if (!isDartTypeIdentifierToken(body[end])) invalidDartSource();
       end += 1;
     }
   }

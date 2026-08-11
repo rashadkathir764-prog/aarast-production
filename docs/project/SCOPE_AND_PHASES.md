@@ -39,7 +39,7 @@ Current implemented scope includes:
 The integrated provider portal, conversation/media, and refresh-session slices
 have local Compose/MinIO-backed smoke coverage. The matching Backend/Admin/public
 environment, all migrations, and backup/restore gate are deployed and accepted
-at application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87`.
+at application revision `959c47b756d0bebc3e4e4fda5f81ae3349d05e62`.
 
 Release approval still requires signed physical-device reconnect,
 secure-storage, session, OTP, Push, offline/interruption, Android association,

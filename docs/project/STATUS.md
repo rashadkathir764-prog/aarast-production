@@ -315,7 +315,7 @@ Observed validation for this checkpoint:
   `38/38`, public Docker build/live routes, Compose validation; docs sync and
   verification with zero drift/errors/warnings; and `git diff --check` PASS.
 
-## Post-deployment account-deletion correction - 2026-08-11
+## Account-deletion production correction - 2026-08-11
 
 - A physical Android report exposed one dual-identity defect in the deployed
   revision: an administrator enrolled in the wedding application was projected
@@ -323,7 +323,7 @@ Observed validation for this checkpoint:
   re-read the shared database `role=ADMIN` and returned `403`. The durable
   idempotency reservation then appeared `PENDING`, and an immediate Mobile
   replay could surface `503` while the first reservation was still live.
-- Current source corrects the realm boundary. Ordinary users/providers still
+- Deployed source corrects the realm boundary. Ordinary users/providers still
   delete the complete User graph. A dual administrator/application identity
   deletes only its app credential/profile/data/media, push registration,
   application OTP/idempotency rows and `APPLICATION` sessions; the admin
@@ -336,22 +336,24 @@ Observed validation for this checkpoint:
   migrations, Flutter analysis, 8 focused session-transition tests, and the
   complete `1151/1151` Flutter suite all PASS. Documentation/public-site and
   final diff/secret checks are recorded by the change receipt.
-- This correction is not part of the Production revision recorded below until
-  its branch is reviewed, merged, deployed, and accepted on a physical device.
+- PR `#74` passed all eight GitHub checks and application revision
+  `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` is deployed. The affected
+  physical-device deletion path and administrator-browser survival check remain
+  native acceptance gates.
 
 ## Production Deployment Receipt - 2026-08-11
 
-- Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` is deployed
+- Application revision `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` is deployed
   through Dokploy. Backend, Admin Web, and the public static site are healthy,
   use immutable image IDs, report the same full revision label, and have zero
   restarts and no OOM termination in the acceptance snapshot.
 - A fresh pre-deployment PostgreSQL custom-format backup is retained at the
   production host with SHA-256
-  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`.
+  `1c327dab578ee8879a2dd845f37d8d736dc5e76ad600bfbe3089294d55ff6c82`.
   Its catalog, checksum, full isolated restore, all `76` migrations, second
   idempotent migration pass, schema checks, and relational postconditions PASS
   against the exact deployed Backend image.
-- Production migration status is current. All `15` live wedding plans have one
+- Production migration status is current. All `16` live wedding plans have one
   linked contributor-history scope; there are zero missing scopes, lifecycle
   mismatches, missing contributor tenures, or unfinished migrations.
 - External HTTPS acceptance PASS for Backend `/live` and `/ready`, Admin
@@ -445,7 +447,7 @@ Backend/Admin/public acceptance are complete as recorded above.
 
 The Backend, Admin Web, public static site, database migrations, and production
 backup/restore gate are deployed and accepted at application revision
-`900897a90e8b030c7c3ddfdc55cc2669b64f2e87`. Production operations still have
+`959c47b756d0bebc3e4e4fda5f81ae3349d05e62`. Production operations still have
 explicit notes: `METRICS_TOKEN` and `SENTRY_DSN` are not configured, and no
 Prometheus/Grafana/Alertmanager stack is running.
 

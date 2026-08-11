@@ -294,7 +294,7 @@ launched on a physical Android 16 device
 without a fatal process or SQLite error, but the retained authenticated session
 correctly stopped at the explicit context-load retry state because Production
 then served the old Backend contract. Production revision
-`900897a90e8b030c7c3ddfdc55cc2669b64f2e87` now includes the coordinated
+`959c47b756d0bebc3e4e4fda5f81ae3349d05e62` now includes the coordinated
 contract and all 76 migrations, so the old run is historical and must be
 repeated; it is not retroactive device acceptance. The latest local APK was
 built with private Firebase client inputs without writing their values to

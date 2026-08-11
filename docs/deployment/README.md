@@ -70,12 +70,12 @@ runtime gates.
 ## Latest Production Deployment Receipt - 2026-08-11
 
 Dokploy is running application revision
-`900897a90e8b030c7c3ddfdc55cc2669b64f2e87` with healthy immutable Backend,
+`959c47b756d0bebc3e4e4fda5f81ae3349d05e62` with healthy immutable Backend,
 Admin Web, and public-site images. Their accepted image IDs are:
 
-- Backend: `sha256:313e77263d5ed61f1a67f78381e2389a92f61ff1b45eeb33df3822b2ec9dfc1e`
-- Admin Web: `sha256:38101740ac30a2221c80faebda2560679ff63e8e6ab4baa91c92791634f02f21`
-- public site: `sha256:e1c4554a0bebf3086bfb5979ac5757db2d84862b1a8c5cf165bec79480f825d4`
+- Backend: `sha256:3a2bdd5686077df37bce6f03ea002bb8deec4b6c95e14f91cf2c3e10e937d7bd`
+- Admin Web: `sha256:7a61bdc31f5836b3d3fec753b220410bf867dc362d635f78d65e7239ec7b4ed0`
+- public site: `sha256:b36dd8b52e94e75055484412f0f044acfb40f6e77cd676bbde382b382355850e`
 
 The acceptance snapshot reports zero restarts and no OOM termination. External
 Backend `/live` and `/ready`, Admin `/login`, public privacy/support/invite, and
@@ -83,12 +83,16 @@ Android association checks PASS. Unknown public routes and Apple association
 fail closed with `404`.
 
 The pre-deployment custom-format PostgreSQL backup has SHA-256
-`b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`.
+`1c327dab578ee8879a2dd845f37d8d736dc5e76ad600bfbe3089294d55ff6c82`.
 Checksum, catalog listing, full isolated restore against the exact Backend
 image, all `76` migrations, a second idempotent migration pass, canonical
 schema checks, and contributor-history relational postconditions PASS. The
-live result is 15 plans, 15 linked history scopes, zero missing scopes, zero
+live result is 16 plans, 16 linked history scopes, zero missing scopes, zero
 lifecycle mismatches, zero missing tenures, and zero unfinished migrations.
+
+The protected production release directory contains the previous environment
+and route snapshots plus one old/new immutable-image rollback archive with
+SHA-256 `1b18817397e284703e3c8a24a640d59b58a4d9cdc587dc3e81653633e5c1532e`.
 
 This receipt closes the current Backend/Admin/public deployment and database
 recovery gate. It does not close Mobile physical-device, store signing/upload,
@@ -307,9 +311,10 @@ This APK is a signed direct-install artifact, not a store-approved AAB, and it
 intentionally uses an empty Sentry DSN because live Sentry credentials were not
 available for this local build. It has not completed the live-account
 slow/offline/error/interruption matrix, background/terminated Push, WhatsApp
-OTP, iOS Archive, live symbol upload, or store upload. The later Backend-only
-history-scope hotfix at deployed revision `900897a9` does not change Mobile
-source; the APK provenance remains the exact `2ffbe95d` source revision above.
+OTP, iOS Archive, live symbol upload, or store upload. The current web/API
+deployment at revision `959c47b7` includes later Mobile source corrections but
+does not build or install a native binary; the APK provenance remains the exact
+`2ffbe95d` source revision above.
 
 For an observability-only incident, rebuild the same session-fixed release with
 an empty `AARAST_SENTRY_DSN`. For a session/context regression, halt rollout and
@@ -349,7 +354,7 @@ Android device in both background and terminated states.
 Production now serves Android `assetlinks.json` through the well-known path and
 deliberately returns `404` for Apple `apple-app-site-association`. External TLS,
 headers, expected routes, fail-closed routes, and the current Android upload
-identity passed at revision `900897a9`. Before store release, repeat Android
+identity passed at revision `959c47b7`. Before store release, repeat Android
 association against the final Play signing certificate and replace the Apple
 fail-closed response only after the real Apple Team ID and bundle association
 are known. Do not publish temporary verification identities. Deployed HTTP

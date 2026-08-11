@@ -141,7 +141,7 @@ only from the current 20-row page. Page-local cards are labeled
   exclusion, catalog draft/publish/edit/rollback/disable, and governorate →
   district → locality create/visibility/soft-disable behavior.
 - PASS — deployed Admin container at application revision
-  `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` was healthy with zero restarts and
+  `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` was healthy with zero restarts and
   no OOM termination; external `/login` returned `200`, and Production had all
   76 migrations current. This proves deployment/runtime availability, not a
   completed real-OTP administrator login. OpenWA/Meta acceptance remains an

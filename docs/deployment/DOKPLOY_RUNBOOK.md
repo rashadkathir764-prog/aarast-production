@@ -29,7 +29,7 @@ Dokploy routes, TLS, and post-deploy checks are verified.
 
 ## Current Production Receipt
 
-Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` was accepted
+Application revision `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` was accepted
 on 2026-08-11. Backend, Admin Web, and public-site containers were healthy with
 zero restarts and no OOM termination; external API/Admin/public checks passed;
 all 76 migrations and the exact-image backup/restore rehearsal passed. The

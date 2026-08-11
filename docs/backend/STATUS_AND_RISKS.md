@@ -88,7 +88,7 @@ Conversation/media, refresh sessions, and admin report moderation are wired
 through the active schema, modules, routes, clients, and source tests. The local
 Compose runtime includes PostgreSQL, Redis, and MinIO-compatible storage so
 real upload/verify/private-chat and Socket.IO paths are covered by HTTP smoke.
-Production revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` now runs the
+Production revision `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` now runs the
 matching schema and configuration. The signed physical-device reconnect/logout,
 OTP, and Push acceptance passes remain open against that deployed environment.
 
@@ -102,15 +102,15 @@ replace physical-device or external-channel acceptance.
 ## Production Receipt
 
 - Application revision:
-  `900897a90e8b030c7c3ddfdc55cc2669b64f2e87`.
+  `959c47b756d0bebc3e4e4fda5f81ae3349d05e62`.
 - Backend image:
-  `sha256:313e77263d5ed61f1a67f78381e2389a92f61ff1b45eeb33df3822b2ec9dfc1e`.
+  `sha256:3a2bdd5686077df37bce6f03ea002bb8deec4b6c95e14f91cf2c3e10e937d7bd`.
 - Container health: healthy, zero restarts, no OOM termination at acceptance.
-- Database: all 76 migrations applied; 15 live plans and 15 linked history
+- Database: all 76 migrations applied; 16 live plans and 16 linked history
   scopes; zero missing scopes, lifecycle mismatches, missing active tenures, or
   unfinished migrations.
 - Fresh backup SHA-256:
-  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`;
+  `1c327dab578ee8879a2dd845f37d8d736dc5e76ad600bfbe3089294d55ff6c82`;
   checksum, catalog, isolated restore, second migration pass, schema, and
   relational postconditions PASS against the exact image.
 

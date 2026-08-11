@@ -50,7 +50,7 @@ void main() {
     },
   );
 
-  test('missing capabilities retain the app-level push capability', () {
+  test('missing capabilities fail closed for external delivery', () {
     final settings = UserSettings.fromJson({
       'id': 'settings-1',
       'userId': 'user-1',
@@ -66,7 +66,8 @@ void main() {
     });
 
     expect(settings.channelCapabilities.inAppAvailable, isTrue);
-    expect(settings.channelCapabilities.externalDeliverySupported, isTrue);
+    expect(settings.channelCapabilities.externalDeliverySupported, isFalse);
+    expect(settings.channelCapabilities.push.supported, isFalse);
     expect(
       settings.sameValues(
         settings.copyWith(
@@ -78,6 +79,35 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test('device push requires both server and local Firebase capability', () {
+    final supported = NotificationChannelCapabilities(
+      inApp: NotificationChannelCapabilities.defaults.inApp,
+      push: const NotificationChannelCapability(
+        supported: true,
+        configurable: false,
+        enabled: false,
+      ),
+      sms: NotificationChannelCapabilities.defaults.sms,
+      whatsapp: NotificationChannelCapabilities.defaults.whatsapp,
+      email: NotificationChannelCapabilities.defaults.email,
+    );
+    final unsupported = NotificationChannelCapabilities(
+      inApp: NotificationChannelCapabilities.defaults.inApp,
+      push: NotificationChannelCapability(
+        supported: false,
+        configurable: false,
+        enabled: false,
+      ),
+      sms: NotificationChannelCapabilities.defaults.sms,
+      whatsapp: NotificationChannelCapabilities.defaults.whatsapp,
+      email: NotificationChannelCapabilities.defaults.email,
+    );
+
+    expect(supported.pushAvailableOnDevice(true), isTrue);
+    expect(supported.pushAvailableOnDevice(false), isFalse);
+    expect(unsupported.pushAvailableOnDevice(true), isFalse);
   });
 }
 

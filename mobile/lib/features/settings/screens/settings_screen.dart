@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/push/push_notifications_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -12,7 +13,9 @@ import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.devicePushAvailableOverride});
+
+  final bool? devicePushAvailableOverride;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -55,6 +58,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final provider = context.watch<SettingsProvider>();
     final auth = context.watch<AuthController>();
     final draft = provider.draft;
+    final devicePushAvailable =
+        widget.devicePushAvailableOverride ??
+        _maybeDevicePushAvailable(context);
 
     return AarastPageScaffold(
       title: 'الإعدادات',
@@ -105,6 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             else if (draft != null) ...[
               _NotificationSettingsCard(
                 settings: draft,
+                devicePushAvailable: devicePushAvailable,
                 onChanged: provider.updateDraft,
               ),
               const SizedBox(height: 14),
@@ -193,14 +200,20 @@ class _AccountCard extends StatelessWidget {
 class _NotificationSettingsCard extends StatelessWidget {
   const _NotificationSettingsCard({
     required this.settings,
+    required this.devicePushAvailable,
     required this.onChanged,
   });
 
   final UserSettings settings;
+  final bool devicePushAvailable;
   final ValueChanged<UserSettings> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final push = settings.channelCapabilities.push;
+    final pushAvailable = settings.channelCapabilities.pushAvailableOnDevice(
+      devicePushAvailable,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -224,10 +237,14 @@ class _NotificationSettingsCard extends StatelessWidget {
               key: const Key('settings-external-delivery-status'),
               icon: LucideIcons.bell,
               title: 'إشعارات الجهاز',
-              body: settings.channelCapabilities.push.supported
-                  ? 'متاحة للرسائل والمهام عند السماح بها من إعدادات الجهاز.'
-                  : 'غير متاحة حالياً على هذا الجهاز.',
-              available: settings.channelCapabilities.push.supported,
+              body: !push.supported
+                  ? 'خدمة إشعارات الجهاز غير مفعلة في الخادم حالياً.'
+                  : !devicePushAvailable
+                  ? 'تحتاج نسخة Android مهيأة للإشعارات وإعداد Firebase صالحاً.'
+                  : push.enabled
+                  ? 'مفعلة لهذا الحساب على جهاز مسجل.'
+                  : 'متاحة للرسائل والمهام بعد السماح بها من إعدادات الجهاز.',
+              available: pushAvailable,
             ),
             _SwitchRow(
               key: const Key('settings-task-reminders-switch'),
@@ -379,5 +396,13 @@ class _MessageCard extends StatelessWidget {
         style: TextStyle(color: color, fontWeight: FontWeight.w900),
       ),
     );
+  }
+}
+
+bool _maybeDevicePushAvailable(BuildContext context) {
+  try {
+    return context.watch<PushNotificationsController>().isAvailable;
+  } on ProviderNotFoundException {
+    return false;
   }
 }

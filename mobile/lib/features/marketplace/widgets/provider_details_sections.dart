@@ -14,6 +14,11 @@ class ProviderDetailsSections extends StatefulWidget {
     required this.packages,
     required this.reviews,
     required this.onRequestQuote,
+    this.servicesErrorMessage,
+    this.packagesErrorMessage,
+    this.reviewsErrorMessage,
+    this.isRetryingDetails = false,
+    this.onRetryDetails,
     super.key,
   });
 
@@ -22,6 +27,11 @@ class ProviderDetailsSections extends StatefulWidget {
   final List<ProviderPackage> packages;
   final List<ProviderReview> reviews;
   final ValueChanged<MarketplaceService> onRequestQuote;
+  final String? servicesErrorMessage;
+  final String? packagesErrorMessage;
+  final String? reviewsErrorMessage;
+  final bool isRetryingDetails;
+  final VoidCallback? onRetryDetails;
 
   @override
   State<ProviderDetailsSections> createState() =>
@@ -40,6 +50,9 @@ class _ProviderDetailsSectionsState extends State<ProviderDetailsSections> {
           _ServicesSection(
             services: widget.services,
             onRequestQuote: widget.onRequestQuote,
+            errorMessage: widget.servicesErrorMessage,
+            isRetrying: widget.isRetryingDetails,
+            onRetry: widget.onRetryDetails,
           ),
         ),
         const _SectionDivider(),
@@ -70,11 +83,25 @@ class _ProviderDetailsSectionsState extends State<ProviderDetailsSections> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const _SectionDivider(),
-                    _section(_PackagesSection(packages: widget.packages)),
+                    _section(
+                      _PackagesSection(
+                        packages: widget.packages,
+                        errorMessage: widget.packagesErrorMessage,
+                        isRetrying: widget.isRetryingDetails,
+                        onRetry: widget.onRetryDetails,
+                      ),
+                    ),
                     const _SectionDivider(),
                     _section(_AboutSection(provider: widget.provider)),
                     const _SectionDivider(),
-                    _section(_ReviewsSection(reviews: widget.reviews)),
+                    _section(
+                      _ReviewsSection(
+                        reviews: widget.reviews,
+                        errorMessage: widget.reviewsErrorMessage,
+                        isRetrying: widget.isRetryingDetails,
+                        onRetry: widget.onRetryDetails,
+                      ),
+                    ),
                   ],
                 ),
         ),
@@ -285,10 +312,16 @@ class _ServicesSection extends StatelessWidget {
   const _ServicesSection({
     required this.services,
     required this.onRequestQuote,
+    this.errorMessage,
+    this.isRetrying = false,
+    this.onRetry,
   });
 
   final List<MarketplaceService> services;
   final ValueChanged<MarketplaceService> onRequestQuote;
+  final String? errorMessage;
+  final bool isRetrying;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -301,7 +334,15 @@ class _ServicesSection extends StatelessWidget {
           icon: LucideIcons.sparkles,
         ),
         const SizedBox(height: 14),
-        if (services.isEmpty)
+        if (errorMessage != null) ...[
+          _EditorialRetry(
+            message: errorMessage!,
+            isRetrying: isRetrying,
+            onRetry: onRetry,
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (services.isEmpty && errorMessage == null)
           const _EditorialEmpty(
             icon: LucideIcons.wand,
             title: 'لا توجد خدمات منشورة',
@@ -409,9 +450,17 @@ class _ServiceLine extends StatelessWidget {
 }
 
 class _PackagesSection extends StatelessWidget {
-  const _PackagesSection({required this.packages});
+  const _PackagesSection({
+    required this.packages,
+    this.errorMessage,
+    this.isRetrying = false,
+    this.onRetry,
+  });
 
   final List<ProviderPackage> packages;
+  final String? errorMessage;
+  final bool isRetrying;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -424,7 +473,15 @@ class _PackagesSection extends StatelessWidget {
           icon: LucideIcons.package,
         ),
         const SizedBox(height: 14),
-        if (packages.isEmpty)
+        if (errorMessage != null) ...[
+          _EditorialRetry(
+            message: errorMessage!,
+            isRetrying: isRetrying,
+            onRetry: onRetry,
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (packages.isEmpty && errorMessage == null)
           const _EditorialEmpty(
             icon: LucideIcons.packageOpen,
             title: 'لا توجد باقات منشورة حاليًا.',
@@ -550,9 +607,17 @@ class _FeatureChip extends StatelessWidget {
 }
 
 class _ReviewsSection extends StatelessWidget {
-  const _ReviewsSection({required this.reviews});
+  const _ReviewsSection({
+    required this.reviews,
+    this.errorMessage,
+    this.isRetrying = false,
+    this.onRetry,
+  });
 
   final List<ProviderReview> reviews;
+  final String? errorMessage;
+  final bool isRetrying;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -564,7 +629,15 @@ class _ReviewsSection extends StatelessWidget {
           icon: LucideIcons.star,
         ),
         const SizedBox(height: 14),
-        if (reviews.isEmpty)
+        if (errorMessage != null) ...[
+          _EditorialRetry(
+            message: errorMessage!,
+            isRetrying: isRetrying,
+            onRetry: onRetry,
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (reviews.isEmpty && errorMessage == null)
           const _EditorialEmpty(
             icon: LucideIcons.messageSquare,
             title: 'لا توجد تقييمات بعد.',
@@ -635,6 +708,59 @@ class _ReviewLine extends StatelessWidget {
                 color: AppTheme.textSecondary,
                 height: 1.55,
               ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EditorialRetry extends StatelessWidget {
+  const _EditorialRetry({
+    required this.message,
+    required this.isRetrying,
+    this.onRetry,
+  });
+
+  final String message;
+  final bool isRetrying;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('provider-details-section-error'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.dangerSoft,
+        borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+        border: Border.all(color: AppTheme.danger.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'تعذر تحديث هذا القسم',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppTheme.danger,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: isRetrying ? null : onRetry,
+              icon: const Icon(LucideIcons.refreshCw, size: 16),
+              label: const Text('إعادة المحاولة'),
             ),
           ],
         ],

@@ -95,10 +95,11 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                   label: const Text('تسجيل الدخول'),
                 ),
               )
-            else if (marketplace.errorMessage != null)
+            else if (marketplace.favoriteProvidersErrorMessage != null &&
+                favorites.isEmpty)
               AarastErrorState(
                 title: 'تعذر تحميل المفضلة',
-                message: marketplace.errorMessage!,
+                message: marketplace.favoriteProvidersErrorMessage!,
                 onRetry: _load,
               )
             else if (marketplace.isLoading && favorites.isEmpty)
@@ -121,6 +122,14 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 ),
               )
             else ...[
+              if (marketplace.favoriteProvidersErrorMessage != null) ...[
+                AarastErrorState(
+                  title: 'تعذر تحديث المفضلة',
+                  message: marketplace.favoriteProvidersErrorMessage!,
+                  onRetry: _load,
+                ),
+                const SizedBox(height: 12),
+              ],
               _FavoriteProvidersHero(count: favorites.length),
               const SizedBox(height: 10),
               _ProviderComparePicker(

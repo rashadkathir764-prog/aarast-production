@@ -39,7 +39,8 @@ class OfflineStatusBanner extends StatelessWidget {
         ? 'آخر بيانات محفوظة'
         : 'آخر مزامنة: ${_shortTime(service.lastSyncedAt!)}';
 
-    final canRetry = state == SyncState.syncError || service.blockedCount > 0;
+    final hasBlockedIssues = service.blockedCount > 0;
+    final canRetry = state == SyncState.syncError || hasBlockedIssues;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
       child: Align(
@@ -116,10 +117,19 @@ class OfflineStatusBanner extends StatelessWidget {
                     IconButton(
                       onPressed: service.isSyncing
                           ? null
-                          : service.retryBlockedChanges,
-                      tooltip: 'إعادة محاولة المزامنة',
+                          : hasBlockedIssues
+                          ? () => _showSyncIssues(context, service)
+                          : service.syncPendingChanges,
+                      tooltip: hasBlockedIssues
+                          ? 'عرض تفاصيل المزامنة'
+                          : 'إعادة محاولة المزامنة',
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(LucideIcons.refreshCw, size: 17),
+                      icon: Icon(
+                        hasBlockedIssues
+                            ? LucideIcons.alertCircle
+                            : LucideIcons.refreshCw,
+                        size: 17,
+                      ),
                     ),
                   ],
                 ],
@@ -189,7 +199,7 @@ class OfflineSyncNowTile extends StatelessWidget {
       onTap: service.isSyncing
           ? null
           : service.blockedCount > 0
-          ? service.retryBlockedChanges
+          ? () => _showSyncIssues(context, service)
           : service.syncPendingChanges,
       leading: Container(
         width: 50,
@@ -204,7 +214,7 @@ class OfflineSyncNowTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        service.blockedCount > 0 ? 'إعادة محاولة المزامنة' : 'مزامنة الآن',
+        service.blockedCount > 0 ? 'مراجعة مشاكل المزامنة' : 'مزامنة الآن',
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
@@ -224,6 +234,168 @@ class OfflineSyncNowTile extends StatelessWidget {
       trailing: const Icon(
         LucideIcons.chevronLeft,
         color: AppTheme.textSecondary,
+      ),
+    );
+  }
+}
+
+Future<void> _showSyncIssues(BuildContext context, OfflineSyncService service) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (sheetContext) => _SyncIssuesSheet(service: service),
+  );
+}
+
+class _SyncIssuesSheet extends StatelessWidget {
+  const _SyncIssuesSheet({required this.service});
+
+  final OfflineSyncService service;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      key: const Key('sync-issues-sheet'),
+      heightFactor: 0.82,
+      child: FutureBuilder<List<SyncIssueSummary>>(
+        future: service.loadBlockedIssues(),
+        builder: (context, snapshot) {
+          final issues = snapshot.data ?? const <SyncIssueSummary>[];
+          final retryableCount = issues.where((issue) => issue.canRetry).length;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'تفاصيل المزامنة',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'إغلاق',
+                      icon: const Icon(LucideIcons.x),
+                    ),
+                  ],
+                ),
+                Text(
+                  'هذه التغييرات ما زالت محفوظة على جهازك ولم يقبلها الخادم بعد.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: switch (snapshot.connectionState) {
+                    ConnectionState.waiting => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    _ when snapshot.hasError => Center(
+                      child: Text(
+                        'تعذر تحميل تفاصيل المزامنة الآن.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    _ when issues.isEmpty => Center(
+                      child: Text(
+                        'لا توجد تغييرات محجوبة حاليًا.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    _ => ListView.separated(
+                      itemCount: issues.length,
+                      separatorBuilder: (_, _) => const Divider(height: 24),
+                      itemBuilder: (context, index) {
+                        final issue = issues[index];
+                        return Semantics(
+                          container: true,
+                          label:
+                              '${issue.entityLabel}. ${issue.operationLabel}. ${issue.message}',
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                LucideIcons.alertCircle,
+                                color: AarastV3Color.danger,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      issue.entityLabel,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: AppTheme.textPrimary,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                    ),
+                                    Text(
+                                      issue.operationLabel,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: AppTheme.textSecondary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      issue.message,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppTheme.textSecondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  },
+                ),
+                if (snapshot.hasData && retryableCount > 0) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    key: const Key('sync-issues-retry'),
+                    onPressed: service.isSyncing
+                        ? null
+                        : () async {
+                            Navigator.of(context).pop();
+                            await service.retryBlockedChanges();
+                          },
+                    icon: const Icon(LucideIcons.refreshCw, size: 18),
+                    label: Text(
+                      retryableCount == 1
+                          ? 'إعادة محاولة هذا التغيير'
+                          : 'إعادة محاولة $retryableCount تغييرات',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }

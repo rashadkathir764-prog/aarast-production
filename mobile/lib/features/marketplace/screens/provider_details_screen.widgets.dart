@@ -13,6 +13,18 @@ Future<void> _shareProvider(
   AarastToast.showSuccess(context, 'تم نسخ بيانات المورد للمشاركة');
 }
 
+String _primaryQuoteActionLabel(QuoteRequest? quote) {
+  if (quote == null) return 'طلب عرض سعر';
+  if (quote.status == 'SENT' || quote.status == 'VIEWED') {
+    return 'متابعة الطلب الحالي';
+  }
+  if (quote.status == 'RESPONDED') {
+    return quote.hasExpiredOffer ? 'طلب عرض جديد' : 'مراجعة العرض';
+  }
+  if (quote.status == 'ACCEPTED') return 'عرض المورد في الخطة';
+  return 'طلب عرض جديد';
+}
+
 class _ContactIconButton extends StatelessWidget {
   const _ContactIconButton({required this.onTap, super.key});
 

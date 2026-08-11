@@ -137,6 +137,32 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('provider details retry is disabled while its refresh runs', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final marketplace = _FakeMarketplaceProvider(
+        detailsLoading: true,
+        servicesError: 'تعذر تحميل الخدمات.',
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: marketplace,
+          child: const MaterialApp(
+            home: ProviderDetailsScreen(providerId: _providerId),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final retry = find.widgetWithText(OutlinedButton, 'إعادة المحاولة');
+      expect(retry, findsOneWidget);
+      expect(tester.widget<OutlinedButton>(retry).onPressed, isNull);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('provider details CTA follows the latest quote lifecycle', (
       tester,
     ) async {
@@ -529,12 +555,18 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   _FakeMarketplaceProvider({
     bool isSubmitting = false,
     List<QuoteRequest> quotes = const [],
+    bool detailsLoading = false,
+    String? servicesError,
   }) : _quotes = quotes,
        _isSubmitting = isSubmitting,
+       _detailsLoading = detailsLoading,
+       _servicesError = servicesError,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final bool _isSubmitting;
   final List<QuoteRequest> _quotes;
+  final bool _detailsLoading;
+  final String? _servicesError;
   int toggleFavoriteCallCount = 0;
 
   @override
@@ -572,6 +604,12 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   List<ProviderReview> reviewsFor(String id) => const [];
+
+  @override
+  String? servicesErrorFor(String providerId) => _servicesError;
+
+  @override
+  bool isProviderQuoteContextLoading(String providerId) => _detailsLoading;
 
   @override
   List<QuoteRequest> quotesForProvider(String providerId) => _quotes;

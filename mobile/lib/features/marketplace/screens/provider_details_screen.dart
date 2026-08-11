@@ -159,17 +159,24 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           final services = state.servicesFor(widget.providerId);
           final packages = state.packagesFor(widget.providerId);
           final reviews = state.reviewsFor(widget.providerId);
+          final servicesError = state.servicesErrorFor(widget.providerId);
+          final packagesError = state.packagesErrorFor(widget.providerId);
+          final reviewsError = state.reviewsErrorFor(widget.providerId);
+          final detailsError = state.detailsErrorFor(widget.providerId);
+          final detailsLoading = state.isProviderQuoteContextLoading(
+            widget.providerId,
+          );
 
-          if (state.isLoading && provider == null) {
+          if (detailsLoading && provider == null) {
             return AarastSkeleton.page(heroHeight: 220, tiles: 3, cards: 2);
           }
 
-          if (state.errorMessage != null && provider == null) {
+          if (detailsError != null && provider == null) {
             return _DetailsFrame(
               child: AarastEmptyState(
                 icon: LucideIcons.alertCircle,
                 title: 'تعذر فتح المورد',
-                message: state.errorMessage!,
+                message: detailsError,
                 action: OutlinedButton.icon(
                   onPressed: () => state.loadProviderDetails(
                     widget.providerId,
@@ -214,6 +221,15 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             onRequestQuote: (service) => _pushOnce(
               AppRouter.providerQuote(provider.id),
               extra: service.id,
+            ),
+            servicesErrorMessage: servicesError,
+            packagesErrorMessage: packagesError,
+            reviewsErrorMessage: reviewsError,
+            detailsErrorMessage: detailsError,
+            isRetryingDetails: detailsLoading,
+            onRetryDetails: () => state.loadProviderDetails(
+              widget.providerId,
+              weddingPlanId: selectedPlanId,
             ),
           );
         },
@@ -261,18 +277,6 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       return null;
     }
     return selectedPlanId;
-  }
-
-  String _primaryQuoteActionLabel(QuoteRequest? quote) {
-    if (quote == null) return 'طلب عرض سعر';
-    if (quote.status == 'SENT' || quote.status == 'VIEWED') {
-      return 'متابعة الطلب الحالي';
-    }
-    if (quote.status == 'RESPONDED') {
-      return quote.hasExpiredOffer ? 'طلب عرض جديد' : 'مراجعة العرض';
-    }
-    if (quote.status == 'ACCEPTED') return 'عرض المورد في الخطة';
-    return 'طلب عرض جديد';
   }
 
   Future<T?> _pushOnce<T>(String location, {Object? extra}) async {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/diagnostics/diagnostic_report_sender.dart';
+import '../../../core/push/push_notifications_controller.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
@@ -11,10 +12,14 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 
 class SupportScreen extends StatelessWidget {
-  const SupportScreen({super.key});
+  const SupportScreen({super.key, this.devicePushAvailableOverride});
+
+  final bool? devicePushAvailableOverride;
 
   @override
   Widget build(BuildContext context) {
+    final devicePushAvailable =
+        devicePushAvailableOverride ?? _maybeDevicePushAvailable(context);
     return AarastPageScaffold(
       title: 'الدعم والمساعدة',
       subtitle: 'إرشادات آمنة وحلول سريعة داخل أعرست',
@@ -23,7 +28,7 @@ class SupportScreen extends StatelessWidget {
         children: AarastStagger.children(context, [
           const _SafetyStrip(),
           const SizedBox(height: 12),
-          const _QuickHelpCard(),
+          _QuickHelpCard(devicePushAvailable: devicePushAvailable),
           const SizedBox(height: 12),
           AarastCard(
             padding: EdgeInsets.zero,
@@ -199,7 +204,9 @@ class _DiagnosticReportCardState extends State<_DiagnosticReportCard> {
 }
 
 class _QuickHelpCard extends StatelessWidget {
-  const _QuickHelpCard();
+  const _QuickHelpCard({required this.devicePushAvailable});
+
+  final bool devicePushAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +216,7 @@ class _QuickHelpCard extends StatelessWidget {
       border: Border.all(color: AppTheme.brandMuted.withAlpha(80)),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -224,8 +231,9 @@ class _QuickHelpCard extends StatelessWidget {
             ),
             _HelpTile(
               question: 'لماذا لا تصلني التنبيهات؟',
-              answer:
-                  'افتح الإعدادات واختر أنواع التذكير التي تريدها. التنبيهات متاحة داخل التطبيق، أما إشعارات الجهاز والرسائل النصية وواتساب والبريد الإلكتروني فليست متاحة حالياً.',
+              answer: devicePushAvailable
+                  ? 'التنبيهات داخل التطبيق متاحة، ونسخة Android هذه مهيأة لإشعارات الجهاز. تحقق من سماح النظام ومن تفعيل خدمة الإرسال في الخادم. الرسائل النصية وواتساب والبريد الإلكتروني ليست قنوات تنبيه مدعومة حالياً.'
+                  : 'التنبيهات داخل التطبيق متاحة. إشعارات الجهاز تحتاج نسخة Android مهيأة وإعداد Firebase صالحاً مع تفعيل خدمة الإرسال في الخادم. الرسائل النصية وواتساب والبريد الإلكتروني ليست قنوات تنبيه مدعومة حالياً.',
             ),
             _HelpTile(
               question: 'لماذا لا تظهر الخطة المشتركة؟',
@@ -241,6 +249,14 @@ class _QuickHelpCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+bool _maybeDevicePushAvailable(BuildContext context) {
+  try {
+    return context.watch<PushNotificationsController>().isAvailable;
+  } on ProviderNotFoundException {
+    return false;
   }
 }
 

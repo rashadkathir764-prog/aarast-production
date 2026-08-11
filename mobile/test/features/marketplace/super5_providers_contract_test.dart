@@ -725,6 +725,33 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'marketplace discloses stale favorites and suppresses their current count',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        providers: [_provider(id: 'provider-1', businessName: 'قاعة السلام')],
+        favoriteProviderIds: const {'provider-1'},
+        favoriteProvidersError: 'تعذر تحميل المحفوظات.',
+      );
+
+      await _pumpMarketplace(tester, state, authenticated: true);
+
+      expect(
+        find.byKey(const Key('marketplace-favorites-stale-warning')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('علامات القلب'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('favorite-providers-action')),
+          matching: find.text('1'),
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 Future<void> _expandQuoteInbox(WidgetTester tester) async {
@@ -913,6 +940,8 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     bool hasMoreProviders = false,
     bool isLoading = false,
     String search = '',
+    Set<String> favoriteProviderIds = const {},
+    String? favoriteProvidersError,
   }) : providersData = providers,
        categoriesData = categories,
        quoteRequestsData = quoteRequests,
@@ -922,6 +951,8 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
        hasMoreProvidersData = hasMoreProviders,
        isLoadingData = isLoading,
        _search = search,
+       favoriteProviderIdsData = favoriteProviderIds,
+       favoriteProvidersErrorData = favoriteProvidersError,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<MarketplaceProvider> providersData;
@@ -932,6 +963,8 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   bool isLoadingData;
   ProviderBudgetMatchIntent? budgetMatchIntentData;
   List<MarketplaceService> budgetMatchedServicesData;
+  final Set<String> favoriteProviderIdsData;
+  final String? favoriteProvidersErrorData;
 
   bool _includeAccountData = true;
   bool? lastIncludeAccountData;
@@ -972,7 +1005,10 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   bool get hasMoreProviders => hasMoreProvidersData;
 
   @override
-  Set<String> get favoriteProviderIds => const {};
+  Set<String> get favoriteProviderIds => favoriteProviderIdsData;
+
+  @override
+  String? get favoriteProvidersErrorMessage => favoriteProvidersErrorData;
 
   @override
   List<QuoteRequest> get quoteRequests => quoteRequestsData;

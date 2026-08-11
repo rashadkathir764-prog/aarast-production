@@ -70,6 +70,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'a failed services refresh shows a retry state instead of an empty catalog',
+    (tester) async {
+      var retryCalls = 0;
+
+      await _pumpView(
+        tester,
+        servicesErrorMessage: 'تعذر تحميل الخدمات.',
+        onRetryDetails: () => retryCalls++,
+      );
+
+      expect(find.text('تعذر تحديث هذا القسم'), findsOneWidget);
+      expect(find.text('تعذر تحميل الخدمات.'), findsOneWidget);
+      expect(find.text('لا توجد خدمات منشورة'), findsNothing);
+
+      await tester.tap(find.text('إعادة المحاولة'));
+      expect(retryCalls, 1);
+    },
+  );
+
   testWidgets('show all opens the complete swipeable provider gallery', (
     tester,
   ) async {
@@ -137,6 +157,10 @@ Future<void> _pumpView(
   VoidCallback? onShare,
   VoidCallback? onFavorite,
   ValueChanged<MarketplaceService>? onRequestQuote,
+  String? servicesErrorMessage,
+  String? packagesErrorMessage,
+  String? reviewsErrorMessage,
+  VoidCallback? onRetryDetails,
   double width = 390,
   double height = 1400,
   double textScale = 1,
@@ -167,6 +191,10 @@ Future<void> _pumpView(
             onShare: onShare ?? () {},
             onFavorite: onFavorite ?? () {},
             onRequestQuote: onRequestQuote ?? (_) {},
+            servicesErrorMessage: servicesErrorMessage,
+            packagesErrorMessage: packagesErrorMessage,
+            reviewsErrorMessage: reviewsErrorMessage,
+            onRetryDetails: onRetryDetails,
           ),
         ),
       ),

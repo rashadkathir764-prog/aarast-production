@@ -19,6 +19,12 @@ class ProviderDetailsView extends StatelessWidget {
     required this.onShare,
     required this.onFavorite,
     required this.onRequestQuote,
+    this.servicesErrorMessage,
+    this.packagesErrorMessage,
+    this.reviewsErrorMessage,
+    this.detailsErrorMessage,
+    this.isRetryingDetails = false,
+    this.onRetryDetails,
     super.key,
   });
 
@@ -31,6 +37,12 @@ class ProviderDetailsView extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onFavorite;
   final ValueChanged<MarketplaceService> onRequestQuote;
+  final String? servicesErrorMessage;
+  final String? packagesErrorMessage;
+  final String? reviewsErrorMessage;
+  final String? detailsErrorMessage;
+  final bool isRetryingDetails;
+  final VoidCallback? onRetryDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +70,12 @@ class ProviderDetailsView extends StatelessWidget {
           onShare: onShare,
           onFavorite: onFavorite,
         ),
+        if (detailsErrorMessage != null)
+          _ProviderDetailsStaleWarning(
+            message: detailsErrorMessage!,
+            isRetrying: isRetryingDetails,
+            onRetry: onRetryDetails,
+          ),
         DecoratedBox(
           decoration: const BoxDecoration(color: AppTheme.canvas),
           child: Column(
@@ -85,11 +103,84 @@ class ProviderDetailsView extends StatelessWidget {
                 packages: packages,
                 reviews: reviews,
                 onRequestQuote: onRequestQuote,
+                servicesErrorMessage: servicesErrorMessage,
+                packagesErrorMessage: packagesErrorMessage,
+                reviewsErrorMessage: reviewsErrorMessage,
+                isRetryingDetails: isRetryingDetails,
+                onRetryDetails: onRetryDetails,
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProviderDetailsStaleWarning extends StatelessWidget {
+  const _ProviderDetailsStaleWarning({
+    required this.message,
+    required this.isRetrying,
+    this.onRetry,
+  });
+
+  final String message;
+  final bool isRetrying;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('provider-details-stale-warning'),
+      margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.dangerSoft,
+        borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+        border: Border.all(color: AppTheme.danger.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                LucideIcons.alertCircle,
+                size: 19,
+                color: AppTheme.danger,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'تعذر تحديث بيانات المورد',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.danger,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.textSecondary,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 9),
+            OutlinedButton.icon(
+              onPressed: isRetrying ? null : onRetry,
+              icon: const Icon(LucideIcons.refreshCw, size: 16),
+              label: const Text('إعادة المحاولة'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -212,6 +212,20 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   const SizedBox(height: 12),
                   const _LoginRequiredCard(),
                 ],
+                if (provider.includesAccountData &&
+                    provider.favoriteProvidersErrorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  KeyedSubtree(
+                    key: const Key('marketplace-favorites-stale-warning'),
+                    child: _ErrorCard(
+                      title: 'تعذر تحديث المحفوظات',
+                      message:
+                          'نعرض آخر حالة محفوظة مؤقتًا؛ قد تكون أرقام الحفظ '
+                          'وعلامات القلب أدناه قديمة حتى تنجح إعادة المحاولة.',
+                      onRetry: provider.loadMarketplace,
+                    ),
+                  ),
+                ],
                 if (prioritizeOpenDecisions && quoteRequests.isNotEmpty)
                   ..._offersInboxSection(provider, quoteRequests),
                 const SizedBox(height: 14),

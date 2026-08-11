@@ -16,6 +16,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resultCount = provider.totalProviders;
+    final favoritesAreStale = provider.favoriteProvidersErrorMessage != null;
     return Container(
       padding: const EdgeInsets.all(AarastV3Space.x4),
       decoration: BoxDecoration(
@@ -56,7 +57,9 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                       key: const Key('favorite-providers-action'),
                       icon: LucideIcons.heart,
                       tooltip: 'الموردون المحفوظون',
-                      badgeValue: provider.favoriteProviderIds.length,
+                      badgeValue: favoritesAreStale
+                          ? 0
+                          : provider.favoriteProviderIds.length,
                       onTap: onOpenFavorites,
                     ),
                     _MarketplaceHeaderAction(
@@ -91,7 +94,9 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                 if (provider.includesAccountData)
                   _MarketplaceMiniMetric(
                     label: 'محفوظ',
-                    value: '${provider.favoriteProviderIds.length}',
+                    value: favoritesAreStale
+                        ? '—'
+                        : '${provider.favoriteProviderIds.length}',
                     accent: AarastV3Color.rose,
                   ),
               ],

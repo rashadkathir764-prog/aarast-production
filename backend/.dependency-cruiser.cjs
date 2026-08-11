@@ -68,7 +68,7 @@ module.exports = {
       name: 'shared-kernel-is-foundational',
       severity: 'error',
       from: { path: '^src/shared-kernel(?:/|$)' },
-      to: { path: '^src/(?:platform|modules)(?:/|$)' },
+      to: { path: `^src/(?:platform|${allBusinessPaths})(?:/|$)` },
     },
   ],
   options: {

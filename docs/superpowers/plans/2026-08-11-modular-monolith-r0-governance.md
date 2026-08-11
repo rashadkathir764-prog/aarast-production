@@ -457,6 +457,21 @@ test('mixed legacy/future internal edges and platform-to-future edges fail', () 
   assert.match(output, /context-tasks-cross-context/);
   assert.match(output, /current-platform-no-business-contexts/);
 });
+
+test('shared kernel cannot import a legacy business context', () => {
+  const root = fixtureRoot();
+  const baseline = path.join(root, 'known.json');
+  write(root, 'src/shared-kernel/seed.ts', 'export const seed = true;\n');
+  const generated = cruise(root, [
+    '--config', configPath, '--output-type', 'baseline', '--output-to', baseline, 'src',
+  ]);
+  assert.equal(generated.status, 0, generated.stderr || generated.stdout);
+  write(root, 'src/auth/legacy.ts', 'export const legacyAuth = true;\n');
+  write(root, 'src/shared-kernel/bad.ts', "import '../auth/legacy';\n");
+  const result = cruise(root, ['--config', configPath, '--ignore-known', baseline, 'src']);
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}\n${result.stderr}`, /shared-kernel-is-foundational/);
+});
 ```
 
 - [ ] **Step 3: Run the focused regression test and verify failure**
@@ -558,7 +573,7 @@ module.exports = {
       name: 'shared-kernel-is-foundational',
       severity: 'error',
       from: { path: '^src/shared-kernel(?:/|$)' },
-      to: { path: '^src/(?:platform|modules)(?:/|$)' },
+      to: { path: `^src/(?:platform|${allBusinessPaths})(?:/|$)` },
     },
   ],
   options: {
@@ -576,7 +591,7 @@ module.exports = {
 node --test -r ts-node/register test/architecture-dependencies.test.ts
 ```
 
-Expected: all four fixture tests PASS: known/new edge behavior, new cycle rejection, allowed legacy-to-future-public consumption, and rejection of future-to-legacy, legacy-to-future-internal, and platform-to-future edges.
+Expected: all five fixture tests PASS: known/new edge behavior, new cycle rejection, allowed legacy-to-future-public consumption, rejection of future-to-legacy, legacy-to-future-internal, and platform-to-future edges, and rejection of shared-kernel imports from legacy business roots.
 
 - [ ] **Step 7: Prove the strict rules see current violations**
 
@@ -1550,7 +1565,7 @@ When those external checks are green, close R0 in the PR/review workflow without
 - [ ] Placeholder scan: no unfinished marker, deferred-implementation phrase, unspecified error handling, or unnamed test remains.
 - [ ] Type consistency: ownership and Mobile baseline keys use repository-relative paths and counted records; removal is allowed and addition/increase fails.
 - [ ] Dependency-baseline semantics: dependency-cruiser freezes unique `rule|from|to` edges, and temporary fixtures prove a known edge is ignored while a new edge/cycle fails.
-- [ ] Mixed-layout dependency coverage: legacy/future edges in both directions and platform-to-future edges are tested; only another context's future `public/` target is allowed.
+- [ ] Mixed-layout dependency coverage: legacy/future edges in both directions and platform-to-future edges are tested; only another context's future `public/` target is allowed, and shared-kernel cannot import any legacy or future business context.
 - [ ] Ownership completeness: live registry roots are unique/complete; root delegates, relation reads/writes including `_count`, direct/nested/joined SQL, CTEs, value interpolation, dynamic identifiers, and unknown SQL statements each have named tests.
 - [ ] Symbol integrity: Nest decorators/functions and dynamic-module receivers are resolved to declarations; alias/namespace spelling cannot bypass the gate.
 - [ ] Mobile grammar: bare/dot/package URIs, import/export/conditional/part directives, unresolved local targets, reciprocity, and cross-area parts each have named tests.

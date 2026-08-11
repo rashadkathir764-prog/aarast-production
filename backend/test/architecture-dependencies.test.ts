@@ -115,3 +115,18 @@ test('mixed legacy/future internal edges and platform-to-future edges fail', () 
   assert.match(output, /context-tasks-cross-context/);
   assert.match(output, /current-platform-no-business-contexts/);
 });
+
+test('shared kernel cannot import a legacy business context', () => {
+  const root = fixtureRoot();
+  const baseline = path.join(root, 'known.json');
+  write(root, 'src/shared-kernel/seed.ts', 'export const seed = true;\n');
+  const generated = cruise(root, [
+    '--config', configPath, '--output-type', 'baseline', '--output-to', baseline, 'src',
+  ]);
+  assert.equal(generated.status, 0, generated.stderr || generated.stdout);
+  write(root, 'src/auth/legacy.ts', 'export const legacyAuth = true;\n');
+  write(root, 'src/shared-kernel/bad.ts', "import '../auth/legacy';\n");
+  const result = cruise(root, ['--config', configPath, '--ignore-known', baseline, 'src']);
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}\n${result.stderr}`, /shared-kernel-is-foundational/);
+});

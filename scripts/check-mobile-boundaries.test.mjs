@@ -439,11 +439,20 @@ test('valid immediate import accepts a direct as prefix', () => {
   }]);
 });
 
-test('valid import prefix accepts the typeIdentifier special word dynamic', () => {
-  assert.deepEqual(parseDartDirectives("import 'a.dart' as dynamic;"), [{
-    kind: 'import',
-    uris: ['a.dart'],
-  }]);
+test('built-in dynamic is rejected as an import prefix', () => {
+  assert.throws(
+    () => parseDartDirectives("import 'a.dart' as dynamic;"),
+    /invalid Dart source/,
+  );
+});
+
+test('rejected dynamic prefix cannot smuggle configurable URIs or combinators', () => {
+  assert.throws(
+    () => parseDartDirectives(
+      "import 'primary.dart' if (dart.library.io) 'smuggled.dart' as dynamic show Thing;",
+    ),
+    /invalid Dart source/,
+  );
 });
 
 for (const prefix of ['type', 'base', 'sealed', 'when']) {
@@ -491,6 +500,16 @@ test('built-in type remains valid in general identifier positions', () => {
   ].join('\n')), [
     { kind: 'export', uris: ['a.dart', 'b.dart'] },
     { kind: 'part-of', uris: [], name: 'type.library' },
+  ]);
+});
+
+test('built-in dynamic remains valid in general identifier positions', () => {
+  assert.deepEqual(parseDartDirectives([
+    "export 'a.dart' if (dart.dynamic.enabled) 'b.dart' show dynamic;",
+    'part of dynamic.library;',
+  ].join('\n')), [
+    { kind: 'export', uris: ['a.dart', 'b.dart'] },
+    { kind: 'part-of', uris: [], name: 'dynamic.library' },
   ]);
 });
 

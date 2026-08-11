@@ -61,7 +61,6 @@ function isDartTypeIdentifierToken(token) {
   if (!isDartIdentifierToken(token)) return false;
   return token.identifierKind === 'ordinary'
     || token.identifierKind === 'contextual'
-    || token.value === 'dynamic'
     // Dart 3.11.5 accepts `type` as an import prefix even though the current
     // keywords reference classifies it as a built-in identifier.
     || token.value === 'type';

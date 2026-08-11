@@ -4131,6 +4131,18 @@
       "count": 1
     },
     {
+      "key": "backend/src/users/users.service.ts|identity||<dynamic>|$queryRaw|unknown|sql|unknown-sql-composition",
+      "file": "backend/src/users/users.service.ts",
+      "context": "identity",
+      "owner": null,
+      "model": "<dynamic>",
+      "operation": "$queryRaw",
+      "mode": "unknown",
+      "source": "sql",
+      "reason": "unknown-sql-composition",
+      "count": 2
+    },
+    {
       "key": "backend/src/users/users.service.ts|identity||<dynamic>|deleteMany|unknown|relation|unknown-relation-shape",
       "file": "backend/src/users/users.service.ts",
       "context": "identity",

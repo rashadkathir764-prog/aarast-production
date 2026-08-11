@@ -138,6 +138,42 @@ function pick(record: OwnershipRecord) {
   };
 }
 
+function exactRecord(record: OwnershipRecord) {
+  return {
+    file: record.file,
+    model: record.model,
+    owner: record.owner,
+    operation: record.operation,
+    mode: record.mode,
+    source: record.source,
+    reason: record.reason ?? null,
+    count: record.count ?? 1,
+  };
+}
+
+function assertExactRecords(
+  records: OwnershipRecord[],
+  expected: ReturnType<typeof exactRecord>[],
+) {
+  const order = (left: ReturnType<typeof exactRecord>, right: ReturnType<typeof exactRecord>) => (
+    JSON.stringify(left).localeCompare(JSON.stringify(right))
+  );
+  assert.deepEqual(records.map(exactRecord).sort(order), [...expected].sort(order));
+}
+
+function ownershipKey(record: OwnershipRecord) {
+  return [
+    record.file,
+    record.context,
+    record.owner ?? '',
+    record.model,
+    record.operation,
+    record.mode,
+    record.source,
+    record.reason,
+  ].join('|');
+}
+
 function assertRecord(
   records: OwnershipRecord[],
   expected: ReturnType<typeof pick>,
@@ -179,7 +215,8 @@ test('schema metadata records relation targets, list/optional flags, and names',
     model Parent {
       id       String  @id
       children Child[] @relation("Family")
-      favorite Child?  @relation("Favorite")
+      favorite Child?  @relation(name: "Favorite", fields: [favoriteId], references: [id])
+      favoriteId String?
     }
     model Child {
       id String @id
@@ -250,6 +287,54 @@ test('delegate roots use generated symbols and classify local and foreign access
     file: 'backend/src/money/root.ts', model: 'WeddingPlan', owner: 'planning', mode: 'write',
     source: 'delegate', reason: 'foreign-model',
   });
+});
+
+test('nested delegate calls inside Prisma arguments and SQL interpolations are counted once', () => {
+  const options = fixtureProject({
+    'money/nested-delegates.ts': prismaFixture([
+      'await prisma.weddingCost.findMany({',
+      '  where: { id: { in: (await prisma.weddingPlan.findMany({ select: { id: true } })).map((plan) => plan.id) } },',
+      '});',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "WeddingCost" WHERE "id" = ${',
+      '  await prisma.weddingPlan.findUnique({ where: { id: "p" } })',
+      '}`);',
+    ].join('\n')),
+  });
+  assertExactRecords(scanOwnershipViolations(options), [
+    {
+      file: 'backend/src/money/nested-delegates.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/money/nested-delegates.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'findUnique', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+  ]);
+});
+
+test('delegate provenance follows generated symbols rather than misleading local type names', () => {
+  const options = fixtureProject({
+    'auth/delegate-provenance.ts': prismaFixture([
+      'await misleading.findUnique({ where: { id: "spoof" } });',
+      'await aliased.findUnique({ where: { id: "alias" } });',
+      'await tx.weddingPlan.findUnique({ where: { id: "transaction" } });',
+    ].join('\n'), [
+      'interface UserDelegate extends Prisma.WeddingPlanDelegate {}',
+      'declare const misleading: UserDelegate;',
+      'type RealPlanAlias = Prisma.WeddingPlanDelegate;',
+      'declare const aliased: RealPlanAlias;',
+    ].join('\n')),
+  });
+  assertExactRecords(scanOwnershipViolations(options), [
+    {
+      file: 'backend/src/auth/delegate-provenance.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'findUnique', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 3,
+    },
+  ]);
+  assert.equal(
+    classifyOwnershipAccesses(options).some((record) => record.model === 'User'),
+    false,
+  );
 });
 
 test('relation include, nested select, nested write, filter, and orderBy switch owners', () => {
@@ -431,6 +516,155 @@ test('raw SQL unresolved Sql composition fails closed without hiding resolvable 
   });
 });
 
+test('Prisma.join distinguishes unknown inputs, mutable SQL arrays, readonly SQL tuples, and scalar arrays', () => {
+  const options = fixtureProject({
+    'admin/join-any.ts': prismaFixture(
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "User" WHERE ${Prisma.join(anyFragments)}`);',
+      'declare const anyFragments: any;',
+    ),
+    'admin/join-unknown.ts': prismaFixture(
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "User" WHERE ${Prisma.join(unknownFragments)}`);',
+      'declare const unknownFragments: unknown;',
+    ),
+    'admin/join-mutable-sql.ts': prismaFixture([
+      'const mutableFragments: Prisma.Sql[] = [Prisma.sql`SELECT 1 FROM "WeddingPlan"`];',
+      'mutableFragments.push(Prisma.sql`SELECT 1 FROM "User"`);',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "ChatMessage" WHERE ${Prisma.join(mutableFragments)}`);',
+    ].join('\n')),
+    'admin/join-static-sql.ts': prismaFixture([
+      'const fragments = [',
+      '  Prisma.sql`SELECT * FROM "WeddingPlan"`,',
+      '  Prisma.sql`SELECT * FROM "User"`,',
+      '] as const;',
+      'await prisma.$queryRaw(Prisma.sql`${Prisma.join(fragments, " UNION ALL ")}`);',
+    ].join('\n')),
+    'admin/join-scalars.ts': prismaFixture([
+      'const planIds: string[] = ["p-1", "p-2"];',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "WeddingPlan" WHERE "id" IN (${Prisma.join(planIds)})`);',
+    ].join('\n')),
+  });
+  assertExactRecords(scanOwnershipViolations(options), [
+    {
+      file: 'backend/src/admin/join-any.ts', model: '<dynamic>', owner: null,
+      operation: '$queryRaw', mode: 'unknown', source: 'sql',
+      reason: 'unknown-sql-composition', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-any.ts', model: 'User', owner: 'identity',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-unknown.ts', model: '<dynamic>', owner: null,
+      operation: '$queryRaw', mode: 'unknown', source: 'sql',
+      reason: 'unknown-sql-composition', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-unknown.ts', model: 'User', owner: 'identity',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-mutable-sql.ts', model: '<dynamic>', owner: null,
+      operation: '$queryRaw', mode: 'unknown', source: 'sql',
+      reason: 'unknown-sql-composition', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-mutable-sql.ts', model: 'ChatMessage', owner: 'messaging',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-scalars.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-static-sql.ts', model: 'User', owner: 'identity',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/join-static-sql.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+  ]);
+});
+
+test('each mandatory SQL fixture produces its own exact records', () => {
+  const options = fixtureProject({
+    'admin/sql-direct.ts': prismaFixture([
+      'const planId = "p";',
+      'await tx.$queryRaw`SELECT * FROM "WeddingPlan" WHERE "id" = ${planId}`;',
+    ].join('\n')),
+    'admin/sql-tagged-join.ts': prismaFixture(
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "Conversation" JOIN "ChatMessage" ON true`);',
+    ),
+    'admin/sql-fragment-join.ts': prismaFixture([
+      'const fragments = [Prisma.sql`SELECT * FROM "WeddingPlan"`, Prisma.sql`SELECT * FROM "User"`] as const;',
+      'await prisma.$queryRaw(Prisma.sql`${Prisma.join(fragments, " UNION ALL ")}`);',
+    ].join('\n')),
+    'admin/sql-scalar-join.ts': prismaFixture([
+      'const ids: string[] = ["p"];',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "WeddingPlan" WHERE "id" IN (${Prisma.join(ids)})`);',
+    ].join('\n')),
+    'admin/sql-mutable-join.ts': prismaFixture([
+      'let fragments: Prisma.Sql[] = [Prisma.sql`SELECT * FROM "WeddingPlan"`];',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "User" WHERE ${Prisma.join(fragments)}`);',
+    ].join('\n')),
+    'admin/sql-conditional.ts': prismaFixture([
+      'const condition = true;',
+      'const predicate = condition ? Prisma.sql`EXISTS (SELECT 1 FROM "ChatMessage")` : Prisma.sql`EXISTS (SELECT 1 FROM "Conversation")`;',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "User" WHERE ${predicate}`);',
+    ].join('\n')),
+    'admin/sql-unresolved.ts': prismaFixture([
+      'declare function loadSql(): Prisma.Sql;',
+      'const unresolved: Prisma.Sql = loadSql();',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM "User" WHERE ${unresolved}`);',
+    ].join('\n')),
+    'admin/sql-cte.ts': prismaFixture(
+      'await prisma.$queryRaw`WITH recent AS (SELECT * FROM "ChatMessage") SELECT * FROM recent`;',
+    ),
+    'admin/sql-dynamic.ts': prismaFixture([
+      'const tableName = "WeddingPlan";',
+      'await prisma.$queryRaw(Prisma.sql`SELECT * FROM ${tableName}`);',
+    ].join('\n')),
+    'admin/sql-update.ts': prismaFixture(
+      'await prisma.$queryRaw`UPDATE "WeddingPlan" SET "title" = ${"x"}`;',
+    ),
+    'admin/sql-delete.ts': prismaFixture(
+      'await prisma.$executeRaw`DELETE FROM "User" WHERE "id" = ${"u"}`;',
+    ),
+    'admin/sql-truncate.ts': prismaFixture(
+      'await prisma.$executeRaw`TRUNCATE "ChatMessage"`;',
+    ),
+    'admin/sql-unsupported.ts': prismaFixture(
+      'await prisma.$executeRawUnsafe(`VACUUM "User"`);',
+    ),
+    'admin/sql-tableless.ts': prismaFixture([
+      'await prisma.$queryRaw`SELECT 1`;',
+      'await prisma.$queryRaw`SELECT pg_advisory_lock(1)`;',
+      'await prisma.$queryRaw(Prisma.sql`SELECT set_config(\'x\', \'y\', true)`);',
+    ].join('\n')),
+  });
+  assertExactRecords(scanOwnershipViolations(options), [
+    { file: 'backend/src/admin/sql-direct.ts', model: 'WeddingPlan', owner: 'planning', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-tagged-join.ts', model: 'Conversation', owner: 'messaging', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-tagged-join.ts', model: 'ChatMessage', owner: 'messaging', operation: 'join', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-fragment-join.ts', model: 'WeddingPlan', owner: 'planning', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-fragment-join.ts', model: 'User', owner: 'identity', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-scalar-join.ts', model: 'WeddingPlan', owner: 'planning', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-mutable-join.ts', model: 'User', owner: 'identity', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-mutable-join.ts', model: '<dynamic>', owner: null, operation: '$queryRaw', mode: 'unknown', source: 'sql', reason: 'unknown-sql-composition', count: 1 },
+    { file: 'backend/src/admin/sql-conditional.ts', model: 'ChatMessage', owner: 'messaging', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-conditional.ts', model: 'Conversation', owner: 'messaging', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-conditional.ts', model: 'User', owner: 'identity', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 2 },
+    { file: 'backend/src/admin/sql-unresolved.ts', model: 'User', owner: 'identity', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-unresolved.ts', model: '<dynamic>', owner: null, operation: '$queryRaw', mode: 'unknown', source: 'sql', reason: 'unknown-sql-composition', count: 1 },
+    { file: 'backend/src/admin/sql-cte.ts', model: 'ChatMessage', owner: 'messaging', operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-dynamic.ts', model: '<dynamic>', owner: null, operation: 'select', mode: 'read', source: 'sql', reason: 'unknown-model', count: 1 },
+    { file: 'backend/src/admin/sql-update.ts', model: 'WeddingPlan', owner: 'planning', operation: 'update', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-delete.ts', model: 'User', owner: 'identity', operation: 'delete', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-truncate.ts', model: 'ChatMessage', owner: 'messaging', operation: 'truncate', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-unsupported.ts', model: '<dynamic>', owner: null, operation: '$executeRawUnsafe', mode: 'unknown', source: 'sql', reason: 'unknown-sql-composition', count: 1 },
+  ]);
+});
+
 test('CTE row locks and advisory calls do not invent physical table names', () => {
   const options = fixtureProject({
     'common/locks.ts': prismaFixture([
@@ -528,6 +762,40 @@ test('unsafe strings and PostgreSQL table-bearing forms report every physical ta
   assert.equal(records.some((record) => record.reason?.startsWith('unknown-')), false);
 });
 
+test('PostgreSQL table lists record every physical table and dynamic list positions fail closed', () => {
+  const options = fixtureProject({
+    'admin/sql-truncate-list.ts': prismaFixture(
+      'await prisma.$executeRawUnsafe(\'TRUNCATE TABLE "ChatMessage", "Conversation"\');',
+    ),
+    'admin/sql-lock-list.ts': prismaFixture(
+      'await prisma.$executeRawUnsafe(\'LOCK TABLE "User", "WeddingPlan"\');',
+    ),
+    'admin/sql-drop-list.ts': prismaFixture(
+      'await prisma.$executeRawUnsafe(\'DROP TABLE "Provider", "City"\');',
+    ),
+    'admin/sql-delete-using-list.ts': prismaFixture(
+      'await prisma.$executeRawUnsafe(\'DELETE FROM "ChatMessage" USING "Conversation", "User" WHERE true\');',
+    ),
+    'admin/sql-dynamic-list.ts': prismaFixture([
+      'const tableName = "Conversation";',
+      'await prisma.$executeRaw(Prisma.sql`TRUNCATE TABLE "ChatMessage", ${tableName}`);',
+    ].join('\n')),
+  });
+  assertExactRecords(scanOwnershipViolations(options), [
+    { file: 'backend/src/admin/sql-truncate-list.ts', model: 'ChatMessage', owner: 'messaging', operation: 'truncate', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-truncate-list.ts', model: 'Conversation', owner: 'messaging', operation: 'truncate', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-lock-list.ts', model: 'User', owner: 'identity', operation: 'lock', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-lock-list.ts', model: 'WeddingPlan', owner: 'planning', operation: 'lock', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-drop-list.ts', model: 'Provider', owner: 'marketplace', operation: 'drop', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-drop-list.ts', model: 'City', owner: 'catalog', operation: 'drop', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-delete-using-list.ts', model: 'ChatMessage', owner: 'messaging', operation: 'delete', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-delete-using-list.ts', model: 'Conversation', owner: 'messaging', operation: 'using', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-delete-using-list.ts', model: 'User', owner: 'identity', operation: 'using', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-dynamic-list.ts', model: 'ChatMessage', owner: 'messaging', operation: 'truncate', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-dynamic-list.ts', model: '<dynamic>', owner: null, operation: 'truncate', mode: 'write', source: 'sql', reason: 'unknown-model', count: 1 },
+  ]);
+});
+
 test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {
   const record: OwnershipRecord = {
     key: 'backend/src/money/x.ts|finance|planning|WeddingPlan|update|write|delegate|foreign-model',
@@ -558,6 +826,54 @@ test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {
     violations: [],
   }) }), 1);
   assert.equal(runCli({ ...dependencies, argv: ['--wat'] }), 2);
+});
+
+test('baseline validation rejects invalid fields and sensitive strings with sanitized errors', () => {
+  const base: OwnershipRecord = {
+    file: 'backend/src/money/x.ts', context: 'finance', owner: 'planning', model: 'WeddingPlan',
+    operation: 'update', mode: 'write', source: 'delegate', reason: 'foreign-model', count: 1,
+  };
+  base.key = ownershipKey(base);
+  const withField = (field: keyof OwnershipRecord, value: unknown) => {
+    const record = { ...base, [field]: value } as OwnershipRecord;
+    record.key = ownershipKey(record);
+    return record;
+  };
+  const invalid = [
+    withField('operation', '/tmp/ownership-leak'),
+    withField('operation', 'C:\\ownership-leak'),
+    withField('operation', 'https://example.test/private'),
+    withField('operation', 'https://user:password@example.test/private'),
+    withField('operation', 'PASSWORD=ownership-credential'),
+    withField('operation', 'TOKEN=ownership-secret'),
+    withField('context', 'not-a-context'),
+    withField('owner', 'not-an-owner'),
+    withField('model', '../WeddingPlan'),
+    withField('mode', 'sometimes'),
+    withField('source', 'reflection'),
+    withField('reason', 'allowlisted'),
+    { ...base, note: { '/tmp/ownership-key': 'safe' } } as OwnershipRecord,
+  ];
+
+  for (const record of invalid) {
+    const output: string[] = [];
+    const exitCode = runCli({
+      argv: ['--check'],
+      scan: () => [record],
+      readBaseline: () => ({
+        schemaVersion: 1,
+        sourceRevision: 'feafe3db0053d6c66d5f46b56ff9a512861dfbad',
+        violations: [record],
+      }),
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    });
+    assert.equal(exitCode, 2, `baseline value was accepted: ${JSON.stringify(record)}`);
+    const message = output.join('\n');
+    assert.match(message, /^architecture ownership error:/);
+    assert.doesNotMatch(message, /ownership-leak|ownership-credential|ownership-secret|example\.test|\/tmp\/|[A-Za-z]:[\\/]/i);
+    assert.doesNotMatch(message, /\n\s+at\s/);
+  }
 });
 
 test('persisted baseline is canonical, sorted, unique, counted, and contains no secrets', () => {

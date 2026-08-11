@@ -106,12 +106,17 @@ function extractSchemaMetadata(schemaText) {
         /^\s*([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)(\[\])?(\?)?\s*(.*)$/,
       );
       if (!field || !modelSet.has(field[2])) continue;
-      const relationName = field[5].match(/@relation\(\s*"([^"]+)"/);
+      const positionalRelationName = field[5].match(/@relation\(\s*"([^"]+)"/);
+      const namedRelationName = field[5].match(/@relation\([^)]*\bname\s*:\s*"([^"]+)"/);
       relations[model][field[1]] = {
         target: field[2],
         isList: Boolean(field[3]),
         isOptional: Boolean(field[4]),
-        relationName: relationName ? relationName[1] : null,
+        relationName: positionalRelationName
+          ? positionalRelationName[1]
+          : namedRelationName
+            ? namedRelationName[1]
+            : null,
       };
     }
   }
@@ -242,6 +247,19 @@ function symbolIsGeneratedPrisma(symbol, checker) {
   return (resolved.declarations || []).some(declarationIsGeneratedPrisma);
 }
 
+function resolvedGeneratedPrismaSymbol(symbol, checker) {
+  if (!symbol) return null;
+  let resolved = symbol;
+  if (resolved.flags & ts.SymbolFlags.Alias) {
+    try {
+      resolved = checker.getAliasedSymbol(resolved);
+    } catch {
+      return null;
+    }
+  }
+  return (resolved.declarations || []).some(declarationIsGeneratedPrisma) ? resolved : null;
+}
+
 function typeParts(type) {
   if (!type) return [];
   if (type.isUnionOrIntersection && type.isUnionOrIntersection()) {
@@ -250,32 +268,47 @@ function typeParts(type) {
   return [type];
 }
 
-function delegateModelForExpression(expression, checker, schemaMetadata, delegateModels) {
-  const type = checker.getTypeAtLocation(expression);
+function generatedDelegateModelsForType(type, checker, schemaMetadata, visited = new Set()) {
+  const models = new Set();
+  if (!type || visited.has(type)) return models;
+  visited.add(type);
+
   for (const part of typeParts(type)) {
     const symbols = [part.getSymbol && part.getSymbol(), part.aliasSymbol].filter(Boolean);
     for (const symbol of symbols) {
-      const name = symbol.getName();
-      const match = name.match(/^([A-Za-z_][A-Za-z0-9_]*)Delegate$/);
-      if (
-        match
-        && schemaMetadata.models.includes(match[1])
-        && (symbol.declarations || []).some(declarationIsGeneratedPrisma)
-      ) {
-        return match[1];
+      const generated = resolvedGeneratedPrismaSymbol(symbol, checker);
+      const match = generated && generated.getName().match(/^([A-Za-z_][A-Za-z0-9_]*)Delegate$/);
+      if (match && schemaMetadata.models.includes(match[1])) models.add(match[1]);
+    }
+    if (typeof part.getBaseTypes === 'function') {
+      let bases = [];
+      try {
+        bases = part.getBaseTypes() || [];
+      } catch {
+        bases = [];
+      }
+      for (const base of bases) {
+        for (const model of generatedDelegateModelsForType(base, checker, schemaMetadata, visited)) {
+          models.add(model);
+        }
       }
     }
-    const rendered = checker.typeToString(part);
-    for (const match of rendered.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)Delegate\b/g)) {
-      if (schemaMetadata.models.includes(match[1])) return match[1];
-    }
   }
+  return models;
+}
+
+function delegateModelForExpression(expression, checker, schemaMetadata, delegateModels) {
+  const models = generatedDelegateModelsForType(
+    checker.getTypeAtLocation(expression),
+    checker,
+    schemaMetadata,
+  );
   if (ts.isPropertyAccessExpression(expression)) {
     const candidate = delegateModels.get(expression.name.text);
     const propertySymbol = checker.getSymbolAtLocation(expression.name);
-    if (candidate && symbolIsGeneratedPrisma(propertySymbol, checker)) return candidate;
+    if (candidate && symbolIsGeneratedPrisma(propertySymbol, checker)) models.add(candidate);
   }
-  return null;
+  return models.size === 1 ? [...models][0] : null;
 }
 
 function operationFromCall(call, checker, schemaMetadata, delegateModels) {
@@ -561,11 +594,11 @@ function typeIncludesPrismaSql(type, checker, visited = new Set()) {
   for (const part of typeParts(type)) {
     const symbols = [part.getSymbol && part.getSymbol(), part.aliasSymbol].filter(Boolean);
     for (const symbol of symbols) {
-      if (symbol.getName() === 'Sql' && (symbol.declarations || []).some(declarationIsGeneratedPrisma)) {
+      const generated = resolvedGeneratedPrismaSymbol(symbol, checker);
+      if (generated && generated.getName() === 'Sql') {
         return true;
       }
     }
-    if (/\bSql\b/.test(checker.typeToString(part))) return true;
     const typeArguments = checker.getTypeArguments && part.objectFlags & ts.ObjectFlags.Reference
       ? checker.getTypeArguments(part)
       : [];
@@ -618,7 +651,12 @@ function sqlAlternatives(node, checker, visitedSymbols = new Set()) {
 }
 
 function interpolationIsTablePosition(prefix) {
-  return /\b(?:FROM|JOIN|INTO|UPDATE|TABLE|USING|COPY)\s*$/i.test(prefix);
+  if (/\b(?:FROM|JOIN|INTO|UPDATE|TABLE|USING|COPY)\s*$/i.test(prefix)) return true;
+  const table = '(?:"(?:[^"]|"")*"|[A-Za-z_$][A-Za-z0-9_$]*)';
+  const qualified = `${table}(?:\\s*\\.\\s*${table})?`;
+  const aliased = `${qualified}(?:\\s+(?:AS\\s+)?[A-Za-z_$][A-Za-z0-9_$]*)?`;
+  return new RegExp(`\\b(?:FROM|USING|TABLE)\\s+${aliased}(?:\\s*,\\s*${aliased})*\\s*,\\s*$`, 'i')
+    .test(prefix);
 }
 
 function flattenTemplate(template, checker, visitedSymbols = new Set()) {
@@ -651,27 +689,69 @@ function flattenTemplate(template, checker, visitedSymbols = new Set()) {
   return { sql: alternatives, unknown };
 }
 
-function arrayInitializer(node, checker, visitedSymbols) {
+function typeIsAnyOrUnknown(type) {
+  return Boolean(type && (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)));
+}
+
+function typeIsCheckerProvenScalar(type) {
+  if (!type) return false;
+  if (type.isUnionOrIntersection && type.isUnionOrIntersection()) {
+    return type.types.length > 0 && type.types.every(typeIsCheckerProvenScalar);
+  }
+  if (typeIsAnyOrUnknown(type)) return false;
+  const scalarFlags = ts.TypeFlags.StringLike
+    | ts.TypeFlags.NumberLike
+    | ts.TypeFlags.BigIntLike
+    | ts.TypeFlags.BooleanLike
+    | ts.TypeFlags.Null
+    | ts.TypeFlags.Undefined
+    | ts.TypeFlags.EnumLike;
+  return (type.flags & scalarFlags) !== 0;
+}
+
+function collectionHasCheckerProvenScalarElements(type, checker) {
+  if (!type || typeIsAnyOrUnknown(type)) return false;
+  const parts = typeParts(type);
+  return parts.length > 0 && parts.every((part) => {
+    if (typeIsAnyOrUnknown(part)) return false;
+    const element = checker.getIndexTypeOfType(part, ts.IndexKind.Number);
+    return typeIsCheckerProvenScalar(element);
+  });
+}
+
+function typeIsReadonlyTuple(type, checker) {
+  if (!type || !checker.isTupleType(type)) return false;
+  const target = type.target || type;
+  return target.readonly === true;
+}
+
+function readonlySqlTupleInitializer(node, checker, visitedSymbols) {
   const current = unwrapExpression(node);
   if (!current) return null;
   if (ts.isArrayLiteralExpression(current)) return current;
-  if (ts.isIdentifier(current)) {
-    const resolved = constInitializer(current, checker, visitedSymbols);
-    if (!resolved) return null;
-    const next = new Set(visitedSymbols);
-    next.add(resolved.symbol);
-    return arrayInitializer(resolved.initializer, checker, next);
+  if (!ts.isIdentifier(current) || !typeIsReadonlyTuple(checker.getTypeAtLocation(current), checker)) {
+    return null;
   }
-  return null;
+  const resolved = constInitializer(current, checker, visitedSymbols);
+  if (!resolved) return null;
+  const next = new Set(visitedSymbols);
+  next.add(resolved.symbol);
+  const initializer = unwrapExpression(resolved.initializer);
+  return initializer && ts.isArrayLiteralExpression(initializer) ? initializer : null;
 }
 
 function flattenPrismaJoin(call, checker, visitedSymbols) {
   const collection = call.arguments[0];
   if (!collection) return { sql: ['?'], unknown: true };
   const collectionType = checker.getTypeAtLocation(collection);
+  if (typeIsAnyOrUnknown(collectionType)) return { sql: ['?'], unknown: true };
   const containsSql = typeIncludesPrismaSql(collectionType, checker);
-  const array = arrayInitializer(collection, checker, visitedSymbols);
-  if (!containsSql) return { sql: ['?'], unknown: false };
+  if (!containsSql) {
+    return collectionHasCheckerProvenScalarElements(collectionType, checker)
+      ? { sql: ['?'], unknown: false }
+      : { sql: ['?'], unknown: true };
+  }
+  const array = readonlySqlTupleInitializer(collection, checker, visitedSymbols);
   if (!array) return { sql: ['?'], unknown: true };
 
   const separator = call.arguments[1] ? staticString(call.arguments[1], checker) : ',';
@@ -833,10 +913,14 @@ function sqlTableOccurrences(sql) {
   if (!recognized.has(first)) return { occurrences: [], unknown: tokens.length > 0 };
   const ctes = collectCteNames(tokens);
   const occurrences = [];
+  let unresolvedTable = false;
 
   function add(index, mode, operation) {
     const table = nextTableToken(tokens, index);
-    if (!table) return;
+    if (!table) {
+      if (!tokens[index] || tokens[index].value !== '(') unresolvedTable = true;
+      return;
+    }
     if (ctes.has(table.value.toLowerCase())) return;
     occurrences.push({ model: table.value, mode, operation });
   }
@@ -845,7 +929,10 @@ function sqlTableOccurrences(sql) {
     let cursor = index;
     while (cursor < tokens.length) {
       const table = nextTableToken(tokens, cursor);
-      if (!table) return;
+      if (!table) {
+        if (!tokens[cursor] || tokens[cursor].value !== '(') unresolvedTable = true;
+        return;
+      }
       if (!ctes.has(table.value.toLowerCase())) {
         occurrences.push({ model: table.value, mode, operation });
       }
@@ -860,6 +947,10 @@ function sqlTableOccurrences(sql) {
       }
       if (!tokens[cursor] || tokens[cursor].value !== ',') return;
       cursor += 1;
+      if (cursor >= tokens.length) {
+        unresolvedTable = true;
+        return;
+      }
     }
   }
 
@@ -868,14 +959,20 @@ function sqlTableOccurrences(sql) {
     const previous = tokenKeyword(tokens[index - 1]);
     if (keyword === 'FROM' && first !== 'COPY') {
       addList(index + 1, previous === 'DELETE' ? 'write' : 'read', previous === 'DELETE' ? 'delete' : 'select');
-    } else if (keyword === 'JOIN' || keyword === 'USING') {
+    } else if (keyword === 'JOIN') {
       add(index + 1, 'read', keyword.toLowerCase());
+    } else if (keyword === 'USING') {
+      addList(index + 1, 'read', keyword.toLowerCase());
     } else if (keyword === 'INTO' && (previous === 'INSERT' || previous === 'MERGE')) {
       add(index + 1, 'write', previous.toLowerCase());
     } else if (keyword === 'UPDATE' && (index === 0 || (first === 'WITH' && previous !== 'FOR'))) {
       add(index + 1, 'write', 'update');
     } else if (keyword === 'TABLE' && ['LOCK', 'TRUNCATE', 'ALTER', 'DROP', 'CREATE'].includes(previous)) {
-      add(index + 1, 'write', previous.toLowerCase());
+      if (['LOCK', 'TRUNCATE', 'DROP'].includes(previous)) {
+        addList(index + 1, 'write', previous.toLowerCase());
+      } else {
+        add(index + 1, 'write', previous.toLowerCase());
+      }
     } else if (['TRUNCATE', 'COPY'].includes(keyword) && tokenKeyword(tokens[index + 1]) !== 'TABLE') {
       addList(index + 1, 'write', keyword.toLowerCase());
     }
@@ -888,7 +985,7 @@ function sqlTableOccurrences(sql) {
       || /^SELECT\s+set_config\s*\(/i.test(normalized);
     return { occurrences, unknown: !tableless };
   }
-  return { occurrences, unknown: false };
+  return { occurrences, unknown: unresolvedTable };
 }
 
 function sqlAccesses(node, checker, makeAccess, operation) {
@@ -1014,35 +1111,33 @@ function classifyOwnershipAccesses(options) {
         const rawOperation = rawOperationForProperty(node.tag, checker);
         if (rawOperation) {
           accesses.push(...sqlAccesses(node, checker, makeAccess, rawOperation));
-          return;
         }
       }
       if (ts.isCallExpression(node)) {
         const rawOperation = rawOperationForProperty(node.expression, checker);
         if (rawOperation) {
           accesses.push(...sqlAccesses(node, checker, makeAccess, rawOperation));
-          return;
-        }
-        const delegate = operationFromCall(node, checker, schemaMetadata, delegateModels);
-        if (delegate) {
-          accesses.push(makeAccess({
-            model: delegate.model,
-            operation: delegate.operation,
-            mode: delegate.mode,
-            source: 'delegate',
-            issue: delegate.mode === 'unknown' ? 'unknown-operation' : null,
-          }));
-          if (node.arguments[0]) {
-            accesses.push(...relationAccesses(
-              node.arguments[0],
-              delegate.model,
-              checker,
-              schemaMetadata,
-              makeAccess,
-              delegate.operation,
-            ));
+        } else {
+          const delegate = operationFromCall(node, checker, schemaMetadata, delegateModels);
+          if (delegate) {
+            accesses.push(makeAccess({
+              model: delegate.model,
+              operation: delegate.operation,
+              mode: delegate.mode,
+              source: 'delegate',
+              issue: delegate.mode === 'unknown' ? 'unknown-operation' : null,
+            }));
+            if (node.arguments[0]) {
+              accesses.push(...relationAccesses(
+                node.arguments[0],
+                delegate.model,
+                checker,
+                schemaMetadata,
+                makeAccess,
+                delegate.operation,
+              ));
+            }
           }
-          return;
         }
       }
       ts.forEachChild(node, visit);
@@ -1101,9 +1196,58 @@ function canonicalBaselineFile(file) {
     && !path.win32.isAbsolute(file);
 }
 
+const BASELINE_FIELDS = [
+  'context',
+  'count',
+  'file',
+  'key',
+  'mode',
+  'model',
+  'operation',
+  'owner',
+  'reason',
+  'source',
+];
+const BASELINE_MODES = new Set(['read', 'write', 'unknown']);
+const BASELINE_SOURCES = new Set(['delegate', 'relation', 'sql']);
+const BASELINE_REASONS = new Set([
+  'foreign-model',
+  'unclassified-context',
+  'unknown-model',
+  'unknown-operation',
+  'unknown-relation-shape',
+  'unknown-sql-composition',
+]);
+
+function sensitiveBaselineString(value) {
+  return path.posix.isAbsolute(value)
+    || path.win32.isAbsolute(value)
+    || /[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value)
+    || /(?:DATABASE_URL|JWT_SECRET|PASSWORD|SECRET|TOKEN)\s*=/i.test(value)
+    || /BEGIN (?:RSA |OPENSSH )?PRIVATE KEY/i.test(value);
+}
+
+function assertNoSensitiveBaselineStrings(value, visited = new Set()) {
+  if (typeof value === 'string') {
+    if (sensitiveBaselineString(value)) {
+      throw new Error('ownership baseline contains an absolute path or secret');
+    }
+    return;
+  }
+  if (!value || typeof value !== 'object' || visited.has(value)) return;
+  visited.add(value);
+  for (const [key, child] of Object.entries(value)) {
+    assertNoSensitiveBaselineStrings(key, visited);
+    assertNoSensitiveBaselineStrings(child, visited);
+  }
+}
+
 function validateBaseline(baseline) {
   if (!baseline || baseline.schemaVersion !== SCHEMA_VERSION) {
     throw new Error('ownership baseline schemaVersion must be 1');
+  }
+  if (!sameArray(Object.keys(baseline).sort(), ['schemaVersion', 'sourceRevision', 'violations'])) {
+    throw new Error('ownership baseline shape is invalid');
   }
   if (baseline.sourceRevision !== SOURCE_REVISION) {
     throw new Error('ownership baseline sourceRevision is invalid');
@@ -1111,22 +1255,44 @@ function validateBaseline(baseline) {
   if (!Array.isArray(baseline.violations)) {
     throw new Error('ownership baseline violations must be an array');
   }
+  assertNoSensitiveBaselineStrings(baseline);
   const keys = [];
   for (const record of baseline.violations) {
-    if (!record || record.key !== recordKey(record)) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      throw new Error('ownership baseline contains an invalid record');
+    }
+    if (!sameArray(Object.keys(record).sort(), BASELINE_FIELDS)) {
+      throw new Error('ownership baseline record shape is invalid');
+    }
+    if (record.key !== recordKey(record)) {
       throw new Error('ownership baseline contains an invalid key');
     }
     if (!canonicalBaselineFile(record.file)) {
       throw new Error('ownership baseline contains a non-canonical file');
     }
+    if (![...CONTEXTS, 'unclassified'].includes(record.context)) {
+      throw new Error('ownership baseline contains an invalid context');
+    }
+    if (record.owner !== null && !CONTEXTS.includes(record.owner)) {
+      throw new Error('ownership baseline contains an invalid owner');
+    }
+    if (record.model !== '<dynamic>' && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(record.model)) {
+      throw new Error('ownership baseline contains an invalid model');
+    }
+    if (!/^\$?[A-Za-z_][A-Za-z0-9_$]*(?:\+\$?[A-Za-z_][A-Za-z0-9_$]*)*$/.test(record.operation)) {
+      throw new Error('ownership baseline contains an invalid operation');
+    }
+    if (!BASELINE_MODES.has(record.mode)) {
+      throw new Error('ownership baseline contains an invalid mode');
+    }
+    if (!BASELINE_SOURCES.has(record.source)) {
+      throw new Error('ownership baseline contains an invalid source');
+    }
+    if (!BASELINE_REASONS.has(record.reason)) {
+      throw new Error('ownership baseline contains an invalid reason');
+    }
     if (!Number.isInteger(record.count) || record.count <= 0) {
       throw new Error('ownership baseline counts must be positive integers');
-    }
-    const serialized = JSON.stringify(record);
-    if (
-      /DATABASE_URL\s*=|JWT_SECRET\s*=|PASSWORD\s*=|SECRET\s*=|TOKEN\s*=|BEGIN (?:RSA |OPENSSH )?PRIVATE KEY|postgres(?:ql)?:\/\/|https?:\/\/[^/\s]+:[^@\s]+@|[A-Za-z]:[\\/]|(?:^|\s)\/[A-Za-z]/i.test(serialized)
-    ) {
-      throw new Error('ownership baseline contains an absolute path or secret');
     }
     keys.push(record.key);
   }

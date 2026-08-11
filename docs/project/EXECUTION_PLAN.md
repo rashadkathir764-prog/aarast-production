@@ -76,7 +76,11 @@ Acceptance:
 - The obsolete Flutter contract test was recorded for P2 rather than being
   satisfied by restoring retired design language.
 
-### P2 — Design System And Information Architecture Reset — In Progress
+### P2 — Design System And Information Architecture Reset — Paused By Owner Direction
+
+The completed P2 checkpoints below remain accepted. Further P2 implementation
+is paused while P3 R0 Governance is active; this transition does not reopen or
+invalidate the accepted P2 evidence.
 
 #### Completed checkpoint — semantic foundation, Mobile core journeys, and smart Home
 
@@ -311,7 +315,26 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture
+### P3 — Source Quality And Architecture — Active: R0 Governance
+
+#### Active R0 — Governance
+
+- P3 R0 Governance is active on `modular-monolith`.
+- R0 has zero application-source moves and does not change runtime behavior,
+  routes, schema, migrations, or deployment artifacts.
+- R0's pull request requires the `r0-scope` fixed-base allowlist job. R1 must
+  remove or retarget that phase-specific job after R0 closes.
+- The tracked R0 receipt records local checks only. The immutable candidate SHA
+  and CI status are resolved from pull-request/workflow metadata and are never
+  back-written into a self-referential tracked document.
+- R0 remains active until every exit gate in the current working plan is green.
+  R1 cannot start until every R0 exit gate is green.
+
+Current working plan:
+`docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`.
+
+The numbered P3 modernization work below follows the R0 gate; it is not an
+authorization to start R1 or move source early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

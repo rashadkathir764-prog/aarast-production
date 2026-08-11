@@ -13,9 +13,26 @@ governorate → district → locality hierarchy consumed by Admin and Mobile.
 
 ## Active Backend Docs
 
+- `ARCHITECTURE.md` - canonical modular-monolith boundaries, module ownership,
+  dependency direction, and phase gates.
 - `docs/backend/API_CONTRACT.md` - route-level API contract.
 - `docs/backend/DATABASE.md` - data-model intent and privacy rules.
 - `docs/backend/STATUS_AND_RISKS.md` - current backend status and known risks.
+
+## Modular Monolith Boundary
+
+R0 documents the target architecture and moves no Backend application source.
+During migration, each context is the union of its legacy roots and
+`src/modules/<context>`. Cross-context Backend code consumes only the owner's
+public contract; it never imports another context's full or internal module.
+The Nest class/import graph remains acyclic, and no new `forwardRef()` or
+`@Global()` use is allowed.
+
+Physical ownership covers Prisma root delegates, relation traversal, nested
+writes, and raw-SQL tables. `WeddingPlan` is owned by planning. Finance's
+current direct write to `WeddingPlan.estimatedBudget` is temporary R0 baseline
+debt that R4 replaces with a planning public write port accepting the caller's
+explicit transaction client; it is not a permanent exception.
 
 ## Commands
 

@@ -22,6 +22,16 @@ documented routes, migration references, snapshot freshness, and Markdown
 links. `git diff --check` catches whitespace errors. The active source list and
 archive rules are owned by `docs/README.md`.
 
+## Existing-Test Change Policy
+
+Existing behavioral assertions, expected values, fixtures, Arabic/error
+contracts, and setup semantics are frozen. A later move phase may make only
+reviewed mechanical import/export/require edits, moved-source path-literal
+edits, test-file moves, and DI token wiring edits required by that move. Any
+other existing-test change is a stop signal and requires explicit review.
+
+R0 itself adds tests and does not edit existing behavioral tests.
+
 ## Latest Recorded Full Working-Tree Gate — 2026-08-11
 
 - Backend source guard/check/build/Prisma validation: PASS; unit suite PASS with

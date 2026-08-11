@@ -13,6 +13,14 @@ These rules apply to AI agents and automation working on Aarast / اعّرست.
 - Do not overwrite the Flutter offline SQLite layer, provider marketplace/reference flows, provider dashboard, or admin approval flow blindly.
 - For deployment docs, distinguish current Compose routing from the target split between API, admin web, and Flutter web/mobile.
 
+## Modular Monolith Guard
+
+- Read `ARCHITECTURE.md` before architecture work.
+- Cross-context Backend code consumes only the owner's public contract.
+- No new foreign Prisma root/relation/SQL access, `forwardRef()`, or `@Global()` use.
+- No new Mobile boundary-baseline entry, unresolved local directive, or cross-area `part` relationship.
+- A phase cannot start until the prior phase gate is green.
+
 ## Phase Discipline
 
 - Do not jump phases.

@@ -1,5 +1,24 @@
 # Decisions
 
+## Modular Monolith R0 Decisions - 2026-08-11
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Adopt `ARCHITECTURE.md` as the canonical modular-monolith human contract with 13 exhaustive business modules, one physical owner per Prisma model, public-only cross-context consumption, an acyclic Nest graph, and no `forwardRef()`. | Accepted; R0 governance active | A single contract keeps the later machine-readable registry, dependency gates, Backend ports, and Mobile boundaries aligned while incremental source moves preserve runtime behavior. Platform owns `IdempotencyKey` and `OutboxEvent` but is not a business module. |
+| Keep `WeddingPlan` physically owned by planning and treat Finance's direct `WeddingPlan.estimatedBudget` write as temporary baseline debt. | Accepted; removal assigned to R4 | The previous E1 treatment cannot become a permanent exception. R4 must replace the write with a planning public write port that accepts the caller's explicit transaction client. Ownership covers Prisma roots, relation traversal, nested writes, and every raw-SQL table; unresolved query shapes are debt, not permission. |
+| Preserve completed P2 checkpoints, pause further P2 implementation by owner direction, and activate P3 R0 Governance on `modular-monolith`. | Accepted; R0 active and not complete | R0 establishes governance with zero application-source moves. Its pull request requires the `r0-scope` fixed-base allowlist job, which R1 must remove or retarget after R0 closes. R1 cannot start until every R0 exit gate is green. |
+| Keep the tracked R0 receipt local-check-only and resolve immutable candidate identity and CI status from pull-request/workflow metadata. | Accepted | Back-writing a candidate SHA or changing CI result into the tracked receipt would make that document self-referential and stale. |
+
+### Existing-Test Change Policy
+
+Existing behavioral assertions, expected values, fixtures, Arabic/error
+contracts, and setup semantics are frozen. A later move phase may make only
+reviewed mechanical import/export/require edits, moved-source path-literal
+edits, test-file moves, and DI token wiring edits required by that move. Any
+other existing-test change is a stop signal and requires explicit review.
+
+R0 adds tests and does not edit existing behavioral tests.
+
 ## Current Decisions Addendum - 2026-06-14
 
 | Decision | Status | Rationale |

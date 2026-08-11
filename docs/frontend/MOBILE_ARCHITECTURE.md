@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 ## Principles
 
@@ -11,6 +11,22 @@ Snapshot date: 2026-08-10
 - Repeated dashboard numbers should come from one summary source where possible.
 - Route guards must distinguish no plan, guest-only, auth required, permission
   denied, provider-only, user-only, feature disabled, and missing entity states.
+
+## Modular Boundary Modes
+
+- R0 baseline mode: existing direct imports may remain but their counted set
+  may only shrink.
+- R9 strict mode: cross-feature imports target `<feature>_api.dart`; all
+  `core/** -> features/**` imports are forbidden except route assembly under
+  `core/routing/**`, which may import feature public route/screen barrels.
+
+The routing exception is a composition-root exception, not a general permission
+for core to consume feature state or models.
+
+Dart `part`/`part of` is a compilation-unit relationship, not a boundary
+escape: both files must resolve, declare each other through URI-style
+directives, and remain inside the same feature/core area. Cross-area parts and
+unresolved local directives fail immediately in every phase.
 
 ## Current Architecture Areas
 

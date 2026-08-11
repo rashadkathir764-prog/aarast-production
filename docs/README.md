@@ -33,6 +33,7 @@ changing behavior.
 
 - `README.md` - project entry point.
 - `AGENTS.md` - agent rules.
+- `ARCHITECTURE.md` - canonical modular-monolith architecture and phase contract.
 - `CHANGELOG.md` - change history.
 
 ### Project
@@ -90,10 +91,18 @@ changing behavior.
 
 - `docs/archive/README.md`
 
+## Current Working Plan
+
+- `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md` -
+  approved R0 governance execution plan. It is the only current working plan;
+  archived `docs/superpowers` material remains historical and is not active
+  truth.
+
 ## Source Of Truth By Area
 
 | Area | Source |
 | --- | --- |
+| Modular-monolith architecture and phase gates | `ARCHITECTURE.md` |
 | Project continuation and owner handoff | `docs/HANDOFF.md` |
 | Product identity and exclusions | `docs/project/PRODUCT.md` |
 | Scope and phase discipline | `docs/project/SCOPE_AND_PHASES.md` |

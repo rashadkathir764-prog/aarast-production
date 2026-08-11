@@ -537,3 +537,58 @@ test('the real CLI sanitizes unknown-argument failures', () => {
   assert.doesNotMatch(output, /[A-Za-z]:[\\/]/);
   assert.doesNotMatch(output, /\n\s*at\s+/);
 });
+
+test('the real CLI fails closed when TypeChecker alias resolution throws', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-ports-alias-error-'));
+  temporaryRoots.push(root);
+  const preload = path.join(root, 'throwing-alias-checker.cjs');
+  const privatePath = path.join(root, 'private', 'source.ts');
+  const failureMessage = `alias resolution failed at ${privatePath}\nstack detail`;
+  writeFileSync(preload, [
+    "const Module = require('node:module');",
+    'const originalLoad = Module._load;',
+    'Module._load = function patchedLoad(request, parent, isMain) {',
+    '  const loaded = originalLoad.call(this, request, parent, isMain);',
+    "  if (request !== 'typescript') return loaded;",
+    '  return {',
+    '    ...loaded,',
+    '    createProgram(...args) {',
+    '      const program = loaded.createProgram(...args);',
+    '      const getTypeChecker = program.getTypeChecker.bind(program);',
+    '      return new Proxy(program, {',
+    '        get(target, property, receiver) {',
+    "          if (property === 'getTypeChecker') {",
+    '            return () => {',
+    '              const checker = getTypeChecker();',
+    '              return new Proxy(checker, {',
+    '                get(checkerTarget, checkerProperty, checkerReceiver) {',
+    "                  if (checkerProperty === 'getAliasedSymbol') {",
+    `                    return () => { throw new Error(${JSON.stringify(failureMessage)}); };`,
+    '                  }',
+    '                  const value = Reflect.get(checkerTarget, checkerProperty, checkerReceiver);',
+    "                  return typeof value === 'function' ? value.bind(checkerTarget) : value;",
+    '                },',
+    '              });',
+    '            };',
+    '          }',
+    '          const value = Reflect.get(target, property, receiver);',
+    "          return typeof value === 'function' ? value.bind(target) : value;",
+    '        },',
+    '      });',
+    '    },',
+    '  };',
+    '};',
+  ].join('\n'), 'utf8');
+
+  const cli = path.join(backendRoot, 'scripts', 'architecture', 'ports-scan.cjs');
+  const result = spawnSync(process.execPath, ['-r', preload, cli, '--check'], {
+    cwd: backendRoot,
+    encoding: 'utf8',
+  });
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /architecture ports error: alias resolution failed at <path>/);
+  assert.doesNotMatch(output, /PASS - architecture ports|\[missing-r0-global\]/);
+  assert.ok(!output.includes(privatePath));
+  assert.doesNotMatch(output, /stack detail|\n\s*at\s+/);
+});

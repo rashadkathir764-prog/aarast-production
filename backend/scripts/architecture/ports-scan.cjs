@@ -100,13 +100,9 @@ function resolveAlias(symbol, checker) {
   const seen = new Set();
   while (current && (current.flags & ts.SymbolFlags.Alias) && !seen.has(current)) {
     seen.add(current);
-    try {
-      const resolved = checker.getAliasedSymbol(current);
-      if (!resolved || resolved === current) break;
-      current = resolved;
-    } catch {
-      return null;
-    }
+    const resolved = checker.getAliasedSymbol(current);
+    if (!resolved || resolved === current) break;
+    current = resolved;
   }
   return current;
 }

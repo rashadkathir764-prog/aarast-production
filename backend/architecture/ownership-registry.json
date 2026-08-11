@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "feafe3db0053d6c66d5f46b56ff9a512861dfbad",
+  "owners": {
+    "platform": ["IdempotencyKey", "OutboxEvent"],
+    "identity": ["User", "RefreshToken", "OtpCode", "LoginThrottle", "OtpDispatchQuota", "AdminLoginChallenge", "AdminPasswordResetChallenge", "AccountDeletionReceipt"],
+    "planning": ["WeddingPlan"],
+    "finance": ["BudgetCategory", "WeddingCost", "CostPayment", "PaymentSchedule"],
+    "collaboration": ["SharedMember", "PlanInvite", "ContributorHistoryScope", "ContributorTenure", "ContributionEvent"],
+    "tasks": ["WeddingTask", "WeddingTaskChecklistItem"],
+    "guests": ["Guest", "GuestGroup"],
+    "marketplace": ["Provider", "ProviderService", "ProviderServiceImage", "ProviderPackage", "FavoriteProvider", "ProviderReview", "QuoteRequest", "QuoteOffer", "PlanProviderLink"],
+    "messaging": ["Conversation", "ConversationParticipant", "ConversationEvent", "ChatMessage", "ChatAttachment", "ConversationReport"],
+    "notifications": ["Notification", "NotificationPreference", "PushInstallation"],
+    "catalog": ["City", "Governorate", "District", "AdministrativeLocality", "ReferenceCatalog", "ReferenceCatalogItem", "ReferenceCatalogItemRevision", "ProviderCategory"],
+    "media": ["MediaUploadTicket"],
+    "insights": [],
+    "backoffice": ["AdminAuditLog"]
+  },
+  "currentRoots": {
+    "platform": ["common", "prisma", "outbox", "health"],
+    "identity": ["auth", "users", "me", "contexts"],
+    "planning": ["wedding-plans", "onboarding"],
+    "finance": ["money", "budget-categories", "wedding-costs"],
+    "collaboration": ["sharing", "contribution-history"],
+    "tasks": ["tasks"],
+    "guests": ["guests"],
+    "marketplace": ["marketplace", "provider-dashboard"],
+    "messaging": ["conversations"],
+    "notifications": ["notifications", "push"],
+    "catalog": ["catalogs"],
+    "media": ["media"],
+    "insights": ["dashboard", "timeline"],
+    "backoffice": ["admin"]
+  }
+}

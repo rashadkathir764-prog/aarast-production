@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import os from 'node:os';
@@ -83,6 +84,378 @@ function captureCli(overrides = {}) {
     stderr,
   };
 }
+
+function expectedUnresolved(source, target) {
+  return {
+    records: [],
+    errors: [{ source, target, kind: 'unresolved-local-target' }],
+  };
+}
+
+function directoryLinkType() {
+  return process.platform === 'win32' ? 'junction' : 'dir';
+}
+
+const localUriForms = [
+  {
+    name: 'bare',
+    specifier: 'missing.dart',
+    target: 'mobile/lib/features/alpha/nested/missing.dart',
+  },
+  {
+    name: 'dot-relative',
+    specifier: './missing.dart',
+    target: 'mobile/lib/features/alpha/nested/missing.dart',
+  },
+  {
+    name: 'parent-relative',
+    specifier: '../missing.dart',
+    target: 'mobile/lib/features/alpha/missing.dart',
+  },
+  {
+    name: 'Aarast package',
+    specifier: 'package:aarast_mobile/features/alpha/package_missing.dart',
+    target: 'mobile/lib/features/alpha/package_missing.dart',
+  },
+];
+
+for (const directive of ['import', 'export', 'part']) {
+  for (const form of localUriForms) {
+    test(`${directive} resolves its ${form.name} URI independently`, () => {
+      withMobileFixture({
+        'features/alpha/nested/source.dart': `${directive} '${form.specifier}';\n`,
+      }, ({ mobileLib }) => {
+        assert.deepEqual(
+          scanMobileBoundaries({ mobileLib }),
+          expectedUnresolved(
+            'mobile/lib/features/alpha/nested/source.dart',
+            form.target,
+          ),
+        );
+      });
+    });
+  }
+}
+
+for (const form of localUriForms) {
+  test(`part-of resolves its ${form.name} URI independently`, () => {
+    withMobileFixture({
+      'features/alpha/nested/source.dart': `part of '${form.specifier}';\n`,
+    }, ({ mobileLib }) => {
+      assert.deepEqual(
+        scanMobileBoundaries({ mobileLib }),
+        expectedUnresolved(
+          'mobile/lib/features/alpha/nested/source.dart',
+          form.target,
+        ),
+      );
+    });
+  });
+}
+
+for (const directive of ['import', 'export']) {
+  test(`${directive} resolves every conditional URI alternative independently`, () => {
+    withMobileFixture({
+      'core/source.dart': [
+        `${directive} '../features/alpha/primary.dart'`,
+        "  if (dart.library.io) '../features/beta/native.dart'",
+        "  if (dart.library.html) 'package:aarast_mobile/features/gamma/browser.dart';",
+      ].join('\n'),
+    }, ({ mobileLib }) => {
+      assert.deepEqual(scanMobileBoundaries({ mobileLib }).errors, [
+        {
+          source: 'mobile/lib/core/source.dart',
+          target: 'mobile/lib/features/alpha/primary.dart',
+          kind: 'unresolved-local-target',
+        },
+        {
+          source: 'mobile/lib/core/source.dart',
+          target: 'mobile/lib/features/beta/native.dart',
+          kind: 'unresolved-local-target',
+        },
+        {
+          source: 'mobile/lib/core/source.dart',
+          target: 'mobile/lib/features/gamma/browser.dart',
+          kind: 'unresolved-local-target',
+        },
+      ]);
+    });
+  });
+}
+
+const decodedUriCases = [
+  {
+    name: 'hex escape',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/hex\x2edart';`,
+    targetFile: 'features/alpha/hex.dart',
+    target: 'mobile/lib/features/alpha/hex.dart',
+  },
+  {
+    name: 'four-digit Unicode escape',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/unicode\u002edart';`,
+    targetFile: 'features/alpha/unicode.dart',
+    target: 'mobile/lib/features/alpha/unicode.dart',
+  },
+  {
+    name: 'braced Unicode escape',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/braced\u{2e}dart';`,
+    targetFile: 'features/alpha/braced.dart',
+    target: 'mobile/lib/features/alpha/braced.dart',
+  },
+  {
+    name: 'escaped single quote',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/child\'s.dart';`,
+    targetFile: "features/alpha/child's.dart",
+    target: "mobile/lib/features/alpha/child's.dart",
+  },
+  {
+    name: 'identity escape',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/identity\q.dart';`,
+    targetFile: 'features/alpha/identityq.dart',
+    target: 'mobile/lib/features/alpha/identityq.dart',
+  },
+  {
+    name: 'escaped dollar',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/money\$.dart';`,
+    targetFile: 'features/alpha/money$.dart',
+    target: 'mobile/lib/features/alpha/money$.dart',
+  },
+  {
+    name: 'escaped slash',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/folder\/child.dart';`,
+    targetFile: 'features/alpha/folder/child.dart',
+    target: 'mobile/lib/features/alpha/folder/child.dart',
+  },
+  {
+    name: 'escaped backslash',
+    source: String.raw`import 'package:aarast_mobile/features/alpha/folder\\child.dart';`,
+    targetFile: 'features/alpha/folder\\child.dart',
+    target: 'mobile/lib/features/alpha/folder/child.dart',
+  },
+  {
+    name: 'single-quoted raw string',
+    source: String.raw`import r'package:aarast_mobile/features/alpha/raw\u002edart';`,
+    targetFile: 'features/alpha/raw\\u002edart',
+    target: 'mobile/lib/features/alpha/raw/u002edart',
+  },
+  {
+    name: 'double-quoted raw string',
+    source: String.raw`export r"package:aarast_mobile/features/alpha/raw\x2edart";`,
+    targetFile: 'features/alpha/raw\\x2edart',
+    target: 'mobile/lib/features/alpha/raw/x2edart',
+  },
+  {
+    name: 'normal triple string',
+    source: String.raw`import '''package:aarast_mobile/features/alpha/triple\u002edart''';`,
+    targetFile: 'features/alpha/triple.dart',
+    target: 'mobile/lib/features/alpha/triple.dart',
+  },
+  {
+    name: 'raw triple string',
+    source: String.raw`import r'''package:aarast_mobile/features/alpha/raw\u{2e}dart''';`,
+    targetFile: 'features/alpha/raw\\u{2e}dart',
+    target: 'mobile/lib/features/alpha/raw/u{2e}dart',
+  },
+  {
+    name: 'multiline triple string leading line',
+    source: "import '''\npackage:aarast_mobile/features/alpha/multiline.dart''';",
+    unresolvedTarget: 'mobile/lib/core/\npackage:aarast_mobile/features/alpha/multiline.dart',
+  },
+];
+
+for (const item of decodedUriCases) {
+  test(`Dart ${item.name} preserves exact URI resolution semantics`, () => {
+    const files = {
+      'core/source.dart': `${item.source}\n`,
+    };
+    if (item.targetFile) files[item.targetFile] = '';
+    withMobileFixture(files, ({ mobileLib }) => {
+      const actual = scanMobileBoundaries({ mobileLib });
+      if (item.unresolvedTarget) {
+        assert.deepEqual(
+          actual,
+          expectedUnresolved('mobile/lib/core/source.dart', item.unresolvedTarget),
+        );
+      } else {
+        assert.deepEqual(actual, {
+          records: [record({ target: item.target })],
+          errors: [],
+        });
+      }
+    });
+  });
+}
+
+test('escaped double quote reaches resolution without silent retargeting', () => {
+  withMobileFixture({
+    'core/source.dart': `${String.raw`import "package:aarast_mobile/features/alpha/child\"name.dart";`}\n`,
+  }, ({ mobileLib }) => {
+    assert.deepEqual(
+      scanMobileBoundaries({ mobileLib }),
+      expectedUnresolved(
+        'mobile/lib/core/source.dart',
+        'mobile/lib/features/alpha/child"name.dart',
+      ),
+    );
+  });
+});
+
+const controlEscapes = new Map([
+  ['n', '\n'],
+  ['r', '\r'],
+  ['f', '\f'],
+  ['b', '\b'],
+  ['t', '\t'],
+  ['v', '\v'],
+]);
+
+for (const [escape, decoded] of controlEscapes) {
+  test(`Dart control escape \\${escape} is decoded before target resolution`, () => {
+    withMobileFixture({
+      'core/source.dart': `import 'package:aarast_mobile/features/alpha/control\\${escape}tail.dart';\n`,
+    }, ({ mobileLib }) => {
+      assert.deepEqual(
+        scanMobileBoundaries({ mobileLib }),
+        expectedUnresolved(
+          'mobile/lib/core/source.dart',
+          `mobile/lib/features/alpha/control${decoded}tail.dart`,
+        ),
+      );
+    });
+  });
+}
+
+const malformedDartSources = [
+  "import 'child\\x2.dart';",
+  "import 'child\\xGG.dart';",
+  "import 'child\\u123.dart';",
+  "import 'child\\u{}.dart';",
+  "import 'child\\u{110000}.dart';",
+  "import 'child\\u{D800}.dart';",
+  "import 'child${suffix}.dart';",
+  "import 'child.dart;",
+  "import '''child.dart;",
+  "import 'child.dart'",
+  "import 'child\n.dart';",
+];
+
+for (const source of malformedDartSources) {
+  test(`malformed Dart directive fails closed: ${JSON.stringify(source)}`, () => {
+    assert.throws(
+      () => parseDartDirectives(source),
+      /invalid Dart source/,
+    );
+  });
+}
+
+test('package-form reciprocal part and part-of pair passes', () => {
+  withMobileFixture({
+    'features/alpha/library.dart': (
+      "part 'package:aarast_mobile/features/alpha/parts/child.dart';\n"
+    ),
+    'features/alpha/parts/child.dart': (
+      "part of 'package:aarast_mobile/features/alpha/library.dart';\n"
+    ),
+  }, ({ mobileLib }) => {
+    assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+      records: [],
+      errors: [],
+    });
+  });
+});
+
+test('parent-relative reciprocal part and part-of pair passes', () => {
+  withMobileFixture({
+    'features/alpha/library/library.dart': "part '../parts/child.dart';\n",
+    'features/alpha/parts/child.dart': "part of '../library/library.dart';\n",
+  }, ({ mobileLib }) => {
+    assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+      records: [],
+      errors: [],
+    });
+  });
+});
+
+test('internal directory junction target is accepted under its logical URI', () => {
+  withMobileFixture({
+    'core/source.dart': "import '../features/alpha/logical/target.dart';\n",
+    'features/alpha/real/target.dart': '',
+  }, ({ mobileLib }) => {
+    const realDirectory = path.join(mobileLib, 'features', 'alpha', 'real');
+    const logicalDirectory = path.join(mobileLib, 'features', 'alpha', 'logical');
+    symlinkSync(realDirectory, logicalDirectory, directoryLinkType());
+    assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+      records: [record({
+        target: 'mobile/lib/features/alpha/logical/target.dart',
+      })],
+      errors: [],
+    });
+  });
+});
+
+test('directory junction target outside mobile lib fails closed', () => {
+  const external = mkdtempSync(path.join(os.tmpdir(), 'aarast-mobile-external-'));
+  try {
+    writeFileSync(path.join(external, 'target.dart'), '', 'utf8');
+    withMobileFixture({
+      'core/source.dart': "import '../features/alpha/external/target.dart';\n",
+    }, ({ mobileLib }) => {
+      const logicalDirectory = path.join(mobileLib, 'features', 'alpha', 'external');
+      mkdirSync(path.dirname(logicalDirectory), { recursive: true });
+      symlinkSync(external, logicalDirectory, directoryLinkType());
+      assert.deepEqual(
+        scanMobileBoundaries({ mobileLib }),
+        expectedUnresolved(
+          'mobile/lib/core/source.dart',
+          'mobile/lib/features/alpha/external/target.dart',
+        ),
+      );
+    });
+  } finally {
+    rmSync(external, { recursive: true, force: true });
+  }
+});
+
+test('dangling directory junction target fails closed', () => {
+  const removedTarget = mkdtempSync(path.join(os.tmpdir(), 'aarast-mobile-dangling-'));
+  const removedFile = path.join(removedTarget, 'target.dart');
+  writeFileSync(removedFile, '', 'utf8');
+  withMobileFixture({
+    'core/source.dart': "import '../features/alpha/dangling/target.dart';\n",
+  }, ({ mobileLib }) => {
+    const logicalDirectory = path.join(mobileLib, 'features', 'alpha', 'dangling');
+    mkdirSync(path.dirname(logicalDirectory), { recursive: true });
+    symlinkSync(removedTarget, logicalDirectory, directoryLinkType());
+    rmSync(removedTarget, { recursive: true, force: true });
+    assert.deepEqual(
+      scanMobileBoundaries({ mobileLib }),
+      expectedUnresolved(
+        'mobile/lib/core/source.dart',
+        'mobile/lib/features/alpha/dangling/target.dart',
+      ),
+    );
+  });
+});
+
+test('configuration diagnostics redact every absolute path family and later lines', () => {
+  const dangerousPaths = [
+    'C:\\Users\\person\\secret.txt',
+    '/tmp/person/secret.txt',
+    '\\\\server\\share\\secret.txt',
+    '\\\\?\\C:\\Users\\person\\secret.txt',
+    '\\\\?\\UNC\\server\\share\\secret.txt',
+  ];
+  for (const dangerousPath of dangerousPaths) {
+    const result = captureCli({
+      scan: () => {
+        throw new Error(`cannot read ${dangerousPath}\nsecond line at file:///secret`);
+      },
+    });
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.stderr.length, 1);
+    assert.equal(result.stderr[0], 'mobile boundary configuration error');
+  }
+});
 
 test('character scanner finds quoted, multiline, and conditional URI alternatives only', () => {
   const source = String.raw`

@@ -28,6 +28,22 @@ function isIdentifierPart(character) {
   return character !== undefined && /[A-Za-z0-9_$]/.test(character);
 }
 
+function invalidDartSource() {
+  throw new Error('invalid Dart source');
+}
+
+function decodeUnicodeScalar(hex) {
+  const value = Number.parseInt(hex, 16);
+  if (
+    !Number.isInteger(value)
+    || value > 0x10FFFF
+    || (value >= 0xD800 && value <= 0xDFFF)
+  ) {
+    invalidDartSource();
+  }
+  return String.fromCodePoint(value);
+}
+
 function readDartString(sourceText, start, rawPrefix = false) {
   const quoteIndex = rawPrefix ? start + 1 : start;
   const quote = sourceText[quoteIndex];
@@ -35,30 +51,67 @@ function readDartString(sourceText, start, rawPrefix = false) {
   const delimiterLength = triple ? 3 : 1;
   let index = quoteIndex + delimiterLength;
   let value = '';
+  let interpolated = false;
 
   while (index < sourceText.length) {
     if (triple && sourceText.slice(index, index + 3) === quote.repeat(3)) {
-      return { value, end: index + 3 };
+      return { value, end: index + 3, interpolated };
     }
     if (!triple && sourceText[index] === quote) {
-      return { value, end: index + 1 };
+      return { value, end: index + 1, interpolated };
     }
-    if (!rawPrefix && sourceText[index] === '\\' && index + 1 < sourceText.length) {
+    if (!triple && /[\r\n]/.test(sourceText[index])) invalidDartSource();
+    if (!rawPrefix && sourceText[index] === '\\') {
+      if (index + 1 >= sourceText.length || /[\r\n]/.test(sourceText[index + 1])) {
+        invalidDartSource();
+      }
       const escaped = sourceText[index + 1];
-      const decoded = {
+      const control = {
         n: '\n',
         r: '\r',
+        f: '\f',
+        b: '\b',
         t: '\t',
+        v: '\v',
       }[escaped];
-      value += decoded ?? escaped;
+      if (control !== undefined) {
+        value += control;
+        index += 2;
+        continue;
+      }
+      if (escaped === 'x') {
+        const hex = sourceText.slice(index + 2, index + 4);
+        if (!/^[0-9A-Fa-f]{2}$/.test(hex)) invalidDartSource();
+        value += decodeUnicodeScalar(hex);
+        index += 4;
+        continue;
+      }
+      if (escaped === 'u') {
+        if (sourceText[index + 2] === '{') {
+          const close = sourceText.indexOf('}', index + 3);
+          if (close === -1) invalidDartSource();
+          const hex = sourceText.slice(index + 3, close);
+          if (!/^[0-9A-Fa-f]{1,6}$/.test(hex)) invalidDartSource();
+          value += decodeUnicodeScalar(hex);
+          index = close + 1;
+          continue;
+        }
+        const hex = sourceText.slice(index + 2, index + 6);
+        if (!/^[0-9A-Fa-f]{4}$/.test(hex)) invalidDartSource();
+        value += decodeUnicodeScalar(hex);
+        index += 6;
+        continue;
+      }
+      value += escaped;
       index += 2;
       continue;
     }
+    if (!rawPrefix && sourceText[index] === '$') interpolated = true;
     value += sourceText[index];
     index += 1;
   }
 
-  return { value, end: sourceText.length };
+  invalidDartSource();
 }
 
 function tokenizeDart(sourceText) {
@@ -97,6 +150,7 @@ function tokenizeDart(sourceText) {
           index += 1;
         }
       }
+      if (commentDepth !== 0) invalidDartSource();
       continue;
     }
 
@@ -107,7 +161,12 @@ function tokenizeDart(sourceText) {
       && (next === "'" || next === '"');
     if (character === "'" || character === '"' || rawString) {
       const parsed = readDartString(sourceText, index, rawString);
-      tokens.push({ type: 'string', value: parsed.value, topLevel });
+      tokens.push({
+        type: 'string',
+        value: parsed.value,
+        interpolated: parsed.interpolated,
+        topLevel,
+      });
       index = parsed.end;
       continue;
     }
@@ -158,9 +217,15 @@ export function parseDartDirectives(sourceText) {
     }
 
     let end = index + 1;
-    while (end < tokens.length && tokens[end].value !== ';') end += 1;
-    if (end >= tokens.length) continue;
+    while (
+      end < tokens.length
+      && !(tokens[end].topLevel && tokens[end].value === ';')
+    ) end += 1;
+    if (end >= tokens.length) invalidDartSource();
     const body = tokens.slice(index + 1, end);
+    if (body.some((candidate) => candidate.type === 'string' && candidate.interpolated)) {
+      invalidDartSource();
+    }
 
     if (token.value === 'import' || token.value === 'export') {
       const uris = body
@@ -213,10 +278,11 @@ function resolveDartTarget(sourceFile, specifier, mobileLib) {
   return path.resolve(path.dirname(sourceFile), specifier);
 }
 
-function existingMobileFile(target, mobileLib) {
+function existingMobileFile(target, mobileLib, realMobileLib) {
   if (!isInside(mobileLib, target)) return false;
   try {
-    return fs.statSync(target).isFile();
+    const realTarget = fs.realpathSync.native(target);
+    return isInside(realMobileLib, realTarget) && fs.statSync(realTarget).isFile();
   } catch {
     return false;
   }
@@ -287,6 +353,7 @@ function listDartFiles(root) {
 
 export function scanMobileBoundaries({ mobileLib }) {
   const resolvedMobileLib = path.resolve(mobileLib);
+  const realMobileLib = fs.realpathSync.native(resolvedMobileLib);
   const repoRoot = path.resolve(resolvedMobileLib, '..', '..');
   const records = new Map();
   const errors = new Map();
@@ -318,7 +385,7 @@ export function scanMobileBoundaries({ mobileLib }) {
         const targetFile = resolveDartTarget(sourceFile, specifier, resolvedMobileLib);
         if (targetFile === null) continue;
         const target = repositoryPath(targetFile, repoRoot);
-        if (!existingMobileFile(targetFile, resolvedMobileLib)) {
+        if (!existingMobileFile(targetFile, resolvedMobileLib, realMobileLib)) {
           addError({ source, target, kind: 'unresolved-local-target' });
           continue;
         }
@@ -515,13 +582,6 @@ function strictViolation(item) {
   return true;
 }
 
-function sanitizeMessage(value) {
-  const firstLine = String(value || 'unknown error').split(/\r?\n/, 1)[0];
-  return firstLine
-    .replace(/[A-Za-z]:[\\/][^\s:]*/g, '<path>')
-    .replace(/\/(?:[^\s/:]+\/)+[^\s:]*/g, '<path>');
-}
-
 function writeLine(target, message) {
   if (typeof target === 'function') target(message);
   else if (target && typeof target.write === 'function') target.write(`${message}\n`);
@@ -622,10 +682,7 @@ export function runCli(dependencies) {
     );
     return 0;
   } catch (error) {
-    writeLine(
-      dependencies.stderr,
-      `mobile boundary configuration error: ${sanitizeMessage(error?.message)}`,
-    );
+    writeLine(dependencies.stderr, 'mobile boundary configuration error');
     return 2;
   }
 }

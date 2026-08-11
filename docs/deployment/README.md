@@ -1,11 +1,12 @@
 # Deployment
 
-Snapshot date: 2026-08-03
+Snapshot date: 2026-08-11
 
-Deployment source files live under `deploy/dokploy/`. This folder is the compact
+Deployment source files live under `deploy/dokploy/`, with the public static
+image source under `deploy/public-site/`. This folder is the compact
 documentation entry point for deployment.
 
-## Current Runtime From Committed Files
+## Current Runtime Contract From Source Files
 
 Local Docker Compose:
 
@@ -16,12 +17,22 @@ Production Dokploy Compose:
 
 - Backend API: `8093 -> 3000`
 - Admin web: `8094 -> 80`
+- Public static site: `8095 -> 80`
 
 Public domains documented for the current deployment path:
 
 - Backend API: `https://aarast-api.shadowgardn.com`
 - Admin web: `https://aarast-admin.shadowgardn.com`
+- Public privacy, support, invite, and mobile-link surface:
+  `https://aarast.shadowgardn.com`
 - Public/signed media origin: `https://aarast-media.shadowgardn.com`
+
+The service on `8095` is the allowlisted static image under
+`deploy/public-site/`, not Flutter Web. Production Compose requires its
+content-addressed `AARAST_PUBLIC_SITE_IMAGE_ID`; release-build Compose stamps
+Backend, Admin Web, and the public-site image with the same full 40-character
+Git revision. No Flutter web service is currently defined, and adding one
+requires a later routing, caching, CORS, and release decision.
 
 Admin production builds default to the public backend origin and fail their
 post-build gate if a loopback API or the current MFA login route is missing.
@@ -32,6 +43,14 @@ post-build gate if a loopback API or the current MFA login route is missing.
   production secrets unless deployment work is explicitly requested.
 - Never write real secrets into Markdown.
 - Production deployment is not complete without post-deploy smoke checks.
+
+## Dependency Gate
+
+The current Admin dependency tree uses `react-router-dom@7.18.2` with
+`react-router@7.18.2` and `nanoid@3.3.18`. The full `npm audit` currently reports
+zero vulnerabilities. This is source evidence only; it does not replace the
+Admin test, type-check, build, route, honesty, container-config, or deployed
+runtime gates.
 
 ## Runtime Health Contract
 
@@ -90,16 +109,19 @@ the application forward. A database restore to the pre-cutover point would
 discard post-cutover contribution history and other writes and therefore is
 not an ordinary rollback path.
 
-The matching mobile release gate includes a native upgrade rehearsal from the
-existing SQLCipher schema version 6 to version 7. Every plan-scoped pending sync
-row must emerge with a verified explicit `planId`; unknown or contradictory
-legacy ownership remains permanently blocked and must never be guessed from an
-endpoint, local id, cache key, nested payload, or substring. The rehearsal must
-also prove that a durable pending-leave marker survives process death, cache
-clear, and ordinary logout, hides the departed plan before context selection,
-and is removed only after server reconciliation, exact plan-graph deletion, and
-a filtered context refresh. Do not roll out the mobile build until this passes
-on both Android and iOS.
+The matching mobile release gate includes a native sequential upgrade rehearsal
+from SQLCipher schema version 6 through version 7 to the current version 8.
+The version 6 -> 7 step must prove that every plan-scoped pending sync row
+emerges with a verified explicit `planId`; unknown or contradictory legacy
+ownership remains permanently blocked and must never be guessed from an
+endpoint, local id, cache key, nested payload, or substring. The version
+7 -> 8 step must prove that `cached_dashboard_summaries` is created without
+losing the migrated queue, account ownership, or existing cached data. The same
+rehearsal must also prove that a durable pending-leave marker survives process
+death, cache clear, and ordinary logout, hides the departed plan before context
+selection, and is removed only after server reconciliation, exact plan-graph
+deletion, and a filtered context refresh. Do not roll out the mobile build until
+the complete version 6 -> 7 -> 8 chain passes on both Android and iOS.
 
 Release automation must supply `AARAST_FIREBASE_API_KEY`,
 `AARAST_FIREBASE_APP_ID`, `AARAST_FIREBASE_MESSAGING_SENDER_ID`, and
@@ -180,6 +202,16 @@ variables. iOS runs the equivalent configuration check as a Release Xcode build
 phase. Native launcher/splash assets and link declarations are committed, but
 final AAB/IPA signing, store upload, and real-device links remain external
 gates. See `STORE_RELEASE.md`.
+
+The repository now contains static source for the current store-facing URLs:
+
+- Privacy: `https://aarast.shadowgardn.com/privacy`
+- Support and account-deletion guidance:
+  `https://aarast.shadowgardn.com/support`
+
+These URLs must return the intended pages over HTTPS in the release environment
+before they are submitted to either store. Their presence in source and Compose
+is not production-deployment evidence.
 
 ## Mobile Session And Observability Release Gate
 
@@ -293,6 +325,10 @@ group/world-readable.
 Production acceptance requires a real task and chat notification on a physical
 Android device in both background and terminated states.
 
-The public app domain must serve Android `assetlinks.json` and Apple
-`apple-app-site-association` using the production signing fingerprint and Apple
-Team ID. Do not publish temporary verification identities.
+The public-site source serves Android `assetlinks.json` through the well-known
+path and deliberately returns `404` for Apple
+`apple-app-site-association`. Before store release, verify Android association
+against the final Play signing certificate and replace the Apple fail-closed
+response only after the real Apple Team ID and bundle association are known.
+Do not publish temporary verification identities. Source configuration is not
+proof of public deployment or physical-device link handling.

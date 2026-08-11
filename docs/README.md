@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -127,12 +127,14 @@ changing behavior.
   doc and link it here.
 - Do not restore large sets of old docs without an explicit reason.
 
-The current modernization working tree is on
-`codex/aarast-soft-royal-v2-20260810`. Superseded plans, visual prototypes, and
-duplicated status documents remain recoverable in the archive; only the compact
-sources listed above govern implementation. The branch currently points to the
-same commit as `main`; its modernization work is intentionally uncommitted until
-the owner authorizes a commit.
+The canonical integration branch is `main`; release candidates enter it only
+through reviewed, green Git history. Resolve the exact source revision with
+`git rev-parse HEAD` and bind deployed images and artifacts to that immutable
+revision instead of copying a self-referential SHA into this tracked document.
+Superseded plans, visual prototypes, and duplicated status documents remain
+recoverable in the archive; only the compact sources listed above govern
+implementation. The quarantined `codex/guest-invitation-campaigns` branch is a
+separate preserved WIP and is not part of the current release line.
 
 ## Guard
 

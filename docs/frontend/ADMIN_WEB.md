@@ -1,6 +1,6 @@
 # Admin Web
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 The admin web app is a React/Vite dashboard under `admin-web/`. It supports
 admin-facing management for dashboard stats, users, catalog references,
@@ -129,18 +129,16 @@ List summary cards distinguish complete filtered totals from counts derived
 only from the current 20-row page. Page-local cards are labeled
 `في الصفحة`; they must not be presented as full-dataset statistics.
 
-## Latest Local Verification — 2026-08-10
+## Latest Local Verification — 2026-08-11
 
-- PASS — TypeScript type-check, Vitest, source-honesty smoke, container runtime
-  contract tests, and production build.
+- PASS — React Router `7.18.2`, TypeScript type-check, Vitest `96/96`, route
+  smoke `16/16`, source-honesty smoke `12/12`, container runtime contract
+  tests `3/3`, and production build.
+- PASS — full `npm audit` reports zero findings after the tested React Router 7
+  migration and transitive `nanoid` remediation.
 - PASS — managed admin-runtime smoke against a disposable database after all 75
   migrations. It covered admin authentication/session rotation, private-field
   exclusion, catalog draft/publish/edit/rollback/disable, and governorate →
   district → locality create/visibility/soft-disable behavior.
-- OPEN — `npm audit --omit=dev` reports two moderate React Router advisories.
-  Current return-path validation rejects external, network-path, backslash,
-  encoded-separator, query, and hash targets, but the package-level fix requires
-  a separately tested React Router v7 migration. Do not run the breaking
-  `npm audit fix --force` on this branch.
 - NOT VERIFIED — deployed Admin runtime and production data migration. Local
   isolated smoke is not deployment evidence.

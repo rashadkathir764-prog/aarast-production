@@ -1,5 +1,7 @@
 # Aarast Mobile Offline SQLite
 
+Snapshot date: 2026-08-11
+
 ## Scope
 
 SQLite is used only by the Flutter mobile app as a local cache and write queue. It does not replace backend PostgreSQL, Prisma, Docker PostgreSQL, or the React admin web app.
@@ -124,6 +126,11 @@ one idempotent logical operation; category deletion must be rejected locally
 while costs still reference it. Failures keep payloads, increment retry count,
 and preserve `lastError`. Successful items are removed from the queue and clear
 their pending badge.
+
+Blocked queue items are never auto-replayed. Their status surface shows only
+safe Arabic details about the affected entity, operation, reason, and retry
+eligibility. It offers retry only when the item is eligible; it does not expose
+unsafe edit or discard actions for blocked work.
 
 ## UI Indicators
 

@@ -1,79 +1,89 @@
 # Play Store Listing — Aarast
 
-Snapshot date: 2026-07-08
+Snapshot date: 2026-08-11
 
-Ready-to-paste listing copy (Arabic-first, Yemen market). Adjust wording
-to taste before publishing. Character limits are Google's.
+Ready-to-paste Arabic-first listing copy for the Yemen market. Recheck every
+claim against the exact signed store build before publishing; source text and
+local tests are not evidence that a production release or public domain is live.
 
 ## App name (max 30)
 
-```
+```text
 اعّرست — تخطيط عرسك
 ```
 
 ## Short description (max 80)
 
-```
-خطّط لعرسك: ميزانية، مصروفات، ديون، مهام، وقائمة مدعوين — كل شيء في مكان واحد.
+```text
+خطّط لعرسك: ميزانية وتكاليف ودفعات ومواعيد، مهام ومدعوون في مكان واحد.
 ```
 
 ## Full description (max 4000)
 
-```
-اعّرست تطبيق يمنيّ لتخطيط الأعراس، صُمّم ليكون رفيقك من أول فكرة حتى ليلة
-العرس. نظّم كل تفاصيل عرسك في مكان واحد، بواجهة عربية كاملة.
+```text
+اعّرست تطبيق يمني لتخطيط الأعراس بواجهة عربية واضحة. يساعدك على تنظيم المال،
+المهام، المدعوين، المشاركة، والتواصل مع مزوّدي الخدمات ضمن خطة عرس واحدة.
 
-• الميزانية والمصروفات
-تابع ميزانيتك التقديرية، سجّل مصروفاتك الفعلية حسب الفئات، واعرف كم صرفت
-وكم بقي — بأرقام دقيقة بدون أخطاء تقريب.
-
-• الالتزامات والديون والأقساط
-سجّل التزاماتك المالية مع مزوّدي الخدمات، وتابع الديون والدفعات
-والأقساط، ولا يفوتك موعد استحقاق.
+• الميزانية والتكاليف
+حدّد ميزانية عامة اختيارية، ونظّمها ضمن فئات، وسجّل تكاليف العرس والمبالغ التي
+دفعتها فعلياً. يمكنك أيضاً إضافة مواعيد دفع تذكيرية تحت كل تكلفة. هذه السجلات
+للتخطيط الشخصي؛ التطبيق لا ينفّذ دفعات ولا يحجز مبالغ.
 
 • المهام والجدول الزمني
-حوّل التحضيرات إلى قائمة مهام واضحة مربوطة بمواعيدها، وتابع تقدّمك أولاً
-بأول.
+أنشئ مهام التحضير، حدّد مواعيدها ومسؤوليها، وتابع ما اكتمل وما بقي.
 
-• قائمة المدعوين
-أضف مدعوّيك بسهولة — يدوياً أو باختيار جهة اتصال — ونظّم قائمتك.
+• المدعوون
+أضف المدعوين ونظّمهم في مجموعات وتابع حالة الدعوة والردود المتاحة في خطتك.
 
-• المشاركة بصلاحيات
-شارك خطتك مع شريكك أو عائلتك، وأنت من يحدد من يرى ومن يعدّل كل قسم.
-بياناتك المالية تبقى خاصة إلا لمن تمنحه الإذن.
+• المشاركة بصلاحيات واضحة
+شارك خطة العرس مع من تختاره وحدّد ما يستطيع كل عضو عرضه أو إدارته. تبقى
+الميزانية والفئات والتكاليف والدفعات ومواعيد الدفع خاصة ما لم تمنح صلاحية
+مالية صريحة.
 
-• مزوّدو الخدمات
-تصفّح مزوّدي خدمات الأعراس، اطلب عروض أسعار، وتواصل معهم داخل التطبيق.
+• مزوّدو الخدمات وعروض الأسعار
+تصفّح مزوّدي خدمات الأعراس، وأرسل طلب عرض سعر، وتابع الرد والتواصل المرتبط
+به داخل التطبيق. هذه مرحلة تخطيط وطلب عرض سعر؛ لا تعني حجزاً مؤكداً أو دفعاً.
 
-• يعمل بدون إنترنت
-أضف بياناتك حتى بدون اتصال، وتُزامَن تلقائياً عند عودة الشبكة.
+• استمرار محدود عند انقطاع الشبكة
+تعرض بعض الشاشات آخر بيانات محفوظة، وتدعم بعض العمليات المحددة الحفظ للمزامنة
+عند عودة الاتصال. تختلف الإتاحة دون إنترنت حسب الميزة، وتحتاج وظائف الخادم
+والتواصل والمزامنة إلى الشبكة.
 
-خصوصيتك أولاً: لا نبيع بياناتك، ولا نعالج مدفوعات، وبياناتك المالية خاصة
-بك وحدك.
+خصوصيتك أولاً: لا نبيع بياناتك، ولا نعرض إعلانات، ولا نعالج مدفوعات أو نخزّن
+بيانات بطاقات بنكية. بيانات التخطيط المالي التي تدخلها خاصة افتراضياً وتخضع
+للصلاحيات التي تختارها.
 ```
 
-## Category & tags
+## Category and tags
 
-- Category: **Lifestyle** (alt: Events).
+- Category: **Lifestyle** (alternative: Events).
 - Tags: wedding planning, budget, tasks, guests.
 
 ## Content rating
 
 - Target audience: adults planning a wedding.
-- Expected IARC rating: **Everyone / 3+** (no violence, gambling, or
-  mature content). Complete the questionnaire honestly in the console.
+- Expected IARC result: **Everyone / 3+**, subject to the answers entered in
+  the current console questionnaire. Do not publish a predicted rating as an
+  approved rating.
 
-## Contact & policy
+## Contact and policy
 
-- Support email: <!-- add before publishing -->
-- Privacy policy URL: <!-- host docs/legal/PRIVACY_POLICY.md and paste the URL -->
+- Support email: `info@aarast.app`
+- Privacy policy: `https://aarast.shadowgardn.com/privacy`
+- Support and account deletion: `https://aarast.shadowgardn.com/support`
 
-## Assets still required from you (not code)
+The repository contains static source for both URLs, with no forms, analytics,
+or third-party scripts on those two pages. Verify HTTPS responses and final
+content in the deployed environment before entering the links in a store.
 
-These are design/marketing assets, not something code can generate:
+## External assets still required
 
-- App icon 512×512 PNG.
-- Feature graphic 1024×500.
-- At least 2 phone screenshots (recommend 4–8), 1080×1920 or similar.
-- Optional: short promo video.
-```
+- Reviewed 512×512 PNG store icon from the final brand assets.
+- Reviewed 1024×500 feature graphic.
+- At least two phone screenshots from the exact release candidate; four to
+  eight Arabic RTL screenshots are recommended.
+- Optional promo video.
+
+These assets, final signing, console upload, and store approval remain external
+release gates. Placeholder or locally generated evidence must not be presented
+as store acceptance.

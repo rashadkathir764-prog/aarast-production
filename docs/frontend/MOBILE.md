@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
@@ -40,6 +40,14 @@ conversations, signed image uploads, and rotating refresh sessions.
   service management. The local database upgrade clears pre-audience category
   cache rows, and category JSON without both server-owned audience flags is
   rejected instead of being treated as visible to both personas.
+- Marketplace distinguishes a successful empty response from a failed refresh.
+  A failed favorites, services, packages, or reviews refresh keeps the last
+  successful data visible as stale, shows an explicit Arabic error, and offers
+  retry; it must never present a transport failure as a genuinely empty list.
+- Remote push is available only when the server capability and local Firebase
+  capability are both available. Missing either capability fails closed for
+  remote push registration/delivery; supported in-app notifications remain
+  available.
 - Wedding location setup reads governorates and districts from the backend
   Yemen administrative catalog instead of a hardcoded six-location list.
   Governorates and per-governorate districts are cached in the encrypted local
@@ -254,10 +262,13 @@ conversations, signed image uploads, and rotating refresh sessions.
   `لم تعد لديك صلاحية لتنفيذ هذه المهمة`; `Plan not found` is not the task
   permission-revocation contract.
 
-These behaviors are present in the current source. On 2026-08-10 the latest
-branch-closure gate passed `flutter analyze` and `flutter test --no-pub` with
-1134/1134 tests (1084 non-Golden plus 50 reviewed Goldens), Release Web, and a
-public-API debug APK build. The APK installed and cold-launched on a Samsung
+These behaviors are present in the current source. On 2026-08-11 the combined
+working-tree gate passed `flutter analyze --no-pub`, all 1150 Flutter tests,
+the visually reviewed settings Golden, and a public-API debug APK build. No
+physical-device run was performed for that exact working tree. The latest
+physical evidence remains the 2026-08-10 checkpoint, where the branch-closure
+gate passed 1134/1134 tests (1084 non-Golden plus 50 reviewed Goldens), Release
+Web, and a public-API debug APK build. That APK installed and cold-launched on a Samsung
 SM-S938B at 1440x3120 and 1.15 text scale; Home, Money, Tasks, Guests, and
 Providers rendered without Flutter, RenderFlex, SQLite, or fatal runtime
 errors. On 2026-08-03 the earlier final

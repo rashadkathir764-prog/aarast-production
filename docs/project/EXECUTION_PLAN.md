@@ -1,6 +1,6 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
@@ -22,17 +22,20 @@ existing approved boundaries.
 
 ## Baseline And Safety
 
-- Clean implementation branch: `codex/aarast-modernization-20260807`, created
-  from `main` at `9393b8e`.
-- Current closure branch: `codex/aarast-soft-royal-v2-20260810`, still at
-  `9393b8e` with `main...HEAD = 0/0`. All current changes remain uncommitted by
-  owner instruction, so this branch is a protected working tree rather than a
-  merge-ready history.
-- Preserved WIP snapshot: `codex/snapshot-money-redesign-20260807` at
-  `8c6c026`. It is a recovery artifact, not an approved release candidate.
+- Historical implementation base: `codex/aarast-modernization-20260807` was
+  created from `main` at `9393b8e` and later removed during the explicit branch
+  cleanup after its relevant history was incorporated or preserved.
+- The 2026-08-11 closure package is promoted to canonical `main` only through a
+  reviewed PR with all required CI jobs green. Exact candidate, merge, image,
+  and artifact revisions come from Git and release metadata; this tracked plan
+  intentionally does not claim a mutable branch tip as its own source SHA.
+- The former WIP snapshot branch has been removed during the explicit branch
+  cleanup. Its pre-modernization recovery state remains in the verified local
+  Git bundle below; it is not an approved release candidate.
 - Verified local bundle: `_ai_backups/aarast-before-modernization-20260807.bundle`.
-- Existing stashes and worktrees are retained until their contents have an
-  explicit branch disposition. No branch deletion is part of this phase.
+- No stash exists. The remaining Codex-managed detached worktree and ignored
+  recovery artifacts stay untouched unless the owner explicitly authorizes
+  their removal.
 
 ## Priority Order
 
@@ -208,9 +211,9 @@ macOS remain release gates; they are not recorded as product PASS.
   date/location refinement. Exhaustive physical secondary-route, short-height,
   offline mutation/sync-recovery, and physical iOS review remain release gates.
 
-#### Completed checkpoint — Full working-tree source audit — 2026-08-10
+#### Historical checkpoint — Full working-tree source audit — 2026-08-10
 
-- Confirmed `main...HEAD = 0/0`; no commit or push was created.
+- At that checkpoint, `main...HEAD = 0/0`; no commit or push was created.
 - Backend check/test/build/Prisma validation, reference-catalog isolated smoke,
   Admin type-check/test/honesty/build/container/runtime smoke, Mobile analysis
   and 1134 tests, documentation sync/verification, and whitespace checks PASS.
@@ -218,14 +221,43 @@ macOS remain release gates; they are not recorded as product PASS.
   fresh disposable PostgreSQL database. Draft edits remain private until
   publish, rollback republishes history, disable preserves history, and locality
   changes appear to Mobile only while active.
-- Local Compose `/ready` remains `503`: MinIO is reachable from Backend, but the
-  S3 bucket check returns `InvalidAccessKeyId`, so local Backend/MinIO credentials
-  are out of sync. This is an operations/runtime blocker, not a current-source
-  test failure; no deployment file or container state is changed by this plan.
-- Backend dependency audit is clean. Admin carries two moderate React Router
-  advisories that require a tested v7 migration rather than `npm audit fix
-  --force`. Mobile dependency upgrades are recorded for a separate compatibility
-  pass because secure-storage and Socket.IO have major-version changes.
+- At that checkpoint, local Compose `/ready` returned `503` because the media
+  bucket check rejected its credentials. This historical result was closed by
+  the 2026-08-11 current-source rebuild described below.
+- At that checkpoint, Backend dependencies were clean and Admin carried two
+  moderate React Router advisories. The tested React Router 7 migration and
+  transitive audit cleanup described below close those Admin findings. Mobile
+  dependency upgrades remain a separate compatibility pass because
+  secure-storage and Socket.IO have major-version changes.
+
+#### Completed checkpoint — Product truth and release hardening — 2026-08-11
+
+- Corrected Marketplace favorite/detail failure states so stale successful data
+  remains visible and each failed section offers an honest retry instead of
+  presenting a false empty state.
+- Bound Push truth end to end: Backend reports configured Firebase capability,
+  Mobile requires server and local-device support, and missing capabilities
+  fail closed. In-app notifications remain the unconditional supported channel.
+- Made blocked offline queue items diagnosable through safe Arabic summaries and
+  retry only where the queue contract permits it; no unsafe generic
+  discard/edit action was invented.
+- Upgraded Admin to React Router `7.18.2`, remediated the transitive `nanoid`
+  advisory, and retained passing auth, route, type, test, honesty, container,
+  and production-build gates with a zero-finding npm audit.
+- Added static Arabic privacy and support routes to the public safety surface,
+  kept it script/form-free and fail-closed, and added an immutable public image
+  to production/build Compose with the same Git-revision contract.
+- Rebuilt the current Backend image and recreated Backend/media initialization
+  without deleting data. Local `/live` and `/ready` now return `200`, and
+  database, Redis, and media all report `up`.
+- Full combined closure PASS: Backend `665` tests, build, Prisma, zero-finding
+  audit, and all `30` isolated smoke packages after `75` migrations; Admin
+  `96/96`, type/build/route/honesty/container gates and zero-finding audit;
+  Mobile analysis, `1150/1150`, reviewed Golden, and public-API debug APK;
+  deployment contracts `38/38`, public image/live-route and Compose checks;
+  generated docs, links, snapshots, and whitespace checks. This proves the
+  current source/local package, not production deployment, store approval, or
+  physical iOS/complete Android acceptance.
 
 #### Completed Admin web slice — 2026-08-08
 

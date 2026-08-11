@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-08-03.
+Current documentation snapshot: 2026-08-11.
 
 Source status:
 
@@ -34,6 +34,9 @@ Health endpoints have distinct orchestration semantics:
   Aarast transient-delivery extension to be ready. It
   returns `503` with redacted dependency states when the instance must not
   receive traffic.
+- An expected `GET /ready` `503` from an orchestration probe is an availability
+  signal, not an application error: it is not logged as an error or sent to
+  Sentry. Other `5xx` responses remain logged and reported.
 
 ## Common Rules
 
@@ -365,10 +368,14 @@ additive `channelCapabilities` object:
 ```
 
 The in-app inbox/realtime availability is supported and is not configurable.
-Device push is supported and managed by the authenticated device-registration
-contract below. `pushEnabled` reflects whether the account currently has an
-enabled installation preference; it is not writable through settings. Sending
-`pushEnabled: true` to settings returns HTTP `400` with code
+`channelCapabilities.push.supported` reflects the live Backend delivery
+capability: it is `true` only when `FirebasePushClient` is runtime-enabled
+through `PUSH_NOTIFICATIONS_ENABLED=true`; otherwise it is `false`.
+`channelCapabilities.push.enabled` and `pushEnabled` reflect whether the
+account currently has an enabled registered device installation, independently
+of that runtime capability. Push is managed by the authenticated
+device-registration contract below and is not writable through settings.
+Sending `pushEnabled: true` to settings returns HTTP `400` with code
 `NOTIFICATION_CHANNEL_DEVICE_MANAGED`; legacy `false` remains accepted and is
 ignored. SMS, WhatsApp, and email remain unsupported notification channels:
 their booleans return `false`, and attempts to enable them return
@@ -2255,7 +2262,9 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
   strings, concrete resource ids, invite tokens, exception messages, and
   exception stacks are not sent to application logs or Sentry. Unmatched
   routes are recorded as `unmatched`, and invalid client request ids are
-  replaced with a server-generated UUID.
+  replaced with a server-generated UUID. The expected `GET /ready` `503`
+  readiness-probe result is excluded from error logging and Sentry; all other
+  `5xx` responses remain reportable.
 - Transactional outbox events are retained through retry and exhausted events
   remain as `FAILED` dead letters. The dispatcher validates each payload and
   awaits strict realtime delivery; an unavailable adapter or rejected socket

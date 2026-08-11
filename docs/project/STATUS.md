@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
@@ -9,17 +9,17 @@ completion reports.
 ## Repository Baseline
 
 - Repository root: `D:\projects\aarast`.
-- Active working branch: `codex/aarast-soft-royal-v2-20260810`.
-- Baseline commit: `9393b8e`, equal to `main` and the locally tracked
-  `origin/main` at the time the branch was created.
-- `main...HEAD` is `0/0`: no branch commit contains the current modernization,
-  dynamic-catalog, or Soft Royal work. The complete package remains in the
-  working tree by explicit owner request; no commit or push is authorized.
-- The previous uncommitted Money/Guests work is preserved separately on
-  `codex/snapshot-money-redesign-20260807` at `8c6c026` and in a verified local
-  Git bundle. That snapshot is recovery evidence, not release-ready work.
-- Existing stashes and alternate worktrees remain untouched pending an explicit
-  branch-disposition pass.
+- Canonical integration branch: `main`. Release-candidate changes are promoted
+  through reviewed Git history only after the required CI jobs pass.
+- Resolve the exact checked-out revision with `git rev-parse HEAD`. Deployed
+  images and release artifacts must carry that immutable revision; this tracked
+  document intentionally avoids a self-referential mutable HEAD claim.
+- The pre-modernization state remains recoverable from the verified local Git
+  bundle `_ai_backups/aarast-before-modernization-20260807.bundle`. The former
+  snapshot branch has been removed during the explicit branch cleanup and is
+  not a release candidate.
+- No stash exists. One Codex-managed detached worktree remains untouched because
+  deleting worktrees or ignored backups was not part of the authorized cleanup.
 
 ## Product Position
 
@@ -48,10 +48,12 @@ values as zero-valued substitutes.
 - Deployment: local Docker Compose plus the current production-oriented
   Dokploy Compose under `deploy/dokploy/`.
 
-Current Compose still treats Backend, Admin Web, and Mobile distribution as
-separate concerns. The production Compose publishes Backend and Admin Web; it
-does not define Flutter web as an additional production service. Mobile store
-artifacts remain a separate release path.
+Current Compose still treats Backend, Admin Web, the static public safety
+surface, and Mobile distribution as separate concerns. Production Compose
+defines Backend on host port `8093`, Admin Web on `8094`, and the immutable
+public invite/privacy/support site on `8095`. It does not define Flutter web as
+an additional production service. Mobile store artifacts remain a separate
+release path.
 
 ## Implemented Core
 
@@ -102,9 +104,9 @@ unchanged by the preserved Mobile-only WIP:
 | Backend dependencies | `npm audit --omit=dev` | PASS — zero findings |
 | Admin dependencies | `npm audit --omit=dev` | NEEDS FIX — two Moderate React Router findings |
 
-The Admin dependency fix currently offered by npm is a major React Router
-upgrade. It must be migrated and tested; a stale dependency branch must not be
-merged blindly.
+This historical baseline predates the React Router 7 remediation recorded in
+the 2026-08-11 closure below. At this checkpoint the offered npm fix was a major
+upgrade and was intentionally not merged without migration coverage.
 
 ## P2 Modernization Checkpoint — 2026-08-08
 
@@ -282,38 +284,36 @@ Observed validation for this checkpoint:
   sync-recovery review remains OPEN. Physical iOS remains BLOCKED on the
   available Windows host.
 
-### Full working-tree closure audit — 2026-08-10
+### Product-truth and release-hardening checkpoint — 2026-08-11
 
-- Git truth: `HEAD` and `main` both resolve to `9393b8e`; the audited package is
-  a large uncommitted working tree and is not yet a mergeable branch history.
-- Backend: TypeScript checks, guarded unit tests, build, Prisma validation, and
-  the Phase 0 source guard PASS. The managed reference-catalog smoke applied all
-  75 migrations to a disposable database and verified versioned bootstrap,
-  groom/bride audiences, and dynamic marketplace/location payloads.
-- Admin Web: type-check, Vitest, source-honesty smoke, container-config tests,
-  production build, and managed admin-runtime smoke PASS. Runtime coverage
-  verified draft/publish/rollback/disable catalog behavior and governorate →
-  district → locality administration without exposing private fields.
-- Mobile: analysis and all 1134 tests PASS. The debug APK builds, installs over
-  the existing app with data preserved, and the final Home plan moment was
-  reviewed on the connected Samsung device.
-- Documentation: generated route/model/script references are in sync,
-  `docs-verify` reports zero errors and warnings, every deleted historical doc
-  has an archive counterpart, and `git diff --check` reports no whitespace
-  error.
-- Current local Compose is not release-ready: `/live` returns `200`, while
-  `/ready` returns `503`. Database and Redis are up and the MinIO health endpoint
-  is reachable from Backend, but the S3 bucket check fails with
-  `InvalidAccessKeyId`; local Backend/MinIO credentials are out of sync. Isolated
-  current-source smokes pass. Rebuilding or changing deployment is outside this
-  branch audit and remains an operations gate.
-- Dependency audit: Backend production dependencies report zero vulnerabilities.
-  Admin reports two moderate React Router advisories whose automated fix is the
-  breaking v7 upgrade; the current app rejects external, backslash, encoded,
-  query, and hash return paths, but dependency remediation remains open. Mobile
-  reports 19 lockfile upgrades and six direct constraints behind resolvable
-  versions, including major secure-storage and Socket.IO migrations; none were
-  upgraded blindly in this closure pass.
+- Provenance truth: the candidate must be committed, reviewed, green in CI, and
+  bound to one immutable merge revision before deployment. The release receipt
+  records that revision rather than freezing a stale branch tip in this file.
+- Backend now reports push capability from the configured Firebase runtime,
+  distinguishes it from per-user device registration, and suppresses expected
+  `GET /ready` probe failures from error/Sentry reporting while preserving
+  reporting for other server errors.
+- Local Compose Backend was rebuilt and recreated without deleting data. The
+  container is healthy; `/live` and `/ready` both return `200`, with database,
+  Redis, and media all reported `up`.
+- Admin Web now runs React Router `7.18.2`; the complete npm audit reports zero
+  findings. Existing auth/return-path behavior, 96 tests, type-check, route and
+  honesty smokes, container-config test, and production build pass.
+- Mobile Marketplace failures no longer masquerade as empty data, blocked
+  offline operations expose safe Arabic diagnostics and valid retry actions,
+  and push availability requires both server support and a locally configured
+  Firebase gateway. Missing capability data fails closed.
+- The static public surface now serves actionable Arabic `/privacy` and
+  `/support` pages alongside invitation links, with no scripts or forms and
+  fail-closed unknown routes. Production Compose uses an immutable image ID and
+  the build candidate is stamped with the same Git revision as Backend/Admin.
+- Combined closure PASS: Backend `665` tests (664 passed, one skipped), build,
+  Prisma validation, zero-finding npm audit, and all `30` managed smoke packages
+  after `75` migrations; Admin `96/96`, type-check/build, routes `16/16`,
+  honesty `12/12`, container `3/3`, and zero-finding full audit; Mobile analysis,
+  `1150/1150`, reviewed Golden, and public-API debug APK; deployment contracts
+  `38/38`, public Docker build/live routes, Compose validation; docs sync and
+  verification with zero drift/errors/warnings; and `git diff --check` PASS.
 
 ## Current Quality Debt
 
@@ -362,7 +362,8 @@ now verifies the semantic system and keeps the retired roadmap archived.
 ## Security Status
 
 No confirmed Critical or High application vulnerability was found during the
-2026-08-07 source review.
+latest repository security review. Backend and Admin npm audits currently
+report zero findings.
 
 Current strengths include:
 
@@ -374,34 +375,34 @@ Current strengths include:
 - image ownership, quota, signature, decode, sanitization, and re-encoding;
 - fail-closed production configuration for auth and media dependencies.
 
-Open security/release work includes the two Moderate Admin dependency findings,
-dependency-by-dependency upgrade review, deployed-environment verification,
-physical-device session tests, Sentry privacy/symbolication checks, WhatsApp
-OTP acceptance, and recovery/restore evidence for the final release.
+Open security/release work includes dependency-by-dependency Mobile upgrade
+review, deployed-environment verification, physical-device session and push
+delivery tests, Sentry privacy/symbolication checks, WhatsApp OTP acceptance,
+real Apple Team/signing configuration, store evidence, and recovery/restore
+evidence for the final release.
 
 ## Branch Status
 
-- No divergent feature/remediation branch is approved for direct merge.
-- Branches fully contained in `main` are deletion candidates only after checking
-  worktree use and preserving recovery references.
-- `codex/aarast-full-remediation` remains isolated because it diverges and is
-  checked out in another worktree.
-- `codex/bride-path-safety-20260725` requires manual comparison of its remaining
-  unique patch; do not merge the branch directly.
-- `origin/codex/guest-invitation-campaigns` remains quarantined: it is a large,
-  stale WIP outside the approved current scope.
-- Dependabot branches require current-base recreation or rebase and independent
-  compatibility testing.
+- `main` is the canonical local and remote integration branch. Temporary
+  release branches are removed only after a verified merge; use `git branch`
+  and `git branch -r` for the exact live inventory.
+- Fully merged remote remediation branches were removed during the explicit
+  branch cleanup. `main` remains the default branch.
+- `origin/codex/guest-invitation-campaigns` remains preserved and quarantined:
+  it contains a large unique WIP commit outside the approved current scope.
+- Nineteen open Dependabot branches remain because each is tied to an open
+  dependency PR and requires independent compatibility testing; they were not
+  treated as disposable branches.
 
 ## Release Judgment
 
-The repository has a green local clean baseline, but the product is not ready
-for owner handoff or store/production approval. Documentation consolidation,
-design/IA reset, source-quality work, flow-by-flow verification, dependency
-remediation, physical-device acceptance, and deployed release evidence remain
-required.
+The repository has a materially stronger current source and a healthy local
+runtime, but it is not yet approved for store or production release. The
+remaining gates are physical-device acceptance, production deployment, store
+signing/assets, iOS/macOS evidence, and deployed backup/restore proof.
 
-Current verdict: needs fixes before approval.
+Current verdict: source and local-runtime hardening PASS; external release
+approval remains BLOCKED by the explicit store/device/deployment gates above.
 
 The active priority and acceptance order is defined in
 `docs/project/EXECUTION_PLAN.md`.

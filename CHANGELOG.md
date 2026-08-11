@@ -1,5 +1,63 @@
 # Changelog
 
+## 2026-08-12 - Modular Monolith R0 Local Verification
+
+- Established the tracked modular-monolith architecture contract, exact
+  52-model physical-ownership registry, incremental dependency/ownership/Mobile
+  baselines, Nest ports/global/cycle enforcement, fixed-base R0 scope guard,
+  and CI wiring. dependency-cruiser is pinned to `18.1.0`.
+- Observed baselines are 269 unique known dependency violations; 386 ownership
+  keys / 782 occurrences (foreign-model 302/564,
+  unknown-relation-shape 83/216, unknown-sql-composition 1/2); and 269 Mobile
+  keys/occurrences (62 core-to-feature, 207 direct-cross-feature). The ports
+  gate reports zero `forwardRef()`, two approved globals, zero illegal future
+  imports, and zero Nest cycles.
+- The exact fixed-base diff is: `.github/workflows/ci.yml`, `AGENTS.md`,
+  `ARCHITECTURE.md`, `CHANGELOG.md`,
+  `backend/.dependency-cruiser-known-violations.json`,
+  `backend/.dependency-cruiser.cjs`,
+  `backend/architecture/ownership-baseline.json`,
+  `backend/architecture/ownership-registry.json`, `backend/package-lock.json`,
+  `backend/package.json`,
+  `backend/scripts/architecture/ownership-scan.cjs`,
+  `backend/scripts/architecture/ports-scan.cjs`,
+  `backend/test/architecture-dependencies.test.ts`,
+  `backend/test/architecture-ownership.test.ts`,
+  `backend/test/architecture-ports.test.ts`, `docs/README.md`,
+  `docs/SCRIPTS.md`, `docs/backend/README.md`,
+  `docs/frontend/MOBILE_ARCHITECTURE.md`, `docs/project/DECISIONS.md`,
+  `docs/project/EXECUTION_PLAN.md`, `docs/project/STATUS.md`,
+  `docs/qa/README.md`,
+  `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`,
+  `mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`,
+  `scripts/architecture/mobile-boundaries-baseline.json`,
+  `scripts/check-mobile-boundaries.mjs`,
+  `scripts/check-mobile-boundaries.test.mjs`, `scripts/check-r0-scope.mjs`, and
+  `scripts/check-r0-scope.test.mjs`.
+- The only application-source change is the owner-approved one-line Mobile
+  local-import correction in `aarast_path_card.dart`, unchanged since repair
+  commit `464a23e0`. Backend source/schema/migrations/routes, Mobile tests and
+  integration tests and every other Mobile source file, Admin source,
+  deployment artifacts, source locations, and business logic were untouched.
+- Local PASS evidence: Backend architecture/check/build, 721 tests (720 passed,
+  one intentionally skipped), Prisma validation, and both zero-vulnerability
+  audits; Admin type-check, 96 tests, build, 12 honesty checks, 16 route checks,
+  and 3 container checks; Mobile boundary tests 132/132, baseline 269, analyzer
+  with no issues, and Flutter tests 1,151/1,151; docs drift/errors/warnings all
+  zero; whitespace clean; source counts 52 models and 76 migrations; protected
+  pre/post gates exact and clean.
+- A first Prisma validation attempt failed with `P1012` because the isolated
+  worktree had neither `.env` nor `DATABASE_URL`; it passed with a non-secret,
+  process-scoped local validation URL and made no database connection. Existing
+  Backend fixture/log, Admin ErrorBoundary, and Flutter desktop-plugin warnings
+  remained visible while their suites passed.
+- No separate local runtime smoke was required because R0 added no Backend
+  runtime/schema/route/deployment change or business logic, and the approved
+  Mobile import correction passed the full Flutter suite. This receipt records
+  local evidence only: the authoritative candidate revision and remote CI
+  result belong to immutable PR/workflow metadata, and no mutable branch-tip or
+  current remote-CI claim is made here.
+
 ## Unreleased - Provider Application Completion UX
 
 - Removed the customer-facing `فتح الموردين` action from the successful

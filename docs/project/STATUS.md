@@ -21,6 +21,117 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
+## Modular Monolith R0 Local Verification Receipt - 2026-08-12
+
+R0 governance was verified locally on branch `modular-monolith` against the
+fixed base revision `feafe3db0053d6c66d5f46b56ff9a512861dfbad`. This receipt
+records local evidence only. The authoritative candidate revision and remote
+CI result must come from immutable pull-request/workflow metadata; this tracked
+receipt intentionally makes no claim about its own mutable branch tip or the
+current remote CI state.
+
+The exact fixed-base diff contains these 30 paths:
+
+- `.github/workflows/ci.yml`
+- `AGENTS.md`
+- `ARCHITECTURE.md`
+- `CHANGELOG.md`
+- `backend/.dependency-cruiser-known-violations.json`
+- `backend/.dependency-cruiser.cjs`
+- `backend/architecture/ownership-baseline.json`
+- `backend/architecture/ownership-registry.json`
+- `backend/package-lock.json`
+- `backend/package.json`
+- `backend/scripts/architecture/ownership-scan.cjs`
+- `backend/scripts/architecture/ports-scan.cjs`
+- `backend/test/architecture-dependencies.test.ts`
+- `backend/test/architecture-ownership.test.ts`
+- `backend/test/architecture-ports.test.ts`
+- `docs/README.md`
+- `docs/SCRIPTS.md`
+- `docs/backend/README.md`
+- `docs/frontend/MOBILE_ARCHITECTURE.md`
+- `docs/project/DECISIONS.md`
+- `docs/project/EXECUTION_PLAN.md`
+- `docs/project/STATUS.md`
+- `docs/qa/README.md`
+- `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`
+- `mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`
+- `scripts/architecture/mobile-boundaries-baseline.json`
+- `scripts/check-mobile-boundaries.mjs`
+- `scripts/check-mobile-boundaries.test.mjs`
+- `scripts/check-r0-scope.mjs`
+- `scripts/check-r0-scope.test.mjs`
+
+The only application-source change is the owner-approved one-line local import
+URI correction in
+`mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`. Its
+content is unchanged from repair commit `464a23e0`. Backend application source,
+schema, all 76 migrations, and routes; Mobile tests, integration tests, and
+every other Mobile source file; Admin application source; deployment and
+Compose artifacts; source locations; and business logic were untouched. No
+module, port, repository, barrel, migration, route, endpoint, or product
+behavior was added by R0.
+
+Observed governance baselines:
+
+- dependency-cruiser `18.1.0`: 269 unique known dependency violations. The live
+  graph contains 303 modules and 1,307 dependencies, with no new violation.
+- Prisma ownership: 386 keys and 782 occurrences. By reason this is 302/564
+  foreign-model keys/occurrences, 83/216 unknown-relation-shape, and 1/2
+  unknown-sql-composition. By source this is 183/303 delegate, 163/425
+  relation, and 40/54 SQL keys/occurrences.
+- Mobile boundaries: 269 keys/occurrences, comprising 62 core-to-feature and
+  207 direct-cross-feature records. The live scan reported zero errors.
+- Ports/Nest: zero `forwardRef()`, exactly two approved globals, zero illegal
+  future imports, and zero Nest module cycles.
+- Source counts: 52 Prisma models and 76 committed migration directories.
+
+Local verification evidence:
+
+| Area | Exact command | Result |
+| --- | --- | --- |
+| Protected surface | Task 7 Step 1 and Step 7 exact PowerShell gates using `git diff --name-status --no-renames --diff-filter=ACMRDTUXB`, `git diff --exit-code 464a23e0..HEAD -- mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`, protected-path `git status`, and `node .\scripts\check-r0-scope.mjs --check` | PASS before and after tests: exactly the approved Mobile `M` path, repair unchanged, protected worktree clean, no unexpected R0 path |
+| Backend | `npm run architecture` | PASS: imports, ownership, and ports |
+| Backend | `npm run check` | PASS |
+| Backend | `npm run build` | PASS |
+| Backend | `npm test` | PASS: 721 total, 720 passed, 1 intentionally skipped |
+| Backend | `npx prisma validate` | PASS with a process-scoped non-secret local validation URL; no database connection was used |
+| Backend | `npm audit --audit-level=high` | PASS: 0 vulnerabilities |
+| Backend | `npm audit --omit=dev` | PASS: 0 vulnerabilities |
+| Admin | `npm run typecheck` | PASS |
+| Admin | `npm test -- --run` | PASS: 96/96 |
+| Admin | `npm run build` | PASS |
+| Admin | `npm run smoke:honesty` | PASS: 12/12 |
+| Admin | `npm run smoke:routes` | PASS: 16/16 |
+| Admin | `npm run test:container-config` | PASS: 3/3 |
+| Mobile architecture | `node --test .\scripts\check-mobile-boundaries.test.mjs` | PASS: 132/132 |
+| Mobile architecture | `node .\scripts\check-mobile-boundaries.mjs --check-baseline` | PASS: 269 current records |
+| Mobile | `flutter analyze --no-pub` | PASS: no issues |
+| Mobile | `flutter test --no-pub` | PASS: 1,151/1,151, including the repository's current Golden behavior |
+| Docs | `node .\scripts\docs-sync.mjs --check` | PASS: drift=0, errors=0 |
+| Docs | `node .\scripts\docs-verify.mjs` | PASS: errors=0, warnings=0 |
+| Repository | `git diff --check` | PASS |
+| Source counts | `Select-String .\backend\prisma\schema.prisma -Pattern '^model\s+'` and `Get-ChildItem .\backend\prisma\migrations -Directory` | PASS: 52 models, 76 migrations |
+
+The first bare `npx prisma validate` invocation reported Prisma `P1012` because
+this isolated worktree has no `.env` and `DATABASE_URL` was unset. Inspection
+confirmed that `prisma.config.ts` only loads `.env` when present. The same
+validation then passed with a process-scoped, non-secret local PostgreSQL URL;
+the value was not persisted and Prisma validation made no database connection.
+Backend tests also emitted the existing Windows `DEP0190` fixture warning and
+intentional warning/error logs. Admin's ErrorBoundary test printed its expected
+`render failure`. Flutter printed existing desktop default-plugin-package
+warnings while the analyzer and all 1,151 tests passed. These diagnostics were
+not suppressed.
+
+No separate local HTTP/database smoke run was required for R0: the only source
+repair is the approved local Dart import URI correction, the full Mobile suite
+passed, and R0 changed no Backend runtime source, schema, migration, route,
+Admin source, deployment artifact, source location, or business logic. Remote
+closure still requires all CI jobs, including the fixed-base `r0-scope` job,
+to pass on one immutable candidate revision.
+
 ## Product Position
 
 Aarast is an Arabic-first, Yemen-focused wedding planning product centered on

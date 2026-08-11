@@ -1,6 +1,6 @@
 # Frontend
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-11
 
 Frontend in this repository includes:
 
@@ -25,8 +25,8 @@ Frontend in this repository includes:
 From `mobile/`:
 
 ```powershell
-flutter analyze
-flutter test
+flutter analyze --no-pub
+flutter test --no-pub
 flutter test --tags golden
 ```
 
@@ -40,6 +40,8 @@ From `admin-web/`:
 
 ```powershell
 npm run build
+npm run typecheck
+npm test -- --run
 npm run smoke:admin-runtime
 ```
 

@@ -2,8 +2,9 @@
 
 Snapshot date: 2026-08-11
 
-Snapshot source: the checked-out 2026-08-11 release-candidate content. Resolve
-its immutable revision with `git rev-parse HEAD`.
+Snapshot source: the checked-out canonical `main` content after the 2026-08-11
+production deployment and documentation closure. Resolve its immutable
+revision with `git rev-parse HEAD`.
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.

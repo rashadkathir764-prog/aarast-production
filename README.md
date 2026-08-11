@@ -24,6 +24,7 @@ sources of truth, reading order, archive rules, and verification commands.
 
 Primary references:
 
+- [Project handoff](docs/HANDOFF.md)
 - [Product](docs/project/PRODUCT.md)
 - [Scope and phases](docs/project/SCOPE_AND_PHASES.md)
 - [Current status](docs/project/STATUS.md)
@@ -36,6 +37,16 @@ Primary references:
 
 Historical files under `docs/archive/` are references only and are not active
 project instructions.
+
+## Current Handoff State
+
+Backend, Admin Web, the fail-closed public site, all committed database
+migrations, and the production backup/restore gate were accepted on 2026-08-11.
+The signed Android `1.0.0+8` APK is a direct-install artifact, not a Play Store
+submission. Physical-device OTP/Push/session acceptance, operated Sentry and
+metrics, iOS evidence, final AAB/store upload, and store approval remain open.
+Use [the handoff guide](docs/HANDOFF.md) for exact evidence, safe continuation
+order, external dependencies, and commands.
 
 ## Privacy And Scope
 

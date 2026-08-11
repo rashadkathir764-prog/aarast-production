@@ -2,7 +2,9 @@
 
 Snapshot date: 2026-08-11
 
-This folder prepares Aarast for a Dokploy Docker Compose deployment. It does not deploy anything by itself.
+This folder defines the Aarast Dokploy Docker Compose deployment. Source files
+do not deploy anything by themselves; the current production receipt is linked
+below.
 
 ## Current Source Contract
 
@@ -22,8 +24,22 @@ Current source split:
 
 The static site is not a Flutter web deployment. A future Flutter web service
 requires a separate routing, caching, CORS, artifact, and release decision.
-Do not claim any part of this split is live until the exact immutable images,
+Do not claim a future revision is live until its exact immutable images,
 Dokploy routes, TLS, and post-deploy checks are verified.
+
+## Current Production Receipt
+
+Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` was accepted
+on 2026-08-11. Backend, Admin Web, and public-site containers were healthy with
+zero restarts and no OOM termination; external API/Admin/public checks passed;
+all 76 migrations and the exact-image backup/restore rehearsal passed. The
+immutable image IDs, backup SHA-256, public route matrix, rollback boundaries,
+and remaining external gates are recorded in `docs/deployment/README.md` and
+`docs/HANDOFF.md`.
+
+The running application revision intentionally differs from later
+documentation-only `main` commits. Always compare image revision labels with
+the intended application release, not merely the newest documentation commit.
 
 ## Services
 
@@ -227,7 +243,9 @@ CORS_ORIGINS=https://aarast-admin.shadowgardn.com
 2. Create a project named `Aarast`.
 3. Add a Docker Compose application.
 4. Select the GitHub repository for Aarast.
-5. Select the protected `main` release branch.
+5. Select the canonical `main` release branch. GitHub reports that branch
+   protection is not enabled for the current private repository, so require an
+   exact reviewed SHA and green CI operationally until protection is available.
 6. Set the compose file path to `deploy/dokploy/docker-compose.yml`.
 7. Complete the immutable image gate, then add environment variables from
    `deploy/dokploy/.env.example`, replacing every placeholder secret and image

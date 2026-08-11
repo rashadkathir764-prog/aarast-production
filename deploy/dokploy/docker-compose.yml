@@ -314,6 +314,25 @@ services:
     networks:
       - aarast_internal
 
+  public-site:
+    image: ${AARAST_PUBLIC_SITE_IMAGE_ID:?AARAST_PUBLIC_SITE_IMAGE_ID is required}
+    pull_policy: never
+    container_name: aarast-public-site-prod
+    restart: unless-stopped
+    ports:
+      - "8095:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    networks:
+      - aarast_internal
+
 volumes:
   aarast_postgres_data:
   aarast_postgres_backups:

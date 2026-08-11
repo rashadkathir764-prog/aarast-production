@@ -14,12 +14,20 @@ const adminDockerfile = readFileSync(
   new URL('../../../admin-web/Dockerfile', import.meta.url),
   'utf8',
 );
+const publicSiteDockerfile = readFileSync(
+  new URL('../../public-site/Dockerfile', import.meta.url),
+  'utf8',
+);
 const runtimeCompose = readFileSync(
   new URL('../docker-compose.yml', import.meta.url),
   'utf8',
 );
 const buildCompose = readFileSync(
   new URL('../docker-compose.build.yml', import.meta.url),
+  'utf8',
+);
+const environmentExample = readFileSync(
+  new URL('../.env.example', import.meta.url),
   'utf8',
 );
 const postgres16AlpineDigest =
@@ -63,8 +71,9 @@ test('production runtime uses only prebuilt content-addressed application images
     2,
   );
   assert.match(runtimeCompose, /image: \$\{AARAST_ADMIN_WEB_IMAGE_ID:\?/);
-  assert.equal((runtimeCompose.match(/pull_policy: never/g) ?? []).length, 3);
-  assert.doesNotMatch(runtimeCompose, /aarast-(?:backend|admin-web):prod/);
+  assert.match(runtimeCompose, /image: \$\{AARAST_PUBLIC_SITE_IMAGE_ID:\?/);
+  assert.equal((runtimeCompose.match(/pull_policy: never/g) ?? []).length, 4);
+  assert.doesNotMatch(runtimeCompose, /aarast-(?:backend|admin-web|public-site):prod/);
 
   const migrateBlock = runtimeCompose.match(
     /  migrate:\n(?<body>[\s\S]*?)\n  backend:/,
@@ -73,24 +82,31 @@ test('production runtime uses only prebuilt content-addressed application images
     /  backend:\n(?<body>[\s\S]*?)\n  admin-web:/,
   )?.groups?.body;
   const adminBlock = runtimeCompose.match(
-    /  admin-web:\n(?<body>[\s\S]*?)\nvolumes:/,
+    /  admin-web:\n(?<body>[\s\S]*?)\n  public-site:/,
+  )?.groups?.body;
+  const publicSiteBlock = runtimeCompose.match(
+    /  public-site:\n(?<body>[\s\S]*?)\nvolumes:/,
   )?.groups?.body;
   assert.ok(migrateBlock);
   assert.ok(backendBlock);
   assert.ok(adminBlock);
+  assert.ok(publicSiteBlock);
   assert.doesNotMatch(migrateBlock, /\n    build:/);
   assert.doesNotMatch(backendBlock, /\n    build:/);
   assert.doesNotMatch(adminBlock, /\n    build:/);
+  assert.doesNotMatch(publicSiteBlock, /\n    build:/);
+  assert.match(publicSiteBlock, /"8095:80"/);
 });
 
-test('release build compose stamps backend and admin images with one Git revision', () => {
+test('release build compose stamps all application images with one Git revision', () => {
   assert.equal(
     (buildCompose.match(/AARAST_GIT_REVISION: \$\{AARAST_GIT_REVISION:\?/g) ?? [])
       .length,
-    2,
+    3,
   );
   assert.match(buildCompose, /aarast-backend:candidate-\$\{AARAST_GIT_REVISION:\?/);
   assert.match(buildCompose, /aarast-admin-web:candidate-\$\{AARAST_GIT_REVISION:\?/);
+  assert.match(buildCompose, /aarast-public-site:candidate-\$\{AARAST_GIT_REVISION:\?/);
   assert.match(
     adminDockerfile,
     /ARG AARAST_GIT_REVISION=development-unversioned/,
@@ -98,6 +114,25 @@ test('release build compose stamps backend and admin images with one Git revisio
   assert.match(
     adminDockerfile,
     /LABEL org\.opencontainers\.image\.revision="\$\{AARAST_GIT_REVISION\}"/,
+  );
+  assert.match(
+    publicSiteDockerfile,
+    /ARG AARAST_GIT_REVISION=development-unversioned/,
+  );
+  assert.match(
+    publicSiteDockerfile,
+    /LABEL org\.opencontainers\.image\.revision="\$\{AARAST_GIT_REVISION\}"/,
+  );
+});
+
+test('production CORS trusts only the browser client that calls the API', () => {
+  const corsLine = environmentExample
+    .split(/\r?\n/)
+    .find((line) => line.startsWith('CORS_ORIGINS='));
+
+  assert.equal(
+    corsLine,
+    'CORS_ORIGINS=https://aarast-admin.shadowgardn.com',
   );
 });
 

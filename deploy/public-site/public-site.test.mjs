@@ -129,6 +129,8 @@ assert.match(privacyHtml, /تقرير الدعم التشخيصي/);
 assert.match(privacyHtml, /موافقة جديدة/);
 assert.match(privacyHtml, /سجل مساهمات محدود/);
 assert.match(privacyHtml, /إيصال حذف مجهول/);
+assert.match(privacyHtml, /هوية تطبيق الأعراس وبياناتها/);
+assert.match(privacyHtml, /لا يحذف حساب الإدارة/);
 assert.match(privacyHtml, /تُجدول الوسائط المرفوعة\s+للحذف/);
 assert.match(privacyHtml, /الأطفال/);
 assert.match(privacyHtml, /دون 13 عاماً/);

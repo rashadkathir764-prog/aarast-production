@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased - Provider Application Completion UX
+
+- Removed the customer-facing `فتح الموردين` action from the successful
+  provider-application receipt. A newly submitted provider now has one honest
+  next action, `العودة للرئيسية`, while approval is pending.
+
+## Unreleased - Dual-Realm Account Deletion
+
+- Corrected `DELETE /api/v1/users/me` for administrators who separately enroll
+  in the wedding application: the app identity, app-owned data/media and
+  `APPLICATION` sessions are erased while the administrator profile,
+  credentials, audit links and `ADMIN` sessions remain intact.
+- Prevented Mobile from immediately replaying an account DELETE while the
+  durable status is `PENDING`; the termination gate now reports that deletion
+  is being verified and reuses the same request id on a later safe retry.
+- Added focused Backend/Flutter regressions, a real PostgreSQL/Object Storage
+  smoke scenario for dual identities, and matching API/database/QA/Mobile,
+  privacy, status, and handoff documentation.
+
 ## 2026-08-11 - Production Deployment, Modernization Closure, And Handoff
 
 - Consolidated the prelaunch money domain around optional general budget,

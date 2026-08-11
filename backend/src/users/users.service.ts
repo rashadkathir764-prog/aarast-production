@@ -1,16 +1,18 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   Optional,
 } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import {
+  AppRole,
+  AuthSessionScope,
   ContributionScopeStatus,
   MediaUploadStatus,
   NotificationPreference,
+  OtpPurpose,
   Prisma,
   UserRole,
 } from "@prisma/client";
@@ -232,16 +234,6 @@ export class UsersService {
     const userId = currentUser.id;
     const receiptHash = accountDeletionReceiptHash(userId, clientRequestId);
 
-    const account = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-    if (account?.role === UserRole.ADMIN) {
-      throw new ForbiddenException(
-        "Administrator identity cannot be deleted from the application",
-      );
-    }
-
     await runRetryableTransaction(
       this.prisma,
       async (tx) => {
@@ -252,9 +244,10 @@ export class UsersService {
         if (priorReceipt) return;
 
         // The same advisory account lock used by presigning prevents a new
-        // upload ticket from escaping this snapshot. Tickets survive User
-        // deletion (userId becomes null) as durable object-deletion jobs.
-        await this.mediaStorage.scheduleAllOwnedMediaDeletion(userId, tx);
+        // upload ticket from escaping this snapshot. It must be acquired
+        // before the User row so media consumption and account deletion keep
+        // one lock order.
+        await this.mediaStorage.lockAccountDeletionBoundary(userId, tx);
 
         // Lock the account before enumerating its plans. A concurrent plan
         // create needs a foreign-key key-share lock on this row and therefore
@@ -278,10 +271,20 @@ export class UsersService {
           if (committedWhileWaiting) return;
           throw new NotFoundException("User not found");
         }
-        if (lockedUsers[0].role === UserRole.ADMIN) {
-          throw new ForbiddenException(
-            "Administrator identity cannot be deleted from the application",
+        const preservesAdministratorIdentity =
+          lockedUsers[0].role === UserRole.ADMIN;
+
+        // An administrator may separately enroll in the application. Deleting
+        // that application identity must never delete the administrator's
+        // login/profile media, while every ordinary application account keeps
+        // the existing complete-account erasure behavior.
+        if (preservesAdministratorIdentity) {
+          await this.mediaStorage.scheduleApplicationIdentityMediaDeletion(
+            userId,
+            tx,
           );
+        } else {
+          await this.mediaStorage.scheduleAllOwnedMediaDeletion(userId, tx);
         }
 
         // Parent rows are locked in a deterministic order before any child is
@@ -561,6 +564,14 @@ export class UsersService {
           });
         }
 
+        if (preservesAdministratorIdentity) {
+          await this.eraseAdministratorApplicationIdentity(
+            tx,
+            userId,
+            currentUser.phone,
+          );
+        }
+
         // The anonymous receipt commits atomically with erasure. It contains
         // neither the former user id nor the request id and is immutable at the
         // database boundary, so a lost HTTP response remains recoverable.
@@ -568,18 +579,22 @@ export class UsersService {
           data: { receiptHash },
         });
 
-        // Keyed by userId / phone with no User foreign key: never cascades.
-        await tx.idempotencyKey.deleteMany({ where: { userId } });
-        if (currentUser.phone) {
-          await tx.otpCode.deleteMany({ where: { phone: currentUser.phone } });
-        }
+        if (!preservesAdministratorIdentity) {
+          // Keyed by userId / phone with no User foreign key: never cascades.
+          await tx.idempotencyKey.deleteMany({ where: { userId } });
+          if (currentUser.phone) {
+            await tx.otpCode.deleteMany({
+              where: { phone: currentUser.phone },
+            });
+          }
 
-        // Finally the user. Cascades refresh tokens, memberships, personal
-        // conversation state/messages, and any remaining requester rows;
-        // SetNulls actor/creator fields in other owners' contexts. Historical
-        // tenures were closed above and their immutable events are retained.
-        await enqueueUserSessionsRevoked(tx, userId);
-        await tx.user.delete({ where: { id: userId } });
+          // Finally the user. Cascades refresh tokens, memberships, personal
+          // conversation state/messages, and any remaining requester rows;
+          // SetNulls actor/creator fields in other owners' contexts. Historical
+          // tenures were closed above and their immutable events are retained.
+          await enqueueUserSessionsRevoked(tx, userId);
+          await tx.user.delete({ where: { id: userId } });
+        }
       },
       {
         timeout: 15_000,
@@ -591,6 +606,101 @@ export class UsersService {
     // must be severed immediately instead of surviving until token expiry.
     this.realtime?.disconnectUser(userId);
     return { deleted: true };
+  }
+
+  private async eraseAdministratorApplicationIdentity(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    phone: string | null,
+  ): Promise<void> {
+    // These are the explicit equivalents of User cascades/SetNull relations.
+    // The User row itself is retained because it is also the administrator
+    // identity; admin review/audit relations and admin challenges stay linked.
+    await tx.weddingTask.updateMany({
+      where: { assigneeUserId: userId },
+      data: { assigneeUserId: null },
+    });
+    await tx.contributorTenure.updateMany({
+      where: { actorUserId: userId },
+      data: { actorUserId: null },
+    });
+    await tx.sharedMember.deleteMany({ where: { userId } });
+    await tx.planInvite.deleteMany({ where: { inviterUserId: userId } });
+    await tx.planInvite.updateMany({
+      where: { inviteeUserId: userId },
+      data: { inviteeUserId: null },
+    });
+    await tx.notificationPreference.deleteMany({ where: { userId } });
+    await tx.pushInstallation.deleteMany({ where: { userId } });
+    await tx.favoriteProvider.deleteMany({ where: { userId } });
+    await tx.conversationParticipant.deleteMany({ where: { userId } });
+    await tx.chatMessage.deleteMany({ where: { senderUserId: userId } });
+    await tx.conversationReport.deleteMany({
+      where: { reporterUserId: userId },
+    });
+    await tx.conversationEvent.updateMany({
+      where: { actorUserId: userId },
+      data: { actorUserId: null },
+    });
+    await tx.conversation.updateMany({
+      where: { createdByUserId: userId },
+      data: { createdByUserId: null },
+    });
+    await tx.conversation.updateMany({
+      where: { customerSideBlockedById: userId },
+      data: { customerSideBlockedById: null },
+    });
+
+    await tx.refreshToken.deleteMany({
+      where: { userId, scope: AuthSessionScope.APPLICATION },
+    });
+    await tx.idempotencyKey.deleteMany({
+      where: {
+        userId,
+        NOT: {
+          OR: [
+            { path: "/admin" },
+            { path: { startsWith: "/admin/" } },
+            { path: "/api/v1/admin" },
+            { path: { startsWith: "/api/v1/admin/" } },
+            { path: "/api/v1/auth/admin" },
+            { path: { startsWith: "/api/v1/auth/admin/" } },
+          ],
+        },
+      },
+    });
+    if (phone) {
+      await tx.otpCode.deleteMany({
+        where: {
+          phone,
+          purpose: {
+            in: [
+              OtpPurpose.REGISTER,
+              OtpPurpose.LOGIN,
+              OtpPurpose.INVITE_ACCESS,
+              OtpPurpose.VERIFY_PHONE,
+              OtpPurpose.RESET_PASSWORD,
+            ],
+          },
+        },
+      });
+    }
+    await enqueueUserSessionsRevoked(tx, userId);
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        appPasswordHash: null,
+        appPasswordConfiguredAt: null,
+        appName: null,
+        appEmail: null,
+        appAvatarUrl: null,
+        appRole: AppRole.WEDDING_USER,
+        activeWeddingPlanId: null,
+        onboardingPath: null,
+        persona: null,
+        onboardingCompletedAt: null,
+      },
+    });
   }
 
   async accountDeletionStatus(

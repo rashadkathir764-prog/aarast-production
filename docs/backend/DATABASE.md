@@ -2,7 +2,7 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-08-02. Route-level behavior belongs in
+Current documentation snapshot: 2026-08-11. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
@@ -305,6 +305,14 @@ The backend now includes the approved provider-reference and quote-lead foundati
   application password reset. An administrator may use one phone identity in
   both products, but the app password and browser-admin password remain
   independent and neither recovery route can overwrite the other.
+- The shared `User` row does not make those two identities one deletion realm.
+  Application-account deletion removes an enrolled administrator's `app*`
+  identity fields and application-owned relations, revokes only
+  `APPLICATION` sessions/OTPs, and retains administrator credentials,
+  challenges, audit links, `USER_AVATAR` media, and `ADMIN` sessions. Ordinary
+  wedding users/providers continue to delete the complete User row. The same
+  anonymous `AccountDeletionReceipt` proves completion in both cases without
+  storing the former user id or client request id.
 - Refresh rows persist their application/administrator scope; logout, reset,
   rotation, and token-family compromise revocation stay inside that scope.
   Rotation locks one replacement chain. Any reuse of a revoked or replaced

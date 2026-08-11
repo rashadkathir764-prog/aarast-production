@@ -24,6 +24,9 @@ conversations, signed image uploads, and rotating refresh sessions.
   endpoints. Pending, change-requested, rejected, and suspended providers keep
   their business identity and administration note visible without attempting
   active-only services, requests, reviews, or chat APIs.
+- After a provider application is submitted, its pending receipt offers only
+  the logical return to Home. It does not send the new provider identity into
+  the customer-facing provider marketplace through a `فتح الموردين` action.
 - Provider services and packages support create, edit, pause, and reactivate;
   published customer reviews are visible in the provider Profile tab. A
   pending quote offer requires a positive amount in the linked plan currency
@@ -256,7 +259,12 @@ conversations, signed image uploads, and rotating refresh sessions.
   confirmed deletion and centralized local teardown, or after a definitive
   rejection paired with `NOT_STARTED`. Local teardown is retryable without
   changing the server request id, and only this deleted-account path removes
-  that user's durable leave markers.
+  that user's durable leave markers. A `PENDING` status never triggers an
+  immediate competing DELETE: the gate truthfully says that deletion is being
+  verified and retries status later with the same id. The app intentionally
+  receives only the projected application user, so it does not guess whether
+  the underlying row is also an administrator; Backend applies the dual-realm
+  deletion boundary and returns the unchanged `{ deleted: true }` contract.
 - A task write rejected after permission revocation must surface Backend HTTP
   `403`, code `TASK_PERMISSION_REVOKED`, and the Arabic message
   `لم تعد لديك صلاحية لتنفيذ هذه المهمة`; `Plan not found` is not the task

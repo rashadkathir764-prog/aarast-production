@@ -192,7 +192,7 @@ void main() {
     expect(await harness.controller.deleteAccount(), isFalse);
     await tester.pump();
 
-    expect(harness.repository.deleteAccountCalls, 2);
+    expect(harness.repository.deleteAccountCalls, 1);
     expect(harness.controller.status, AuthStatus.authenticated);
     expect(harness.controller.user, _SessionRepository.user);
     expect(find.byKey(const Key('old-provider-dashboard')), findsOneWidget);
@@ -218,13 +218,22 @@ void main() {
     expect(harness.controller.user, isNull);
     expect(harness.controller.status, AuthStatus.terminationFailed);
     expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
+    expect(find.text('جارٍ التحقق من حذف الحساب'), findsOneWidget);
     final firstId = harness.repository.deletionRequestIds.first;
-    expect(harness.repository.deletionRequestIds, [firstId, firstId]);
+    expect(harness.repository.deletionRequestIds, [firstId]);
     expect(await harness.deletionStore.read(), isNotNull);
 
     await harness.controller.logout();
-    expect(harness.repository.deletionRequestIds, [firstId, firstId, firstId]);
+    expect(harness.repository.deletionRequestIds, [firstId]);
     expect(await harness.deletionStore.read(), isNotNull);
+
+    harness.repository
+      ..deleteAccountFailure = null
+      ..deletionStatus = AccountDeletionServerStatus.notStarted;
+    await harness.controller.logout();
+    expect(harness.repository.deletionRequestIds, [firstId, firstId]);
+    expect(await harness.deletionStore.read(), isNull);
+    expect(harness.controller.status, AuthStatus.unauthenticated);
   });
 
   test(

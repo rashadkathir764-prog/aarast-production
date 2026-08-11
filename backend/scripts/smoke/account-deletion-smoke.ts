@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 
 import {
+  AdminRole,
+  AuthSessionScope,
   ConversationEventType,
   ConversationScope,
   NotificationType,
@@ -11,6 +13,7 @@ import {
   QuoteOfferStatus,
   QuoteRequestStatus,
   WeddingCostStatus,
+  UserRole,
 } from '@prisma/client';
 import sharp from 'sharp';
 import { MediaStorageService } from '../../src/media/media-storage.service';
@@ -38,7 +41,8 @@ function configureLocalMediaWhenNeeded(): void {
     process.env.AARAST_MEDIA_BUCKET = 'aarast-media';
   }
   if (!process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.trim()) {
-    process.env.AARAST_MEDIA_PUBLIC_BASE_URL = 'http://127.0.0.1:9000/aarast-media';
+    process.env.AARAST_MEDIA_PUBLIC_BASE_URL =
+      'http://127.0.0.1:9000/aarast-media';
   }
   if (!process.env.AARAST_MEDIA_REGION?.trim()) {
     process.env.AARAST_MEDIA_REGION = 'us-east-1';
@@ -50,7 +54,8 @@ function configureLocalMediaWhenNeeded(): void {
     process.env.AARAST_MEDIA_ACCESS_KEY_ID = 'aarast-local-media-key';
   }
   if (!process.env.AARAST_MEDIA_SECRET_ACCESS_KEY?.trim()) {
-    process.env.AARAST_MEDIA_SECRET_ACCESS_KEY = 'aarast-local-media-secret-change-me';
+    process.env.AARAST_MEDIA_SECRET_ACCESS_KEY =
+      'aarast-local-media-secret-change-me';
   }
 }
 
@@ -79,6 +84,8 @@ async function main() {
   let clientPhone = '';
   let bareUserId = '';
   let barePhone = '';
+  let adminUserId = '';
+  let adminPhone = '';
   const quoteRequestIds: string[] = [];
   const deletedConversationIds: string[] = [];
   const deletedNotificationIds: string[] = [];
@@ -121,7 +128,10 @@ async function main() {
       upload.key,
       'user-avatar',
     );
-    assertCheck(Boolean(verified.publicUrl), 'account avatar is fully verified');
+    assertCheck(
+      Boolean(verified.publicUrl),
+      'account avatar is fully verified',
+    );
     publicUrl = verified.publicUrl!;
     await users.updateMe(currentUser, { avatarUrl: publicUrl });
     const consumed = await prisma.mediaUploadTicket.findUnique({
@@ -185,13 +195,156 @@ async function main() {
     bareUserId = bareUser.id;
     await users.deleteMe(
       { id: bareUser.id, phone: barePhone } as never,
-      "smoke-delete-bare-user",
+      'smoke-delete-bare-user',
     );
     assertCheck(
       (await prisma.user.count({ where: { id: bareUser.id } })) === 0,
       'account with no plan deletes cleanly',
     );
     bareUserId = '';
+
+    adminPhone = `+96776${String(Date.now() + 5).slice(-7)}`;
+    const administrator = await prisma.user.create({
+      data: {
+        name: 'ADMIN IDENTITY SENTINEL',
+        phone: adminPhone,
+        email: `${tag}-admin@example.test`,
+        passwordHash: 'admin-password-hash',
+        avatarUrl: `https://admin.invalid/${tag}.webp`,
+        role: UserRole.ADMIN,
+        adminRole: AdminRole.SUPER_ADMIN,
+        appPasswordHash: 'application-password-hash',
+        appPasswordConfiguredAt: new Date(),
+        appName: 'ADMIN APPLICATION PERSONA',
+        appEmail: `${tag}-app@example.test`,
+        appAvatarUrl: `https://app.invalid/${tag}.webp`,
+      },
+    });
+    adminUserId = administrator.id;
+    await prisma.refreshToken.createMany({
+      data: [
+        {
+          userId: administrator.id,
+          tokenHash: `${tag}-admin-refresh`,
+          scope: AuthSessionScope.ADMIN,
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+        {
+          userId: administrator.id,
+          tokenHash: `${tag}-app-refresh`,
+          scope: AuthSessionScope.APPLICATION,
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      ],
+    });
+    await prisma.otpCode.createMany({
+      data: [
+        {
+          phone: adminPhone,
+          codeHash: 'admin-otp',
+          purpose: OtpPurpose.ADMIN_LOGIN,
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+        {
+          phone: adminPhone,
+          codeHash: 'app-otp',
+          purpose: OtpPurpose.LOGIN,
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      ],
+    });
+    await prisma.idempotencyKey.createMany({
+      data: [
+        {
+          userId: administrator.id,
+          key: `${tag}-admin-key`,
+          method: 'POST',
+          path: '/admin/providers/:providerId/approve',
+          requestHash: '1'.repeat(64),
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+        {
+          userId: administrator.id,
+          key: `${tag}-app-key`,
+          method: 'POST',
+          path: '/api/v1/wedding-plans',
+          requestHash: '2'.repeat(64),
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      ],
+    });
+    await users.deleteMe(
+      {
+        id: administrator.id,
+        phone: adminPhone,
+        sessionScope: 'application',
+      } as never,
+      'smoke-delete-admin-application-identity',
+    );
+    const retainedAdministrator = await prisma.user.findUniqueOrThrow({
+      where: { id: administrator.id },
+    });
+    assertCheck(
+      retainedAdministrator.role === UserRole.ADMIN &&
+        retainedAdministrator.passwordHash === 'admin-password-hash' &&
+        retainedAdministrator.name === 'ADMIN IDENTITY SENTINEL' &&
+        retainedAdministrator.appPasswordHash === null &&
+        retainedAdministrator.appName === null &&
+        retainedAdministrator.appEmail === null &&
+        retainedAdministrator.appAvatarUrl === null,
+      'application deletion clears only the administrator application identity',
+    );
+    assertCheck(
+      (await prisma.refreshToken.count({
+        where: {
+          userId: administrator.id,
+          scope: AuthSessionScope.ADMIN,
+        },
+      })) === 1 &&
+        (await prisma.refreshToken.count({
+          where: {
+            userId: administrator.id,
+            scope: AuthSessionScope.APPLICATION,
+          },
+        })) === 0 &&
+        (await prisma.otpCode.count({
+          where: { phone: adminPhone, purpose: OtpPurpose.ADMIN_LOGIN },
+        })) === 1 &&
+        (await prisma.otpCode.count({
+          where: { phone: adminPhone, purpose: OtpPurpose.LOGIN },
+        })) === 0,
+      'application deletion revokes application auth while preserving admin auth',
+    );
+    assertCheck(
+      (await prisma.idempotencyKey.count({
+        where: {
+          userId: administrator.id,
+          path: { startsWith: '/admin/' },
+        },
+      })) === 1 &&
+        (await prisma.idempotencyKey.count({
+          where: {
+            userId: administrator.id,
+            NOT: {
+              OR: [
+                { path: '/admin' },
+                { path: { startsWith: '/admin/' } },
+                { path: '/api/v1/admin' },
+                { path: { startsWith: '/api/v1/admin/' } },
+                { path: '/api/v1/auth/admin' },
+                { path: { startsWith: '/api/v1/auth/admin/' } },
+              ],
+            },
+          },
+        })) === 0,
+      'application deletion preserves only administrator idempotency history',
+    );
+    await prisma.idempotencyKey.deleteMany({
+      where: { userId: administrator.id },
+    });
+    await prisma.otpCode.deleteMany({ where: { phone: adminPhone } });
+    await prisma.user.delete({ where: { id: administrator.id } });
+    adminUserId = '';
 
     const plan = await prisma.weddingPlan.create({
       data: { ownerUserId: user.id, title: `${tag}-plan` },
@@ -402,7 +555,9 @@ async function main() {
         message: `${tag}-ordinary-delete`,
       },
     });
-    await prisma.quoteRequest.delete({ where: { id: ordinaryDeletedQuote.id } });
+    await prisma.quoteRequest.delete({
+      where: { id: ordinaryDeletedQuote.id },
+    });
     assertCheck(
       (await prisma.conversation.count({
         where: { id: sharedConversation.id },
@@ -541,7 +696,10 @@ async function main() {
         include: { attachments: true },
       });
       const attachment = message.attachments[0];
-      assertCheck(Boolean(attachment), 'conversation attachment row is created');
+      assertCheck(
+        Boolean(attachment),
+        'conversation attachment row is created',
+      );
       await media.consumeUpload(
         sentinelCurrent,
         verifiedChat.key,
@@ -664,7 +822,7 @@ async function main() {
       ],
     });
 
-    await users.deleteMe(currentUser, "smoke-delete-owner");
+    await users.deleteMe(currentUser, 'smoke-delete-owner');
     assertCheck(
       (await prisma.user.count({ where: { id: user.id } })) === 0,
       'account row is deleted after the complete Restrict chain',
@@ -735,7 +893,8 @@ async function main() {
       'shared-member request and participant state are removed without touching other requests',
     );
     assertCheck(
-      (await prisma.weddingCost.count({ where: { id: clientCost.id } })) === 1 &&
+      (await prisma.weddingCost.count({ where: { id: clientCost.id } })) ===
+        1 &&
         (await prisma.provider.count({
           where: { id: { in: [provider.id, alternateProvider.id] } },
         })) === 2,
@@ -791,8 +950,8 @@ async function main() {
       'direct orphan queries are all zero after owner deletion',
     );
     assertCheck(
-      (await prisma.idempotencyKey.count({ where: { userId: user.id } })) === 0 &&
-        (await prisma.otpCode.count({ where: { phone } })) === 0,
+      (await prisma.idempotencyKey.count({ where: { userId: user.id } })) ===
+        0 && (await prisma.otpCode.count({ where: { phone } })) === 0,
       'non-cascading account rows are deleted',
     );
     const scheduled = await prisma.mediaUploadTicket.findUnique({
@@ -830,7 +989,10 @@ async function main() {
     const afterDelete = await fetch(`${publicUrl}?smoke=${Date.now()}`, {
       cache: 'no-store',
     });
-    assertCheck(afterDelete.status === 404, 'deleted public media is no longer readable');
+    assertCheck(
+      afterDelete.status === 404,
+      'deleted public media is no longer readable',
+    );
     const sentinelTicket = await prisma.mediaUploadTicket.findUnique({
       where: { key: sentinelMediaKey },
     });
@@ -848,7 +1010,7 @@ async function main() {
       'deleting the plan owner preserves the provider account and business',
     );
 
-    await users.deleteMe(sentinelCurrent, "smoke-delete-sentinel");
+    await users.deleteMe(sentinelCurrent, 'smoke-delete-sentinel');
     sentinelUserId = '';
     const preservedClientCost = await prisma.weddingCost.findUnique({
       where: { id: clientCost.id },
@@ -887,6 +1049,16 @@ async function main() {
     console.log('Overall Result: PASS');
   } finally {
     try {
+      if (adminUserId) {
+        await prisma.idempotencyKey.deleteMany({
+          where: { userId: adminUserId },
+        });
+        if (adminPhone) {
+          await prisma.otpCode.deleteMany({ where: { phone: adminPhone } });
+        }
+        await prisma.user.deleteMany({ where: { id: adminUserId } });
+        adminUserId = '';
+      }
       for (const account of [
         { id: userId, phone },
         { id: sentinelUserId, phone: sentinelPhone },

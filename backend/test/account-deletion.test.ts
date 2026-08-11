@@ -2,7 +2,6 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ForbiddenException } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
 import { UsersService } from "../src/users/users.service";
 
@@ -27,7 +26,11 @@ interface RecordedGraph {
   attachmentIds?: string[];
 }
 
-function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
+function recordingTx(
+  planIds: string[],
+  graph: RecordedGraph = {},
+  userRole: UserRole = UserRole.USER,
+) {
   const calls: string[] = [];
   const queries: Array<{ text: string; values: unknown[] }> = [];
   const del = (name: string) => ({
@@ -46,7 +49,7 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
       queries.push({ text, values });
       if (text.includes('FROM "User"')) {
         calls.push("lockUser");
-        return [{ id: "u1", role: UserRole.USER }];
+        return [{ id: "u1", role: userRole }];
       }
       if (text.includes('FROM "WeddingPlan"')) {
         calls.push("lockPlans");
@@ -137,7 +140,11 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
     },
     contributorTenure: {
       updateMany: async ({ data }: any) => {
-        calls.push(`contributorTenure.${data.endReason}`);
+        calls.push(
+          data.actorUserId === null
+            ? "contributorTenure.detachActor"
+            : `contributorTenure.${data.endReason}`,
+        );
         return { count: 1 };
       },
     },
@@ -160,22 +167,98 @@ function recordingTx(planIds: string[], graph: RecordedGraph = {}) {
         return data;
       },
     },
-    idempotencyKey: del("idempotencyKey"),
-    otpCode: del("otpCode"),
+    idempotencyKey: {
+      deleteMany: async ({ where }: any) => {
+        calls.push(
+          where.NOT?.OR?.some(
+            (entry: any) =>
+              entry.path === "/admin" ||
+              entry.path?.startsWith === "/admin/" ||
+              entry.path === "/api/v1/admin" ||
+              entry.path?.startsWith === "/api/v1/admin/" ||
+              entry.path === "/api/v1/auth/admin" ||
+              entry.path?.startsWith === "/api/v1/auth/admin/",
+          )
+            ? "idempotencyKey.APPLICATION"
+            : "idempotencyKey",
+        );
+        return { count: 1 };
+      },
+    },
+    otpCode: {
+      deleteMany: async ({ where }: any) => {
+        calls.push(where.purpose?.in ? "otpCode.APPLICATION" : "otpCode");
+        return { count: 1 };
+      },
+    },
+    refreshToken: {
+      deleteMany: async ({ where }: any) => {
+        calls.push(`refreshToken.${where.scope}`);
+        return { count: 1 };
+      },
+    },
     user: {
       delete: async () => {
         calls.push("user.delete");
         return {};
       },
+      update: async ({ data }: any) => {
+        calls.push("user.clearApplicationIdentity");
+        assert.equal(data.appPasswordHash, null);
+        assert.equal(data.appName, null);
+        assert.equal(data.appEmail, null);
+        assert.equal(data.appAvatarUrl, null);
+        assert.equal(data.activeWeddingPlanId, null);
+        for (const retainedField of [
+          "passwordHash",
+          "name",
+          "email",
+          "avatarUrl",
+          "role",
+          "adminRole",
+        ]) {
+          assert.equal(retainedField in data, false);
+        }
+        return {};
+      },
     },
   };
   for (const child of PLAN_CHILDREN) tx[child] = del(child);
+  tx.weddingTask.updateMany = async () => {
+    calls.push("weddingTask.unassign");
+    return { count: 1 };
+  };
+  tx.planInvite.updateMany = async () => {
+    calls.push("planInvite.detachInvitee");
+    return { count: 1 };
+  };
+  tx.conversation.updateMany = async () => {
+    calls.push("conversation.detachActor");
+    return { count: 1 };
+  };
+  for (const model of [
+    "notificationPreference",
+    "pushInstallation",
+    "favoriteProvider",
+    "conversationParticipant",
+    "chatMessage",
+    "conversationReport",
+  ]) {
+    tx[model] = del(model);
+  }
+  tx.conversationEvent = {
+    updateMany: async () => {
+      calls.push("conversationEvent.detachActor");
+      return { count: 1 };
+    },
+  };
   return { tx, calls, queries };
 }
 
 const serviceFor = (
   tx: any,
   mediaStorage: any = {
+    lockAccountDeletionBoundary: async () => {},
     scheduleAllOwnedMediaDeletion: async () => [],
   },
   realtime?: { disconnectUser: (userId: string) => void },
@@ -186,34 +269,51 @@ const serviceFor = (
       $transaction: async (fn: any) => fn(tx),
     } as any,
     {} as any,
-    mediaStorage,
+    {
+      lockAccountDeletionBoundary: async () => {},
+      scheduleAllOwnedMediaDeletion: async () => [],
+      ...mediaStorage,
+    },
     realtime as any,
   );
 
-test("application account deletion can never erase an administrator identity", async () => {
-  let transactions = 0;
-  let mediaDeletes = 0;
+test("application account deletion erases only the administrator's application identity", async () => {
+  const { tx, calls } = recordingTx([], {}, UserRole.ADMIN);
+  let adminMediaDeletes = 0;
   const service = new UsersService(
     {
       user: { findUnique: async () => ({ role: UserRole.ADMIN }) },
-      $transaction: async () => {
-        transactions += 1;
-      },
+      $transaction: async (operation: (value: any) => Promise<unknown>) =>
+        operation(tx),
     } as any,
     {} as any,
     {
-      scheduleAllOwnedMediaDeletion: async () => {
-        mediaDeletes += 1;
+      lockAccountDeletionBoundary: async () => {},
+      scheduleApplicationIdentityMediaDeletion: async () => {
+        adminMediaDeletes += 1;
       },
     } as any,
   );
 
-  await assert.rejects(
-    () => service.deleteMe({ id: "admin", phone: null } as any, "delete-admin"),
-    ForbiddenException,
+  assert.deepEqual(
+    await service.deleteMe(
+      {
+        id: "u1",
+        phone: "+967700000000",
+        sessionScope: "application",
+      } as any,
+      "delete-admin-app",
+    ),
+    { deleted: true },
   );
-  assert.equal(transactions, 0);
-  assert.equal(mediaDeletes, 0);
+  assert.equal(adminMediaDeletes, 1);
+  assert.equal(calls.includes("user.delete"), false);
+  assert.ok(calls.includes("user.clearApplicationIdentity"));
+  assert.ok(calls.includes("refreshToken.APPLICATION"));
+  assert.ok(calls.includes("otpCode.APPLICATION"));
+  assert.ok(calls.includes("idempotencyKey.APPLICATION"));
+  assert.equal(calls.includes("refreshToken.ADMIN"), false);
+  assert.equal(calls.includes("otpCode.ADMIN"), false);
 });
 
 test("account deletion rolls back when durable media scheduling fails", async () => {
@@ -227,7 +327,7 @@ test("account deletion rolls back when durable media scheduling fails", async ()
   await assert.rejects(() =>
     svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1"),
   );
-  assert.deepEqual(calls, []);
+  assert.deepEqual(calls, ["lockUser"]);
 });
 
 test("account deletion clears plan children before plans and deletes the user last", async () => {
@@ -449,7 +549,10 @@ test("account deletion retries a deadlock without changing its read-committed me
   const service = new UsersService(
     prisma as any,
     {} as any,
-    { scheduleAllOwnedMediaDeletion: async () => [] } as any,
+    {
+      lockAccountDeletionBoundary: async () => {},
+      scheduleAllOwnedMediaDeletion: async () => [],
+    } as any,
   );
 
   assert.deepEqual(await service.deleteMe({ id: "u1", phone: null } as any, "delete-u1"), {

@@ -316,8 +316,16 @@ Additional current auth/profile routes:
     value returns `400` with `ACCOUNT_DELETION_REQUEST_ID_REQUIRED`;
   - deletes an ordinary wedding-app account and its owned data in the same
     transaction that commits an anonymous immutable deletion receipt;
-  - refuses deletion when the database identity is an administrator, so an
-    application bearer can never erase the separate administrator identity.
+  - when the underlying database row is also an administrator, deletes only
+    the enrolled wedding-application identity and application-owned graph. It
+    clears `appPasswordHash`, application profile/onboarding fields, app media,
+    memberships, plans, provider/customer data, application OTPs and
+    `APPLICATION` refresh sessions, while retaining the administrator
+    password/profile/role, admin avatar, admin challenges, audit links,
+    administrator idempotency history, and `ADMIN` refresh sessions;
+  - is reachable only with an application-scoped bearer. An administrator
+    bearer cannot call this product route or be downgraded into an application
+    session.
 - `POST /api/v1/account-deletions/status`
   - is intentionally unauthenticated because the successful command removes
     the account and its session;
@@ -335,8 +343,11 @@ OTP/profile routes are account and settings helpers. They do not add payment, bo
 
 Account-deletion retries must reuse the exact same client request id. The
 Backend hashes `userId + NUL + clientRequestId` and stores only that SHA-256
-digest in `AccountDeletionReceipt`, atomically before the User row is erased.
-`DELETED` means the matching immutable receipt committed. `PENDING` means the
+digest in `AccountDeletionReceipt`, atomically with application-account
+erasure. For an ordinary account the User row is erased; for a dual
+administrator/application identity the administrator row remains with all
+application identity fields cleared. `DELETED` means the matching immutable
+receipt committed. `PENDING` means the
 matching DELETE idempotency reservation is still live. `NOT_STARTED` means
 neither a receipt nor a live matching reservation exists. A reservation older
 than 30 seconds may be reclaimed only after locking the still-live User and

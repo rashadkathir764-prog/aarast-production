@@ -46,6 +46,11 @@ revision with `git rev-parse HEAD`.
   deletion commits only when this durable scheduling succeeds. Tickets survive
   the User row and the media worker deletes objects with retries before marking
   them `DELETED`.
+- Dual administrator/application identities now have an explicit deletion
+  boundary in current source: app deletion preserves consumed `USER_AVATAR`
+  admin media and admin credentials/sessions while scheduling all application
+  media and deleting the app graph. The deployed revision predating this
+  correction is still a release risk until redeployed and physically accepted.
 - Password login throttling uses a pepper-keyed HMAC identifier in PostgreSQL,
   fails closed without the production pepper, and cleans expired/inactive rows
   hourly under one transaction-level advisory lock.

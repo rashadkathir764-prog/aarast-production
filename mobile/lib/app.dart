@@ -171,6 +171,10 @@ class AarastSessionTransitionGate extends StatelessWidget {
     }
 
     if (status == AuthStatus.terminationFailed) {
+      final failure = context.select<AuthController, (String?, String?)>(
+        (controller) => (controller.errorCode, controller.errorMessage),
+      );
+      final deletionPending = failure.$1 == 'ACCOUNT_DELETION_PENDING';
       return Scaffold(
         key: const Key('session-termination-failed-screen'),
         backgroundColor: AppTheme.canvas,
@@ -187,14 +191,21 @@ class AarastSessionTransitionGate extends StatelessWidget {
                     size: 48,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'تعذر إنهاء الجلسة محلياً',
+                  Text(
+                    deletionPending
+                        ? 'جارٍ التحقق من حذف الحساب'
+                        : 'تعذر إنهاء الجلسة محلياً',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'لن نعرض حساباً قديماً أو شاشة الدخول قبل اكتمال تنظيف بيانات هذا الجهاز.',
+                  Text(
+                    failure.$2 ??
+                        'لن نعرض حساباً قديماً أو شاشة الدخول قبل اكتمال تنظيف بيانات هذا الجهاز.',
+                    key: const Key('session-termination-failure-message'),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),

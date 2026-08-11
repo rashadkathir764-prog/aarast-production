@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:aarast_mobile/core/utils/currency_label.dart';
+import 'package:aarast_mobile/features/marketplace/screens/provider_apply_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -41,6 +43,20 @@ void main() {
 
       expect(currencyLabelAr(defaultCurrencyCode), 'ر.ي');
     });
+
+    testWidgets(
+      'submitted provider application offers home return without customer browsing',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: ProviderApplyStatusScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('العودة للرئيسية'), findsOneWidget);
+        expect(find.text('فتح الموردين'), findsNothing);
+        expect(find.byType(OutlinedButton), findsNothing);
+      },
+    );
 
     test('provider portal is split into bounded real tab libraries', () {
       final barrel = File(

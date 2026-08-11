@@ -56,6 +56,23 @@ without a new explicit product and architecture decision.
 - One detached Codex-managed worktree exists outside the main checkout. Inspect
   it before removing it; do not delete it as routine cleanup.
 
+### Unreleased account-deletion correction
+
+The deployed revision listed below has a confirmed dual-identity edge case:
+deleting the wedding-application account of a person who is also an Aarast
+administrator returns `403`, and the old Mobile retry can temporarily enter a
+`PENDING`/`503` reconciliation loop. The corrective source on
+`codex/admin-application-account-deletion` keeps the administrator identity and
+`ADMIN` sessions but erases the separate app identity/data and `APPLICATION`
+sessions. It also stops Mobile from replaying DELETE while status is `PENDING`.
+
+Local corrective gates pass: Backend `671` total (`670` passed, one skipped),
+type/seed checks, managed isolated deletion smoke over all 76 migrations;
+Flutter analysis, focused transition `8/8`, and full `1151/1151`. Do not call
+Production fixed until this change is reviewed, merged, deployed, and repeated
+on the affected physical-device path. The administrator browser login must be
+tested after app deletion as a release acceptance condition.
+
 ## Production Receipt
 
 The currently accepted application deployment uses revision

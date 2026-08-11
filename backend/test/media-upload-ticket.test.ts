@@ -166,6 +166,36 @@ test("upload reservations are durable and quota accounting is serialized", async
   assert.ok(ticket.expiresAt.getTime() > Date.now());
 });
 
+test("application identity deletion preserves the administrator avatar ticket", async () => {
+  let whereSeen: unknown;
+  let updatedKeys: string[] = [];
+  const service = new MediaUploadTicketService({} as any);
+  const tx = {
+    $queryRaw: async () => [{ locked: true }],
+    mediaUploadTicket: {
+      findMany: async ({ where }: any) => {
+        whereSeen = where;
+        return [{ key: "app-avatar" }, { key: "chat-image" }];
+      },
+      updateMany: async ({ where }: any) => {
+        updatedKeys = where.key.in;
+        return { count: updatedKeys.length };
+      },
+    },
+  };
+
+  assert.deepEqual(
+    await service.scheduleApplicationIdentityDeletion("admin-user", tx as any),
+    ["app-avatar", "chat-image"],
+  );
+  assert.deepEqual(whereSeen, {
+    userId: "admin-user",
+    status: { not: MediaUploadStatus.DELETED },
+    NOT: { consumedByType: "USER_AVATAR" },
+  });
+  assert.deepEqual(updatedKeys, ["app-avatar", "chat-image"]);
+});
+
 test("rolling daily upload count is enforced before another ticket is created", async () => {
   let creates = 0;
   const service = new MediaUploadTicketService({

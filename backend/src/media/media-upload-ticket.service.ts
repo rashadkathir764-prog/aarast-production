@@ -238,8 +238,43 @@ export class MediaUploadTicketService {
     transaction: Prisma.TransactionClient,
   ): Promise<string[]> {
     await this.lockAccount(transaction, userId);
+    return this.scheduleOwnedDeletion(
+      userId,
+      { userId, status: { not: MediaUploadStatus.DELETED } },
+      transaction,
+    );
+  }
+
+  async scheduleApplicationIdentityDeletion(
+    userId: string,
+    transaction: Prisma.TransactionClient,
+  ): Promise<string[]> {
+    await this.lockAccount(transaction, userId);
+    return this.scheduleOwnedDeletion(
+      userId,
+      {
+        userId,
+        status: { not: MediaUploadStatus.DELETED },
+        NOT: { consumedByType: 'USER_AVATAR' },
+      },
+      transaction,
+    );
+  }
+
+  lockAccountDeletionBoundary(
+    transaction: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    return this.lockAccount(transaction, userId);
+  }
+
+  private async scheduleOwnedDeletion(
+    userId: string,
+    where: Prisma.MediaUploadTicketWhereInput,
+    transaction: Prisma.TransactionClient,
+  ): Promise<string[]> {
     const tickets = await transaction.mediaUploadTicket.findMany({
-      where: { userId, status: { not: MediaUploadStatus.DELETED } },
+      where,
       orderBy: { key: 'asc' },
       select: { key: true },
     });

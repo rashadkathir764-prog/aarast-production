@@ -388,6 +388,14 @@ whether each item is PASS, FAIL, or BLOCKED.
   confirmation and Backend endpoint. Contributor tenures in other owners'
   plans close with `ACCOUNT_DELETED`, the User reference detaches, immutable
   plan history remains, and no deleted account context can be restored.
+- Include one dual administrator/application identity. From an
+  `APPLICATION` session, deletion must clear all app credentials/profile/data,
+  app media, push registrations, application OTPs/idempotency rows and
+  `APPLICATION` refresh sessions, but must retain the administrator row,
+  password/profile/avatar, admin challenges/audit links/idempotency rows and
+  `ADMIN` refresh sessions. Prove the administrator can still authenticate in
+  the browser realm and the deleted app identity cannot refresh or restore an
+  app dashboard.
 - Before the first account-delete request, require a secure durable marker with
   one stable high-entropy client request id and unmount all dashboards. Simulate
   a committed DELETE whose HTTP response is lost, restart the client, and prove
@@ -395,7 +403,10 @@ whether each item is PASS, FAIL, or BLOCKED.
   anonymous receipt. A fresh in-flight reservation returns `PENDING`; only a
   definitive rejection plus `NOT_STARTED` may clear the marker and restore the
   still-live account. The status response must never reveal account fields or
-  deletion-graph details.
+  deletion-graph details. While status is `PENDING`, Flutter must not issue a
+  competing DELETE; it stays behind the termination gate, preserves the same
+  request id, and offers a later status retry instead of creating a 403/503
+  replay loop.
 - Keep `الخروج من المساحة`, `مغادرة الخطة`, account logout, and final account
   deletion as four distinct tests. None may be accepted as evidence for
   another.

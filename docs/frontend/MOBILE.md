@@ -274,19 +274,25 @@ Providers rendered without Flutter, RenderFlex, SQLite, or fatal runtime
 errors. On 2026-08-03 the earlier final
 combined gate also passed all 997 Flutter tests, and a local
 Flutter Web runtime rendered the Arabic welcome gateway without console errors.
-Android Release built as `1.0.0+7`, verified against the Aarast upload
-signature, and produced SHA-256
-`509F54E81CBAE7CA4DD3BE9ABA086EACB1CF7D5C2D75F848C767A59741F7AC72`.
+The latest direct-install Android Release APK is `1.0.0+8`, built from exact
+Mobile source revision `2ffbe95d7a8e412ead47220536046501f4ac86bf`. It is
+non-debuggable, min SDK 24/target SDK 36, APK Signature Scheme v2 verified, and
+signed by the Aarast RSA-3072 upload identity that matches deployed Android
+association. Its size is 88,634,008 bytes and SHA-256 is
+`075D82E24BEF4DED75F34D663B76132C9A6D6F89C7FE6535009C734A0CA1C69D`.
 The owner-plus-two-contributor Backend HTTP scenario and both fresh and populated
 legacy migration paths also passed. The earlier Release APK installed and
 launched on a physical Android 16 device
 without a fatal process or SQLite error, but the retained authenticated session
 correctly stopped at the explicit context-load retry state because Production
-still serves the old Backend contract (`/health=200`, new public account-
-deletion status route=`404`). The local build recovered the Firebase client
-configuration from the previously signed Aarast artifact, but the required
-Firebase dart-defines are not configured in this workspace; repeatable CI
-packaging therefore remains a release gate. The SQLCipher schema-v6-to-v7
+then served the old Backend contract. Production revision
+`900897a90e8b030c7c3ddfdc55cc2669b64f2e87` now includes the coordinated
+contract and all 76 migrations, so the old run is historical and must be
+repeated; it is not retroactive device acceptance. The latest local APK was
+built with private Firebase client inputs without writing their values to
+source or logs, but repeatable CI/store packaging remains a release gate. Its
+Sentry release ID is embedded while the Sentry DSN is intentionally empty. The
+SQLCipher schema-v6-to-v7
 migration remains a post-deployment Android/iOS device gate even though shared
 JSON migration and SQLite ownership source contracts pass locally. The latest
 2026-08-10 debug APK installed and passed the owner root-tab smoke on the
@@ -296,7 +302,8 @@ owner dashboard also passed an airplane-mode cold start without fatal, Flutter,
 layout, or SQLite errors. Exhaustive
 secondary/auth/form coverage and offline mutation/sync recovery remain open
 physical Android gates; physical iOS remains blocked on the available Windows
-host.
+host. Real WhatsApp OTP, background/terminated Push, Sentry symbolication,
+store AAB upload, and store review also remain open.
 
 ## Plan Management
 

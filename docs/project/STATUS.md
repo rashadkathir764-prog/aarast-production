@@ -307,13 +307,35 @@ Observed validation for this checkpoint:
   `/support` pages alongside invitation links, with no scripts or forms and
   fail-closed unknown routes. Production Compose uses an immutable image ID and
   the build candidate is stamped with the same Git revision as Backend/Admin.
-- Combined closure PASS: Backend `665` tests (664 passed, one skipped), build,
+- Combined closure PASS: Backend `670` tests (669 passed, one skipped), build,
   Prisma validation, zero-finding npm audit, and all `30` managed smoke packages
-  after `75` migrations; Admin `96/96`, type-check/build, routes `16/16`,
+  after `76` migrations; Admin `96/96`, type-check/build, routes `16/16`,
   honesty `12/12`, container `3/3`, and zero-finding full audit; Mobile analysis,
   `1150/1150`, reviewed Golden, and public-API debug APK; deployment contracts
   `38/38`, public Docker build/live routes, Compose validation; docs sync and
   verification with zero drift/errors/warnings; and `git diff --check` PASS.
+
+## Production Deployment Receipt - 2026-08-11
+
+- Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` is deployed
+  through Dokploy. Backend, Admin Web, and the public static site are healthy,
+  use immutable image IDs, report the same full revision label, and have zero
+  restarts and no OOM termination in the acceptance snapshot.
+- A fresh pre-deployment PostgreSQL custom-format backup is retained at the
+  production host with SHA-256
+  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`.
+  Its catalog, checksum, full isolated restore, all `76` migrations, second
+  idempotent migration pass, schema checks, and relational postconditions PASS
+  against the exact deployed Backend image.
+- Production migration status is current. All `15` live wedding plans have one
+  linked contributor-history scope; there are zero missing scopes, lifecycle
+  mismatches, missing contributor tenures, or unfinished migrations.
+- External HTTPS acceptance PASS for Backend `/live` and `/ready`, Admin
+  `/login`, and the allowlisted public `/privacy`, `/support`, participant
+  invite, and Android `assetlinks.json` routes. Unknown public routes and the
+  intentionally unavailable Apple association return `404`.
+- The managed catalog bootstrap is live with 55 money items, 39 provider
+  categories, 7 cities, and 22 governorates; exact-version replay is unchanged.
 
 ## Current Quality Debt
 
@@ -376,10 +398,11 @@ Current strengths include:
 - fail-closed production configuration for auth and media dependencies.
 
 Open security/release work includes dependency-by-dependency Mobile upgrade
-review, deployed-environment verification, physical-device session and push
-delivery tests, Sentry privacy/symbolication checks, WhatsApp OTP acceptance,
-real Apple Team/signing configuration, store evidence, and recovery/restore
-evidence for the final release.
+review, physical-device session and push delivery tests, Sentry
+privacy/symbolication checks, WhatsApp OTP acceptance, a non-empty protected
+metrics token plus an operated monitoring stack, real Apple Team/signing
+configuration, and store evidence. Production backup/restore and deployed
+Backend/Admin/public acceptance are complete as recorded above.
 
 ## Branch Status
 
@@ -396,13 +419,17 @@ evidence for the final release.
 
 ## Release Judgment
 
-The repository has a materially stronger current source and a healthy local
-runtime, but it is not yet approved for store or production release. The
-remaining gates are physical-device acceptance, production deployment, store
-signing/assets, iOS/macOS evidence, and deployed backup/restore proof.
+The Backend, Admin Web, public static site, database migrations, and production
+backup/restore gate are deployed and accepted at application revision
+`900897a90e8b030c7c3ddfdc55cc2669b64f2e87`. Production operations still have
+explicit notes: `METRICS_TOKEN` and `SENTRY_DSN` are not configured, and no
+Prometheus/Grafana/Alertmanager stack is running.
 
-Current verdict: source and local-runtime hardening PASS; external release
-approval remains BLOCKED by the explicit store/device/deployment gates above.
+Current verdict: source, local-runtime hardening, and the current web/API
+production deployment PASS with the operational notes above. Mobile store
+release remains BLOCKED by physical-device OTP/Push/session acceptance, live
+Sentry symbolication, repeatable store AAB signing/upload, iOS/macOS evidence,
+store assets/approval, and the Apple association identity.
 
 The active priority and acceptance order is defined in
 `docs/project/EXECUTION_PLAN.md`.

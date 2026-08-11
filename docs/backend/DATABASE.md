@@ -170,6 +170,20 @@ history models. It creates one `ContributorHistoryScope` per existing plan and
 one active `ContributorTenure` per existing `SharedMember`. Count assertions
 abort the transaction if either baseline cannot be represented exactly.
 
+Repair migration
+`20260811180000_backfill_missing_contributor_history_scopes` closes the case in
+which an older direct writer created a live `WeddingPlan` without its history
+scope. With lock order matching runtime writes, it creates only missing scopes,
+preserves planning/archived lifecycle truth, and reconstructs active tenures
+only from an existing `SharedMember`. Postconditions require every live plan to
+have one linked scope with matching lifecycle state and every live shared
+member to have the expected active tenure; detached `DELETED` scopes remain
+valid audit history. The migration is idempotent and was rehearsed twice on
+PostgreSQL 16. Production revision
+`900897a90e8b030c7c3ddfdc55cc2669b64f2e87` deployed it successfully: 15 live
+plans, 15 linked scopes, and zero missing scopes, lifecycle mismatches, missing
+tenures, or unfinished migrations.
+
 Runtime writes create a `ContributionEvent` in the same domain transaction as
 the contributor action. A canonical, recursively key-sorted JSON hash and an
 event fingerprint make a retry with the same tenure/dedupe key safe; reuse of

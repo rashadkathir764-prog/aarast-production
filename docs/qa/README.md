@@ -24,8 +24,8 @@ archive rules are owned by `docs/README.md`.
 ## Latest Recorded Full Working-Tree Gate — 2026-08-11
 
 - Backend source guard/check/build/Prisma validation: PASS; unit suite PASS with
-  665 tests (664 passed, one intentionally skipped); all 30 managed smoke
-  packages PASS after all 75 migrations on a disposable database.
+  670 tests (669 passed, one intentionally skipped); all 30 managed smoke
+  packages PASS after all 76 migrations on a disposable database.
 - Admin React Router 7 migration: type-check/build PASS, Vitest `96/96`, routes
   `16/16`, honesty `12/12`, container config `3/3`, and full npm audit with zero
   findings. The previous moderate advisories are closed.
@@ -47,6 +47,28 @@ archive rules are owned by `docs/README.md`.
   database, Redis, and media all `up`.
 - This local readiness result is not a Production deployment, Production
   migration, external-service, or physical-device acceptance result.
+
+## Production Acceptance - 2026-08-11
+
+- Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` is live.
+  Immutable Backend, Admin Web, and public-site containers are healthy with the
+  same revision label, zero restarts, and no OOM termination.
+- Fresh production backup SHA-256
+  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`
+  passed checksum/catalog inspection, full isolated restore against the exact
+  Backend image, all 76 migrations, a second idempotent pass, schema checks,
+  and relational postconditions.
+- Live migration truth is 15 plans, 15 linked contributor-history scopes, zero
+  missing scopes, zero lifecycle mismatches, zero missing tenures, and zero
+  unfinished migrations.
+- External Backend `/live` and `/ready`, Admin `/login`, public privacy/support/
+  invite routes, Android association, TLS, and security headers PASS. Unknown
+  public routes and Apple association return the intended `404`.
+- Managed catalog bootstrap PASS with 55 money items, 39 provider categories,
+  7 cities, and 22 governorates; exact-version replay is unchanged.
+- This closes the current API/Admin/public/database deployment gate. It does not
+  close real-device WhatsApp OTP, Push, contributor/session, iOS, Sentry,
+  metrics/monitoring, AAB/store upload, or store-review gates.
 
 ## Backend Changes
 
@@ -398,36 +420,19 @@ whether each item is PASS, FAIL, or BLOCKED.
   and accept a new invitation. Capture raw API responses and the visible mobile
   states for every step.
 
-Focused source tests are necessary but not sufficient. The 2026-08-03 local
-receipt records `npm run check` PASS, `npm test` with 651 tests (650 passed, one
-intentional skip, zero failures), all 74 migrations on a fresh isolated
-database plus the populated-legacy upgrade path PASS, the live
-owner-plus-two-contributor scenario at 28/28 PASS, the managed
-account-deletion smoke PASS, `flutter analyze` PASS, and all 997 Flutter tests
-PASS. A real Flutter Web runtime also rendered the Arabic welcome gateway
-without console errors. Android Release packaging passed as `1.0.0+7`, the APK
-signature verified against the Aarast upload identity, and the exact artifact
-SHA-256 is
-`509F54E81CBAE7CA4DD3BE9ABA086EACB1CF7D5C2D75F848C767A59741F7AC72`.
+Focused source tests are necessary but not sufficient. The 2026-08-03 physical
+Android run is historical evidence: it installed and launched without a fatal
+process/database error, then correctly stopped at the explicit context-load
+retry state because Production still had the old account-deletion contract.
+The 2026-08-11 deployment receipt above closes that API/migration mismatch; it
+does not retroactively turn the old device run into an accepted contributor
+flow. Repeat the owner/two-contributor scenario against the deployed revision
+without adding a Flutter fallback to the old contract.
 
-The Android artifact installed and launched on a physical SM S938B running
-Android 16 without a fatal process or database error, but this is not an
-accepted contributor-flow pass. Production `/health` returned `200` while the
-new public `/api/v1/account-deletions/status` contract returned `404`, and the
-retained authenticated session consequently showed the explicit Arabic
-context-load retry state. Deploy the coordinated Backend migrations and
-compatible Backend release before repeating the owner/two-contributor device
-matrix; do not introduce a Flutter fallback to the old contract.
-
-The remaining release gates are that post-deployment Android scenario, an iOS
-physical-device scenario, and a repeatable CI release configuration. This local
-APK reused the Firebase client configuration embedded in the previously signed
-Aarast artifact; the workspace still does not define
-`AARAST_FIREBASE_API_KEY`, `AARAST_FIREBASE_APP_ID`,
-`AARAST_FIREBASE_MESSAGING_SENDER_ID`, or `AARAST_FIREBASE_PROJECT_ID`. Do not
-approve rollout until those values are supplied through the approved secret
-channel, the native gates pass, and the coordinated migration cutover is
-completed. Native Android/iOS acceptance must additionally rehearse the full
+The remaining native gates are that post-deployment Android scenario, an iOS
+physical-device scenario, real WhatsApp OTP and background/terminated Push,
+and a repeatable CI/store release configuration. Native Android/iOS acceptance
+must additionally rehearse the full
 SQLCipher schema-v6-to-v7-to-v8 chain: the version 7 migration must leave
 unknown legacy queue rows permanently blocked rather than guessed or sent, and
 the version 8 migration must create `cached_dashboard_summaries` without losing
@@ -584,25 +589,19 @@ Before wider rollout, run and report separately:
   repeated with a slow network, network loss during Logout, API failure, and
   app termination during transition.
 
-The 2026-08-01 local gate passes full analysis and all 941 Flutter tests.
-`1.0.0+7` Debug APK, local Release APK, and local Release AAB builds pass
-against the Production HTTPS origin. The Release APK is non-debuggable, uses
-APK Signature Scheme v2, contains the required notification permission/channel
-metadata, and its SHA-256 is
-`7C3BF390E459FF913ECF4FB519D02B517F2E0813DE938B6F615A20E43011814F`.
-The AAB SHA-256 is
-`DFF417C0935DABA8B39B5182F3EC28D1421E049BA387F59679D8C32427D37D90`.
-`jarsigner -verify` accepts the AAB with the expected self-signed/no-timestamp
-warnings, so final Play/store signer acceptance remains open.
+The latest direct-install Release APK is `1.0.0+8`, built from source revision
+`2ffbe95d7a8e412ead47220536046501f4ac86bf`. It is non-debuggable, targets SDK
+36 with min SDK 24, uses APK Signature Scheme v2, and its Aarast RSA-3072 upload
+signer matches deployed Android association. The artifact is 88,634,008 bytes
+with SHA-256
+`075D82E24BEF4DED75F34D663B76132C9A6D6F89C7FE6535009C734A0CA1C69D`.
+Production API and private Firebase client inputs are embedded. Sentry release
+identity is embedded, but DSN delivery is intentionally disabled.
 
-The current Release artifact was not installed on the connected Samsung
-Android 16 phone: an earlier controlled runner removed the main package after
-a signature mismatch, and the prototype package was intentionally left alone.
-The earlier Profile-mode Provider-Logout-Groom run used controlled fakes and
-therefore does not prove the live Login/API/Firebase path. No equivalent iOS
-run has occurred. Neither artifact enables Sentry because real DSN/upload
-credentials are not available. These results close the local build and test
-gates, not live-account, live-Push, live-Sentry, TestFlight, or store gates.
+The APK is not a store AAB and no equivalent iOS run has occurred. It does not
+prove live Login/API/Firebase, OTP, Push, offline interruption, Sentry, TestFlight,
+or store behavior. The later Backend-only hotfix deployed at `900897a9` does
+not alter the APK's exact Mobile source provenance.
 
 If the defect is isolated to Sentry transport, rebuild the same session-fixed
 code with an empty `AARAST_SENTRY_DSN`; this disables external delivery without

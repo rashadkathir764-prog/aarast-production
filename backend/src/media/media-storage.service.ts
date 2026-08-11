@@ -235,6 +235,23 @@ export class MediaStorageService {
     return this.tickets.scheduleUserDeletion(userId, transaction);
   }
 
+  scheduleApplicationIdentityMediaDeletion(
+    userId: string,
+    transaction: Prisma.TransactionClient,
+  ): Promise<string[]> {
+    return this.tickets.scheduleApplicationIdentityDeletion(
+      userId,
+      transaction,
+    );
+  }
+
+  lockAccountDeletionBoundary(
+    userId: string,
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.tickets.lockAccountDeletionBoundary(transaction, userId);
+  }
+
   async deleteScheduledObjects(
     keys: string[],
   ): Promise<{ deleted: number; failed: number }> {

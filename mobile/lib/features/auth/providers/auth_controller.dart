@@ -786,6 +786,7 @@ class AuthController extends ChangeNotifier {
       await _reconcilePendingAccountDeletion(
         pendingDeletion,
         operation: operation,
+        initialError: error,
       );
       return false;
     } on Object catch (error, stackTrace) {
@@ -828,8 +829,8 @@ class AuthController extends ChangeNotifier {
   Future<void> _reconcilePendingAccountDeletion(
     PendingAccountDeletion pendingDeletion, {
     required int operation,
+    ApiException? initialError,
   }) async {
-    final store = _pendingAccountDeletionStore!;
     _pendingLogoutUserId = pendingDeletion.userId;
     _user = null;
     _authRepository.bindClientSession(null);
@@ -844,7 +845,34 @@ class AuthController extends ChangeNotifier {
         clientRequestId: pendingDeletion.clientRequestId,
       );
       if (!_isCurrentSessionOperation(operation)) return;
-      if (status != AccountDeletionServerStatus.deleted) {
+      if (status == AccountDeletionServerStatus.deleted) {
+        _accountDeletionAwaitingServerConfirmation = false;
+        await _startSessionTermination(
+          reason: 'account_deleted',
+          requestLoginAfterCompletion: true,
+          markSessionExpired: false,
+          allowTerminating: true,
+        );
+        return;
+      }
+      if (status == AccountDeletionServerStatus.notStarted &&
+          initialError != null &&
+          !initialError.isAmbiguousMutationFailure) {
+        await _restoreAfterDefinitiveAccountDeletionRejection(
+          pendingDeletion,
+          initialError,
+        );
+        return;
+      }
+      if (status == AccountDeletionServerStatus.pending) {
+        _status = AuthStatus.terminationFailed;
+        _errorCode = 'ACCOUNT_DELETION_PENDING';
+        _errorMessage =
+            'جارٍ التحقق من اكتمال حذف الحساب. حاول التحقق مرة أخرى.';
+        notifyListeners();
+        return;
+      }
+      if (status == AccountDeletionServerStatus.notStarted) {
         await _authRepository.deleteAccount(
           clientRequestId: pendingDeletion.clientRequestId,
         );
@@ -881,23 +909,10 @@ class AuthController extends ChangeNotifier {
       }
       if (verifiedStatus == AccountDeletionServerStatus.notStarted &&
           !error.isAmbiguousMutationFailure) {
-        await store.removeAfterDefinitiveRejection(pendingDeletion);
-        final retainedUser = _pendingAccountDeletionUser;
-        _accountDeletionAwaitingServerConfirmation = false;
-        _pendingAccountDeletionUser = null;
-        _pendingLogoutUserId = null;
-        _errorCode = error.serverCode;
-        _errorMessage = error.message;
-        if (retainedUser != null) {
-          _user = retainedUser;
-          _authRepository.bindClientSession(retainedUser.id);
-          _status = AuthStatus.authenticated;
-          notifyListeners();
-        } else {
-          _status = AuthStatus.checking;
-          notifyListeners();
-          await restoreSession();
-        }
+        await _restoreAfterDefinitiveAccountDeletionRejection(
+          pendingDeletion,
+          error,
+        );
         return;
       }
       _status = AuthStatus.terminationFailed;
@@ -922,6 +937,31 @@ class AuthController extends ChangeNotifier {
       );
       notifyListeners();
     }
+  }
+
+  Future<void> _restoreAfterDefinitiveAccountDeletionRejection(
+    PendingAccountDeletion pendingDeletion,
+    ApiException error,
+  ) async {
+    await _pendingAccountDeletionStore!.removeAfterDefinitiveRejection(
+      pendingDeletion,
+    );
+    final retainedUser = _pendingAccountDeletionUser;
+    _accountDeletionAwaitingServerConfirmation = false;
+    _pendingAccountDeletionUser = null;
+    _pendingLogoutUserId = null;
+    _errorCode = error.serverCode;
+    _errorMessage = error.message;
+    if (retainedUser != null) {
+      _user = retainedUser;
+      _authRepository.bindClientSession(retainedUser.id);
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return;
+    }
+    _status = AuthStatus.checking;
+    notifyListeners();
+    await restoreSession();
   }
 
   /// Called by the API layer when any non-auth request returns 401. Ends

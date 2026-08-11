@@ -315,6 +315,30 @@ Observed validation for this checkpoint:
   `38/38`, public Docker build/live routes, Compose validation; docs sync and
   verification with zero drift/errors/warnings; and `git diff --check` PASS.
 
+## Post-deployment account-deletion correction - 2026-08-11
+
+- A physical Android report exposed one dual-identity defect in the deployed
+  revision: an administrator enrolled in the wedding application was projected
+  correctly as an application user at login, but `DELETE /api/v1/users/me`
+  re-read the shared database `role=ADMIN` and returned `403`. The durable
+  idempotency reservation then appeared `PENDING`, and an immediate Mobile
+  replay could surface `503` while the first reservation was still live.
+- Current source corrects the realm boundary. Ordinary users/providers still
+  delete the complete User graph. A dual administrator/application identity
+  deletes only its app credential/profile/data/media, push registration,
+  application OTP/idempotency rows and `APPLICATION` sessions; the admin
+  password/profile/avatar, challenges, audit links/idempotency rows and
+  `ADMIN` sessions remain. Flutter no longer replays DELETE while status is
+  `PENDING` and shows a truthful account-deletion verification state.
+- Corrective source evidence: Backend full suite `671` total (`670` passed,
+  one intentionally skipped), Backend type/seed checks, 30 focused deletion /
+  recovery / media tests, managed isolated account-deletion smoke after all 76
+  migrations, Flutter analysis, 8 focused session-transition tests, and the
+  complete `1151/1151` Flutter suite all PASS. Documentation/public-site and
+  final diff/secret checks are recorded by the change receipt.
+- This correction is not part of the Production revision recorded below until
+  its branch is reviewed, merged, deployed, and accepted on a physical device.
+
 ## Production Deployment Receipt - 2026-08-11
 
 - Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` is deployed

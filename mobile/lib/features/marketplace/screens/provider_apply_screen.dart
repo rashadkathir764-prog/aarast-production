@@ -315,22 +315,10 @@ class ProviderApplyStatusScreen extends StatelessWidget {
             title: 'تم استلام طلبك',
             message:
                 'سيتم مراجعة بياناتك، وبعد الموافقة ستظهر لوحة المزود وخدماتك في المكان المناسب.',
-            action: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                FilledButton.icon(
-                  onPressed: () => context.go(AppRouter.home),
-                  icon: const Icon(LucideIcons.home),
-                  label: const Text('العودة للرئيسية'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => context.go(AppRouter.providerMarketplace),
-                  icon: const Icon(LucideIcons.store),
-                  label: const Text('فتح الموردين'),
-                ),
-              ],
+            action: FilledButton.icon(
+              onPressed: () => context.go(AppRouter.home),
+              icon: const Icon(LucideIcons.home),
+              label: const Text('العودة للرئيسية'),
             ),
           ),
           const SizedBox(height: 18),

@@ -1455,6 +1455,9 @@ git commit -m "ci: enforce modular monolith R0 gates"
 ### Task 7: Execute the Complete R0 Verification and Record the Receipt
 
 **Files:**
+- Modify before verification: `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`
+  only to align Task 7 closure with the owner-approved Task 5 Mobile
+  precondition repair
 - Modify after all checks pass: `docs/project/STATUS.md`
 - Modify after all checks pass: `CHANGELOG.md`
 
@@ -1466,13 +1469,26 @@ git commit -m "ci: enforce modular monolith R0 gates"
 
 ```powershell
 $r0Base = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad'
-git diff --exit-code $r0Base -- backend/src backend/prisma/schema.prisma backend/prisma/migrations mobile/lib mobile/test mobile/integration_test admin-web/src deploy docker-compose.yml
+$mobileRepair = 'mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart'
+$expectedProtected = @("M`t$mobileRepair")
+$protectedDiff = @(
+  git diff --name-status --no-renames --diff-filter=ACMRDTUXB $r0Base -- backend/src backend/prisma/schema.prisma backend/prisma/migrations mobile/lib mobile/test mobile/integration_test admin-web/src deploy docker-compose.yml |
+    ForEach-Object { $_ -replace '\\', '/' } |
+    Sort-Object -Unique
+)
+$protectedDelta = @(Compare-Object $expectedProtected $protectedDiff)
+if ($protectedDelta.Count -ne 0) { throw "Unexpected protected R0 diff: $($protectedDelta -join '; ')" }
+git diff --exit-code 464a23e0..HEAD -- $mobileRepair
 $protectedStatus = @(git status --porcelain=v1 --untracked-files=all -- backend/src backend/prisma/schema.prisma backend/prisma/migrations mobile/lib mobile/test mobile/integration_test admin-web/src deploy docker-compose.yml)
-if ($protectedStatus.Count -ne 0) { throw "Protected R0 paths changed: $($protectedStatus -join '; ')" }
+if ($protectedStatus.Count -ne 0) { throw "Protected R0 worktree is dirty: $($protectedStatus -join '; ')" }
 node .\scripts\check-r0-scope.mjs --check
 ```
 
-Expected: empty diff. Any output is a stop signal; do not explain it away as mechanical R0 work.
+Expected: the fixed-base protected diff is exactly one modified path,
+`mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`; its content
+is unchanged from the owner-approved repair commit `464a23e0`; the protected
+worktree is clean; and the live R0 scope gate passes. Any other protected path
+or later change to the approved repair is a stop signal.
 
 - [ ] **Step 2: Run Backend architecture and quality gates**
 
@@ -1543,14 +1559,26 @@ Expected: no exception.
 
 ```powershell
 $r0Base = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad'
-git diff --exit-code $r0Base -- backend/src backend/prisma/schema.prisma backend/prisma/migrations mobile/lib mobile/test mobile/integration_test admin-web/src deploy docker-compose.yml
+$mobileRepair = 'mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart'
+$expectedProtected = @("M`t$mobileRepair")
+$protectedDiff = @(
+  git diff --name-status --no-renames --diff-filter=ACMRDTUXB $r0Base -- backend/src backend/prisma/schema.prisma backend/prisma/migrations mobile/lib mobile/test mobile/integration_test admin-web/src deploy docker-compose.yml |
+    ForEach-Object { $_ -replace '\\', '/' } |
+    Sort-Object -Unique
+)
+$protectedDelta = @(Compare-Object $expectedProtected $protectedDiff)
+if ($protectedDelta.Count -ne 0) { throw "Unexpected protected R0 diff: $($protectedDelta -join '; ')" }
+git diff --exit-code 464a23e0..HEAD -- $mobileRepair
 $protectedStatus = @(git status --porcelain=v1 --untracked-files=all -- backend/src backend/prisma/schema.prisma backend/prisma/migrations mobile/lib mobile/test mobile/integration_test admin-web/src deploy docker-compose.yml)
-if ($protectedStatus.Count -ne 0) { throw "Protected R0 paths changed: $($protectedStatus -join '; ')" }
+if ($protectedStatus.Count -ne 0) { throw "Protected R0 worktree is dirty: $($protectedStatus -join '; ')" }
 node .\scripts\check-r0-scope.mjs --check
 git status --short --untracked-files=all
 ```
 
-Expected: only the R0 files listed in Target File Map are changed/untracked.
+Expected: the same exact one-path protected diff is present and unchanged from
+`464a23e0`; the protected worktree is clean; the live R0 scope gate passes; and
+only the R0 files listed in the amended exact allowlist differ from the fixed
+base.
 
 - [ ] **Step 8: Record the completion receipt only after every local gate passes**
 
@@ -1561,8 +1589,16 @@ Update `docs/project/STATUS.md` and `CHANGELOG.md` with:
 - dependency-cruiser version;
 - observed baseline totals by category;
 - exact commands and PASS results;
-- explicit statement that application source, schema, migrations, routes, and deployment files were untouched;
-- local smoke status: not required because R0 changed no runtime source/schema;
+- explicit statement that the only application-source change was the
+  owner-approved one-line Mobile import-path precondition repair in
+  `mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`;
+- explicit statement that Backend application source, schema, migrations, and
+  routes; Mobile tests, integration tests, and every other Mobile source file;
+  Admin application source; deployment artifacts; source locations; and
+  business logic were untouched;
+- local smoke status: not required because the approved repair only corrects a
+  local Dart import URI and R0 changed no runtime behavior, Backend source,
+  schema, migration, route, Admin source, or deployment artifact;
 - statement that the authoritative candidate revision and remote CI result come from immutable PR/workflow metadata;
 - statement that the tracked receipt intentionally makes no claim about its own mutable branch tip or current remote CI state.
 

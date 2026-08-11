@@ -1034,9 +1034,28 @@ git commit -m "test: enforce modular port and Nest graph laws"
 ### Task 5: Add the Incremental Mobile Boundary Gate
 
 **Files:**
+- Owner-approved precondition repair, committed separately:
+  - Modify: `mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`
+  - Modify: this Task 5 section in
+    `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`
+- Task 5 scanner checkpoint:
 - Create: `scripts/check-mobile-boundaries.mjs`
 - Create: `scripts/check-mobile-boundaries.test.mjs`
 - Create: `scripts/architecture/mobile-boundaries-baseline.json`
+
+**Owner-approved precondition repair:**
+
+The first live scanner run correctly exposed one pre-existing unresolved local
+import at the fixed R0 base:
+`mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart` used
+`../../../../core/experience_v3/aarast_v3_foundations.dart`, which resolves to
+the nonexistent `mobile/core/**` path. The owner approved correcting only that
+URI to `../../../core/experience_v3/aarast_v3_foundations.dart`, which resolves
+to the existing file under `mobile/lib/core/**`. This repair and this Task 5
+plan amendment form one separate precondition commit. They do not weaken the
+unresolved-target or `part` contracts, do not authorize any other Mobile edit,
+and do not change the fixed baseline `sourceRevision`. The Task 5 scanner
+checkpoint remains exactly the three script artifacts listed above.
 
 **Interfaces:**
 - Consumes: `mobile/lib/**/*.dart`.
@@ -1166,16 +1185,29 @@ node .\scripts\check-mobile-boundaries.mjs --strict
 
 Expected in R0: non-zero with current direct imports. If strict mode passes, stop because the strict rules are incomplete.
 
-- [ ] **Step 9: Prove Mobile production/test trees remain untouched**
+- [ ] **Step 9: Prove the exact owner-approved Mobile precondition allowlist**
 
 ```powershell
 $r0Base = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad'
-git diff --exit-code $r0Base -- mobile/lib mobile/test mobile/integration_test
+$expectedMobile = @(
+  'mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart'
+)
+$changedMobile = @(
+  git diff --name-only --no-renames --diff-filter=ACMRDTUXB $r0Base -- mobile/lib mobile/test mobile/integration_test |
+    ForEach-Object { $_ -replace '\\', '/' } |
+    Sort-Object -Unique
+)
+$mobileDelta = @(Compare-Object $expectedMobile $changedMobile)
+if ($mobileDelta.Count -ne 0) {
+  throw "Unexpected Mobile diff from fixed R0 base: $($mobileDelta -join '; ')"
+}
 $mobileProtected = @(git status --porcelain=v1 --untracked-files=all -- mobile/lib mobile/test mobile/integration_test)
-if ($mobileProtected.Count -ne 0) { throw "Protected Mobile paths changed: $($mobileProtected -join '; ')" }
+if ($mobileProtected.Count -ne 0) { throw "Protected Mobile worktree is dirty: $($mobileProtected -join '; ')" }
 ```
 
-Expected: empty diff.
+Expected: the fixed-base Mobile diff contains exactly the one owner-approved
+welcome-gateway import repair, and the protected Mobile worktree is clean. Any
+other Mobile path remains a stop signal.
 
 - [ ] **Step 10: Commit checkpoint only when Git authorization is present**
 
@@ -1183,6 +1215,10 @@ Expected: empty diff.
 git add scripts/check-mobile-boundaries.mjs scripts/check-mobile-boundaries.test.mjs scripts/architecture/mobile-boundaries-baseline.json
 git commit -m "test: freeze mobile architecture boundary baseline"
 ```
+
+This checkpoint contains exactly the three scanner artifacts. The Mobile
+precondition repair and this Task 5 plan amendment must already exist in the
+separate `fix(mobile): correct welcome gateway core import` commit.
 
 ---
 

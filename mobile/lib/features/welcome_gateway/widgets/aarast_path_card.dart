@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../../core/experience_v3/aarast_v3_foundations.dart';
+import '../../../core/experience_v3/aarast_v3_foundations.dart';
 
 /// Visual priority for a welcome path. Every choice stays on the soft-white
 /// product canvas; hierarchy comes from borders, tint, and typography.

@@ -925,8 +925,18 @@ function sqlTableOccurrences(sql) {
     occurrences.push({ model: table.value, mode, operation });
   }
 
-  function addList(index, mode, operation) {
+  function addList(index, mode, operation, optionalPrefix = []) {
     let cursor = index;
+    if (optionalPrefix.length > 0 && tokenKeyword(tokens[cursor]) === optionalPrefix[0]) {
+      const matches = optionalPrefix.every((keyword, offset) => (
+        tokenKeyword(tokens[cursor + offset]) === keyword
+      ));
+      if (!matches) {
+        unresolvedTable = true;
+        return;
+      }
+      cursor += optionalPrefix.length;
+    }
     while (cursor < tokens.length) {
       const table = nextTableToken(tokens, cursor);
       if (!table) {
@@ -969,7 +979,12 @@ function sqlTableOccurrences(sql) {
       add(index + 1, 'write', 'update');
     } else if (keyword === 'TABLE' && ['LOCK', 'TRUNCATE', 'ALTER', 'DROP', 'CREATE'].includes(previous)) {
       if (['LOCK', 'TRUNCATE', 'DROP'].includes(previous)) {
-        addList(index + 1, 'write', previous.toLowerCase());
+        addList(
+          index + 1,
+          previous === 'LOCK' ? 'read' : 'write',
+          previous.toLowerCase(),
+          previous === 'DROP' ? ['IF', 'EXISTS'] : [],
+        );
       } else {
         add(index + 1, 'write', previous.toLowerCase());
       }

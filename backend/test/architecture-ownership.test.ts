@@ -771,7 +771,7 @@ test('PostgreSQL table lists record every physical table and dynamic list positi
       'await prisma.$executeRawUnsafe(\'LOCK TABLE "User", "WeddingPlan"\');',
     ),
     'admin/sql-drop-list.ts': prismaFixture(
-      'await prisma.$executeRawUnsafe(\'DROP TABLE "Provider", "City"\');',
+      'await prisma.$executeRawUnsafe(\'DROP TABLE IF EXISTS "Provider", "City"\');',
     ),
     'admin/sql-delete-using-list.ts': prismaFixture(
       'await prisma.$executeRawUnsafe(\'DELETE FROM "ChatMessage" USING "Conversation", "User" WHERE true\');',
@@ -784,8 +784,8 @@ test('PostgreSQL table lists record every physical table and dynamic list positi
   assertExactRecords(scanOwnershipViolations(options), [
     { file: 'backend/src/admin/sql-truncate-list.ts', model: 'ChatMessage', owner: 'messaging', operation: 'truncate', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
     { file: 'backend/src/admin/sql-truncate-list.ts', model: 'Conversation', owner: 'messaging', operation: 'truncate', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
-    { file: 'backend/src/admin/sql-lock-list.ts', model: 'User', owner: 'identity', operation: 'lock', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
-    { file: 'backend/src/admin/sql-lock-list.ts', model: 'WeddingPlan', owner: 'planning', operation: 'lock', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-lock-list.ts', model: 'User', owner: 'identity', operation: 'lock', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
+    { file: 'backend/src/admin/sql-lock-list.ts', model: 'WeddingPlan', owner: 'planning', operation: 'lock', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1 },
     { file: 'backend/src/admin/sql-drop-list.ts', model: 'Provider', owner: 'marketplace', operation: 'drop', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
     { file: 'backend/src/admin/sql-drop-list.ts', model: 'City', owner: 'catalog', operation: 'drop', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },
     { file: 'backend/src/admin/sql-delete-using-list.ts', model: 'ChatMessage', owner: 'messaging', operation: 'delete', mode: 'write', source: 'sql', reason: 'foreign-model', count: 1 },

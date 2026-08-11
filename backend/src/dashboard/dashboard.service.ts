@@ -307,6 +307,7 @@ export class DashboardService {
               : { id: { in: [] as string[] } }
             : {}),
           status: PlanProviderLinkStatus.ACTIVE,
+          provider: { status: ProviderStatus.ACTIVE },
         },
       }),
       tx.planProviderLink.findMany({

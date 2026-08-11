@@ -42,6 +42,13 @@ export function safeTelemetryException(
   return new Error(`HTTP ${status} ${safeExceptionType(exception)}`);
 }
 
+export function shouldReportHttpException(route: string, status: number): boolean {
+  return (
+    status >= 500 &&
+    !(route === 'GET /ready' && status === HttpStatus.SERVICE_UNAVAILABLE)
+  );
+}
+
 /**
  * One place where every unhandled error becomes a sane HTTP response and a
  * structured log line. Before this filter, known Prisma errors (duplicate
@@ -60,7 +67,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const mapped = this.mapException(exception);
 
-    if (mapped.status >= 500) {
+    if (shouldReportHttpException(route, mapped.status)) {
       const exceptionType = safeExceptionType(exception);
       this.logger.error(`${route} -> ${mapped.status} type=${exceptionType}`);
       // No-op unless Sentry.init ran at bootstrap (SENTRY_DSN set).
@@ -68,7 +75,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         safeTelemetryException(mapped.status, exception),
         { tags: { route, exceptionType, status: String(mapped.status) } },
       );
-    } else {
+    } else if (mapped.status < 500) {
       this.logger.warn(
         `${route} -> ${mapped.status} type=${safeExceptionType(exception)}`,
       );

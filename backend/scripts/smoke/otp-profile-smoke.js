@@ -19,6 +19,8 @@ const suffix = `${timestamp.toString().slice(-5)}${Math.floor(Math.random() * 90
 const TEST_PHONE = `+9675${suffix}`;
 const TEST_EMAIL = `otp-smoke-${timestamp}@example.test`;
 const TEST_PASSWORD = 'SmokeTest123!';
+const EXPECTED_PUSH_SUPPORTED =
+  process.env.PUSH_NOTIFICATIONS_ENABLED === 'true';
 
 let passed = 0;
 let failed = 0;
@@ -179,8 +181,9 @@ async function run() {
       res.body?.channelCapabilities?.inApp?.configurable === false &&
       res.body?.channelCapabilities?.inApp?.enabled === true
     ));
-    check('settings expose push as supported and device-managed', (
-      res.body?.channelCapabilities?.push?.supported === true &&
+    check('settings expose runtime push support and device state truthfully', (
+      res.body?.channelCapabilities?.push?.supported ===
+        EXPECTED_PUSH_SUPPORTED &&
       res.body?.channelCapabilities?.push?.configurable === false &&
       res.body?.channelCapabilities?.push?.enabled === false
     ));

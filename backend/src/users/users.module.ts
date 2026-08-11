@@ -3,6 +3,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { MediaModule } from "../media/media.module";
 import { SharingModule } from "../sharing/sharing.module";
 import { ConversationRealtimeModule } from "../conversations/conversation-realtime.module";
+import { PushModule } from "../push/push.module";
 import { UsersController } from "./users.controller";
 import { UsersService } from "./users.service";
 import { AccountDeletionStatusController } from "./account-deletion-status.controller";
@@ -13,6 +14,7 @@ import { AccountDeletionStatusController } from "./account-deletion-status.contr
     SharingModule,
     MediaModule,
     ConversationRealtimeModule,
+    PushModule,
   ],
   controllers: [UsersController, AccountDeletionStatusController],
   providers: [UsersService],

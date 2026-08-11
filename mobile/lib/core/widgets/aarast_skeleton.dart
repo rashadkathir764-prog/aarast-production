@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/aarast_motion.dart';
 import '../theme/app_theme.dart';
 
-/// الهيكل العظمي الفاخر الموحّد — نفس لغة لوحة التحكم الملكية لكل الشاشات:
+/// الهيكل العظمي الموحّد — نفس لغة V3 لكل الشاشات:
 /// لؤلؤي، بأشكال الواجهة الحقيقية، مع shimmer يحترم تقليل الحركة.
 ///
 /// الشاشات لا تبني CircularProgressIndicator لحالة تحميل الجسم أبداً —
@@ -126,7 +126,7 @@ class AarastSkeleton extends StatelessWidget {
   /// عند true يُبنى كعمود غير قابل للتمرير — للاستخدام داخل ListView قائمة.
   final bool inline;
 
-  /// اللبنة الأساسية — نفس لون وشفافية هيكل اللوحة الملكية.
+  /// اللبنة الأساسية — نفس لون وشفافية هيكل V3.
   static Widget block({
     double? width,
     required double height,
@@ -165,7 +165,7 @@ class AarastSkeleton extends StatelessWidget {
         .animate(onPlay: (controller) => controller.repeat())
         .shimmer(
           duration: 1400.ms,
-          color: AppTheme.pearl.withValues(alpha: 0.9),
+          color: AppTheme.canvas.withValues(alpha: 0.9),
         );
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { Sidebar } from './Sidebar';
@@ -6,8 +6,52 @@ import { Topbar } from './Topbar';
 
 export function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const adminMainRef = useRef<HTMLElement>(null);
+  const shouldRestoreMenuFocusRef = useRef(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
+
+  function openSidebar() {
+    shouldRestoreMenuFocusRef.current = true;
+    setIsSidebarOpen(true);
+  }
+
+  function closeSidebar() {
+    setIsSidebarOpen(false);
+  }
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        closeSidebar();
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
+
+  useEffect(() => {
+    adminMainRef.current?.toggleAttribute('inert', isSidebarOpen);
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
+    if (isSidebarOpen) {
+      const animationFrame = window.requestAnimationFrame(() => {
+        drawerCloseButtonRef.current?.focus();
+      });
+      return () => window.cancelAnimationFrame(animationFrame);
+    }
+
+    if (shouldRestoreMenuFocusRef.current) {
+      menuButtonRef.current?.focus();
+      shouldRestoreMenuFocusRef.current = false;
+    }
+
+    return undefined;
+  }, [isSidebarOpen]);
 
   async function handleLogout() {
     try {
@@ -18,60 +62,35 @@ export function AdminLayout() {
   }
 
   return (
-    <div 
-      className="admin-shell"
-      style={{
-        display: 'flex',
-        minHeight: '100vh', // يضمن أن الصفحة تأخذ كامل ارتفاع الشاشة كأقل تقدير
-        width: '100%',
-        backgroundColor: '#FCFBF7',
-        alignItems: 'stretch', // يضمن تمدد الشريط الجانبي والمحتوى معاً بنفس الطول تماماً
-        direction: 'rtl'
-      }}
-      dir="rtl"
-    >
-      {/* حقن تنسيق داخلي سريع لحماية الهيكل من أي تضارب ملفات CSS خارجية */}
-      <style>{`
-        .admin-shell > aside, .admin-shell > div {
-          height: auto !important;
-          min-height: 100% !important;
-        }
-      `}</style>
-
-      {/* الشريط الجانبي الأيمن */}
+    <div className="admin-shell" dir="rtl">
       <Sidebar
+        closeButtonRef={drawerCloseButtonRef}
         isOpen={isSidebarOpen}
-        onNavigate={() => setIsSidebarOpen(false)}
+        onClose={closeSidebar}
+        onNavigate={closeSidebar}
         onLogout={handleLogout}
       />
-      
+
       <button
         className={`sidebar-scrim ${isSidebarOpen ? 'visible' : ''}`}
         type="button"
         aria-label="إغلاق القائمة"
-        onClick={() => setIsSidebarOpen(false)}
-        style={{ border: 'none', display: isSidebarOpen ? 'block' : 'none' }}
+        aria-hidden={!isSidebarOpen}
+        tabIndex={isSidebarOpen ? 0 : -1}
+        onClick={closeSidebar}
       />
-      
-      {/* المنطقة الرئيسية اليسرى */}
-      <main 
+
+      <main
+        ref={adminMainRef}
         className="admin-main"
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0, // تمنع تمدد العناصر أو خروج الجداول عن الشاشة
-          backgroundColor: '#FCFBF7'
-        }}
+        aria-hidden={isSidebarOpen}
       >
-        {/* الشريط العلوي */}
         <Topbar
-          onMenuClick={() => setIsSidebarOpen(true)}
-          onLogout={handleLogout}
+          isMenuOpen={isSidebarOpen}
+          menuButtonRef={menuButtonRef}
+          onMenuClick={() => (isSidebarOpen ? closeSidebar() : openSidebar())}
         />
-        
-        {/* إطار محتوى الصفحات الداخلي */}
-        <div className="content-frame" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="content-frame">
           <Outlet />
         </div>
       </main>

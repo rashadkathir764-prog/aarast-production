@@ -20,7 +20,8 @@ void main() {
     await tester.pumpWidget(harness.widget);
     await _settleEntry(tester);
 
-    expect(find.text('خطط الزفاف'), findsOneWidget);
+    expect(find.text('مساحتك'), findsOneWidget);
+    expect(find.text('الحساب والخطط والمساعدة'), findsOneWidget);
     expect(find.text('خططي'), findsOneWidget);
     expect(find.text('الخطط المشتركة معي'), findsOneWidget);
     // «تصفح الموردين» له تبويب خاص في الشريط السفلي — ليس ضمن المزيد.
@@ -49,12 +50,16 @@ void main() {
     expect(find.byTooltip('تعديل صورة الحساب'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('تسجيل الخروج'),
+      find.text('إدارة الحساب'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
+    expect(find.text('تسجيل الخروج'), findsNothing);
+    await tester.tap(find.text('إدارة الحساب'));
+    await tester.pumpAndSettle();
     expect(find.text('تسجيل الخروج'), findsOneWidget);
+    expect(find.text('حذف الحساب نهائيًا'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsNothing);
   });
 }

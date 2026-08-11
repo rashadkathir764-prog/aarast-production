@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -73,7 +73,7 @@ class ProviderAuthGate extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: AppTheme.canvas,
         body: SafeArea(
           bottom: !embedded,
           child: Center(
@@ -94,12 +94,12 @@ class ProviderAuthGate extends StatelessWidget {
                           height: 64,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppTheme.burgundySoft,
+                            color: AppTheme.brandMuted,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Icon(
                             LucideIcons.lock,
-                            color: AppTheme.burgundy,
+                            color: AppTheme.brand,
                             size: 32,
                           ),
                         ),
@@ -109,7 +109,7 @@ class ProviderAuthGate extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                color: AppTheme.ink,
+                                color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
@@ -119,7 +119,7 @@ class ProviderAuthGate extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: AppTheme.muted,
+                                color: AppTheme.textSecondary,
                                 fontWeight: FontWeight.w700,
                                 height: 1.5,
                               ),
@@ -183,7 +183,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: AppTheme.canvas,
         body: SafeArea(
           bottom: !embedded,
           child: Center(
@@ -204,12 +204,12 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                           height: 64,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppTheme.goldSoft,
+                            color: AppTheme.brandMuted,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Icon(
                             LucideIcons.store,
-                            color: AppTheme.goldDeep,
+                            color: AppTheme.brand,
                             size: 32,
                           ),
                         ),
@@ -221,7 +221,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                color: AppTheme.ink,
+                                color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
@@ -233,7 +233,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: AppTheme.muted,
+                                color: AppTheme.textSecondary,
                                 fontWeight: FontWeight.w700,
                                 height: 1.5,
                               ),

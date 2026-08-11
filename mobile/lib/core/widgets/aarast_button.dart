@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../experience_v3/aarast_v3_foundations.dart';
 import '../theme/app_theme.dart';
 
 enum AarastButtonVariant { primary, secondary, ghost, danger }
@@ -12,6 +13,7 @@ class AarastButton extends StatelessWidget {
     this.variant = AarastButtonVariant.primary,
     this.isLoading = false,
     this.expand = true,
+    this.compact = false,
     super.key,
   });
 
@@ -21,6 +23,7 @@ class AarastButton extends StatelessWidget {
   final AarastButtonVariant variant;
   final bool isLoading;
   final bool expand;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +37,19 @@ class AarastButton extends StatelessWidget {
     final button = switch (variant) {
       AarastButtonVariant.primary => ElevatedButton(
         onPressed: enabled ? onPressed : null,
+        style: ElevatedButton.styleFrom(
+          minimumSize: Size.fromHeight(compact ? 48 : 52),
+          backgroundColor: AarastV3Color.primary,
+          foregroundColor: AarastV3Color.onPrimary,
+          disabledBackgroundColor: AarastV3Color.lineStrong,
+          disabledForegroundColor: Colors.white70,
+          tapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              compact ? AarastV3Radius.surface : AarastV3Radius.control,
+            ),
+          ),
+        ),
         child: content,
       ),
       AarastButtonVariant.secondary => OutlinedButton(
@@ -46,7 +62,18 @@ class AarastButton extends StatelessWidget {
       ),
       AarastButtonVariant.danger => ElevatedButton(
         onPressed: enabled ? onPressed : null,
-        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+        style: ElevatedButton.styleFrom(
+          minimumSize: Size.fromHeight(compact ? 48 : 52),
+          backgroundColor: AppTheme.danger,
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white70,
+          tapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              compact ? AarastV3Radius.surface : AarastV3Radius.control,
+            ),
+          ),
+        ),
         child: content,
       ),
     };

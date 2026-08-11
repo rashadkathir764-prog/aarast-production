@@ -109,6 +109,33 @@ void main() {
     );
   });
 
+  testWidgets('AarastPressable exposes and runs the long-press action', (
+    tester,
+  ) async {
+    var longPresses = 0;
+    const pressableKey = Key('long-pressable');
+
+    await tester.pumpWidget(
+      harness(
+        AarastPressable(
+          key: pressableKey,
+          semanticLabel: 'إضافة',
+          longPressSemanticLabel: 'فتح آخر إجراء إضافة مستخدم',
+          onTap: _noop,
+          onLongPress: () => longPresses += 1,
+          child: const SizedBox(width: 120, height: 56),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.byKey(pressableKey));
+    await tester.pump();
+
+    expect(longPresses, 1);
+    final node = tester.getSemantics(find.byKey(pressableKey));
+    expect(node.getSemanticsData().customSemanticsActionIds, isNotEmpty);
+  });
+
   testWidgets('AarastPressable exposes its disabled button state', (
     tester,
   ) async {

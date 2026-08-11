@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-08-03.
+Current documentation snapshot: 2026-08-11.
 
 Source status:
 
@@ -34,6 +34,9 @@ Health endpoints have distinct orchestration semantics:
   Aarast transient-delivery extension to be ready. It
   returns `503` with redacted dependency states when the instance must not
   receive traffic.
+- An expected `GET /ready` `503` from an orchestration probe is an availability
+  signal, not an application error: it is not logged as an error or sent to
+  Sentry. Other `5xx` responses remain logged and reported.
 
 ## Common Rules
 
@@ -365,10 +368,14 @@ additive `channelCapabilities` object:
 ```
 
 The in-app inbox/realtime availability is supported and is not configurable.
-Device push is supported and managed by the authenticated device-registration
-contract below. `pushEnabled` reflects whether the account currently has an
-enabled installation preference; it is not writable through settings. Sending
-`pushEnabled: true` to settings returns HTTP `400` with code
+`channelCapabilities.push.supported` reflects the live Backend delivery
+capability: it is `true` only when `FirebasePushClient` is runtime-enabled
+through `PUSH_NOTIFICATIONS_ENABLED=true`; otherwise it is `false`.
+`channelCapabilities.push.enabled` and `pushEnabled` reflect whether the
+account currently has an enabled registered device installation, independently
+of that runtime capability. Push is managed by the authenticated
+device-registration contract below and is not writable through settings.
+Sending `pushEnabled: true` to settings returns HTTP `400` with code
 `NOTIFICATION_CHANNEL_DEVICE_MANAGED`; legacy `false` remains accepted and is
 ignored. SMS, WhatsApp, and email remain unsupported notification channels:
 their booleans return `false`, and attempts to enable them return
@@ -1733,6 +1740,8 @@ Public/reference routes:
 - `GET /api/v1/cities`
 - `GET /api/v1/governorates`
 - `GET /api/v1/governorates/:id/districts`
+- `GET /api/v1/districts/:id/localities`
+- `GET /api/v1/catalogs/bootstrap?version=<known-version>`
 - `GET /api/v1/provider-categories`
 - `GET /api/v1/providers`
 - `GET /api/v1/providers/:id`
@@ -1776,6 +1785,26 @@ responses contain their stable code and `governorateId`. Only active rows are
 returned. `City` remains in provider and quote contracts until those existing
 relations receive an explicit, separately migrated replacement; it must not be
 treated as a synonym for governorate.
+
+Managed reference catalogs use a versioned publication contract rather than
+shipping mutable lists inside the application binary. `GET
+/api/v1/catalogs/bootstrap` returns only active, published revisions together
+with active provider categories, cities, and governorates. A client may send
+its last `version`; when nothing changed the response is `{ version,
+unchanged: true }` and omits the payload. Catalog-item edits create a draft
+revision. `POST /admin/reference-catalogs/:catalogKey/items/:id/publish`
+publishes either the current draft or a selected historical revision, so
+rollback is explicit and does not overwrite history. `DELETE` on a catalog
+item publishes an inactive revision; it never hard-deletes prior versions.
+
+Administrative geography is managed separately through CATALOG permissions:
+`/admin/governorates`, nested governorate districts, and nested district
+localities. A locality is typed as `AREA`, `ISOLATION`, `NEIGHBORHOOD`, or
+`ZONE`, may reference a parent in the same district, and rejects cyclic
+parentage. Administrative codes and parent governorate/district ownership are
+immutable after creation. Delete routes soft-disable rows. Security roles,
+permissions, finance lifecycle states, and payment semantics are code-owned
+contracts and are deliberately not administrator-editable catalogs.
 
 `GET /api/v1/providers` keeps the paginated provider card contract compact but
 complete enough for discovery. Every item includes `primaryCategory` plus a
@@ -2233,7 +2262,9 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
   strings, concrete resource ids, invite tokens, exception messages, and
   exception stacks are not sent to application logs or Sentry. Unmatched
   routes are recorded as `unmatched`, and invalid client request ids are
-  replaced with a server-generated UUID.
+  replaced with a server-generated UUID. The expected `GET /ready` `503`
+  readiness-probe result is excluded from error logging and Sentry; all other
+  `5xx` responses remain reportable.
 - Transactional outbox events are retained through retry and exhausted events
   remain as `FAILED` dead letters. The dispatcher validates each payload and
   awaits strict realtime delivery; an unavailable adapter or rejected socket
@@ -2279,6 +2310,18 @@ configuration, and smoke checks.
 | GET | `/admin/conversation-reports` | `admin.listConversationReports` | 🔒 |
 | PATCH | `/admin/conversation-reports/:id/status` | `admin.updateConversationReportStatus` | 🔒 |
 | GET | `/admin/dashboard/stats` | `admin.getDashboardStats` | 🔒 |
+| DELETE | `/admin/districts/:id` | `catalogs.disableDistrict` | 🔒 |
+| PATCH | `/admin/districts/:id` | `catalogs.updateDistrict` | 🔒 |
+| GET | `/admin/districts/:id/localities` | `catalogs.listLocalities` | 🔒 |
+| POST | `/admin/districts/:id/localities` | `catalogs.createLocality` | 🔒 |
+| GET | `/admin/governorates` | `catalogs.listGovernorates` | 🔒 |
+| POST | `/admin/governorates` | `catalogs.createGovernorate` | 🔒 |
+| DELETE | `/admin/governorates/:id` | `catalogs.disableGovernorate` | 🔒 |
+| PATCH | `/admin/governorates/:id` | `catalogs.updateGovernorate` | 🔒 |
+| GET | `/admin/governorates/:id/districts` | `catalogs.listDistricts` | 🔒 |
+| POST | `/admin/governorates/:id/districts` | `catalogs.createDistrict` | 🔒 |
+| DELETE | `/admin/localities/:id` | `catalogs.disableLocality` | 🔒 |
+| PATCH | `/admin/localities/:id` | `catalogs.updateLocality` | 🔒 |
 | GET | `/admin/notifications` | `admin.listNotifications` | 🔒 |
 | DELETE | `/admin/notifications/:id` | `admin.deleteNotification` | 🔒 |
 | PATCH | `/admin/notifications/:id/archive` | `admin.archiveNotification` | 🔒 |
@@ -2297,6 +2340,12 @@ configuration, and smoke checks.
 | PATCH | `/admin/providers/:id/suspend` | `admin.suspendProvider` | 🔒 |
 | GET | `/admin/providers/applications` | `admin.listProviderApplications` | 🔒 |
 | GET | `/admin/providers/applications/:id` | `admin.getProviderApplication` | 🔒 |
+| GET | `/admin/reference-catalogs` | `catalogs.listCatalogs` | 🔒 |
+| GET | `/admin/reference-catalogs/:catalogKey` | `catalogs.getCatalog` | 🔒 |
+| POST | `/admin/reference-catalogs/:catalogKey/items` | `catalogs.createItem` | 🔒 |
+| DELETE | `/admin/reference-catalogs/:catalogKey/items/:id` | `catalogs.disableItem` | 🔒 |
+| PATCH | `/admin/reference-catalogs/:catalogKey/items/:id` | `catalogs.updateItem` | 🔒 |
+| POST | `/admin/reference-catalogs/:catalogKey/items/:id/publish` | `catalogs.publishItem` | 🔒 |
 | GET | `/admin/reports/overview` | `admin.getReportsOverview` | 🔒 |
 | GET | `/admin/reviews` | `admin.listReviews` | 🔒 |
 | DELETE | `/admin/reviews/:id` | `admin.hideReview` | 🔒 |
@@ -2329,6 +2378,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/auth/register/complete` | `auth.completeRegistration` |  |
 | DELETE | `/api/v1/budget-categories/:id` | `budget-categories.remove` | 🔒 |
 | PATCH | `/api/v1/budget-categories/:id` | `budget-categories.update` | 🔒 |
+| GET | `/api/v1/catalogs/bootstrap` | `catalogs.getBootstrap` |  |
 | GET | `/api/v1/cities` | `marketplace.findCities` |  |
 | GET | `/api/v1/contexts` | `contexts.list` | 🔒 |
 | POST | `/api/v1/contexts/validate` | `contexts.validate` | 🔒 |
@@ -2354,6 +2404,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/costs/:id/payments` | `wedding-costs.listPayments` | 🔒 |
 | POST | `/api/v1/costs/:id/payments` | `wedding-costs.createPayment` | 🔒 |
 | GET | `/api/v1/dashboard/home` | `dashboard.getHome` | 🔒 |
+| GET | `/api/v1/districts/:id/localities` | `catalogs.listLocalities` |  |
 | GET | `/api/v1/governorates` | `marketplace.findGovernorates` |  |
 | GET | `/api/v1/governorates/:id/districts` | `marketplace.findDistricts` |  |
 | DELETE | `/api/v1/guest-groups/:id` | `guests.removeGroup` | 🔒 |

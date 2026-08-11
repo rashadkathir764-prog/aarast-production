@@ -1,6 +1,9 @@
 # QA And Testing
 
-Snapshot date: 2026-08-03
+Snapshot date: 2026-08-11
+
+Snapshot source: the checked-out 2026-08-11 release-candidate content. Resolve
+its immutable revision with `git rev-parse HEAD`.
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -17,6 +20,33 @@ The sync check detects generated reference drift. The docs verifier checks
 documented routes, migration references, snapshot freshness, and Markdown
 links. `git diff --check` catches whitespace errors. The active source list and
 archive rules are owned by `docs/README.md`.
+
+## Latest Recorded Full Working-Tree Gate — 2026-08-11
+
+- Backend source guard/check/build/Prisma validation: PASS; unit suite PASS with
+  665 tests (664 passed, one intentionally skipped); all 30 managed smoke
+  packages PASS after all 75 migrations on a disposable database.
+- Admin React Router 7 migration: type-check/build PASS, Vitest `96/96`, routes
+  `16/16`, honesty `12/12`, container config `3/3`, and full npm audit with zero
+  findings. The previous moderate advisories are closed.
+- Mobile analysis PASS; `flutter test --no-pub` PASS, `1150/1150`; debug APK
+  build against the public API origin PASS. Desktop plugin-resolution notices
+  remain toolchain noise and did not fail analysis, tests, or Android build.
+- Deployment source contracts PASS, `38/38`; public-site Docker build and live
+  route checks PASS with allowlisted routes `200` and fail-closed routes `404`.
+- Generated-doc sync/check PASS with zero drift; docs verification PASS with
+  zero errors/warnings; `git diff --check` PASS.
+- Backend and Admin full npm audits PASS with zero findings. Mobile dependency
+  upgrades remain a separate compatibility pass.
+- Physical iOS and exhaustive Android secondary/offline-mutation coverage:
+  BLOCKED/OPEN as detailed in `MOBILE_QA.md`.
+
+## Local Runtime Refresh — 2026-08-11
+
+- Local rebuilt Backend readiness: PASS — `/live=200` and `/ready=200`, with
+  database, Redis, and media all `up`.
+- This local readiness result is not a Production deployment, Production
+  migration, external-service, or physical-device acceptance result.
 
 ## Backend Changes
 
@@ -36,6 +66,7 @@ npm test
 npm run smoke:auth-verification
 npm run smoke:sharing-security
 npm run smoke:marketplace
+npm run smoke:reference-catalog
 npm run smoke:phase2-provider-rating-concurrency
 npm run smoke:provider-dashboard
 npm run smoke:private-chat-media
@@ -182,6 +213,13 @@ The root Docker Compose environment includes MinIO-compatible object storage
 and bucket initialization for local media smoke. `/ready` must report media as
 `up`; a run where media is `disabled` is not evidence for the media release
 gate.
+
+For Backend notification settings, tests must prove that
+`channelCapabilities.push.supported` follows runtime Firebase Push capability,
+while `channelCapabilities.push.enabled` follows the account's enabled device
+installation. Tests must also prove that an expected `GET /ready` `503` probe
+failure is not emitted to the error log or Sentry, while other `5xx` failures
+remain reportable.
 
 For unified provider conversations, database and live API coverage must prove
 that two requests for the same plan/provider reuse one Conversation, while a
@@ -389,9 +427,11 @@ Aarast artifact; the workspace still does not define
 `AARAST_FIREBASE_MESSAGING_SENDER_ID`, or `AARAST_FIREBASE_PROJECT_ID`. Do not
 approve rollout until those values are supplied through the approved secret
 channel, the native gates pass, and the coordinated migration cutover is
-completed. Native Android/iOS acceptance must additionally rehearse the
-SQLCipher schema-v6-to-v7 upgrade and verify that unknown legacy queue rows
-remain permanently blocked rather than guessed or sent.
+completed. Native Android/iOS acceptance must additionally rehearse the full
+SQLCipher schema-v6-to-v7-to-v8 chain: the version 7 migration must leave
+unknown legacy queue rows permanently blocked rather than guessed or sent, and
+the version 8 migration must create `cached_dashboard_summaries` without losing
+the migrated queue, ownership metadata, or existing cached data.
 
 ## Mobile Changes
 
@@ -571,6 +611,32 @@ regresses, stop rollout and return to the last accepted signed mobile artifact.
 This slice has no backend API or database migration, so do not roll back backend
 or schema state. Record the exact release/artifact used for rollback and rerun
 the regression gate before resuming rollout.
+
+## Dynamic Catalog And Geography Gate
+
+Any managed-reference change must prove all of the following before release:
+
+- Prisma validation, Backend type-check/build, and an isolated migration run
+  against a disposable PostgreSQL database;
+- `npm run smoke:reference-catalog` passes against the managed disposable
+  database and verifies first-load catalog seeding plus version-aware fetch;
+- public bootstrap returns only the published active revision, returns
+  `unchanged: true` for the current version, and changes version only after a
+  publication or another included reference update;
+- draft editing does not change the Mobile-visible payload, historical publish
+  performs rollback, and disable creates an inactive published revision rather
+  than deleting history;
+- every Admin write requires `CATALOG_WRITE`, every Admin read requires
+  `CATALOG_READ`, and the audit log records attempt plus terminal outcome;
+- locality create/update rejects a parent in another district and every direct
+  or indirect cycle; disable preserves existing plan/provider text;
+- Mobile cold-start, matching-version, corrupt-cache, network-failure, empty
+  remote persona, groom/bride audience, and manual-locality fallback paths;
+- Admin and Mobile RTL layouts at 320px/420px and enlarged text, including
+  empty, loading, error, inactive, unpublished, and rollback states.
+
+Security roles, permissions, payment states, booking states, and finance
+calculation semantics must fail review if exposed as editable catalog rows.
 
 ## Admin Web Changes
 

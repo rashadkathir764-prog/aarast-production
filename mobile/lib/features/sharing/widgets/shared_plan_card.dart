@@ -32,8 +32,8 @@ class SharedPlanCard extends StatelessWidget {
     final member = plan.sharedMember;
     final isArchived = plan.status == 'ARCHIVED';
     final roleColor = member.hasFinancialAccess
-        ? AppTheme.gold
-        : AppTheme.muted;
+        ? AppTheme.focus
+        : AppTheme.textSecondary;
 
     return AarastCard(
       onTap: onTap,
@@ -45,12 +45,12 @@ class SharedPlanCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppTheme.goldSoft.withAlpha(120),
+              color: AppTheme.brandMuted.withAlpha(120),
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: const Icon(
               LucideIcons.calendarHeart,
-              color: AppTheme.gold,
+              color: AppTheme.focus,
               size: 18,
             ),
           ),
@@ -64,7 +64,7 @@ class SharedPlanCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -74,7 +74,7 @@ class SharedPlanCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -84,7 +84,7 @@ class SharedPlanCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -115,7 +115,7 @@ class SharedPlanCard extends StatelessWidget {
                 Text(
                   'مؤرشفة',
                   style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -126,7 +126,7 @@ class SharedPlanCard extends StatelessWidget {
           Icon(
             LucideIcons.chevronLeft,
             size: 16,
-            color: AppTheme.muted.withAlpha(180),
+            color: AppTheme.textSecondary.withAlpha(180),
           ),
         ],
       ),

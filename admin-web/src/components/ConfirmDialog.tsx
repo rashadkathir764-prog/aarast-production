@@ -1,5 +1,23 @@
-import { ReactNode, useState } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
+
+type TriggerProps = {
+  onClick?: (event: ReactMouseEvent<HTMLElement>) => void;
+  'aria-haspopup'?: string;
+  'aria-expanded'?: boolean;
+  'aria-controls'?: string;
+};
 
 type ConfirmDialogProps = {
   title: string;
@@ -26,6 +44,71 @@ export function ConfirmDialog({
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reactId = useId();
+  const dialogId = `confirm-dialog-${reactId.replace(/:/g, '')}`;
+  const titleId = `${dialogId}-title`;
+  const messageId = `${dialogId}-message`;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    isSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
+
+  useEffect(() => {
+    if (!open) {
+      if (wasOpenRef.current) {
+        triggerRef.current?.focus();
+        triggerRef.current = null;
+        wasOpenRef.current = false;
+      }
+      return;
+    }
+
+    wasOpenRef.current = true;
+    const activeDialog = dialogRef.current;
+    if (!activeDialog) return;
+
+    const focusable = activeDialog.querySelector<HTMLElement>(
+      'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    (focusable ?? activeDialog).focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!isSubmittingRef.current) closeDialog();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(
+        activeDialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (controls.length === 0) {
+        event.preventDefault();
+        activeDialog.focus();
+        return;
+      }
+
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
 
   function closeDialog() {
     if (isSubmitting) return;
@@ -51,11 +134,46 @@ export function ConfirmDialog({
     }
   }
 
+  function openDialog(event: ReactMouseEvent<HTMLElement>) {
+    triggerRef.current = event.currentTarget;
+    setError(null);
+    setOpen(true);
+  }
+
+  function handleFallbackTriggerKeyDown(event: ReactKeyboardEvent<HTMLSpanElement>) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openDialog(event as unknown as ReactMouseEvent<HTMLElement>);
+  }
+
+  const triggerElement = isValidElement(trigger)
+    ? cloneElement(trigger as ReactElement<TriggerProps>, {
+        'aria-haspopup': 'dialog',
+        'aria-expanded': open,
+        'aria-controls': open ? dialogId : undefined,
+        onClick: (event) => {
+          trigger.props.onClick?.(event);
+          if (!event.defaultPrevented) openDialog(event);
+        },
+      })
+    : (
+        <span
+          className="dialog-trigger"
+          role="button"
+          tabIndex={0}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={open ? dialogId : undefined}
+          onClick={openDialog}
+          onKeyDown={handleFallbackTriggerKeyDown}
+        >
+          {trigger}
+        </span>
+      );
+
   return (
     <>
-      <span className="dialog-trigger" onClick={() => setOpen(true)}>
-        {trigger}
-      </span>
+      {triggerElement}
       {open
         ? createPortal(
             <div
@@ -67,11 +185,16 @@ export function ConfirmDialog({
                 className="dialog"
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                aria-describedby={messageId}
+                id={dialogId}
+                ref={dialogRef}
+                tabIndex={-1}
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className={`dialog__mark ${tone}`} aria-hidden="true" />
-                <h2>{title}</h2>
-                <p>{message}</p>
+                <h2 id={titleId}>{title}</h2>
+                <p id={messageId}>{message}</p>
                 {needsNote ? (
                   <label className="form-field">
                     <span>{noteLabel}</span>
@@ -92,6 +215,7 @@ export function ConfirmDialog({
                     className="button button--ghost"
                     type="button"
                     onClick={closeDialog}
+                    disabled={isSubmitting}
                   >
                     إلغاء
                   </button>

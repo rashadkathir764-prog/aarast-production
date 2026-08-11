@@ -71,7 +71,7 @@ void main() {
         reason:
             'new_dashboard_widgets.dart was an unused dashboard variant. '
             'The canonical production dashboard lives in '
-            'PremiumDashboardView (premium/) and royal_home_chrome.dart.',
+            'AarastDashboardView (dashboard/) and the shared Aarast shell chrome.',
       );
 
       final legacyDashboardBundle = File(
@@ -83,9 +83,26 @@ void main() {
         isFalse,
         reason:
             'The 3,611-line legacy dashboard bundle must stay deleted. '
-            'PremiumDashboardView owns this surface; the account_sheet.dart '
+            'AarastDashboardView owns this surface; the account_sheet.dart '
             'that was once extracted from the bundle had no callers left and '
             'was removed too.',
+      );
+
+      final retiredPremiumDashboard = Directory(
+        '${mobileRoot}lib/features/wedding_plans/widgets/premium',
+      );
+      expect(
+        retiredPremiumDashboard.existsSync()
+            ? retiredPremiumDashboard
+                  .listSync()
+                  .whereType<File>()
+                  .where((file) => file.path.endsWith('.dart'))
+                  .toList()
+            : const <File>[],
+        isEmpty,
+        reason:
+            'The retired V3 dashboard family must not remain beside the '
+            'semantic dashboard implementation.',
       );
 
       final legacyProviderDashboard = File(

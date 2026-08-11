@@ -47,13 +47,13 @@ class _AccountContextSelectionScreenState
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
         children: [
-          const Icon(LucideIcons.layers, color: AppTheme.burgundy, size: 42),
+          const Icon(LucideIcons.layers, color: AppTheme.brand, size: 42),
           const SizedBox(height: 16),
           Text(
             'اختر المسار',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -62,7 +62,7 @@ class _AccountContextSelectionScreenState
             'اختر المساحة التي تريد فتحها الآن. لن نطلب تسجيل الدخول أو رمز تحقق مرة أخرى.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.5,
             ),
@@ -115,14 +115,10 @@ class _AccountPathCard extends StatelessWidget {
             height: 48,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.burgundySoft,
+              color: AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(
-              _roleIcon(path.role),
-              color: AppTheme.burgundy,
-              size: 24,
-            ),
+            child: Icon(_roleIcon(path.role), color: AppTheme.brand, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -132,7 +128,7 @@ class _AccountPathCard extends StatelessWidget {
                 Text(
                   role,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -142,7 +138,7 @@ class _AccountPathCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w800,
                     height: 1.35,
                   ),
@@ -152,9 +148,13 @@ class _AccountPathCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           if (enabled)
-            const Icon(LucideIcons.chevronLeft, color: AppTheme.muted, size: 20)
+            const Icon(
+              LucideIcons.chevronLeft,
+              color: AppTheme.textSecondary,
+              size: 20,
+            )
           else
-            const AarastInlineSpinner(dimension: 20, color: AppTheme.burgundy),
+            const AarastInlineSpinner(dimension: 20, color: AppTheme.brand),
         ],
       ),
     );

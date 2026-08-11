@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -12,6 +13,7 @@ class AuthWeddingScaffold extends StatelessWidget {
     this.maxWidth = 430,
     this.leading,
     this.useSafeArea = true,
+    this.contentAlignment = Alignment.center,
     super.key,
   });
 
@@ -20,6 +22,7 @@ class AuthWeddingScaffold extends StatelessWidget {
   final double maxWidth;
   final Widget? leading;
   final bool useSafeArea;
+  final AlignmentGeometry contentAlignment;
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +30,11 @@ class AuthWeddingScaffold extends StatelessWidget {
       EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom + 28),
     );
 
-    // خلفية عاجية نظيفة مثل بقية التطبيق — لا زخارف مرسومة.
+    // خلفية V3 هادئة مثل بقية التطبيق — بلا زخارف مرسومة.
     final body = Stack(
       children: [
-        Center(
+        Align(
+          alignment: contentAlignment,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: SingleChildScrollView(
@@ -47,7 +51,7 @@ class AuthWeddingScaffold extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: AarastV3Color.canvas,
         body: useSafeArea ? SafeArea(child: body) : body,
       ),
     );
@@ -76,7 +80,7 @@ class AuthBrandMark extends StatelessWidget {
               style:
                   (compact ? textTheme.headlineMedium : textTheme.displaySmall)
                       ?.copyWith(
-                        color: AppTheme.burgundy,
+                        color: AarastV3Color.primary,
                         fontFamily: AppTheme.displayFontFamily,
                         fontWeight: FontWeight.w700,
                         height: 1,
@@ -88,7 +92,7 @@ class AuthBrandMark extends StatelessWidget {
               right: compact ? -8 : -12,
               child: Icon(
                 LucideIcons.heart,
-                color: AppTheme.gold,
+                color: AarastV3Color.amber,
                 size: compact ? 12 : 16,
               ),
             ),
@@ -119,7 +123,7 @@ class AuthObscureToggle extends StatelessWidget {
       iconSize: 19,
       icon: Icon(
         obscured ? LucideIcons.eye : LucideIcons.eyeOff,
-        color: AppTheme.muted,
+        color: AppTheme.textSecondary,
       ),
     );
   }
@@ -135,11 +139,12 @@ class AuthPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: AppTheme.premiumCardDecoration(
-        color: AppTheme.surface.withAlpha(244),
-        radius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(color: AarastV3Color.line),
+        ),
       ),
       child: child,
     );
@@ -160,6 +165,7 @@ class AuthTextField extends StatelessWidget {
     this.maxLines = 1,
     this.suffixIcon,
     this.onFieldSubmitted,
+    this.compact = true,
     super.key,
   });
 
@@ -175,6 +181,7 @@ class AuthTextField extends StatelessWidget {
   final int maxLines;
   final Widget? suffixIcon;
   final ValueChanged<String>? onFieldSubmitted;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +190,30 @@ class AuthTextField extends StatelessWidget {
         (keyboardType == TextInputType.phone
             ? TextDirection.ltr
             : Directionality.of(context));
+    final compactBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+      borderSide: const BorderSide(color: AarastV3Color.line),
+    );
+    final effectiveSuffixIcon = compact && suffixIcon != null
+        ? IconButtonTheme(
+            data: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                foregroundColor: AarastV3Color.textMuted,
+                backgroundColor: Colors.transparent,
+                disabledForegroundColor: AarastV3Color.textFaint,
+                disabledBackgroundColor: Colors.transparent,
+                minimumSize: const Size.square(40),
+                padding: EdgeInsets.zero,
+                iconSize: 19,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                side: BorderSide.none,
+                shape: const CircleBorder(),
+              ),
+            ),
+            child: suffixIcon!,
+          )
+        : suffixIcon;
+
     return TextFormField(
       controller: controller,
       textAlign: TextAlign.right,
@@ -196,8 +227,48 @@ class AuthTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon),
-        suffixIcon: suffixIcon,
+        prefixIcon: Icon(
+          icon,
+          size: compact ? 19 : null,
+          color: compact ? AarastV3Color.primary : null,
+        ),
+        suffixIcon: effectiveSuffixIcon,
+        isDense: compact,
+        visualDensity: compact ? VisualDensity.compact : null,
+        filled: compact ? true : null,
+        fillColor: compact ? AarastV3Color.paper : null,
+        contentPadding: compact
+            ? const EdgeInsetsDirectional.fromSTEB(14, 10, 12, 10)
+            : null,
+        prefixIconConstraints: compact
+            ? const BoxConstraints(minWidth: 44, minHeight: 48)
+            : null,
+        suffixIconConstraints: compact
+            ? const BoxConstraints(minWidth: 44, minHeight: 48)
+            : null,
+        border: compact ? compactBorder : null,
+        enabledBorder: compact ? compactBorder : null,
+        focusedBorder: compact
+            ? compactBorder.copyWith(
+                borderSide: const BorderSide(
+                  color: AarastV3Color.primary,
+                  width: 1.5,
+                ),
+              )
+            : null,
+        errorBorder: compact
+            ? compactBorder.copyWith(
+                borderSide: const BorderSide(color: AarastV3Color.danger),
+              )
+            : null,
+        focusedErrorBorder: compact
+            ? compactBorder.copyWith(
+                borderSide: const BorderSide(
+                  color: AarastV3Color.danger,
+                  width: 1.5,
+                ),
+              )
+            : null,
       ),
     );
   }
@@ -213,7 +284,7 @@ class AuthInlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.burgundySoft,
+        color: AppTheme.brandMuted,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: AppTheme.dangerSoft),
       ),

@@ -27,3 +27,19 @@ class SyncStatusSnapshot {
   bool get isOffline => state == SyncState.offline;
   bool get isSyncing => state == SyncState.syncing;
 }
+
+class SyncIssueSummary {
+  const SyncIssueSummary({
+    required this.entityLabel,
+    required this.operationLabel,
+    required this.message,
+    required this.retryCount,
+    required this.canRetry,
+  });
+
+  final String entityLabel;
+  final String operationLabel;
+  final String message;
+  final int retryCount;
+  final bool canRetry;
+}

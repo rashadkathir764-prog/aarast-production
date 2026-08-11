@@ -76,7 +76,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         top: false,
         child: DecoratedBox(
           decoration: const BoxDecoration(
-            color: AppTheme.ivory,
+            color: AppTheme.surfaceRaised,
             border: Border(top: BorderSide(color: AppTheme.border)),
           ),
           child: Padding(
@@ -94,13 +94,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                       widget.providerId,
                     );
                 return Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                    border: Border.all(color: AppTheme.border),
-                    boxShadow: AppTheme.softShadow(opacity: 0.12),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,7 +108,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                                 child: Text(
                                   'آخر طلب لهذا المورد',
                                   style: TextStyle(
-                                    color: AppTheme.muted,
+                                    color: AppTheme.textSecondary,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -138,10 +132,9 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                           ],
                           Expanded(
                             child: AarastButton(
-                              label: loadingQuote
-                                  ? 'تحميل حالة الطلب...'
-                                  : _primaryQuoteActionLabel(latest),
-                              expand: false,
+                              label: _primaryQuoteActionLabel(latest),
+                              icon: LucideIcons.filePlus2,
+                              isLoading: loadingQuote,
                               onPressed: loadingQuote
                                   ? null
                                   : () => _openPrimaryQuoteAction(
@@ -166,17 +159,24 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           final services = state.servicesFor(widget.providerId);
           final packages = state.packagesFor(widget.providerId);
           final reviews = state.reviewsFor(widget.providerId);
+          final servicesError = state.servicesErrorFor(widget.providerId);
+          final packagesError = state.packagesErrorFor(widget.providerId);
+          final reviewsError = state.reviewsErrorFor(widget.providerId);
+          final detailsError = state.detailsErrorFor(widget.providerId);
+          final detailsLoading = state.isProviderQuoteContextLoading(
+            widget.providerId,
+          );
 
-          if (state.isLoading && provider == null) {
+          if (detailsLoading && provider == null) {
             return AarastSkeleton.page(heroHeight: 220, tiles: 3, cards: 2);
           }
 
-          if (state.errorMessage != null && provider == null) {
+          if (detailsError != null && provider == null) {
             return _DetailsFrame(
               child: AarastEmptyState(
                 icon: LucideIcons.alertCircle,
                 title: 'تعذر فتح المورد',
-                message: state.errorMessage!,
+                message: detailsError,
                 action: OutlinedButton.icon(
                   onPressed: () => state.loadProviderDetails(
                     widget.providerId,
@@ -221,6 +221,15 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             onRequestQuote: (service) => _pushOnce(
               AppRouter.providerQuote(provider.id),
               extra: service.id,
+            ),
+            servicesErrorMessage: servicesError,
+            packagesErrorMessage: packagesError,
+            reviewsErrorMessage: reviewsError,
+            detailsErrorMessage: detailsError,
+            isRetryingDetails: detailsLoading,
+            onRetryDetails: () => state.loadProviderDetails(
+              widget.providerId,
+              weddingPlanId: selectedPlanId,
             ),
           );
         },
@@ -268,18 +277,6 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       return null;
     }
     return selectedPlanId;
-  }
-
-  String _primaryQuoteActionLabel(QuoteRequest? quote) {
-    if (quote == null) return 'طلب عرض سعر';
-    if (quote.status == 'SENT' || quote.status == 'VIEWED') {
-      return 'متابعة الطلب الحالي';
-    }
-    if (quote.status == 'RESPONDED') {
-      return quote.hasExpiredOffer ? 'طلب عرض جديد' : 'مراجعة العرض';
-    }
-    if (quote.status == 'ACCEPTED') return 'عرض المورد في الخطة';
-    return 'طلب عرض جديد';
   }
 
   Future<T?> _pushOnce<T>(String location, {Object? extra}) async {

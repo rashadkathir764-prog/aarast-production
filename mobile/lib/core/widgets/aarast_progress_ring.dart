@@ -2,10 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../theme/aarast_design_tokens.dart';
+import '../experience_v3/aarast_v3_foundations.dart';
 import '../theme/aarast_motion.dart';
 
-/// حلقة التقدم الملكية — قوس متدرج يُرسم أمام العين مع نقطة مضيئة على رأسه.
+/// حلقة تقدم V3 — قوس واضح يُرسم أمام العين مع نقطة حية على رأسه.
 ///
 /// تُستخدم في بطاقة العد التنازلي (الرئيسية) ونبض الميزانية (المال)
 /// حتى تتكلم كل الشاشات لغة واحدة.
@@ -16,12 +16,8 @@ class AarastProgressRing extends StatelessWidget {
     this.child,
     this.strokeWidth = 9,
     this.trackColor,
-    this.gradientColors = const [
-      AarastDesignTokens.goldDeep,
-      AarastDesignTokens.gold,
-      AarastDesignTokens.goldLight,
-    ],
-    this.tipColor = AarastDesignTokens.goldGlow,
+    this.color = AarastV3Color.primary,
+    this.tipColor = AarastV3Color.paper,
     this.duration = const Duration(milliseconds: 1500),
     super.key,
   });
@@ -32,7 +28,7 @@ class AarastProgressRing extends StatelessWidget {
   final Widget? child;
   final double strokeWidth;
   final Color? trackColor;
-  final List<Color> gradientColors;
+  final Color color;
   final Color tipColor;
   final Duration duration;
 
@@ -49,7 +45,7 @@ class AarastProgressRing extends StatelessWidget {
             progress: animated,
             strokeWidth: strokeWidth,
             trackColor: trackColor ?? Colors.white.withValues(alpha: 0.14),
-            gradientColors: gradientColors,
+            color: color,
             tipColor: tipColor,
           ),
           child: ringChild,
@@ -69,14 +65,14 @@ class _RingPainter extends CustomPainter {
     required this.progress,
     required this.strokeWidth,
     required this.trackColor,
-    required this.gradientColors,
+    required this.color,
     required this.tipColor,
   });
 
   final double progress;
   final double strokeWidth;
   final Color trackColor;
-  final List<Color> gradientColors;
+  final Color color;
   final Color tipColor;
 
   @override
@@ -101,12 +97,7 @@ class _RingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        endAngle: startAngle + 2 * math.pi,
-        colors: gradientColors,
-        transform: const GradientRotation(startAngle),
-      ).createShader(rect);
+      ..color = color;
 
     canvas.drawArc(rect, startAngle, sweepAngle, false, progressPaint);
 
@@ -121,18 +112,11 @@ class _RingPainter extends CustomPainter {
       strokeWidth / 2 + 1.5,
       Paint()..color = tipColor,
     );
-    canvas.drawCircle(
-      tipOffset,
-      strokeWidth / 2 + 4,
-      Paint()
-        ..color = gradientColors[1].withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-    );
   }
 
   @override
   bool shouldRepaint(_RingPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.trackColor != trackColor ||
-      oldDelegate.gradientColors != gradientColors;
+      oldDelegate.color != color;
 }

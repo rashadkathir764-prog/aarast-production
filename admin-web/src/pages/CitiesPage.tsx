@@ -124,6 +124,7 @@ export function CitiesPage() {
             <EmptyState title="لا توجد مدن" message="أضف أول مدينة." />
           ) : (
             <DataTable
+              label="مدن السوق"
               columns={[
                 'الاسم العربي',
                 'الاسم الإنجليزي',

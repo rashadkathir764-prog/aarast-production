@@ -274,7 +274,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('تعذر نسخ الرابط'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('invite-done')));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      final done = find.byKey(const Key('invite-done'));
+      await tester.ensureVisible(done);
+      await tester.pumpAndSettle();
+      await tester.tap(done);
       await tester.pumpAndSettle();
       expect(find.text('هل حفظت رابط الدعوة؟'), findsOneWidget);
       expect(tester.takeException(), isNull);

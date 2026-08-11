@@ -1,76 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../experience_v3/aarast_v3_foundations.dart';
+
 class AarastDesignTokens {
   const AarastDesignTokens._();
-
-  // Primary Colors
-  static const Color ivory = Color(0xFFFCF8F5); // Soft Bridal Ivory
-  static const Color pearl = Color(0xFFFFF8F3); // Warm Pearl Cream
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceElevated = Color(0xFFFFFDFB);
-
-  static const Color burgundy = Color(0xFF800020); // Royal Rose Burgundy
-  static const Color burgundyDark = Color(0xFF5A0015); // Deep Burgundy
-  static const Color burgundySoft = Color(0xFFF8E8EC);
-
-  static const Color gold = Color(0xFFD4AF37); // Royal Champagne Gold
-  static const Color goldSoft = Color(0xFFFFF3CF);
-
-  static const Color ink = Color(0xFF2D1A1E);
-  static const Color title = burgundyDark;
-  static const Color muted = Color(0xFF8A7B7E);
-  static const Color border = Color(0xFFEADDE2);
-
-  // Premium gradient stops — للتدرجات الملكية والحلقة الذهبية فقط.
-  static const Color burgundyLight = Color(0xFF8E0B2C);
-  static const Color goldDeep = Color(0xFFB8912A);
-  static const Color goldLight = Color(0xFFF2D888);
-  static const Color goldGlow = Color(0xFFF7E7B3);
-  static const Color dangerLight = Color(0xFFD95A6B);
-  static const Color warningLight = Color(0xFFE8A94F);
-  static const Color goldMonogram = Color(0xFFF3E4C0);
-
-  // Semantic Status Colors
-  static const Color success = Color(0xFF3D8252);
-  static const Color successSoft = Color(0xFFE8F4EE);
-  static const Color warning = Color(0xFFD98A2C);
-  static const Color warningSoft = Color(0xFFFFF3CF);
-  static const Color danger = Color(0xFFBA2D3F);
-  static const Color dangerSoft = Color(0xFFFBECEF);
-  static const Color info = Color(0xFF4F6D7A);
-  static const Color infoSoft = Color(0xFFEAF1F4);
-  static const Color disabled = Color(0xFFC7BABD);
-  static const Color empty = Color(0xFFFFF8EF);
-
-  // Contributor workspace — cool porcelain surfaces with an oxblood hero.
-  // These tokens are intentionally scoped and do not replace the global
-  // Soft Royal ivory/burgundy palette used by owner and provider screens.
-  static const Color contributorCanvas = Color(0xFFF7F8FA);
-  static const Color contributorSurface = Color(0xFFFFFFFF);
-  static const Color contributorSurfaceAlt = Color(0xFFF1F3F5);
-  static const Color contributorBorder = Color(0xFFE3E6EA);
-  static const Color contributorInk = Color(0xFF17181B);
-  static const Color contributorMuted = Color(0xFF6F737B);
-  static const Color contributorOxblood = Color(0xFF550A1D);
-  static const Color contributorOxbloodDark = Color(0xFF350610);
-  static const Color contributorWine = Color(0xFF7A1432);
-  static const Color contributorWineSoft = Color(0xFFF8EEF2);
-  static const Color contributorBronze = Color(0xFFB69255);
-  static const Color contributorMoneyTint = Color(0xFFEAF5EF);
-  static const Color contributorGuestsTint = Color(0xFFEBF2F8);
-  static const Color contributorProvidersTint = Color(0xFFF4F0E8);
-
-  // Backward compatibility for tests
-  static const Color royalMaroon = burgundy;
-  static const Color royalMaroonSoft = burgundy;
-  static const Color royalMaroonDeep = burgundyDark;
-  static const Color champagneGold = gold;
-  static const Color champagneGoldDeep = warning;
-  static const Color warmIvory = ivory;
-  static const Color softSand = empty;
-  static const Color mutedRose = dangerSoft;
-  static const Color inkSoft = muted;
-  static const Color hairline = border;
 
   // Spacing values
   static const double space2 = 2;
@@ -86,14 +19,21 @@ class AarastDesignTokens {
   static const double space24 = 24;
   static const double space28 = 28;
   static const double space32 = 32;
+  static const double space40 = 40;
+  static const double space48 = 48;
 
-  // Border Radii
-  static const double radiusSm = 12;
-  static const double radiusMd = 16;
+  // Modern shape roles.
+  static const double radiusControl = AarastV3Radius.control;
+  static const double radiusSurface = AarastV3Radius.surface;
+  static const double radiusOverlay = AarastV3Radius.feature;
+
+  // Transitional legacy radii retained until feature consumers migrate.
+  static const double radiusSm = AarastV3Radius.control;
+  static const double radiusMd = AarastV3Radius.surface;
   static const double radiusLg = 20;
-  static const double radiusXl = 24;
+  static const double radiusXl = AarastV3Radius.feature;
   static const double radius2xl = 32;
-  static const double radiusPill = 999;
+  static const double radiusPill = AarastV3Radius.pill;
 
   // Icon Sizes
   static const double iconSm = 16;
@@ -108,53 +48,66 @@ class AarastDesignTokens {
   static const double screenMaxWidth = 560;
 
   // Motion
-  static const Duration motionQuick = Duration(milliseconds: 140);
+  static const Duration motionQuick = AarastV3Motion.quick;
   static const Duration motionFast = Duration(milliseconds: 190);
-  static const Duration motionStandard = Duration(milliseconds: 300);
+  static const Duration motionStandard = AarastV3Motion.standard;
   static const Duration motionSlow = Duration(milliseconds: 460);
-  static const Curve motionCurve = Curves.easeOutCubic;
+  static const Curve motionCurve = AarastV3Motion.curve;
   static const Curve motionExitCurve = Curves.easeInCubic;
 
   // Padding
-  static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 16);
+  static const EdgeInsets screenPadding = EdgeInsets.symmetric(
+    horizontal: AarastV3Space.x5,
+  );
   static const EdgeInsets cardPadding = EdgeInsets.all(16);
   static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
     horizontal: 16,
     vertical: 14,
   );
 
-  // Gradients
-  static const LinearGradient burgundyGradient = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [burgundy, Color(0xFF74182B), burgundyDark],
-  );
+  // V3 separates surfaces with borders and spacing, never decorative shadows.
+  static List<BoxShadow> cardShadow({double opacity = 0.05}) => const [];
 
-  static const LinearGradient pageGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [pearl, ivory],
-    stops: [0.0, 1.0],
-  );
+  static List<BoxShadow> liftedShadow({double opacity = 0.08}) => const [];
+}
 
-  // Shadows
-  static List<BoxShadow> cardShadow({double opacity = 0.05}) {
-    return [
-      BoxShadow(
-        color: ink.withAlpha((opacity * 255).round()),
-        blurRadius: 22,
-        offset: const Offset(0, 10),
-      ),
-    ];
-  }
+/// Semantic roles for new and migrated UI. The legacy [AarastDesignTokens]
+/// palette remains isolated until each existing screen is deliberately
+/// migrated and its reviewed Golden is replaced.
+class AarastSemanticTokens {
+  const AarastSemanticTokens._();
 
-  static List<BoxShadow> liftedShadow({double opacity = 0.08}) {
-    return [
-      BoxShadow(
-        color: ink.withAlpha((opacity * 255).round()),
-        blurRadius: 34,
-        offset: const Offset(0, 16),
-      ),
-    ];
-  }
+  // V3 is the single source for all active semantic roles. Compatibility
+  // names below survive only so unmigrated business screens keep compiling;
+  // they no longer define a second visual system.
+  static const Color canvas = AarastV3Color.canvas;
+  static const Color surface = AarastV3Color.paper;
+  static const Color surfaceRaised = AarastV3Color.paper;
+  static const Color surfaceMuted = AarastV3Color.paperQuiet;
+  static const Color textPrimary = AarastV3Color.ink;
+  static const Color textSecondary = AarastV3Color.textMuted;
+  static const Color textDisabled = AarastV3Color.textFaint;
+  static const Color border = AarastV3Color.line;
+  static const Color borderStrong = AarastV3Color.lineStrong;
+  static const Color brand = AarastV3Color.primary;
+  static const Color brandMuted = AarastV3Color.primarySoft;
+  static const Color brandDeep = AarastV3Color.primaryDark;
+  static const Color onBrand = AarastV3Color.onPrimary;
+  static const Color onBrandMuted = AarastV3Color.onPrimaryMuted;
+  static const Color brandAccent = AarastV3Color.brandAccentStrong;
+  static const Color brandAccentDecorative = AarastV3Color.brandAccent;
+  static const Color brandAccentMuted = AarastV3Color.brandAccentSoft;
+  static const Color focus = AarastV3Color.cobalt;
+  static const Color inkSurface = AarastV3Color.ink;
+  static const Color inkSurfaceRaised = AarastV3Color.inkSoft;
+  static const Color accent = AarastV3Color.brandAccentStrong;
+  static const Color accentMuted = AarastV3Color.brandAccentSoft;
+  static const Color success = AarastV3Color.mint;
+  static const Color successMuted = AarastV3Color.mintSoft;
+  static const Color warning = AarastV3Color.amber;
+  static const Color warningMuted = AarastV3Color.amberSoft;
+  static const Color danger = AarastV3Color.danger;
+  static const Color dangerMuted = AarastV3Color.dangerSoft;
+  static const Color info = AarastV3Color.cobalt;
+  static const Color infoMuted = AarastV3Color.cobaltSoft;
 }

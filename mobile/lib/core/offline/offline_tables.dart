@@ -5,6 +5,7 @@
   static const syncQueue = 'sync_queue';
   static const currentUserProfile = 'current_user_profile';
   static const cachedWeddingPlans = 'cached_wedding_plans';
+  static const cachedDashboardSummaries = 'cached_dashboard_summaries';
   static const cachedPlanMembers = 'cached_plan_members';
   static const cachedGuests = 'cached_guests';
   static const cachedTasks = 'cached_tasks';
@@ -25,6 +26,7 @@
   static const cacheTables = [
     currentUserProfile,
     cachedWeddingPlans,
+    cachedDashboardSummaries,
     cachedPlanMembers,
     cachedGuests,
     cachedTasks,
@@ -45,6 +47,7 @@
 
   static const planScopedCacheTables = [
     cachedWeddingPlans,
+    cachedDashboardSummaries,
     cachedPlanMembers,
     cachedGuests,
     cachedTasks,

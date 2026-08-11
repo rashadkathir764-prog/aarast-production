@@ -4,14 +4,22 @@ import 'package:provider/provider.dart';
 
 import '../../account_contexts/models/account_context.dart';
 import '../../account_contexts/providers/account_context_controller.dart';
-import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
+import '../../wedding_plans/models/dashboard_summary.dart';
+import '../../wedding_plans/models/wedding_plan_stage.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../home/data/dashboard_summary_sources.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/offline/local_database.dart';
+import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../finance/providers/finance_provider.dart';
+import '../../finance/screens/money_overview_screen.dart';
+import '../../finance/widgets/money_cost_action_picker.dart';
 import '../widgets/plan_shell_chrome.dart';
+import '../widgets/aarast_plan_chrome.dart';
 
 class WeddingPlanShell extends StatelessWidget {
   const WeddingPlanShell({
@@ -46,24 +54,63 @@ class WeddingPlanShell extends StatelessWidget {
   }
 
   void _showQuickAdd(BuildContext context, String planId, int currentIndex) {
-    Future<void> open(String route, {bool refreshDashboard = false}) async {
-      final changed = await context.push<bool>(route);
-      if (refreshDashboard &&
-          changed == true &&
-          context.mounted &&
-          !AuthActionGuard.isLocalGuestPlanId(planId)) {
-        context.read<DashboardSummaryProvider>().loadDashboard(planId);
-      }
-    }
-
     if (currentIndex == 2) {
-      open(AppRouter.createTask(planId));
+      rememberCanonicalQuickAddAction(planId, 'task');
+      _openQuickAddRoute(context, planId, AppRouter.createTask(planId));
       return;
     }
     if (currentIndex == 3) {
+      rememberCanonicalQuickAddAction(planId, 'guest');
       context.go(AppRouter.guestListAdd(planId));
       return;
     }
+
+    showAarastQuickActionSheet(
+      context,
+      actions: _quickActions(
+        context,
+        planId,
+        currentIndex,
+        closeSheetBeforeOpen: true,
+      ),
+    );
+  }
+
+  void _runLastQuickAdd(BuildContext context, String planId, int currentIndex) {
+    switch (lastCanonicalQuickAddActionId(planId)) {
+      case 'task':
+        _openQuickAddRoute(context, planId, AppRouter.createTask(planId));
+        return;
+      case 'guest':
+        context.go(AppRouter.guestListAdd(planId));
+        return;
+      case null:
+        _showQuickAdd(context, planId, currentIndex);
+        return;
+      default:
+        final actions = _quickActions(
+          context,
+          planId,
+          currentIndex,
+          closeSheetBeforeOpen: false,
+        );
+        final action = lastCanonicalQuickAddAction(planId, actions);
+        if (action == null) {
+          _showQuickAdd(context, planId, currentIndex);
+        } else {
+          action.onTap();
+        }
+        return;
+    }
+  }
+
+  List<AarastQuickAction> _quickActions(
+    BuildContext context,
+    String planId,
+    int currentIndex, {
+    required bool closeSheetBeforeOpen,
+  }) {
+    final dashboard = context.read<DashboardSummaryProvider?>()?.summary;
 
     final contextOrder = switch (currentIndex) {
       1 => QuickAddContext.money,
@@ -71,26 +118,97 @@ class WeddingPlanShell extends StatelessWidget {
       _ => QuickAddContext.dashboard,
     };
 
-    showRoyalHomeActionSheet(
+    return buildCanonicalQuickAddActions(
       context,
-      actions: buildCanonicalQuickAddActions(
+      planId: planId,
+      canManageMoney: _canManageMoney(context, planId),
+      contextOrder: contextOrder,
+      signals: dashboard?.planId == planId
+          ? QuickAddSignals.fromDashboard(dashboard!)
+          : null,
+      onRecordPayment: () => _openMoneyCostAction(
         context,
-        planId: planId,
-        canManageMoney: _canManageMoney(context, planId),
-        contextOrder: contextOrder,
-        openRoute: (route, {refreshDashboard = false}) async {
-          Navigator.of(context, rootNavigator: true).pop();
-          await open(route, refreshDashboard: refreshDashboard);
-        },
-        onRequestQuote: currentIndex == 4
-            ? () {
-                Navigator.of(context, rootNavigator: true).pop();
-                context.go(AppRouter.planProviders(planId));
-              }
-            : null,
-        refreshDashboardOnMoney: true,
+        planId,
+        MoneyCostActionIntent.payment,
+        closeQuickSheet: closeSheetBeforeOpen,
       ),
+      onAddPaymentSchedule: () => _openMoneyCostAction(
+        context,
+        planId,
+        MoneyCostActionIntent.schedule,
+        closeQuickSheet: closeSheetBeforeOpen,
+      ),
+      openRoute: (route, {refreshDashboard = false}) async {
+        if (closeSheetBeforeOpen) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        await _openQuickAddRoute(
+          context,
+          planId,
+          route,
+          refreshDashboard: refreshDashboard,
+        );
+      },
+      onRequestQuote: currentIndex == 4
+          ? () {
+              if (closeSheetBeforeOpen) {
+                Navigator.of(context, rootNavigator: true).pop();
+              }
+              context.go(AppRouter.planProviders(planId));
+            }
+          : null,
+      refreshDashboardOnMoney: true,
     );
+  }
+
+  Future<void> _openMoneyCostAction(
+    BuildContext context,
+    String planId,
+    MoneyCostActionIntent intent, {
+    required bool closeQuickSheet,
+  }) async {
+    if (closeQuickSheet) {
+      await Navigator.of(context, rootNavigator: true).maybePop();
+      await Future<void>.delayed(Duration.zero);
+    }
+    if (!context.mounted) return;
+
+    final finance = context.read<FinanceProvider>();
+    final selection = await showMoneyCostActionPicker(
+      context,
+      intent: intent,
+      costs: finance.costs,
+      currency: finance.summary.currency,
+    );
+    if (!context.mounted || selection == null) return;
+
+    final route = selection.createCost
+        ? AppRouter.moneyCostCreate(planId)
+        : intent == MoneyCostActionIntent.payment
+        ? AppRouter.moneyPaymentCreate(planId, selection.cost!.id)
+        : AppRouter.moneyScheduleCreate(planId, selection.cost!.id);
+    final changed = await context.push<bool>(route, extra: selection.cost);
+    if (changed == true && context.mounted) {
+      await finance.loadMoney(planId);
+      if (context.mounted && !AuthActionGuard.isLocalGuestPlanId(planId)) {
+        await context.read<DashboardSummaryProvider>().loadDashboard(planId);
+      }
+    }
+  }
+
+  Future<void> _openQuickAddRoute(
+    BuildContext context,
+    String planId,
+    String route, {
+    bool refreshDashboard = false,
+  }) async {
+    final changed = await context.push<bool>(route);
+    if (refreshDashboard &&
+        changed == true &&
+        context.mounted &&
+        !AuthActionGuard.isLocalGuestPlanId(planId)) {
+      context.read<DashboardSummaryProvider>().loadDashboard(planId);
+    }
   }
 
   bool _canManageMoney(BuildContext context, String planId) {
@@ -115,30 +233,141 @@ class WeddingPlanShell extends StatelessWidget {
 
     // The selected account context is the only authority for shell shape.
     if (contributorView) return child;
+    // Creation and editing are focused decisions. Keeping the plan navigation
+    // and quick-add control underneath those routes creates competing actions
+    // (and, for guest sheets, visibly overlaps the modal). Let form screens own
+    // the whole viewport while preserving the surrounding data gate.
+    if (!shouldDisplayPlanShellChrome(location)) return child;
 
     final finance = context.watch<FinanceProvider?>();
+    final dashboardSummary = _watchDashboardSummaryOrNull(context);
+    final stageLabel = dashboardSummary?.planId == weddingPlanId
+        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate).compactLabel
+        : null;
     final canManageCurrentMoney =
         finance?.loadedPlanId == weddingPlanId &&
         (finance?.canManageMoney ?? false);
 
     final isMoneyRoot = location.endsWith('/money');
-    final showQuickFab = shouldShowPlanQuickAdd(
-      tabIndex: currentIndex,
-      isRootDestination: currentIndex != 1 || isMoneyRoot,
-      canManageMoney: currentIndex != 1 || canManageCurrentMoney,
-    );
+    final moneyStarterVisible =
+        currentIndex == 1 &&
+        isMoneyRoot &&
+        finance != null &&
+        shouldShowMoneyStarter(finance);
+    final showQuickFab =
+        !moneyStarterVisible &&
+        shouldShowPlanQuickAdd(
+          tabIndex: currentIndex,
+          isRootDestination: currentIndex != 1 || isMoneyRoot,
+          canManageMoney: currentIndex != 1 || canManageCurrentMoney,
+        );
 
-    return PlanShellChrome(
+    final shell = PlanShellChrome(
       activeIndex: currentIndex,
       onTabSelected: (index) => _onNavigate(context, index),
       showQuickFab: showQuickFab,
+      contextLabel: selected?.weddingPlanId == weddingPlanId
+          ? selected!.displayName
+          : dashboardSummary?.planId == weddingPlanId
+          ? dashboardSummary!.title
+          : 'خطة الزفاف',
+      stageLabel: stageLabel,
+      topStatus: const OfflineStatusBanner(),
       onQuickAdd: () => _showQuickAdd(context, weddingPlanId, currentIndex),
+      onQuickAddLongPress: () =>
+          _runLastQuickAdd(context, weddingPlanId, currentIndex),
       // This route-owned shell is entered from quote and conversation flows.
       // Its surface must stay opaque while GoRouter replaces child routes;
       // otherwise the Android render surface is exposed behind the persistent
       // bottom navigation during the transition.
-      backgroundColor: AppTheme.ivory,
+      backgroundColor: AppTheme.canvas,
       body: child,
     );
+    if (AuthActionGuard.isLocalGuestPlanId(weddingPlanId) &&
+        dashboardSummary?.planId != weddingPlanId) {
+      return _LocalPlanSummaryBridge(
+        weddingPlanId: weddingPlanId,
+        child: shell,
+      );
+    }
+    return shell;
+  }
+}
+
+bool shouldDisplayPlanShellChrome(String location) {
+  // Only the Money root is a tab destination. Every nested Money route owns
+  // its viewport and already provides a back action. Keeping the persistent
+  // tab shell around budget/forms/details causes competing navigation,
+  // content beneath the tabs, and keyboard overflows on short Android views.
+  if (location.contains('/money/')) return false;
+
+  return !(location.endsWith('/guests/add') ||
+      location.endsWith('/categories/create') ||
+      location.endsWith('/costs/create') ||
+      location.endsWith('/payments/create') ||
+      location.endsWith('/schedules/create') ||
+      location.endsWith('/pay') ||
+      location.endsWith('/edit'));
+}
+
+class _LocalPlanSummaryBridge extends StatefulWidget {
+  const _LocalPlanSummaryBridge({
+    required this.weddingPlanId,
+    required this.child,
+  });
+
+  final String weddingPlanId;
+  final Widget child;
+
+  @override
+  State<_LocalPlanSummaryBridge> createState() =>
+      _LocalPlanSummaryBridgeState();
+}
+
+class _LocalPlanSummaryBridgeState extends State<_LocalPlanSummaryBridge> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void didUpdateWidget(covariant _LocalPlanSummaryBridge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    }
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    final source = LocalGuestDashboardSummarySource(
+      context.read<GuestOnboardingStorage>(),
+      database: _localDatabaseOrNull(),
+    );
+    final local = await source.loadSummary();
+    if (!mounted || local == null) return;
+    final summary = local.toDashboardSummary();
+    if (summary.planId != widget.weddingPlanId) return;
+    context.read<DashboardSummaryProvider>().publishLocalSummary(summary);
+  }
+
+  LocalDatabase? _localDatabaseOrNull() {
+    try {
+      return context.read<LocalDatabase>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+DashboardSummary? _watchDashboardSummaryOrNull(BuildContext context) {
+  try {
+    return context.watch<DashboardSummaryProvider>().summary;
+  } on ProviderNotFoundException {
+    return null;
   }
 }

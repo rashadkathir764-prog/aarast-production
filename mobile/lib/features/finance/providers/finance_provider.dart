@@ -34,6 +34,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   int _paymentsTotalPages = 1;
   bool _isLoadingMoreCosts = false;
   bool _isLoadingMorePayments = false;
+  bool _amountsHidden = false;
   MoneySummary _summary = MoneySummary.empty('');
   PlanAccessPermissions _access = const PlanAccessPermissions.denied(
     weddingPlanId: '',
@@ -61,6 +62,12 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get hasMorePayments => _paymentsPage < _paymentsTotalPages;
   bool get isLoadingMoreCosts => _isLoadingMoreCosts;
   bool get isLoadingMorePayments => _isLoadingMorePayments;
+  bool get amountsHidden => _amountsHidden;
+
+  void toggleAmountsVisibility() {
+    _amountsHidden = !_amountsHidden;
+    notifyListeners();
+  }
 
   WeddingCost? costById(String id) {
     for (final cost in _costs) {

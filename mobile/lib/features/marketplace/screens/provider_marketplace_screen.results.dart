@@ -113,7 +113,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.ink,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -123,7 +123,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -153,13 +153,13 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
                 _ProviderFactPill(
                   icon: LucideIcons.tags,
                   text: categoryName,
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                 ),
               if (service.city != null)
                 _ProviderFactPill(
                   icon: LucideIcons.mapPin,
                   text: service.city!.nameAr,
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                 ),
             ],
           ),
@@ -180,7 +180,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
                   child: Text(
                     matchReason,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w800,
                       height: 1.35,
                     ),
@@ -229,7 +229,7 @@ class _LocationContextCard extends StatelessWidget {
     return AarastCard(
       key: const Key('marketplace-location-prompt'),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: AppTheme.surface,
+      color: AppTheme.surfaceRaised,
       border: Border.all(color: AppTheme.border),
       onTap: onCompleteLocation,
       child: Row(
@@ -238,12 +238,12 @@ class _LocationContextCard extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: AppTheme.goldSoft,
+              color: AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: const Icon(
               LucideIcons.mapPin,
-              color: AppTheme.gold,
+              color: AppTheme.focus,
               size: 18,
             ),
           ),
@@ -254,14 +254,14 @@ class _LocationContextCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
                 height: 1.35,
               ),
             ),
           ),
           const SizedBox(width: 6),
-          const Icon(LucideIcons.chevronLeft, color: AppTheme.gold, size: 18),
+          const Icon(LucideIcons.chevronLeft, color: AppTheme.focus, size: 18),
         ],
       ),
     );
@@ -314,10 +314,10 @@ class _OffersInboxCard extends StatelessWidget {
     return AarastCard(
       key: const Key('quote-inbox-summary-card'),
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      color: AppTheme.surface,
+      color: AppTheme.surfaceRaised,
       border: Border.all(
         color: needsDecision > 0
-            ? AppTheme.gold.withValues(alpha: 0.45)
+            ? AppTheme.focus.withValues(alpha: 0.45)
             : AppTheme.border,
       ),
       child: Theme(
@@ -338,13 +338,13 @@ class _OffersInboxCard extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: needsDecision > 0
-                    ? AppTheme.goldSoft
-                    : AppTheme.burgundySoft,
+                    ? AppTheme.brandMuted
+                    : AppTheme.brandMuted,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
               child: Icon(
                 needsDecision > 0 ? LucideIcons.bellRing : LucideIcons.mailOpen,
-                color: needsDecision > 0 ? AppTheme.gold : AppTheme.burgundy,
+                color: needsDecision > 0 ? AppTheme.focus : AppTheme.brand,
                 size: 18,
               ),
             ),
@@ -353,7 +353,7 @@ class _OffersInboxCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -363,7 +363,9 @@ class _OffersInboxCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: needsDecision > 0 ? AppTheme.gold : AppTheme.muted,
+                color: needsDecision > 0
+                    ? AppTheme.focus
+                    : AppTheme.textSecondary,
                 fontWeight: FontWeight.w800,
                 height: 1.3,
               ),
@@ -440,7 +442,7 @@ class _OfferQuoteTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: AppTheme.ink,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -456,7 +458,7 @@ class _OfferQuoteTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -498,14 +500,14 @@ class _ExpiredOfferRow extends StatelessWidget {
               child: Text(
                 _quoteProviderLabel(quote),
                 style: const TextStyle(
-                  color: AppTheme.ink,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             const AarastStatusPill(
               label: 'انتهت صلاحية العرض',
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
             ),
           ],
         ),
@@ -513,7 +515,7 @@ class _ExpiredOfferRow extends StatelessWidget {
         Text(
           _quoteServiceLabel(quote),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -549,7 +551,7 @@ class _CompactQuoteStatusRow extends StatelessWidget {
       key: Key('compact-quote-status-${quote.id}'),
       padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 6, 8),
       decoration: BoxDecoration(
-        color: AppTheme.ivory.withValues(alpha: 0.72),
+        color: AppTheme.canvas.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: AppTheme.border),
       ),
@@ -559,13 +561,13 @@ class _CompactQuoteStatusRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: isWaiting ? AppTheme.goldSoft : AppTheme.burgundySoft,
+              color: isWaiting ? AppTheme.brandMuted : AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: Icon(
               isWaiting ? LucideIcons.clock3 : LucideIcons.fileClock,
               size: 18,
-              color: isWaiting ? AppTheme.gold : AppTheme.burgundy,
+              color: isWaiting ? AppTheme.focus : AppTheme.brand,
             ),
           ),
           const SizedBox(width: 10),
@@ -581,7 +583,7 @@ class _CompactQuoteStatusRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.ink,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -599,7 +601,7 @@ class _CompactQuoteStatusRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -612,8 +614,8 @@ class _CompactQuoteStatusRow extends StatelessWidget {
             onPressed: onOpenConversation,
             tooltip: 'محادثة المزوّد',
             style: IconButton.styleFrom(
-              foregroundColor: AppTheme.burgundy,
-              backgroundColor: AppTheme.burgundySoft,
+              foregroundColor: AppTheme.brand,
+              backgroundColor: AppTheme.brandMuted,
               minimumSize: const Size(44, 44),
             ),
             icon: const Icon(LucideIcons.messageCircle, size: 19),
@@ -651,7 +653,7 @@ class _OfferDecisionArea extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.ivory,
+            color: AppTheme.canvas,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             border: Border.all(color: AppTheme.border),
           ),
@@ -664,7 +666,7 @@ class _OfferDecisionArea extends StatelessWidget {
                     Text(
                       'السعر',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -674,7 +676,7 @@ class _OfferDecisionArea extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.burgundy,
+                        color: AppTheme.brand,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -773,7 +775,7 @@ class _OfferAcceptedArea extends StatelessWidget {
           child: const Text(
             'تم ربط المورد بالخطة وإنشاء التكلفة تلقائيًا في تبويب المال، دون تسجيل أي دفعة.',
             style: TextStyle(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w800,
               height: 1.4,
             ),
@@ -785,8 +787,8 @@ class _OfferAcceptedArea extends StatelessWidget {
             key: Key('quote-view-cost-${quote.id}'),
             onPressed: isSubmitting ? null : onViewCost,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.gold,
-              foregroundColor: AppTheme.ink,
+              backgroundColor: AppTheme.brand,
+              foregroundColor: AppTheme.onBrand,
             ),
             icon: const Icon(LucideIcons.receipt, size: 18),
             label: Text(
@@ -822,7 +824,7 @@ Future<void> _showOfferDetailsSheet(
   return showAarastBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppTheme.ivory,
+    backgroundColor: AppTheme.canvas,
     builder: (sheetContext) {
       final offer = quote.pendingOffer;
       final amountDisplay = _quoteOfferAmountDisplay(offer);
@@ -865,7 +867,7 @@ Future<void> _showOfferDetailsSheet(
                 Text(
                   'تفاصيل العرض',
                   style: textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -873,7 +875,7 @@ Future<void> _showOfferDetailsSheet(
                 Text(
                   '${_quoteProviderLabel(quote)} · ${_quoteServiceLabel(quote)}',
                   style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -884,7 +886,7 @@ Future<void> _showOfferDetailsSheet(
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.surface,
+                    color: AppTheme.surfaceRaised,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     border: Border.all(color: AppTheme.border),
                   ),
@@ -894,7 +896,7 @@ Future<void> _showOfferDetailsSheet(
                         child: Text(
                           'المبلغ المعروض',
                           style: textTheme.bodySmall?.copyWith(
-                            color: AppTheme.muted,
+                            color: AppTheme.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -902,7 +904,7 @@ Future<void> _showOfferDetailsSheet(
                       Text(
                         amountDisplay ?? 'بدون مبلغ محدد',
                         style: textTheme.titleSmall?.copyWith(
-                          color: AppTheme.burgundy,
+                          color: AppTheme.brand,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -913,7 +915,7 @@ Future<void> _showOfferDetailsSheet(
                 Text(
                   'ماذا يشمل العرض',
                   style: textTheme.labelLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -922,7 +924,7 @@ Future<void> _showOfferDetailsSheet(
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.surface,
+                    color: AppTheme.surfaceRaised,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     border: Border.all(color: AppTheme.border),
                   ),
@@ -937,7 +939,7 @@ Future<void> _showOfferDetailsSheet(
                             if (offerMessage?.isNotEmpty == true) offerMessage!,
                           ].join('\n'),
                     style: textTheme.bodySmall?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w700,
                       height: 1.6,
                     ),
@@ -948,7 +950,7 @@ Future<void> _showOfferDetailsSheet(
                   Text(
                     'العرض صالح حتى ${_shortDate(validUntil)}',
                     style: textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -958,7 +960,7 @@ Future<void> _showOfferDetailsSheet(
                   Text(
                     'ملخص طلبك',
                     style: textTheme.labelLarge?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -988,7 +990,7 @@ Future<void> _showOfferDetailsSheet(
                   Text(
                     'رسالتك للمورد: $userMessage',
                     style: textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
                       height: 1.5,
                     ),
@@ -1060,7 +1062,7 @@ class _OfferFactCard extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 70),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: AppTheme.border.withValues(alpha: 0.75)),
       ),
@@ -1073,7 +1075,7 @@ class _OfferFactCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1083,7 +1085,7 @@ class _OfferFactCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: textTheme.bodyMedium?.copyWith(
-              color: isStatus ? AppTheme.gold : AppTheme.ink,
+              color: isStatus ? AppTheme.focus : AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
               height: 1.25,
             ),
@@ -1111,12 +1113,12 @@ class _ResultsHeader extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
         ),
-        AarastStatusPill(label: '$count مورد', color: AppTheme.burgundy),
+        AarastStatusPill(label: '$count مورد', color: AppTheme.brand),
       ],
     );
   }
@@ -1159,10 +1161,10 @@ class _ProviderCard extends StatelessWidget {
         ? null
         : _serviceBudgetStatus(budgetIntent!, price);
     final budgetColor = budgetStatus == null
-        ? AppTheme.gold
+        ? AppTheme.focus
         : _serviceBudgetStatusColor(budgetStatus);
 
-    return PremiumVendorCard(
+    return ProviderResultCard(
       key: Key('provider-marketplace-card-${provider.id}'),
       businessName: provider.businessName,
       isFeatured: provider.isFeatured,
@@ -1246,7 +1248,7 @@ class _ProviderFactPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: AppTheme.border),
       ),
@@ -1263,7 +1265,7 @@ class _ProviderFactPill extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w900,
                 ),
               ),

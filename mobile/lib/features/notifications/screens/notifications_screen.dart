@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
-import '../../../core/theme/aarast_motion.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -76,14 +76,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           TextButton.icon(
             onPressed: provider.isSubmitting
                 ? null
-                : () =>
-                      provider.markAllRead(weddingPlanId: widget.weddingPlanId),
+                : () => _markAllRead(provider),
             icon: const Icon(LucideIcons.checkCheck, size: 18),
             label: const Text('قراءة الكل'),
           ),
       ],
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: _load,
         child: _body(provider, notifications: notifications),
       ),
@@ -144,40 +143,51 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           SizedBox(height: 90),
           AarastEmptyState(
             icon: LucideIcons.bellOff,
-            title: 'لا توجد تنبيهات مهمة الآن.',
-            message: 'عند وصول عرض سعر أو اقتراب مهمة ستظهر هنا.',
+            title: AarastV3Copy.quietNotificationsTitle,
+            message: AarastV3Copy.quietNotificationsMessage,
+            tone: AarastEmptyStateTone.positive,
           ),
         ],
       );
     }
 
-    return ListView.separated(
-      itemCount: notifications.length + (provider.hasMore ? 1 : 0),
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        if (index == notifications.length) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: AarastButton(
-              label: 'عرض المزيد',
-              icon: LucideIcons.chevronsDown,
-              isLoading: provider.isLoadingMore,
-              onPressed: () =>
-                  provider.loadMore(weddingPlanId: widget.weddingPlanId),
-            ),
-          );
-        }
-        final notification = notifications[index];
-        return AarastStagger.item(
-          context,
-          _NotificationCard(
-            notification: notification,
-            onTap: () => _openNotification(provider, notification),
-            onArchive: () => provider.archiveNotification(notification),
+    final groups = aarastTemporalGroups(
+      notifications,
+      _notificationTemporalSection,
+    );
+
+    return ListView(
+      padding: const EdgeInsets.only(top: AarastV3Space.x2, bottom: 24),
+      children: [
+        for (final group in groups.entries) ...[
+          _NotificationGroupHeader(
+            section: group.key,
+            count: group.value.length,
           ),
-          index,
-        );
-      },
+          const SizedBox(height: AarastV3Space.x2),
+          AarastV3ContinuousSurface(
+            children: [
+              for (final notification in group.value)
+                _NotificationRow(
+                  notification: notification,
+                  onTap: () => _openNotification(provider, notification),
+                  onArchive: () => provider.archiveNotification(notification),
+                ),
+            ],
+          ),
+          const SizedBox(height: AarastV3Space.x4),
+        ],
+        if (provider.hasMore) ...[
+          const SizedBox(height: AarastV3Space.x4),
+          AarastButton(
+            label: 'عرض المزيد',
+            icon: LucideIcons.chevronsDown,
+            isLoading: provider.isLoadingMore,
+            onPressed: () =>
+                provider.loadMore(weddingPlanId: widget.weddingPlanId),
+          ),
+        ],
+      ],
     );
   }
 
@@ -227,6 +237,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  Future<void> _markAllRead(NotificationsProvider provider) async {
+    final marked = await provider.markAllRead(
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (!mounted) return;
+    if (marked) {
+      AarastToast.showSuccess(context, 'تمت قراءة كل التنبيهات.');
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'تعذر قراءة كل التنبيهات.',
+      );
+    }
+  }
+
   Future<void> _openNotification(
     NotificationsProvider provider,
     AarastNotification notification,
@@ -267,8 +292,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-class _NotificationCard extends StatelessWidget {
-  const _NotificationCard({
+class _NotificationGroupHeader extends StatelessWidget {
+  const _NotificationGroupHeader({required this.section, required this.count});
+
+  final AarastTemporalSection section;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastSectionHeader(
+      title: '${section.label} · $count',
+      icon: switch (section) {
+        AarastTemporalSection.now => LucideIcons.zap,
+        AarastTemporalSection.today => LucideIcons.sun,
+        AarastTemporalSection.week => LucideIcons.calendarDays,
+        AarastTemporalSection.later => LucideIcons.history,
+        AarastTemporalSection.completed => LucideIcons.checkCheck,
+      },
+    );
+  }
+}
+
+class _NotificationRow extends StatelessWidget {
+  const _NotificationRow({
     required this.notification,
     required this.onTap,
     required this.onArchive,
@@ -286,132 +332,93 @@ class _NotificationCard extends StatelessWidget {
       title: notification.title,
       body: notification.body,
     );
-    final textTheme = Theme.of(context).textTheme;
     final isUrgent = notification.priority == 'URGENT';
     final hasPriority = isUrgent || notification.priority == 'HIGH';
 
-    return AarastCard(
-      color: notification.isUnread ? tone.background : AppTheme.ivory,
-      border: Border.all(
-        color: notification.isUnread
-            ? tone.color.withValues(alpha: 0.1)
-            : AppTheme.goldSoft.withAlpha(80),
-      ),
+    return AarastV3ListRow(
+      title: copy.title,
+      subtitle: copy.body,
+      meta: _dateLabel(notification.createdAt),
+      accent: tone.color,
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(tone.icon, color: tone.color, size: 17),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        copy.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleSmall?.copyWith(
-                          color: AppTheme.ink,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    if (hasPriority) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isUrgent
-                              ? AppTheme.dangerSoft
-                              : AppTheme.goldSoft,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          isUrgent ? 'عاجل' : 'مهم',
-                          style: textTheme.labelSmall?.copyWith(
-                            color: isUrgent
-                                ? AppTheme.danger
-                                : AppTheme.warning,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (notification.isUnread) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.burgundy,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  copy.body,
-                  textAlign: TextAlign.right,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelMedium?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _dateLabel(notification.createdAt),
-                  style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: onArchive,
-            icon: const Icon(LucideIcons.archive, size: 17),
-            tooltip: 'أرشفة التنبيه',
-            color: AppTheme.muted,
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
+      semanticLabel: '${copy.title}، ${copy.body}',
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: tone.color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(AarastV3Radius.control),
+        ),
+        child: Icon(tone.icon, color: tone.color, size: 17),
+      ),
+      status: _NotificationStatus(
+        isUnread: notification.isUnread,
+        label: hasPriority ? (isUrgent ? 'عاجل' : 'مهم') : null,
+        color: isUrgent ? AarastV3Color.danger : AarastV3Color.amber,
+      ),
+      action: IconButton(
+        onPressed: onArchive,
+        icon: const Icon(LucideIcons.archive, size: 17),
+        tooltip: 'أرشفة التنبيه',
+        color: AarastV3Color.textMuted,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }
 }
 
-class _NotificationTone {
-  const _NotificationTone({
-    required this.icon,
+class _NotificationStatus extends StatelessWidget {
+  const _NotificationStatus({
+    required this.isUnread,
+    required this.label,
     required this.color,
-    required this.background,
   });
+
+  final bool isUnread;
+  final String? label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (label != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(AarastV3Radius.pill),
+            ),
+            child: Text(
+              label!,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        if (isUnread) ...[
+          if (label != null) const SizedBox(width: AarastV3Space.x2),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: AarastV3Color.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _NotificationTone {
+  const _NotificationTone({required this.icon, required this.color});
 
   final IconData icon;
   final Color color;
-  final Color background;
 }
 
 _NotificationTone _tone(String type) {
@@ -419,8 +426,7 @@ _NotificationTone _tone(String type) {
   if (upperType.contains('QUOTE')) {
     return const _NotificationTone(
       icon: LucideIcons.mailOpen,
-      color: AppTheme.burgundy,
-      background: AppTheme.burgundySoft,
+      color: AppTheme.brand,
     );
   }
   // موعد الدفع المتأخر يبقى تنبيه خطر، لا تنبيه موعد عادي.
@@ -428,30 +434,37 @@ _NotificationTone _tone(String type) {
     return const _NotificationTone(
       icon: LucideIcons.alertTriangle,
       color: AppTheme.danger,
-      background: AppTheme.burgundySoft,
     );
   }
   if (upperType.contains('PAYMENT_SCHEDULE')) {
     return const _NotificationTone(
       icon: LucideIcons.calendarClock,
-      color: AppTheme.gold,
-      background: AppTheme.ivory,
+      color: AppTheme.focus,
     );
   }
   if (upperType.contains('SHARING')) {
     return const _NotificationTone(
       icon: LucideIcons.userPlus,
       color: AppTheme.success,
-      background: AppTheme.successSoft,
     );
   }
   return const _NotificationTone(
     icon: LucideIcons.listChecks,
-    color: AppTheme.burgundy,
-    background: AppTheme.burgundySoft,
+    color: AppTheme.brand,
   );
 }
 
 String _dateLabel(DateTime date) {
   return formatArabicCompactDate(date);
+}
+
+AarastTemporalSection _notificationTemporalSection(
+  AarastNotification notification,
+) {
+  final priority = notification.priority.toUpperCase();
+  return aarastActivitySection(
+    occurredAt: notification.createdAt,
+    completed: !notification.isUnread,
+    urgent: priority == 'URGENT' || priority == 'HIGH',
+  );
 }

@@ -18,20 +18,27 @@ import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'support/preview_fonts.dart';
 
 Widget _logo() {
-  return ClipOval(
-    child: Container(
-      width: 78,
-      height: 78,
-      color: AppTheme.ivory,
-      child: const Icon(LucideIcons.store, color: AppTheme.gold, size: 36),
+  return Container(
+    width: 64,
+    height: 72,
+    decoration: BoxDecoration(
+      color: AppTheme.surfaceMuted,
+      borderRadius: BorderRadius.circular(AppTheme.radiusSurface),
+      border: Border.all(color: AppTheme.border),
     ),
+    child: const Icon(LucideIcons.store, color: AppTheme.brand, size: 30),
   );
 }
 
 Widget _profileCard() {
   return Builder(
-    builder: (context) => AarastCard(
-      color: AppTheme.surface,
+    builder: (context) => Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceRaised,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSurface),
+        border: Border.all(color: AppTheme.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -55,7 +62,7 @@ Widget _profileCard() {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.burgundyDark,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -65,7 +72,7 @@ Widget _profileCard() {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -79,7 +86,7 @@ Widget _profileCard() {
             'قاعة أفراح فاخرة تتسع لـ 400 ضيف، مع تنسيق كامل للإضاءة والضيافة وخدمة تصوير احترافية.',
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.5,
             ),
@@ -89,24 +96,15 @@ Widget _profileCard() {
             spacing: 8,
             runSpacing: 8,
             children: [
-              AarastStatusPill(
-                label: '777 123 456',
+              const _ProviderFact(
                 icon: LucideIcons.phone,
-                color: AppTheme.ink,
-                backgroundColor: AppTheme.ivory,
+                label: '777 123 456',
               ),
-              AarastStatusPill(
-                label: 'قاعات أفراح',
+              const _ProviderFact(
                 icon: LucideIcons.shapes,
-                color: AppTheme.burgundy,
-                backgroundColor: AppTheme.burgundySoft,
+                label: 'قاعات أفراح',
               ),
-              AarastStatusPill(
-                label: '4.8 (36)',
-                icon: LucideIcons.star,
-                color: AppTheme.gold,
-                backgroundColor: AppTheme.ivory,
-              ),
+              const _ProviderFact(icon: LucideIcons.star, label: '4.8 (36)'),
             ],
           ),
           const SizedBox(height: 14),
@@ -121,6 +119,31 @@ Widget _profileCard() {
   );
 }
 
+class _ProviderFact extends StatelessWidget {
+  const _ProviderFact({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: AppTheme.textSecondary, size: 14),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 Widget _statBox({
   required IconData icon,
   required String label,
@@ -129,18 +152,20 @@ Widget _statBox({
   required Color bg,
 }) {
   return Builder(
-    builder: (context) => AarastCard(
+    builder: (context) => Container(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.surface,
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.border)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(14),
+              border: Border(bottom: BorderSide(color: bg, width: 3)),
             ),
             child: Icon(icon, color: color),
           ),
@@ -151,7 +176,7 @@ Widget _statBox({
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -160,7 +185,7 @@ Widget _statBox({
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -183,22 +208,22 @@ Widget _stats() {
         icon: LucideIcons.wand,
         label: 'الخدمات',
         value: '5/6',
-        color: AppTheme.burgundy,
-        bg: AppTheme.burgundySoft,
+        color: AppTheme.brand,
+        bg: AppTheme.brandMuted,
       ),
       _statBox(
         icon: LucideIcons.package,
         label: 'الباقات',
         value: '3',
-        color: AppTheme.gold,
-        bg: AppTheme.ivory,
+        color: AppTheme.focus,
+        bg: AppTheme.canvas,
       ),
       _statBox(
         icon: LucideIcons.messageCircle,
         label: 'طلبات العروض',
         value: '14',
-        color: AppTheme.ink,
-        bg: AppTheme.ivory,
+        color: AppTheme.textPrimary,
+        bg: AppTheme.canvas,
       ),
       _statBox(
         icon: LucideIcons.users,
@@ -224,7 +249,7 @@ Future<void> _pump(WidgetTester tester, {required Size size}) async {
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            backgroundColor: AppTheme.ivory,
+            backgroundColor: AppTheme.canvas,
             body: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
               children: [_profileCard(), const SizedBox(height: 16), _stats()],

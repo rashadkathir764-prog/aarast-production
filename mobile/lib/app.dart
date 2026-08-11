@@ -8,6 +8,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import 'core/diagnostics/app_logger.dart';
+import 'core/experience_v3/aarast_v3.dart';
 import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/push/push_lifecycle_bridge.dart';
@@ -81,10 +82,15 @@ class _AarastAppState extends State<AarastApp> {
             textDirection: TextDirection.rtl,
             child: AarastPushLifecycleBridge(
               router: _router,
-              child: AarastSessionTransitionGate(
-                child: AarastAuthFlowRedirector(
-                  router: _router,
-                  child: child ?? const SizedBox.shrink(),
+              child: AarastV3AdaptiveExperienceShell(
+                routeListenable: _router.routeInformationProvider,
+                readLocation: () =>
+                    _router.routeInformationProvider.value.uri.toString(),
+                child: AarastSessionTransitionGate(
+                  child: AarastAuthFlowRedirector(
+                    router: _router,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),
@@ -115,7 +121,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
     if (status == AuthStatus.checking) {
       return const Scaffold(
         key: Key('session-checking-screen'),
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: AppTheme.canvas,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -141,7 +147,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
     if (status == AuthStatus.terminating) {
       return const Scaffold(
         key: Key('session-terminating-screen'),
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: AppTheme.canvas,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -167,7 +173,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
     if (status == AuthStatus.terminationFailed) {
       return Scaffold(
         key: const Key('session-termination-failed-screen'),
-        backgroundColor: AppTheme.ivory,
+        backgroundColor: AppTheme.canvas,
         body: SafeArea(
           child: Center(
             child: Padding(

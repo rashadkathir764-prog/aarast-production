@@ -18,7 +18,7 @@ void main() {
     final theme = AppTheme.light();
     final popupTheme = theme.popupMenuTheme;
     expect(popupTheme.surfaceTintColor, Colors.transparent);
-    expect(popupTheme.color, AppTheme.surface);
+    expect(popupTheme.color, AppTheme.surfaceRaised);
   });
 
   testWidgets('city picker opens as compact pills and applies the choice', (

@@ -4,11 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/config/app_feature_flags.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -18,7 +16,6 @@ import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/widgets/account_deletion_flow.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../notifications/providers/notifications_provider.dart';
 import '../widgets/more_screen_components.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -40,23 +37,8 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      if (AppFeatureFlags.devBypassLoginGatesForUxExploration &&
-          !await AuthActionGuard.hasAccount(context)) {
-        return;
-      }
-      if (!mounted) return;
-      _maybeReadNotifications(context)?.loadUnreadCount();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final notifications = _maybeWatchNotifications(context);
     final accountContexts = context.watch<AccountContextController?>();
     final selectedContext = accountContexts?.selectedContext;
     final user = auth.user;
@@ -68,13 +50,10 @@ class _MoreScreenState extends State<MoreScreen> {
       maxWidth: 520,
       safeAreaBottom: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
-        children: AarastStagger.children(context, [
-          MoreHeader(
-            notificationCount: notifications?.unreadCount ?? 0,
-            onNotifications: () => context.push(AppRouter.notifications),
-          ),
-          const SizedBox(height: 14),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 124),
+        children: [
+          const MoreHeader(),
+          const SizedBox(height: 12),
           FutureBuilder<GuestOnboardingDraft?>(
             future: _identityDraftFuture,
             builder: (context, snapshot) {
@@ -93,38 +72,38 @@ class _MoreScreenState extends State<MoreScreen> {
               );
             },
           ),
-          const SizedBox(height: 18),
-          const MoreMenuSectionTitle(title: 'خطط الزفاف'),
+          const SizedBox(height: 20),
+          const MoreMenuSectionTitle(title: 'خططك'),
           const SizedBox(height: 6),
           MoreMenuGroup(
             children: [
               MoreActionTile(
                 title: 'الخطط المشتركة معي',
                 icon: LucideIcons.users,
-                iconColor: AppTheme.burgundy,
-                iconBackground: AppTheme.burgundySoft,
+                iconColor: AppTheme.brand,
+                iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.sharedWeddingPlans),
               ),
               MoreActionTile(
                 title: 'خططي',
                 icon: LucideIcons.calendarDays,
-                iconColor: AppTheme.burgundy,
-                iconBackground: AppTheme.burgundySoft,
+                iconColor: AppTheme.brand,
+                iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.weddingPlans),
               ),
               MoreActionTile(
                 title: 'إنشاء خطة زفاف',
                 icon: LucideIcons.plusCircle,
-                iconColor: AppTheme.burgundy,
-                iconBackground: AppTheme.burgundySoft,
+                iconColor: AppTheme.brand,
+                iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.createWeddingPlan),
               ),
               if (hasAccount && selectedContext != null)
                 MoreActionTile(
                   title: 'الخروج من المسار',
                   icon: LucideIcons.layers,
-                  iconColor: AppTheme.burgundy,
-                  iconBackground: AppTheme.burgundySoft,
+                  iconColor: AppTheme.brand,
+                  iconBackground: AppTheme.brandMuted,
                   onTap: () {
                     final controller = accountContexts;
                     if (controller == null) return;
@@ -133,43 +112,36 @@ class _MoreScreenState extends State<MoreScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
-          const MoreMenuSectionTitle(title: 'الموردون'),
+          const SizedBox(height: 18),
+          const MoreMenuSectionTitle(title: 'أدواتك'),
           const SizedBox(height: 6),
-          // «تصفح الموردين» ليس هنا عمدًا — له تبويب خاص في الشريط السفلي.
           MoreMenuGroup(
             children: [
               MoreActionTile(
                 title: 'الموردون المحفوظون',
                 icon: LucideIcons.heart,
-                iconColor: AppTheme.burgundy,
-                iconBackground: AppTheme.burgundySoft,
+                iconColor: AppTheme.brand,
+                iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.favoriteProviders),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const MoreMenuSectionTitle(title: 'الحساب والمساعدة'),
-          const SizedBox(height: 6),
-          MoreMenuGroup(
-            children: [
               MoreActionTile(
                 title: 'الإعدادات',
                 icon: LucideIcons.settings,
-                iconColor: AppTheme.burgundy,
-                iconBackground: AppTheme.burgundySoft,
+                iconColor: AppTheme.brand,
+                iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.settings),
               ),
               MoreActionTile(
                 title: 'الدعم والمساعدة',
                 icon: LucideIcons.headphones,
-                iconColor: AppTheme.burgundy,
-                iconBackground: AppTheme.burgundySoft,
+                iconColor: AppTheme.brand,
+                iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.support),
               ),
+              if (_hasSyncService(context)) const OfflineSyncNowTile(),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           if (!hasAccount)
             MoreOptionalLoginTile(onTap: () => context.push(AppRouter.login))
           else
@@ -177,17 +149,9 @@ class _MoreScreenState extends State<MoreScreen> {
               onLogout: () => _logout(context),
               onDeleteAccount: () => _deleteAccount(context),
             ),
-          // كرت المزامنة في ذيل القائمة، ويختفي مع عنوانه عندما لا تتوفر
-          // خدمة المزامنة أصلًا — لا عنوان معلقًا فوق كرت فارغ.
-          if (_hasSyncService(context)) ...[
-            const SizedBox(height: 14),
-            const MoreMenuSectionTitle(title: 'المزامنة'),
-            const SizedBox(height: 6),
-            const MoreMenuGroup(children: [OfflineSyncNowTile()]),
-          ],
           const SizedBox(height: 22),
           const MoreVersionFooter(),
-        ]),
+        ],
       ),
     );
   }
@@ -234,7 +198,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     'تسجيل الخروج',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.ink,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -244,7 +208,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
-                          color: AppTheme.muted,
+                          color: AppTheme.textSecondary,
                           fontWeight: FontWeight.w700,
                         ),
                   ),
@@ -362,7 +326,7 @@ class _MoreScreenState extends State<MoreScreen> {
   static Future<ImageSource?> _showAvatarSourceSheet(BuildContext context) {
     return showAarastBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.surfaceRaised,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -381,7 +345,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     'تحديث صورة الحساب',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.ink,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -457,21 +421,5 @@ bool _hasSyncService(BuildContext context) {
     return true;
   } on ProviderNotFoundException {
     return false;
-  }
-}
-
-NotificationsProvider? _maybeReadNotifications(BuildContext context) {
-  try {
-    return context.read<NotificationsProvider>();
-  } on ProviderNotFoundException {
-    return null;
-  }
-}
-
-NotificationsProvider? _maybeWatchNotifications(BuildContext context) {
-  try {
-    return context.watch<NotificationsProvider>();
-  } on ProviderNotFoundException {
-    return null;
   }
 }

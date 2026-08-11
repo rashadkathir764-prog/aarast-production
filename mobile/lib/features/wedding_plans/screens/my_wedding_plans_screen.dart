@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_motion.dart';
@@ -57,7 +58,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
       showBack: true,
       safeAreaBottom: false,
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: _loadPlans,
         child: _PlansContent(
           provider: provider,
@@ -175,8 +176,8 @@ class _SharedPlansLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       onTap: onTap,
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+      color: AppTheme.canvas,
+      border: Border.all(color: AppTheme.brandMuted.withAlpha(80)),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
@@ -184,12 +185,12 @@ class _SharedPlansLink extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppTheme.burgundySoft,
+              color: AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: const Icon(
               LucideIcons.users,
-              color: AppTheme.burgundy,
+              color: AppTheme.brand,
               size: 18,
             ),
           ),
@@ -200,13 +201,17 @@ class _SharedPlansLink extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(LucideIcons.chevronLeft, color: AppTheme.muted, size: 18),
+          const Icon(
+            LucideIcons.chevronLeft,
+            color: AppTheme.textSecondary,
+            size: 18,
+          ),
         ],
       ),
     );
@@ -229,11 +234,11 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    final titleColor = isFeatured ? Colors.white : AppTheme.burgundyDeep;
-    final subtitleColor = isFeatured ? Colors.white70 : AppTheme.muted;
-    final iconColor = isFeatured ? AppTheme.gold2 : AppTheme.gold;
-    final progressBgColor = isFeatured ? AppTheme.burgundyDeep : AppTheme.ivory;
-    final progressFillColor = isFeatured ? AppTheme.gold : AppTheme.burgundy;
+    final titleColor = isFeatured ? Colors.white : AppTheme.textPrimary;
+    final subtitleColor = isFeatured ? Colors.white70 : AppTheme.textSecondary;
+    final iconColor = isFeatured ? AppTheme.brandMuted : AppTheme.focus;
+    final progressBgColor = isFeatured ? AppTheme.textPrimary : AppTheme.canvas;
+    final progressFillColor = isFeatured ? AppTheme.focus : AppTheme.brand;
     final daysLeft = plan.daysRemaining;
     final totalPlanningDays = plan.weddingDate
         ?.difference(plan.createdAt)
@@ -250,12 +255,11 @@ class _PlanCard extends StatelessWidget {
       onTap: onTap,
       margin: const EdgeInsets.only(bottom: 10),
       padding: EdgeInsets.zero,
-      color: isFeatured ? AppTheme.burgundy : AppTheme.surface,
+      color: isFeatured ? AppTheme.brand : AppTheme.surfaceRaised,
       radius: AppTheme.radiusLg,
       border: isFeatured ? null : Border.all(color: AppTheme.border),
       child: Container(
         decoration: BoxDecoration(
-          gradient: isFeatured ? AppTheme.heroGradient : null,
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         ),
         padding: const EdgeInsets.all(14),
@@ -305,7 +309,7 @@ class _PlanCard extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: isFeatured ? Colors.white24 : AppTheme.ivory,
+                    color: isFeatured ? Colors.white24 : AppTheme.canvas,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -314,7 +318,7 @@ class _PlanCard extends StatelessWidget {
                         : planStatusLabelAr(plan.status),
                     maxLines: 1,
                     style: textTheme.labelSmall?.copyWith(
-                      color: isFeatured ? Colors.white : AppTheme.ink,
+                      color: isFeatured ? Colors.white : AppTheme.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -345,19 +349,12 @@ class _PlanCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(99),
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: percent / 100.0),
-                        duration: const Duration(milliseconds: 900),
-                        curve: Curves.easeOutQuart,
-                        builder: (context, value, _) => LinearProgressIndicator(
-                          value: value,
-                          minHeight: 5,
-                          backgroundColor: progressBgColor,
-                          valueColor: AlwaysStoppedAnimation(progressFillColor),
-                        ),
-                      ),
+                    child: AarastV3ProgressLine(
+                      value: percent / 100.0,
+                      height: 5,
+                      backgroundColor: progressBgColor,
+                      color: progressFillColor,
+                      semanticsLabel: 'اكتمال الخطة',
                     ),
                   ),
                   const SizedBox(width: 8),

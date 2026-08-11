@@ -9,7 +9,6 @@ import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -18,7 +17,7 @@ import '../../home/data/dashboard_summary_sources.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
-import '../widgets/premium/premium_dashboard_view.dart';
+import '../widgets/dashboard/aarast_dashboard_view.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
@@ -142,11 +141,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         ? selectedContext?.weddingPlanId
         : null;
 
-    return AarastScreenFrame(
-      maxWidth: 520,
-      safeAreaBottom: false,
+    return ColoredBox(
+      color: AppTheme.canvas,
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: _load,
         child: _buildBody(provider, auth, selectedPlanId),
       ),
@@ -175,8 +173,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         transitionBuilder: (child, animation) =>
             FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
-          key: const ValueKey('royal-home-skeleton'),
-          child: PremiumDashboardSkeleton(bottomPadding: bottomPadding),
+          key: const ValueKey('aarast-home-skeleton'),
+          child: AarastDashboardSkeleton(bottomPadding: bottomPadding),
         ),
       );
     }
@@ -189,15 +187,15 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         transitionBuilder: (child, animation) =>
             FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
-          key: const ValueKey('royal-home-error'),
-          child: _DashboardStateList(
+          key: const ValueKey('aarast-home-error'),
+          child: AarastDashboardState(
             bottomPadding: bottomPadding,
             icon: LucideIcons.cloudOff,
             title: 'تعذر تحميل الرئيسية',
             message: errorMessage,
             actionLabel: 'إعادة المحاولة',
             onAction: _load,
-            tone: _StateTone.warning,
+            danger: true,
           ),
         ),
       );
@@ -211,8 +209,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         transitionBuilder: (child, animation) =>
             FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
-          key: const ValueKey('royal-home-empty'),
-          child: _DashboardStateList(
+          key: const ValueKey('aarast-home-empty'),
+          child: AarastDashboardState(
             bottomPadding: bottomPadding,
             icon: LucideIcons.sparkles,
             title: 'ابدأ رحلتك معنا',
@@ -220,14 +218,13 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                 'لا توجد خطة نشطة بعد. أنشئ خطة زفافك الأولى وسنساعدك على تنظيم كل خطوة بهدوء.',
             actionLabel: 'إنشاء خطة',
             onAction: () => context.go(AppRouter.onboarding),
-            tone: _StateTone.warm,
           ),
         ),
       );
     }
 
     if (selectedPlanId == null || summary.planId != selectedPlanId) {
-      return _DashboardStateList(
+      return AarastDashboardState(
         bottomPadding: bottomPadding,
         icon: LucideIcons.shieldAlert,
         title: 'تعذر مطابقة مسار الخطة',
@@ -235,7 +232,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
             'بيانات الرئيسية لا تطابق المسار المحدد حاليًا. ارجع إلى اختيار المسار ثم حاول مرة أخرى.',
         actionLabel: 'العودة للرئيسية',
         onAction: () => context.go(AppRouter.home),
-        tone: _StateTone.warning,
+        danger: true,
       );
     }
 
@@ -246,12 +243,13 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       transitionBuilder: (child, animation) =>
           FadeTransition(opacity: animation, child: child),
       child: KeyedSubtree(
-        key: ValueKey('royal-home-${summary.planId}'),
+        key: ValueKey('aarast-home-${summary.planId}'),
         child: Builder(
           builder: (_) {
-            return PremiumDashboardView(
+            return AarastDashboardView(
               summary: summary,
               userName: auth.user?.name ?? 'صاحب الخطة',
+              avatarUrl: auth.user?.avatarUrl,
               personaHeadline: null,
               bottomPadding: bottomPadding,
               onNotifications: () =>
@@ -268,6 +266,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenSharing: () => _isLocalGuestPlan
                   ? _requireAccountForSharing()
                   : _openSharing(selectedPlanId),
+              onOpenWeddingDay: () => context.push(
+                AppRouter.weddingDayMode(selectedPlanId),
+                extra: summary,
+              ),
               onOpenImportantItem: (item) =>
                   _openDashboardItem(item, selectedPlanId),
               onOpenNextStep: () => _openNextStep(summary, selectedPlanId),
@@ -352,93 +354,3 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     context.go(AppRouter.planCenter(planId));
   }
 }
-
-class _DashboardStateList extends StatelessWidget {
-  const _DashboardStateList({
-    required this.bottomPadding,
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.actionLabel,
-    required this.onAction,
-    this.tone = _StateTone.warm,
-  });
-
-  final double bottomPadding;
-  final IconData icon;
-  final String title;
-  final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
-  final _StateTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    const burgundy = AppTheme.burgundy;
-    const gold = AppTheme.gold;
-    const ink = AppTheme.ink;
-    const muted = AppTheme.muted;
-    final accent = tone == _StateTone.warning ? burgundy : gold;
-    final iconBg = Color.alphaBlend(
-      accent.withValues(alpha: 0.10),
-      AppTheme.ivory,
-    );
-
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, 32, 20, bottomPadding),
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        AarastCard(
-          padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-          color: AppTheme.surface,
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: accent.withValues(alpha: 0.18),
-                    width: 1,
-                  ),
-                ),
-                child: Icon(icon, color: accent, size: 30),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: ink,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: muted,
-                  fontWeight: FontWeight.w600,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 18),
-              AarastButton(
-                label: actionLabel,
-                onPressed: onAction,
-                variant: tone == _StateTone.warning
-                    ? AarastButtonVariant.secondary
-                    : AarastButtonVariant.primary,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-enum _StateTone { warm, warning }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 
@@ -49,7 +48,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
         Text(
           'الدور',
           style: textTheme.titleSmall?.copyWith(
-            color: AppTheme.deepBurgundy,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -68,9 +67,14 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
               ),
           ],
         ),
-        const SizedBox(height: 14),
-        AarastCard(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: const BoxDecoration(
+            border: Border.symmetric(
+              horizontal: BorderSide(color: AppTheme.border),
+            ),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -79,7 +83,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                   const Icon(
                     LucideIcons.shieldCheck,
                     size: 17,
-                    color: AppTheme.gold,
+                    color: AppTheme.focus,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -88,7 +92,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.titleSmall?.copyWith(
-                        color: AppTheme.ink,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -105,9 +109,9 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _expanded ? 'إخفاء التخصيص' : 'تخصيص',
+                            _expanded ? 'إخفاء' : 'تخصيص',
                             style: textTheme.labelMedium?.copyWith(
-                              color: AppTheme.burgundy,
+                              color: AppTheme.brand,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -117,7 +121,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                                 ? LucideIcons.chevronUp
                                 : LucideIcons.chevronDown,
                             size: 14,
-                            color: AppTheme.burgundy,
+                            color: AppTheme.brand,
                           ),
                         ],
                       ),
@@ -129,7 +133,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
               Text(
                 value.summaryLabel,
                 style: textTheme.labelSmall?.copyWith(
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -173,7 +177,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                   enabled: widget.enabled,
                   onChanged: (v) => _emit(value.copyWith(canInviteMembers: v)),
                 ),
-                const _GroupLabel('المال · خاص', color: AppTheme.gold),
+                const _GroupLabel('المال · خاص', color: AppTheme.focus),
                 _PermissionRow(
                   title: 'مشاهدة المال',
                   value: value.canViewMoney,
@@ -216,7 +220,7 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
 }
 
 class _GroupLabel extends StatelessWidget {
-  const _GroupLabel(this.text, {this.color = AppTheme.muted});
+  const _GroupLabel(this.text, {this.color = AppTheme.textSecondary});
 
   final String text;
   final Color color;
@@ -265,7 +269,7 @@ class _PermissionRow extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -274,7 +278,7 @@ class _PermissionRow extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       height: 1.35,
                       fontWeight: FontWeight.w600,
                     ),
@@ -313,18 +317,18 @@ class _RoleChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.burgundy : AppTheme.surface,
+            color: selected ? AppTheme.brand : AppTheme.surfaceRaised,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppTheme.burgundy : AppTheme.border,
+              color: selected ? AppTheme.brand : AppTheme.border,
             ),
           ),
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: selected ? Colors.white : AppTheme.ink,
+              color: selected ? Colors.white : AppTheme.textPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),

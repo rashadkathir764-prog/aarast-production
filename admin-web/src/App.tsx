@@ -20,6 +20,8 @@ import { ReportsPage } from './pages/ReportsPage';
 import { ConversationReportsPage } from './pages/ConversationReportsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { ReferenceCatalogsPage } from './pages/ReferenceCatalogsPage';
+import { AdministrativeAreasPage } from './pages/AdministrativeAreasPage';
 
 export default function App() {
   return (
@@ -102,6 +104,22 @@ export default function App() {
           element={
             <RequireAdminPermission permission={AdminPermission.CATALOG_READ}>
               <CategoriesPage />
+            </RequireAdminPermission>
+          }
+        />
+        <Route
+          path="reference-catalogs"
+          element={
+            <RequireAdminPermission permission={AdminPermission.CATALOG_READ}>
+              <ReferenceCatalogsPage />
+            </RequireAdminPermission>
+          }
+        />
+        <Route
+          path="administrative-areas"
+          element={
+            <RequireAdminPermission permission={AdminPermission.CATALOG_READ}>
+              <AdministrativeAreasPage />
             </RequireAdminPermission>
           }
         />

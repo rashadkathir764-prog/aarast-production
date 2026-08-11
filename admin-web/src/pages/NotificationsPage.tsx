@@ -158,6 +158,7 @@ export function NotificationsPage() {
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
+            label="بحث في الإشعارات"
             value={search}
             onChange={setSearch}
             onSubmit={submitSearch}
@@ -207,6 +208,7 @@ export function NotificationsPage() {
           <EmptyState title="لا توجد إشعارات مطابقة" message="غير الفلاتر أو ابحث بكلمة أخرى." tone="api" />
         ) : (
           <DataTable
+            label="قائمة الإشعارات الإدارية"
             columns={['الإشعار', 'المستخدم', 'النوع', 'الأولوية', 'القراءة', 'الارتباط', 'التاريخ', 'إجراءات']}
             minWidth={1180}
           >

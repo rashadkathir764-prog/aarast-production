@@ -132,6 +132,7 @@ export function ProviderApplicationsPage() {
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
+            label="بحث في طلبات الموردين"
             value={search}
             onChange={setSearch}
             onSubmit={submitSearch}
@@ -187,6 +188,7 @@ export function ProviderApplicationsPage() {
           />
         ) : (
           <DataTable
+            label="سجل طلبات الموردين"
             columns={[
               'رقم الطلب',
               'المورد',

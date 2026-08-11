@@ -21,6 +21,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   bool _isReferenceDataLoading = false;
   String? _errorMessage;
   String? _referenceDataErrorMessage;
+  String? _favoriteProvidersErrorMessage;
   String? _quoteSubmitErrorMessage;
   String? _quoteRequestsErrorMessage;
   String? _noticeMessage;
@@ -45,6 +46,11 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   final Map<String, List<MarketplaceService>> _services = {};
   final Map<String, List<ProviderPackage>> _packages = {};
   final Map<String, List<ProviderReview>> _reviews = {};
+  final Map<String, String> _detailsErrors = {};
+  final Map<String, String> _servicesErrors = {};
+  final Map<String, String> _packagesErrors = {};
+  final Map<String, String> _reviewsErrors = {};
+  final Map<String, Future<void>> _providerDetailsLoads = {};
   Set<String> _favoriteProviderIds = {};
   List<FavoriteProvider> _favoriteProviders = const [];
   List<QuoteRequest> _quoteRequests = const [];
@@ -60,6 +66,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   bool get isReferenceDataLoading => _isReferenceDataLoading;
   String? get errorMessage => _errorMessage;
   String? get referenceDataErrorMessage => _referenceDataErrorMessage;
+  String? get favoriteProvidersErrorMessage => _favoriteProvidersErrorMessage;
   String? get quoteSubmitErrorMessage => _quoteSubmitErrorMessage;
   String? get quoteRequestsErrorMessage => _quoteRequestsErrorMessage;
   String? get noticeMessage => _noticeMessage;
@@ -85,6 +92,11 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? get loadMoreErrorMessage => _loadMoreErrorMessage;
   QuoteRequest? get existingActiveQuote => _existingActiveQuote;
   QuoteRequest? get lastCreatedQuote => _lastCreatedQuote;
+
+  String? servicesErrorFor(String providerId) => _servicesErrors[providerId];
+  String? packagesErrorFor(String providerId) => _packagesErrors[providerId];
+  String? reviewsErrorFor(String providerId) => _reviewsErrors[providerId];
+  String? detailsErrorFor(String providerId) => _detailsErrors[providerId];
 
   void configureCatalogAudience(String? audience, {bool notify = true}) {
     final normalized = _normalizedAudience(audience);
@@ -186,8 +198,12 @@ class ProviderMarketplaceProvider extends ChangeNotifier
           categoryId: _categoryId,
         ),
         _includeAccountData
-            ? _safeFavorites()
-            : Future.value(const <FavoriteProvider>[]),
+            ? _loadFavorites()
+            : Future.value(
+                const _MarketplaceLoadResult<List<FavoriteProvider>>.success(
+                  [],
+                ),
+              ),
         _includeAccountData && _quotePlanId != null
             ? _safeQuoteRequests(weddingPlanId: _quotePlanId)
             : Future.value(const <QuoteRequest>[]),
@@ -202,16 +218,23 @@ class ProviderMarketplaceProvider extends ChangeNotifier
       _currentPage = providerPage.currentPage;
       _totalProviders = providerPage.total;
       _totalPages = providerPage.totalPages;
-      final favorites = results[3] as List<FavoriteProvider>;
-      _favoriteProviders = favorites;
-      _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
+      final favoritesResult =
+          results[3] as _MarketplaceLoadResult<List<FavoriteProvider>>;
+      final favorites = favoritesResult.data;
+      if (favorites != null) {
+        _favoriteProviders = favorites;
+        _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
+        _favoriteProvidersErrorMessage = null;
+      } else {
+        _favoriteProvidersErrorMessage = favoritesResult.errorMessage;
+      }
       _quoteRequests = results[4] as List<QuoteRequest>;
       if (_budgetMatchIntent != null) {
         _budgetMatchedServices = await _safeBudgetMatchedServices();
       }
     } on ApiException catch (error) {
       if (generation != _loadGeneration) return;
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = providerDirectoryErrorMessage(error);
     } catch (_) {
       if (generation != _loadGeneration) return;
       _errorMessage = aarastBackendConnectionErrorMessage;
@@ -248,7 +271,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
       _totalPages = page.totalPages;
     } on ApiException catch (error) {
       if (generation == _loadGeneration) {
-        _loadMoreErrorMessage = marketplaceErrorMessage(error.message);
+        _loadMoreErrorMessage = providerDirectoryErrorMessage(error);
       }
     } catch (_) {
       if (generation == _loadGeneration) {
@@ -360,7 +383,22 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     await loadMarketplace();
   }
 
-  Future<void> loadProviderDetails(
+  Future<void> loadProviderDetails(String providerId, {String? weddingPlanId}) {
+    final activeLoad = _providerDetailsLoads[providerId];
+    if (activeLoad != null) return activeLoad;
+
+    late final Future<void> trackedLoad;
+    trackedLoad = _loadProviderDetails(providerId, weddingPlanId: weddingPlanId)
+        .whenComplete(() {
+          if (identical(_providerDetailsLoads[providerId], trackedLoad)) {
+            _providerDetailsLoads.remove(providerId);
+          }
+        });
+    _providerDetailsLoads[providerId] = trackedLoad;
+    return trackedLoad;
+  }
+
+  Future<void> _loadProviderDetails(
     String providerId, {
     String? weddingPlanId,
   }) async {
@@ -376,25 +414,64 @@ class ProviderMarketplaceProvider extends ChangeNotifier
 
     try {
       _details[providerId] = await _api.getProvider(providerId);
+      _detailsErrors.remove(providerId);
       final results = await Future.wait<Object>([
-        _safeProviderServices(providerId),
-        _safeProviderPackages(providerId),
-        _safeProviderReviews(providerId),
+        _loadProviderServices(providerId),
+        _loadProviderPackages(providerId),
+        _loadProviderReviews(providerId),
         if (canLoadPlanQuotes)
           _safeQuoteRequests(weddingPlanId: scopedPlanId)
         else
           Future.value(const <QuoteRequest>[]),
       ]);
-      _services[providerId] = results[0] as List<MarketplaceService>;
-      _packages[providerId] = results[1] as List<ProviderPackage>;
-      _reviews[providerId] = results[2] as List<ProviderReview>;
+      final servicesResult =
+          results[0] as _MarketplaceLoadResult<List<MarketplaceService>>;
+      final packagesResult =
+          results[1] as _MarketplaceLoadResult<List<ProviderPackage>>;
+      final reviewsResult =
+          results[2] as _MarketplaceLoadResult<List<ProviderReview>>;
+      _applyProviderDetailSection(
+        values: _services,
+        errors: _servicesErrors,
+        providerId: providerId,
+        result: servicesResult,
+      );
+      _applyProviderDetailSection(
+        values: _packages,
+        errors: _packagesErrors,
+        providerId: providerId,
+        result: packagesResult,
+      );
+      _applyProviderDetailSection(
+        values: _reviews,
+        errors: _reviewsErrors,
+        providerId: providerId,
+        result: reviewsResult,
+      );
+      final failedSections = <String>[
+        if (!servicesResult.isSuccess) 'الخدمات',
+        if (!packagesResult.isSuccess) 'الباقات',
+        if (!reviewsResult.isSuccess) 'التقييمات',
+      ];
+      if (failedSections.isNotEmpty) {
+        _errorMessage =
+            'تعذر تحديث ${failedSections.join('، ')}. أعد المحاولة.';
+      }
       if (canLoadPlanQuotes) {
         _mergeQuotes(results[3] as List<QuoteRequest>);
       }
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
-    } catch (_) {
-      _errorMessage = aarastBackendConnectionErrorMessage;
+      final message = providerDirectoryErrorMessage(error);
+      _errorMessage = message;
+      _detailsErrors[providerId] = _details.containsKey(providerId)
+          ? providerDetailsStaleErrorMessage
+          : message;
+    } catch (error) {
+      final message = providerDirectoryErrorMessage(error);
+      _errorMessage = message;
+      _detailsErrors[providerId] = _details.containsKey(providerId)
+          ? providerDetailsStaleErrorMessage
+          : message;
     } finally {
       _isLoading = false;
       _providerQuoteContextsLoading.remove(providerId);
@@ -537,17 +614,21 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     }
   }
 
-  Future<List<FavoriteProvider>> _safeFavorites() async {
+  Future<_MarketplaceLoadResult<List<FavoriteProvider>>>
+  _loadFavorites() async {
     try {
-      return await _api.getFavoriteProviders();
-    } catch (_) {
-      return const [];
+      return _MarketplaceLoadResult.success(await _api.getFavoriteProviders());
+    } catch (error) {
+      return _MarketplaceLoadResult.failure(
+        providerDirectoryErrorMessage(error),
+      );
     }
   }
 
   Future<void> loadFavoriteProviders() async {
     _isLoading = true;
     _errorMessage = null;
+    _favoriteProvidersErrorMessage = null;
     notifyListeners();
 
     try {
@@ -556,9 +637,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier
           .map((item) => item.providerId)
           .toSet();
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _favoriteProvidersErrorMessage = providerDirectoryErrorMessage(error);
     } catch (_) {
-      _errorMessage = aarastBackendConnectionErrorMessage;
+      _favoriteProvidersErrorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -709,13 +790,16 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     return normalized == 'GROOM' || normalized == 'BRIDE' ? normalized : null;
   }
 
-  Future<List<MarketplaceService>> _safeProviderServices(
-    String providerId,
-  ) async {
+  Future<_MarketplaceLoadResult<List<MarketplaceService>>>
+  _loadProviderServices(String providerId) async {
     try {
-      return await _api.getProviderServices(providerId);
-    } catch (_) {
-      return const [];
+      return _MarketplaceLoadResult.success(
+        await _api.getProviderServices(providerId),
+      );
+    } catch (error) {
+      return _MarketplaceLoadResult.failure(
+        providerDirectoryErrorMessage(error),
+      );
     }
   }
 
@@ -752,20 +836,47 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     }
   }
 
-  Future<List<ProviderPackage>> _safeProviderPackages(String providerId) async {
+  Future<_MarketplaceLoadResult<List<ProviderPackage>>> _loadProviderPackages(
+    String providerId,
+  ) async {
     try {
-      return await _api.getProviderPackages(providerId);
-    } catch (_) {
-      return const [];
+      return _MarketplaceLoadResult.success(
+        await _api.getProviderPackages(providerId),
+      );
+    } catch (error) {
+      return _MarketplaceLoadResult.failure(
+        providerDirectoryErrorMessage(error),
+      );
     }
   }
 
-  Future<List<ProviderReview>> _safeProviderReviews(String providerId) async {
+  Future<_MarketplaceLoadResult<List<ProviderReview>>> _loadProviderReviews(
+    String providerId,
+  ) async {
     try {
-      return await _api.getProviderReviews(providerId);
-    } catch (_) {
-      return const [];
+      return _MarketplaceLoadResult.success(
+        await _api.getProviderReviews(providerId),
+      );
+    } catch (error) {
+      return _MarketplaceLoadResult.failure(
+        providerDirectoryErrorMessage(error),
+      );
     }
+  }
+
+  void _applyProviderDetailSection<T>({
+    required Map<String, List<T>> values,
+    required Map<String, String> errors,
+    required String providerId,
+    required _MarketplaceLoadResult<List<T>> result,
+  }) {
+    final data = result.data;
+    if (data != null) {
+      values[providerId] = data;
+      errors.remove(providerId);
+      return;
+    }
+    errors[providerId] = result.errorMessage!;
   }
 
   void clearError() {
@@ -839,6 +950,17 @@ String? _normalizedOrNull(String? value) {
 bool _sameInstant(DateTime? a, DateTime? b) {
   if (a == null || b == null) return a == null && b == null;
   return a.toUtc().isAtSameMomentAs(b.toUtc());
+}
+
+class _MarketplaceLoadResult<T> {
+  const _MarketplaceLoadResult.success(this.data) : errorMessage = null;
+
+  const _MarketplaceLoadResult.failure(this.errorMessage) : data = null;
+
+  final T? data;
+  final String? errorMessage;
+
+  bool get isSuccess => data != null;
 }
 
 class ProviderDashboardProvider extends ChangeNotifier
@@ -1457,11 +1579,17 @@ String marketplaceErrorMessage(String message) {
 }
 
 String providerDirectoryErrorMessage(Object error) {
-  if (error is ApiException) return marketplaceErrorMessage(error.message);
-  return aarastBackendConnectionErrorMessage;
+  if (error is! ApiException) return aarastBackendConnectionErrorMessage;
+  final message = marketplaceErrorMessage(error.message);
+  if (RegExp(r'[\u0600-\u06FF]').hasMatch(message)) return message;
+  return providerDirectoryGenericErrorMessage;
 }
 
 const providerReferenceDataErrorMessage = 'تعذر تحميل خيارات المدينة والفئة.';
+const providerDirectoryGenericErrorMessage =
+    'تعذر تحميل بيانات دليل الموردين. حاول مرة أخرى.';
+const providerDetailsStaleErrorMessage =
+    'تعذر تحديث بيانات المورد؛ نعرض آخر بيانات محفوظة حتى تنجح إعادة المحاولة.';
 
 bool _isMissingProviderProfile(String message) {
   final normalized = message.toLowerCase();

@@ -3,6 +3,7 @@
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../shared/models/contact_phone_draft.dart';
+import '../widgets/aarast_toast.dart';
 import 'contact_picker_service.dart';
 
 class ContactPhoneFieldSuffix extends StatefulWidget {
@@ -65,11 +66,7 @@ class _ContactPhoneFieldSuffixState extends State<ContactPhoneFieldSuffix> {
       widget.onPhoneSelected?.call(phone);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(contactPickerErrorMessage(error))),
-        );
+      AarastToast.showError(context, contactPickerErrorMessage(error));
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }

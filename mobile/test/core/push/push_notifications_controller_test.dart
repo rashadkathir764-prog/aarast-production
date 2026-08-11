@@ -53,6 +53,38 @@ void main() {
     expect(controller.claimNotificationsOpen(), isFalse);
   });
 
+  test(
+    'foreground push remains available to the app-wide top receipt',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final gateway = _FakePushGateway();
+      final controller = PushNotificationsController(
+        preferences: preferences,
+        gateway: gateway,
+        registrationApi: _FakePushRegistry(),
+      );
+
+      await controller.initialize();
+      final received = controller.foregroundNotifications.first;
+      gateway.foreground.add(
+        const PushForegroundNotification(
+          title: 'أعرست',
+          message: 'لديك تحديث جديد.',
+        ),
+      );
+
+      await expectLater(
+        received,
+        completion(
+          isA<PushForegroundNotification>()
+              .having((value) => value.title, 'title', 'أعرست')
+              .having((value) => value.message, 'message', 'لديك تحديث جديد.'),
+        ),
+      );
+    },
+  );
+
   test('lifecycle refresh revalidates the current device binding', () async {
     SharedPreferences.setMockInitialValues({
       pushPermissionRequestedPreferenceKey: true,
@@ -155,6 +187,8 @@ class _FakePushGateway implements PushMessagingGateway {
   final bool stallFirstRegistration;
   final StreamController<void> tokens = StreamController<void>.broadcast();
   final StreamController<void> taps = StreamController<void>.broadcast();
+  final StreamController<PushForegroundNotification> foreground =
+      StreamController<PushForegroundNotification>.broadcast();
   final Completer<void> registrationStarted = Completer<void>();
   final Completer<void> _registrationRelease = Completer<void>();
   int permissionRequests = 0;
@@ -168,6 +202,10 @@ class _FakePushGateway implements PushMessagingGateway {
 
   @override
   Stream<void> get notificationTaps => taps.stream;
+
+  @override
+  Stream<PushForegroundNotification> get foregroundNotifications =>
+      foreground.stream;
 
   @override
   Future<void> initialize() async {}

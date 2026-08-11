@@ -61,6 +61,29 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     return _pendingEntityKeys.contains('$entityType:$entityId');
   }
 
+  Future<List<SyncIssueSummary>> loadBlockedIssues() async {
+    final items = await database.blockedSyncItems();
+    return items
+        .map((item) {
+          final ownershipQuarantined = isSyncQueueOwnershipQuarantineError(
+            item.lastError,
+          );
+          final entityLabel = _syncEntityLabel(item.entityType);
+          return SyncIssueSummary(
+            entityLabel: entityLabel,
+            operationLabel: _syncOperationLabel(item.operation),
+            message: ownershipQuarantined
+                ? 'تعذر التأكد من ملكية الخطة لهذا التغيير. لن يُعاد إرساله تلقائيًا لحماية بياناتك.'
+                : item.retryCount >= SyncQueueItem.maxAutoRetries
+                ? 'تعذر إرسال التغيير بعد عدة محاولات. تحقق من الاتصال ثم حاول مرة أخرى.'
+                : 'رفض الخادم التغيير. راجع بيانات $entityLabel في شاشته الأصلية ثم حاول مرة أخرى.',
+            retryCount: item.retryCount,
+            canRetry: !ownershipQuarantined,
+          );
+        })
+        .toList(growable: false);
+  }
+
   Future<void> initialize() async {
     await database.initialize();
     await refreshStatus();
@@ -943,4 +966,34 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     _lastSyncedAt = now;
     await database.setMeta(_lastSyncedAtKey, now.toIso8601String());
   }
+}
+
+String _syncEntityLabel(String entityType) {
+  return switch (entityType) {
+    'wedding_plan' => 'خطة العرس',
+    'money_budget' => 'الميزانية',
+    'budget_category' => 'تصنيف الميزانية',
+    'cost' => 'التكلفة',
+    'cost_payment' => 'الدفعة',
+    'payment_schedule' => 'موعد الدفع',
+    'task' => 'مهمة',
+    'favorite_provider' => 'مزوّد مفضّل',
+    _ => 'التغيير المحلي',
+  };
+}
+
+String _syncOperationLabel(String operation) {
+  return switch (operation) {
+    'create' => 'إضافة',
+    'update' || 'patch' => 'تعديل',
+    'delete' => 'حذف',
+    'assign' => 'إسناد',
+    'cancel' => 'إلغاء',
+    'reverse' => 'عكس دفعة',
+    'replace' => 'استبدال',
+    'pay' => 'تسجيل دفعة',
+    'favorite' => 'إضافة للمفضلة',
+    'unfavorite' => 'إزالة من المفضلة',
+    _ => 'مزامنة',
+  };
 }

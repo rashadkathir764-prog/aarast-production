@@ -125,13 +125,15 @@ void main() {
         expect(find.text('قاعة الحفل'), findsWidgets);
         expect(find.text('الإجمالي'), findsOneWidget);
         expect(find.text('المدفوع'), findsOneWidget);
-        expect(find.text('الباقي'), findsOneWidget);
+        expect(find.text('غير مدفوع'), findsOneWidget);
         expect(find.text('معلومات التكلفة'), findsOneWidget);
 
-        await tester.scrollUntilVisible(find.text('إدارة التكلفة'), 240);
-        expect(find.text('إدارة التكلفة'), findsOneWidget);
-        expect(find.text('تعديل'), findsOneWidget);
-        expect(find.text('إلغاء'), findsNothing);
+        await tester.tap(find.byTooltip('المزيد'));
+        await tester.pumpAndSettle();
+        expect(find.text('تعديل التكلفة'), findsOneWidget);
+        expect(find.text('إلغاء التكلفة'), findsNothing);
+        await tester.tapAt(const Offset(8, 8));
+        await tester.pumpAndSettle();
         expect(find.text('موعد الاستحقاق'), findsNothing);
 
         await tester.scrollUntilVisible(find.text('الدفعات'), 240);
@@ -228,6 +230,8 @@ void main() {
         await tester.enterText(amount, '0');
         final save = find.text('حفظ الدفعة');
         await tester.ensureVisible(save);
+        await tester.drag(find.byType(ListView).last, const Offset(0, -80));
+        await tester.pumpAndSettle();
         await tester.tap(save);
         await tester.pump();
         expect(find.text('أدخل مبلغًا أكبر من صفر.'), findsOneWidget);
@@ -245,7 +249,10 @@ void main() {
         await tester.enterText(amount, '900');
         expect(tester.state<FormState>(find.byType(Form)).validate(), isFalse);
         await tester.pump();
-        expect(find.text('المبلغ يتجاوز الباقي على التكلفة.'), findsOneWidget);
+        expect(
+          find.text('المبلغ يتجاوز غير المدفوع على التكلفة.'),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -291,6 +298,8 @@ void main() {
         );
         expect(find.byKey(const Key('cost-payment-amount')), findsNothing);
         expect(find.byKey(const Key('payment-schedule-amount')), findsNothing);
+        await tester.drag(find.byType(ListView).last, const Offset(0, -520));
+        await tester.pumpAndSettle();
         expect(find.byKey(const Key('pay-schedule-submit')), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
@@ -310,7 +319,7 @@ void main() {
         final amount = find.byKey(const Key('payment-schedule-amount'));
         expect(find.text('ر.ي'), findsOneWidget);
         expect(find.text('YER'), findsNothing);
-        expect(find.text('المتبقي على التكلفة'), findsOneWidget);
+        expect(find.text('غير مدفوع على التكلفة'), findsOneWidget);
         await tester.enterText(amount, '700');
         expect(
           tester.state<FormState>(find.byType(Form)).validate(),
@@ -322,7 +331,10 @@ void main() {
         await tester.enterText(amount, '900');
         expect(tester.state<FormState>(find.byType(Form)).validate(), isFalse);
         await tester.pump();
-        expect(find.text('المبلغ يتجاوز الباقي على التكلفة.'), findsOneWidget);
+        expect(
+          find.text('المبلغ يتجاوز غير المدفوع على التكلفة.'),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       },
     );

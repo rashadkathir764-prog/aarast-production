@@ -1,15 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/forms/aarast_form_success.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart';
 
 class PaymentSchedulesScreen extends StatefulWidget {
@@ -55,6 +63,13 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
     final schedules = widget.costId == null
         ? provider.dueSchedules
         : provider.schedulesForCost(widget.costId!);
+    final scheduleGroups = aarastTemporalGroups(
+      schedules,
+      (schedule) => aarastDeadlineSection(
+        dueDate: schedule.dueDate,
+        completed: schedule.isPaid || schedule.isCancelled,
+      ),
+    );
 
     return MoneySubpageScaffold(
       title: 'مواعيد الدفع',
@@ -73,7 +88,7 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
           ),
       ],
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () => _load(refreshMoney: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -117,9 +132,18 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
             else ...[
               _ScheduleCounts(schedules: schedules),
               const SizedBox(height: 14),
-              for (final schedule in schedules) ...[
-                _scheduleCard(provider, schedule, cost?.title),
+              for (final group in scheduleGroups.entries) ...[
+                AarastSectionHeader(
+                  title:
+                      '${_scheduleSectionTitle(group.key)} · ${group.value.length}',
+                  icon: _scheduleSectionIcon(group.key),
+                ),
                 const SizedBox(height: 10),
+                for (final schedule in group.value) ...[
+                  _scheduleCard(provider, schedule, cost?.title),
+                  const SizedBox(height: 10),
+                ],
+                const SizedBox(height: 4),
               ],
             ],
           ],
@@ -182,6 +206,20 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
   }
 }
 
+String _scheduleSectionTitle(AarastTemporalSection section) {
+  return section.label;
+}
+
+IconData _scheduleSectionIcon(AarastTemporalSection section) {
+  return switch (section) {
+    AarastTemporalSection.now => LucideIcons.alertTriangle,
+    AarastTemporalSection.today => LucideIcons.sun,
+    AarastTemporalSection.week => LucideIcons.calendarDays,
+    AarastTemporalSection.later => LucideIcons.calendarClock,
+    AarastTemporalSection.completed => LucideIcons.checkCircle,
+  };
+}
+
 class PaymentScheduleDetailsScreen extends StatefulWidget {
   const PaymentScheduleDetailsScreen({
     required this.weddingPlanId,
@@ -235,7 +273,7 @@ class _PaymentScheduleDetailsScreenState
       showBack: true,
       onBack: () => context.pop(),
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () => _load(refreshMoney: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -383,7 +421,8 @@ class _PaymentScheduleDetailsScreenState
   Future<void> _cancel(PaymentSchedule schedule, WeddingCost cost) async {
     final confirmed = await _confirm(
       title: 'إلغاء موعد الدفع؟',
-      message: 'سيبقى الموعد في السجل بحالة ملغي، ولن يحجز مبلغًا من الباقي.',
+      message:
+          'سيبقى الموعد في السجل بحالة ملغي، ولن يحجز مبلغًا من غير المدفوع.',
       action: 'إلغاء الموعد',
       danger: false,
     );
@@ -392,7 +431,10 @@ class _PaymentScheduleDetailsScreenState
       schedule: schedule,
       cost: cost,
     );
-    if (ok && mounted) await _load(refreshMoney: true);
+    if (ok && mounted) {
+      AarastToast.showSuccess(context, 'تم إلغاء موعد الدفع.');
+      await _load(refreshMoney: true);
+    }
   }
 
   Future<void> _delete(PaymentSchedule schedule, WeddingCost cost) async {
@@ -409,6 +451,7 @@ class _PaymentScheduleDetailsScreenState
       cost: cost,
     );
     if (!mounted || !ok) return;
+    AarastToast.showSuccess(context, 'تم حذف موعد الدفع.');
     context.pop(true);
   }
 
@@ -470,17 +513,22 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
   DateTime? _dueDate;
   bool _isLoadingDetails = true;
   String? _initializedScheduleId;
+  AarastFormDraftBinding? _draft;
 
   bool get _editing => widget.scheduleId != null;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _load();
+      if (mounted) _configureDraft();
+    });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _amountController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -502,7 +550,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
   void _initialize(PaymentSchedule? schedule) {
     if (schedule == null || _initializedScheduleId == schedule.id) return;
     _initializedScheduleId = schedule.id;
-    _amountController.text = schedule.amount;
+    _amountController.text = formatMoneyInputValue(schedule.amount);
     _noteController.text = schedule.note ?? '';
     _dueDate = schedule.dueDate;
   }
@@ -514,12 +562,27 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
     final schedule = provider.scheduleById(widget.scheduleId ?? '');
     _initialize(schedule);
     final available = cost == null ? 0 : moneyValue(cost.remainingAmount);
+    final canSubmit =
+        cost != null &&
+        provider.canManageMoney &&
+        !cost.isCancelled &&
+        !cost.isPaid &&
+        (!_editing || schedule?.isPending == true) &&
+        available > 0;
 
     return MoneySubpageScaffold(
       title: _editing ? 'تعديل موعد الدفع' : 'إضافة موعد دفع',
       subtitle: cost?.title ?? 'حدد المبلغ والموعد فقط.',
       showBack: true,
       onBack: () => context.pop(),
+      bottomNavigationBar: canSubmit
+          ? AarastV3FormActionBar(
+              label: _editing ? 'حفظ التعديل' : 'إضافة الموعد',
+              icon: LucideIcons.check,
+              loading: provider.isSubmitting,
+              onPressed: () => _submit(cost, schedule),
+            )
+          : null,
       child: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
@@ -560,14 +623,33 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
               error: true,
             )
           else ...[
-            AarastCard(
+            AarastV3FocusPrompt(
+              question: _editing
+                  ? 'ما الموعد الصحيح لهذه الدفعة؟'
+                  : 'متى تتوقع دفع المبلغ التالي؟',
+              supportingText:
+                  'حدد المبلغ والتاريخ فقط، وأضف الملاحظة عند الحاجة.',
+              icon: LucideIcons.calendarClock,
+            ),
+            if (_draft != null) ...[
+              const SizedBox(height: 8),
+              AarastV3DraftStatusLine(status: _draft!.status),
+            ],
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: const BoxDecoration(
+                border: Border.symmetric(
+                  horizontal: BorderSide(color: AppTheme.border),
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'المتبقي على التكلفة',
+                    'غير مدفوع على التكلفة',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -575,12 +657,12 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
                   MoneyAmountText(
                     amount: available,
                     currency: provider.summary.currency,
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Form(
               key: _formKey,
               child: MoneySectionCard(
@@ -596,6 +678,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [MoneyInputFormatter()],
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
                         labelText: 'مبلغ الموعد',
@@ -604,7 +687,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
                       ),
                       validator: (value) => _validateAmount(value, available),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     OutlinedButton.icon(
                       key: const Key('payment-schedule-date'),
                       onPressed: () => _pickDueDate(schedule),
@@ -625,28 +708,28 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _noteController,
-                      minLines: 2,
-                      maxLines: 4,
-                      maxLength: 1000,
-                      decoration: const InputDecoration(
-                        labelText: 'ملاحظة (اختياري)',
-                        prefixIcon: Icon(LucideIcons.fileText),
+                    const SizedBox(height: 10),
+                    MoneyDisclosureCard(
+                      title: 'إضافة ملاحظة',
+                      subtitle: 'يمكن تخطيه',
+                      icon: LucideIcons.fileText,
+                      initiallyExpanded: _noteController.text.isNotEmpty,
+                      child: TextFormField(
+                        controller: _noteController,
+                        minLines: 2,
+                        maxLines: 3,
+                        maxLength: 1000,
+                        decoration: const InputDecoration(
+                          labelText: 'ملاحظة الموعد',
+                          prefixIcon: Icon(LucideIcons.fileText),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 18),
-            AarastButton(
-              label: _editing ? 'حفظ التعديل' : 'إضافة الموعد',
-              icon: LucideIcons.check,
-              isLoading: provider.isSubmitting,
-              onPressed: available <= 0 ? null : () => _submit(cost, schedule),
-            ),
+            const SizedBox(height: 10),
           ],
         ],
       ),
@@ -656,7 +739,9 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
   String? _validateAmount(String? value, num available) {
     final parsed = num.tryParse(value?.replaceAll(',', '').trim() ?? '');
     if (parsed == null || parsed <= 0) return 'أدخل مبلغًا أكبر من صفر.';
-    if (parsed > available) return 'المبلغ يتجاوز الباقي على التكلفة.';
+    if (parsed > available) {
+      return 'المبلغ يتجاوز غير المدفوع على التكلفة.';
+    }
     return null;
   }
 
@@ -672,7 +757,10 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
       lastDate: DateTime(now.year + 10),
       locale: const Locale('ar'),
     );
-    if (picked != null && mounted) setState(() => _dueDate = picked);
+    if (picked != null && mounted) {
+      setState(() => _dueDate = picked);
+      _draft?.changed();
+    }
   }
 
   Future<void> _submit(WeddingCost cost, PaymentSchedule? schedule) async {
@@ -696,7 +784,38 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
             dueDate: _dueDate!,
             note: note,
           );
-    if (ok && mounted) context.pop(true);
+    if (ok && mounted) {
+      await _draft?.clear();
+      if (!mounted) return;
+      AarastFormSuccess.show(
+        context,
+        message: schedule == null
+            ? 'تمت إضافة موعد الدفع.'
+            : 'تم حفظ موعد الدفع.',
+      );
+      context.pop(true);
+    }
+  }
+
+  void _configureDraft() {
+    if (_draft != null) return;
+    final scheduleId = widget.scheduleId ?? 'new';
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope:
+          'payment-schedule:${widget.weddingPlanId}:${widget.costId}:$scheduleId',
+      fields: {'amount': _amountController, 'note': _noteController},
+      readExtras: () => {'dueDate': _dueDate?.toIso8601String()},
+      restoreExtras: (data) {
+        if (!mounted) return;
+        final restored = DateTime.tryParse(data['dueDate']?.toString() ?? '');
+        if (restored != null) setState(() => _dueDate = restored);
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
   }
 }
 
@@ -722,15 +841,20 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
   final _noteController = TextEditingController();
   DateTime _paidAt = DateTime.now();
   bool _isLoadingDetails = true;
+  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _load();
+      if (mounted) _configureDraft();
+    });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _methodController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -752,12 +876,27 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
     final provider = context.watch<FinanceProvider>();
     final cost = provider.costById(widget.costId);
     final schedule = provider.scheduleById(widget.scheduleId);
+    final canSubmit =
+        cost != null &&
+        schedule != null &&
+        provider.canManageMoney &&
+        schedule.isPending &&
+        !cost.isCancelled;
 
     return MoneySubpageScaffold(
       title: 'دفع الموعد',
       subtitle: cost?.title ?? 'المبلغ ثابت من موعد الدفع.',
       showBack: true,
       onBack: () => context.pop(),
+      bottomNavigationBar: canSubmit
+          ? AarastV3FormActionBar(
+              key: const Key('pay-schedule-submit'),
+              label: 'تأكيد دفع الموعد',
+              icon: LucideIcons.check,
+              loading: provider.isSubmitting,
+              onPressed: () => _submit(schedule, cost),
+            )
+          : null,
       child: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
@@ -790,6 +929,17 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
               error: true,
             )
           else ...[
+            const AarastV3FocusPrompt(
+              question: 'هل دُفع هذا الموعد كاملًا؟',
+              supportingText:
+                  'راجع المبلغ، اختر تاريخ الدفع الحقيقي، ثم أكّد مرة واحدة.',
+              icon: LucideIcons.calendarCheck,
+            ),
+            if (_draft != null) ...[
+              const SizedBox(height: 8),
+              AarastV3DraftStatusLine(status: _draft!.status),
+            ],
+            const SizedBox(height: 14),
             MoneyRecordHero(
               icon: LucideIcons.calendarCheck,
               label: 'المبلغ المحدد في الموعد',
@@ -798,43 +948,46 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
               supportingText:
                   'موعده ${formatArabicCompactDate(schedule.dueDate)}',
               statusLabel: 'بانتظار التأكيد',
-              statusColor: AppTheme.gold,
+              statusColor: AppTheme.focus,
             ),
             const SizedBox(height: 12),
             const MoneyMessageBanner(
               message:
                   'سيُسجَّل مبلغ الموعد كاملًا. لتغيير المبلغ ارجع وعدّل الموعد قبل الدفع.',
             ),
-            const SizedBox(height: 14),
-            AarastCard(
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _pickPaidAt,
+              icon: const Icon(LucideIcons.calendarDays),
+              label: Text('تاريخ الدفع: ${formatArabicCompactDate(_paidAt)}'),
+            ),
+            const SizedBox(height: 10),
+            MoneyDisclosureCard(
+              title: 'تفاصيل الدفع',
+              subtitle: 'أضف الطريقة أو الملاحظة عند الحاجة',
+              icon: LucideIcons.walletCards,
+              initiallyExpanded:
+                  _methodController.text.isNotEmpty ||
+                  _noteController.text.isNotEmpty,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: _pickPaidAt,
-                    icon: const Icon(LucideIcons.calendarDays),
-                    label: Text(
-                      'تاريخ الدفع: ${formatArabicCompactDate(_paidAt)}',
-                    ),
-                  ),
-                  const SizedBox(height: 14),
                   TextFormField(
                     controller: _methodController,
                     maxLength: 80,
                     decoration: const InputDecoration(
-                      labelText: 'طريقة الدفع (اختياري)',
+                      labelText: 'طريقة الدفع',
                       hintText: 'نقدًا، تحويل، بطاقة…',
                       prefixIcon: Icon(LucideIcons.walletCards),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _noteController,
                     minLines: 2,
-                    maxLines: 4,
+                    maxLines: 3,
                     maxLength: 1000,
                     decoration: const InputDecoration(
-                      labelText: 'ملاحظة (اختياري)',
+                      labelText: 'ملاحظة',
                       prefixIcon: Icon(LucideIcons.fileText),
                     ),
                   ),
@@ -842,13 +995,6 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            AarastButton(
-              key: const Key('pay-schedule-submit'),
-              label: 'تأكيد دفع الموعد',
-              icon: LucideIcons.check,
-              isLoading: provider.isSubmitting,
-              onPressed: () => _submit(schedule, cost),
-            ),
           ],
         ],
       ),
@@ -864,7 +1010,10 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
       lastDate: DateTime(now.year, now.month, now.day),
       locale: const Locale('ar'),
     );
-    if (picked != null && mounted) setState(() => _paidAt = picked);
+    if (picked != null && mounted) {
+      setState(() => _paidAt = picked);
+      _draft?.changed();
+    }
   }
 
   Future<void> _submit(PaymentSchedule schedule, WeddingCost cost) async {
@@ -875,7 +1024,32 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
       method: _methodController.text.trim(),
       note: _noteController.text.trim(),
     );
-    if (payment != null && mounted) context.pop(true);
+    if (payment != null && mounted) {
+      await _draft?.clear();
+      if (!mounted) return;
+      AarastFormSuccess.show(context, message: 'تم تسجيل دفع الموعد.');
+      context.pop(true);
+    }
+  }
+
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope:
+          'pay-schedule:${widget.weddingPlanId}:${widget.costId}:${widget.scheduleId}',
+      fields: {'method': _methodController, 'note': _noteController},
+      readExtras: () => {'paidAt': _paidAt.toIso8601String()},
+      restoreExtras: (data) {
+        if (!mounted) return;
+        final restored = DateTime.tryParse(data['paidAt']?.toString() ?? '');
+        if (restored != null) setState(() => _paidAt = restored);
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
   }
 }
 
@@ -929,7 +1103,7 @@ class _ScheduleHero extends StatelessWidget {
     final color = schedule.isPaid
         ? AppTheme.success
         : schedule.isCancelled
-        ? AppTheme.muted
+        ? AppTheme.textSecondary
         : schedule.isOverdue
         ? AppTheme.danger
         : AppTheme.warning;
@@ -950,7 +1124,7 @@ class _ScheduleHero extends StatelessWidget {
           : '${formatArabicDate(schedule.dueDate)} · دُفع في ${formatArabicCompactDate(schedule.paidAt!)}',
       statusLabel: label,
       statusColor: color,
-      amountColor: schedule.isOverdue ? AppTheme.danger : AppTheme.ink,
+      amountColor: schedule.isOverdue ? AppTheme.danger : AppTheme.textPrimary,
     );
   }
 }

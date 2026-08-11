@@ -6,6 +6,7 @@ import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_form_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/costs_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,22 @@ void main() {
       expect(provider.costs, hasLength(1));
       expect(provider.canViewMoney, isTrue);
       expect(provider.canManageMoney, isFalse);
+    },
+  );
+
+  test(
+    'empty view-only money access never exposes the setup starter',
+    () async {
+      final provider = FinanceProvider(
+        _CountingFinanceApi(withCost: false),
+        permissionsApi: _FakeSharingApi(_viewer('plan-viewer')),
+      );
+
+      await provider.loadMoney('plan-viewer');
+
+      expect(provider.hasLoadedMoney, isTrue);
+      expect(provider.canManageMoney, isFalse);
+      expect(shouldShowMoneyStarter(provider), isFalse);
     },
   );
 

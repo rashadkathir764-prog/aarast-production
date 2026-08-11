@@ -38,7 +38,7 @@ Future<bool> confirmAccountDeletion(
                       textAlign: TextAlign.center,
                       style: Theme.of(sheetContext).textTheme.titleLarge
                           ?.copyWith(
-                            color: AppTheme.ink,
+                            color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w900,
                           ),
                     ),
@@ -47,7 +47,7 @@ Future<bool> confirmAccountDeletion(
                       'سيُحذف الحساب وبياناته المرتبطة نهائياً. لا يمكن التراجع بعد الحذف.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                         height: 1.45,
                       ),

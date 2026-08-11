@@ -158,6 +158,8 @@ void main() {
           ),
           findsOneWidget,
         );
+        await tester.drag(find.byType(ListView).last, const Offset(0, -260));
+        await tester.pumpAndSettle();
         final firstField = tester.widget<TextFormField>(
           find.byType(TextFormField).first,
         );

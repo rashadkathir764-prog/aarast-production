@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -17,6 +20,7 @@ import '../models/cost_draft_intent.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
+import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart';
 
 enum _PartyKind { none, provider, external }
@@ -56,6 +60,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
   DateTime? _agreementDate;
   bool _quoteCurrencyResolved = false;
   String? _quoteCurrencyWarning;
+  AarastFormDraftCoordinator? _draft;
+  bool _didConfigureDraft = false;
+  bool _restoringDraft = false;
 
   bool get _editing => widget.cost != null;
 
@@ -69,8 +76,12 @@ class _CostFormScreenState extends State<CostFormScreen> {
         intent?.budgetCategoryId ??
         cost?.budgetCategoryId;
     _titleController.text = intent?.title ?? cost?.title ?? '';
-    _totalController.text = intent?.totalAmount ?? cost?.totalAmount ?? '';
-    _initialPaymentController.text = intent?.initialPaymentAmount ?? '';
+    _totalController.text = formatMoneyInputValue(
+      intent?.totalAmount ?? cost?.totalAmount,
+    );
+    _initialPaymentController.text = formatMoneyInputValue(
+      intent?.initialPaymentAmount,
+    );
     _partyNameController.text =
         intent?.externalPartyName ?? cost?.partyName ?? '';
     _partyPhoneController.text =
@@ -85,20 +96,121 @@ class _CostFormScreenState extends State<CostFormScreen> {
         : _partyNameController.text.trim().isNotEmpty
         ? _PartyKind.external
         : _PartyKind.none;
+    for (final controller in [
+      _titleController,
+      _totalController,
+      _initialPaymentController,
+      _partyNameController,
+      _partyPhoneController,
+      _noteController,
+    ]) {
+      controller.addListener(_handleDraftFieldChanged);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FinanceProvider>().loadMoney(widget.weddingPlanId);
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didConfigureDraft || _editing) return;
+    _didConfigureDraft = true;
+    final store = context.read<AarastFormDraftStore?>();
+    if (store == null) return;
+    _draft = AarastFormDraftCoordinator(
+      store: store,
+      scope: _draftScope,
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_restoreDraft());
+  }
+
+  @override
   void dispose() {
-    _titleController.dispose();
-    _totalController.dispose();
-    _initialPaymentController.dispose();
-    _partyNameController.dispose();
-    _partyPhoneController.dispose();
-    _noteController.dispose();
+    for (final controller in [
+      _titleController,
+      _totalController,
+      _initialPaymentController,
+      _partyNameController,
+      _partyPhoneController,
+      _noteController,
+    ]) {
+      controller
+        ..removeListener(_handleDraftFieldChanged)
+        ..dispose();
+    }
+    _draft?.dispose();
     super.dispose();
+  }
+
+  String get _draftScope {
+    final quoteId = widget.intent?.quoteOfferId?.trim();
+    final suffix = quoteId?.isNotEmpty == true ? 'quote:$quoteId' : 'new';
+    return 'cost:${widget.weddingPlanId}:$suffix';
+  }
+
+  Future<void> _restoreDraft() async {
+    final data = await _draft?.restore();
+    if (!mounted || data == null) return;
+    _restoringDraft = true;
+    _titleController.text = data['title']?.toString() ?? _titleController.text;
+    _totalController.text = formatMoneyInputValue(
+      data['total'] ?? _totalController.text,
+    );
+    _initialPaymentController.text = formatMoneyInputValue(
+      data['initialPayment'] ?? _initialPaymentController.text,
+    );
+    _partyNameController.text =
+        data['partyName']?.toString() ?? _partyNameController.text;
+    _partyPhoneController.text =
+        data['partyPhone']?.toString() ?? _partyPhoneController.text;
+    _noteController.text = data['note']?.toString() ?? _noteController.text;
+    final partyKind = _PartyKind.values.firstWhere(
+      (value) => value.name == data['partyKind']?.toString(),
+      orElse: () => _PartyKind.none,
+    );
+    setState(() {
+      _categoryId = data['categoryId']?.toString() ?? _categoryId;
+      _providerId = data['providerId']?.toString() ?? _providerId;
+      _providerName = data['providerName']?.toString() ?? _providerName;
+      _quoteOfferId = data['quoteOfferId']?.toString() ?? _quoteOfferId;
+      _agreementDate = DateTime.tryParse(
+        data['agreementDate']?.toString() ?? '',
+      );
+      _partyKind = partyKind;
+    });
+    _restoringDraft = false;
+  }
+
+  void _handleDraftFieldChanged() {
+    if (mounted) setState(() {});
+    _scheduleDraft();
+  }
+
+  void _scheduleDraft() {
+    if (_restoringDraft) return;
+    _draft?.schedule({
+      'categoryId': _categoryId,
+      'title': _titleController.text,
+      'total': _totalController.text,
+      'initialPayment': _initialPaymentController.text,
+      'partyKind': _partyKind.name,
+      'providerId': _providerId,
+      'providerName': _providerName,
+      'quoteOfferId': _quoteOfferId,
+      'partyName': _partyNameController.text,
+      'partyPhone': _partyPhoneController.text,
+      'agreementDate': _agreementDate?.toIso8601String(),
+      'note': _noteController.text,
+    });
+  }
+
+  void _mutateDraft(VoidCallback change) {
+    setState(change);
+    _scheduleDraft();
   }
 
   @override
@@ -125,11 +237,30 @@ class _CostFormScreenState extends State<CostFormScreen> {
       subtitle: 'سجّل الاتفاق مرة واحدة، ثم أضف دفعاته ومواعيده من داخله.',
       showBack: true,
       onBack: () => context.pop(false),
+      bottomNavigationBar: AarastV3FormActionBar(
+        label: 'حفظ التكلفة',
+        icon: LucideIcons.check,
+        loading: provider.isSubmitting,
+        onPressed: provider.isSubmitting ? null : _save,
+      ),
       child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 28),
           children: [
+            AarastV3FocusPrompt(
+              question: _editing
+                  ? 'ما الذي تغيّر في هذا الاتفاق؟'
+                  : 'ما التكلفة التي اتفقت عليها؟',
+              supportingText:
+                  'الاسم والقيمة هما الأساس؛ اربط المزود والتفاصيل فقط عندما تحتاجها.',
+              icon: LucideIcons.receipt,
+            ),
+            const SizedBox(height: 12),
+            if (_draft != null) ...[
+              AarastV3DraftStatusLine(status: _draft!.status),
+              const SizedBox(height: 10),
+            ],
             if (widget.intent?.cameFromAcceptedQuote == true) ...[
               const MoneyMessageBanner(
                 message:
@@ -189,7 +320,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                             ),
                           ),
                       ],
-                      onChanged: (value) => setState(() => _categoryId = value),
+                      onChanged: (value) =>
+                          _mutateDraft(() => _categoryId = value),
                       validator: (value) =>
                           value == null ? 'اختر تصنيف التكلفة' : null,
                     ),
@@ -214,6 +346,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: [MoneyInputFormatter()],
+                    textInputAction: TextInputAction.next,
                     textDirection: TextDirection.ltr,
                     decoration: InputDecoration(
                       labelText:
@@ -240,6 +374,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [MoneyInputFormatter()],
+                      textInputAction: TextInputAction.done,
                       textDirection: TextDirection.ltr,
                       decoration: InputDecoration(
                         labelText:
@@ -262,11 +398,18 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            MoneySectionCard(
+            const SizedBox(height: AppTheme.space10),
+            MoneyDisclosureCard(
               title: 'الجهة المرتبطة',
-              subtitle: 'اربط التكلفة بمزود أو جهة خارجية عند الحاجة.',
+              subtitle: _partyKind == _PartyKind.none
+                  ? 'بدون مزود حالياً'
+                  : _partyKind == _PartyKind.provider
+                  ? (_providerName ?? 'مزود من أعرست')
+                  : (_partyNameController.text.trim().isEmpty
+                        ? 'مزود خارجي'
+                        : _partyNameController.text.trim()),
               icon: LucideIcons.store,
+              initiallyExpanded: _partyKind != _PartyKind.none,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -290,7 +433,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     ],
                     selected: {_partyKind},
                     onSelectionChanged: (value) {
-                      setState(() {
+                      _mutateDraft(() {
                         _partyKind = value.first;
                         if (_partyKind != _PartyKind.provider) {
                           _providerId = null;
@@ -330,6 +473,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _partyNameController,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'اسم الجهة *',
                         prefixIcon: Icon(LucideIcons.user),
@@ -344,9 +488,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     TextFormField(
                       controller: _partyPhoneController,
                       keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.done,
                       textDirection: TextDirection.ltr,
                       decoration: const InputDecoration(
-                        labelText: 'رقم الهاتف (اختياري)',
+                        labelText: 'رقم الهاتف',
                         prefixIcon: Icon(LucideIcons.phone),
                       ),
                     ),
@@ -354,16 +499,19 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            MoneySectionCard(
+            const SizedBox(height: AppTheme.space10),
+            MoneyDisclosureCard(
               title: 'تفاصيل إضافية',
-              subtitle: 'تاريخ الاتفاق وأي ملاحظة تساعدك لاحقًا.',
+              subtitle: 'تاريخ الاتفاق وملاحظة قصيرة عند الحاجة',
               icon: LucideIcons.fileText,
+              initiallyExpanded:
+                  _agreementDate != null ||
+                  _noteController.text.trim().isNotEmpty,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _DateField(
-                    label: 'تاريخ الاتفاق (اختياري)',
+                    label: 'تاريخ الاتفاق',
                     value: _agreementDate,
                     onTap: _pickAgreementDate,
                   ),
@@ -371,21 +519,38 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   TextFormField(
                     controller: _noteController,
                     maxLines: 3,
+                    textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(
-                      labelText: 'ملاحظات (اختياري)',
+                      labelText: 'ملاحظات',
                       prefixIcon: Icon(LucideIcons.stickyNote),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: provider.isSubmitting ? null : _save,
-              icon: provider.isSubmitting
-                  ? const AarastInlineSpinner(color: Colors.white)
-                  : const Icon(LucideIcons.check),
-              label: Text(provider.isSubmitting ? 'جاري الحفظ' : 'حفظ التكلفة'),
+            const SizedBox(height: AppTheme.space14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (moneyValue(_totalController.text) > 0) ...[
+                  _CostSaveSummary(
+                    total: moneyValue(_totalController.text).toDouble(),
+                    initialPayment: moneyValue(
+                      _initialPaymentController.text,
+                    ).toDouble(),
+                    currency: provider.summary.currency,
+                    budgetRemaining: provider.summary.hasBudget
+                        ? moneyValue(
+                            provider.summary.budget.remaining,
+                          ).toDouble()
+                        : null,
+                    previousTotal: moneyValue(
+                      widget.cost?.totalAmount,
+                    ).toDouble(),
+                  ),
+                  const SizedBox(height: AppTheme.space12),
+                ],
+              ],
             ),
           ],
         ),
@@ -406,7 +571,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
       builder: (context) => _ProviderPicker(marketplace: marketplace),
     );
     if (selected == null || !mounted) return;
-    setState(() {
+    _mutateDraft(() {
       _providerId = selected.id;
       _providerName = selected.businessName;
       if (widget.intent?.providerId != selected.id) _quoteOfferId = null;
@@ -425,10 +590,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
         quoteCurrency == canonicalPlanCurrency) {
       return;
     }
-    if (_totalController.text.trim() == intent?.totalAmount?.trim()) {
+    if (moneyValue(_totalController.text) == moneyValue(intent?.totalAmount)) {
       _totalController.clear();
     }
-    setState(() {
+    _mutateDraft(() {
       _quoteOfferId = null;
       _quoteCurrencyWarning =
           'عرض السعر بعملة ${currencySpokenLabelAr(quoteCurrency)}، وميزانية الخطة بعملة ${currencySpokenLabelAr(canonicalPlanCurrency)}. أدخل المبلغ بعد تحويله إلى عملة الخطة؛ ستبقى التكلفة مرتبطة بالمزود دون ربط المبلغ بعرض مختلف العملة.';
@@ -444,7 +609,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
       locale: const Locale('ar'),
     );
     if (picked == null || !mounted) return;
-    setState(() => _agreementDate = picked);
+    _mutateDraft(() => _agreementDate = picked);
   }
 
   Future<void> _save() async {
@@ -458,8 +623,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
     final total = _totalController.text.replaceAll(',', '').trim();
     final initial = _initialPaymentController.text.replaceAll(',', '').trim();
     final cost = widget.cost;
+    WeddingCost? createdCost;
     final ok = cost == null
-        ? await provider.createCost(
+        ? (createdCost = await provider.createCost(
                 planId: widget.weddingPlanId,
                 budgetCategoryId: _categoryId!,
                 title: _titleController.text.trim(),
@@ -479,7 +645,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     : null,
                 agreementDate: _agreementDate,
                 note: _noteController.text.trim(),
-              ) !=
+              )) !=
               null
         : await provider.updateCost(
             cost: cost,
@@ -499,7 +665,172 @@ class _CostFormScreenState extends State<CostFormScreen> {
             agreementDate: _agreementDate,
             note: _noteController.text.trim(),
           );
-    if (ok && mounted) context.pop(true);
+    if (ok && mounted) {
+      await _draft?.clear();
+      if (!mounted) return;
+      final router = GoRouter.of(context);
+      AarastFormSuccess.show(
+        context,
+        message: cost == null ? 'تمت إضافة التكلفة.' : 'تم حفظ التكلفة.',
+        nextLabel: createdCost == null ? null : 'فتح التكلفة',
+        onNext: createdCost == null
+            ? null
+            : () => router.push(
+                AppRouter.moneyCostDetails(
+                  widget.weddingPlanId,
+                  createdCost!.id,
+                ),
+              ),
+      );
+      context.pop(true);
+    }
+  }
+}
+
+class _CostSaveSummary extends StatelessWidget {
+  const _CostSaveSummary({
+    required this.total,
+    required this.initialPayment,
+    required this.currency,
+    this.budgetRemaining,
+    this.previousTotal = 0,
+  });
+
+  final double total;
+  final double initialPayment;
+  final String currency;
+  final double? budgetRemaining;
+  final double previousTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = initialPayment.clamp(0, total).toDouble();
+    final remaining = (total - paid).clamp(0, total).toDouble();
+    final budgetAfterSave = budgetRemaining == null
+        ? null
+        : budgetRemaining! - (total - previousTotal);
+    return Container(
+      key: const ValueKey('cost-save-summary'),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(color: AppTheme.border),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'ملخص قبل الحفظ',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _CostSaveMetric(
+                label: 'الإجمالي',
+                value: total,
+                currency: currency,
+              ),
+              _CostSaveMetric(
+                label: 'المدفوع الآن',
+                value: paid,
+                currency: currency,
+              ),
+              _CostSaveMetric(
+                label: 'غير مدفوع',
+                value: remaining,
+                currency: currency,
+              ),
+            ],
+          ),
+          if (budgetAfterSave != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              decoration: BoxDecoration(
+                color: budgetAfterSave < 0
+                    ? AppTheme.dangerSoft
+                    : AppTheme.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    budgetAfterSave < 0
+                        ? LucideIcons.alertTriangle
+                        : LucideIcons.walletCards,
+                    size: 17,
+                    color: budgetAfterSave < 0
+                        ? AppTheme.danger
+                        : AppTheme.brand,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      budgetAfterSave < 0
+                          ? 'بعد الحفظ ستتجاوز الميزانية بمقدار'
+                          : 'بعد الحفظ سيتبقى من الميزانية',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  MoneyAmountText(
+                    amount: budgetAfterSave.abs(),
+                    currency: currency,
+                    color: budgetAfterSave < 0
+                        ? AppTheme.danger
+                        : AppTheme.textPrimary,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CostSaveMetric extends StatelessWidget {
+  const _CostSaveMetric({
+    required this.label,
+    required this.value,
+    required this.currency,
+  });
+
+  final String label;
+  final double value;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 2),
+          MoneyAmountText(
+            amount: value,
+            currency: currency,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -728,7 +1059,7 @@ class _ProviderPickerState extends State<_ProviderPicker> {
                               children: [
                                 const Icon(
                                   LucideIcons.store,
-                                  color: AppTheme.burgundy,
+                                  color: AppTheme.brand,
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -753,7 +1084,9 @@ class _ProviderPickerState extends State<_ProviderPicker> {
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall
-                                              ?.copyWith(color: AppTheme.muted),
+                                              ?.copyWith(
+                                                color: AppTheme.textSecondary,
+                                              ),
                                         ),
                                     ],
                                   ),

@@ -11,11 +11,10 @@ void main() {
     await _openForm(tester, onResult: (value) => result = value);
 
     await tester.enterText(_fieldWithLabel('اسم الضيف'), 'سالم أحمد');
-    await tester.enterText(
-      _fieldWithLabel('رقم الجوال (اختياري)'),
-      '777654321',
-    );
-    await tester.enterText(_fieldWithLabel('ملاحظات (اختياري)'), 'من العائلة');
+    await tester.enterText(_fieldWithLabel('رقم الجوال'), '777654321');
+    await tester.tap(find.text('تفاصيل إضافية'));
+    await tester.pumpAndSettle();
+    await tester.enterText(_fieldWithLabel('ملاحظة قصيرة'), 'من العائلة');
     await _submit(tester, 'إضافة ضيف');
 
     expect(result, isNotNull);
@@ -37,7 +36,7 @@ void main() {
     expect(result, isNull);
 
     await tester.enterText(_fieldWithLabel('اسم الضيف'), 'ضيف');
-    await tester.enterText(_fieldWithLabel('رقم الجوال (اختياري)'), '123');
+    await tester.enterText(_fieldWithLabel('رقم الجوال'), '123');
     await _submit(tester, 'إضافة ضيف');
 
     expect(find.text(PhoneNumberUtils.invalidMessage), findsOneWidget);
@@ -54,10 +53,7 @@ void main() {
     );
 
     await tester.enterText(_fieldWithLabel('اسم الضيف'), 'ضيف آخر');
-    await tester.enterText(
-      _fieldWithLabel('رقم الجوال (اختياري)'),
-      '777123456',
-    );
+    await tester.enterText(_fieldWithLabel('رقم الجوال'), '777123456');
     await _submit(tester, 'إضافة ضيف');
 
     expect(find.text('هذا الضيف موجود مسبقًا'), findsWidgets);
@@ -76,10 +72,7 @@ void main() {
     );
 
     await tester.enterText(_fieldWithLabel('اسم الضيف'), 'ضيف آخر');
-    await tester.enterText(
-      _fieldWithLabel('رقم الجوال (اختياري)'),
-      '777123456',
-    );
+    await tester.enterText(_fieldWithLabel('رقم الجوال'), '777123456');
     await _submit(tester, 'إضافة ضيف');
 
     expect(result, isNotNull);

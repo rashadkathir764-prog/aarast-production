@@ -1,81 +1,50 @@
 import 'package:flutter/material.dart';
 
+import '../experience_v3/aarast_v3_foundations.dart';
 import 'aarast_design_tokens.dart';
+import 'aarast_motion.dart';
 
 class AppTheme {
   const AppTheme._();
 
-  static const textFontFamily = 'Tajawal';
+  static const textFontFamily = AarastV3Type.bodyFamily;
 
   /// وجه أعرست الحديث للعناوين — IBM Plex Sans Arabic.
   /// خط Amiri بقي مسجلًا في pubspec لهوية الشعار فقط، لا للعناوين.
-  static const displayFontFamily = 'IBMPlexSansArabic';
+  static const displayFontFamily = AarastV3Type.displayFamily;
 
-  // Expose colors directly for easy access
-  static const ivory = AarastDesignTokens.ivory;
-  static const pearl = AarastDesignTokens.pearl;
-  static const surface = AarastDesignTokens.surface;
-  static const surfaceElevated = AarastDesignTokens.surfaceElevated;
+  // Modern semantic roles for all new and migrated UI.
+  static const canvas = AarastSemanticTokens.canvas;
+  static const surfaceRaised = AarastSemanticTokens.surfaceRaised;
+  static const surfaceMuted = AarastSemanticTokens.surfaceMuted;
+  static const textPrimary = AarastSemanticTokens.textPrimary;
+  static const textSecondary = AarastSemanticTokens.textSecondary;
+  static const textDisabled = AarastSemanticTokens.textDisabled;
+  static const border = AarastSemanticTokens.border;
+  static const borderStrong = AarastSemanticTokens.borderStrong;
+  static const brand = AarastSemanticTokens.brand;
+  static const brandMuted = AarastSemanticTokens.brandMuted;
+  static const brandDeep = AarastSemanticTokens.brandDeep;
+  static const onBrand = AarastSemanticTokens.onBrand;
+  static const onBrandMuted = AarastSemanticTokens.onBrandMuted;
+  static const brandAccent = AarastSemanticTokens.brandAccent;
+  static const brandAccentDecorative =
+      AarastSemanticTokens.brandAccentDecorative;
+  static const brandAccentMuted = AarastSemanticTokens.brandAccentMuted;
+  static const focus = AarastSemanticTokens.focus;
+  static const inkSurface = AarastSemanticTokens.inkSurface;
+  static const inkSurfaceRaised = AarastSemanticTokens.inkSurfaceRaised;
+  static const accent = AarastSemanticTokens.accent;
+  static const accentMuted = AarastSemanticTokens.accentMuted;
 
-  static const burgundy = AarastDesignTokens.burgundy;
-  static const burgundyDark = AarastDesignTokens.burgundyDark;
-  static const burgundySoft = AarastDesignTokens.burgundySoft;
-  static const burgundyLight = AarastDesignTokens.burgundyLight;
-
-  static const gold = AarastDesignTokens.gold;
-  static const goldSoft = AarastDesignTokens.goldSoft;
-  static const goldDeep = AarastDesignTokens.goldDeep;
-  static const goldLight = AarastDesignTokens.goldLight;
-  static const goldGlow = AarastDesignTokens.goldGlow;
-
-  static const ink = AarastDesignTokens.ink;
-  static const title = AarastDesignTokens.title;
-  static const muted = AarastDesignTokens.muted;
-  static const border = AarastDesignTokens.border;
-
-  static const success = AarastDesignTokens.success;
-  static const successSoft = AarastDesignTokens.successSoft;
-  static const warning = AarastDesignTokens.warning;
-  static const warningSoft = AarastDesignTokens.warningSoft;
-  static const danger = AarastDesignTokens.danger;
-  static const dangerSoft = AarastDesignTokens.dangerSoft;
-  static const info = AarastDesignTokens.info;
-  static const infoSoft = AarastDesignTokens.infoSoft;
-  static const disabled = AarastDesignTokens.disabled;
-  static const empty = AarastDesignTokens.empty;
-
-  static const contributorCanvas = AarastDesignTokens.contributorCanvas;
-  static const contributorSurface = AarastDesignTokens.contributorSurface;
-  static const contributorSurfaceAlt = AarastDesignTokens.contributorSurfaceAlt;
-  static const contributorBorder = AarastDesignTokens.contributorBorder;
-  static const contributorInk = AarastDesignTokens.contributorInk;
-  static const contributorMuted = AarastDesignTokens.contributorMuted;
-  static const contributorOxblood = AarastDesignTokens.contributorOxblood;
-  static const contributorOxbloodDark =
-      AarastDesignTokens.contributorOxbloodDark;
-  static const contributorWine = AarastDesignTokens.contributorWine;
-  static const contributorWineSoft = AarastDesignTokens.contributorWineSoft;
-  static const contributorBronze = AarastDesignTokens.contributorBronze;
-  static const contributorMoneyTint = AarastDesignTokens.contributorMoneyTint;
-  static const contributorGuestsTint = AarastDesignTokens.contributorGuestsTint;
-  static const contributorProvidersTint =
-      AarastDesignTokens.contributorProvidersTint;
-
-  // Semantic Aliases
-  static const background = ivory;
-  static const cardWhite = surface;
-  static const textPrimary = ink;
-  static const textSecondary = muted;
-
-  // Backward Compatibility Aliases for other screens
-  static const deepBurgundy = burgundy;
-  static const warmGold = gold;
-  static const mediumGray = muted;
-  static const burgundyDeep = burgundyDark;
-  static const burgundyBright = burgundy;
-  static const burgundy2 = burgundyDark;
-  static const gold2 = goldSoft;
-  static const successBg = successSoft;
+  static const success = AarastSemanticTokens.success;
+  static const successSoft = AarastSemanticTokens.successMuted;
+  static const warning = AarastSemanticTokens.warning;
+  static const warningSoft = AarastSemanticTokens.warningMuted;
+  static const danger = AarastSemanticTokens.danger;
+  static const dangerSoft = AarastSemanticTokens.dangerMuted;
+  static const info = AarastSemanticTokens.info;
+  static const infoSoft = AarastSemanticTokens.infoMuted;
 
   // Common sizing
   static const double radiusSm = AarastDesignTokens.radiusSm;
@@ -85,6 +54,9 @@ class AppTheme {
   static const double radius2xl = AarastDesignTokens.radius2xl;
   static const double radiusPill = AarastDesignTokens.radiusPill;
   static const double radiusCard = 24;
+  static const double radiusControl = AarastDesignTokens.radiusControl;
+  static const double radiusSurface = AarastDesignTokens.radiusSurface;
+  static const double radiusOverlay = AarastDesignTokens.radiusOverlay;
 
   static const double gapXs = 6;
   static const double gapSm = 10;
@@ -106,6 +78,8 @@ class AppTheme {
   static const double space24 = AarastDesignTokens.space24;
   static const double space28 = AarastDesignTokens.space28;
   static const double space32 = AarastDesignTokens.space32;
+  static const double space40 = AarastDesignTokens.space40;
+  static const double space48 = AarastDesignTokens.space48;
 
   // Icon sizes + metrics
   static const double iconSm = AarastDesignTokens.iconSm;
@@ -127,58 +101,26 @@ class AppTheme {
   static const Curve motionCurve = AarastDesignTokens.motionCurve;
   static const Curve motionExitCurve = AarastDesignTokens.motionExitCurve;
 
-  static const LinearGradient pageGradient = AarastDesignTokens.pageGradient;
-  static const LinearGradient heroGradient =
-      AarastDesignTokens.burgundyGradient;
-  static const LinearGradient goldGradient = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [goldSoft, gold, warning],
-  );
-
-  static List<BoxShadow> cardShadow() {
-    return AarastDesignTokens.cardShadow();
+  static List<BoxShadow> cardShadow({double opacity = 0.05}) {
+    return AarastDesignTokens.cardShadow(opacity: opacity);
   }
 
-  static List<BoxShadow> softShadow({double opacity = 0.08}) {
-    return [
-      BoxShadow(
-        color: ink.withAlpha((opacity * 255).round()),
-        blurRadius: 22,
-        offset: const Offset(0, 10),
-      ),
-    ];
-  }
+  static List<BoxShadow> softShadow({double opacity = 0.08}) => const [];
 
-  static BoxDecoration premiumCardDecoration({
-    Color color = surface,
-    double radius = radiusCard,
+  static BoxDecoration surfaceDecoration({
+    Color color = surfaceRaised,
+    double radius = radiusSurface,
     Border? border,
   }) {
     return BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(radius),
-      border: border ?? Border.all(color: AppTheme.border.withAlpha(210)),
-      boxShadow: cardShadow(),
+      border: border ?? Border.all(color: AarastSemanticTokens.border),
     );
   }
 
   static BoxDecoration screenDecoration() {
-    return const BoxDecoration(color: ivory);
-  }
-
-  static BoxDecoration heroDecoration() {
-    return BoxDecoration(
-      gradient: heroGradient,
-      borderRadius: BorderRadius.circular(radiusXl),
-      boxShadow: [
-        BoxShadow(
-          color: burgundyDark.withValues(alpha: 0.1),
-          blurRadius: 28,
-          offset: const Offset(0, 14),
-        ),
-      ],
-    );
+    return const BoxDecoration(color: canvas);
   }
 
   static ThemeData light() {
@@ -186,64 +128,71 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: textFontFamily,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: burgundy,
-        primary: burgundy,
+        seedColor: brand,
+        primary: brand,
         onPrimary: Colors.white,
-        secondary: gold,
-        onSecondary: ink,
-        surface: surface,
-        onSurface: ink,
-        outline: border,
+        secondary: accent,
+        onSecondary: Colors.white,
+        surface: surfaceRaised,
+        onSurface: textPrimary,
+        outline: AarastSemanticTokens.border,
         error: danger,
         onError: Colors.white,
       ),
-      scaffoldBackgroundColor: ivory,
-      canvasColor: ivory,
+      scaffoldBackgroundColor: canvas,
+      canvasColor: canvas,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: <TargetPlatform, PageTransitionsBuilder>{
+          TargetPlatform.android: AarastPageTransitionsBuilder(),
+          TargetPlatform.iOS: AarastPageTransitionsBuilder(),
+          TargetPlatform.macOS: AarastPageTransitionsBuilder(),
+          TargetPlatform.windows: AarastPageTransitionsBuilder(),
+          TargetPlatform.linux: AarastPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: AarastPageTransitionsBuilder(),
+        },
+      ),
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
     );
 
     final textTheme = _buildTextTheme(
       baseTheme.textTheme,
-    ).apply(bodyColor: ink, displayColor: ink);
+    ).apply(bodyColor: textPrimary, displayColor: textPrimary);
 
     return baseTheme.copyWith(
       textTheme: textTheme,
-      primaryColor: burgundy,
-      scaffoldBackgroundColor: ivory,
-      canvasColor: ivory,
+      primaryColor: brand,
+      scaffoldBackgroundColor: canvas,
+      canvasColor: canvas,
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
-        foregroundColor: ink,
+        foregroundColor: textPrimary,
         centerTitle: false,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w800,
-          color: ink,
+          color: textPrimary,
         ),
-        iconTheme: const IconThemeData(color: ink),
+        iconTheme: const IconThemeData(color: textPrimary),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          foregroundColor: burgundy,
-          backgroundColor: surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
-            side: const BorderSide(color: border),
-          ),
+          foregroundColor: textPrimary,
+          backgroundColor: surfaceMuted,
+          shape: const CircleBorder(),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style:
             ElevatedButton.styleFrom(
-              backgroundColor: burgundy,
-              foregroundColor: Colors.white,
+              backgroundColor: brand,
+              foregroundColor: onBrand,
               elevation: 0,
               minimumSize: const Size.fromHeight(54),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radiusLg),
+                borderRadius: BorderRadius.circular(radiusControl),
               ),
               textStyle: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w800,
@@ -252,7 +201,7 @@ class AppTheme {
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
-                  return burgundyDark;
+                  return brandDeep;
                 }
                 return null;
               }),
@@ -261,12 +210,12 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style:
             FilledButton.styleFrom(
-              backgroundColor: burgundy,
-              foregroundColor: Colors.white,
+              backgroundColor: brand,
+              foregroundColor: onBrand,
               minimumSize: const Size.fromHeight(54),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radiusLg),
+                borderRadius: BorderRadius.circular(radiusControl),
               ),
               textStyle: textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w800,
@@ -275,7 +224,7 @@ class AppTheme {
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
-                  return burgundyDark;
+                  return brandDeep;
                 }
                 return null;
               }),
@@ -283,12 +232,15 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: burgundy,
-          backgroundColor: surface,
+          foregroundColor: textPrimary,
+          backgroundColor: surfaceRaised,
           minimumSize: const Size.fromHeight(54),
-          side: const BorderSide(color: border, width: 1.2),
+          side: const BorderSide(
+            color: AarastSemanticTokens.border,
+            width: 1.2,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusLg),
+            borderRadius: BorderRadius.circular(radiusControl),
           ),
           textStyle: textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
@@ -298,7 +250,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: burgundy,
+          foregroundColor: brand,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
@@ -308,99 +260,112 @@ class AppTheme {
       // القوائم المنبثقة: سطح أبيض نظيف بحد رفيع — يلغي التلوين الوردي
       // القادم من M3 surface tint (fromSeed) الذي كان يشوّه فلتر المدن.
       popupMenuTheme: PopupMenuThemeData(
-        color: surface,
+        color: surfaceRaised,
         surfaceTintColor: Colors.transparent,
         elevation: 6,
-        shadowColor: const Color(0x1F2D1A1E),
+        shadowColor: const Color(0x1F171922),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          side: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(radiusSurface),
+          side: const BorderSide(color: AarastSemanticTokens.border),
         ),
         textStyle: textTheme.bodyMedium?.copyWith(
-          color: ink,
+          color: textPrimary,
           fontWeight: FontWeight.w700,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceElevated,
+        isDense: true,
+        // A quiet filled field is easier to discover than a lone underline on
+        // the white canvas, while the focused bottom line keeps forms light.
+        fillColor: surfaceMuted,
         alignLabelWithHint: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 13,
+          horizontal: 14,
+          vertical: 10,
         ),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: ink),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: muted),
-        helperStyle: textTheme.bodySmall?.copyWith(color: muted),
-        prefixIconColor: gold,
-        suffixIconColor: muted,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: const BorderSide(color: border),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 42,
+          minHeight: 42,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: const BorderSide(color: border),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 42,
+          minHeight: 42,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: const BorderSide(color: burgundy, width: 1.4),
+        labelStyle: textTheme.bodyMedium?.copyWith(color: textPrimary),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: textSecondary),
+        helperStyle: textTheme.bodySmall?.copyWith(color: textSecondary),
+        prefixIconColor: brand,
+        suffixIconColor: textSecondary,
+        border: UnderlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusControl),
+          borderSide: const BorderSide(color: AarastSemanticTokens.border),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
+        enabledBorder: UnderlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusControl),
+          borderSide: const BorderSide(color: AarastSemanticTokens.border),
+        ),
+        focusedBorder: UnderlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusControl),
+          borderSide: const BorderSide(color: brand, width: 2),
+        ),
+        errorBorder: UnderlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusControl),
           borderSide: const BorderSide(color: danger),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          borderSide: const BorderSide(color: danger, width: 1.4),
+        focusedErrorBorder: UnderlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusControl),
+          borderSide: const BorderSide(color: danger, width: 2),
         ),
       ),
       cardTheme: CardThemeData(
-        color: surface,
+        color: surfaceRaised,
         elevation: 0,
-        shadowColor: ink.withValues(alpha: 0.1),
+        shadowColor: textPrimary.withValues(alpha: 0.08),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusCard),
-          side: BorderSide(color: border.withAlpha(210)),
+          borderRadius: BorderRadius.circular(radiusSurface),
+          side: const BorderSide(color: AarastSemanticTokens.border),
         ),
         margin: EdgeInsets.zero,
       ),
       chipTheme: baseTheme.chipTheme.copyWith(
-        backgroundColor: surface,
-        selectedColor: burgundy,
-        disabledColor: surface,
-        side: const BorderSide(color: border),
+        backgroundColor: surfaceRaised,
+        selectedColor: brand,
+        disabledColor: surfaceMuted,
+        side: const BorderSide(color: AarastSemanticTokens.border),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusPill),
         ),
         labelStyle: textTheme.labelMedium?.copyWith(
-          color: muted,
+          color: textSecondary,
           fontWeight: FontWeight.w600,
         ),
         secondaryLabelStyle: textTheme.labelMedium?.copyWith(
-          color: Colors.white,
+          color: onBrand,
           fontWeight: FontWeight.w800,
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: ivory,
+        backgroundColor: surfaceRaised,
         surfaceTintColor: Colors.transparent,
-        modalBackgroundColor: ivory,
+        modalBackgroundColor: surfaceRaised,
         modalBarrierColor: Color(0x66000000),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(radiusOverlay),
+          ),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: ivory,
+        backgroundColor: surfaceRaised,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusCard),
+          borderRadius: BorderRadius.circular(radiusOverlay),
         ),
       ),
       datePickerTheme: const DatePickerThemeData(
-        backgroundColor: surface,
+        backgroundColor: surfaceRaised,
         surfaceTintColor: Colors.transparent,
         elevation: 6,
         shadowColor: Color(0x1A2D1A1E),
@@ -408,10 +373,10 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(radiusXl)),
           side: BorderSide(color: border),
         ),
-        headerBackgroundColor: surface,
-        headerForegroundColor: ink,
+        headerBackgroundColor: surfaceRaised,
+        headerForegroundColor: textPrimary,
         dividerColor: border,
-        rangePickerBackgroundColor: surface,
+        rangePickerBackgroundColor: surfaceRaised,
         rangePickerSurfaceTintColor: Colors.transparent,
         rangePickerElevation: 6,
         rangePickerShadowColor: Color(0x1A2D1A1E),
@@ -419,51 +384,49 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(radiusXl)),
           side: BorderSide(color: border),
         ),
-        rangePickerHeaderBackgroundColor: surface,
-        rangePickerHeaderForegroundColor: ink,
+        rangePickerHeaderBackgroundColor: surfaceRaised,
+        rangePickerHeaderForegroundColor: textPrimary,
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: burgundy,
-        foregroundColor: Colors.white,
+        backgroundColor: brand,
+        foregroundColor: onBrand,
         shape: CircleBorder(),
-        elevation: 8,
+        elevation: 0,
       ),
       listTileTheme: ListTileThemeData(
-        iconColor: burgundy,
-        textColor: ink,
+        iconColor: brand,
+        textColor: textPrimary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-        ),
+        shape: const RoundedRectangleBorder(),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return burgundy;
-          return surface;
+          if (states.contains(WidgetState.selected)) return brand;
+          return surfaceRaised;
         }),
         checkColor: WidgetStateProperty.all(Colors.white),
-        side: const BorderSide(color: border, width: 1.2),
+        side: const BorderSide(color: AarastSemanticTokens.border, width: 1.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return surface;
-          return surface;
+          if (states.contains(WidgetState.selected)) return surfaceRaised;
+          return surfaceRaised;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return burgundy;
-          return disabled;
+          if (states.contains(WidgetState.selected)) return brand;
+          return textDisabled;
         }),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: burgundy,
-        circularTrackColor: border,
-        linearTrackColor: border,
+        color: brand,
+        circularTrackColor: AarastSemanticTokens.border,
+        linearTrackColor: AarastSemanticTokens.border,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: ink,
+        backgroundColor: inkSurface,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w700,
@@ -473,14 +436,14 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: border,
+        color: AarastSemanticTokens.border,
         thickness: 1,
         space: 1,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: surfaceElevated.withAlpha(240),
-        selectedItemColor: burgundy,
-        unselectedItemColor: disabled,
+        backgroundColor: surfaceRaised.withAlpha(246),
+        selectedItemColor: brand,
+        unselectedItemColor: textDisabled,
         selectedLabelStyle: textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w800,
         ),
@@ -491,20 +454,20 @@ class AppTheme {
         elevation: 0,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surfaceElevated.withAlpha(240),
+        backgroundColor: surfaceRaised.withAlpha(246),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: empty,
+        indicatorColor: brandMuted,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return textTheme.labelSmall?.copyWith(
-            color: isSelected ? burgundy : muted,
+            color: isSelected ? brand : textSecondary,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
             letterSpacing: 0,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
-          return IconThemeData(color: isSelected ? burgundy : disabled);
+          return IconThemeData(color: isSelected ? brand : textDisabled);
         }),
       ),
     );

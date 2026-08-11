@@ -1,22 +1,29 @@
 # Aarast Dokploy Deployment Runbook
 
+Snapshot date: 2026-08-11
+
 This folder prepares Aarast for a Dokploy Docker Compose deployment. It does not deploy anything by itself.
 
-## Current Audit Note - 2026-06-14
+## Current Source Contract
 
-Current committed Compose:
+Current source Compose:
 
 - `backend`: host `8093` -> container `3000`, domain `aarast-api.shadowgardn.com`.
-- `admin-web`: host `8094` -> container `80`, documented/deployed at `aarast-admin.shadowgardn.com`.
-- No separate Flutter web/mobile service exists in this Compose file.
+- `admin-web`: host `8094` -> container `80`, intended for `aarast-admin.shadowgardn.com`.
+- `public-site`: host `8095` -> container `80`, intended for
+  `aarast.shadowgardn.com` privacy, support, invite, and association routes.
+- No Flutter web service exists in this Compose file.
 
-Target split under review:
+Current source split:
 
 - API: `aarast-api.shadowgardn.com` on host port `8093`.
 - Admin: `aarast-admin.shadowgardn.com` on host port `8094`.
-- Flutter Web/Mobile Web: `aarast.shadowgardn.com` on host port `8095`.
+- Public static site: `aarast.shadowgardn.com` on host port `8095`.
 
-Do not claim the full target split is live until Dokploy/NPM are updated and verified. Earlier audits saw `aarast-admin.shadowgardn.com` return HTTP 502 before the admin service was moved to the target host port.
+The static site is not a Flutter web deployment. A future Flutter web service
+requires a separate routing, caching, CORS, artifact, and release decision.
+Do not claim any part of this split is live until the exact immutable images,
+Dokploy routes, TLS, and post-deploy checks are verified.
 
 ## Services
 
@@ -27,6 +34,9 @@ Do not claim the full target split is live until Dokploy/NPM are updated and ver
   committed Prisma migrations, confirms their status, and exits before Backend.
 - `backend`: NestJS API deployed from a prebuilt content-addressed image, exposed on host port `8093` and container port `3000`.
 - `admin-web`: React/Vite admin dashboard deployed from a prebuilt content-addressed image, exposed on host port `8094` and container port `80`.
+- `public-site`: allowlisted static privacy, support, invite, and mobile-link
+  surface deployed from a prebuilt content-addressed image, exposed on host
+  port `8095` and container port `80`.
 
 PostgreSQL must stay private. Do not create a public domain or host-port binding for the database.
 
@@ -38,6 +48,7 @@ Required:
 
 - `AARAST_BACKEND_IMAGE_ID`
 - `AARAST_ADMIN_WEB_IMAGE_ID`
+- `AARAST_PUBLIC_SITE_IMAGE_ID`
 - `POSTGRES_DB`
 - `POSTGRES_OWNER_USER`
 - `POSTGRES_OWNER_PASSWORD`
@@ -151,10 +162,11 @@ not create a new owner inside an initialized PostgreSQL volume. The
 `postgres-roles` operation safely transfers current application objects to the
 migrator and reconciles grants without deleting data.
 
-Set CORS and API URLs for the public domains:
+Trust only the deployed browser client that currently calls the API, and point
+that client at the public API domain:
 
 ```env
-CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
+CORS_ORIGINS=https://aarast-admin.shadowgardn.com
 VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
 ```
 
@@ -166,7 +178,7 @@ contains the development loopback origin or omits the current MFA login route.
 ## Immutable Application Image Gate
 
 The production Compose file never builds application images and never pulls a
-mutable tag. Build both candidates from the final release commit on the
+mutable tag. Build all three candidates from the final release commit on the
 Dokploy host:
 
 ```sh
@@ -174,31 +186,39 @@ export AARAST_GIT_REVISION="$(git rev-parse HEAD)"
 test "$(printf '%s' "$AARAST_GIT_REVISION" | wc -c)" -eq 40
 docker compose \
   -f deploy/dokploy/docker-compose.build.yml \
-  build --no-cache backend admin-web
+  build --no-cache backend admin-web public-site
 ```
 
-Resolve the resulting content-addressed IDs and verify both revision labels:
+Resolve the resulting content-addressed IDs and verify all three revision
+labels:
 
 ```sh
 BACKEND_TAG="aarast-backend:candidate-${AARAST_GIT_REVISION}"
 ADMIN_TAG="aarast-admin-web:candidate-${AARAST_GIT_REVISION}"
+PUBLIC_SITE_TAG="aarast-public-site:candidate-${AARAST_GIT_REVISION}"
 AARAST_BACKEND_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$BACKEND_TAG")"
 AARAST_ADMIN_WEB_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$ADMIN_TAG")"
+AARAST_PUBLIC_SITE_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$PUBLIC_SITE_TAG")"
 test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$AARAST_BACKEND_IMAGE_ID")" = "$AARAST_GIT_REVISION"
 test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$AARAST_ADMIN_WEB_IMAGE_ID")" = "$AARAST_GIT_REVISION"
+test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$AARAST_PUBLIC_SITE_IMAGE_ID")" = "$AARAST_GIT_REVISION"
 ```
 
-Put only those two `sha256:...` IDs in Dokploy's private environment. Preserve
-both images with `docker save`, record the archive SHA-256, and copy the
+Put only those three `sha256:...` IDs in Dokploy's private environment. Preserve
+all three images with `docker save`, record the archive SHA-256, and copy the
 encrypted archive off-host before deployment. The runtime services use
 `pull_policy: never`; a missing local image is a hard failure, not permission
 to fall back to a tag. A registry digest may replace this single-host flow only
 after a project-owned registry and explicit pre-pull step are approved.
 
-If only the admin dashboard calls the API, `aarast-admin.shadowgardn.com` is enough. If Flutter web/mobile also runs on `aarast.shadowgardn.com`, include both browser origins:
+The current public static site does not call the API, so its domain must not be
+trusted by CORS merely because it serves privacy, support, invite, and
+association routes. Add a new origin only when an approved browser client
+actually calls the API from that exact origin. Flutter mobile CORS is not
+determined by this browser-origin list.
 
 ```env
-CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
+CORS_ORIGINS=https://aarast-admin.shadowgardn.com
 ```
 
 ## Dokploy UI Steps
@@ -222,23 +242,34 @@ CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
    - Internal port: `80`
    - Host port: `8094`
    - Domain: `aarast-admin.shadowgardn.com`
-10. Enable SSL for both domains.
-11. Deploy only after the backup restore rehearsal passes with the exact
+10. Create a domain for the public static service:
+    - Service: `public-site`
+    - Internal port: `80`
+    - Host port: `8095`
+    - Domain: `aarast.shadowgardn.com`
+11. Enable SSL for all three domains.
+12. Deploy only after the backup restore rehearsal passes with the exact
     `AARAST_BACKEND_IMAGE_ID`.
-12. Open logs for `postgres`, `backend`, and `admin-web`.
-13. Test API liveness and readiness at `https://aarast-api.shadowgardn.com/health`
+13. Open logs for `postgres`, `backend`, `admin-web`, and `public-site`.
+14. Test API liveness and readiness at `https://aarast-api.shadowgardn.com/health`
     and `https://aarast-api.shadowgardn.com/ready`.
-14. Open `https://aarast-admin.shadowgardn.com`, confirm the browser bundle calls
+15. Open `https://aarast-admin.shadowgardn.com`, confirm the browser bundle calls
     the public API origin, and complete password plus OTP admin login.
+16. Verify the public site's `/healthz`, `/privacy`, `/support`, one valid-shape
+    invite route, Android well-known association, Apple fail-closed `404`, and a
+    random-path `404`.
 
-If the target split is used, open `https://aarast-admin.shadowgardn.com` for admin and reserve `https://aarast.shadowgardn.com` for Flutter web/mobile.
+Use `https://aarast-admin.shadowgardn.com` for Admin and
+`https://aarast.shadowgardn.com` for the public static surface. Do not route
+Flutter Web to `8095`; it is not defined by the current Compose files.
 
 ## Domain And DNS Plan
 
 Create DNS records before deployment:
 
 - `aarast-api.shadowgardn.com` points to the Dokploy server.
-- `aarast.shadowgardn.com` points to the Dokploy server.
+- `aarast.shadowgardn.com` points to the Dokploy server and routes to
+  `public-site` on `8095`.
 - `aarast-admin.shadowgardn.com` points to the Dokploy server.
 
 All deployed browser domains must have SSL enabled in Dokploy. Keep `CORS_ORIGINS` limited to the domains that actually call the API.
@@ -449,6 +480,18 @@ https://aarast-admin.shadowgardn.com
 
 Expected result: admin dashboard loads and sends API requests to `https://aarast-api.shadowgardn.com`.
 
+Then verify the public static surface:
+
+```powershell
+Invoke-WebRequest https://aarast.shadowgardn.com/healthz
+Invoke-WebRequest https://aarast.shadowgardn.com/privacy
+Invoke-WebRequest https://aarast.shadowgardn.com/support
+```
+
+Expected source contract: those three return `200`; an unlisted path and
+`/.well-known/apple-app-site-association` return `404`. This must be observed
+after deployment and is not implied by a successful local source test.
+
 ## Backups
 
 Enable backups for the PostgreSQL volume `aarast_postgres_data` in Dokploy or
@@ -484,6 +527,9 @@ image.
    post-deploy route smokes to pass before restoring public traffic.
 6. Roll back `admin-web` independently only when its artifact changed, then
    verify it loads and calls the intended public API origin.
+7. Roll back `public-site` independently only when its artifact changed, then
+   verify its health, privacy, support, invite, association, and fail-closed
+   routes.
 
 ## Local Review Commands
 
@@ -491,6 +537,6 @@ These commands are safe for reviewing this deployment preparation locally:
 
 ```powershell
 cd D:\projects\aarast
-git diff -- deploy/dokploy admin-web/Dockerfile admin-web/nginx.conf .gitignore
+git diff -- deploy/dokploy deploy/public-site admin-web/Dockerfile admin-web/nginx.conf .gitignore
 git status --short --untracked-files=all
 ```

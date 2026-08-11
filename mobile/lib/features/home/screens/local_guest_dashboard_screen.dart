@@ -3,17 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
-import '../../wedding_plans/widgets/premium/premium_dashboard_view.dart';
+import '../../wedding_plans/models/wedding_plan_stage.dart';
+import '../../wedding_plans/providers/dashboard_summary_provider.dart';
+import '../../wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import '../../wedding_plans/widgets/quick_add_actions.dart';
-import '../../wedding_plans/widgets/royal_home_chrome.dart';
+import '../../shell/widgets/aarast_plan_chrome.dart';
+import '../../shell/widgets/plan_shell_chrome.dart';
 import '../data/dashboard_summary_sources.dart';
 
 class LocalGuestDashboardScreen extends StatefulWidget {
@@ -38,6 +43,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
   void initState() {
     super.initState();
     _summary = widget.summary;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _publishSummary());
   }
 
   @override
@@ -45,6 +51,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.summary != widget.summary) {
       _summary = widget.summary;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _publishSummary());
     }
   }
 
@@ -55,26 +62,33 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     final planId = dashboardSummary.planId;
     final personaCopy = personaCopyForGuest(summary.plan.persona);
 
-    return AarastScreenFrame(
-      maxWidth: 520,
-      safeAreaBottom: false,
-      extendBody: true,
-      floatingActionButton: RoyalSmartFloatingActionButton(
-        onPressed: () => _showQuickAdd(context, planId),
-      ),
-      bottomNavigationBar: RoyalDashboardBottomNav(
-        activeIndex: 0,
-        onHome: () {},
-        onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
-        onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
-        onGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
-        onProviders: () => context.push(AppRouter.planProviders(planId)),
-      ),
-      child: PremiumDashboardView(
+    return PlanShellChrome(
+      activeIndex: 0,
+      contextLabel: dashboardSummary.title,
+      stageLabel: resolveWeddingPlanStage(
+        dashboardSummary.weddingDate,
+      ).compactLabel,
+      showQuickFab: true,
+      onQuickAdd: () => _showQuickAdd(context, planId),
+      onTabSelected: (index) {
+        switch (index) {
+          case 0:
+            return;
+          case 1:
+            _openLocalBrowse(context, planId, area: 'المال');
+          case 2:
+            _openLocalBrowse(context, planId, area: 'المهام');
+          case 3:
+            _openLocalBrowse(context, planId, area: 'الضيوف');
+          case 4:
+            context.push(AppRouter.planProviders(planId));
+        }
+      },
+      body: AarastDashboardView(
         summary: dashboardSummary,
         userName: personaCopy.label,
         personaHeadline: personaCopy.dashboardHeadline,
-        bottomPadding: 158,
+        bottomPadding: 132,
         notice: _LocalSyncNotice(
           needsSync: summary.plan.needsSync,
           onSync: () => _requireAccountForSync(context),
@@ -92,6 +106,10 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
         onOpenSharing: () => _requireAccountForSync(context),
+        onOpenWeddingDay: () => context.push(
+          AppRouter.weddingDayMode(planId),
+          extra: dashboardSummary,
+        ),
         onOpenImportantItem: (item) =>
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>
@@ -114,12 +132,13 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       _requireAccountForQuote(context);
     }
 
-    showRoyalHomeActionSheet(
+    showAarastQuickActionSheet(
       context,
       actions: buildCanonicalQuickAddActions(
         context,
         planId: planId,
         canManageMoney: true,
+        signals: QuickAddSignals.fromDashboard(_summary.toDashboardSummary()),
         openRoute: open,
         onRequestQuote: requestQuote,
       ),
@@ -276,6 +295,14 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     final nextSummary = await summarySource.loadSummary();
     if (!mounted || nextSummary == null) return;
     setState(() => _summary = nextSummary);
+    _publishSummary();
+  }
+
+  void _publishSummary() {
+    if (!mounted) return;
+    context.read<DashboardSummaryProvider?>()?.publishLocalSummary(
+      _summary.toDashboardSummary(),
+    );
   }
 }
 
@@ -289,33 +316,29 @@ class _LocalSyncNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: AarastPressable(
-        key: const Key('royal-local-sync-action'),
+        key: const Key('aarast-local-sync-action'),
         semanticLabel: needsSync ? 'مزامنة المسودة المحفوظة' : 'مزامنة المسودة',
         onTap: onSync,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.burgundy.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.burgundySoft),
+            color: AppTheme.brandMuted,
+            borderRadius: BorderRadius.circular(AppTheme.radiusControl),
+            border: Border.all(color: AarastSemanticTokens.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                LucideIcons.cloudOff,
-                color: AppTheme.burgundy,
-                size: 16,
-              ),
+              const Icon(LucideIcons.cloudOff, color: AppTheme.brand, size: 16),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   needsSync ? 'مسودة محفوظة على هذا الجهاز' : 'المسودة جاهزة',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelMedium?.copyWith(color: AppTheme.burgundy),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -323,7 +346,7 @@ class _LocalSyncNotice extends StatelessWidget {
                 width: 4,
                 height: 4,
                 decoration: const BoxDecoration(
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -331,7 +354,7 @@ class _LocalSyncNotice extends StatelessWidget {
               Text(
                 'زامن',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                   fontWeight: FontWeight.w900,
                 ),
               ),

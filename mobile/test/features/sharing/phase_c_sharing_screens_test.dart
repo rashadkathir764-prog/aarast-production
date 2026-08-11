@@ -19,7 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  group('Phase C sharing screens premium contract', () {
+  group('Phase C sharing screens V3 contract', () {
     test(
       'sharing screens and visible cards use Lucide and avoid stale leaks',
       () {

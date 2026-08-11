@@ -188,6 +188,26 @@ test('dashboard setup actions and provider preview keep current product wording'
   assert.equal(providerItems[0].routeTarget, '/providers/provider-1');
 });
 
+test('dashboard provider card describes a plan link without claiming proximity', () => {
+  const items = dashboardPresenter.buildImportantItems({
+    weddingPlanId: 'plan-1',
+    tasks: [],
+    paymentSchedules: [],
+    providers: [providerLink()],
+    today: new Date(2026, 6, 11),
+    receivedQuotes: 0,
+    pendingInvites: 0,
+    hasLocation: true,
+    hasBudget: true,
+    guestCount: 1,
+    quoteRequestsCount: 1,
+    acceptedProviders: 1,
+    currency: 'YER',
+  });
+
+  assert.equal(items[0].title, 'مزود في خطتك');
+});
+
 test('dashboard money warnings distinguish budget, overdue and due-soon states', () => {
   assert.deepEqual(
     dashboardPresenter.buildFinancialWarnings({

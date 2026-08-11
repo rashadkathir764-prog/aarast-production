@@ -14,6 +14,6 @@ import { PushInstallationsService } from "./push-installations.service";
     PushDeliveryService,
     PushInstallationsService,
   ],
-  exports: [PushDeliveryService],
+  exports: [FirebasePushClient, PushDeliveryService],
 })
 export class PushModule {}

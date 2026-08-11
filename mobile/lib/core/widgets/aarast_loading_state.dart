@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/aarast_motion.dart';
@@ -22,7 +22,7 @@ class AarastLoadingState extends StatelessWidget {
           child: Container(
             height: height,
             decoration: BoxDecoration(
-              color: AppTheme.surface.withValues(alpha: 0.6),
+              color: AppTheme.surfaceRaised.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               border: Border.all(color: AppTheme.border),
             ),
@@ -39,7 +39,7 @@ class AarastLoadingState extends StatelessWidget {
 class AarastInlineSpinner extends StatelessWidget {
   const AarastInlineSpinner({
     this.dimension = 18,
-    this.color = AppTheme.burgundy,
+    this.color = AppTheme.brand,
     super.key,
   });
 
@@ -74,8 +74,8 @@ class AarastScreenLoading extends StatelessWidget {
             child: Container(
               width: 164,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: AppTheme.premiumCardDecoration(
-                color: AppTheme.surface.withValues(alpha: 0.6),
+              decoration: AppTheme.surfaceDecoration(
+                color: AppTheme.surfaceRaised.withValues(alpha: 0.6),
                 radius: AppTheme.radiusXl,
               ),
               child: Column(
@@ -93,7 +93,7 @@ class AarastScreenLoading extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

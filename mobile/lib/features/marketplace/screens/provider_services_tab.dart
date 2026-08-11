@@ -40,7 +40,7 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
     return RefreshIndicator(
-      color: AppTheme.burgundy,
+      color: AppTheme.brand,
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -60,7 +60,7 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
           const SizedBox(height: 14),
           SegmentedButton<bool>(
             style: const ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(AppTheme.surface),
+              backgroundColor: WidgetStatePropertyAll(AppTheme.surfaceRaised),
             ),
             segments: const [
               ButtonSegment(
@@ -341,7 +341,7 @@ class _ServiceManagementCard extends StatelessWidget {
                 child: Text(
                   service.title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -349,10 +349,12 @@ class _ServiceManagementCard extends StatelessWidget {
               AarastStatusPill(
                 label: service.isActive ? 'نشطة' : 'متوقفة',
                 icon: service.isActive ? LucideIcons.check : LucideIcons.pause,
-                color: service.isActive ? AppTheme.success : AppTheme.muted,
+                color: service.isActive
+                    ? AppTheme.success
+                    : AppTheme.textSecondary,
                 backgroundColor: service.isActive
                     ? AppTheme.successSoft
-                    : AppTheme.ivory,
+                    : AppTheme.canvas,
               ),
             ],
           ),
@@ -361,7 +363,7 @@ class _ServiceManagementCard extends StatelessWidget {
             Text(
               '${service.basePrice} ${currencyLabelAr(service.currency)}',
               style: const TextStyle(
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -396,7 +398,7 @@ class _ServiceManagementCard extends StatelessWidget {
                 ? 'لا توجد صور لهذه الخدمة بعد.'
                 : 'صور الخدمة (${service.images.length})',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w800,
             ),
           ),

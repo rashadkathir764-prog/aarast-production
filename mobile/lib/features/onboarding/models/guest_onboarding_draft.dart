@@ -53,23 +53,29 @@ class GuestOnboardingDraft {
   factory GuestOnboardingDraft.quickLocalPlanSetup({
     required String planName,
     required GuestPersona persona,
-    required String location,
+    required WeddingLocationDraft location,
     required DateTime weddingDate,
     required String currency,
+    String? area,
+    String? neighborhood,
     String? estimatedBudget,
   }) {
     final budget = estimatedBudget?.replaceAll(',', '').trim();
     final skipped = budget == null || budget.isEmpty;
+    final cleanArea = _stringOrNull(area);
+    final cleanNeighborhood = _stringOrNull(neighborhood);
     return GuestOnboardingDraft(
       planName: planName.trim(),
       selectedPath: GuestOnboardingPath.weddingUser,
       persona: persona,
-      governorate: location.trim(),
-      city: location.trim(),
-      district: null,
-      neighborhood: null,
-      street: null,
-      addressNote: null,
+      governorate: location.governorate,
+      city: location.cityOrDistrict,
+      district: cleanArea,
+      neighborhood:
+          cleanNeighborhood ??
+          (cleanArea == null ? location.areaOrNeighborhood : null),
+      street: location.street,
+      addressNote: location.detailedAddress,
       weddingDate: weddingDate,
       weddingDateUnknown: false,
       priorities: const [],

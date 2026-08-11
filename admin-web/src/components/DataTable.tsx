@@ -1,65 +1,42 @@
-import { ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 
 type DataTableProps = {
+  label: string;
   columns: string[];
   children: ReactNode;
   dense?: boolean;
   minWidth?: number;
 };
 
+type DataTableStyle = CSSProperties & {
+  '--data-table-min-width': string;
+};
+
 export function DataTable({
+  label,
   columns,
   children,
   dense = false,
   minWidth = 600,
 }: DataTableProps) {
-  return (
-    <div 
-      className={`table-wrap ${dense ? 'table-wrap--dense' : ''} custom-data-table`}
-      style={{ 
-        width: '100%', 
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch'
-      }}
-    >
-      {/* حقن تنسيق ديناميكي لضمان انسيابية وتطابق أسطر الجدول بالملي */}
-      <style>{`
-        .custom-data-table table {
-          width: 100%;
-          border-collapse: collapse;
-          text-align: right;
-          direction: rtl;
-        }
-        .custom-data-table th {
-          color: #8A7A81 !important;
-          font-size: 12px !important;
-          font-weight: 500 !important;
-          white-space: nowrap;
-          border-bottom: 1px solid #F5F4F0 !important;
-        }
-        .custom-data-table td {
-          padding: ${dense ? '12px 14px' : '16px 18px'} !important;
-          border-bottom: 1px solid #F5F4F0 !important;
-          color: #2B2A2A !important;
-          font-size: 13px !important;
-          vertical-align: middle;
-          white-space: nowrap;
-        }
-        .custom-data-table tr:last-child td {
-          border-bottom: none !important;
-        }
-      `}</style>
+  const tableStyle: DataTableStyle = {
+    '--data-table-min-width': `${minWidth}px`,
+  };
 
-      <table style={{ minWidth }}>
+  return (
+    <div
+      className={`table-wrap ${dense ? 'table-wrap--dense' : ''}`}
+      role="region"
+      aria-label={`${label}، منطقة جدول قابلة للتمرير أفقيا`}
+      tabIndex={0}
+      style={tableStyle}
+    >
+      <table className="data-table">
+        <caption className="sr-only">{label}</caption>
         <thead>
           <tr>
             {columns.map((column) => (
-              <th 
-                key={column}
-                style={{
-                  padding: dense ? '12px 14px' : '16px 18px',
-                }}
-              >
+              <th key={column} scope="col">
                 {column}
               </th>
             ))}

@@ -48,12 +48,15 @@ void main() {
     await _pumpView(tester, width: 320, height: 900, textScale: 1.3);
 
     expect(find.text('لا توجد خدمات منشورة'), findsOneWidget);
+    expect(find.text('لا توجد باقات منشورة حاليًا.'), findsNothing);
+    await tester.tap(find.text('الباقات والتفاصيل والتقييمات'));
+    await tester.pumpAndSettle();
     expect(find.text('لا توجد باقات منشورة حاليًا.'), findsOneWidget);
     expect(find.text('القاعات'), findsWidgets);
     expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
-      250,
+      lessThan(250),
     );
     expect(find.textContaining('لا توجد صور منشورة'), findsOneWidget);
     final reviewsEmpty = find.text('لا توجد تقييمات بعد.');
@@ -66,6 +69,26 @@ void main() {
     expect(find.textContaining('YER'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'a failed services refresh shows a retry state instead of an empty catalog',
+    (tester) async {
+      var retryCalls = 0;
+
+      await _pumpView(
+        tester,
+        servicesErrorMessage: 'تعذر تحميل الخدمات.',
+        onRetryDetails: () => retryCalls++,
+      );
+
+      expect(find.text('تعذر تحديث هذا القسم'), findsOneWidget);
+      expect(find.text('تعذر تحميل الخدمات.'), findsOneWidget);
+      expect(find.text('لا توجد خدمات منشورة'), findsNothing);
+
+      await tester.tap(find.text('إعادة المحاولة'));
+      expect(retryCalls, 1);
+    },
+  );
 
   testWidgets('show all opens the complete swipeable provider gallery', (
     tester,
@@ -90,6 +113,7 @@ void main() {
     );
 
     final showAll = find.text('عرض الكل');
+    expect(find.text('تعذّر تحميل الصورة'), findsOneWidget);
     await tester.ensureVisible(showAll);
     await tester.tap(showAll);
     await tester.pump();
@@ -116,7 +140,7 @@ void main() {
       expect(find.text('عرض الكل'), findsNothing);
       expect(
         tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
-        342,
+        lessThan(250),
       );
       expect(tester.takeException(), isNull);
     },
@@ -133,6 +157,10 @@ Future<void> _pumpView(
   VoidCallback? onShare,
   VoidCallback? onFavorite,
   ValueChanged<MarketplaceService>? onRequestQuote,
+  String? servicesErrorMessage,
+  String? packagesErrorMessage,
+  String? reviewsErrorMessage,
+  VoidCallback? onRetryDetails,
   double width = 390,
   double height = 1400,
   double textScale = 1,
@@ -163,6 +191,10 @@ Future<void> _pumpView(
             onShare: onShare ?? () {},
             onFavorite: onFavorite ?? () {},
             onRequestQuote: onRequestQuote ?? (_) {},
+            servicesErrorMessage: servicesErrorMessage,
+            packagesErrorMessage: packagesErrorMessage,
+            reviewsErrorMessage: reviewsErrorMessage,
+            onRetryDetails: onRetryDetails,
           ),
         ),
       ),

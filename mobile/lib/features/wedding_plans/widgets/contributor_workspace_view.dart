@@ -7,24 +7,23 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/dashboard_summary.dart';
-import 'premium/smart_dashboard_models.dart';
+import 'dashboard/aarast_dashboard_focus.dart';
 
-/// لوحة ألوان محلية لمساحة المساهم؛ لا تغيّر هوية بقية التطبيق.
+/// أدوار دلالية لمساحة المساهم مبنية من النظام نفسه، لا من لوحة مستقلة.
 abstract final class ContributorWorkspacePalette {
-  static const canvas = AppTheme.contributorCanvas;
-  static const surface = AppTheme.contributorSurface;
-  static const surfaceAlt = AppTheme.contributorSurfaceAlt;
-  static const border = AppTheme.contributorBorder;
-  static const ink = AppTheme.contributorInk;
-  static const muted = AppTheme.contributorMuted;
-  static const oxblood = AppTheme.contributorOxblood;
-  static const oxbloodDark = AppTheme.contributorOxbloodDark;
-  static const wine = AppTheme.contributorWine;
-  static const wineSoft = AppTheme.contributorWineSoft;
-  static const bronze = AppTheme.contributorBronze;
-  static const moneyTint = AppTheme.contributorMoneyTint;
-  static const guestsTint = AppTheme.contributorGuestsTint;
-  static const providersTint = AppTheme.contributorProvidersTint;
+  static const canvas = AppTheme.canvas;
+  static const surface = AppTheme.surfaceRaised;
+  static const surfaceAlt = AppTheme.surfaceMuted;
+  static const border = AppTheme.border;
+  static const ink = AppTheme.textPrimary;
+  static const muted = AppTheme.textSecondary;
+  static const primary = AppTheme.brand;
+  static const focus = AppTheme.focus;
+  static const focusSoft = AppTheme.infoSoft;
+  static const warning = AppTheme.warning;
+  static const moneyTint = AppTheme.successSoft;
+  static const guestsTint = AppTheme.infoSoft;
+  static const providersTint = AppTheme.brandMuted;
 }
 
 typedef ContributorWorkspaceColors = ContributorWorkspacePalette;
@@ -134,7 +133,7 @@ class ContributorWorkspaceView extends StatelessWidget {
               ? 'متابعة المهام وتحديثها'
               : 'مشاهدة مهام الخطة',
           icon: LucideIcons.listChecks,
-          tint: ContributorWorkspaceColors.wineSoft,
+          tint: ContributorWorkspaceColors.focusSoft,
           onTap: onOpenTasks,
           actionLabel: permissions.canManageTasks ? 'إضافة مهمة' : null,
           onAction: permissions.canManageTasks ? onCreateTask : null,
@@ -184,7 +183,7 @@ class ContributorWorkspaceView extends StatelessWidget {
           value: '${summary.participantCount} مشاركين',
           caption: 'الأدوار والصلاحيات',
           icon: LucideIcons.userCog,
-          tint: ContributorWorkspaceColors.wineSoft,
+          tint: ContributorWorkspaceColors.focusSoft,
           onTap: onOpenMembers!,
         ),
     ];
@@ -272,7 +271,7 @@ class _ContributorHistoryCard extends StatelessWidget {
         children: [
           const Icon(
             LucideIcons.history,
-            color: ContributorWorkspaceColors.oxblood,
+            color: ContributorWorkspaceColors.primary,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -332,7 +331,7 @@ class _ContributorRoleStrip extends StatelessWidget {
           const Icon(
             LucideIcons.users,
             size: 17,
-            color: ContributorWorkspaceColors.bronze,
+            color: ContributorWorkspaceColors.warning,
           ),
           const SizedBox(width: 8),
           Flexible(
@@ -341,7 +340,7 @@ class _ContributorRoleStrip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: ContributorWorkspaceColors.oxblood,
+                color: ContributorWorkspaceColors.primary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -364,28 +363,9 @@ class _ContributorPlanHero extends StatelessWidget {
       key: const Key('contributor-plan-hero'),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 17),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            ContributorWorkspaceColors.wine,
-            ContributorWorkspaceColors.oxblood,
-            ContributorWorkspaceColors.oxbloodDark,
-          ],
-        ),
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(
-          color: ContributorWorkspaceColors.bronze.withValues(alpha: 0.64),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: ContributorWorkspaceColors.oxbloodDark.withValues(
-              alpha: 0.22,
-            ),
-            blurRadius: 26,
-            offset: const Offset(0, 11),
-          ),
-        ],
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         children: [
@@ -393,17 +373,13 @@ class _ContributorPlanHero extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppTheme.brandMuted,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: ContributorWorkspaceColors.bronze.withValues(
-                  alpha: 0.55,
-                ),
-              ),
+              border: Border.all(color: AppTheme.border),
             ),
             child: const Icon(
               LucideIcons.heart,
-              color: ContributorWorkspaceColors.bronze,
+              color: AppTheme.brand,
               size: 21,
             ),
           ),
@@ -414,17 +390,13 @@ class _ContributorPlanHero extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
+              color: AppTheme.textPrimary,
               fontFamily: AppTheme.displayFontFamily,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            width: 78,
-            height: 1,
-            color: ContributorWorkspaceColors.bronze.withValues(alpha: 0.78),
-          ),
+          Container(width: 78, height: 1, color: AppTheme.border),
           const SizedBox(height: 12),
           Wrap(
             alignment: WrapAlignment.center,
@@ -466,7 +438,7 @@ class _HeroMeta extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(width: 1),
-        Icon(icon, size: 15, color: ContributorWorkspaceColors.bronze),
+        Icon(icon, size: 15, color: AppTheme.brand),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
@@ -474,7 +446,7 @@ class _HeroMeta extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -502,15 +474,15 @@ class _ContributorNextActionCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: ContributorWorkspaceColors.wineSoft,
+              color: ContributorWorkspaceColors.focusSoft,
               shape: BoxShape.circle,
               border: Border.all(
-                color: ContributorWorkspaceColors.wine.withValues(alpha: 0.12),
+                color: ContributorWorkspaceColors.focus.withValues(alpha: 0.12),
               ),
             ),
             child: Icon(
               action.icon,
-              color: ContributorWorkspaceColors.oxblood,
+              color: ContributorWorkspaceColors.primary,
               size: 23,
             ),
           ),
@@ -522,7 +494,7 @@ class _ContributorNextActionCard extends StatelessWidget {
                 Text(
                   action.eyebrow,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: ContributorWorkspaceColors.bronze,
+                    color: ContributorWorkspaceColors.warning,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -552,7 +524,7 @@ class _ContributorNextActionCard extends StatelessWidget {
           const SizedBox(width: 8),
           const Icon(
             LucideIcons.arrowLeft,
-            color: ContributorWorkspaceColors.oxblood,
+            color: ContributorWorkspaceColors.primary,
             size: 20,
           ),
         ],
@@ -582,7 +554,7 @@ class _ContributorSectionHeader extends StatelessWidget {
         ? TextButton(
             onPressed: onAction,
             style: TextButton.styleFrom(
-              foregroundColor: ContributorWorkspaceColors.oxblood,
+              foregroundColor: ContributorWorkspaceColors.primary,
               minimumSize: const Size(0, 38),
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
@@ -607,12 +579,12 @@ class _ContributorSectionHeader extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: ContributorWorkspaceColors.wineSoft,
+                    color: ContributorWorkspaceColors.focusSoft,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   ),
                   child: Icon(
                     icon,
-                    color: ContributorWorkspaceColors.oxblood,
+                    color: ContributorWorkspaceColors.primary,
                     size: 19,
                   ),
                 ),
@@ -675,7 +647,7 @@ class _ContributorSectionsPanel extends StatelessWidget {
             children: [
               Icon(
                 LucideIcons.archive,
-                color: ContributorWorkspaceColors.bronze,
+                color: ContributorWorkspaceColors.warning,
               ),
               SizedBox(width: 12),
               Expanded(
@@ -766,7 +738,7 @@ class _ContributorSectionRow extends StatelessWidget {
                     ),
                     child: Icon(
                       section.icon,
-                      color: ContributorWorkspaceColors.oxblood,
+                      color: ContributorWorkspaceColors.primary,
                       size: 22,
                     ),
                   ),
@@ -799,7 +771,7 @@ class _ContributorSectionRow extends StatelessWidget {
                                 textAlign: TextAlign.end,
                                 style: Theme.of(context).textTheme.labelMedium
                                     ?.copyWith(
-                                      color: ContributorWorkspaceColors.wine,
+                                      color: ContributorWorkspaceColors.focus,
                                       fontWeight: FontWeight.w900,
                                     ),
                               ),
@@ -823,7 +795,7 @@ class _ContributorSectionRow extends StatelessWidget {
                           children: [
                             const Icon(
                               LucideIcons.arrowLeft,
-                              color: ContributorWorkspaceColors.oxblood,
+                              color: ContributorWorkspaceColors.primary,
                               size: 16,
                             ),
                             const SizedBox(width: 5),
@@ -834,7 +806,7 @@ class _ContributorSectionRow extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
-                                      color: ContributorWorkspaceColors.oxblood,
+                                      color: ContributorWorkspaceColors.primary,
                                       fontWeight: FontWeight.w800,
                                     ),
                               ),
@@ -854,7 +826,7 @@ class _ContributorSectionRow extends StatelessWidget {
                     key: Key('contributor-${section.keyName}-add-action'),
                     onPressed: section.onAction,
                     style: FilledButton.styleFrom(
-                      backgroundColor: ContributorWorkspaceColors.oxblood,
+                      backgroundColor: ContributorWorkspaceColors.primary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(48),
                       padding: const EdgeInsets.symmetric(
@@ -1001,13 +973,13 @@ class _ContributorUpdateRow extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: data.isUnread
-                  ? ContributorWorkspaceColors.wineSoft
+                  ? ContributorWorkspaceColors.focusSoft
                   : ContributorWorkspaceColors.surfaceAlt,
               shape: BoxShape.circle,
             ),
             child: Icon(
               data.isUnread ? LucideIcons.bell : LucideIcons.history,
-              color: ContributorWorkspaceColors.oxblood,
+              color: ContributorWorkspaceColors.primary,
               size: 18,
             ),
           ),
@@ -1068,7 +1040,7 @@ class _ContributorPermissionsCard extends StatelessWidget {
         children: [
           const Icon(
             LucideIcons.shieldCheck,
-            color: ContributorWorkspaceColors.bronze,
+            color: ContributorWorkspaceColors.warning,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -1098,7 +1070,7 @@ class _ContributorPermissionsCard extends StatelessWidget {
           Text(
             'عرض',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: ContributorWorkspaceColors.oxblood,
+              color: ContributorWorkspaceColors.primary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1174,5 +1146,5 @@ String _moneyValue(DashboardSummary summary) {
   if (raw == null || raw.trim().isEmpty) return 'لا توجد بيانات بعد';
   final value = num.tryParse(raw.replaceAll(',', ''));
   if (value == null) return 'التكاليف متاحة';
-  return '${formatAmount(value)} ${currencyLabelAr(summary.currency)}';
+  return '${formatDashboardAmount(value)} ${currencyLabelAr(summary.currency)}';
 }

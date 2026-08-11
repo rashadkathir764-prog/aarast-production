@@ -1,6 +1,6 @@
 # Admin Web
 
-Snapshot date: 2026-07-17
+Snapshot date: 2026-08-11
 
 The admin web app is a React/Vite dashboard under `admin-web/`. It supports
 admin-facing management for dashboard stats, users, catalog references,
@@ -24,7 +24,9 @@ Unit tests run on Vitest + Testing Library (jsdom). They cover the auth
 API (ADMIN role gating, error mapping, token storage), the `apiRequest`
 client (bearer header, error extraction), and the `ErrorBoundary`
 recovery UI. They also enforce the shared accessible pagination control and its
-use by every paginated admin list. `npm test` runs in CI on every push.
+use by every paginated admin list. Shared-component coverage also verifies
+confirmation-dialog focus/keyboard behavior, named responsive data tables, and
+labelled search landmarks. `npm test` runs in CI on every push.
 
 A top-level `ErrorBoundary` (`src/components/ErrorBoundary.tsx`) wraps
 the app so a render-time exception shows a recoverable Arabic message
@@ -44,6 +46,20 @@ characters, at most 72 UTF-8 bytes), clears secrets on cancel/success,
 does not create a session automatically, and returns to normal password + OTP
 login after the backend revokes prior sessions. This recovery changes only the
 browser-administration password; it cannot overwrite the wedding-app password.
+
+## Modernization checkpoint
+
+The Admin shell, dashboard, and login surface now use the shared semantic
+vocabulary: visible location, operational hierarchy, quiet surfaces, one
+primary action, and RTL-friendly responsive behavior. The login surface keeps
+the password + phone OTP and recovery contracts unchanged, removes retired
+ornamental branding, and was reviewed at wide desktop, 760px tablet, and 390px
+phone widths. The shared confirmation dialog now traps and restores focus,
+blocks dismissal while an operation is pending, and reports mutation failures.
+All 12 current Admin tables use one token-based, labelled, horizontally
+scrollable `DataTable`, and all current search filters expose a visible label
+and named search landmark. The remaining management pages still require
+migration onto the shared page-header, field, and state primitives.
 
 ## Rules
 
@@ -69,6 +85,8 @@ browser-administration password; it cannot overwrite the wedding-app password.
 | `/conversation-reports` | Conversation Reports | Review participant reports without exposing messages |
 | `/categories` | Provider Categories | Catalog CRUD |
 | `/cities` | Cities | Catalog CRUD |
+| `/reference-catalogs` | Dynamic Catalogs | Draft, review, publish, rollback, audience targeting, and soft-disable |
+| `/administrative-areas` | Yemen Administrative Areas | Governorate → district → area/isolation/neighborhood/zone management |
 
 ## Conversation Reports Moderation
 
@@ -98,6 +116,29 @@ flags: groom and bride. A category may appear in either path or both, but the UI
 does not submit a category hidden from both. This changes discovery only; the
 provider catalog itself remains one shared source.
 
+Dynamic catalog edits are draft-first. A saved edit does not reach mobile
+users until an administrator explicitly publishes that revision. The page
+also exposes historical revision selection for rollback and publishes an
+inactive revision when an item is disabled. Administrative geography uses a
+separate ordered hierarchy; child ownership and stable codes cannot be moved
+after creation. All reads require `CATALOG_READ`, all writes require
+`CATALOG_WRITE`, and the existing append-only admin audit interceptor records
+every attempt and terminal outcome.
+
 List summary cards distinguish complete filtered totals from counts derived
 only from the current 20-row page. Page-local cards are labeled
 `في الصفحة`; they must not be presented as full-dataset statistics.
+
+## Latest Local Verification — 2026-08-11
+
+- PASS — React Router `7.18.2`, TypeScript type-check, Vitest `96/96`, route
+  smoke `16/16`, source-honesty smoke `12/12`, container runtime contract
+  tests `3/3`, and production build.
+- PASS — full `npm audit` reports zero findings after the tested React Router 7
+  migration and transitive `nanoid` remediation.
+- PASS — managed admin-runtime smoke against a disposable database after all 75
+  migrations. It covered admin authentication/session rotation, private-field
+  exclusion, catalog draft/publish/edit/rollback/disable, and governorate →
+  district → locality create/visibility/soft-disable behavior.
+- NOT VERIFIED — deployed Admin runtime and production data migration. Local
+  isolated smoke is not deployment evidence.

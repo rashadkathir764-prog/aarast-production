@@ -7,6 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_duplicate_utils.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -47,6 +50,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   bool _isCheckingLookupAccess = false;
   Timer? _deliveryRetryTimer;
   bool _deliveryRetryUnlocked = false;
+  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
@@ -61,6 +65,8 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   void didUpdateWidget(covariant AddSharedMemberScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      _draft?.dispose();
+      _draft = null;
       _deliveryRetryTimer?.cancel();
       _createdInvite = null;
       _shareHandled = false;
@@ -76,6 +82,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   @override
   void dispose() {
+    _draft?.dispose();
     _deliveryRetryTimer?.cancel();
     _phoneController.dispose();
     super.dispose();
@@ -115,6 +122,14 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
             ? 'الدعوة محفوظة، لكن حالة تسليمها القديمة غير معروفة.'
             : 'تم حفظ الدعوة، وتعذر تسليم رابطها عبر واتساب.',
         resizeToAvoidBottomInset: true,
+        bottomNavigationBar: createdInvite == null && gate == null
+            ? AarastV3FormActionBar(
+                label: 'إرسال دعوة المشاركة',
+                icon: LucideIcons.userPlus,
+                loading: isSubmitting,
+                onPressed: isSubmitting || isLookingUp ? null : _submit,
+              )
+            : null,
         actions: [
           IconButton(
             tooltip: 'رجوع',
@@ -138,6 +153,17 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       children: [
+                        const AarastV3FocusPrompt(
+                          question: 'من تريد أن يشاركك هذه الخطة؟',
+                          supportingText:
+                              'ابحث برقم الجوال، ثم اختر دوره وصلاحياته قبل إنشاء الدعوة.',
+                          icon: LucideIcons.userPlus,
+                        ),
+                        if (_draft != null) ...[
+                          const SizedBox(height: 8),
+                          AarastV3DraftStatusLine(status: _draft!.status),
+                        ],
+                        const SizedBox(height: 10),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -172,30 +198,23 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                           const SizedBox(height: 4),
                           _LookupEmpty(message: provider.lookupErrorMessage!),
                         ],
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                         SharedPermissionEditor(
                           role: _role,
                           roles: _addMemberRoles,
                           permissions: _permissions,
                           onRoleSelected: _applyRole,
-                          onPermissionsChanged: (value) =>
-                              setState(() => _permissions = value),
+                          onPermissionsChanged: (value) {
+                            setState(() => _permissions = value);
+                            _draft?.changed();
+                          },
                           enabled: !isSubmitting && !isLookingUp,
                         ),
                         if (provider.errorMessage != null) ...[
                           const SizedBox(height: 12),
                           _InlineError(message: provider.errorMessage!),
                         ],
-                        const SizedBox(height: 18),
-                        AarastButton(
-                          label: 'إرسال دعوة المشاركة',
-                          icon: LucideIcons.userPlus,
-                          isLoading: isSubmitting,
-                          onPressed: isSubmitting || isLookingUp
-                              ? null
-                              : _submit,
-                        ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                       ],
                     ),
                   ),
@@ -208,11 +227,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       final leave = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AarastDialog(
-          icon: const Icon(
-            LucideIcons.link,
-            color: AppTheme.burgundy,
-            size: 28,
-          ),
+          icon: const Icon(LucideIcons.link, color: AppTheme.brand, size: 28),
           title: const Text('هل حفظت رابط الدعوة؟'),
           content: const Text(
             'رابط الدعوة الآمن يظهر الآن فقط. أرسله عبر واتساب أو انسخه قبل المغادرة.',
@@ -404,6 +419,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       _role = role;
       _permissions = PlanRolePermissions.forRole(role);
     });
+    _draft?.changed();
   }
 
   Future<bool> _refreshSharingAccess({bool showPageLoader = true}) async {
@@ -444,7 +460,9 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       _showPermissionGate = accessLoaded && !canManageMembers;
       _showAccessError = !accessLoaded && provider.authGateKind == null;
     });
-    return !canManageMembers || !targetsLoaded;
+    final blocked = !canManageMembers || !targetsLoaded;
+    if (!blocked) _configureDraft();
+    return blocked;
   }
 
   Widget? _authGateFor(SharingProvider provider) {
@@ -482,6 +500,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         title: 'ليس لديك صلاحية دعوة المشاركين',
         message: 'إضافة الأعضاء وتحديد صلاحياتهم متاحة للمصرح لهم فقط.',
         icon: LucideIcons.shieldAlert,
+        tone: AarastEmptyStateTone.restricted,
       );
     }
 
@@ -489,6 +508,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   }
 
   void _showInviteResult(PlanInvite invite) {
+    unawaited(_draft?.clear());
     setState(() {
       _createdInvite = invite;
       _shareHandled = invite.wasDeliveredByAarast;
@@ -500,6 +520,48 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         'تم إنشاء دعوة المساهم وتسليم رابطها عبر واتساب. العضوية بانتظار القبول.',
       );
     }
+  }
+
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'sharing:${widget.weddingPlanId}:invite',
+      fields: {'phone': _phoneController},
+      readExtras: () => {
+        'role': _role,
+        'canViewMoney': _permissions.canViewMoney,
+        'canManageMoney': _permissions.canManageMoney,
+        'canEditPlan': _permissions.canEditPlan,
+        'canManageTasks': _permissions.canManageTasks,
+        'canManageGuests': _permissions.canManageGuests,
+        'canManageProviders': _permissions.canManageProviders,
+        'canInviteMembers': _permissions.canInviteMembers,
+        'receiveNotifications': _permissions.receiveNotifications,
+      },
+      restoreExtras: (data) {
+        if (!mounted) return;
+        final role = data['role']?.toString() ?? 'VIEWER';
+        final defaults = PlanRolePermissions.forRole(role);
+        setState(() {
+          _role = role;
+          _permissions = defaults.copyWith(
+            canViewMoney: data['canViewMoney'] as bool?,
+            canManageMoney: data['canManageMoney'] as bool?,
+            canEditPlan: data['canEditPlan'] as bool?,
+            canManageTasks: data['canManageTasks'] as bool?,
+            canManageGuests: data['canManageGuests'] as bool?,
+            canManageProviders: data['canManageProviders'] as bool?,
+            canInviteMembers: data['canInviteMembers'] as bool?,
+            receiveNotifications: data['receiveNotifications'] as bool?,
+          );
+        });
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
   }
 
   void _scheduleDeliveryRetryUnlock(PlanInvite invite) {
@@ -571,7 +633,7 @@ class _InviteCreatedView extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppTheme.successBg,
+                  color: AppTheme.successSoft,
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                   border: Border.all(color: AppTheme.successSoft),
                 ),
@@ -588,7 +650,7 @@ class _InviteCreatedView extends StatelessWidget {
                     : 'تم إنشاء دعوة المساهم',
                 textAlign: TextAlign.center,
                 style: textTheme.titleLarge?.copyWith(
-                  color: AppTheme.ink,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -607,7 +669,7 @@ class _InviteCreatedView extends StatelessWidget {
                     : 'الدعوة محفوظة، وتعذر إرسال رابطها عبر واتساب.',
                 textAlign: TextAlign.center,
                 style: textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -619,7 +681,7 @@ class _InviteCreatedView extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.titleMedium?.copyWith(
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -629,14 +691,14 @@ class _InviteCreatedView extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         AarastCard(
-          color: AppTheme.goldSoft.withAlpha(34),
-          border: Border.all(color: AppTheme.gold.withAlpha(80)),
+          color: AppTheme.brandMuted.withAlpha(34),
+          border: Border.all(color: AppTheme.focus.withAlpha(80)),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(
                 LucideIcons.shieldCheck,
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
                 size: 22,
               ),
               const SizedBox(width: 10),
@@ -644,7 +706,7 @@ class _InviteCreatedView extends StatelessWidget {
                 child: Text(
                   'هذا رابط خاص بالمدعو ويظهر الآن فقط. لن تظهر تفاصيل الخطة قبل التحقق من رقم الهاتف.',
                   style: textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -699,14 +761,14 @@ class _LookupButton extends StatelessWidget {
       button: true,
       label: 'بحث عن المستخدم',
       child: Material(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: InkWell(
           onTap: isLookingUp ? null : onTap,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           child: SizedBox(
-            width: 52,
-            height: 52,
+            width: 46,
+            height: 46,
             child: Center(
               child: isLookingUp
                   ? const AarastInlineSpinner(
@@ -738,7 +800,7 @@ class _FoundUserStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.successBg,
+        color: AppTheme.successSoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: AppTheme.successSoft),
       ),
@@ -755,7 +817,7 @@ class _FoundUserStrip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -766,7 +828,7 @@ class _FoundUserStrip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -778,7 +840,7 @@ class _FoundUserStrip extends StatelessWidget {
             label: 'مستخدم مسجل',
             icon: LucideIcons.badgeCheck,
             color: AppTheme.success,
-            backgroundColor: AppTheme.ivory,
+            backgroundColor: AppTheme.canvas,
           ),
         ],
       ),
@@ -800,7 +862,7 @@ class _LookupAvatar extends StatelessWidget {
       child: Text(
         initial,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: AppTheme.burgundy,
+          color: AppTheme.brand,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -810,7 +872,7 @@ class _LookupAvatar extends StatelessWidget {
       child: Container(
         width: 40,
         height: 40,
-        color: AppTheme.surface,
+        color: AppTheme.surfaceRaised,
         child: imageUrl == null || imageUrl.isEmpty
             ? fallback
             : Image.network(
@@ -833,19 +895,19 @@ class _LookupEmpty extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.ivory,
+        color: AppTheme.canvas,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.gold.withAlpha(60)),
+        border: Border.all(color: AppTheme.focus.withAlpha(60)),
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.info, color: AppTheme.gold),
+          const Icon(LucideIcons.info, color: AppTheme.focus),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -864,7 +926,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.burgundySoft,
+      color: AppTheme.brandMuted,
       border: Border.all(color: AppTheme.dangerSoft),
       child: Text(
         message,

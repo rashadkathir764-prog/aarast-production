@@ -51,10 +51,7 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
     await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'محمد علي');
-    await tester.enterText(
-      _textFieldWithLabel('رقم الجوال (اختياري)'),
-      '777123456',
-    );
+    await tester.enterText(_textFieldWithLabel('رقم الجوال'), '777123456');
     final sheetSubmit = find.widgetWithText(FilledButton, 'إضافة ضيف').last;
     await tester.ensureVisible(sheetSubmit);
     await tester.pumpAndSettle();

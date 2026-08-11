@@ -15,63 +15,131 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!embedded) ...[
-          _CircleButton(
-            icon: LucideIcons.chevronRight,
-            onTap: () {
-              if (context.canPop()) context.pop();
-            },
-          ),
-          const SizedBox(width: 10),
-        ],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final resultCount = provider.totalProviders;
+    final favoritesAreStale = provider.favoriteProvidersErrorMessage != null;
+    return Container(
+      padding: const EdgeInsets.all(AarastV3Space.x4),
+      decoration: BoxDecoration(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+        border: Border.all(color: AarastV3Color.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Text(
-                'الموردون',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: AppTheme.title,
-                  fontWeight: FontWeight.w900,
+              const Icon(
+                LucideIcons.store,
+                size: 22,
+                color: AarastV3Color.primary,
+              ),
+              const SizedBox(width: AarastV3Space.x3),
+              Expanded(
+                child: Text(
+                  'الموردون',
+                  style: AarastV3Type.section(context).copyWith(fontSize: 19),
                 ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                'ابحث وقارن، ثم افتح المورد المناسب لطلب عرض.',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.muted,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                ),
+              Wrap(
+                spacing: AarastV3Space.x1,
+                children: [
+                  if (!embedded)
+                    _MarketplaceHeaderAction(
+                      icon: LucideIcons.chevronRight,
+                      tooltip: 'رجوع',
+                      onTap: () {
+                        if (context.canPop()) context.pop();
+                      },
+                    ),
+                  if (provider.includesAccountData) ...[
+                    _MarketplaceHeaderAction(
+                      key: const Key('favorite-providers-action'),
+                      icon: LucideIcons.heart,
+                      tooltip: 'الموردون المحفوظون',
+                      badgeValue: favoritesAreStale
+                          ? 0
+                          : provider.favoriteProviderIds.length,
+                      onTap: onOpenFavorites,
+                    ),
+                    _MarketplaceHeaderAction(
+                      key: const Key('user-conversations-action'),
+                      icon: LucideIcons.messagesSquare,
+                      tooltip: 'المحادثات',
+                      onTap: onOpenConversations,
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
-        ),
-        if (provider.includesAccountData) ...[
-          const SizedBox(width: 8),
-          _MarketplaceHeaderAction(
-            key: const Key('favorite-providers-action'),
-            icon: LucideIcons.heart,
-            tooltip: 'الموردون المحفوظون',
-            badgeValue: provider.favoriteProviderIds.length,
-            onTap: onOpenFavorites,
+          const SizedBox(height: AarastV3Space.x2),
+          Text(
+            'ابحث وقارن ثم اطلب عرضًا من المزوّد المناسب.',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AarastV3Color.textMuted),
           ),
-          const SizedBox(width: 6),
-          _MarketplaceHeaderAction(
-            key: const Key('user-conversations-action'),
-            icon: LucideIcons.messagesSquare,
-            tooltip: 'المحادثات',
-            onTap: onOpenConversations,
+          if (resultCount > 0) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            Row(
+              children: [
+                _MarketplaceMiniMetric(label: 'مزوّد', value: '$resultCount'),
+                _MarketplaceMiniMetric(
+                  label: 'فئة',
+                  value: '${provider.categories.length}',
+                ),
+                if (provider.includesAccountData)
+                  _MarketplaceMiniMetric(
+                    label: 'محفوظ',
+                    value: favoritesAreStale
+                        ? '—'
+                        : '${provider.favoriteProviderIds.length}',
+                    accent: AarastV3Color.rose,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketplaceMiniMetric extends StatelessWidget {
+  const _MarketplaceMiniMetric({
+    required this.label,
+    required this.value,
+    this.accent = AarastV3Color.primary,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        children: [
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: AarastV3Space.x1),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: AarastV3Color.textMuted),
           ),
         ],
-      ],
+      ),
     );
   }
 }
@@ -98,15 +166,17 @@ class _MarketplaceHeaderAction extends StatelessWidget {
         Tooltip(
           message: tooltip,
           child: Material(
-            color: AppTheme.surface,
-            shape: CircleBorder(side: BorderSide(color: AppTheme.border)),
+            color: AarastV3Color.paperQuiet,
+            shape: const CircleBorder(
+              side: BorderSide(color: AarastV3Color.line),
+            ),
             child: InkWell(
               onTap: onTap,
               customBorder: const CircleBorder(),
               child: SizedBox(
-                width: 42,
-                height: 42,
-                child: Icon(icon, size: 20, color: AppTheme.burgundy),
+                width: 40,
+                height: 40,
+                child: Icon(icon, size: 19, color: AarastV3Color.ink),
               ),
             ),
           ),
@@ -120,9 +190,9 @@ class _MarketplaceHeaderAction extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppTheme.burgundy,
-                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                border: Border.all(color: AppTheme.ivory, width: 2),
+                color: AarastV3Color.rose,
+                borderRadius: BorderRadius.circular(AarastV3Radius.pill),
+                border: Border.all(color: AarastV3Color.paper, width: 2),
               ),
               child: Text(
                 badgeValue > 99 ? '99+' : '$badgeValue',
@@ -258,20 +328,16 @@ class _CityFilterChip extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: hasCity ? AppTheme.burgundySoft : AppTheme.surface,
+            color: hasCity ? AppTheme.brandMuted : AppTheme.surfaceRaised,
             borderRadius: BorderRadius.circular(AppTheme.radiusPill),
             border: Border.all(
-              color: hasCity ? AppTheme.burgundy : AppTheme.border,
+              color: hasCity ? AppTheme.brand : AppTheme.border,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                LucideIcons.mapPin,
-                size: 15,
-                color: AppTheme.burgundy,
-              ),
+              const Icon(LucideIcons.mapPin, size: 15, color: AppTheme.brand),
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
@@ -279,7 +345,7 @@ class _CityFilterChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.burgundy,
+                    color: AppTheme.brand,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -288,7 +354,7 @@ class _CityFilterChip extends StatelessWidget {
               const Icon(
                 LucideIcons.chevronDown,
                 size: 14,
-                color: AppTheme.burgundy,
+                color: AppTheme.brand,
               ),
             ],
           ),
@@ -327,7 +393,7 @@ class _CityFilterChip extends StatelessWidget {
                 Text(
                   'المدينة',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -380,8 +446,8 @@ class _NoBudgetMatchesCard extends StatelessWidget {
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft),
+      color: AppTheme.canvas,
+      border: Border.all(color: AppTheme.brandMuted),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -389,10 +455,10 @@ class _NoBudgetMatchesCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppTheme.goldSoft,
+              color: AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: const Icon(LucideIcons.search, color: AppTheme.gold),
+            child: const Icon(LucideIcons.search, color: AppTheme.focus),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -402,7 +468,7 @@ class _NoBudgetMatchesCard extends StatelessWidget {
                 Text(
                   'لا توجد أسعار مطابقة تماماً',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -410,7 +476,7 @@ class _NoBudgetMatchesCard extends StatelessWidget {
                 Text(
                   message,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                     height: 1.35,
                   ),
@@ -455,8 +521,8 @@ class _BudgetMatchContextCard extends StatelessWidget {
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.ivory,
-      border: Border.all(color: AppTheme.goldSoft),
+      color: AppTheme.canvas,
+      border: Border.all(color: AppTheme.brandMuted),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -464,10 +530,10 @@ class _BudgetMatchContextCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppTheme.goldSoft,
+              color: AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: const Icon(LucideIcons.wallet, color: AppTheme.gold),
+            child: const Icon(LucideIcons.wallet, color: AppTheme.focus),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -479,7 +545,7 @@ class _BudgetMatchContextCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.burgundyDeep,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -491,7 +557,7 @@ class _BudgetMatchContextCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

@@ -148,6 +148,79 @@ void main() {
     expect(restartedService.lastError, contains('title should not be empty'));
   });
 
+  test(
+    'blocked sync details are actionable without exposing raw errors',
+    () async {
+      final database = await _freshDb();
+      final item = await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/tasks',
+        method: 'POST',
+        payload: {'title': ''},
+        planId: 'plan-1',
+        localEntityId: 'local-task-1',
+      );
+      await database.markSyncItemBlocked(
+        item.id,
+        'title should not be empty at /api/v1/private-route',
+      );
+      final service = _service(database, _ScriptedAdapter([(_) => _ok('{}')]));
+
+      final issues = await service.loadBlockedIssues();
+
+      expect(issues, hasLength(1));
+      expect(issues.single.entityLabel, 'مهمة');
+      expect(issues.single.operationLabel, 'إضافة');
+      expect(issues.single.message, contains('رفض الخادم التغيير'));
+      expect(issues.single.message, isNot(contains('title should')));
+      expect(issues.single.message, isNot(contains('/api/')));
+      expect(issues.single.canRetry, isTrue);
+    },
+  );
+
+  test(
+    'blocked sync details name every queued recovery operation safely',
+    () async {
+      final database = await _freshDb();
+      final fixtures = <({String entityType, String operation, String id})>[
+        (entityType: 'task', operation: 'assign', id: 'task-1'),
+        (entityType: 'cost', operation: 'cancel', id: 'cost-1'),
+        (entityType: 'cost_payment', operation: 'reverse', id: 'payment-1'),
+        (entityType: 'money_budget', operation: 'replace', id: 'budget-1'),
+      ];
+      for (final fixture in fixtures) {
+        final item = await database.enqueueSync(
+          entityType: fixture.entityType,
+          operation: fixture.operation,
+          endpoint: '/safe-test/${fixture.id}',
+          method: 'PATCH',
+          payload: const {},
+          planId: 'plan-1',
+          localEntityId: fixture.id,
+        );
+        await database.markSyncItemBlocked(item.id, 'private backend detail');
+      }
+      final service = _service(database, _ScriptedAdapter([(_) => _ok('{}')]));
+
+      final issues = await service.loadBlockedIssues();
+
+      expect(
+        {for (final issue in issues) issue.entityLabel: issue.operationLabel},
+        {
+          'مهمة': 'إسناد',
+          'التكلفة': 'إلغاء',
+          'الدفعة': 'عكس دفعة',
+          'الميزانية': 'استبدال',
+        },
+      );
+      expect(
+        issues.every((issue) => !issue.message.contains('private backend')),
+        isTrue,
+      );
+    },
+  );
+
   test('manual recovery requeues blocked work and syncs it once', () async {
     final database = await _freshDb();
     await database.enqueueSync(

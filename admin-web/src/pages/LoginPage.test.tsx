@@ -57,6 +57,23 @@ beforeEach(() => {
   mocks.confirmReset.mockResolvedValue(undefined);
 });
 
+describe('admin login surface', () => {
+  it('keeps the entry point operational and free of retired decorative branding', () => {
+    renderPage();
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'قرارات واضحة، وبيانات مصونة.',
+        level: 1,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('مساحة تشغيل محمية')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'مرحباً بك', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByText('♕')).not.toBeInTheDocument();
+    expect(document.querySelector('.login-brand-panel')).toBeNull();
+  });
+});
+
 describe('admin password recovery', () => {
   it('clears the existing login password as soon as recovery starts', () => {
     renderPage();

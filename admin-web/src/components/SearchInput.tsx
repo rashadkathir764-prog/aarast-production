@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 
 type SearchInputProps = {
+  label: string;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -9,6 +10,7 @@ type SearchInputProps = {
 };
 
 export function SearchInput({
+  label,
   value,
   onChange,
   onSubmit,
@@ -21,13 +23,21 @@ export function SearchInput({
   }
 
   return (
-    <form className="search-input" onSubmit={submit}>
-      <span className="search-input__icon" aria-hidden="true" />
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-      />
+    <form
+      className="search-input"
+      role="search"
+      aria-label={label}
+      onSubmit={submit}
+    >
+      <label className="search-input__field">
+        <span>{label}</span>
+        <input
+          type="search"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+        />
+      </label>
       <button className="button button--ghost" type="submit">
         {buttonLabel}
       </button>

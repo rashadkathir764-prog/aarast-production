@@ -521,7 +521,7 @@ class FinanceLocalDataSource {
     final currentCost = await _currentCost(cost);
     if (FinanceMoneyRules.value(schedule.amount) >
         FinanceMoneyRules.value(currentCost.remainingAmount)) {
-      throw const ApiException('مبلغ الموعد يتجاوز الباقي على التكلفة.');
+      throw const ApiException('مبلغ الموعد يتجاوز غير المدفوع على التكلفة.');
     }
     final payment = await _createPaymentCache(
       cost: weddingCostToLocalJson(currentCost),

@@ -35,7 +35,7 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   static const _legacyDatabaseName = 'aarast_offline.db';
   static const _databaseName = 'aarast_offline_secure_v1.db';
-  static const _databaseVersion = 7;
+  static const _databaseVersion = 8;
 
   final SharedPreferences _preferences;
   final OfflineDatabaseKeyVault _keyVault;
@@ -84,6 +84,11 @@ class SqliteLocalDatabase implements LocalDatabase {
         }
         if (oldVersion < 7) {
           await _addSyncQueuePlanOwnership(db);
+        }
+        if (oldVersion < 8) {
+          final batch = db.batch();
+          _createDashboardSummaryCacheTable(batch);
+          await batch.commit();
         }
       },
     );
@@ -568,6 +573,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.cachedWeddingPlans,
       'title TEXT, ownerId TEXT, status TEXT',
     );
+    _createDashboardSummaryCacheTable(batch);
     _cacheTable(
       batch,
       OfflineTables.cachedPlanMembers,
@@ -639,6 +645,14 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       batch,
       OfflineTables.cachedPaymentSchedules,
       'planId TEXT, costId TEXT, amount TEXT, dueDate TEXT, status TEXT',
+    );
+  }
+
+  static void _createDashboardSummaryCacheTable(Batch batch) {
+    _cacheTable(
+      batch,
+      OfflineTables.cachedDashboardSummaries,
+      'planId TEXT, title TEXT, weddingDate TEXT',
     );
   }
 

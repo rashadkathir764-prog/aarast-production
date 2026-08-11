@@ -56,6 +56,7 @@ import '../../features/support/screens/support_screen.dart';
 import '../../features/tasks/models/wedding_task.dart';
 import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
+import '../../features/wedding_day/screens/wedding_day_mode_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 
@@ -159,6 +160,10 @@ class AppRouter {
 
   static String weddingPlanDashboard(String id) {
     return '/wedding-plans/$id/dashboard';
+  }
+
+  static String weddingDayMode(String id) {
+    return '/wedding-plans/$id/wedding-day';
   }
 
   static String planCenter(String id) {
@@ -789,7 +794,10 @@ class AppRouter {
               path: '/wedding-plans/:id/tasks',
               builder: (context, state) {
                 final id = state.pathParameters['id'] ?? '';
-                return TaskTimelineScreen(weddingPlanId: id);
+                return TaskTimelineScreen(
+                  weddingPlanId: id,
+                  showEmptyCreateAction: false,
+                );
               },
             ),
             GoRoute(
@@ -853,6 +861,23 @@ class AppRouter {
               child: PlanCenterScreen(
                 weddingPlanId: id,
                 sharedMember: sharedMember,
+                initialSummary: initialSummary,
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/wedding-day',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final initialSummary = state.extra is DashboardSummary
+                ? state.extra! as DashboardSummary
+                : null;
+            return WeddingPlanContextGate(
+              weddingPlanId: id,
+              requiredAccess: WeddingPlanRouteAccess.viewPlan,
+              child: WeddingDayModeScreen(
+                weddingPlanId: id,
                 initialSummary: initialSummary,
               ),
             );
@@ -975,6 +1000,7 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
   return switch (section) {
     'dashboard' => WeddingPlanRouteAccess.ownerDashboard,
     'plan-center' ||
+    'wedding-day' ||
     'notifications' ||
     'contributions' => WeddingPlanRouteAccess.viewPlan,
     'timeline' || 'tasks' => WeddingPlanRouteAccess.manageTasks,

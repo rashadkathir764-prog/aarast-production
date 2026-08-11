@@ -1,10 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../shell/widgets/aarast_plan_chrome.dart';
 
+/// Provider navigation uses the same interaction grammar as the plan shell;
+/// only its destinations and capability surface differ.
 class ProviderPortalBottomNav extends StatelessWidget {
   const ProviderPortalBottomNav({
     required this.activeIndex,
@@ -17,150 +17,28 @@ class ProviderPortalBottomNav extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final int unreadMessages;
 
-  static const _items = [
-    (LucideIcons.home, 'الرئيسية'),
-    (LucideIcons.mailQuestion, 'الطلبات'),
-    (LucideIcons.sparkles, 'الخدمات'),
-    (LucideIcons.messagesSquare, 'الرسائل'),
-    (LucideIcons.userCircle, 'ملفي'),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.paddingOf(context).bottom + 14;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: SizedBox(
-        height: bottom + 82,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.ink.withValues(alpha: 0.08),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated.withValues(alpha: 0.92),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: Row(
-                    children: [
-                      for (var index = 0; index < _items.length; index++)
-                        Expanded(
-                          child: _ProviderNavItem(
-                            icon: _items[index].$1,
-                            label: _items[index].$2,
-                            active: activeIndex == index,
-                            badge: index == 3 ? unreadMessages : 0,
-                            onTap: () => onSelected(index),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+    return AarastPlanNavigationBar(
+      items: [
+        const AarastNavigationItem(icon: LucideIcons.home, label: 'الرئيسية'),
+        const AarastNavigationItem(
+          icon: LucideIcons.mailQuestion,
+          label: 'الطلبات',
         ),
-      ),
-    );
-  }
-}
-
-class _ProviderNavItem extends StatelessWidget {
-  const _ProviderNavItem({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.badge,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final int badge;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? AppTheme.burgundy : AppTheme.muted;
-    return Semantics(
-      button: true,
-      selected: active,
-      label: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            color: active
-                ? AppTheme.burgundy.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(icon, size: 21, color: color),
-                  if (badge > 0)
-                    PositionedDirectional(
-                      start: -9,
-                      top: -8,
-                      child: Container(
-                        constraints: const BoxConstraints(minWidth: 17),
-                        height: 17,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.danger,
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          badge > 9 ? '9+' : '$badge',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
+        const AarastNavigationItem(
+          icon: LucideIcons.sparkles,
+          label: 'الخدمات',
         ),
-      ),
+        AarastNavigationItem(
+          icon: LucideIcons.messagesSquare,
+          label: 'الرسائل',
+          badge: unreadMessages,
+        ),
+        const AarastNavigationItem(icon: LucideIcons.userCircle, label: 'ملفي'),
+      ],
+      activeIndex: activeIndex,
+      onSelected: onSelected,
     );
   }
 }

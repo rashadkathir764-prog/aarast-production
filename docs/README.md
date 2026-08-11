@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-07-26
+Snapshot date: 2026-08-11
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -9,12 +9,11 @@ old files are preserved as `.md.txt` archive references.
 ## Inventory Policy
 
 The explicit lists below are the authoritative source-of-truth inventory. A
-numeric file total is intentionally not maintained because short-lived
-implementation plans and specifications under `docs/superpowers/` may be added
-or removed during active work; those working notes are not project truth.
-Historical references remain under
-`docs/archive/2026-07-docs-consolidation/` and are also not part of the active
-source of truth.
+numeric file total is intentionally not maintained because historical working
+notes are archived rather than treated as product truth. Historical Markdown
+references remain under `docs/archive/` and are not active source documents.
+The remaining non-Markdown prototype assets under `docs/mobile-ux/prototypes/`
+are reference-only and will be retired with the P2 visual migration.
 
 ## Read Order
 
@@ -41,8 +40,7 @@ changing behavior.
 - `docs/project/SCOPE_AND_PHASES.md`
 - `docs/project/STATUS.md`
 - `docs/project/DECISIONS.md`
-- `docs/project/RELEASE_PLAN.md`
-- `docs/project/REMEDIATION_EXECUTION_PLAN.md`
+- `docs/project/EXECUTION_PLAN.md`
 
 ### Backend
 
@@ -59,7 +57,6 @@ changing behavior.
 - `docs/frontend/DESIGN_SYSTEM.md`
 - `docs/frontend/OFFLINE_SQLITE.md`
 - `docs/frontend/ADMIN_WEB.md`
-- `docs/frontend/PREMIUM_ROADMAP.md`
 
 ### Generated References
 
@@ -99,8 +96,7 @@ changing behavior.
 | Scope and phase discipline | `docs/project/SCOPE_AND_PHASES.md` |
 | Current status | `docs/project/STATUS.md` |
 | Decisions | `docs/project/DECISIONS.md` |
-| Release plan | `docs/project/RELEASE_PLAN.md` |
-| Current code-derived remediation execution | `docs/project/REMEDIATION_EXECUTION_PLAN.md` |
+| Current modernization execution | `docs/project/EXECUTION_PLAN.md` |
 | Backend overview | `docs/backend/README.md` |
 | Backend routes | `docs/backend/API_CONTRACT.md` |
 | Database model intent | `docs/backend/DATABASE.md` |
@@ -109,9 +105,9 @@ changing behavior.
 | Mobile product and UX | `docs/frontend/MOBILE.md` |
 | Mobile architecture | `docs/frontend/MOBILE_ARCHITECTURE.md` |
 | Design system and tokens | `docs/frontend/DESIGN_SYSTEM.md` |
+| Mobile V3 architecture artifact | `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx` |
 | Mobile offline layer | `docs/frontend/OFFLINE_SQLITE.md` |
 | Admin web | `docs/frontend/ADMIN_WEB.md` |
-| Premium mobile roadmap | `docs/frontend/PREMIUM_ROADMAP.md` |
 | Testing and QA | `docs/qa/README.md` |
 | Mobile QA | `docs/qa/MOBILE_QA.md` |
 | Deployment | `docs/deployment/README.md` |
@@ -130,6 +126,15 @@ changing behavior.
 - If an archived topic becomes active again, create or update one compact active
   doc and link it here.
 - Do not restore large sets of old docs without an explicit reason.
+
+The canonical integration branch is `main`; release candidates enter it only
+through reviewed, green Git history. Resolve the exact source revision with
+`git rev-parse HEAD` and bind deployed images and artifacts to that immutable
+revision instead of copying a self-referential SHA into this tracked document.
+Superseded plans, visual prototypes, and duplicated status documents remain
+recoverable in the archive; only the compact sources listed above govern
+implementation. The quarantined `codex/guest-invitation-campaigns` branch is a
+separate preserved WIP and is not part of the current release line.
 
 ## Guard
 

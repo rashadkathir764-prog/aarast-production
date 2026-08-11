@@ -1,5 +1,5 @@
 // Visual preview for the saved-providers (المفضلة) screen after adopting the
-// shared image-forward PremiumVendorCard — so the favorites tab matches the
+// shared image-forward ProviderResultCard — so the favorites tab matches the
 // vendors tab exactly. The heart here removes from favorites; the button opens
 // details. Cover images fall back to placeholders in the golden harness.
 //

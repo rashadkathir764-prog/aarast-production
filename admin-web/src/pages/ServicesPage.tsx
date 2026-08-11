@@ -264,6 +264,7 @@ export function ServicesPage() {
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
+            label="بحث في الخدمات"
             value={search}
             onChange={setSearch}
             onSubmit={submitSearch}
@@ -313,6 +314,7 @@ export function ServicesPage() {
           <EmptyState title="لا توجد خدمات مطابقة" message="غير الفلاتر أو أضف خدمة جديدة لمورد." tone="api" />
         ) : (
           <DataTable
+            label="قائمة خدمات الموردين"
             columns={['الخدمة', 'المورد', 'الفئة', 'المدينة', 'السعر', 'الحالة', 'إجراءات']}
             minWidth={1080}
           >

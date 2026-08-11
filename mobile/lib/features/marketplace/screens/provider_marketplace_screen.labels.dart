@@ -111,10 +111,10 @@ String _serviceBudgetStatusLabel(_ServiceBudgetStatus status) {
 Color _serviceBudgetStatusColor(_ServiceBudgetStatus status) {
   return switch (status) {
     _ServiceBudgetStatus.inRange => AppTheme.success,
-    _ServiceBudgetStatus.underBudget => AppTheme.burgundy,
-    _ServiceBudgetStatus.nearby => AppTheme.gold,
-    _ServiceBudgetStatus.categoryOnly => AppTheme.burgundy,
-    _ServiceBudgetStatus.unknown => AppTheme.muted,
+    _ServiceBudgetStatus.underBudget => AppTheme.brand,
+    _ServiceBudgetStatus.nearby => AppTheme.focus,
+    _ServiceBudgetStatus.categoryOnly => AppTheme.brand,
+    _ServiceBudgetStatus.unknown => AppTheme.textSecondary,
   };
 }
 
@@ -249,32 +249,6 @@ String? _providerLocationLabel(MarketplaceProvider provider) {
   return null;
 }
 
-class _CircleButton extends StatelessWidget {
-  const _CircleButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.border),
-          boxShadow: AppTheme.cardShadow(),
-        ),
-        child: Icon(icon, color: AppTheme.burgundy),
-      ),
-    );
-  }
-}
-
 class _MarketplaceSkeleton extends StatelessWidget {
   const _MarketplaceSkeleton();
 
@@ -315,17 +289,17 @@ class _LoginRequiredCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      color: AppTheme.surface,
+      color: AppTheme.surfaceRaised,
       border: Border.all(color: AppTheme.border),
       child: Row(
         children: [
-          const Icon(LucideIcons.logIn, color: AppTheme.gold, size: 20),
+          const Icon(LucideIcons.logIn, color: AppTheme.focus, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'طلبات العروض ومتابعتها تحتاج تسجيل دخول',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),

@@ -1,14 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
+import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart';
 
 class BudgetCategoryFormScreen extends StatefulWidget {
@@ -33,6 +38,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
   String? _draftError;
+  AarastFormDraftBinding? _draft;
 
   bool get _editing => widget.category != null;
 
@@ -43,15 +49,17 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       text: widget.category?.name ?? widget.initialName ?? '',
     );
     _amountController = TextEditingController(
-      text: widget.category?.allocatedAmount ?? '',
+      text: formatMoneyInputValue(widget.category?.allocatedAmount),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FinanceProvider>().loadMoney(widget.weddingPlanId);
+      _configureDraft();
     });
   }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _nameController.dispose();
     _amountController.dispose();
     super.dispose();
@@ -78,10 +86,29 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
           context.pop<String?>(null);
         }
       },
+      bottomNavigationBar: AarastV3FormActionBar(
+        label: 'حفظ التصنيف',
+        icon: LucideIcons.check,
+        loading: provider.isSubmitting,
+        onPressed: provider.isSubmitting ? null : _save,
+      ),
       child: Form(
         key: _formKey,
         child: ListView(
           children: [
+            AarastV3FocusPrompt(
+              question: _editing
+                  ? 'كيف تريد ضبط هذا التصنيف؟'
+                  : 'ما البند الذي تريد تخصيص ميزانية له؟',
+              supportingText:
+                  'اكتب اسمًا واضحًا، ويمكنك ترك المبلغ فارغًا حتى تحسم الميزانية.',
+              icon: LucideIcons.tag,
+            ),
+            if (_draft != null) ...[
+              const SizedBox(height: 8),
+              AarastV3DraftStatusLine(status: _draft!.status),
+            ],
+            const SizedBox(height: 16),
             if (provider.errorMessage != null) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
@@ -116,9 +143,10 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: [MoneyInputFormatter()],
                     textDirection: TextDirection.ltr,
                     decoration: InputDecoration(
-                      labelText: 'المخصص (اختياري)',
+                      labelText: 'المخصص',
                       helperText: 'يمكنك تركه فارغًا وتحديده لاحقًا.',
                       prefixIcon: const Icon(LucideIcons.coins),
                       suffixText: currencyLabelAr(provider.summary.currency),
@@ -135,14 +163,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: provider.isSubmitting ? null : _save,
-              icon: provider.isSubmitting
-                  ? const AarastInlineSpinner(color: Colors.white)
-                  : const Icon(LucideIcons.check),
-              label: Text(provider.isSubmitting ? 'جاري الحفظ' : 'حفظ التصنيف'),
-            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -186,7 +207,10 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
         name: _nameController.text.trim(),
         allocatedAmount: amount.isEmpty ? null : amount,
       );
-      if (createdId != null && mounted) context.pop<String>(createdId);
+      if (createdId != null && mounted) {
+        await _draft?.clear();
+        if (mounted) context.pop<String>(createdId);
+      }
       return;
     }
     final saved = await provider.updateCategory(
@@ -194,7 +218,24 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       name: _nameController.text.trim(),
       allocatedAmount: amount.isEmpty ? null : amount,
     );
-    if (saved && mounted) context.pop(true);
+    if (saved && mounted) {
+      await _draft?.clear();
+      if (mounted) context.pop(true);
+    }
+  }
+
+  void _configureDraft() {
+    if (_draft != null) return;
+    final categoryId = widget.category?.id ?? 'new';
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'budget-category:${widget.weddingPlanId}:$categoryId',
+      fields: {'name': _nameController, 'amount': _amountController},
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    unawaited(_draft!.restore());
   }
 }
 

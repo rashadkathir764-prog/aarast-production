@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
@@ -10,12 +11,16 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/providers/account_context_controller.dart';
 import '../../finance/providers/finance_provider.dart';
-import '../widgets/premium/premium_vendor_card.dart';
+import '../widgets/provider_result_card.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
+import '../../wedding_plans/models/wedding_plan_stage.dart';
+import '../../wedding_plans/models/wedding_stage_domain_guidance.dart';
+import '../../wedding_plans/providers/dashboard_summary_provider.dart';
+import '../../wedding_plans/widgets/wedding_stage_context_line.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
@@ -159,6 +164,19 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final planId = _normalizedPlanId(widget.weddingPlanId);
+    final dashboardSummary = context
+        .watch<DashboardSummaryProvider?>()
+        ?.summary;
+    final stage = dashboardSummary?.planId == planId
+        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate)
+        : null;
+    final prioritizeOpenDecisions = switch (stage?.stage) {
+      WeddingPlanStage.finalMonth ||
+      WeddingPlanStage.finalWeek ||
+      WeddingPlanStage.weddingDay => true,
+      _ => false,
+    };
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
@@ -166,7 +184,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         builder: (context, provider, _) {
           final quoteRequests = _visibleQuoteRequests(provider);
           return RefreshIndicator(
-            color: AppTheme.burgundy,
+            color: AppTheme.brand,
             onRefresh: () => _refreshMarketplace(provider),
             child: ListView(
               controller: _scrollController,
@@ -183,10 +201,33 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   onOpenFavorites: () => _pushOnce(AppRouter.favoriteProviders),
                   onOpenConversations: () => _pushOnce(AppRouter.conversations),
                 ),
+                if (stage != null) ...[
+                  const SizedBox(height: 12),
+                  WeddingStageContextLine(
+                    stage: stage,
+                    domain: WeddingStageDomain.providers,
+                  ),
+                ],
                 if (!provider.includesAccountData) ...[
                   const SizedBox(height: 12),
                   const _LoginRequiredCard(),
                 ],
+                if (provider.includesAccountData &&
+                    provider.favoriteProvidersErrorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  KeyedSubtree(
+                    key: const Key('marketplace-favorites-stale-warning'),
+                    child: _ErrorCard(
+                      title: 'تعذر تحديث المحفوظات',
+                      message:
+                          'نعرض آخر حالة محفوظة مؤقتًا؛ قد تكون أرقام الحفظ '
+                          'وعلامات القلب أدناه قديمة حتى تنجح إعادة المحاولة.',
+                      onRetry: provider.loadMarketplace,
+                    ),
+                  ),
+                ],
+                if (prioritizeOpenDecisions && quoteRequests.isNotEmpty)
+                  ..._offersInboxSection(provider, quoteRequests),
                 const SizedBox(height: 14),
                 _MarketplaceSearch(
                   controller: _searchController,
@@ -211,20 +252,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     onClear: provider.clearBudgetMatch,
                   ),
                 ],
-                if (quoteRequests.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  _OffersInboxCard(
-                    quotes: quoteRequests,
-                    initialQuoteId: _focusedQuoteId,
-                    isSubmitting: provider.isSubmitting,
-                    onAccept: _acceptQuote,
-                    onReject: _rejectQuote,
-                    onViewCost: _viewAcceptedQuoteCost,
-                    onOpenConversation: _openQuoteConversation,
-                    onCreateNew: (quote) =>
-                        _pushOnce(AppRouter.providerQuote(quote.providerId)),
-                  ),
-                ],
+                if (!prioritizeOpenDecisions && quoteRequests.isNotEmpty)
+                  ..._offersInboxSection(provider, quoteRequests),
                 if (provider.includesAccountData &&
                     provider.quoteRequestsErrorMessage != null) ...[
                   const SizedBox(height: 10),
@@ -236,14 +265,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 ],
                 if (provider.isLoading && provider.providers.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(999)),
-                    child: LinearProgressIndicator(
-                      key: Key('marketplace-results-refreshing'),
-                      minHeight: 3,
-                      color: AppTheme.burgundy,
-                      backgroundColor: AppTheme.burgundySoft,
-                    ),
+                  const AarastV3ProgressLine(
+                    key: Key('marketplace-results-refreshing'),
+                    height: 3,
+                    color: AppTheme.brand,
+                    backgroundColor: AppTheme.brandMuted,
+                    semanticsLabel: 'تحديث نتائج الموردين',
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -344,6 +371,26 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         },
       ),
     );
+  }
+
+  List<Widget> _offersInboxSection(
+    ProviderMarketplaceProvider provider,
+    List<QuoteRequest> quoteRequests,
+  ) {
+    return [
+      const SizedBox(height: 10),
+      _OffersInboxCard(
+        quotes: quoteRequests,
+        initialQuoteId: _focusedQuoteId,
+        isSubmitting: provider.isSubmitting,
+        onAccept: _acceptQuote,
+        onReject: _rejectQuote,
+        onViewCost: _viewAcceptedQuoteCost,
+        onOpenConversation: _openQuoteConversation,
+        onCreateNew: (quote) =>
+            _pushOnce(AppRouter.providerQuote(quote.providerId)),
+      ),
+    ];
   }
 
   void _loadMoreNearEnd() {

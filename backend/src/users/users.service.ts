@@ -21,6 +21,7 @@ import { runRetryableTransaction } from "../common/prisma/serializable-transacti
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { MediaStorageService } from "../media/media-storage.service";
 import { enqueueUserSessionsRevoked } from "../outbox/realtime-revocation";
+import { FirebasePushClient } from "../push/firebase-push.client";
 import {
   lockProviderRatingRows,
   refreshProviderRating,
@@ -111,6 +112,8 @@ export class UsersService {
     private readonly mediaStorage: MediaStorageService,
     @Optional()
     private readonly realtime?: ConversationRealtimePublisher,
+    @Optional()
+    private readonly firebasePush?: FirebasePushClient,
   ) {}
 
   async updateMe(
@@ -817,6 +820,7 @@ export class UsersService {
         ...NOTIFICATION_CHANNEL_CAPABILITIES,
         push: {
           ...NOTIFICATION_CHANNEL_CAPABILITIES.push,
+          supported: this.firebasePush?.enabled === true,
           enabled: settings.pushEnabled,
         },
       },

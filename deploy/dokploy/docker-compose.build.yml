@@ -17,3 +17,11 @@ services:
         AARAST_GIT_REVISION: ${AARAST_GIT_REVISION:?AARAST_GIT_REVISION is required}
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://aarast-api.shadowgardn.com}
     image: aarast-admin-web:candidate-${AARAST_GIT_REVISION:?AARAST_GIT_REVISION is required}
+
+  public-site:
+    build:
+      context: ../public-site
+      dockerfile: Dockerfile
+      args:
+        AARAST_GIT_REVISION: ${AARAST_GIT_REVISION:?AARAST_GIT_REVISION is required}
+    image: aarast-public-site:candidate-${AARAST_GIT_REVISION:?AARAST_GIT_REVISION is required}

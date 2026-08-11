@@ -1,51 +1,35 @@
-const statusMap: Record<string, { label: string; bg: string; color: string }> = {
-  ACTIVE: { label: 'نشط', bg: '#EBF7EE', color: '#2D8A5D' },
-  APPROVED: { label: 'معتمد', bg: '#EBF7EE', color: '#2D8A5D' },
-  PENDING_REVIEW: { label: 'قيد المراجعة', bg: '#EBF3F9', color: '#1565C0' },
-  NEEDS_CHANGES: { label: 'يحتاج تعديل', bg: '#FFF8E1', color: '#B78103' },
-  COMPLETED: { label: 'مكتمل', bg: '#F3EAEF', color: '#75646D' },
-  CANCELLED: { label: 'ملغى', bg: '#FFEBEE', color: '#C62828' },
-  REJECTED: { label: 'مرفوض', bg: '#FFEBEE', color: '#C62828' },
-  PENDING: { label: 'قيد المراجعة', bg: '#E3F2FD', color: '#0D47A1' },
-  SUSPENDED: { label: 'موقوف', bg: '#F5F5F5', color: '#616161' },
-  DISABLED: { label: 'معطل', bg: '#F5F5F5', color: '#616161' },
-  OPEN: { label: 'مفتوح', bg: '#E3F2FD', color: '#0D47A1' },
-  REVIEWED: { label: 'تمت المراجعة', bg: '#EBF7EE', color: '#2D8A5D' },
-  DISMISSED: { label: 'مرفوض', bg: '#F5F5F5', color: '#616161' },
-  PUBLISHED: { label: 'منشور', bg: '#EBF7EE', color: '#2D8A5D' },
-  UNREAD: { label: 'غير مقروء', bg: '#E3F2FD', color: '#0D47A1' },
-  READ: { label: 'مقروء', bg: '#F5F5F5', color: '#616161' },
-  LOW: { label: 'منخفضة', bg: '#F5F5F5', color: '#616161' },
-  NORMAL: { label: 'عادية', bg: '#EBF3F9', color: '#1565C0' },
-  HIGH: { label: 'عالية', bg: '#FFF8E1', color: '#B78103' },
-  URGENT: { label: 'عاجلة', bg: '#FFEBEE', color: '#C62828' },
-  ATTEMPT: { label: 'بدأت', bg: '#FFF8E1', color: '#B78103' },
-  SUCCEEDED: { label: 'نجحت', bg: '#EBF7EE', color: '#2D8A5D' },
-  FAILED: { label: 'فشلت', bg: '#FFEBEE', color: '#C62828' },
+type StatusTone = 'default' | 'success' | 'warning' | 'danger' | 'info';
+
+const statusMap: Record<string, { label: string; tone: StatusTone }> = {
+  ACTIVE: { label: 'نشط', tone: 'success' },
+  APPROVED: { label: 'معتمد', tone: 'success' },
+  PENDING_REVIEW: { label: 'قيد المراجعة', tone: 'info' },
+  NEEDS_CHANGES: { label: 'يحتاج تعديل', tone: 'warning' },
+  COMPLETED: { label: 'مكتمل', tone: 'default' },
+  CANCELLED: { label: 'ملغى', tone: 'danger' },
+  REJECTED: { label: 'مرفوض', tone: 'danger' },
+  PENDING: { label: 'قيد المراجعة', tone: 'info' },
+  SUSPENDED: { label: 'موقوف', tone: 'default' },
+  DISABLED: { label: 'معطل', tone: 'default' },
+  OPEN: { label: 'مفتوح', tone: 'info' },
+  REVIEWED: { label: 'تمت المراجعة', tone: 'success' },
+  DISMISSED: { label: 'مرفوض', tone: 'default' },
+  PUBLISHED: { label: 'منشور', tone: 'success' },
+  UNREAD: { label: 'غير مقروء', tone: 'info' },
+  READ: { label: 'مقروء', tone: 'default' },
+  LOW: { label: 'منخفضة', tone: 'default' },
+  NORMAL: { label: 'عادية', tone: 'info' },
+  HIGH: { label: 'عالية', tone: 'warning' },
+  URGENT: { label: 'عاجلة', tone: 'danger' },
+  ATTEMPT: { label: 'بدأت', tone: 'warning' },
+  SUCCEEDED: { label: 'نجحت', tone: 'success' },
+  FAILED: { label: 'فشلت', tone: 'danger' },
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const item = statusMap[status] ?? { label: status, bg: '#F5F5F5', color: '#616161' };
+  const item = statusMap[status] ?? { label: status, tone: 'default' as const };
 
-  return (
-    <span 
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '4px 12px',
-        borderRadius: '6px',
-        fontSize: '11px',
-        fontWeight: 600,
-        backgroundColor: item.bg,
-        color: item.color,
-        whiteSpace: 'nowrap',
-        lineHeight: 1.2
-      }}
-    >
-      {item.label}
-    </span>
-  );
+  return <span className={`status-badge ${item.tone}`}>{item.label}</span>;
 }
 
 export function statusLabel(status: string) {

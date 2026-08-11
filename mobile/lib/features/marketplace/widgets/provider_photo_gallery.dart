@@ -11,7 +11,7 @@ void showProviderPhotoGallery(
   if (images.isEmpty) return;
   showDialog<void>(
     context: context,
-    barrierColor: AppTheme.ink.withValues(alpha: 0.92),
+    barrierColor: AppTheme.textPrimary.withValues(alpha: 0.92),
     builder: (_) =>
         _ProviderPhotoGallery(images: images, initialIndex: initialIndex),
   );
@@ -85,7 +85,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
                                 child: Center(
                                   child: Icon(
                                     LucideIcons.image,
-                                    color: AppTheme.gold,
+                                    color: AppTheme.focus,
                                     size: 44,
                                   ),
                                 ),
@@ -101,7 +101,7 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
               top: 8,
               start: 8,
               child: Material(
-                color: AppTheme.ink.withValues(alpha: 0.72),
+                color: AppTheme.textPrimary.withValues(alpha: 0.72),
                 borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -123,12 +123,12 @@ class _ProviderPhotoGalleryState extends State<_ProviderPhotoGallery> {
               top: 8,
               end: 8,
               child: Material(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceRaised,
                 shape: const CircleBorder(),
                 child: IconButton(
                   tooltip: 'إغلاق معرض الصور',
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(LucideIcons.x, color: AppTheme.burgundy),
+                  icon: const Icon(LucideIcons.x, color: AppTheme.brand),
                 ),
               ),
             ),

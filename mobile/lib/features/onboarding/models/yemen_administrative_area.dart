@@ -62,6 +62,54 @@ class YemenDistrict {
   final double? longitude;
 }
 
+enum YemenLocalityType { area, isolation, neighborhood, zone }
+
+class YemenLocality {
+  const YemenLocality({
+    required this.id,
+    required this.districtId,
+    required this.code,
+    required this.type,
+    required this.nameAr,
+    required this.sortOrder,
+    this.parentId,
+    this.nameEn,
+    this.latitude,
+    this.longitude,
+  });
+
+  factory YemenLocality.fromJson(Map<String, dynamic> json) {
+    return YemenLocality(
+      id: json['id'].toString(),
+      districtId: json['districtId'].toString(),
+      parentId: _nullableString(json['parentId']),
+      code: json['code'].toString(),
+      type: switch (json['type']?.toString()) {
+        'AREA' => YemenLocalityType.area,
+        'ISOLATION' => YemenLocalityType.isolation,
+        'ZONE' => YemenLocalityType.zone,
+        _ => YemenLocalityType.neighborhood,
+      },
+      nameAr: json['nameAr'].toString(),
+      nameEn: _nullableString(json['nameEn']),
+      latitude: _doubleOrNull(json['latitude']),
+      longitude: _doubleOrNull(json['longitude']),
+      sortOrder: _intOrZero(json['sortOrder']),
+    );
+  }
+
+  final String id;
+  final String districtId;
+  final String? parentId;
+  final String code;
+  final YemenLocalityType type;
+  final String nameAr;
+  final String? nameEn;
+  final double? latitude;
+  final double? longitude;
+  final int sortOrder;
+}
+
 double? _doubleOrNull(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse(value?.toString() ?? '');
@@ -70,4 +118,9 @@ double? _doubleOrNull(Object? value) {
 int _intOrZero(Object? value) {
   if (value is int) return value;
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+String? _nullableString(Object? value) {
+  final normalized = value?.toString().trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
 }

@@ -33,7 +33,7 @@ class _ConversationListViewState extends State<ConversationListView> {
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
     final content = RefreshIndicator(
-      color: AppTheme.burgundy,
+      color: AppTheme.brand,
       onRefresh: chat.initialize,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -109,12 +109,12 @@ class _ConversationTile extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 27,
-              backgroundColor: AppTheme.burgundySoft,
+              backgroundColor: AppTheme.brandMuted,
               backgroundImage: conversation.provider.logoUrl == null
                   ? null
                   : NetworkImage(conversation.provider.logoUrl!),
               child: conversation.provider.logoUrl == null
-                  ? const Icon(LucideIcons.store, color: AppTheme.burgundy)
+                  ? const Icon(LucideIcons.store, color: AppTheme.brand)
                   : null,
             ),
             const SizedBox(width: 12),
@@ -127,7 +127,7 @@ class _ConversationTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.ink,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -137,7 +137,7 @@ class _ConversationTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -151,8 +151,8 @@ class _ConversationTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: conversation.providerJoined
-                          ? AppTheme.muted
-                          : AppTheme.gold,
+                          ? AppTheme.textSecondary
+                          : AppTheme.focus,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -160,7 +160,11 @@ class _ConversationTile extends StatelessWidget {
               ),
             ),
             if (conversation.muted) ...[
-              const Icon(LucideIcons.bellOff, size: 17, color: AppTheme.muted),
+              const Icon(
+                LucideIcons.bellOff,
+                size: 17,
+                color: AppTheme.textSecondary,
+              ),
               const SizedBox(width: 8),
             ],
             if (conversation.unreadMessageCount > 0)
@@ -169,7 +173,7 @@ class _ConversationTile extends StatelessWidget {
                 height: 24,
                 padding: const EdgeInsets.symmetric(horizontal: 7),
                 decoration: BoxDecoration(
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 alignment: Alignment.center,
@@ -183,7 +187,10 @@ class _ConversationTile extends StatelessWidget {
                 ),
               )
             else
-              const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+              const Icon(
+                LucideIcons.chevronLeft,
+                color: AppTheme.textSecondary,
+              ),
           ],
         ),
       ),

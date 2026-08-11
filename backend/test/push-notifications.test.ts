@@ -223,6 +223,12 @@ test("delivery removes permanent invalid installations and retries transient fai
   assert.equal(sent.data.weddingPlanId, undefined);
   assert.equal(sent.data.routeTarget, undefined);
   assert.equal(sent.android.notification.channelId, "aarast_updates");
+  assert.equal(sent.android.priority, "high");
+  assert.equal(sent.android.notification.priority, "high");
+  assert.equal(sent.android.notification.defaultSound, true);
+  assert.equal(sent.android.notification.visibility, "private");
+  assert.equal(sent.android.notification.icon, "ic_stat_aarast");
+  assert.equal(sent.android.notification.color, "#4C7180");
 });
 
 test("delivery disables push when every registered installation is permanently invalid", async () => {

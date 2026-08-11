@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   confirmAdminPasswordReset,
@@ -198,7 +199,7 @@ export function LoginPage() {
       ? 'استعادة كلمة المرور'
       : recoveryStep === 'confirm'
         ? 'تعيين كلمة مرور جديدة'
-        : 'مرحبا بك';
+        : 'مرحباً بك';
   const description = challenge
     ? challenge.deliveryStatus === 'DELIVERED'
       ? 'تم تسليم الرمز إلى واتساب المسؤول. أدخله لإكمال الجلسة الآمنة.'
@@ -222,29 +223,45 @@ export function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-shell" aria-label="تسجيل دخول إدارة أعرست">
-        <div className="login-brand-panel">
-          <div className="login-brand-panel__content">
-            <span className="brand-crown" aria-hidden="true">
-              ♕
+      <section className="login-shell" aria-label="تسجيل دخول إدارة أعّرست">
+        <aside className="login-context" aria-labelledby="admin-login-context-title">
+          <div className="login-context__brand">
+            <span className="login-context__mark" aria-hidden="true">
+              <ShieldCheck size={20} strokeWidth={1.9} />
             </span>
-            <h1>أعرست</h1>
-            <p>لوحة إدارة منصة الأعراس</p>
-            <ul>
-              <li>اعتماد الموردين والتحقق من جودة كل ملف.</li>
-              <li>إدارة المدن والفئات دون كشف بيانات حساسة.</li>
-              <li>متابعة حالة السوق من واجهة إدارية آمنة.</li>
-            </ul>
+            <div>
+              <strong>أعّرست</strong>
+              <span>إدارة المنصة</span>
+            </div>
           </div>
-        </div>
+
+          <div className="login-context__copy">
+            <span className="eyebrow">مساحة تشغيل محمية</span>
+            <h1 id="admin-login-context-title">قرارات واضحة، وبيانات مصونة.</h1>
+            <p>
+              راجع الطلبات والكتالوج وسلامة الحسابات من مكان واحد، وبصلاحيات
+              إدارية محددة.
+            </p>
+          </div>
+
+          <ul className="login-context__principles">
+            <li>اعتماد الموردين ومراجعة التغييرات حسب صلاحيتك.</li>
+            <li>إدارة الكتالوج دون كشف تفاصيل التخطيط والمال الخاصة.</li>
+            <li>رمز تحقق وجلسات خاضعة للإبطال للحفاظ على الوصول الإداري.</li>
+          </ul>
+        </aside>
 
         <form className="login-card" onSubmit={handleSubmit}>
-          <div className="login-card__mark" aria-hidden="true">
-            ♕
-          </div>
-          <span className="eyebrow">بوابة الإدارة</span>
-          <h2>{heading}</h2>
-          <p>{description}</p>
+          <header className="login-card__header">
+            <span className="login-card__mark" aria-hidden="true">
+              <ShieldCheck size={22} strokeWidth={1.9} />
+            </span>
+            <div>
+              <span className="eyebrow">بوابة الإدارة</span>
+              <h2>{heading}</h2>
+              <p>{description}</p>
+            </div>
+          </header>
           {challenge ? (
             <>
               <FormField
@@ -367,7 +384,7 @@ export function LoginPage() {
             </p>
           ) : null}
           <button
-            className="button button--full button--premium"
+            className="button button--full"
             disabled={isBusy}
             type="submit"
           >
@@ -409,7 +426,7 @@ export function LoginPage() {
               </button>
             </>
           ) : null}
-          <p className="security-note">
+          <p className="security-note login-card__security-note">
             لا تُحفظ رموز الجلسة في تخزين المتصفح، وتُبطل الجلسة عند تسجيل الخروج.
           </p>
         </form>

@@ -205,7 +205,7 @@ export function buildImportantItems({
     items.push({
       id: firstProvider.id,
       type: "PLAN_PROVIDER",
-      title: "مزود قريب منك",
+      title: "مزود في خطتك",
       subtitle: provider.businessName,
       body: [
         provider.primaryCategory?.nameAr ?? null,

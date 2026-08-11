@@ -87,7 +87,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
   Future<void> _confirmDiscard() async {
     final confirmed = await showAarastBottomSheet<bool>(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.surfaceRaised,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -103,7 +103,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   'تجاهل الخطة المحلية نهائياً؟',
                   textAlign: TextAlign.center,
                   style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.title,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -112,7 +112,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   'سيتم حذف الخطة المحفوظة على هذا الجهاز ولن تتمكن من استعادتها لاحقاً.',
                   textAlign: TextAlign.center,
                   style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -165,7 +165,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       maxWidth: 600,
       safeAreaBottom: true,
       child: ColoredBox(
-        color: AppTheme.ivory,
+        color: AppTheme.canvas,
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
@@ -174,9 +174,9 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
               children: [
                 AarastCard(
                   padding: const EdgeInsets.all(20),
-                  color: AppTheme.pearl,
+                  color: AppTheme.canvas,
                   border: Border.all(
-                    color: AppTheme.gold.withValues(alpha: 0.28),
+                    color: AppTheme.focus.withValues(alpha: 0.28),
                   ),
                   child: Column(
                     children: [
@@ -184,17 +184,17 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: AppTheme.goldSoft,
+                          color: AppTheme.brandMuted,
                           borderRadius: BorderRadius.circular(
                             AppTheme.radiusLg,
                           ),
                           border: Border.all(
-                            color: AppTheme.gold.withValues(alpha: 0.32),
+                            color: AppTheme.focus.withValues(alpha: 0.32),
                           ),
                         ),
                         child: const Icon(
                           LucideIcons.uploadCloud,
-                          color: AppTheme.burgundy,
+                          color: AppTheme.brand,
                           size: 28,
                         ),
                       ),
@@ -203,7 +203,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                         'وجدنا خطتك المحفوظة على هذا الجهاز',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          color: AppTheme.title,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -212,7 +212,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                         'ارفعها إلى حسابك حتى تبقى محفوظة وتقدر تشاركها مع عائلتك من أي جهاز.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.muted,
+                          color: AppTheme.textSecondary,
                           height: 1.55,
                         ),
                       ),
@@ -231,7 +231,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleLarge?.copyWith(
-                          color: AppTheme.title,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -298,7 +298,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   child: Text(
                     'تجاهل الخطة المحلية',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -310,7 +310,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                     const Icon(
                       LucideIcons.lock,
                       size: 16,
-                      color: AppTheme.muted,
+                      color: AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Flexible(
@@ -319,7 +319,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.muted,
+                          color: AppTheme.textSecondary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -351,19 +351,19 @@ class _CountChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.goldSoft,
+        color: AppTheme.brandMuted,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.25)),
+        border: Border.all(color: AppTheme.focus.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppTheme.burgundy),
+          Icon(icon, size: 16, color: AppTheme.brand),
           const SizedBox(width: 6),
           Text(
             '$label: $count',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),

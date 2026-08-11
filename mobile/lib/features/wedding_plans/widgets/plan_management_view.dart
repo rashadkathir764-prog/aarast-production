@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -174,7 +175,7 @@ class _ManagementHeader extends StatelessWidget {
               Text(
                 'إدارة الخطة',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.ink,
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -182,7 +183,7 @@ class _ManagementHeader extends StatelessWidget {
               const Text(
                 'إدارة بيانات ومشاركات خطة عرسك.',
                 style: TextStyle(
-                  color: AppTheme.muted,
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -214,7 +215,7 @@ class _PlanIdentityCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -234,7 +235,7 @@ class _PlanIdentityCard extends StatelessWidget {
           Text(
             _dateLabel(plan.weddingDate),
             style: const TextStyle(
-              color: AppTheme.ink,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -242,7 +243,7 @@ class _PlanIdentityCard extends StatelessWidget {
           Text(
             plan.weddingLocation.shortLabel ?? plan.city ?? 'المدينة غير محددة',
             style: const TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -315,14 +316,17 @@ class _PreferencesSection extends StatelessWidget {
         const SizedBox(height: 8),
         const Text(
           'الأولويات',
-          style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 8),
         if (plan.priorities.isEmpty)
           const Text(
             'لم تحدد أولويات الخطة بعد.',
             style: TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           )
@@ -368,26 +372,26 @@ class _CompletenessSection extends StatelessWidget {
             Text(
               '${completeness.percent}%',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ],
         ),
         const SizedBox(height: 10),
-        LinearProgressIndicator(
+        AarastV3ProgressLine(
           value: completeness.percent / 100,
-          minHeight: 7,
-          borderRadius: BorderRadius.circular(8),
+          height: 7,
           color: completeness.isComplete ? AppTheme.success : AppTheme.warning,
           backgroundColor: AppTheme.border,
+          semanticsLabel: 'اكتمال بيانات الخطة',
         ),
         if (!completeness.isComplete) ...[
           const SizedBox(height: 10),
           Text(
             'أكمل: ${completeness.missing.join('، ')}',
             style: const TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.45,
             ),
@@ -418,7 +422,7 @@ class _DangerSection extends StatelessWidget {
               ? 'هذه الخطة مؤرشفة ولا يمكن تعيينها كخطة نشطة.'
               : 'الأرشفة توقف استخدام الخطة كخطة نشطة دون حذف بياناتها.',
           style: const TextStyle(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
             height: 1.45,
           ),
@@ -460,13 +464,13 @@ class _SectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppTheme.burgundy, size: 20),
+              Icon(icon, color: AppTheme.brand, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -499,7 +503,7 @@ class _DataRow extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -509,7 +513,7 @@ class _DataRow extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
                 height: 1.35,
               ),

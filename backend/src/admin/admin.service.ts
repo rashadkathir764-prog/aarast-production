@@ -112,7 +112,7 @@ export class AdminService {
       }),
       this.prisma.quoteRequest.count(),
       this.prisma.weddingPlan.count(),
-      this.prisma.city.count(),
+      this.prisma.city.count({ where: { isActive: true } }),
       this.prisma.providerCategory.count(),
     ]);
 

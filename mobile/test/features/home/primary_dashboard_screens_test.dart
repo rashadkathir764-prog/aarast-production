@@ -16,8 +16,8 @@ import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/plan_management_view.dart';
-import 'package:aarast_mobile/features/wedding_plans/widgets/premium/premium_dashboard_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -179,8 +179,8 @@ void main() {
       await _pumpState(tester, frames: 2);
 
       expect(find.byType(WeddingPlanDashboardScreen), findsOneWidget);
-      expect(find.byType(PremiumDashboardSkeleton), findsOneWidget);
-      _expectRtl(tester, find.byType(PremiumDashboardSkeleton));
+      expect(find.byType(AarastDashboardSkeleton), findsOneWidget);
+      _expectRtl(tester, find.byType(AarastDashboardSkeleton));
       expect(tester.takeException(), isNull);
 
       pending.complete(null);
@@ -211,9 +211,9 @@ void main() {
     await _pumpState(tester);
 
     expect(find.byType(WeddingPlanDashboardScreen), findsOneWidget);
-    expect(find.byKey(const ValueKey('royal-home-empty')), findsOneWidget);
-    expect(find.byType(AarastButton), findsOneWidget);
-    _expectRtl(tester, find.byKey(const ValueKey('royal-home-empty')));
+    expect(find.byKey(const ValueKey('aarast-home-empty')), findsOneWidget);
+    expect(find.byType(FilledButton), findsOneWidget);
+    _expectRtl(tester, find.byKey(const ValueKey('aarast-home-empty')));
     expect(tester.takeException(), isNull);
 
     expect(
@@ -252,9 +252,9 @@ void main() {
       await _pumpState(tester);
 
       expect(find.byType(WeddingPlanDashboardScreen), findsOneWidget);
-      expect(find.byType(PremiumDashboardView), findsOneWidget);
+      expect(find.byType(AarastDashboardView), findsOneWidget);
       expect(find.text(_planTitle), findsWidgets);
-      _expectRtl(tester, find.byType(PremiumDashboardView));
+      _expectRtl(tester, find.byType(AarastDashboardView));
       expect(tester.takeException(), isNull);
     },
   );

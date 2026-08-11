@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/diagnostics/app_logger.dart';
+import '../../core/routing/app_router.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
@@ -11,15 +12,17 @@ import '../account_contexts/models/account_context.dart';
 import '../account_contexts/providers/account_context_controller.dart';
 import '../finance/screens/money_overview_screen.dart';
 import '../finance/providers/finance_provider.dart';
+import '../finance/widgets/money_cost_action_picker.dart';
 import '../guests/screens/guest_list_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
+import '../wedding_plans/models/wedding_plan_stage.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/screens/plan_management_screen.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../wedding_plans/widgets/quick_add_actions.dart';
-import '../wedding_plans/widgets/royal_home_chrome.dart';
 import 'widgets/plan_shell_chrome.dart';
+import 'widgets/aarast_plan_chrome.dart';
 
 class MainShell extends StatelessWidget {
   const MainShell({super.key});
@@ -91,19 +94,58 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
 
   void _showQuickAdd() {
     final selectedPlanId = widget.weddingPlanId;
+    if (_index == 2) {
+      rememberCanonicalQuickAddAction(selectedPlanId, 'task');
+      context.push(AppRouter.createTask(selectedPlanId));
+      return;
+    }
     if (_index == 3) {
+      rememberCanonicalQuickAddAction(selectedPlanId, 'guest');
       setState(() {
         _visitedTabs.add(3);
         _guestAddRequest += 1;
       });
       return;
     }
-    showRoyalHomeActionSheet(context, actions: _quickActions(selectedPlanId));
+    showAarastQuickActionSheet(context, actions: _quickActions(selectedPlanId));
   }
 
-  List<RoyalHomeAction> _quickActions(String planId) {
+  void _runLastQuickAdd() {
+    final planId = widget.weddingPlanId;
+    switch (lastCanonicalQuickAddActionId(planId)) {
+      case 'task':
+        context.push(AppRouter.createTask(planId));
+        return;
+      case 'guest':
+        setState(() {
+          _visitedTabs.add(3);
+          _guestAddRequest += 1;
+        });
+        return;
+      case null:
+        _showQuickAdd();
+        return;
+      default:
+        final actions = _quickActions(planId, closeSheetBeforeOpen: false);
+        final action = lastCanonicalQuickAddAction(planId, actions);
+        if (action == null) {
+          _showQuickAdd();
+        } else {
+          action.onTap();
+        }
+        return;
+    }
+  }
+
+  List<AarastQuickAction> _quickActions(
+    String planId, {
+    bool closeSheetBeforeOpen = true,
+  }) {
+    final dashboard = context.read<DashboardSummaryProvider>().summary;
     Future<void> open(String route, {bool refreshDashboard = false}) async {
-      Navigator.of(context, rootNavigator: true).pop();
+      if (closeSheetBeforeOpen) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       if (!mounted) return;
       final changed = await context.push<bool>(route);
       if (refreshDashboard && changed == true && mounted) {
@@ -117,8 +159,55 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
       canManageMoney: _canManageMoney(planId),
       contextOrder: _quickAddContextForIndex(_index),
       refreshDashboardOnMoney: true,
+      signals: dashboard?.planId == planId
+          ? QuickAddSignals.fromDashboard(dashboard!)
+          : null,
+      onRecordPayment: () => _openMoneyCostAction(
+        planId,
+        MoneyCostActionIntent.payment,
+        closeQuickSheet: closeSheetBeforeOpen,
+      ),
+      onAddPaymentSchedule: () => _openMoneyCostAction(
+        planId,
+        MoneyCostActionIntent.schedule,
+        closeQuickSheet: closeSheetBeforeOpen,
+      ),
       openRoute: open,
     );
+  }
+
+  Future<void> _openMoneyCostAction(
+    String planId,
+    MoneyCostActionIntent intent, {
+    required bool closeQuickSheet,
+  }) async {
+    if (closeQuickSheet) {
+      await Navigator.of(context, rootNavigator: true).maybePop();
+      await Future<void>.delayed(Duration.zero);
+    }
+    if (!mounted) return;
+
+    final finance = context.read<FinanceProvider>();
+    final selection = await showMoneyCostActionPicker(
+      context,
+      intent: intent,
+      costs: finance.costs,
+      currency: finance.summary.currency,
+    );
+    if (!mounted || selection == null) return;
+
+    final route = selection.createCost
+        ? AppRouter.moneyCostCreate(planId)
+        : intent == MoneyCostActionIntent.payment
+        ? AppRouter.moneyPaymentCreate(planId, selection.cost!.id)
+        : AppRouter.moneyScheduleCreate(planId, selection.cost!.id);
+    final changed = await context.push<bool>(route, extra: selection.cost);
+    if (changed == true && mounted) {
+      await Future.wait([
+        finance.loadMoney(planId),
+        context.read<DashboardSummaryProvider>().loadDashboard(planId),
+      ]);
+    }
   }
 
   bool _canManageMoney(String planId) {
@@ -153,14 +242,22 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
       );
     }
     final selectedPlanId = widget.weddingPlanId;
+    final dashboardSummary = context.watch<DashboardSummaryProvider>().summary;
+    final stageLabel = dashboardSummary?.planId == selectedPlanId
+        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate).compactLabel
+        : null;
     final finance = context.watch<FinanceProvider?>();
     final canManageCurrentMoney =
         finance?.loadedPlanId == selectedPlanId &&
         (finance?.canManageMoney ?? false);
-    final showQuickFab = shouldShowPlanQuickAdd(
-      tabIndex: _index,
-      canManageMoney: _index != 1 || canManageCurrentMoney,
-    );
+    final moneyStarterVisible =
+        _index == 1 && finance != null && shouldShowMoneyStarter(finance);
+    final showQuickFab =
+        !moneyStarterVisible &&
+        shouldShowPlanQuickAdd(
+          tabIndex: _index,
+          canManageMoney: _index != 1 || canManageCurrentMoney,
+        );
 
     return RootTabBackScope(
       activeIndex: _index,
@@ -172,8 +269,11 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
           activeIndex: _index,
           onTabSelected: _onItemTapped,
           showQuickFab: showQuickFab,
+          contextLabel: selected!.displayName,
+          stageLabel: stageLabel,
           onQuickAdd: _showQuickAdd,
-          backgroundColor: AppTheme.ivory,
+          onQuickAddLongPress: _runLastQuickAdd,
+          backgroundColor: AppTheme.canvas,
           body: IndexedStack(
             key: ValueKey('owner-indexed-stack-${widget.contextKey}'),
             index: _index,
@@ -204,6 +304,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                 TaskTimelineScreen(
                   key: ValueKey('tasks-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
+                  showEmptyCreateAction: false,
                 ),
               ),
 

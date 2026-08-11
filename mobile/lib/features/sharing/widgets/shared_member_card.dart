@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/shared_member.dart';
@@ -23,8 +24,8 @@ class SharedMemberCard extends StatelessWidget {
   }
 
   Color get _roleColor {
-    if (member.isOwner) return AppTheme.burgundy;
-    return member.hasFinancialAccess ? AppTheme.gold : AppTheme.muted;
+    if (member.isOwner) return AppTheme.brand;
+    return member.hasFinancialAccess ? AppTheme.focus : AppTheme.textSecondary;
   }
 
   @override
@@ -33,86 +34,53 @@ class SharedMemberCard extends StatelessWidget {
     final roleLabel = member.isOwner
         ? 'مالك الخطة'
         : sharedMemberRoleLabel(member.role);
+    final displayNamePhone = member.displayNamePhone;
 
-    return AarastCard(
-      onTap: onTap,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: const BoxDecoration(
-              color: AppTheme.burgundySoft,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              _initial,
+    return AarastV3ListRow(
+      title: member.displayName,
+      titleWidget: displayNamePhone == null
+          ? null
+          : AarastPhoneText(
+              phone: displayNamePhone,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: textTheme.titleSmall?.copyWith(
-                color: AppTheme.burgundy,
+                color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
+      subtitle: member.permissionSummary,
+      accent: _roleColor,
+      onTap: onTap,
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: const BoxDecoration(
+          color: AppTheme.brandMuted,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          _initial,
+          style: textTheme.titleSmall?.copyWith(
+            color: AppTheme.brand,
+            fontWeight: FontWeight.w800,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (member.displayNamePhone case final phone?)
-                  AarastPhoneText(
-                    phone: phone,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  )
-                else
-                  Text(
-                    member.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                const SizedBox(height: 2),
-                Text(
-                  member.permissionSummary,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
+        ),
+      ),
+      status: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           if (member.hasFinancialAccess) ...[
             Semantics(
               label: 'لديه وصول مالي',
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: AppTheme.gold.withAlpha(30),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LucideIcons.wallet,
-                  size: 12,
-                  color: AppTheme.gold,
-                ),
+              child: const Icon(
+                LucideIcons.wallet,
+                size: 13,
+                color: AppTheme.focus,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: AarastV3Space.x1),
           ],
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -129,14 +97,6 @@ class SharedMemberCard extends StatelessWidget {
               ),
             ),
           ),
-          if (onTap != null) ...[
-            const SizedBox(width: 4),
-            Icon(
-              LucideIcons.chevronLeft,
-              size: 16,
-              color: AppTheme.muted.withAlpha(180),
-            ),
-          ],
         ],
       ),
     );

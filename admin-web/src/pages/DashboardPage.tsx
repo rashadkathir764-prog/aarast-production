@@ -1,19 +1,5 @@
-import { CSSProperties, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  AdminStats,
-  getProviderApplications,
-  getStats,
-  ProviderApplication,
-} from '../api/admin';
-import { useAuth } from '../auth/AuthProvider';
-import { EmptyState } from '../components/EmptyState';
-import { ErrorState } from '../components/ErrorState';
-import { LoadingState } from '../components/LoadingState';
-import { MiniDonut } from '../components/MiniDonut';
-import { SectionCard } from '../components/SectionCard';
-import { StatCard } from '../components/StatCard';
-import { StatusBadge } from '../components/StatusBadge';
 import {
   BarChart3,
   Bell,
@@ -26,21 +12,23 @@ import {
   Tag,
   Users,
 } from 'lucide-react';
+import {
+  type AdminStats,
+  getProviderApplications,
+  getStats,
+  type ProviderApplication,
+} from '../api/admin';
+import { useAuth } from '../auth/AuthProvider';
+import { ActionLink } from '../components/ActionButton';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingState } from '../components/LoadingState';
+import { MiniDonut } from '../components/MiniDonut';
+import { PageHeader } from '../components/PageHeader';
+import { SectionCard } from '../components/SectionCard';
+import { StatCard } from '../components/StatCard';
+import { StatusBadge } from '../components/StatusBadge';
 import { formatDate } from './providerHelpers';
-
-const quickActionStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '8px',
-  padding: '16px 8px',
-  background: '#FFFDF9',
-  border: '1px solid #EFECE6',
-  borderRadius: '12px',
-  color: '#4A1525',
-  textAlign: 'center',
-  textDecoration: 'none',
-};
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -69,26 +57,63 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
-  if (isLoading) return <LoadingState title="جاري تجهيز لوحة التحكم" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!stats) {
+  const title = `مرحباً، ${user?.name ?? 'مدير النظام'}`;
+  const header = (
+    <PageHeader
+      eyebrow="نظرة تشغيلية"
+      title={title}
+      description="ابدأ بالطلبات التي تحتاج قراراً، ثم استخدم الملخص لمتابعة حالة المنصة."
+    />
+  );
+
+  if (isLoading) {
     return (
-      <EmptyState
-        title="لا توجد بيانات"
-        message="لم تصل إحصاءات الإدارة بعد."
-      />
+      <section className="dashboard-page" dir="rtl">
+        {header}
+        <LoadingState title="جارٍ تجهيز لوحة التحكم" />
+      </section>
     );
   }
 
+  if (error) {
+    return (
+      <section className="dashboard-page" dir="rtl">
+        {header}
+        <ErrorState message={error} onRetry={load} />
+      </section>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <section className="dashboard-page" dir="rtl">
+        {header}
+        <EmptyState
+          title="لا توجد بيانات"
+          message="لم تصل إحصاءات الإدارة بعد."
+        />
+      </section>
+    );
+  }
+
+  const attentionCount = stats.pendingProviders + stats.needsChangesProviders;
   const providerStatusData = [
-    { name: 'نشط', value: stats.approvedProviders, color: '#4A1525' },
-    { name: 'قيد المراجعة', value: stats.pendingProviders, color: '#1565C0' },
-    { name: 'يحتاج تعديل', value: stats.needsChangesProviders, color: '#B78103' },
-    { name: 'مرفوض', value: stats.rejectedProviders, color: '#C62828' },
-    { name: 'موقوف', value: stats.suspendedProviders, color: '#616161' },
+    { name: 'نشط', value: stats.approvedProviders, color: 'var(--success)' },
+    { name: 'قيد المراجعة', value: stats.pendingProviders, color: 'var(--info)' },
+    {
+      name: 'يحتاج تعديل',
+      value: stats.needsChangesProviders,
+      color: 'var(--warning)',
+    },
+    { name: 'مرفوض', value: stats.rejectedProviders, color: 'var(--danger)' },
+    {
+      name: 'موقوف',
+      value: stats.suspendedProviders,
+      color: 'var(--text-disabled)',
+    },
   ];
   const providerStatusTotal = providerStatusData.reduce(
     (total, item) => total + item.value,
@@ -96,131 +121,163 @@ export function DashboardPage() {
   );
 
   return (
-    <section className="dashboard-page" style={{ padding: '24px', background: '#FCFBF7', minHeight: '100vh' }} dir="rtl">
-      <div style={{ marginBottom: '24px', textAlign: 'right' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#4A1525', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-          مرحبا {user?.name ?? 'مدير النظام'}
-        </h1>
-        <p style={{ margin: '4px 0 0', color: '#8A7A81', fontSize: '14px' }}>
-          كل الأرقام والروابط الظاهرة هنا مربوطة بمصادر API متاحة في لوحة الإدارة.
-        </p>
+    <section className="dashboard-page" dir="rtl">
+      <PageHeader
+        eyebrow="نظرة تشغيلية"
+        title={title}
+        description="ابدأ بالطلبات التي تحتاج قراراً، ثم استخدم الملخص لمتابعة حالة المنصة."
+        actions={
+          <ActionLink
+            to={attentionCount > 0 ? '/providers/applications' : '/providers'}
+            icon={<Clock size={18} />}
+          >
+            {attentionCount > 0
+              ? `مراجعة ${attentionCount} طلب${attentionCount === 1 ? '' : 'ات'}`
+              : 'عرض الموردين'}
+          </ActionLink>
+        }
+      />
+
+      <div className="stats-grid dashboard-summary-grid">
+        <StatCard
+          title="المستخدمون"
+          value={stats.totalUsers}
+          icon={<Users size={18} />}
+          tone="brand"
+        />
+        <StatCard
+          title="الموردون"
+          value={stats.totalProviders}
+          icon={<Briefcase size={18} />}
+          tone="info"
+        />
+        <StatCard
+          title="خطط الزواج"
+          value={stats.totalWeddingPlans}
+          icon={<CalendarCheck size={18} />}
+          tone="success"
+        />
+        <StatCard
+          title="طلبات العروض"
+          value={stats.totalQuoteRequests}
+          icon={<BarChart3 size={18} />}
+          tone="warning"
+        />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard title="المستخدمون" value={stats.totalUsers} icon={<Users size={18} />} tone="gold" />
-        <StatCard title="الموردون" value={stats.totalProviders} icon={<Briefcase size={18} />} tone="info" />
-        <StatCard title="طلبات الموردين" value={stats.pendingProviders} icon={<Clock size={18} />} tone={stats.pendingProviders > 0 ? 'warning' : 'success'} />
-        <StatCard title="طلبات العروض" value={stats.totalQuoteRequests} icon={<CalendarCheck size={18} />} tone="warning" />
-        <StatCard title="المدن" value={stats.totalCities} icon={<MapPin size={18} />} tone="success" />
-        <StatCard title="الفئات" value={stats.totalProviderCategories} icon={<Tag size={18} />} tone="gold" />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr', gap: '24px', marginBottom: '24px' }}>
+      <div className="dashboard-priority-grid">
         <SectionCard
-          title="طلبات الموردين الجديدة"
-          actions={<Link to="/providers/applications" style={{ fontSize: '13px', color: '#8A7A81', textDecoration: 'none' }}>عرض الكل</Link>}
+          title="طلبات الموردين التي تنتظر المراجعة"
+          subtitle={
+            pending.length > 0
+              ? 'اختر طلباً لعرض التفاصيل واتخاذ الإجراء المناسب.'
+              : 'لا توجد طلبات جديدة تحتاج مراجعة الآن.'
+          }
+          actions={<Link to="/providers/applications">عرض الكل</Link>}
         >
           {pending.length === 0 ? (
-            <EmptyState
-              title="لا توجد طلبات معلقة"
-              message="لا توجد طلبات موردين جديدة حسب API الحالي."
-            />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '240px', overflowY: 'auto' }}>
-              {pending.map((provider) => (
-                <Link
-                  key={provider.id}
-                  to={`/providers/applications/${provider.id}`}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #F5F4F0', color: 'inherit', textDecoration: 'none' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <StatusBadge status={provider.status} />
-                    <div style={{ fontSize: '11px', color: '#A1979C' }}>{formatDate(provider.createdAt)}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#2B2A2A' }}>{provider.businessName}</div>
-                      <div style={{ fontSize: '11px', color: '#8A7A81', marginTop: '2px' }}>
-                        {provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}
-                      </div>
-                    </div>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {provider.businessName.charAt(0)}
-                    </div>
-                  </div>
-                </Link>
-              ))}
+            <div className="dashboard-empty-note">
+              <strong>قائمة المراجعة فارغة</strong>
+              <span>ستظهر هنا الطلبات الجديدة فور وصولها.</span>
             </div>
+          ) : (
+            <ul className="dashboard-pending-list">
+              {pending.map((provider) => (
+                <li key={provider.id}>
+                  <Link to={`/providers/applications/${provider.id}`}>
+                    <span className="dashboard-pending-avatar" aria-hidden="true">
+                      {provider.businessName.charAt(0)}
+                    </span>
+                    <span className="dashboard-pending-main">
+                      <strong>{provider.businessName}</strong>
+                      <span>
+                        {provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}
+                      </span>
+                    </span>
+                    <span className="dashboard-pending-date">
+                      {formatDate(provider.createdAt)}
+                    </span>
+                    <StatusBadge status={provider.status} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
-          <Link to="/providers/applications" style={{ display: 'block', textAlign: 'center', marginTop: '12px', padding: '10px', background: '#FFF7FA', color: '#4A1525', borderRadius: '8px', fontWeight: 600, fontSize: '13px', textDecoration: 'none' }}>
-            إدارة طلبات الموردين
-          </Link>
         </SectionCard>
 
         <SectionCard
-          title="تقرير الحالة الإداري"
-          actions={
-            <Link to="/reports" style={{ fontSize: '13px', color: '#8A7A81', textDecoration: 'none' }}>فتح التقرير</Link>
-          }
+          title="صورة العمل اليوم"
+          subtitle="مؤشرات سريعة تساعد على ترتيب الأولويات."
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', minHeight: '240px', alignContent: 'center' }}>
-            <StatCard title="خطط الزواج" value={stats.totalWeddingPlans} tone="gold" />
-            <StatCard title="طلبات العروض" value={stats.totalQuoteRequests} tone="success" />
-            <StatCard title="موردون نشطون" value={stats.approvedProviders} tone="info" />
-            <StatCard title="يحتاجون مراجعة" value={stats.pendingProviders + stats.needsChangesProviders} tone="warning" />
-          </div>
-        </SectionCard>
-
-        <SectionCard title="توزيع الموردين حسب الحالة">
-          <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <MiniDonut
-              value={providerStatusTotal}
-              label="مورد"
-              data={providerStatusData}
-            />
-          </div>
+          <ul className="dashboard-health-list">
+            <li>
+              <span>طلبات جديدة</span>
+              <strong>{stats.pendingProviders}</strong>
+            </li>
+            <li>
+              <span>طلبات تحتاج تعديل</span>
+              <strong>{stats.needsChangesProviders}</strong>
+            </li>
+            <li>
+              <span>موردون نشطون</span>
+              <strong>{stats.approvedProviders}</strong>
+            </li>
+            <li>
+              <span>مدن مفعّلة</span>
+              <strong>{stats.totalCities}</strong>
+            </li>
+          </ul>
         </SectionCard>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-        <SectionCard title="إجراءات متاحة">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <Link to="/cities" style={quickActionStyle}>
-              <MapPin size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة أو تعديل<br />مدينة</span>
-            </Link>
-            <Link to="/categories" style={quickActionStyle}>
-              <Tag size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إدارة<br />الفئات</span>
-            </Link>
-            <Link to="/providers/applications" style={quickActionStyle}>
-              <Clock size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>مراجعة<br />طلبات الموردين</span>
-            </Link>
-            <Link to="/providers" style={quickActionStyle}>
-              <Briefcase size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إدارة<br />الموردين</span>
-            </Link>
-          </div>
+      <div className="dashboard-priority-grid">
+        <SectionCard
+          title="حالة الموردين"
+          subtitle="توزيع مرئي للحالة الحالية، وليس مؤشراً مالياً أو حجزاً."
+        >
+          <MiniDonut
+            value={providerStatusTotal}
+            label="مورد"
+            data={providerStatusData}
+          />
         </SectionCard>
 
-        <SectionCard title="وحدات قراءة شغالة">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
-            <Link to="/services" style={quickActionStyle}>
-              <PackageSearch size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>عرض<br />الخدمات</span>
+        <SectionCard
+          title="وصول سريع"
+          subtitle="انتقل إلى مساحة العمل المطلوبة دون تكرار الإجراءات."
+        >
+          <div className="dashboard-actions">
+            <Link className="dashboard-action" to="/providers/applications">
+              <Clock size={20} aria-hidden="true" />
+              <span>طلبات الموردين</span>
             </Link>
-            <Link to="/reviews" style={quickActionStyle}>
-              <Star size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>مراقبة<br />التقييمات</span>
+            <Link className="dashboard-action" to="/providers">
+              <Briefcase size={20} aria-hidden="true" />
+              <span>دليل الموردين</span>
             </Link>
-            <Link to="/notifications" style={quickActionStyle}>
-              <Bell size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إشعارات<br />الحساب</span>
+            <Link className="dashboard-action" to="/categories">
+              <Tag size={20} aria-hidden="true" />
+              <span>فئات الموردين</span>
             </Link>
-            <Link to="/reports" style={quickActionStyle}>
-              <BarChart3 size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>تقرير<br />الحالة</span>
+            <Link className="dashboard-action" to="/cities">
+              <MapPin size={20} aria-hidden="true" />
+              <span>المدن والمناطق</span>
+            </Link>
+            <Link className="dashboard-action" to="/services">
+              <PackageSearch size={20} aria-hidden="true" />
+              <span>الخدمات</span>
+            </Link>
+            <Link className="dashboard-action" to="/reviews">
+              <Star size={20} aria-hidden="true" />
+              <span>مراقبة التقييمات</span>
+            </Link>
+            <Link className="dashboard-action" to="/notifications">
+              <Bell size={20} aria-hidden="true" />
+              <span>إشعارات الحساب</span>
+            </Link>
+            <Link className="dashboard-action" to="/reports">
+              <BarChart3 size={20} aria-hidden="true" />
+              <span>التقارير التشغيلية</span>
             </Link>
           </div>
         </SectionCard>

@@ -137,12 +137,14 @@ export function ReviewsPage() {
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
+            label="بحث في التقييمات"
             value={search}
             onChange={setSearch}
             onSubmit={submitSearch}
             placeholder="بحث بالعميل أو المورد أو التعليق"
           />
           <SearchInput
+            label="بحث عن مورد للتصفية"
             value={providerSearch}
             onChange={setProviderSearch}
             onSubmit={() => {
@@ -184,6 +186,7 @@ export function ReviewsPage() {
           <EmptyState title="لا توجد تقييمات مطابقة" message="غير الفلاتر أو ابحث بكلمة أخرى." tone="api" />
         ) : (
           <DataTable
+            label="قائمة تقييمات الموردين"
             columns={['العميل', 'المورد', 'النجوم', 'التعليق', 'الحالة', 'التاريخ', 'إجراءات']}
             minWidth={1100}
           >

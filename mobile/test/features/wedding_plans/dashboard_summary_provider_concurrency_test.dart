@@ -53,6 +53,112 @@ void main() {
         expect(provider.isLoading, isFalse);
       },
     );
+
+    test(
+      'confirmed task and guest summaries update the live plan pulse',
+      () async {
+        final response = Completer<DashboardSummary>();
+        final api = _ControlledWeddingPlansApi()..responses.add(response);
+        final provider = DashboardSummaryProvider(weddingPlansApi: api);
+        final load = provider.loadDashboard('plan-1');
+        response.complete(
+          DashboardSummary.fromJson({
+            'planId': 'plan-1',
+            'title': 'الخطة',
+            'status': 'PLANNING',
+            'totalTasks': 5,
+            'completedTasks': 1,
+            'overdueTasks': 2,
+            'todayTasks': 1,
+            'guestCount': 10,
+            'confirmedGuests': 2,
+            'pendingGuests': 7,
+            'declinedGuests': 1,
+            'incompleteGuestsCount': 3,
+          }),
+        );
+        await load;
+
+        provider.reconcileTaskCounts(
+          weddingPlanId: 'plan-1',
+          total: 5,
+          completed: 2,
+          overdue: 1,
+          dueToday: 1,
+        );
+        provider.reconcileGuestCounts(
+          weddingPlanId: 'plan-1',
+          total: 11,
+          confirmed: 4,
+          pending: 5,
+          declined: 2,
+          incomplete: 1,
+        );
+
+        expect(provider.summary?.completedTasks, 2);
+        expect(provider.summary?.overdueTasks, 1);
+        expect(provider.summary?.guestCount, 11);
+        expect(provider.summary?.confirmedGuests, 4);
+        expect(provider.summary?.incompleteGuestsCount, 1);
+      },
+    );
+
+    test(
+      'a summary from another plan cannot mutate the visible pulse',
+      () async {
+        final response = Completer<DashboardSummary>();
+        final api = _ControlledWeddingPlansApi()..responses.add(response);
+        final provider = DashboardSummaryProvider(weddingPlansApi: api);
+        final load = provider.loadDashboard('plan-1');
+        response.complete(_summary(title: 'Current'));
+        await load;
+
+        provider.reconcileTaskCounts(
+          weddingPlanId: 'plan-2',
+          total: 99,
+          completed: 99,
+          overdue: 0,
+          dueToday: 0,
+        );
+
+        expect(provider.summary?.planId, 'plan-1');
+        expect(provider.summary?.totalTasks, 0);
+      },
+    );
+
+    test(
+      'local summary owns routed plan chrome without becoming account data',
+      () {
+        final api = _ControlledWeddingPlansApi();
+        final provider = DashboardSummaryProvider(weddingPlansApi: api);
+        final local = DashboardSummary.fromJson({
+          'dataScope': 'LOCAL',
+          'accountBacked': false,
+          'planId': 'local-guest-1',
+          'title': 'خطة الجهاز',
+          'status': 'PLANNING',
+          'weddingDate': '2026-09-08T00:00:00.000',
+        });
+
+        provider.publishLocalSummary(local);
+
+        expect(provider.summary?.planId, 'local-guest-1');
+        expect(provider.summary?.accountBacked, isFalse);
+        expect(provider.plan?.title, 'خطة الجهاز');
+        expect(provider.isLoading, isFalse);
+      },
+    );
+
+    test('account-backed summary cannot enter through the local publisher', () {
+      final api = _ControlledWeddingPlansApi();
+      final provider = DashboardSummaryProvider(weddingPlansApi: api);
+
+      expect(
+        () => provider.publishLocalSummary(_summary(title: 'Server plan')),
+        throwsArgumentError,
+      );
+      expect(provider.summary, isNull);
+    });
   });
 }
 

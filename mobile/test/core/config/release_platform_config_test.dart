@@ -6,7 +6,7 @@ void main() {
   test('Android release cannot fall back to debug signing', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
 
-    expect(gradle, contains('validateReleaseDartDefines()'));
+    expect(gradle, contains('validateReleaseDartDefines('));
     expect(gradle, contains('Release signing is not configured'));
     expect(gradle, contains('Debug signing is forbidden'));
     expect(gradle, contains('AARAST_ANDROID_STORE_FILE'));
@@ -24,6 +24,23 @@ void main() {
       ),
     );
     expect(gradle, isNot(contains('signingConfigs.getByName("debug")')));
+  });
+
+  test('Android store bundle fails closed without Sentry release inputs', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+
+    expect(gradle, contains('storeReleaseTaskRequested'));
+    expect(gradle, contains('requireStoreObservability'));
+    expect(gradle, contains('AARAST_SENTRY_DSN'));
+    expect(gradle, contains('AARAST_SENTRY_TRACES_SAMPLE_RATE'));
+    expect(gradle, contains('SENTRY_RELEASE'));
+    expect(gradle, contains('SENTRY_AUTH_TOKEN'));
+    expect(gradle, contains('SENTRY_ORG'));
+    expect(gradle, contains('SENTRY_PROJECT'));
+    expect(
+      gradle,
+      contains('Store app bundles require AARAST_ENVIRONMENT=production'),
+    );
   });
 
   test(

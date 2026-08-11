@@ -49,6 +49,7 @@ addCheck(
 
 const appRoutes = read(join(srcRoot, 'App.tsx'));
 const sidebar = read(join(srcRoot, 'layout', 'Sidebar.tsx'));
+const navigation = read(join(srcRoot, 'layout', 'adminNavigation.ts'));
 const dashboard = read(join(srcRoot, 'pages', 'DashboardPage.tsx'));
 const adminApi = read(join(srcRoot, 'api', 'admin.ts'));
 const authApi = read(join(srcRoot, 'api', 'auth.ts'));
@@ -82,7 +83,7 @@ addCheck(
 addCheck(
   'Conversation report moderation is fully routed',
   appRoutes.includes('path="conversation-reports"') &&
-    sidebar.includes('/conversation-reports') &&
+    navigation.includes("route: '/conversation-reports'") &&
     adminApi.includes('/admin/conversation-reports') &&
     sourceFiles.includes(conversationReportsPagePath),
 );

@@ -6,8 +6,8 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
-import 'package:aarast_mobile/features/guests/widgets/premium/guest_meter_hero.dart';
-import 'package:aarast_mobile/features/guests/widgets/premium/smart_guest_card.dart';
+import 'package:aarast_mobile/features/guests/widgets/guest_attendance_brief.dart';
+import 'package:aarast_mobile/features/guests/widgets/guest_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -119,8 +119,8 @@ void main() {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  GuestMeterHero(summary: summary),
-                  SmartGuestCard(
+                  GuestAttendanceBrief(summary: summary),
+                  GuestListRow(
                     guest: guests.first,
                     groupLabel: 'العائلة',
                     isDuplicate: false,
@@ -171,7 +171,7 @@ void main() {
     await _pumpGuestsScreen(tester, harness);
 
     expect(find.text('الضيوف'), findsWidgets);
-    // ملاحظة: أُزيلت فقرة التطمين المكررة من الترويسة في إعادة تصميم Premium.
+    // ملاحظة: أُزيلت فقرة التطمين المكررة من الترويسة في إعادة تصميم V3.
     expect(find.text('الضيوف'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('محمد علي'),
@@ -235,10 +235,7 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
     await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'سالم أحمد');
-    await tester.enterText(
-      _textFieldWithLabel('رقم الجوال (اختياري)'),
-      '777654321',
-    );
+    await tester.enterText(_textFieldWithLabel('رقم الجوال'), '777654321');
     final submit = find.widgetWithText(FilledButton, 'إضافة ضيف').last;
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();

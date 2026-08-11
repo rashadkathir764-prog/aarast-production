@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return AarastScreenFrame(
       maxWidth: 480,
       child: RefreshIndicator(
-        color: AppTheme.burgundy,
+        color: AppTheme.brand,
         onRefresh: () => provider.loadDashboard(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -47,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             HomeTopHeader(
               userName: auth.user?.name,
+              avatarUrl: auth.user?.avatarUrl,
               notificationCount: notifications?.unreadCount ?? 0,
               onNotifications: () {
                 context.push(AppRouter.notifications);

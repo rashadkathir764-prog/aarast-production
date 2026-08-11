@@ -125,7 +125,7 @@ export class PushDeliveryService {
         notification: {
           channelId: "aarast_updates",
           icon: "ic_stat_aarast",
-          color: "#5A0015",
+          color: "#4C7180",
           defaultSound: true,
           priority: "high" as const,
           visibility: "private" as const,

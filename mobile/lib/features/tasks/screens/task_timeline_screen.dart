@@ -1,29 +1,39 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../sharing/providers/sharing_provider.dart';
+import '../../wedding_plans/utils/plan_pulse_sync.dart';
+import '../../wedding_plans/models/wedding_plan_stage.dart';
+import '../../wedding_plans/models/wedding_stage_domain_guidance.dart';
+import '../../wedding_plans/providers/dashboard_summary_provider.dart';
+import '../../wedding_plans/widgets/wedding_stage_context_line.dart';
 import '../models/task_summary.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
-import '../widgets/premium/smart_task_card.dart';
-import '../widgets/premium/tasks_progress_hero.dart';
+import '../widgets/task_list_row.dart';
+import '../widgets/tasks_progress_brief.dart';
 
 class TaskTimelineScreen extends StatefulWidget {
-  const TaskTimelineScreen({required this.weddingPlanId, super.key});
+  const TaskTimelineScreen({
+    required this.weddingPlanId,
+    this.showEmptyCreateAction = true,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final bool showEmptyCreateAction;
 
   @override
   State<TaskTimelineScreen> createState() => _TaskTimelineScreenState();
@@ -61,44 +71,36 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
     final sharingProvider = context.watch<SharingProvider?>();
-    final planTaskCount = provider.tasks
-        .where((task) => task.weddingPlanId == widget.weddingPlanId)
-        .length;
-
+    final dashboardSummary = context
+        .watch<DashboardSummaryProvider?>()
+        ?.summary;
+    final stage = dashboardSummary?.planId == widget.weddingPlanId
+        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate)
+        : null;
     return AarastScreenFrame(
       maxWidth: 520,
-      backgroundColor: AppTheme.surface,
-      backgroundDecoration: const BoxDecoration(color: AppTheme.surface),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-            child: _TasksHeader(taskCount: planTaskCount),
+      child: RefreshIndicator(
+        color: AppTheme.brand,
+        onRefresh: () => provider.load(widget.weddingPlanId),
+        child: _TaskTimelineContent(
+          provider: provider,
+          weddingPlanId: widget.weddingPlanId,
+          sharedMembers: _membersForPlan(
+            sharingProvider?.members ?? const <SharedMember>[],
+            widget.weddingPlanId,
           ),
-          Expanded(
-            child: RefreshIndicator(
-              color: AppTheme.burgundy,
-              onRefresh: () => provider.load(widget.weddingPlanId),
-              child: _TaskTimelineContent(
-                provider: provider,
-                weddingPlanId: widget.weddingPlanId,
-                sharedMembers: _membersForPlan(
-                  sharingProvider?.members ?? const <SharedMember>[],
-                  widget.weddingPlanId,
-                ),
-                filter: _filter,
-                showCompleted: _showCompleted,
-                suppressErrors: false,
-                onFilterChanged: (filter) {
-                  setState(() => _filter = filter);
-                },
-                onToggleCompleted: () {
-                  setState(() => _showCompleted = !_showCompleted);
-                },
-              ),
-            ),
-          ),
-        ],
+          filter: _filter,
+          showCompleted: _showCompleted,
+          stage: stage,
+          showEmptyCreateAction: widget.showEmptyCreateAction,
+          suppressErrors: false,
+          onFilterChanged: (filter) {
+            setState(() => _filter = filter);
+          },
+          onToggleCompleted: () {
+            setState(() => _showCompleted = !_showCompleted);
+          },
+        ),
       ),
     );
   }
@@ -115,61 +117,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   }
 }
 
-class _TasksHeader extends StatelessWidget {
-  const _TasksHeader({required this.taskCount});
-
-  final int taskCount;
-
-  @override
-  Widget build(BuildContext context) {
-    // ترويسة مضغوطة: عنوان + شارة عدد حية في سطر واحد.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Text(
-            'المهام',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-            border: Border.all(
-              color: AppTheme.burgundy.withValues(alpha: 0.28),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                LucideIcons.listChecks,
-                size: 15,
-                color: AppTheme.burgundy,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                taskCount == 0 ? 'قائمة العمل' : _taskCountLabel(taskCount),
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.burgundy,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _TaskTimelineContent extends StatelessWidget {
   const _TaskTimelineContent({
     required this.provider,
@@ -177,6 +124,8 @@ class _TaskTimelineContent extends StatelessWidget {
     required this.sharedMembers,
     required this.filter,
     required this.showCompleted,
+    required this.stage,
+    required this.showEmptyCreateAction,
     required this.onFilterChanged,
     required this.onToggleCompleted,
     this.suppressErrors = false,
@@ -187,6 +136,8 @@ class _TaskTimelineContent extends StatelessWidget {
   final List<SharedMember> sharedMembers;
   final _TaskFilter filter;
   final bool showCompleted;
+  final WeddingPlanStageState? stage;
+  final bool showEmptyCreateAction;
   final ValueChanged<_TaskFilter> onFilterChanged;
   final VoidCallback onToggleCompleted;
   final bool suppressErrors;
@@ -231,15 +182,21 @@ class _TaskTimelineContent extends StatelessWidget {
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 120),
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        AarastV3Density.pageBottomWithQuickAction,
+      ),
       children: [
         if (!suppressErrors && provider.errorMessage != null) ...[
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        TasksProgressHero(
+        TasksProgressBrief(
           summary: summary,
           isLocalPlan: _isLocalGuestPlanId(weddingPlanId),
+          heroTag: 'plan-$weddingPlanId-tasks',
           footer: tasks.isEmpty
               ? null
               : _TaskFilterChips(
@@ -251,17 +208,24 @@ class _TaskTimelineContent extends StatelessWidget {
                   onChanged: onFilterChanged,
                 ),
         ),
+        if (stage != null) ...[
+          const SizedBox(height: 12),
+          WeddingStageContextLine(
+            stage: stage!,
+            domain: WeddingStageDomain.tasks,
+          ),
+        ],
         const SizedBox(height: 18),
         if (filter == _TaskFilter.all)
           _GroupedTimeline(
             tasks: tasks,
             showCompleted: showCompleted,
             onToggleCompleted: onToggleCompleted,
-            buildCard: (task, index) => _staggeredTask(
-              _taskCard(context, task),
-              index,
-              MediaQuery.of(context).disableAnimations,
-            ),
+            onAddTask: () {
+              context.push(AppRouter.createTask(weddingPlanId));
+            },
+            showEmptyCreateAction: showEmptyCreateAction,
+            buildCard: (task, index) => _taskCard(context, task),
           )
         else ...[
           AarastSectionHeader(
@@ -281,30 +245,53 @@ class _TaskTimelineContent extends StatelessWidget {
   ) {
     final visibleTasks = _filteredTasks(tasks, filter);
     if (visibleTasks.isEmpty) {
-      return [_EmptyTasksCard(message: _emptyTasksMessage(filter))];
+      return [
+        _EmptyTasksCard(
+          message: _emptyTasksMessage(filter),
+          actionLabel: 'عرض كل المهام',
+          onAction: () => onFilterChanged(_TaskFilter.all),
+        ),
+      ];
     }
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
     return [
-      for (var i = 0; i < visibleTasks.length; i++) ...[
-        _staggeredTask(_taskCard(context, visibleTasks[i]), i, reduceMotion),
-        const SizedBox(height: 10),
-      ],
+      AarastV3ContinuousSurface(
+        children: [for (final task in visibleTasks) _taskCard(context, task)],
+      ),
     ];
   }
 
   Widget _taskCard(BuildContext context, WeddingTask task) {
-    return SmartTaskCard(
-      task: task,
-      isBusy: provider.isSubmitting,
-      onMarkDone: task.isDone
-          ? null
-          : () => unawaited(_markDoneWithUndo(context, provider, task)),
-      onReopen: task.isDone
-          ? () => unawaited(_reopenTask(context, provider, task))
-          : null,
-      onEdit: () =>
-          context.push(AppRouter.editTask(weddingPlanId, task.id), extra: task),
-      onDelete: () => _confirmDelete(context, provider, task),
+    return AarastV3SwipeActions(
+      itemKey: ValueKey('task-swipe-${task.id}'),
+      primaryLabel: task.isDone ? 'إعادة الفتح' : 'إنجاز',
+      primaryIcon: task.isDone ? LucideIcons.rotateCcw : LucideIcons.check,
+      primaryColor: task.isDone ? AppTheme.brand : AppTheme.success,
+      onPrimary: () => task.isDone
+          ? _reopenTask(context, provider, task)
+          : _markDoneWithUndo(context, provider, task),
+      secondaryLabel: 'تعديل الموعد',
+      secondaryIcon: LucideIcons.calendarClock,
+      onSecondary: () async {
+        await context.push(
+          AppRouter.editTask(weddingPlanId, task.id),
+          extra: task,
+        );
+      },
+      child: TaskListRow(
+        task: task,
+        isBusy: provider.isSubmitting,
+        onMarkDone: task.isDone
+            ? null
+            : () => unawaited(_markDoneWithUndo(context, provider, task)),
+        onReopen: task.isDone
+            ? () => unawaited(_reopenTask(context, provider, task))
+            : null,
+        onEdit: () => context.push(
+          AppRouter.editTask(weddingPlanId, task.id),
+          extra: task,
+        ),
+        onDelete: () => _confirmDelete(context, provider, task),
+      ),
     );
   }
 
@@ -313,7 +300,6 @@ class _TaskTimelineContent extends StatelessWidget {
     TaskTimelineProvider provider,
     WeddingTask task,
   ) async {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     final previousStatus = task.status;
 
     final success = await provider.markTaskDone(weddingPlanId, task);
@@ -326,6 +312,12 @@ class _TaskTimelineContent extends StatelessWidget {
       return;
     }
 
+    publishTaskPlanPulse(
+      context,
+      weddingPlanId: weddingPlanId,
+      summary: provider.summary,
+    );
+
     AarastToast.showSuccess(
       context,
       'تم إنجاز المهمة',
@@ -334,10 +326,29 @@ class _TaskTimelineContent extends StatelessWidget {
         textColor: Colors.white,
         onPressed: () {
           unawaited(
-            provider.updateTaskStatus(weddingPlanId, task, previousStatus),
+            _undoTaskCompletion(context, provider, task, previousStatus),
           );
         },
       ),
+    );
+  }
+
+  Future<void> _undoTaskCompletion(
+    BuildContext context,
+    TaskTimelineProvider provider,
+    WeddingTask task,
+    String previousStatus,
+  ) async {
+    final restored = await provider.updateTaskStatus(
+      weddingPlanId,
+      task,
+      previousStatus,
+    );
+    if (!restored || !context.mounted) return;
+    publishTaskPlanPulse(
+      context,
+      weddingPlanId: weddingPlanId,
+      summary: provider.summary,
     );
   }
 
@@ -346,11 +357,14 @@ class _TaskTimelineContent extends StatelessWidget {
     TaskTimelineProvider provider,
     WeddingTask task,
   ) async {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
     final success = await provider.reopenTask(weddingPlanId, task);
     if (!context.mounted) return;
     if (success) {
+      publishTaskPlanPulse(
+        context,
+        weddingPlanId: weddingPlanId,
+        summary: provider.summary,
+      );
       AarastToast.showSuccess(context, 'تمت إعادة فتح المهمة');
     } else {
       AarastToast.showError(
@@ -396,7 +410,7 @@ class _TaskTimelineContent extends StatelessWidget {
                     'حذف المهمة؟',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.ink,
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -408,7 +422,7 @@ class _TaskTimelineContent extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
-                          color: AppTheme.muted,
+                          color: AppTheme.textSecondary,
                           fontWeight: FontWeight.w700,
                         ),
                   ),
@@ -443,7 +457,15 @@ class _TaskTimelineContent extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      await provider.deleteTask(weddingPlanId, task.id);
+      final deleted = await provider.deleteTask(weddingPlanId, task.id);
+      if (deleted && context.mounted) {
+        publishTaskPlanPulse(
+          context,
+          weddingPlanId: weddingPlanId,
+          summary: provider.summary,
+        );
+        AarastToast.showSuccess(context, 'تم حذف المهمة');
+      }
     }
   }
 }
@@ -507,10 +529,10 @@ class _TaskFilterPill extends StatelessWidget {
     final borderColor = selected
         ? color.withValues(alpha: 0.72)
         : AppTheme.border;
-    final foreground = selected ? color : AppTheme.muted;
+    final foreground = selected ? color : AppTheme.textSecondary;
 
     return Material(
-      color: AppTheme.surface,
+      color: AppTheme.surfaceRaised,
       shape: StadiumBorder(side: BorderSide(color: borderColor)),
       child: InkWell(
         onTap: onTap,
@@ -558,10 +580,10 @@ class _ChipSpec {
 }
 
 const _chipSpecs = [
-  _ChipSpec(_TaskFilter.all, 'الكل', AppTheme.burgundy),
+  _ChipSpec(_TaskFilter.all, 'الكل', AppTheme.brand),
   _ChipSpec(_TaskFilter.overdue, 'متأخرة', AppTheme.danger),
   _ChipSpec(_TaskFilter.today, 'اليوم', AppTheme.warning),
-  _ChipSpec(_TaskFilter.upcoming, 'قادمة', AppTheme.burgundy),
+  _ChipSpec(_TaskFilter.upcoming, 'قادمة', AppTheme.brand),
   _ChipSpec(_TaskFilter.completed, 'مكتملة', AppTheme.success),
 ];
 
@@ -571,20 +593,26 @@ class _GroupedTimeline extends StatelessWidget {
     required this.tasks,
     required this.showCompleted,
     required this.onToggleCompleted,
+    required this.onAddTask,
+    required this.showEmptyCreateAction,
     required this.buildCard,
   });
 
   final List<WeddingTask> tasks;
   final bool showCompleted;
   final VoidCallback onToggleCompleted;
+  final VoidCallback onAddTask;
+  final bool showEmptyCreateAction;
   final Widget Function(WeddingTask task, int index) buildCard;
 
   @override
   Widget build(BuildContext context) {
     if (tasks.isEmpty) {
-      return const _EmptyTasksCard(
-        message:
-            'لا توجد مهام بعد. أضف مهمة عندما يكون لديك إجراء واضح في الخطة.',
+      return _EmptyTasksCard(
+        title: AarastV3Copy.firstTaskTitle,
+        message: AarastV3Copy.firstTaskMessage,
+        actionLabel: showEmptyCreateAction ? 'إضافة أول مهمة' : null,
+        onAction: showEmptyCreateAction ? onAddTask : null,
       );
     }
 
@@ -593,8 +621,8 @@ class _GroupedTimeline extends StatelessWidget {
     final timelineTasks = importantTask == null
         ? tasks
         : tasks.where((task) => task.id != importantTask.id).toList();
-    final buckets = <_TimeBucket, List<WeddingTask>>{
-      for (final bucket in _TimeBucket.values) bucket: [],
+    final buckets = <AarastTemporalSection, List<WeddingTask>>{
+      for (final bucket in AarastTemporalSection.values) bucket: [],
     };
     for (final task in timelineTasks) {
       buckets[_bucketFor(task, today)]!.add(task);
@@ -614,11 +642,11 @@ class _GroupedTimeline extends StatelessWidget {
         ..add(const SizedBox(height: 18));
       cardIndex++;
     }
-    for (final bucket in _TimeBucket.values) {
+    for (final bucket in AarastTemporalSection.values) {
       final bucketTasks = buckets[bucket]!;
       if (bucketTasks.isEmpty) continue;
       final meta = _bucketMeta(bucket);
-      final isCompleted = bucket == _TimeBucket.completed;
+      final isCompleted = bucket == AarastTemporalSection.completed;
 
       children.add(
         _TimelineGroupHeader(
@@ -685,20 +713,20 @@ class _ImportantNowHeader extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: AppTheme.goldSoft,
+              color: AppTheme.brandMuted,
               borderRadius: BorderRadius.circular(AppTheme.radiusPill),
             ),
             child: const Icon(
               LucideIcons.sparkles,
               size: 15,
-              color: AppTheme.goldDeep,
+              color: AppTheme.brand,
             ),
           ),
           const SizedBox(width: 9),
           Text(
             'الأهم الآن',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.title,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -726,7 +754,7 @@ class _TimelineGroupHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.ivory, width: 2),
+              border: Border.all(color: AppTheme.canvas, width: 2),
             ),
           ),
           const SizedBox(width: 10),
@@ -760,7 +788,7 @@ class _CompletedToggleCard extends StatelessWidget {
     return AarastCard(
       key: const ValueKey('tasks-completed-toggle'),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: AppTheme.surfaceElevated,
+      color: AppTheme.surfaceRaised,
       onTap: onTap,
       child: Row(
         children: [
@@ -784,7 +812,7 @@ class _CompletedToggleCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -793,7 +821,7 @@ class _CompletedToggleCard extends StatelessWidget {
           Text(
             expanded ? 'إخفاء' : 'عرض',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.burgundy,
+              color: AppTheme.brand,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -801,7 +829,7 @@ class _CompletedToggleCard extends StatelessWidget {
           Icon(
             expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
             size: 15,
-            color: AppTheme.burgundy,
+            color: AppTheme.brand,
           ),
         ],
       ),
@@ -810,29 +838,36 @@ class _CompletedToggleCard extends StatelessWidget {
 }
 
 class _EmptyTasksCard extends StatelessWidget {
-  const _EmptyTasksCard({required this.message});
+  const _EmptyTasksCard({
+    this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
 
+  final String? title;
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppTheme.muted,
-          fontWeight: FontWeight.w700,
-          height: 1.35,
-        ),
-      ),
+    return AarastEmptyState(
+      icon: LucideIcons.listTodo,
+      title:
+          title ??
+          (onAction == null
+              ? 'لا توجد نتائج هنا'
+              : AarastV3Copy.firstTaskTitle),
+      message: message,
+      action: onAction == null
+          ? null
+          : AarastButton(
+              label: actionLabel ?? 'متابعة',
+              icon: LucideIcons.plus,
+              expand: false,
+              onPressed: onAction,
+            ),
     );
   }
 }
@@ -874,7 +909,7 @@ class _SkeletonBox extends StatelessWidget {
         height: height,
         width: width ?? double.infinity,
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceRaised,
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           border: Border.all(color: AppTheme.border),
         ),
@@ -936,30 +971,22 @@ class _SheetHandle extends StatelessWidget {
 
 enum _TaskFilter { all, overdue, today, upcoming, completed }
 
-enum _TimeBucket { overdue, today, week, later, completed }
-
-({String title, Color color}) _bucketMeta(_TimeBucket bucket) {
-  return switch (bucket) {
-    _TimeBucket.overdue => (title: 'متأخرة', color: AppTheme.danger),
-    _TimeBucket.today => (title: 'اليوم', color: AppTheme.goldDeep),
-    _TimeBucket.week => (title: 'هذا الأسبوع', color: AppTheme.burgundy),
-    _TimeBucket.later => (title: 'لاحقًا', color: AppTheme.muted),
-    _TimeBucket.completed => (title: 'مكتملة', color: AppTheme.success),
+({String title, Color color}) _bucketMeta(AarastTemporalSection bucket) {
+  final color = switch (bucket) {
+    AarastTemporalSection.now => AppTheme.danger,
+    AarastTemporalSection.today || AarastTemporalSection.week => AppTheme.brand,
+    AarastTemporalSection.later => AppTheme.textSecondary,
+    AarastTemporalSection.completed => AppTheme.success,
   };
+  return (title: bucket.label, color: color);
 }
 
-_TimeBucket _bucketFor(WeddingTask task, DateTime today) {
-  if (task.isDone) return _TimeBucket.completed;
-  if (_isLateTask(task)) return _TimeBucket.overdue;
-  final dueDate = task.dueDate;
-  if (dueDate != null && task.status != 'CANCELLED') {
-    final due = _dateOnly(dueDate);
-    if (due == today) return _TimeBucket.today;
-    if (due.isBefore(today.add(const Duration(days: 8)))) {
-      return _TimeBucket.week;
-    }
-  }
-  return _TimeBucket.later;
+AarastTemporalSection _bucketFor(WeddingTask task, DateTime today) {
+  return aarastDeadlineSection(
+    dueDate: task.status == 'CANCELLED' ? null : task.dueDate,
+    completed: task.isDone,
+    now: today,
+  );
 }
 
 List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
@@ -985,15 +1012,16 @@ WeddingTask? _selectImportantTask(List<WeddingTask> tasks, DateTime today) {
   final candidates = tasks.where((task) {
     if (task.isDone || task.status == 'CANCELLED') return false;
     final bucket = _bucketFor(task, today);
-    return bucket == _TimeBucket.overdue || bucket == _TimeBucket.today;
+    return bucket == AarastTemporalSection.now ||
+        bucket == AarastTemporalSection.today;
   }).toList();
   if (candidates.isEmpty) return null;
 
   candidates.sort((first, second) {
     final firstBucket = _bucketFor(first, today);
     final secondBucket = _bucketFor(second, today);
-    final firstUrgency = firstBucket == _TimeBucket.overdue ? 0 : 1;
-    final secondUrgency = secondBucket == _TimeBucket.overdue ? 0 : 1;
+    final firstUrgency = firstBucket == AarastTemporalSection.now ? 0 : 1;
+    final secondUrgency = secondBucket == AarastTemporalSection.now ? 0 : 1;
     final urgencyComparison = firstUrgency.compareTo(secondUrgency);
     if (urgencyComparison != 0) return urgencyComparison;
 
@@ -1017,20 +1045,6 @@ int _priorityRank(String priority) {
 }
 
 bool _isLateTask(WeddingTask task) => isTaskLate(task);
-
-Widget _staggeredTask(Widget card, int index, bool reduceMotion) {
-  if (reduceMotion) return card;
-  return card
-      .animate()
-      .fadeIn(delay: (45 * index).ms, duration: 340.ms)
-      .slideY(
-        begin: 0.08,
-        end: 0,
-        delay: (45 * index).ms,
-        duration: 340.ms,
-        curve: Curves.easeOutCubic,
-      );
-}
 
 bool _isSameDay(DateTime first, DateTime second) {
   return first.year == second.year &&

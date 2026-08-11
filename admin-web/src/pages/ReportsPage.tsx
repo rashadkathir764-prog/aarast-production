@@ -93,7 +93,11 @@ export function ReportsPage() {
         title="مؤشرات التشغيل"
         subtitle="الأرقام من قاعدة البيانات مباشرة، ولا تشمل دفع أو تأكيد حجز."
       >
-        <DataTable columns={['القسم', 'المؤشر', 'القيمة', 'ملاحظة']} minWidth={960}>
+        <DataTable
+          label="مؤشرات التشغيل"
+          columns={['القسم', 'المؤشر', 'القيمة', 'ملاحظة']}
+          minWidth={960}
+        >
           {rows.map(([section, metric, value, note]) => (
             <tr key={`${section}-${metric}`}>
               <td>{section}</td>
@@ -110,7 +114,12 @@ export function ReportsPage() {
       </SectionCard>
 
       <SectionCard title="حالات طلبات العروض" subtitle="Planning leads فقط، ليست حجوزات مدفوعة.">
-        <DataTable columns={['الحالة', 'العدد', 'النسبة']} minWidth={720} dense>
+        <DataTable
+          label="حالات طلبات العروض"
+          columns={['الحالة', 'العدد', 'النسبة']}
+          minWidth={720}
+          dense
+        >
           {report.quotes.byStatus.map((item) => (
             <tr key={item.status}>
               <td>{item.status}</td>

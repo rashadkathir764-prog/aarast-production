@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
-import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_setup_fields.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/wedding_plan_creation_form.dart';
 
 void main() {
   setUp(() {
@@ -209,26 +209,34 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify quick setup
-    expect(find.text('افتح لوحة واضحة'), findsOneWidget);
-    expect(find.text('الميزانية والعملة'), findsOneWidget);
+    expect(find.text('إنشاء خطة زفاف'), findsOneWidget);
+    expect(find.text('ميزانية أولية'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextFormField).first, 'My Wedding');
+    await tester.enterText(
+      find.byKey(const ValueKey('wedding-plan-title-field')),
+      'My Wedding',
+    );
     await tester.pumpAndSettle();
 
-    // Verify location
-    expect(find.text('المدينة / الموقع'), findsOneWidget);
+    // The same structured location form is used for first and additional plans.
     expect(
-      find.text('اكتب المدينة أو المنطقة الآن، ويمكن تعديلها لاحقًا من الخطة.'),
+      find.textContaining('اختر المحافظة ثم المديرية بالترتيب'),
       findsOneWidget,
     );
-    final locationField = find.descendant(
-      of: find.byType(PremiumLocationCard),
-      matching: find.byType(TextFormField),
+    final governorateField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.labelText == 'المحافظة *',
     );
-    await tester.enterText(locationField, 'صنعاء');
+    await tester.enterText(governorateField, 'صنعاء');
+    await tester.pumpAndSettle();
+    final districtField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.labelText == 'المديرية *',
+    );
+    await tester.enterText(districtField, 'بني الحارث');
     await tester.pumpAndSettle();
 
-    final dateField = find.byType(PremiumDateField);
+    final dateField = find.byKey(const ValueKey('wedding-plan-date-field'));
     await tester.ensureVisible(dateField);
     await tester.pumpAndSettle();
     await tester.tap(dateField);
@@ -238,16 +246,13 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    // Verify budget formatting
-    final budgetField = find.descendant(
-      of: find.byType(PremiumBudgetField),
-      matching: find.byType(TextFormField),
-    );
-    await tester.enterText(budgetField, '3000000');
+    await tester.ensureVisible(find.text('ميزانية أولية'));
+    await tester.tap(find.text('ميزانية أولية'));
     await tester.pumpAndSettle();
 
-    // It should display Arabic text with default currency
-    expect(find.text('ثلاثة ملايين ريال يمني'), findsOneWidget);
+    final budgetField = find.byKey(const ValueKey('wedding-plan-budget-field'));
+    await tester.enterText(budgetField, '3000000');
+    await tester.pumpAndSettle();
 
     // Change currency
     await tester.tap(find.text('ر.ي'));
@@ -255,17 +260,36 @@ void main() {
     await tester.tap(find.text('ر.س').last);
     await tester.pumpAndSettle();
 
-    // Verify currency text updated
-    expect(find.text('ثلاثة ملايين ريال سعودي'), findsOneWidget);
+    final locationValues = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((field) => field.controller?.text)
+        .whereType<String>()
+        .toList();
+    final locationFields = {
+      for (final field in tester.widgetList<TextField>(find.byType(TextField)))
+        field.decoration?.labelText: field.controller?.text,
+    };
+    expect(locationValues, contains('صنعاء'));
+    expect(locationValues, contains('بني الحارث'));
+    expect(locationFields['المحافظة *'], 'صنعاء');
+    expect(locationFields['المديرية *'], 'بني الحارث');
+    expect(find.text('اختر التاريخ'), findsNothing);
 
     // Tap Start Planning
-    final startButton = find.text('حفظ ومتابعة');
+    final startButton = find.text('إنشاء الخطة');
     await tester.ensureVisible(startButton);
     await tester.pumpAndSettle();
     await tester.tap(startButton);
     await tester.pumpAndSettle();
 
     // Verify it navigated away from welcome to /home
+    expect(find.text('عنوان الخطة مطلوب'), findsNothing);
+    if (find.byType(WeddingPlanCreationFields).evaluate().isNotEmpty) {
+      final form = tester.widget<WeddingPlanCreationFields>(
+        find.byType(WeddingPlanCreationFields),
+      );
+      expect(form.errorMessage, isNull);
+    }
     expect(find.text('dashboard-opened'), findsOneWidget);
 
     // Verify draft was saved
@@ -274,7 +298,7 @@ void main() {
     expect(guestPlan, isNotNull);
     expect(draft?.planName, 'My Wedding');
     expect(draft?.governorate, 'صنعاء');
-    expect(draft?.city, 'صنعاء');
+    expect(draft?.city, 'بني الحارث');
     expect(draft?.weddingDate, isNotNull);
     expect(draft?.weddingDateUnknown, isFalse);
     expect(draft?.estimatedBudget, '3000000');
@@ -322,18 +346,16 @@ void main() {
       await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('افتح لوحة واضحة'), findsOneWidget);
+      expect(find.text('إنشاء خطة زفاف'), findsOneWidget);
 
-      final startButton = find.text('حفظ ومتابعة');
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-      await tester.pumpAndSettle();
+      final startButton = find.text('إنشاء الخطة');
       await tester.ensureVisible(startButton);
       await tester.tap(startButton);
       await tester.pumpAndSettle();
 
       expect(find.text('dashboard-opened'), findsNothing);
       expect(await guestStorage.loadGuestPlan(), isNull);
-      expect(find.textContaining('أكمل اسم الخطة'), findsOneWidget);
+      expect(find.text('عنوان الخطة مطلوب'), findsOneWidget);
     },
   );
 
@@ -344,34 +366,48 @@ void main() {
     tester.view.physicalSize = const Size(320, 760);
     addTearDown(tester.view.reset);
 
-    final budgetController = TextEditingController(text: '3000000');
-    final locationController = TextEditingController(
-      text: 'صنعاء القديمة - شارع طويل لاختبار التفاف النص العربي',
-    );
-    addTearDown(budgetController.dispose);
-    addTearDown(locationController.dispose);
+    final controllers = List.generate(8, (_) => TextEditingController());
+    controllers[0].text = 'خطة زفاف عربية طويلة لاختبار تكبير النص';
+    controllers[1].text = 'أمانة العاصمة';
+    controllers[2].text = 'صنعاء القديمة';
+    controllers[3].text = 'حي طويل لاختبار التفاف النص العربي';
+    controllers[4].text = 'حي الأنصار';
+    controllers[7].text = '3000000';
+    addTearDown(() {
+      for (final controller in controllers) {
+        controller.dispose();
+      }
+    });
 
     await tester.pumpWidget(
       MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
         home: Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
             body: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    PremiumDateField(selectedDate: null, onTap: () {}),
-                    const SizedBox(height: 16),
-                    PremiumBudgetField(
-                      controller: budgetController,
-                      initialCurrency: 'YER',
-                      onCurrencyChanged: (_) {},
-                    ),
-                    const SizedBox(height: 16),
-                    PremiumLocationCard(controller: locationController),
-                  ],
-                ),
+              padding: const EdgeInsets.all(20),
+              child: WeddingPlanCreationFields(
+                titleController: controllers[0],
+                governorateController: controllers[1],
+                cityOrDistrictController: controllers[2],
+                areaOrNeighborhoodController: controllers[3],
+                neighborhoodController: controllers[4],
+                streetController: controllers[5],
+                detailedAddressController: controllers[6],
+                budgetController: controllers[7],
+                currency: 'YER',
+                weddingDate: DateTime(2026, 12, 1),
+                showOptionalAddress: true,
+                onSelectDate: () {},
+                onCurrencyChanged: (_) {},
+                onToggleOptionalAddress: () {},
+                onChanged: () {},
               ),
             ),
           ),
@@ -380,7 +416,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(PremiumLocationCard), findsOneWidget);
+    await tester.ensureVisible(find.text('ميزانية أولية'));
+    await tester.tap(find.text('ميزانية أولية'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WeddingPlanCreationFields), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

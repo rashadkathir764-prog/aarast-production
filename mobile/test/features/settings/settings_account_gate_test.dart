@@ -50,7 +50,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(320, 820));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await _pumpSignedInSettings(tester, fakeApi);
+      await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: true);
 
       expect(find.byType(Switch), findsNWidgets(3));
       expect(
@@ -102,6 +102,16 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('settings do not claim push when this app build lacks Firebase', (
+    tester,
+  ) async {
+    final fakeApi = _FakeSettingsApi();
+    await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: false);
+
+    expect(find.textContaining('نسخة Android مهيأة للإشعارات'), findsOneWidget);
+    expect(find.textContaining('متاحة للرسائل والمهام'), findsNothing);
+  });
 }
 
 Future<void> _pumpSettings(
@@ -133,8 +143,9 @@ Future<void> _pumpSettings(
 
 Future<void> _pumpSignedInSettings(
   WidgetTester tester,
-  _FakeSettingsApi fakeApi,
-) async {
+  _FakeSettingsApi fakeApi, {
+  required bool devicePushAvailable,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
@@ -158,9 +169,11 @@ Future<void> _pumpSignedInSettings(
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const Directionality(
+        home: Directionality(
           textDirection: TextDirection.rtl,
-          child: SettingsScreen(),
+          child: SettingsScreen(
+            devicePushAvailableOverride: devicePushAvailable,
+          ),
         ),
       ),
     ),
@@ -188,6 +201,33 @@ class _FakeSettingsApi extends SettingsApi {
       taskRemindersEnabled: true,
       paymentRemindersEnabled: true,
       providerMessagesEnabled: true,
+      channelCapabilities: const NotificationChannelCapabilities(
+        inApp: NotificationChannelCapability(
+          supported: true,
+          configurable: false,
+          enabled: true,
+        ),
+        push: NotificationChannelCapability(
+          supported: true,
+          configurable: false,
+          enabled: false,
+        ),
+        sms: NotificationChannelCapability(
+          supported: false,
+          configurable: false,
+          enabled: false,
+        ),
+        whatsapp: NotificationChannelCapability(
+          supported: false,
+          configurable: false,
+          enabled: false,
+        ),
+        email: NotificationChannelCapability(
+          supported: false,
+          configurable: false,
+          enabled: false,
+        ),
+      ),
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );

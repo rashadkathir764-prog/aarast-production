@@ -29,7 +29,10 @@ function preference(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function harness() {
+function harness({ pushSupported = false, preferenceOverrides = {} }: {
+  pushSupported?: boolean;
+  preferenceOverrides?: Record<string, unknown>;
+} = {}) {
   let writes = 0;
   let lastUpsert: any;
   const events: string[] = [];
@@ -39,6 +42,7 @@ function harness() {
       writes += 1;
       lastUpsert = input;
       return preference({
+        ...preferenceOverrides,
         ...input.create,
         ...input.update,
       });
@@ -58,26 +62,48 @@ function harness() {
     ) => operation(transactionClient),
   };
   return {
-    service: new UsersService(prisma as any, {} as any, {} as any),
+    service: new UsersService(
+      prisma as any,
+      {} as any,
+      {} as any,
+      undefined,
+      { enabled: pushSupported } as any,
+    ),
     writes: () => writes,
     lastUpsert: () => lastUpsert,
     events: () => events,
   };
 }
 
-test("settings expose truthful notification channel capabilities", async () => {
+test("settings report push unsupported when runtime push delivery is disabled", async () => {
   const { service } = harness();
 
   const settings = await service.getSettings(currentUser);
 
   assert.deepEqual(settings.channelCapabilities, {
     inApp: { supported: true, configurable: false, enabled: true },
-    push: { supported: true, configurable: false, enabled: true },
+    push: { supported: false, configurable: false, enabled: true },
     sms: { supported: false, configurable: false, enabled: false },
     whatsapp: { supported: false, configurable: false, enabled: false },
     email: { supported: false, configurable: false, enabled: false },
   });
   assert.equal(settings.pushEnabled, true);
+});
+
+test("settings separate runtime push support from the user's installation", async () => {
+  const { service } = harness({
+    pushSupported: true,
+    preferenceOverrides: { pushEnabled: false },
+  });
+
+  const settings = await service.getSettings(currentUser);
+
+  assert.deepEqual(settings.channelCapabilities.push, {
+    supported: true,
+    configurable: false,
+    enabled: false,
+  });
+  assert.equal(settings.pushEnabled, false);
 });
 
 test("unsupported notification channels cannot be enabled", async () => {

@@ -17,7 +17,7 @@ class AarastFeatureHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.statusLabel,
-    this.statusColor = AppTheme.burgundy,
+    this.statusColor = AppTheme.brand,
     this.statusIcon = LucideIcons.badgeCheck,
     this.actions = const [],
     this.showBack = false,
@@ -56,9 +56,11 @@ class AarastFeatureHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontFamily: AppTheme.displayFontFamily,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),
@@ -67,8 +69,8 @@ class AarastFeatureHeader extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500,
                       height: 1.4,
                     ),
                   ),

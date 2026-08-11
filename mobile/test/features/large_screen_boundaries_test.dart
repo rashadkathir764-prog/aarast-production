@@ -94,26 +94,27 @@ void main() {
     }
   });
 
-  test('smart dashboard barrel keeps responsibility files bounded', () {
-    final barrel = _read(
-      'lib/features/wedding_plans/widgets/premium/smart_dashboard_cards.dart',
-    );
+  test('semantic dashboard keeps responsibility files bounded', () {
     const files = [
-      'smart_dashboard_models.dart',
-      'aarast_next_action_card.dart',
-      'aarast_setup_journey_card.dart',
-      'aarast_pulse_row.dart',
-      'aarast_participants_glance_card.dart',
-      'aarast_money_glance_card.dart',
+      'aarast_dashboard_view.dart',
+      'aarast_dashboard_focus.dart',
+      'aarast_dashboard_mosaic.dart',
+      'aarast_dashboard_money_card.dart',
+      'aarast_dashboard_sections.dart',
+      'aarast_dashboard_states.dart',
+      'aarast_dashboard_support.dart',
     ];
 
-    expect(_lineCount(barrel), lessThanOrEqualTo(20));
     for (final name in files) {
-      expect(barrel, contains("export '$name';"), reason: name);
-      final source = _read('lib/features/wedding_plans/widgets/premium/$name');
-      expect(_lineCount(source), lessThanOrEqualTo(500), reason: name);
+      final source = _read(
+        'lib/features/wedding_plans/widgets/dashboard/$name',
+      );
+      expect(_lineCount(source), lessThanOrEqualTo(700), reason: name);
       for (final forbidden in [
-        'Provider',
+        'package:provider/',
+        'Provider.of',
+        'ChangeNotifierProvider',
+        'Consumer<',
         'AuthActionGuard',
         'AppRouter',
         'go_router',

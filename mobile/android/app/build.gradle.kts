@@ -61,7 +61,7 @@ fun isLocalOrPrivateHost(value: String): Boolean {
         (first == 192 && second == 168)
 }
 
-fun validateReleaseDartDefines() {
+fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
     val defines = decodedDartDefines()
     val apiBaseUrl = defines["AARAST_API_BASE_URL"]?.trim().orEmpty()
     if (apiBaseUrl.isEmpty()) {
@@ -115,6 +115,45 @@ fun validateReleaseDartDefines() {
                 missingFirebaseDefines.joinToString() +
                 ".",
         )
+    }
+
+    if (requireStoreObservability) {
+        val requiredSentryDefines = listOf(
+            "AARAST_SENTRY_DSN",
+            "AARAST_SENTRY_TRACES_SAMPLE_RATE",
+            "SENTRY_RELEASE",
+        )
+        val missingSentryDefines = requiredSentryDefines.filter { key ->
+            defines[key].isNullOrBlank()
+        }
+        val requiredSentryEnvironment = listOf(
+            "SENTRY_AUTH_TOKEN",
+            "SENTRY_ORG",
+            "SENTRY_PROJECT",
+        )
+        val missingSentryEnvironment = requiredSentryEnvironment.filter { key ->
+            System.getenv(key).isNullOrBlank()
+        }
+        if (missingSentryDefines.isNotEmpty() || missingSentryEnvironment.isNotEmpty()) {
+            throw GradleException(
+                "Store app bundles require Sentry runtime and symbol-upload inputs. " +
+                    "Missing dart-defines: ${missingSentryDefines.joinToString()}; " +
+                    "missing environment variables: ${missingSentryEnvironment.joinToString()}.",
+            )
+        }
+        if (defines["AARAST_ENVIRONMENT"]?.trim() != "production") {
+            throw GradleException(
+                "Store app bundles require AARAST_ENVIRONMENT=production.",
+            )
+        }
+        val tracesSampleRate = defines["AARAST_SENTRY_TRACES_SAMPLE_RATE"]
+            ?.trim()
+            ?.toDoubleOrNull()
+        if (tracesSampleRate == null || tracesSampleRate !in 0.0..1.0) {
+            throw GradleException(
+                "AARAST_SENTRY_TRACES_SAMPLE_RATE must be between 0 and 1.",
+            )
+        }
     }
 }
 
@@ -174,9 +213,15 @@ val hasUsableReleaseKeystore = invalidSigningKeys.isEmpty() &&
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.contains("release", ignoreCase = true)
 }
+val storeReleaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("bundle", ignoreCase = true) &&
+        taskName.contains("release", ignoreCase = true)
+}
 
 if (releaseTaskRequested) {
-    validateReleaseDartDefines()
+    validateReleaseDartDefines(
+        requireStoreObservability = storeReleaseTaskRequested,
+    )
     if (!hasUsableReleaseKeystore) {
         val reason = when {
             invalidSigningKeys.isNotEmpty() ->

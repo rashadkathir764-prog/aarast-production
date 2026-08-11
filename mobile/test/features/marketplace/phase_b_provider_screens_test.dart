@@ -22,7 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../account_contexts/account_context_test_data.dart';
 
 void main() {
-  group('Phase B provider screens premium contract', () {
+  group('Phase B provider screens V3 contract', () {
     test('provider user screens use Lucide and Arabic currency helpers', () {
       for (final path in _phaseBScreenPaths) {
         final source = _phaseBSource(path);
@@ -37,7 +37,7 @@ void main() {
       }
     });
 
-    test('provider details and favorites expose premium heroes', () {
+    test('provider details stay visual while quote form uses focus mode', () {
       final quoteSource = _readSource(
         'lib/features/marketplace/screens/quote_request_screen.dart',
       );
@@ -51,7 +51,10 @@ void main() {
         'lib/features/marketplace/screens/favorite_providers_screen.dart',
       );
 
-      expect(quoteSource, contains('_QuoteRequestHero'));
+      expect(quoteSource, contains('AarastV3FocusPrompt'));
+      expect(quoteSource, contains('AarastV3LiveSummary'));
+      expect(quoteSource, contains('AarastV3FormActionBar'));
+      expect(quoteSource, isNot(contains('_QuoteRequestHero')));
       expect(detailsSource, contains('ProviderDetailsView'));
       expect(detailsViewSource, contains('class _ProviderHero'));
       expect(favoritesSource, contains('_FavoriteProvidersHero'));
@@ -91,6 +94,8 @@ void main() {
       expect(find.text('قاعة السلام'), findsOneWidget);
       // Price now appears both in the headline price block and the service tile.
       expect(find.text('1,200 ر.س'), findsWidgets);
+      await tester.tap(find.text('الباقات والتفاصيل والتقييمات'));
+      await tester.pumpAndSettle();
       expect(find.text('3,500 ر.ي'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(find.text('مرجع تخطيطي'), findsOneWidget);
@@ -129,6 +134,32 @@ void main() {
       expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
       expect(find.text('طلب عرض سعر'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('provider details retry is disabled while its refresh runs', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final marketplace = _FakeMarketplaceProvider(
+        detailsLoading: true,
+        servicesError: 'تعذر تحميل الخدمات.',
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: marketplace,
+          child: const MaterialApp(
+            home: ProviderDetailsScreen(providerId: _providerId),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final retry = find.widgetWithText(OutlinedButton, 'إعادة المحاولة');
+      expect(retry, findsOneWidget);
+      expect(tester.widget<OutlinedButton>(retry).onPressed, isNull);
       expect(tester.takeException(), isNull);
     });
 
@@ -524,12 +555,18 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   _FakeMarketplaceProvider({
     bool isSubmitting = false,
     List<QuoteRequest> quotes = const [],
+    bool detailsLoading = false,
+    String? servicesError,
   }) : _quotes = quotes,
        _isSubmitting = isSubmitting,
+       _detailsLoading = detailsLoading,
+       _servicesError = servicesError,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final bool _isSubmitting;
   final List<QuoteRequest> _quotes;
+  final bool _detailsLoading;
+  final String? _servicesError;
   int toggleFavoriteCallCount = 0;
 
   @override
@@ -567,6 +604,12 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   List<ProviderReview> reviewsFor(String id) => const [];
+
+  @override
+  String? servicesErrorFor(String providerId) => _servicesError;
+
+  @override
+  bool isProviderQuoteContextLoading(String providerId) => _detailsLoading;
 
   @override
   List<QuoteRequest> quotesForProvider(String providerId) => _quotes;

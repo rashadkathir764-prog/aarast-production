@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-07-23
+Snapshot date: 2026-08-10
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -8,6 +8,8 @@ references, quote leads, provider dashboard behavior, admin operations, and
 notifications, rotating refresh sessions, unified provider conversations,
 Socket.IO delivery, fully decoded/sanitized signed provider/chat media,
 pepper-keyed durable login throttling, and report moderation.
+It also owns versioned published reference catalogs and the typed Yemen
+governorate → district → locality hierarchy consumed by Admin and Mobile.
 
 ## Active Backend Docs
 

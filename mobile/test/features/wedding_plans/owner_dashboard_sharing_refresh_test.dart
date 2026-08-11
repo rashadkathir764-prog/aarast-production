@@ -12,7 +12,6 @@ import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
-import 'package:aarast_mobile/features/wedding_plans/widgets/premium/aarast_participants_glance_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -100,9 +99,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(dashboard.loadCalls, 1);
-      final sharingAction = find.byType(AarastParticipantsGlanceCard);
+      final sharingAction = find.byKey(
+        const ValueKey('aarast-dashboard-sharing'),
+      );
       expect(sharingAction, findsOneWidget);
       await tester.ensureVisible(sharingAction);
+      await tester.pumpAndSettle();
       await tester.tap(sharingAction);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('close-sharing')), findsOneWidget);

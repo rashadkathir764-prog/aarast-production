@@ -160,7 +160,7 @@ class NotificationChannelCapabilities {
       enabled: true,
     ),
     push: NotificationChannelCapability(
-      supported: true,
+      supported: false,
       configurable: false,
       enabled: false,
     ),
@@ -191,4 +191,7 @@ class NotificationChannelCapabilities {
 
   bool get externalDeliverySupported =>
       push.supported || sms.supported || whatsapp.supported || email.supported;
+
+  bool pushAvailableOnDevice(bool localGatewayAvailable) =>
+      push.supported && localGatewayAvailable;
 }

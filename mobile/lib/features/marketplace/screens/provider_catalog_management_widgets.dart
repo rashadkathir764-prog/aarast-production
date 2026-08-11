@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -32,7 +33,7 @@ class ProviderPackageManagementCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.gem, color: AppTheme.gold),
+              const Icon(LucideIcons.gem, color: AppTheme.focus),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -41,7 +42,7 @@ class ProviderPackageManagementCard extends StatelessWidget {
                     Text(
                       item.title,
                       style: const TextStyle(
-                        color: AppTheme.ink,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -49,7 +50,7 @@ class ProviderPackageManagementCard extends StatelessWidget {
                       Text(
                         priceLabel!,
                         style: const TextStyle(
-                          color: AppTheme.burgundy,
+                          color: AppTheme.brand,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -59,10 +60,12 @@ class ProviderPackageManagementCard extends StatelessWidget {
               AarastStatusPill(
                 label: item.isActive ? 'نشطة' : 'متوقفة',
                 icon: item.isActive ? LucideIcons.check : LucideIcons.pause,
-                color: item.isActive ? AppTheme.success : AppTheme.muted,
+                color: item.isActive
+                    ? AppTheme.success
+                    : AppTheme.textSecondary,
                 backgroundColor: item.isActive
                     ? AppTheme.successSoft
-                    : AppTheme.ivory,
+                    : AppTheme.canvas,
               ),
             ],
           ),
@@ -106,7 +109,7 @@ Future<bool?> confirmProviderListingPause(
       title: Text('إيقاف $kind؟'),
       content: Text(
         'لن يظهر $kind للعملاء حتى تعيد تفعيله، ولن تُحذف بياناته.',
-        style: const TextStyle(color: AppTheme.muted, height: 1.5),
+        style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
       ),
       actions: [
         TextButton(
@@ -145,6 +148,13 @@ Future<bool?> showProviderServiceEditDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const AarastV3FocusPrompt(
+                  question: 'ما الذي تغيّر في هذه الخدمة؟',
+                  supportingText:
+                      'ثبّت الاسم والسعر أولًا، ثم أضف التفاصيل التي يحتاجها العرض.',
+                  icon: LucideIcons.wand,
+                ),
+                const SizedBox(height: 14),
                 TextFormField(
                   key: const Key('provider-service-edit-title'),
                   controller: title,
@@ -152,12 +162,6 @@ Future<bool?> showProviderServiceEditDialog(
                   validator: (value) => (value?.trim().length ?? 0) < 2
                       ? 'اكتب اسم الخدمة.'
                       : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: description,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'الوصف'),
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
@@ -171,9 +175,27 @@ Future<bool?> showProviderServiceEditDialog(
                   validator: validateOptionalProviderListingPrice,
                 ),
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: priceUnit,
-                  decoration: const InputDecoration(labelText: 'ملاحظات السعر'),
+                AarastDisclosureCard(
+                  title: 'تفاصيل الخدمة',
+                  subtitle: 'الوصف وملاحظة السعر',
+                  icon: LucideIcons.fileText,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: description,
+                        minLines: 2,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'الوصف'),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: priceUnit,
+                        decoration: const InputDecoration(
+                          labelText: 'ملاحظة السعر',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 if (errorMessage != null) ...[
                   const SizedBox(height: 10),
@@ -260,6 +282,13 @@ Future<bool?> showProviderPackageEditDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const AarastV3FocusPrompt(
+                  question: 'ما الذي تغيّر في هذه الباقة؟',
+                  supportingText:
+                      'راجع الاسم والسعر، وافتح المزايا فقط إذا احتاجت تعديلًا.',
+                  icon: LucideIcons.package,
+                ),
+                const SizedBox(height: 14),
                 TextFormField(
                   key: const Key('provider-package-edit-title'),
                   controller: title,
@@ -280,18 +309,29 @@ Future<bool?> showProviderPackageEditDialog(
                   validator: validateOptionalProviderListingPrice,
                 ),
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: description,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'الوصف'),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: items,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'المميزات',
-                    hintText: 'كل ميزة في سطر',
+                AarastDisclosureCard(
+                  title: 'محتوى الباقة',
+                  subtitle: 'الوصف والمميزات',
+                  icon: LucideIcons.listChecks,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: description,
+                        minLines: 2,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'الوصف'),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: items,
+                        minLines: 3,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'المميزات',
+                          hintText: 'كل ميزة في سطر',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (errorMessage != null) ...[

@@ -11,6 +11,9 @@ const dockerignore = read(".dockerignore");
 const nginx = read("nginx.conf");
 const inviteHtml = read("invite.html");
 const inviteJs = read("invite.js");
+const privacyHtml = read("privacy.html");
+const supportHtml = read("support.html");
+const publicCss = read("public.css");
 const assetLinks = JSON.parse(read("assetlinks.json"));
 
 assert.match(
@@ -26,6 +29,9 @@ for (const asset of [
   "invite.js",
   "invite.css",
   "invite-preview.png",
+  "privacy.html",
+  "support.html",
+  "public.css",
   "assetlinks.json",
 ]) {
   const escaped = asset.replaceAll(".", "\\.");
@@ -37,7 +43,27 @@ assert.match(nginx, /location \^~ \/invites\//);
 assert.match(nginx, /location = \/healthz/);
 assert.match(nginx, /location = \/invite\.css/);
 assert.match(nginx, /location = \/invite\.js/);
+assert.match(nginx, /location = \/privacy/);
+assert.match(nginx, /location = \/support/);
+assert.match(nginx, /try_files \/privacy\.html =404;/);
+assert.match(nginx, /try_files \/support\.html =404;/);
+assert.match(nginx, /location = \/public\.css/);
+assert.match(nginx, /add_header_inherit merge;/);
 assert.match(nginx, /location \/\s*\{\s*return 404;/);
+for (const header of [
+  "X-Content-Type-Options",
+  "X-Frame-Options",
+  "Referrer-Policy",
+  "Permissions-Policy",
+  "Strict-Transport-Security",
+  "Content-Security-Policy",
+]) {
+  assert.equal(
+    (nginx.match(new RegExp(`add_header ${header} `, "g")) ?? []).length,
+    1,
+    `${header} should be declared once and inherited by every location.`,
+  );
+}
 assert.match(nginx, /access_log off;/);
 assert.match(nginx, /Cache-Control "no-store"/);
 assert.match(nginx, /X-Robots-Tag "noindex, nofollow, noarchive"/);
@@ -80,5 +106,34 @@ for (const forbidden of [
 ]) {
   assert.doesNotMatch(inviteJs, new RegExp(forbidden.replace(".", "\\.")));
 }
+
+for (const [name, html] of [
+  ["privacy", privacyHtml],
+  ["support", supportHtml],
+]) {
+  assert.match(html, /<html lang="ar" dir="rtl">/, `${name} must be Arabic RTL.`);
+  assert.match(html, /<link rel="stylesheet" href="\/public\.css">/);
+  assert.doesNotMatch(html, /<script/i, `${name} must not execute JavaScript.`);
+  assert.doesNotMatch(html, /<form/i, `${name} must not collect user data.`);
+}
+
+assert.match(privacyHtml, /info@aarast\.app/);
+assert.match(privacyHtml, /لا نعالج مدفوعات داخل التطبيق/);
+assert.match(privacyHtml, /لا نتتبع موقعك الجغرافي/);
+assert.match(privacyHtml, /لا نستخدم إعلانات/);
+assert.match(privacyHtml, /معرّف\s+تثبيت Firebase/);
+assert.match(privacyHtml, /بعد منح إذن الإشعارات/);
+assert.match(privacyHtml, /سجلات الأعطال والتشخيص/);
+assert.match(privacyHtml, /تُرسل تلقائيًا إلى Sentry/);
+assert.match(privacyHtml, /تقرير الدعم التشخيصي/);
+assert.match(privacyHtml, /موافقة جديدة/);
+assert.match(privacyHtml, /سجل مساهمات محدود/);
+assert.match(privacyHtml, /إيصال حذف مجهول/);
+assert.match(privacyHtml, /تُجدول الوسائط المرفوعة\s+للحذف/);
+assert.match(privacyHtml, /الأطفال/);
+assert.match(privacyHtml, /دون 13 عاماً/);
+assert.match(supportHtml, /info@aarast\.app/);
+assert.match(supportHtml, /حذف الحساب/);
+assert.match(publicCss, /font-family:/);
 
 process.stdout.write("public-site source checks: PASS\n");

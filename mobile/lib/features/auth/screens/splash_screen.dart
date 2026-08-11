@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -7,7 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../providers/auth_controller.dart';
-import '../../../core/widgets/brand/aarast_premium_brand_mark.dart';
+import '../../../core/widgets/brand/aarast_brand_mark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -80,9 +80,7 @@ class _SplashScreenState extends State<SplashScreen>
         children: [
           Positioned.fill(
             child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppTheme.ivory, // Ivory
-              ),
+              decoration: const BoxDecoration(color: AppTheme.canvas),
             ),
           ),
 
@@ -97,11 +95,11 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const AarastPremiumBrandMark(),
+                      const AarastBrandMark(),
                       const SizedBox(height: 16),
                       const AarastInlineSpinner(
                         dimension: 48,
-                        color: AppTheme.gold,
+                        color: AppTheme.focus,
                       ),
                     ],
                   ),

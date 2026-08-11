@@ -1,6 +1,6 @@
 # Aarast Mobile QA Plan
 
-Date: 2026-07-14
+Snapshot date: 2026-08-11
 Stage: Active mobile QA contract
 Status: Current; local automation does not replace device or environment smoke
 
@@ -242,6 +242,9 @@ Automated coverage should include:
 - Pending sync queue survives app restart.
 - Dirty cached item stays dirty until server sync succeeds.
 - Failed sync item keeps retry count and error.
+- A blocked item shows safe Arabic entity/operation/error details, never retries
+  automatically, and exposes retry only when `canRetry` is true.
+- A blocked item exposes no unsafe edit or discard action.
 - JSON fallback behavior stays compatible.
 
 Manual smoke:
@@ -263,6 +266,8 @@ Fail if:
 - App claims cloud success while offline.
 - Pending queue is lost.
 - Offline banner/status is missing on affected screens.
+- Blocked work is shown as pending, silently auto-retried, or given an unsafe
+  edit/discard action.
 
 ## 10. Provider and Quote QA
 
@@ -283,6 +288,11 @@ Visible stable flows:
   `صنعاء`, and load only that governorate's districts. Repeat offline after one
   successful load to verify encrypted-cache fallback.
 - Open provider detail.
+- Verify a failed Marketplace favorites refresh keeps the prior successful
+  favorites visible with an Arabic error and retry, rather than showing empty.
+- Verify failed services, packages, or reviews keep any prior successful data;
+  with no prior data, show an explicit Arabic section error and retry rather
+  than an empty-state claim.
 - Request quote only when authenticated and feature enabled.
 - Provider dashboard only for provider path.
 - Pending/change-requested/rejected/suspended provider keeps profile status and
@@ -330,6 +340,9 @@ Cases:
   app is backgrounded and terminated.
 - Tapping a push opens the account notification inbox without selecting or
   changing `AccountContextController.selectedContext`.
+- Remote push is available only when both Backend capability and local Firebase
+  capability are available. Missing either must fail closed for remote push,
+  while supported in-app notifications remain available.
 
 Fail if:
 
@@ -341,6 +354,8 @@ Fail if:
   context.
 - Notification deep link opens a forbidden route.
 - Notification opens a blank screen.
+- Missing Backend or local Firebase capability is presented as a working remote
+  push channel, or it disables supported in-app notifications.
 
 ## 12. Visual and Accessibility QA
 
@@ -359,9 +374,62 @@ Before visual polish is accepted:
 
 This phase does not authorize visual polish before product/architecture readiness.
 
-## 13. Manual QA Report Template
+## 13. Latest Combined Local Evidence — 2026-08-11
 
-## 13. Release Configuration and Native Identity QA
+- PASS — `flutter analyze --no-pub`: no issues.
+- PASS — `flutter test --no-pub`: 1150/1150 combined tests.
+- PASS — the updated settings Golden was visually reviewed and now preserves
+  the fail-closed Push state when Backend capability is absent.
+- PASS — public-API debug APK build.
+- OPEN — no physical-device run was performed for this 2026-08-11 working tree;
+  the latest physical evidence remains the prior checkpoint below.
+
+### Previous physical-device and release-build evidence — 2026-08-10
+
+- PASS — `flutter analyze --no-pub`: no issues.
+- PASS — `flutter test --exclude-tags golden`: 1084/1084.
+- PASS — `flutter test --tags golden --concurrency=1`: 50/50 reviewed Goldens.
+- PASS — `flutter test --no-pub`: 1134/1134 combined tests.
+- PASS — Release Web build with the documented public HTTPS API origin.
+- PASS — debug APK build with the documented public HTTPS API origin.
+- PASS — the latest debug APK installed and cold-launched on Samsung SM-S938B
+  at 1440x3120 and 1.15 text scale. Home, Money, Tasks, Guests, and Providers
+  rendered; the post-navigation fatal/Flutter/RenderFlex/SQLite scan was clean.
+- PASS — a cached owner dashboard cold-launched in airplane mode without a
+  fatal, Flutter, RenderFlex, or SQLite error; connectivity was restored after
+  the check.
+- OPEN — physical secondary/auth/form states and offline mutation/sync recovery
+  still require a complete device checklist; root-tab and offline cold-start
+  smoke are not that checklist.
+- BLOCKED — physical iOS: the available host is Windows.
+
+Automated widget and offline-sync results are not a substitute for these two
+physical-device gates.
+
+### Soft Royal V2 evidence — 2026-08-10
+
+- PASS — `flutter analyze --no-pub`.
+- PASS — 1084/1084 non-Golden tests.
+- PASS — 50/50 reviewed Golden tests after a full visual contact-sheet review.
+- PASS — 41/41 focused contrast, native-brand, source-guard, accessibility, and
+  responsive-boundary tests.
+- PASS — docs sync and docs verification.
+- PASS — debug APK build and data-preserving install on Samsung SM-S938B.
+- PASS — focused physical Home review with the app foregrounded.
+- PASS — final Home plan-moment review after the responsive height and stacked
+  date/location refinement; the 320px Golden remains overflow-free.
+- OPEN — exhaustive physical secondary routes, short-height forms, offline
+  mutation/sync recovery, and notification receipt/tap behavior.
+- BLOCKED — physical iOS on the available Windows host.
+
+### Targeted Marketplace truth evidence — 2026-08-11
+
+- PASS — targeted only: `flutter test test/favorite_providers_preview_test.dart test/features/marketplace/marketplace_loading_truth_test.dart test/features/marketplace/provider_details_view_test.dart --no-pub` (11 tests).
+- This evidence covers retained Marketplace data, explicit retry states, and
+  the affected favorites/details widgets. It is not a full Flutter suite,
+  device smoke, Backend integration, or release claim.
+
+## 14. Release Configuration and Native Identity QA
 
 Automated/local gate:
 
@@ -385,7 +453,7 @@ External/manual gate:
 Do not mark the store release gate PASS when artifact signing/certificate
 verification was skipped or intentionally deferred.
 
-## 14. Manual QA Report Template
+## 15. Manual QA Report Template
 
 ```text
 QA Date:
@@ -418,7 +486,7 @@ Overall Verdict:
 PASS / FAIL / BLOCKED
 ```
 
-## 15. Acceptance Criteria
+## 16. Acceptance Criteria
 
 - QA levels are defined.
 - Required commands by change type are defined.
@@ -428,14 +496,14 @@ PASS / FAIL / BLOCKED
 - Release configuration evidence distinguishes local automation from external
   signing, deployment, and physical-device checks.
 
-## 16. Risks
+## 17. Risks
 
 - Static Flutter checks can pass while the post-login or guest dashboard is visibly broken.
 - Route regressions can hide behind unused paths unless every nav item is tapped.
 - Privacy bugs need role-specific manual checks.
 - Offline bugs often appear only after restart or failed sync.
 
-## 17. Next Implementation Notes
+## 18. Next Implementation Notes
 
 - Next stage should be tracked in the active frontend or release plan, not in an
   archived mobile-architecture file.

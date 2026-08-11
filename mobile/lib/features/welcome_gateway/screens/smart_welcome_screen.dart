@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -11,11 +12,12 @@ import '../../account_contexts/providers/account_context_controller.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/models/onboarding_complete.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
+import '../../wedding_plans/widgets/wedding_plan_creation_form.dart';
 
-import '../widgets/premium_path_card.dart';
-import '../widgets/premium_setup_fields.dart';
+import '../widgets/aarast_path_card.dart';
 
 enum _WelcomeStep { pathSelection, roleSelection, quickSetup }
 
@@ -31,11 +33,18 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   GuestPersona? _selectedPersona;
   String? _setupError;
 
+  final _quickSetupFormKey = GlobalKey<FormState>();
   final _planNameController = TextEditingController();
   final _budgetController = TextEditingController();
-  final _locationController = TextEditingController();
+  final _governorateController = TextEditingController();
+  final _cityOrDistrictController = TextEditingController();
+  final _areaOrNeighborhoodController = TextEditingController();
+  final _neighborhoodController = TextEditingController();
+  final _streetController = TextEditingController();
+  final _detailedAddressController = TextEditingController();
   DateTime? _selectedDate;
   String _currency = 'YER';
+  bool _showOptionalAddress = false;
   bool _isLoading = false;
 
   @override
@@ -48,7 +57,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   void dispose() {
     _planNameController.dispose();
     _budgetController.dispose();
-    _locationController.dispose();
+    _governorateController.dispose();
+    _cityOrDistrictController.dispose();
+    _areaOrNeighborhoodController.dispose();
+    _neighborhoodController.dispose();
+    _streetController.dispose();
+    _detailedAddressController.dispose();
     super.dispose();
   }
 
@@ -60,19 +74,29 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   }
 
   Future<void> _startPlanning() async {
+    if (!(_quickSetupFormKey.currentState?.validate() ?? false)) return;
     final planName = _planNameController.text.trim();
-    final locationText = _locationController.text.trim();
+    final location = _locationDraft;
     final budgetText = _budgetController.text.replaceAll(',', '').trim();
 
-    if (_selectedPersona == null ||
-        planName.isEmpty ||
-        locationText.isEmpty ||
-        _selectedDate == null ||
-        _currency.trim().isEmpty) {
-      setState(() {
-        _setupError =
-            'أكمل اسم الخطة، المدينة، وتاريخ الزفاف قبل فتح لوحة التحكم. يمكنك تحديد الميزانية لاحقاً.';
-      });
+    final missingMessage = switch ((
+      _selectedPersona,
+      planName.isEmpty,
+      location.governorate?.trim().isEmpty ?? true,
+      location.cityOrDistrict?.trim().isEmpty ?? true,
+      _selectedDate,
+      _currency.trim().isEmpty,
+    )) {
+      (null, _, _, _, _, _) => 'اختر دورك في الخطة قبل المتابعة.',
+      (_, true, _, _, _, _) => 'أدخل اسمًا واضحًا للخطة.',
+      (_, _, true, _, _, _) => 'اختر المحافظة قبل إنشاء الخطة.',
+      (_, _, _, true, _, _) => 'اختر المديرية قبل إنشاء الخطة.',
+      (_, _, _, _, null, _) => 'اختر تاريخ الزفاف قبل إنشاء الخطة.',
+      (_, _, _, _, _, true) => 'اختر عملة الميزانية.',
+      _ => null,
+    };
+    if (missingMessage != null) {
+      setState(() => _setupError = missingMessage);
       return;
     }
 
@@ -83,7 +107,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     if (_isAuthenticated()) {
       await _createAccountPlan(
         planName: planName,
-        locationText: locationText,
+        location: location,
         budgetText: budgetText,
       );
       return;
@@ -95,7 +119,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     final draft = GuestOnboardingDraft.quickLocalPlanSetup(
       planName: planName,
       persona: _selectedPersona!,
-      location: locationText,
+      location: location,
+      area: _areaOrNeighborhoodController.text.trim(),
+      neighborhood: _neighborhoodController.text.trim(),
       weddingDate: _selectedDate!,
       currency: _currency,
       estimatedBudget: budgetText,
@@ -124,7 +150,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
   Future<void> _createAccountPlan({
     required String planName,
-    required String locationText,
+    required WeddingLocationDraft location,
     required String budgetText,
   }) async {
     final WeddingPlansProvider plans;
@@ -154,7 +180,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           _ => 'GROOM',
         },
         title: planName,
-        city: locationText,
+        city: location.cityOrDistrict,
+        location: location.toJson(),
         weddingDate: _selectedDate?.toIso8601String(),
         estimatedBudget: budgetText.isEmpty ? null : budgetText,
         currency: _currency,
@@ -191,15 +218,23 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     final draft = await context.read<GuestOnboardingStorage>().loadDraft();
     if (!mounted || draft == null || draft.isCompleteGuestPlan) return;
 
+    final location = draft.weddingLocation;
     _planNameController.text = draft.planName ?? '';
-    _locationController.text =
-        draft.weddingLocation.shortLabel ?? draft.locationDisplayLabel.trim();
+    _governorateController.text = location.governorate ?? '';
+    _cityOrDistrictController.text = location.cityOrDistrict ?? '';
+    _areaOrNeighborhoodController.text = draft.district ?? '';
+    _neighborhoodController.text = draft.neighborhood ?? '';
+    _streetController.text = location.street ?? '';
+    _detailedAddressController.text = location.detailedAddress ?? '';
     _budgetController.text = draft.estimatedBudget ?? '';
 
     setState(() {
       _selectedPersona = draft.persona;
       _selectedDate = draft.weddingDate;
       _currency = draft.currency ?? 'YER';
+      _showOptionalAddress =
+          _streetController.text.isNotEmpty ||
+          _detailedAddressController.text.isNotEmpty;
       if (draft.selectedPath == GuestOnboardingPath.provider) {
         context.go(AppRouter.providerApply);
         return;
@@ -211,8 +246,22 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     });
   }
 
+  WeddingLocationDraft get _locationDraft {
+    return WeddingLocationDraft.fromLegacyFields(
+      governorate: _governorateController.text.trim(),
+      city: _cityOrDistrictController.text.trim(),
+      district: _areaOrNeighborhoodController.text.trim(),
+      neighborhood: _neighborhoodController.text.trim(),
+      street: _streetController.text.trim(),
+      addressNote: _detailedAddressController.text.trim(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_currentStep == _WelcomeStep.quickSetup) {
+      return _buildQuickSetupPage(context);
+    }
     return AarastScreenFrame(
       maxWidth: 600,
       safeAreaBottom: true,
@@ -220,9 +269,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         children: [
           Positioned.fill(
             child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppTheme.ivory, // Royal Burgundy Night
-              ),
+              decoration: const BoxDecoration(color: AppTheme.canvas),
             ),
           ),
 
@@ -283,7 +330,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       case _WelcomeStep.roleSelection:
         return _buildRoleSelection(context);
       case _WelcomeStep.quickSetup:
-        return _buildQuickSetup(context);
+        return const SizedBox.shrink();
     }
   }
 
@@ -294,27 +341,27 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PremiumPathCard(
+          AarastPathCard(
             title: 'إنشاء خطتك',
             subtitle: 'ابدأ خطة جديدة ثم خصصها حسب دورك.',
             icon: LucideIcons.clipboardList,
-            tone: PremiumPathTone.hero,
+            tone: AarastPathTone.hero,
             onTap: () => _goTo(_WelcomeStep.roleSelection),
           ),
           const SizedBox(height: 14),
-          PremiumPathCard(
+          AarastPathCard(
             title: 'وصلتني دعوة لخطة',
             subtitle: 'الدخول إلى خطة تمت دعوتك إليها برقم هاتفك.',
             icon: LucideIcons.mailCheck,
-            tone: PremiumPathTone.gold,
+            tone: AarastPathTone.accent,
             onTap: () => context.go(AppRouter.inviteAccess),
           ),
           const SizedBox(height: 14),
-          PremiumPathCard(
+          AarastPathCard(
             title: 'أنا مزود خدمة',
             subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
             icon: LucideIcons.store,
-            tone: PremiumPathTone.quiet,
+            tone: AarastPathTone.quiet,
             onTap: () => context.go(AppRouter.providerApply),
           ),
           const SizedBox(height: 18),
@@ -332,22 +379,22 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PremiumPathCard(
+          AarastPathCard(
             title: 'العريس',
             subtitle: 'أتابع الخطة والميزانية',
             icon: LucideIcons.user,
-            tone: PremiumPathTone.hero,
+            tone: AarastPathTone.hero,
             selected: _selectedPersona == GuestPersona.groom,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.groom);
             },
           ),
           const SizedBox(height: 14),
-          PremiumPathCard(
+          AarastPathCard(
             title: 'العروسة',
             subtitle: 'أرتب التفاصيل والاختيارات',
             icon: LucideIcons.flower2,
-            tone: PremiumPathTone.gold,
+            tone: AarastPathTone.accent,
             selected: _selectedPersona == GuestPersona.bride,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.bride);
@@ -366,126 +413,98 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     );
   }
 
-  Widget _buildQuickSetup(BuildContext context) {
-    return Padding(
+  Widget _buildQuickSetupPage(BuildContext context) {
+    return AarastPageScaffold(
       key: const ValueKey('quickSetup'),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: AppTheme.border, width: 1.0),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.ink.withValues(alpha: 0.05),
-                  blurRadius: 30,
-                  offset: const Offset(0, 16),
-                ),
-              ],
+      title: 'إنشاء خطة زفاف',
+      subtitle: 'التفاصيل الأساسية فقط — كل شيء قابل للتعديل لاحقًا.',
+      showBack: true,
+      onBack: () => _goTo(_WelcomeStep.roleSelection),
+      maxWidth: 480,
+      resizeToAvoidBottomInset: true,
+      bottomNavigationBar: AarastV3FormActionBar(
+        label: 'إنشاء الخطة',
+        icon: LucideIcons.chevronLeft,
+        loading: _isLoading,
+        onPressed: _isLoading || _selectedPersona == null
+            ? null
+            : _startPlanning,
+      ),
+      child: WeddingPlanCreationScope(
+        formKey: _quickSetupFormKey,
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          children: [
+            WeddingPlanCreationFields(
+              titleController: _planNameController,
+              governorateController: _governorateController,
+              cityOrDistrictController: _cityOrDistrictController,
+              areaOrNeighborhoodController: _areaOrNeighborhoodController,
+              neighborhoodController: _neighborhoodController,
+              streetController: _streetController,
+              detailedAddressController: _detailedAddressController,
+              budgetController: _budgetController,
+              currency: _currency,
+              weddingDate: _selectedDate,
+              showOptionalAddress: _showOptionalAddress,
+              onSelectDate: _showWelcomeDatePicker,
+              onCurrencyChanged: (value) {
+                setState(() {
+                  _currency = value;
+                  _setupError = null;
+                });
+              },
+              onToggleOptionalAddress: () {
+                setState(() {
+                  _showOptionalAddress = !_showOptionalAddress;
+                  _setupError = null;
+                });
+              },
+              onChanged: () {
+                if (_setupError != null) {
+                  setState(() => _setupError = null);
+                } else {
+                  setState(() {});
+                }
+              },
+              errorMessage: _setupError,
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildFieldLabel('اسم الخطة / اسم الزفاف'),
-                PremiumTextField(
-                  controller: _planNameController,
-                  hintText: 'عرسنا، خطة زفاف رشاد...',
-                  icon: LucideIcons.pencil,
-                  onChanged: (_) => setState(() => _setupError = null),
-                ),
-                const SizedBox(height: 12),
-
-                _buildFieldLabel('المدينة / الموقع'),
-                PremiumLocationCard(
-                  controller: _locationController,
-                  onChanged: (_) => setState(() => _setupError = null),
-                ),
-                const SizedBox(height: 12),
-
-                _buildFieldLabel('تاريخ الزفاف'),
-                PremiumDateField(
-                  selectedDate: _selectedDate,
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now().add(const Duration(days: 30)),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 1000)),
-                      builder: (context, child) {
-                        return Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.light(
-                              primary: AppTheme.burgundy,
-                              onSurface: AppTheme.ink,
-                            ),
-                          ),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (date != null) {
-                      setState(() {
-                        _selectedDate = date;
-                        _setupError = null;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                _buildFieldLabel('الميزانية والعملة'),
-                PremiumBudgetField(
-                  controller: _budgetController,
-                  initialCurrency: _currency,
-                  onCurrencyChanged: (val) => setState(() {
-                    _currency = val;
-                    _setupError = null;
-                  }),
-                  onChanged: (_) => setState(() => _setupError = null),
-                ),
-                if (_setupError != null) ...[
-                  const SizedBox(height: 16),
-                  _SetupErrorBanner(message: _setupError!),
-                ],
-                const SizedBox(height: 20),
-
-                AarastButton(
-                  label: 'حفظ ومتابعة',
-                  icon: LucideIcons.arrowLeft,
-                  isLoading: _isLoading,
-                  onPressed: _isLoading || _selectedPersona == null
-                      ? null
-                      : _startPlanning,
-                ),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              'يمكنك تعديل الخطة في أي وقت.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-
-          SizedBox(
-            height: MediaQuery.of(context).viewInsets.bottom > 0
-                ? MediaQuery.of(context).viewInsets.bottom + 24
-                : MediaQuery.of(context).viewPadding.bottom + 40,
-          ),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0, right: 4.0),
-      child: Text(
-        text,
-        style: Theme.of(
-          context,
-        ).textTheme.labelLarge?.copyWith(color: AppTheme.ink),
-      ),
+  Future<void> _showWelcomeDatePicker() async {
+    FocusScope.of(context).unfocus();
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now.add(const Duration(days: 30)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 3650)),
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Theme(data: AppTheme.light(), child: child!),
+        );
+      },
     );
+    if (date == null || !mounted) return;
+    setState(() {
+      _selectedDate = date;
+      _setupError = null;
+    });
   }
 }
 
@@ -516,7 +535,7 @@ class _WelcomeHero extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.6,
                 ),
@@ -532,7 +551,7 @@ class _WelcomeHero extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: AppTheme.title,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.w900,
             fontFamily: AppTheme.displayFontFamily,
           ),
@@ -544,7 +563,7 @@ class _WelcomeHero extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             height: 1.5,
             fontWeight: FontWeight.w600,
           ),
@@ -574,12 +593,12 @@ class _WelcomeBackButton extends StatelessWidget {
       tooltip: 'رجوع',
       visualDensity: VisualDensity.compact,
       iconSize: 20,
-      icon: const Icon(LucideIcons.arrowRight, color: AppTheme.ink),
+      icon: const Icon(LucideIcons.arrowRight, color: AppTheme.textPrimary),
     );
   }
 }
 
-/// نقطتا تقدّم أنيقتان: المرحلة النشطة شريط ذهبي ممدود، والأخرى نقطة هادئة.
+/// نقطتا تقدّم: المرحلة النشطة شريط ممتد، والأخرى نقطة هادئة.
 class _WelcomeStepDots extends StatelessWidget {
   const _WelcomeStepDots({required this.activeIndex});
 
@@ -597,15 +616,10 @@ class _WelcomeStepDots extends StatelessWidget {
             height: 6,
             width: i == activeIndex ? 26 : 6,
             decoration: BoxDecoration(
-              gradient: i == activeIndex
-                  ? const LinearGradient(
-                      colors: [AppTheme.goldDeep, AppTheme.gold],
-                    )
-                  : null,
               color: i == activeIndex
-                  ? null
-                  : AppTheme.gold.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(99),
+                  ? AppTheme.brand
+                  : AppTheme.focus.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
             ),
           ),
           if (i == 0) const SizedBox(width: 6),
@@ -650,41 +664,6 @@ class _WelcomeHeroContent {
   final String message;
 }
 
-class _SetupErrorBanner extends StatelessWidget {
-  const _SetupErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.dangerSoft,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.danger.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(LucideIcons.info, color: AppTheme.danger, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.danger,
-                fontWeight: FontWeight.w700,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _LoginPrompt extends StatelessWidget {
   const _LoginPrompt({required this.onTap});
 
@@ -699,14 +678,14 @@ class _LoginPrompt extends StatelessWidget {
         Text(
           'لديك حساب؟',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppTheme.muted,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
         TextButton(
           onPressed: onTap,
           style: TextButton.styleFrom(
-            foregroundColor: AppTheme.burgundy,
+            foregroundColor: AppTheme.brand,
             textStyle: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),

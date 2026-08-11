@@ -1,19 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_binding.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/currency_label.dart';
-import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/providers/account_context_controller.dart';
 import '../../account_contexts/models/account_context.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
-import '../../onboarding/widgets/location_picker_section.dart';
 import '../providers/wedding_plans_provider.dart';
+import '../widgets/wedding_plan_creation_form.dart';
 
 class CreateWeddingPlanScreen extends StatefulWidget {
   const CreateWeddingPlanScreen({super.key});
@@ -27,26 +31,35 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _budgetController = TextEditingController();
-  final _currencyController = TextEditingController(
-    text: currencyLabelAr(defaultCurrencyCode),
-  );
   final _governorateController = TextEditingController();
   final _cityOrDistrictController = TextEditingController();
   final _areaOrNeighborhoodController = TextEditingController();
+  final _neighborhoodController = TextEditingController();
   final _streetController = TextEditingController();
   final _detailedAddressController = TextEditingController();
 
   DateTime? _weddingDate;
+  String _currency = 'YER';
   bool _showOptionalAddress = false;
+  AarastFormDraftBinding? _draft;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _configureDraft();
+    });
+  }
 
   @override
   void dispose() {
+    _draft?.dispose();
     _titleController.dispose();
     _budgetController.dispose();
-    _currencyController.dispose();
     _governorateController.dispose();
     _cityOrDistrictController.dispose();
     _areaOrNeighborhoodController.dispose();
+    _neighborhoodController.dispose();
     _streetController.dispose();
     _detailedAddressController.dispose();
     super.dispose();
@@ -80,10 +93,10 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.burgundy,
+                        primary: AppTheme.brand,
                         onPrimary: Colors.white,
-                        surface: AppTheme.surface,
-                        onSurface: AppTheme.ink,
+                        surface: AppTheme.surfaceRaised,
+                        onSurface: AppTheme.textPrimary,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -109,6 +122,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
 
     if (selected != null && mounted) {
       setState(() => _weddingDate = selected);
+      _draft?.changed();
     }
   }
 
@@ -124,122 +138,53 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       onBack: _goBack,
       maxWidth: 480,
       resizeToAvoidBottomInset: true,
-      child: Form(
-        key: _formKey,
+      bottomNavigationBar: AarastV3FormActionBar(
+        label: 'إنشاء الخطة',
+        icon: LucideIcons.chevronLeft,
+        loading: provider.isSubmitting,
+        onPressed: _submit,
+      ),
+      child: WeddingPlanCreationScope(
+        formKey: _formKey,
         child: ListView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
-            AarastCard(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _titleController,
-                    textAlign: TextAlign.right,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'عنوان الخطة',
-                      hintText: 'مثال: حفلتنا الكبيرة',
-                      prefixIcon: Icon(LucideIcons.list),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'عنوان الخطة مطلوب';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  LocationPickerSection(
-                    governorateController: _governorateController,
-                    cityOrDistrictController: _cityOrDistrictController,
-                    areaOrNeighborhoodController: _areaOrNeighborhoodController,
-                    streetController: _streetController,
-                    detailedAddressController: _detailedAddressController,
-                    onChanged: () => setState(() {}),
-                    showOptionalDetails: _showOptionalAddress,
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton.icon(
-                      onPressed: () => setState(
-                        () => _showOptionalAddress = !_showOptionalAddress,
-                      ),
-                      icon: Icon(
-                        _showOptionalAddress
-                            ? LucideIcons.chevronUp
-                            : LucideIcons.chevronDown,
-                        size: 17,
-                      ),
-                      label: const Text('تفاصيل العنوان الاختيارية'),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _SelectorField(
-                    label: 'تاريخ الزفاف',
-                    value: _weddingDate == null
-                        ? 'اختر التاريخ'
-                        : _formatDate(_weddingDate!),
-                    icon: LucideIcons.calendarDays,
-                    selected: _weddingDate != null,
-                    onTap: _showCalendarPicker,
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: TextFormField(
-                          controller: _budgetController,
-                          textAlign: TextAlign.right,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'الميزانية التقديرية',
-                            hintText: '2,500,000',
-                            prefixIcon: Icon(LucideIcons.wallet),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 92,
-                        child: TextFormField(
-                          controller: _currencyController,
-                          textAlign: TextAlign.center,
-                          decoration: const InputDecoration(
-                            labelText: 'العملة',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (provider.errorMessage != null) ...[
-                    const SizedBox(height: 14),
-                    AarastStatusPill(
-                      label: provider.errorMessage!,
-                      color: AppTheme.danger,
-                      icon: LucideIcons.alertCircle,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            AarastButton(
-              label: 'إنشاء الخطة',
-              icon: LucideIcons.chevronLeft,
-              isLoading: provider.isSubmitting,
-              onPressed: _submit,
+            WeddingPlanCreationFields(
+              titleController: _titleController,
+              governorateController: _governorateController,
+              cityOrDistrictController: _cityOrDistrictController,
+              areaOrNeighborhoodController: _areaOrNeighborhoodController,
+              neighborhoodController: _neighborhoodController,
+              streetController: _streetController,
+              detailedAddressController: _detailedAddressController,
+              budgetController: _budgetController,
+              currency: _currency,
+              weddingDate: _weddingDate,
+              showOptionalAddress: _showOptionalAddress,
+              onSelectDate: _showCalendarPicker,
+              onCurrencyChanged: (value) {
+                setState(() => _currency = value);
+                _draft?.changed();
+              },
+              onToggleOptionalAddress: () {
+                setState(() => _showOptionalAddress = !_showOptionalAddress);
+                _draft?.changed();
+              },
+              onChanged: () {
+                setState(() {});
+                _draft?.changed();
+              },
+              draftStatus: _draft == null
+                  ? null
+                  : AarastV3DraftStatusLine(status: _draft!.status),
+              errorMessage: provider.errorMessage,
             ),
             const SizedBox(height: 8),
             Text(
               'يمكنك تعديل الخطة في أي وقت.',
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.textSecondary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -277,10 +222,12 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       location: location.toJson(),
       weddingDate: _weddingDate,
       estimatedBudget: budget.isEmpty ? null : budget,
-      currency: currencyCodeFromDisplayInput(_currencyController.text),
+      currency: _currency,
     );
 
     if (plan != null && mounted) {
+      await _draft?.clear();
+      if (!mounted) return;
       final notice = provider.noticeMessage;
       if (notice != null) {
         AarastToast.showInfo(context, notice);
@@ -309,6 +256,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
         );
         return;
       }
+      AarastFormSuccess.show(context, message: 'تم إنشاء الخطة وتفعيلها.');
       context.go(AppRouter.weddingPlanDashboard(plan.id));
     }
   }
@@ -318,73 +266,52 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       governorate: _governorateController.text,
       city: _cityOrDistrictController.text,
       district: _areaOrNeighborhoodController.text,
+      neighborhood: _neighborhoodController.text,
       street: _streetController.text,
       addressNote: _detailedAddressController.text,
     );
   }
-}
 
-class _SelectorField extends StatelessWidget {
-  const _SelectorField({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(
-            color: selected ? AppTheme.burgundy : AppTheme.border,
-            width: selected ? 1.3 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
-                  ),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: selected ? AppTheme.ink : AppTheme.muted,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
-          ],
-        ),
-      ),
+  void _configureDraft() {
+    if (_draft != null) return;
+    _draft = AarastFormDraftBinding(
+      store: context.read<AarastFormDraftStore?>(),
+      scope: 'wedding-plan:new',
+      fields: {
+        'title': _titleController,
+        'budget': _budgetController,
+        'governorate': _governorateController,
+        'city': _cityOrDistrictController,
+        'area': _areaOrNeighborhoodController,
+        'neighborhood': _neighborhoodController,
+        'street': _streetController,
+        'address': _detailedAddressController,
+      },
+      readExtras: () => {
+        'weddingDate': _weddingDate?.toIso8601String(),
+        'currency': _currency,
+        'showOptionalAddress': _showOptionalAddress,
+      },
+      restoreExtras: (data) {
+        if (!mounted) return;
+        setState(() {
+          _weddingDate = DateTime.tryParse(
+            data['weddingDate']?.toString() ?? '',
+          );
+          final restoredCurrency = data['currency']?.toString();
+          if (restoredCurrency == 'YER' ||
+              restoredCurrency == 'SAR' ||
+              restoredCurrency == 'USD') {
+            _currency = restoredCurrency!;
+          }
+          _showOptionalAddress = data['showOptionalAddress'] == true;
+        });
+      },
+      onStatusChanged: () {
+        if (mounted) setState(() {});
+      },
     );
+    unawaited(_draft!.restore());
   }
 }
 
@@ -404,8 +331,4 @@ class _SheetHandle extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatDate(DateTime date) {
-  return formatArabicCompactDate(date);
 }

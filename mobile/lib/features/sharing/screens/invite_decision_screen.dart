@@ -569,7 +569,7 @@ class _InviteJourneyProgress extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceRaised,
           borderRadius: BorderRadius.circular(AppTheme.radiusPill),
           border: Border.all(color: AppTheme.border),
         ),
@@ -581,7 +581,7 @@ class _InviteJourneyProgress extends StatelessWidget {
                   child: Container(
                     height: 1,
                     color: index <= activeIndex
-                        ? AppTheme.gold
+                        ? AppTheme.focus
                         : AppTheme.border,
                   ),
                 ),
@@ -613,7 +613,9 @@ class _InviteJourneyMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = index == activeIndex;
     final isComplete = index < activeIndex;
-    final color = isActive || isComplete ? AppTheme.burgundy : AppTheme.muted;
+    final color = isActive || isComplete
+        ? AppTheme.brand
+        : AppTheme.textSecondary;
 
     return SizedBox(
       width: 58,
@@ -627,21 +629,19 @@ class _InviteJourneyMarker extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: isActive
-                  ? AppTheme.burgundy
+                  ? AppTheme.brand
                   : isComplete
-                  ? AppTheme.goldSoft
-                  : AppTheme.ivory,
+                  ? AppTheme.brandMuted
+                  : AppTheme.canvas,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isActive || isComplete ? AppTheme.gold : AppTheme.border,
+                color: isActive || isComplete
+                    ? AppTheme.focus
+                    : AppTheme.border,
               ),
             ),
             child: isComplete
-                ? const Icon(
-                    LucideIcons.check,
-                    size: 15,
-                    color: AppTheme.burgundy,
-                  )
+                ? const Icon(LucideIcons.check, size: 15, color: AppTheme.brand)
                 : Text(
                     '${index + 1}',
                     style: TextStyle(
@@ -686,14 +686,9 @@ class _InviteWelcomeHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.gapLg),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [AppTheme.surfaceElevated, AppTheme.goldSoft],
-        ),
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.36)),
-        boxShadow: AppTheme.softShadow(opacity: 0.04),
+        border: Border.all(color: AppTheme.focus.withValues(alpha: 0.36)),
       ),
       child: Column(
         children: [
@@ -701,17 +696,17 @@ class _InviteWelcomeHero extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceRaised,
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.gold),
+              border: Border.all(color: AppTheme.focus),
             ),
-            child: Icon(icon, color: AppTheme.burgundy, size: 25),
+            child: Icon(icon, color: AppTheme.brand, size: 25),
           ),
           const SizedBox(height: 10),
           Text(
             eyebrow,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppTheme.goldDeep,
+              color: AppTheme.brand,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -720,7 +715,7 @@ class _InviteWelcomeHero extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.title,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
               fontFamily: AppTheme.displayFontFamily,
             ),
@@ -730,7 +725,7 @@ class _InviteWelcomeHero extends StatelessWidget {
             message,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               height: 1.45,
               fontWeight: FontWeight.w600,
             ),
@@ -755,7 +750,7 @@ class _PrivacyLine extends StatelessWidget {
           child: Text(
             'لن نعرض تفاصيل الخطة قبل مطابقة الرقم بالدعوة.',
             style: TextStyle(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w700,
               height: 1.4,
             ),
@@ -1168,16 +1163,9 @@ class _InvitePlanHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.gapXl),
       decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
+        color: AppTheme.textPrimary,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.72)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.burgundyDark.withValues(alpha: 0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        border: Border.all(color: AppTheme.focus.withValues(alpha: 0.72)),
       ),
       child: Column(
         children: [
@@ -1186,7 +1174,7 @@ class _InvitePlanHero extends StatelessWidget {
           Text(
             'أنت مدعو للمساهمة في',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.goldLight,
+              color: AppTheme.brandMuted,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1218,7 +1206,7 @@ class _InvitePlanHero extends StatelessWidget {
               children: [
                 const Icon(
                   LucideIcons.user,
-                  color: AppTheme.goldLight,
+                  color: AppTheme.brandMuted,
                   size: 17,
                 ),
                 Text(
@@ -1231,7 +1219,7 @@ class _InvitePlanHero extends StatelessWidget {
                 Text(
                   '• ${sharedMemberRoleLabel(invite.role)}',
                   style: const TextStyle(
-                    color: AppTheme.goldLight,
+                    color: AppTheme.brandMuted,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1255,11 +1243,7 @@ class _InviteJoinedHero extends StatelessWidget {
       key: const Key('invite-joined-success'),
       padding: const EdgeInsets.all(AppTheme.gapXl),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [AppTheme.surfaceElevated, AppTheme.successSoft],
-        ),
+        color: AppTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(color: AppTheme.success.withValues(alpha: 0.34)),
       ),
@@ -1269,10 +1253,9 @@ class _InviteJoinedHero extends StatelessWidget {
             width: 66,
             height: 66,
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceRaised,
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.gold, width: 2),
-              boxShadow: AppTheme.softShadow(opacity: 0.08),
+              border: Border.all(color: AppTheme.focus, width: 2),
             ),
             child: const Icon(
               LucideIcons.check,
@@ -1284,7 +1267,7 @@ class _InviteJoinedHero extends StatelessWidget {
           Text(
             'تم الانضمام بنجاح',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.title,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
               fontFamily: AppTheme.displayFontFamily,
             ),
@@ -1294,7 +1277,7 @@ class _InviteJoinedHero extends StatelessWidget {
             'أصبحت ${sharedMemberRoleLabel(invite.role)} في ${invite.weddingPlanTitle ?? 'الخطة المشتركة'}.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: AppTheme.textSecondary,
               height: 1.45,
               fontWeight: FontWeight.w700,
             ),
@@ -1344,12 +1327,12 @@ class _InvitePermissionsCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppTheme.goldSoft,
+                  color: AppTheme.brandMuted,
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
                 child: const Icon(
                   LucideIcons.shieldCheck,
-                  color: AppTheme.burgundy,
+                  color: AppTheme.brand,
                   size: 20,
                 ),
               ),
@@ -1361,14 +1344,14 @@ class _InvitePermissionsCard extends StatelessWidget {
                     Text(
                       'صلاحياتك في الخطة',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.ink,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     const Text(
                       'راجع ما ستتمكن من الوصول إليه قبل الانضمام.',
                       style: TextStyle(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1406,7 +1389,7 @@ class _InvitePermissionsCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: invite.canViewMoney
                   ? AppTheme.successSoft
-                  : AppTheme.ivory,
+                  : AppTheme.canvas,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               border: Border.all(
                 color: invite.canViewMoney
@@ -1423,7 +1406,7 @@ class _InvitePermissionsCard extends StatelessWidget {
                       : LucideIcons.lock,
                   color: invite.canViewMoney
                       ? AppTheme.success
-                      : AppTheme.muted,
+                      : AppTheme.textSecondary,
                   size: 19,
                 ),
                 const SizedBox(width: 9),
@@ -1433,7 +1416,7 @@ class _InvitePermissionsCard extends StatelessWidget {
                     style: TextStyle(
                       color: invite.canViewMoney
                           ? AppTheme.success
-                          : AppTheme.muted,
+                          : AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
                       height: 1.4,
                     ),
@@ -1466,7 +1449,7 @@ class _WeddingRingsMark extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.goldLight, width: 2),
+                border: Border.all(color: AppTheme.brandMuted, width: 2),
               ),
             ),
           ),
@@ -1477,13 +1460,17 @@ class _WeddingRingsMark extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.gold, width: 2),
+                border: Border.all(color: AppTheme.focus, width: 2),
               ),
             ),
           ),
           const Positioned(
             top: 0,
-            child: Icon(LucideIcons.heart, color: AppTheme.goldLight, size: 13),
+            child: Icon(
+              LucideIcons.heart,
+              color: AppTheme.brandMuted,
+              size: 13,
+            ),
           ),
         ],
       ),
@@ -1503,13 +1490,13 @@ class _PermissionTile extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 60),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: AppTheme.ivory,
+        color: AppTheme.canvas,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppTheme.burgundy, size: 18),
+          Icon(icon, color: AppTheme.brand, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1517,7 +1504,7 @@ class _PermissionTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: AppTheme.ink,
+                color: AppTheme.textPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 height: 1.25,
@@ -1567,7 +1554,7 @@ class _InviteListCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.goldSoft,
+                  color: AppTheme.brandMuted,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
                 child: const Icon(LucideIcons.mailCheck),
@@ -1582,7 +1569,7 @@ class _InviteListCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.ink,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -1592,14 +1579,14 @@ class _InviteListCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppTheme.muted,
+                        color: AppTheme.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(LucideIcons.arrowRight, color: AppTheme.muted),
+              const Icon(LucideIcons.arrowRight, color: AppTheme.textSecondary),
             ],
           ),
         ),
@@ -1659,14 +1646,14 @@ class _InviteAccountSetupNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.goldSoft,
+        color: AppTheme.brandMuted,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.45)),
+        border: Border.all(color: AppTheme.focus.withValues(alpha: 0.45)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(LucideIcons.keyRound, size: 20, color: AppTheme.goldDeep),
+          const Icon(LucideIcons.keyRound, size: 20, color: AppTheme.brand),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1675,7 +1662,7 @@ class _InviteAccountSetupNotice extends StatelessWidget {
                 Text(
                   'أنشئ حساب المساهم مرة واحدة',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.deepBurgundy,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1683,7 +1670,7 @@ class _InviteAccountSetupNotice extends StatelessWidget {
                 Text(
                   'اختر اسمًا وكلمة مرور. بعد ذلك يمكنك الدخول مباشرة دون طلب رمز تحقق في كل مرة.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     height: 1.4,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1711,11 +1698,11 @@ class _InviteNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.goldSoft,
+      color: AppTheme.brandMuted,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppTheme.burgundy),
+          Icon(icon, color: AppTheme.brand),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1724,7 +1711,7 @@ class _InviteNotice extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1732,7 +1719,7 @@ class _InviteNotice extends StatelessWidget {
                 Text(
                   message,
                   style: const TextStyle(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -1758,7 +1745,7 @@ class _FieldLabel extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: AppTheme.ink,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
         ),
       ),

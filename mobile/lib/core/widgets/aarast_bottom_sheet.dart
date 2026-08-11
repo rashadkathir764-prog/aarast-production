@@ -21,8 +21,8 @@ Future<T?> showAarastBottomSheet<T>({
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
-    backgroundColor: backgroundColor ?? AppTheme.surface,
-    barrierColor: barrierColor ?? AppTheme.ink.withAlpha(105),
+    backgroundColor: backgroundColor ?? AppTheme.surfaceRaised,
+    barrierColor: barrierColor ?? AppTheme.textPrimary.withAlpha(105),
     shape:
         shape ??
         const RoundedRectangleBorder(
@@ -56,7 +56,7 @@ class AarastBottomSheetHandle extends StatelessWidget {
         height: 4,
         margin: const EdgeInsets.only(top: 10, bottom: 14),
         decoration: BoxDecoration(
-          color: AppTheme.burgundySoft,
+          color: AppTheme.brandMuted,
           borderRadius: BorderRadius.circular(99),
         ),
       ),

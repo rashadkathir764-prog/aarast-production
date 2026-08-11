@@ -28,7 +28,7 @@ import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
 import '../widgets/contributor_workspace_view.dart';
 import '../widgets/plan_management_view.dart';
-import '../widgets/royal_home_chrome.dart';
+import '../../shell/widgets/aarast_plan_chrome.dart';
 
 class PlanCenterScreen extends StatefulWidget {
   const PlanCenterScreen({
@@ -207,7 +207,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
       return _buildContributorScaffold(
         summary: summary,
         child: RefreshIndicator(
-          color: ContributorWorkspaceColors.oxblood,
+          color: ContributorWorkspaceColors.primary,
           onRefresh: () => _load(refreshContextAuthority: true),
           child: ContributorWorkspaceView(
             summary: summary,
@@ -289,7 +289,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
           : plan == null
           ? _ManagementLoadError(message: error, onRetry: _load)
           : RefreshIndicator(
-              color: AppTheme.burgundy,
+              color: AppTheme.brand,
               onRefresh: _load,
               child: PlanManagementView(
                 plan: plan,
@@ -351,7 +351,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
             icon: summary.unreadNotificationsCount > 0
                 ? Badge.count(
                     count: summary.unreadNotificationsCount,
-                    backgroundColor: ContributorWorkspaceColors.oxblood,
+                    backgroundColor: ContributorWorkspaceColors.primary,
                     child: const Icon(LucideIcons.bell),
                   )
                 : const Icon(LucideIcons.bell),
@@ -691,7 +691,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                 const SizedBox(height: 18),
                 const Icon(
                   LucideIcons.shieldCheck,
-                  color: ContributorWorkspaceColors.bronze,
+                  color: ContributorWorkspaceColors.warning,
                   size: 34,
                 ),
                 const SizedBox(height: 10),
@@ -779,7 +779,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
     final result = await showAarastBottomSheet<_PlanEditResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.ivory,
+      backgroundColor: AppTheme.canvas,
       builder: (_) => _PlanEditSheet(
         plan: plan,
         requireCompleteLocation: requireCompleteLocation,
@@ -837,7 +837,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   Future<void> _confirmArchive(WeddingPlan plan) async {
     final confirmed = await showAarastBottomSheet<bool>(
       context: context,
-      backgroundColor: AppTheme.ivory,
+      backgroundColor: AppTheme.canvas,
       builder: (sheetContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: SafeArea(
@@ -857,7 +857,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                   'أرشفة الخطة؟',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -866,7 +866,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
                   'سيتم نقل "${plan.title}" إلى الأرشيف دون حذف بياناتها.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -946,14 +946,22 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   }
 
   Widget _buildBottomNav(String planId) {
-    return RoyalDashboardBottomNav(
+    return AarastPlanNavigationBar.plan(
       activeIndex: 0,
-      onHome: () => context.go(AppRouter.weddingPlanDashboard(planId)),
-      onMoney: () =>
-          context.go(AppRouter.money(planId), extra: widget.sharedMember),
-      onTasks: () => context.go(AppRouter.tasks(planId)),
-      onGuests: () => context.go(AppRouter.guestList(planId)),
-      onProviders: () => context.go(AppRouter.planProviders(planId)),
+      onSelected: (index) {
+        switch (index) {
+          case 0:
+            context.go(AppRouter.weddingPlanDashboard(planId));
+          case 1:
+            context.go(AppRouter.money(planId), extra: widget.sharedMember);
+          case 2:
+            context.go(AppRouter.tasks(planId));
+          case 3:
+            context.go(AppRouter.guestList(planId));
+          case 4:
+            context.go(AppRouter.planProviders(planId));
+        }
+      },
     );
   }
 }
@@ -1116,7 +1124,7 @@ class _ContributorAccountActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = destructive
         ? AppTheme.danger
-        : ContributorWorkspaceColors.oxblood;
+        : ContributorWorkspaceColors.primary;
     return Material(
       color: destructive
           ? AppTheme.dangerSoft.withValues(alpha: 0.52)
@@ -1302,7 +1310,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
                 Text(
                   'تعديل بيانات الخطة',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1325,7 +1333,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
                 Text(
                   'العملة',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1339,7 +1347,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
                 Text(
                   'موقع الزفاف',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1380,7 +1388,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
                 const Text(
                   'الأولويات',
                   style: TextStyle(
-                    color: AppTheme.ink,
+                    color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

@@ -139,6 +139,7 @@ export function CategoriesPage() {
             />
           ) : (
             <DataTable
+              label="فئات السوق"
               columns={[
                 'اسم الفئة',
                 'الأيقونة',

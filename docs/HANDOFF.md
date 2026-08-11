@@ -48,35 +48,36 @@ without a new explicit product and architecture decision.
 - Canonical branch: `main`; resolve its current immutable revision with Git.
 - The final documented closure passed GitHub CI for Backend, Mobile, Admin,
   Backend E2E, Backend image, dependency audit, documentation, and secret scan.
-- Latest recorded full source gate: Backend 670 tests total (669 passed and one
+- Latest recorded full source gate: Backend 671 tests total (670 passed and one
   intentionally skipped), 30 managed smoke packages, 76 migrations; Mobile
-  1150/1150; Admin 96/96; deployment contracts 38/38.
+  1151/1151; Admin 96/96; deployment contracts 38/38.
 - Generated API, database, route, and script references are checked by
   `scripts/docs-sync.mjs` and `scripts/docs-verify.mjs`.
 - One detached Codex-managed worktree exists outside the main checkout. Inspect
   it before removing it; do not delete it as routine cleanup.
 
-### Unreleased account-deletion correction
+### Deployed account-deletion correction
 
-The deployed revision listed below has a confirmed dual-identity edge case:
+The previous deployed revision had a confirmed dual-identity edge case:
 deleting the wedding-application account of a person who is also an Aarast
 administrator returns `403`, and the old Mobile retry can temporarily enter a
-`PENDING`/`503` reconciliation loop. The corrective source on
-`codex/admin-application-account-deletion` keeps the administrator identity and
-`ADMIN` sessions but erases the separate app identity/data and `APPLICATION`
-sessions. It also stops Mobile from replaying DELETE while status is `PENDING`.
+`PENDING`/`503` reconciliation loop. Application revision
+`959c47b756d0bebc3e4e4fda5f81ae3349d05e62` now keeps the administrator
+identity and `ADMIN` sessions but erases the separate app identity/data and
+`APPLICATION` sessions. It also stops Mobile from replaying DELETE while status
+is `PENDING`.
 
-Local corrective gates pass: Backend `671` total (`670` passed, one skipped),
-type/seed checks, managed isolated deletion smoke over all 76 migrations;
-Flutter analysis, focused transition `8/8`, and full `1151/1151`. Do not call
-Production fixed until this change is reviewed, merged, deployed, and repeated
-on the affected physical-device path. The administrator browser login must be
-tested after app deletion as a release acceptance condition.
+Local corrective gates and all eight GitHub PR checks pass: Backend `671` total
+(`670` passed, one skipped), type/seed checks, managed isolated deletion smoke
+over all 76 migrations; Flutter analysis, focused transition `8/8`, and full
+`1151/1151`. The Backend/Admin/public deployment is complete. Repeat the
+affected physical-device deletion path and verify administrator browser login
+after app deletion before calling the native acceptance condition closed.
 
 ## Production Receipt
 
 The currently accepted application deployment uses revision
-`900897a90e8b030c7c3ddfdc55cc2669b64f2e87`. Later repository commits may be
+`959c47b756d0bebc3e4e4fda5f81ae3349d05e62`. Later repository commits may be
 documentation-only and do not change the running application revision.
 
 - Backend, Admin Web, public site, PostgreSQL, Redis, media, and backup sidecar
@@ -84,14 +85,17 @@ documentation-only and do not change the running application revision.
 - External Backend `/live` and `/ready`, Admin `/login`, public `/privacy`,
   `/support`, a valid-shape invitation route, and Android association passed.
   Unknown public routes and Apple association intentionally return `404`.
-- All 76 migrations are applied. Production has 15 live plans, 15 linked
+- All 76 migrations are applied. Production has 16 live plans, 16 linked
   contributor-history scopes, and zero missing scopes, lifecycle mismatches,
   missing active tenures, or unfinished migrations.
 - Fresh pre-deployment backup SHA-256:
-  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`.
+  `1c327dab578ee8879a2dd845f37d8d736dc5e76ad600bfbe3089294d55ff6c82`.
   Its checksum, catalog, full isolated restore, second migration pass, schema,
   and relational postconditions passed against the exact deployed Backend
   image.
+- The protected release directory also retains the old and new immutable images
+  in one rollback archive with SHA-256
+  `1b18817397e284703e3c8a24a640d59b58a4d9cdc587dc3e81653633e5c1532e`.
 - Rollback evidence is retained on the production host under the protected
   release backup directory documented in `docs/deployment/README.md`. Do not
   delete it as ordinary cleanup.

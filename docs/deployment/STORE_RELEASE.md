@@ -166,7 +166,7 @@ gates.
 
 ## 6. Public pages and external link association
 
-Production revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` now serves
+Production revision `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` now serves
 the allowlisted public-site image for:
 
 - `https://aarast.shadowgardn.com/privacy`

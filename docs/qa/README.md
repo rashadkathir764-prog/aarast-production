@@ -51,15 +51,15 @@ archive rules are owned by `docs/README.md`.
 
 ## Production Acceptance - 2026-08-11
 
-- Application revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` is live.
+- Application revision `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` is live.
   Immutable Backend, Admin Web, and public-site containers are healthy with the
   same revision label, zero restarts, and no OOM termination.
 - Fresh production backup SHA-256
-  `b86d11263262f6e4a709d3638c250fa59ac88e7dbce4aff0841d0a91122dbc4b`
+  `1c327dab578ee8879a2dd845f37d8d736dc5e76ad600bfbe3089294d55ff6c82`
   passed checksum/catalog inspection, full isolated restore against the exact
   Backend image, all 76 migrations, a second idempotent pass, schema checks,
   and relational postconditions.
-- Live migration truth is 15 plans, 15 linked contributor-history scopes, zero
+- Live migration truth is 16 plans, 16 linked contributor-history scopes, zero
   missing scopes, zero lifecycle mismatches, zero missing tenures, and zero
   unfinished migrations.
 - External Backend `/live` and `/ready`, Admin `/login`, public privacy/support/
@@ -612,8 +612,9 @@ identity is embedded, but DSN delivery is intentionally disabled.
 
 The APK is not a store AAB and no equivalent iOS run has occurred. It does not
 prove live Login/API/Firebase, OTP, Push, offline interruption, Sentry, TestFlight,
-or store behavior. The later Backend-only hotfix deployed at `900897a9` does
-not alter the APK's exact Mobile source provenance.
+or store behavior. The current web/API deployment at `959c47b7` contains later
+Mobile source corrections, but it does not rebuild or install a native binary;
+the APK's exact Mobile source provenance remains unchanged.
 
 If the defect is isolated to Sentry transport, rebuild the same session-fixed
 code with an empty `AARAST_SENTRY_DSN`; this disables external delivery without

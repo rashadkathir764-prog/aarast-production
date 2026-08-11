@@ -183,11 +183,22 @@ test('restore verifier enforces the coordinated contributor cutover schema', () 
     'AccountDeletionReceipt_immutable_delete',
     '20260802090000_add_contributor_history',
     '20260803110000_add_account_deletion_receipts',
+    '20260811180000_backfill_missing_contributor_history_scopes',
     'canonical_contribution_json',
     'safe_legacy_contribution_text',
   ]) {
     assert.equal(source.includes(required), true, required);
   }
-  assert.match(source, /count\(\*\) FROM "ContributorHistoryScope"/);
-  assert.match(source, /count\(\*\) FROM "ContributorTenure" WHERE "endedAt" IS NULL/);
+  assert.doesNotMatch(
+    source,
+    /count\(\*\) FROM "ContributorHistoryScope"\)\s*=\s*\(SELECT count\(\*\) FROM "WeddingPlan"/,
+  );
+  assert.match(
+    source,
+    /FROM "WeddingPlan" AS plan[\s\S]*LEFT JOIN "ContributorHistoryScope" AS scope[\s\S]*WHERE scope\."id" IS NULL/,
+  );
+  assert.match(
+    source,
+    /FROM "SharedMember" AS member[\s\S]*LEFT JOIN "ContributorTenure" AS tenure[\s\S]*tenure\."sharedMemberId" = member\."id"[\s\S]*tenure\."actorReference" = encode\(digest/,
+  );
 });

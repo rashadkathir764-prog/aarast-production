@@ -146,6 +146,8 @@ export class WeddingPlansService {
         },
       });
 
+      await this.createContributorHistoryScopeInTransaction(tx, created);
+
       await tx.user.update({
         where: { id: currentUser.id },
         data: { activeWeddingPlanId: created.id },
@@ -396,6 +398,8 @@ export class WeddingPlansService {
         },
       });
 
+      await this.createContributorHistoryScopeInTransaction(tx, plan);
+
       if (selectedCategories.length > 0) {
         await tx.budgetCategory.createMany({
           data: selectedCategories.map((name) => ({
@@ -617,6 +621,8 @@ export class WeddingPlansService {
             importMigrationId: migrationId,
           },
         });
+
+        await this.createContributorHistoryScopeInTransaction(tx, createdPlan);
 
         if (categoryNames.length > 0) {
           await tx.budgetCategory.createMany({
@@ -954,6 +960,19 @@ export class WeddingPlansService {
       dedupeKey: `plan:${plan.id}:${action.toLowerCase()}:${plan.updatedAt.toISOString()}`,
       requiredPermission: ContributionPermission.MANAGE_PLAN,
       occurredAt: plan.updatedAt,
+    });
+  }
+
+  private async createContributorHistoryScopeInTransaction(
+    tx: Prisma.TransactionClient,
+    plan: Pick<WeddingPlan, "id" | "createdAt">,
+  ): Promise<void> {
+    await tx.contributorHistoryScope.create({
+      data: {
+        weddingPlanId: plan.id,
+        status: ContributionScopeStatus.ACTIVE,
+        historyCoverageStartsAt: plan.createdAt,
+      },
     });
   }
 

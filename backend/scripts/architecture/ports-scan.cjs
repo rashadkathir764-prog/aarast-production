@@ -199,25 +199,73 @@ function resolveModuleFile(moduleSpecifier, sourceFile, compilerOptions) {
   return resolved ? resolved.resolvedFileName : null;
 }
 
-function importTargetsPrismaService(node, checker, targetPath) {
-  if (targetPath === 'backend/src/prisma/prisma.service.ts') return true;
-  if (!ts.isImportDeclaration(node) || !node.importClause) return false;
+function declarationHasForbiddenDomainRuntime(declaration, symbol) {
+  const file = normalizeFsPath(declaration.getSourceFile().fileName).toLowerCase();
+  if (file.includes('/node_modules/@nestjs/')) return true;
+  if (!file.endsWith('/src/prisma/prisma.service.ts')) return false;
+  return symbol.getName() === 'PrismaService'
+    || Boolean(declaration.name && declaration.name.getText() === 'PrismaService');
+}
+
+function compareSymbols(left, right) {
+  const nameOrder = compareText(left.getName(), right.getName());
+  if (nameOrder) return nameOrder;
+  const leftPath = (left.declarations || [])[0]
+    ? normalizeFsPath(left.declarations[0].getSourceFile().fileName)
+    : '';
+  const rightPath = (right.declarations || [])[0]
+    ? normalizeFsPath(right.declarations[0].getSourceFile().fileName)
+    : '';
+  return compareText(leftPath, rightPath);
+}
+
+function symbolHasForbiddenDomainRuntime(symbol, checker, seenSymbols = new Set()) {
+  const resolved = resolveAlias(symbol, checker);
+  if (!resolved || seenSymbols.has(resolved)) return false;
+  seenSymbols.add(resolved);
+  if ((resolved.declarations || []).some((declaration) => (
+    declarationHasForbiddenDomainRuntime(declaration, resolved)
+  ))) return true;
+  if (!(resolved.flags & ts.SymbolFlags.Module)) return false;
+  const exports = checker.getExportsOfModule(resolved);
+  return [...exports]
+    .sort(compareSymbols)
+    .some((exported) => symbolHasForbiddenDomainRuntime(exported, checker, seenSymbols));
+}
+
+function importTargetsForbiddenDomainRuntime(node, checker, specifier) {
+  if (specifier.startsWith('@nestjs/')) return true;
   const candidates = [];
-  if (node.importClause.name) candidates.push(node.importClause.name);
-  const bindings = node.importClause.namedBindings;
-  if (bindings && ts.isNamedImports(bindings)) {
-    for (const element of bindings.elements) candidates.push(element.name);
-  } else if (bindings && ts.isNamespaceImport(bindings)) {
-    candidates.push(bindings.name);
+  if (ts.isImportDeclaration(node)) {
+    const clause = node.importClause;
+    if (!clause) {
+      candidates.push(checker.getSymbolAtLocation(node.moduleSpecifier));
+    } else {
+      if (clause.name) candidates.push(checker.getSymbolAtLocation(clause.name));
+      const bindings = clause.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const element of bindings.elements) {
+          candidates.push(checker.getSymbolAtLocation(element.name));
+        }
+      } else if (bindings && ts.isNamespaceImport(bindings)) {
+        candidates.push(checker.getSymbolAtLocation(bindings.name));
+      }
+    }
+  } else if (ts.isExportDeclaration(node)) {
+    const clause = node.exportClause;
+    if (!clause) {
+      candidates.push(checker.getSymbolAtLocation(node.moduleSpecifier));
+    } else if (ts.isNamedExports(clause)) {
+      for (const element of clause.elements) {
+        candidates.push(checker.getSymbolAtLocation(element.name));
+      }
+    } else if (ts.isNamespaceExport(clause)) {
+      candidates.push(checker.getSymbolAtLocation(clause.name));
+    }
   }
-  return candidates.some((candidate) => {
-    const symbol = symbolAtExpression(candidate, checker);
-    return Boolean(symbol && (symbol.declarations || []).some((declaration) => (
-      declaration.getSourceFile().fileName.replace(/\\/g, '/').endsWith('/src/prisma/prisma.service.ts')
-      && declaration.name
-      && declaration.name.getText() === 'PrismaService'
-    )));
-  });
+  return candidates.some((candidate) => (
+    symbolHasForbiddenDomainRuntime(candidate, checker)
+  ));
 }
 
 function collectImportDiagnostics(files, program, checker, repoRoot) {
@@ -238,8 +286,7 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
 
       if (source.kind === 'business' && source.future && source.domain) {
         if (
-          specifier.startsWith('@nestjs/')
-          || importTargetsPrismaService(statement, checker, targetPath)
+          importTargetsForbiddenDomainRuntime(statement, checker, specifier)
           || (target.kind === 'business' && target.context !== source.context)
         ) {
           diagnostics.push(diagnostic(

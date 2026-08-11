@@ -292,6 +292,81 @@ test('future domain code cannot import Nest runtime, PrismaService, or another b
   assert.equal(foreign.length, 1);
 });
 
+test('future domain code traces PrismaService through named and namespace barrel imports', () => {
+  const cases: Array<{ name: string; files: Record<string, string>; source: string }> = [
+    {
+      name: 'named import',
+      source: 'backend/src/modules/tasks/domain/named-prisma.ts',
+      files: {
+        'backend/src/modules/tasks/domain/named-prisma.ts': "import { PrismaService } from '../../../prisma';\nexport type Database = PrismaService;\n",
+        'backend/src/prisma/index.ts': "export { PrismaService } from './prisma.service';\n",
+        'backend/src/prisma/prisma.service.ts': 'export class PrismaService {}\n',
+      },
+    },
+    {
+      name: 'namespace import',
+      source: 'backend/src/modules/tasks/domain/namespace-prisma.ts',
+      files: {
+        'backend/src/modules/tasks/domain/namespace-prisma.ts': "import * as Database from '../../../prisma';\nexport type DatabaseService = typeof Database.PrismaService;\n",
+        'backend/src/prisma/index.ts': "export { PrismaService } from './prisma.service';\n",
+        'backend/src/prisma/prisma.service.ts': 'export class PrismaService {}\n',
+      },
+    },
+  ];
+  for (const fixture of cases) {
+    const diagnostics = diagnosticsOfKind(scanPorts(fixtureProject(fixture.files)), 'domain-runtime-import');
+    assert.equal(diagnostics.length, 1, fixture.name);
+    assert.equal(diagnostics[0].path, fixture.source, fixture.name);
+  }
+});
+
+test('future domain code traces named aliased and namespace Nest runtime imports through local barrels', () => {
+  const cases: Array<{ name: string; files: Record<string, string>; source: string }> = [
+    {
+      name: 'named aliased import',
+      source: 'backend/src/modules/tasks/domain/named-nest.ts',
+      files: {
+        'backend/src/modules/tasks/domain/named-nest.ts': "import { NestRuntime as Runtime } from '../../../runtime';\nexport const decorator = Runtime;\n",
+        'backend/src/runtime/index.ts': "export { Module as NestRuntime } from '@nestjs/common';\n",
+      },
+    },
+    {
+      name: 'namespace import',
+      source: 'backend/src/modules/tasks/domain/namespace-nest.ts',
+      files: {
+        'backend/src/modules/tasks/domain/namespace-nest.ts': "import * as Runtime from '../../../runtime';\nexport const decorator = Runtime.Module;\n",
+        'backend/src/runtime/index.ts': "export * from '@nestjs/common';\n",
+      },
+    },
+  ];
+  for (const fixture of cases) {
+    const diagnostics = diagnosticsOfKind(scanPorts(fixtureProject(fixture.files)), 'domain-runtime-import');
+    assert.equal(diagnostics.length, 1, fixture.name);
+    assert.equal(diagnostics[0].path, fixture.source, fixture.name);
+  }
+});
+
+test('future domain code traces forbidden runtime provenance through transitive re-export chains', () => {
+  const source = 'backend/src/modules/tasks/domain/transitive-runtime.ts';
+  const result = scanPorts(fixtureProject({
+    [source]: "import * as Runtime from '../../../runtime';\nexport const decorator = Runtime.Module;\n",
+    'backend/src/runtime/index.ts': "export * from './public';\n",
+    'backend/src/runtime/public.ts': "export * from './nest-runtime';\n",
+    'backend/src/runtime/nest-runtime.ts': "export { Module } from '@nestjs/common';\n",
+  }));
+  const diagnostics = diagnosticsOfKind(result, 'domain-runtime-import');
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0].path, source);
+});
+
+test('future domain code does not reject innocent local runtime homonyms', () => {
+  const result = scanPorts(fixtureProject({
+    'backend/src/modules/tasks/domain/innocent-consumer.ts': "import * as Runtime from './innocent-runtime';\nexport const values = [Runtime.PrismaService, Runtime.NestModule];\n",
+    'backend/src/modules/tasks/domain/innocent-runtime.ts': 'export class PrismaService {}\nexport class NestModule {}\n',
+  }));
+  assert.equal(diagnosticsOfKind(result, 'domain-runtime-import').length, 0);
+});
+
 test('public and unclassified code cannot import another future module internal slice', () => {
   const publicSource = scanSingle({
     'backend/src/modules/tasks/public/task.port.ts': "import '../../guests/internal/secret';\n",

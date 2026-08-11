@@ -6,6 +6,10 @@
   52-model physical-ownership registry, incremental dependency/ownership/Mobile
   baselines, Nest ports/global/cycle enforcement, fixed-base R0 scope guard,
   and CI wiring. dependency-cruiser is pinned to `18.1.0`.
+- Provenance: branch `modular-monolith`, fixed R0 base revision
+  `feafe3db0053d6c66d5f46b56ff9a512861dfbad`. This is local evidence only;
+  immutable pull-request/workflow metadata owns candidate identity and remote
+  CI state, so no mutable branch-tip or current remote-CI claim appears here.
 - Observed baselines are 269 unique known dependency violations; 386 ownership
   keys / 782 occurrences (foreign-model 302/564,
   unknown-relation-shape 83/216, unknown-sql-composition 1/2); and 269 Mobile
@@ -39,18 +43,46 @@
   commit `464a23e0`. Backend source/schema/migrations/routes, Mobile tests and
   integration tests and every other Mobile source file, Admin source,
   deployment artifacts, source locations, and business logic were untouched.
-- Local PASS evidence: Backend architecture/check/build, 721 tests (720 passed,
-  one intentionally skipped), Prisma validation, and both zero-vulnerability
-  audits; Admin type-check, 96 tests, build, 12 honesty checks, 16 route checks,
-  and 3 container checks; Mobile boundary tests 132/132, baseline 269, analyzer
-  with no issues, and Flutter tests 1,151/1,151; docs drift/errors/warnings all
-  zero; whitespace clean; source counts 52 models and 76 migrations; protected
-  pre/post gates exact and clean.
-- A first Prisma validation attempt failed with `P1012` because the isolated
-  worktree had neither `.env` nor `DATABASE_URL`; it passed with a non-secret,
-  process-scoped local validation URL and made no database connection. Existing
-  Backend fixture/log, Admin ErrorBoundary, and Flutter desktop-plugin warnings
-  remained visible while their suites passed.
+- Exact local commands and results, run from the repository root unless a
+  working directory is named:
+  - Protected pre/post gate: `git diff --name-status --no-renames
+    --diff-filter=ACMRDTUXB
+    feafe3db0053d6c66d5f46b56ff9a512861dfbad -- backend/src
+    backend/prisma/schema.prisma backend/prisma/migrations mobile/lib
+    mobile/test mobile/integration_test admin-web/src deploy
+    docker-compose.yml` returned exactly the approved Mobile `M` path;
+    `git diff --exit-code 464a23e0..HEAD --
+    mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart` PASS;
+    `git status --porcelain=v1 --untracked-files=all -- backend/src
+    backend/prisma/schema.prisma backend/prisma/migrations mobile/lib
+    mobile/test mobile/integration_test admin-web/src deploy
+    docker-compose.yml` returned no worktree entry; and
+    `node .\scripts\check-r0-scope.mjs --check` PASS.
+  - From `backend/`: `npm run architecture` PASS; `npm run check` PASS;
+    `npm run build` PASS; `npm test` PASS with 721 total, 720 passed, and one
+    intentionally skipped; `npm audit --audit-level=high` PASS with zero
+    vulnerabilities; and `npm audit --omit=dev` PASS with zero vulnerabilities.
+  - From `backend/`: the first bare `npx prisma validate` failed with `P1012`
+    because `.env` and `DATABASE_URL` were absent. The same exact
+    `npx prisma validate` command then PASSed after setting a process-scoped,
+    non-secret local validation URL; validation made no database connection,
+    the value was not persisted, and the process environment entry was removed.
+  - From `admin-web/`: `npm run typecheck` PASS; `npm test -- --run` PASS
+    96/96; `npm run build` PASS; `npm run smoke:honesty` PASS 12/12;
+    `npm run smoke:routes` PASS 16/16; and
+    `npm run test:container-config` PASS 3/3.
+  - `node --test .\scripts\check-mobile-boundaries.test.mjs` PASS 132/132;
+    `node .\scripts\check-mobile-boundaries.mjs --check-baseline` PASS with
+    269 current records; from `mobile/`, `flutter analyze --no-pub` PASS with
+    no issues and `flutter test --no-pub` PASS 1,151/1,151.
+  - `node .\scripts\docs-sync.mjs --check` PASS with drift=0/errors=0;
+    `node .\scripts\docs-verify.mjs` PASS with errors=0/warnings=0; and
+    `git diff --check` PASS before and after the receipt.
+  - `(Select-String .\backend\prisma\schema.prisma -Pattern '^model\s+').Count`
+    returned 52; `(Get-ChildItem .\backend\prisma\migrations -Directory).Count`
+    returned 76.
+- Existing Backend fixture/log, Admin ErrorBoundary, and Flutter desktop-plugin
+  warnings remained visible while their suites passed.
 - No separate local runtime smoke was required because R0 added no Backend
   runtime/schema/route/deployment change or business logic, and the approved
   Mobile import correction passed the full Flutter suite. This receipt records

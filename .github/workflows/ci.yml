@@ -23,7 +23,22 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run check
+      - run: npm run architecture
       - run: npm test
+
+  r0-scope:
+    if: github.event_name == 'pull_request' && github.head_ref == 'modular-monolith'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: node --test scripts/check-r0-scope.test.mjs
+      - run: node scripts/check-r0-scope.mjs --check
 
   backend-image:
     runs-on: ubuntu-latest
@@ -117,11 +132,16 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: "3.41.7"
           channel: stable
           cache: true
+      - run: node --test ../scripts/check-mobile-boundaries.test.mjs
+      - run: node ../scripts/check-mobile-boundaries.mjs --check-baseline
       - run: flutter pub get
       - run: flutter analyze
       # Golden PNGs are generated on Windows; Linux rasterizes fonts

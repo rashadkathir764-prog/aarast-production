@@ -1229,6 +1229,9 @@ separate `fix(mobile): correct welcome gateway core import` commit.
 - Create: `scripts/check-r0-scope.test.mjs`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `docs/SCRIPTS.md` through `scripts/docs-sync.mjs`
+- Modify: `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`
+  only to keep this Task 6 scope contract synchronized with the owner-approved
+  Task 5 precondition repair
 
 **Interfaces:**
 - Consumes: package scripts from Task 2, Backend scanners from Tasks 3-4, and Mobile scanner from Task 5.
@@ -1286,7 +1289,11 @@ Expected: FAIL because `check-r0-scope.mjs` does not exist.
 
 - [ ] **Step 3: Implement the fixed-base scope scanner**
 
-Create `scripts/check-r0-scope.mjs` with these exported constants and no additional allowed path:
+Create `scripts/check-r0-scope.mjs` with these exported constants and no
+additional allowed path. The one Mobile application-source entry below is the
+owner-approved Task 5 precondition repair committed as `464a23e0`; it corrects
+one unresolved local import and is not permission for any other Mobile source
+change:
 
 ```javascript
 export const R0_BASE = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
@@ -1315,6 +1322,7 @@ export const R0_ALLOWED_PATHS = new Set([
   'docs/project/STATUS.md',
   'docs/qa/README.md',
   'docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md',
+  'mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart',
   'scripts/architecture/mobile-boundaries-baseline.json',
   'scripts/check-mobile-boundaries.mjs',
   'scripts/check-mobile-boundaries.test.mjs',

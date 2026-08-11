@@ -44,6 +44,12 @@ function decodeUnicodeScalar(hex) {
   return String.fromCodePoint(value);
 }
 
+function lineBreakLength(sourceText, index) {
+  if (sourceText[index] === '\n') return 1;
+  if (sourceText[index] === '\r') return sourceText[index + 1] === '\n' ? 2 : 1;
+  return 0;
+}
+
 function readDartString(sourceText, start, rawPrefix = false) {
   const quoteIndex = rawPrefix ? start + 1 : start;
   const quote = sourceText[quoteIndex];
@@ -53,12 +59,25 @@ function readDartString(sourceText, start, rawPrefix = false) {
   let value = '';
   let interpolated = false;
 
+  if (triple) {
+    const ignoredFirstLine = sourceText
+      .slice(index)
+      .match(/^(?:\\)?[ \t]*(?:\r\n|\r|\n)/)?.[0];
+    if (ignoredFirstLine !== undefined) index += ignoredFirstLine.length;
+  }
+
   while (index < sourceText.length) {
     if (triple && sourceText.slice(index, index + 3) === quote.repeat(3)) {
       return { value, end: index + 3, interpolated };
     }
     if (!triple && sourceText[index] === quote) {
       return { value, end: index + 1, interpolated };
+    }
+    const breakLength = lineBreakLength(sourceText, index);
+    if (triple && breakLength > 0) {
+      value += '\n';
+      index += breakLength;
+      continue;
     }
     if (!triple && /[\r\n]/.test(sourceText[index])) invalidDartSource();
     if (!rawPrefix && sourceText[index] === '\\') {
@@ -157,8 +176,7 @@ function tokenizeDart(sourceText) {
     const topLevel = braceDepth === 0
       && bracketDepth === 0
       && parenthesisDepth === 0;
-    const rawString = (character === 'r' || character === 'R')
-      && (next === "'" || next === '"');
+    const rawString = character === 'r' && (next === "'" || next === '"');
     if (character === "'" || character === '"' || rawString) {
       const parsed = readDartString(sourceText, index, rawString);
       tokens.push({
@@ -195,11 +213,110 @@ function tokenizeDart(sourceText) {
   return tokens;
 }
 
-function nameFromTokens(tokens) {
-  return tokens
-    .filter((token) => token.type === 'identifier' || token.value === '.')
-    .map((token) => token.value)
-    .join('');
+function readStringLiteral(tokens, start) {
+  if (tokens[start]?.type !== 'string') return null;
+  let end = start;
+  let value = '';
+  while (tokens[end]?.type === 'string') {
+    if (tokens[end].interpolated) invalidDartSource();
+    value += tokens[end].value;
+    end += 1;
+  }
+  return { value, end };
+}
+
+function readDottedIdentifierList(tokens, start) {
+  if (tokens[start]?.type !== 'identifier') return null;
+  const values = [tokens[start].value];
+  let end = start + 1;
+  while (tokens[end]?.value === '.') {
+    if (tokens[end + 1]?.type !== 'identifier') invalidDartSource();
+    values.push(tokens[end + 1].value);
+    end += 2;
+  }
+  return { value: values.join('.'), end };
+}
+
+function readConfigurableUri(tokens, start = 0) {
+  const primary = readStringLiteral(tokens, start);
+  if (primary === null) invalidDartSource();
+  const uris = [primary.value];
+  let end = primary.end;
+
+  while (tokens[end]?.type === 'identifier' && tokens[end].value === 'if') {
+    end += 1;
+    if (tokens[end]?.value !== '(') invalidDartSource();
+    end += 1;
+    const testName = readDottedIdentifierList(tokens, end);
+    if (testName === null) invalidDartSource();
+    end = testName.end;
+    if (tokens[end]?.value === '=' && tokens[end + 1]?.value === '=') {
+      const expected = readStringLiteral(tokens, end + 2);
+      if (expected === null) invalidDartSource();
+      end = expected.end;
+    }
+    if (tokens[end]?.value !== ')') invalidDartSource();
+    const alternative = readStringLiteral(tokens, end + 1);
+    if (alternative === null) invalidDartSource();
+    uris.push(alternative.value);
+    end = alternative.end;
+  }
+
+  return { uris, end };
+}
+
+function readCombinators(tokens, start) {
+  let end = start;
+  while (
+    tokens[end]?.type === 'identifier'
+    && (tokens[end].value === 'show' || tokens[end].value === 'hide')
+  ) {
+    end += 1;
+    if (tokens[end]?.type !== 'identifier') invalidDartSource();
+    end += 1;
+    while (tokens[end]?.value === ',') {
+      if (tokens[end + 1]?.type !== 'identifier') invalidDartSource();
+      end += 2;
+    }
+  }
+  return end;
+}
+
+function parseImportOrExport(kind, body) {
+  const configurable = readConfigurableUri(body);
+  let end = configurable.end;
+  if (kind === 'import') {
+    if (body[end]?.type === 'identifier' && body[end].value === 'deferred') {
+      end += 1;
+      if (body[end]?.type !== 'identifier' || body[end].value !== 'as') {
+        invalidDartSource();
+      }
+    }
+    if (body[end]?.type === 'identifier' && body[end].value === 'as') {
+      end += 1;
+      if (body[end]?.type !== 'identifier') invalidDartSource();
+      end += 1;
+    }
+  }
+  end = readCombinators(body, end);
+  if (end !== body.length) invalidDartSource();
+  return { kind, uris: configurable.uris };
+}
+
+function parsePart(body) {
+  if (body[0]?.type === 'identifier' && body[0].value === 'of') {
+    const uri = readStringLiteral(body, 1);
+    if (uri !== null) {
+      if (uri.end !== body.length) invalidDartSource();
+      return { kind: 'part-of', uris: [uri.value] };
+    }
+    const name = readDottedIdentifierList(body, 1);
+    if (name === null || name.end !== body.length) invalidDartSource();
+    return { kind: 'part-of', uris: [], name: name.value };
+  }
+  const uri = readStringLiteral(body, 0);
+  if (uri === null || uri.end !== body.length) invalidDartSource();
+  return { kind: 'part', uris: [uri.value] };
 }
 
 export function parseDartDirectives(sourceText) {
@@ -223,29 +340,10 @@ export function parseDartDirectives(sourceText) {
     ) end += 1;
     if (end >= tokens.length) invalidDartSource();
     const body = tokens.slice(index + 1, end);
-    if (body.some((candidate) => candidate.type === 'string' && candidate.interpolated)) {
-      invalidDartSource();
-    }
-
     if (token.value === 'import' || token.value === 'export') {
-      const uris = body
-        .filter((candidate) => candidate.type === 'string')
-        .map((candidate) => candidate.value);
-      if (uris.length > 0) directives.push({ kind: token.value, uris });
-    } else if (body[0]?.type === 'identifier' && body[0].value === 'of') {
-      const uri = body.slice(1).find((candidate) => candidate.type === 'string');
-      if (uri) {
-        directives.push({ kind: 'part-of', uris: [uri.value] });
-      } else {
-        directives.push({
-          kind: 'part-of',
-          uris: [],
-          name: nameFromTokens(body.slice(1)),
-        });
-      }
+      directives.push(parseImportOrExport(token.value, body));
     } else {
-      const uri = body.find((candidate) => candidate.type === 'string');
-      if (uri) directives.push({ kind: 'part', uris: [uri.value] });
+      directives.push(parsePart(body));
     }
     index = end;
   }

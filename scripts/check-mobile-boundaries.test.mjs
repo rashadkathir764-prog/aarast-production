@@ -257,9 +257,10 @@ const decodedUriCases = [
     target: 'mobile/lib/features/alpha/raw/u{2e}dart',
   },
   {
-    name: 'multiline triple string leading line',
+    name: 'multiline triple string ignored leading line',
     source: "import '''\npackage:aarast_mobile/features/alpha/multiline.dart''';",
-    unresolvedTarget: 'mobile/lib/core/\npackage:aarast_mobile/features/alpha/multiline.dart',
+    targetFile: 'features/alpha/multiline.dart',
+    target: 'mobile/lib/features/alpha/multiline.dart',
   },
 ];
 
@@ -283,6 +284,169 @@ for (const item of decodedUriCases) {
         });
       }
     });
+  });
+}
+
+function tripleDirective({ raw = false, quote, firstLine = '', lineBreak, uri }) {
+  const delimiter = quote.repeat(3);
+  return `import ${raw ? 'r' : ''}${delimiter}${firstLine}${lineBreak}${uri}${delimiter};\n`;
+}
+
+const tripleForms = [
+  { name: 'normal triple single quote', raw: false, quote: "'" },
+  { name: 'normal triple double quote', raw: false, quote: '"' },
+  { name: 'raw triple single quote', raw: true, quote: "'" },
+  { name: 'raw triple double quote', raw: true, quote: '"' },
+];
+
+for (const form of tripleForms) {
+  test(`${form.name} suppresses a whitespace-only first line`, () => {
+    withMobileFixture({
+      'core/source.dart': tripleDirective({
+        ...form,
+        firstLine: ' \t',
+        lineBreak: '\n',
+        uri: 'package:aarast_mobile/features/alpha/whitespace.dart',
+      }),
+      'features/alpha/whitespace.dart': '',
+    }, ({ mobileLib }) => {
+      assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+        records: [record({ target: 'mobile/lib/features/alpha/whitespace.dart' })],
+        errors: [],
+      });
+    });
+  });
+
+  test(`${form.name} suppresses a backslash-prefixed whitespace first line`, () => {
+    withMobileFixture({
+      'core/source.dart': tripleDirective({
+        ...form,
+        firstLine: '\\ \t',
+        lineBreak: '\n',
+        uri: 'package:aarast_mobile/features/alpha/backslash.dart',
+      }),
+      'features/alpha/backslash.dart': '',
+    }, ({ mobileLib }) => {
+      assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+        records: [record({ target: 'mobile/lib/features/alpha/backslash.dart' })],
+        errors: [],
+      });
+    });
+  });
+
+  test(`${form.name} retains a non-whitespace first line`, () => {
+    withMobileFixture({
+      'core/source.dart': tripleDirective({
+        ...form,
+        firstLine: 'prefix',
+        lineBreak: '\n',
+        uri: 'package:aarast_mobile/features/alpha/retained.dart',
+      }),
+    }, ({ mobileLib }) => {
+      assert.deepEqual(
+        scanMobileBoundaries({ mobileLib }),
+        expectedUnresolved(
+          'mobile/lib/core/source.dart',
+          'mobile/lib/core/prefix\npackage:aarast_mobile/features/alpha/retained.dart',
+        ),
+      );
+    });
+  });
+
+  for (const [lineBreakName, lineBreak] of [
+    ['LF', '\n'],
+    ['CRLF', '\r\n'],
+    ['CR', '\r'],
+  ]) {
+    test(`${form.name} normalizes ${lineBreakName} to one newline`, () => {
+      const delimiter = form.quote.repeat(3);
+      const source = [
+        `import ${form.raw ? 'r' : ''}${delimiter}`,
+        'package:aarast_mobile/features/alpha/line',
+        lineBreak,
+        `break.dart${delimiter};\n`,
+      ].join('');
+      withMobileFixture({ 'core/source.dart': source }, ({ mobileLib }) => {
+        assert.deepEqual(
+          scanMobileBoundaries({ mobileLib }),
+          expectedUnresolved(
+            'mobile/lib/core/source.dart',
+            'mobile/lib/features/alpha/line\nbreak.dart',
+          ),
+        );
+      });
+    });
+  }
+}
+
+test('lowercase r is the only accepted Dart raw-string prefix', () => {
+  assert.throws(
+    () => parseDartDirectives("import R'package:aarast_mobile/features/alpha/child.dart';"),
+    /invalid Dart source/,
+  );
+});
+
+test('adjacent string tokens form one URI string literal in grammar position', () => {
+  withMobileFixture({
+    'core/source.dart': (
+      "import 'package:aarast_mobile/features/' 'alpha/adjacent.dart';\n"
+    ),
+    'features/alpha/adjacent.dart': '',
+  }, ({ mobileLib }) => {
+    assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+      records: [record({ target: 'mobile/lib/features/alpha/adjacent.dart' })],
+      errors: [],
+    });
+  });
+});
+
+test('valid configurable import grammar collects only target URIs', () => {
+  const source = [
+    "import '../features/alpha/primary.dart'",
+    "  if (dart.library.io) '../features/beta/native.dart'",
+    "  if (dart.library.html == 'true') '../features/gamma/browser.dart'",
+    '  deferred as lazy_feature show First, Second hide Third;',
+  ].join('\n');
+  assert.deepEqual(parseDartDirectives(source), [{
+    kind: 'import',
+    uris: [
+      '../features/alpha/primary.dart',
+      '../features/beta/native.dart',
+      '../features/gamma/browser.dart',
+    ],
+  }]);
+});
+
+test('valid configurable export grammar accepts ordered combinators', () => {
+  const source = [
+    "export '../features/alpha/primary.dart'",
+    "  if (dart.library.io == 'enabled') '../features/beta/native.dart'",
+    '  show First hide Second, Third;',
+  ].join('\n');
+  assert.deepEqual(parseDartDirectives(source), [{
+    kind: 'export',
+    uris: [
+      '../features/alpha/primary.dart',
+      '../features/beta/native.dart',
+    ],
+  }]);
+});
+
+const malformedDirectiveGrammar = [
+  "import as 'child.dart';",
+  "import deferred as prefix 'child.dart';",
+  "export show Thing 'child.dart';",
+  "part as 'child.dart';",
+  "part of as 'library.dart';",
+  "import 'primary.dart' as prefix 'later.dart';",
+  "export 'primary.dart' show Thing 'later.dart';",
+  "part 'child.dart' as 'later.dart';",
+  "part of 'library.dart' show 'later.dart';",
+];
+
+for (const source of malformedDirectiveGrammar) {
+  test(`malformed directive grammar fails closed: ${source}`, () => {
+    assert.throws(() => parseDartDirectives(source), /invalid Dart source/);
   });
 }
 

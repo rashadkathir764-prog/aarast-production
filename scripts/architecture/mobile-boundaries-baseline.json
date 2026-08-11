@@ -1,0 +1,2158 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "feafe3db0053d6c66d5f46b56ff9a512861dfbad",
+  "records": [
+    {
+      "source": "mobile/lib/core/offline/offline_sync_service.dart",
+      "target": "mobile/lib/features/auth/models/safe_user.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/push/push_lifecycle_bridge.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "core",
+      "targetArea": "features/account_contexts",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "core",
+      "targetArea": "features/account_contexts",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart",
+      "sourceArea": "core",
+      "targetArea": "features/account_contexts",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/auth/screens/login_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/auth/screens/otp_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/auth/screens/register_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/auth/screens/reset_password_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/auth/screens/splash_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/chat/screens/chat_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/chat",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/chat/screens/quote_conversation_entry_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/chat",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/chat/widgets/conversation_list_view.dart",
+      "sourceArea": "core",
+      "targetArea": "features/chat",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/models/budget_category.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/models/cost_draft_intent.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/models/wedding_cost.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/providers/finance_provider.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/budget_category_details_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/budget_category_form_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/cost_details_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/cost_form_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/cost_payment_screens.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/costs_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/money_budget_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/finance/screens/payment_schedule_screens.dart",
+      "sourceArea": "core",
+      "targetArea": "features/finance",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/guests",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/home",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/models/provider_budget_match_intent.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/add_provider_package_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/add_provider_service_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/edit_provider_profile_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/favorite_providers_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/provider_apply_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/provider_details_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/provider_portal_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/marketplace/widgets/provider_auth_gate.dart",
+      "sourceArea": "core",
+      "targetArea": "features/marketplace",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/more/screens/more_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/more",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/notifications/screens/notifications_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/notifications",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/settings/screens/settings_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/settings",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/screens/add_shared_member_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/screens/contribution_history_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/screens/edit_shared_member_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/screens/invite_decision_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/sharing/screens/sharing_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/sharing",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "sourceArea": "core",
+      "targetArea": "features/shell",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/support/screens/support_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/support",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/tasks/models/wedding_task.dart",
+      "sourceArea": "core",
+      "targetArea": "features/tasks",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/tasks/screens/create_task_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/tasks",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/tasks",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/wedding_day",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/wedding_plans/models/dashboard_summary.dart",
+      "sourceArea": "core",
+      "targetArea": "features/wedding_plans",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/wedding_plans",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/wedding_plans/screens/my_wedding_plans_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/wedding_plans",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/wedding_plans/screens/plan_center_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/wedding_plans",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/wedding_plans",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/routing/app_router.dart",
+      "target": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "sourceArea": "core",
+      "targetArea": "features/welcome_gateway",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/core/storage/auth_storage.dart",
+      "target": "mobile/lib/features/auth/models/safe_user.dart",
+      "sourceArea": "core",
+      "targetArea": "features/auth",
+      "kind": "core-to-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart",
+      "target": "mobile/lib/features/shell/main_shell.dart",
+      "sourceArea": "features/account_contexts",
+      "targetArea": "features/shell",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart",
+      "target": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "sourceArea": "features/account_contexts",
+      "targetArea": "features/welcome_gateway",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/account_contexts",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/account_contexts",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/auth",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/auth/screens/otp_screen.dart",
+      "target": "mobile/lib/features/marketplace/providers/marketplace_provider.dart",
+      "sourceArea": "features/auth",
+      "targetArea": "features/marketplace",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/auth/screens/register_screen.dart",
+      "target": "mobile/lib/features/marketplace/providers/marketplace_provider.dart",
+      "sourceArea": "features/auth",
+      "targetArea": "features/marketplace",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/auth/screens/splash_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/auth",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/models/money_starter_catalog.dart",
+      "target": "mobile/lib/features/catalogs/models/reference_catalog.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/catalogs",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/providers/finance_provider.dart",
+      "target": "mobile/lib/features/sharing/data/sharing_api.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/providers/finance_provider.dart",
+      "target": "mobile/lib/features/sharing/models/plan_access_permissions.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/cost_form_screen.dart",
+      "target": "mobile/lib/features/marketplace/models/marketplace_models.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/marketplace",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/cost_form_screen.dart",
+      "target": "mobile/lib/features/marketplace/providers/marketplace_provider.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/marketplace",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/catalogs/providers/reference_catalog_provider.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/catalogs",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/onboarding/providers/guest_onboarding_provider.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_stage_domain_guidance.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/wedding_plans_provider.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/wedding_stage_context_line.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/finance/widgets/finance_write_access_block.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/finance",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/guests",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/guests",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_stage_domain_guidance.dart",
+      "sourceArea": "features/guests",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/guests",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+      "sourceArea": "features/guests",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/wedding_stage_context_line.dart",
+      "sourceArea": "features/guests",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "target": "mobile/lib/features/onboarding/models/generated_dashboard_seed.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "target": "mobile/lib/features/wedding_plans/models/dashboard_summary.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/providers/home_dashboard_provider.dart",
+      "target": "mobile/lib/features/sharing/data/sharing_api.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/providers/home_dashboard_provider.dart",
+      "target": "mobile/lib/features/sharing/models/shared_wedding_plan.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/providers/home_dashboard_provider.dart",
+      "target": "mobile/lib/features/wedding_plans/data/wedding_plans_api.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/providers/home_dashboard_provider.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/local_plan_migration.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/onboarding/screens/local_plan_migration_screen.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/data/wedding_plans_api.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/home_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/home_screen.dart",
+      "target": "mobile/lib/features/notifications/providers/notifications_provider.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/notifications",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/persona_copy.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/shell/widgets/aarast_plan_chrome.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/shell",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/shell/widgets/plan_shell_chrome.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/shell",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/dashboard_summary.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart",
+      "sourceArea": "features/home",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/models/marketplace_models.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/edit_provider_profile_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/favorite_providers_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_apply_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_apply_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_apply_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_details_screen.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_details_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_details_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/finance/providers/finance_provider.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_stage_domain_guidance.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/wedding_plans_provider.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/wedding_stage_context_line.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_portal_screen.dart",
+      "target": "mobile/lib/features/chat/providers/chat_provider.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/chat",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_portal_screen.dart",
+      "target": "mobile/lib/features/chat/widgets/conversation_list_view.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/chat",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_profile_tab.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_profile_tab.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/provider_profile_tab.dart",
+      "target": "mobile/lib/features/chat/providers/chat_provider.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/chat",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/wedding_plans_provider.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/widgets/provider_account_actions.dart",
+      "target": "mobile/lib/features/auth/widgets/account_deletion_flow.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/widgets/provider_auth_gate.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/widgets/provider_auth_gate.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/marketplace/widgets/provider_portal_bottom_nav.dart",
+      "target": "mobile/lib/features/shell/widgets/aarast_plan_chrome.dart",
+      "sourceArea": "features/marketplace",
+      "targetArea": "features/shell",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/screens/more_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/screens/more_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/screens/more_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/screens/more_screen.dart",
+      "target": "mobile/lib/features/auth/widgets/account_deletion_flow.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/screens/more_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/screens/more_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/widgets/more_screen_components.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/widgets/more_screen_components.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/more/widgets/more_screen_components.dart",
+      "target": "mobile/lib/features/onboarding/models/persona_copy.dart",
+      "sourceArea": "features/more",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/notifications/screens/notifications_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/notifications",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/notifications/screens/notifications_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/notifications",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/onboarding/data/local_plan_migration.dart",
+      "target": "mobile/lib/features/wedding_plans/data/wedding_plans_api.dart",
+      "sourceArea": "features/onboarding",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/onboarding/data/local_plan_migration.dart",
+      "target": "mobile/lib/features/wedding_plans/models/onboarding_complete.dart",
+      "sourceArea": "features/onboarding",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/settings/screens/settings_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/settings",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/settings/screens/settings_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/settings",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/add_shared_member_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/edit_shared_member_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/invite_decision_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/invite_decision_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/invite_decision_screen.dart",
+      "target": "mobile/lib/features/auth/widgets/auth_wedding_widgets.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/sharing/screens/sharing_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/sharing",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/finance/providers/finance_provider.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/finance/widgets/money_cost_action_picker.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/guests/screens/guest_list_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/guests",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/marketplace",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/tasks",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/main_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/finance/providers/finance_provider.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/finance/screens/money_overview_screen.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/finance/widgets/money_cost_action_picker.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/home",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/models/dashboard_summary.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/shell/widgets/plan_shell_chrome.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart",
+      "sourceArea": "features/shell",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/create_task_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/create_task_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/create_task_screen.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/create_task_screen.dart",
+      "target": "mobile/lib/features/sharing/providers/sharing_provider.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/create_task_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/sharing/providers/sharing_provider.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_plan_stage.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/wedding_stage_domain_guidance.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/wedding_stage_context_line.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/tasks/widgets/create_task_components.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/tasks",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/models/wedding_day_mode.dart",
+      "target": "mobile/lib/features/tasks/models/wedding_task.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/tasks",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/home",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/tasks/models/wedding_task.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/tasks",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/tasks/providers/task_timeline_provider.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/tasks",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/dashboard_summary.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart",
+      "target": "mobile/lib/features/tasks/models/wedding_task.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/tasks",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart",
+      "target": "mobile/lib/features/wedding_plans/models/dashboard_summary.dart",
+      "sourceArea": "features/wedding_day",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/models/active_wedding_plan.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/models/onboarding_complete.dart",
+      "target": "mobile/lib/features/auth/models/safe_user.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/models/onboarding_complete.dart",
+      "target": "mobile/lib/features/finance/models/budget_category.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/models/wedding_plan.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/my_wedding_plans_screen.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/my_wedding_plans_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/account_contexts/models/account_context.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/auth/widgets/account_deletion_flow.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/sharing/services/plan_leave_coordinator.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+      "target": "mobile/lib/features/shell/widgets/aarast_plan_chrome.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/shell",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "target": "mobile/lib/features/auth/utils/auth_action_guard.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "target": "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/home",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+      "target": "mobile/lib/features/sharing/models/shared_member.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/sharing",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+      "target": "mobile/lib/features/guests/models/guest.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/guests",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+      "target": "mobile/lib/features/tasks/models/task_summary.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/tasks",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart",
+      "target": "mobile/lib/features/finance/models/money_formatters.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/finance",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart",
+      "target": "mobile/lib/features/wedding_day/models/wedding_day_mode.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/wedding_day",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart",
+      "target": "mobile/lib/features/shell/widgets/aarast_plan_chrome.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/shell",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart",
+      "target": "mobile/lib/features/onboarding/widgets/location_picker_section.dart",
+      "sourceArea": "features/wedding_plans",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/account_contexts",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/auth",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/guest_onboarding_draft.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/onboarding/models/wedding_location_draft.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/onboarding",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/models/onboarding_complete.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/providers/wedding_plans_provider.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    },
+    {
+      "source": "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+      "target": "mobile/lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart",
+      "sourceArea": "features/welcome_gateway",
+      "targetArea": "features/wedding_plans",
+      "kind": "direct-cross-feature",
+      "count": 1
+    }
+  ]
+}

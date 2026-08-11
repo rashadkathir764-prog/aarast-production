@@ -446,6 +446,15 @@ test('valid import prefix accepts the typeIdentifier special word dynamic', () =
   }]);
 });
 
+for (const prefix of ['type', 'base', 'sealed', 'when']) {
+  test(`project Dart analyzer-compatible import prefix accepts ${prefix}`, () => {
+    assert.deepEqual(parseDartDirectives(`import 'a.dart' as ${prefix};`), [{
+      kind: 'import',
+      uris: ['a.dart'],
+    }]);
+  });
+}
+
 test('valid URI test accepts built-in identifier library in a dotted name', () => {
   assert.deepEqual(parseDartDirectives(
     "import 'a.dart' if (dart.library.io) 'b.dart';",
@@ -462,6 +471,36 @@ test('allowed built-in and contextual identifiers remain valid in identifier pos
   ].join('\n')), [
     { kind: 'import', uris: ['a.dart'] },
     { kind: 'part-of', uris: [], name: 'library.of.type' },
+  ]);
+});
+
+test('current unrestricted keywords remain valid across directive identifier positions', () => {
+  assert.deepEqual(parseDartDirectives([
+    "import 'a.dart' if (dart.base.sealed.when) 'b.dart' show base, sealed hide when;",
+    'part of base.sealed.when;',
+  ].join('\n')), [
+    { kind: 'import', uris: ['a.dart', 'b.dart'] },
+    { kind: 'part-of', uris: [], name: 'base.sealed.when' },
+  ]);
+});
+
+test('built-in type remains valid in general identifier positions', () => {
+  assert.deepEqual(parseDartDirectives([
+    "export 'a.dart' if (dart.type.enabled) 'b.dart' show type;",
+    'part of type.library;',
+  ].join('\n')), [
+    { kind: 'export', uris: ['a.dart', 'b.dart'] },
+    { kind: 'part-of', uris: [], name: 'type.library' },
+  ]);
+});
+
+test('async await and yield contextual boundaries remain valid identifiers', () => {
+  assert.deepEqual(parseDartDirectives([
+    "import 'a.dart' as async show await, yield;",
+    'part of await.yield;',
+  ].join('\n')), [
+    { kind: 'import', uris: ['a.dart'] },
+    { kind: 'part-of', uris: [], name: 'await.yield' },
   ]);
 });
 

@@ -15,10 +15,11 @@ const DART_BUILT_IN_IDENTIFIERS = new Set([
   'abstract', 'as', 'covariant', 'deferred', 'dynamic', 'export',
   'external', 'extension', 'factory', 'Function', 'get', 'implements',
   'import', 'interface', 'late', 'library', 'mixin', 'operator', 'part',
-  'required', 'set', 'static', 'typedef',
+  'required', 'set', 'static', 'type', 'typedef',
 ]);
 const DART_CONTEXTUAL_IDENTIFIERS = new Set([
-  'async', 'hide', 'of', 'on', 'show', 'sync', 'await', 'yield', 'type',
+  'async', 'await', 'base', 'hide', 'of', 'on', 'sealed', 'show', 'sync',
+  'when', 'yield',
 ]);
 const RECORD_KINDS = new Set(['core-to-feature', 'direct-cross-feature']);
 const ERROR_KINDS = new Set([
@@ -60,7 +61,10 @@ function isDartTypeIdentifierToken(token) {
   if (!isDartIdentifierToken(token)) return false;
   return token.identifierKind === 'ordinary'
     || token.identifierKind === 'contextual'
-    || token.value === 'dynamic';
+    || token.value === 'dynamic'
+    // Dart 3.11.5 accepts `type` as an import prefix even though the current
+    // keywords reference classifies it as a built-in identifier.
+    || token.value === 'type';
 }
 
 function invalidDartSource() {

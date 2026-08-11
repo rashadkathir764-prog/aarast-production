@@ -250,14 +250,16 @@ macOS remain release gates; they are not recorded as product PASS.
 - Rebuilt the current Backend image and recreated Backend/media initialization
   without deleting data. Local `/live` and `/ready` now return `200`, and
   database, Redis, and media all report `up`.
-- Full combined closure PASS: Backend `665` tests, build, Prisma, zero-finding
-  audit, and all `30` isolated smoke packages after `75` migrations; Admin
+- Full combined closure PASS: Backend `670` tests (669 passed, one skipped),
+  build, Prisma, zero-finding audit, and all `30` isolated smoke packages after
+  `76` migrations; Admin
   `96/96`, type/build/route/honesty/container gates and zero-finding audit;
   Mobile analysis, `1150/1150`, reviewed Golden, and public-API debug APK;
   deployment contracts `38/38`, public image/live-route and Compose checks;
-  generated docs, links, snapshots, and whitespace checks. This proves the
-  current source/local package, not production deployment, store approval, or
-  physical iOS/complete Android acceptance.
+  generated docs, links, snapshots, and whitespace checks. The later
+  2026-08-11 production receipt in `STATUS.md` separately proves the current
+  Backend/Admin/public deployment, all migrations, and backup/restore gate.
+  Store approval and physical iOS/complete Android acceptance remain open.
 
 #### Completed Admin web slice — 2026-08-08
 

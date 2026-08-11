@@ -8,24 +8,25 @@ login bypass, missing signing values, a missing keystore, or Android debug
 keys. The production upload key, store accounts, and final signed artifacts are
 external release inputs and are not stored in this repository.
 
-Historical local evidence from the 2026-07-17 production-origin APK pass is
-listed below. It is not current store acceptance, a production deployment, or
-proof that the external signing, store-console, asset, Apple, or device gates
-have passed:
+Latest local Android Release evidence from 2026-08-11 is bounded to the exact
+artifact below. It is not Play/App Store acceptance or device-flow approval:
 
-- Android release configuration fails when `AARAST_API_BASE_URL` is missing.
-- Android release configuration fails when store signing is missing.
-- Android resources, adaptive launcher icon, and native splash compile.
-- iOS Release validates the same API/login-bypass rules through an Xcode build
-  phase; the shell gate passed a public/local/IPv6/malformed-IP test matrix.
-- `flutter analyze` passed and all 628 Flutter tests passed.
-- A production-origin APK (`versionCode=4`) is signed by the dedicated Aarast
-  4096-bit upload certificate through APK Signature Scheme v2, is not
-  debuggable, and has artifact SHA-256
-  `108210A5DEC6723915DEF3A9855B035F51A7D5FF6646B58B7066E8987A7530FE`.
-- The upload keystore is outside Git with a local OS-protected secret and a
-  second encrypted-keystore backup. Final AAB generation, Play App Signing,
-  and physical-device verification remain separate gates.
+- Source revision: `2ffbe95d7a8e412ead47220536046501f4ac86bf`.
+- Package/version: `com.aarast.aarast_mobile`, `1.0.0+8`; min SDK 24 and target
+  SDK 36.
+- APK path: `mobile/build/app/outputs/flutter-apk/app-release.apk`; size
+  88,634,008 bytes; SHA-256
+  `075D82E24BEF4DED75F34D663B76132C9A6D6F89C7FE6535009C734A0CA1C69D`.
+- The APK is non-debuggable, APK Signature Scheme v2 verification passes, and
+  the Aarast RSA-3072 upload signer matches the production Android
+  `assetlinks.json` identity.
+- The Production HTTPS API origin and private Firebase client configuration are
+  embedded. The Sentry release identifier is
+  `aarast-mobile@1.0.0+8-2ffbe95d7a8e412ead47220536046501f4ac86bf`, but the
+  Sentry DSN is intentionally empty for this local artifact.
+- This is a signed direct-install APK, not a store AAB. Play App Signing, final
+  AAB upload, physical-device OTP/Push/session acceptance, iOS Archive, and
+  store review remain separate gates.
 
 ## 1. Generate and protect the Android upload keystore
 
@@ -165,7 +166,8 @@ gates.
 
 ## 6. Public pages and external link association
 
-The repository now contains an allowlisted public-site image for:
+Production revision `900897a90e8b030c7c3ddfdc55cc2669b64f2e87` now serves
+the allowlisted public-site image for:
 
 - `https://aarast.shadowgardn.com/privacy`
 - `https://aarast.shadowgardn.com/support`
@@ -178,16 +180,11 @@ keeps the validated token in page memory only. Every unlisted route returns
 `404`, and Apple association deliberately remains `404` until the real Apple
 identity is available.
 
-Before store submission, deploy and verify:
-
-- `https://aarast.shadowgardn.com/.well-known/assetlinks.json` using the real
-  Android package and production signing fingerprint.
-- `https://aarast.shadowgardn.com/.well-known/apple-app-site-association` using
-  the real Apple Team ID and bundle ID.
-
-The source image, immutable Compose entry, and local tests do not prove public
-deployment. Verify TLS, headers, expected `200` routes, fail-closed routes, and
-association identity from outside the hosting environment.
+External TLS, headers, expected `200` routes, fail-closed routes, and the
+Android package/upload-signing identity passed from outside the hosting
+environment. Before store submission, repeat Android association with the
+final Play App Signing certificate. Apple association remains `404` and must be
+published only with the real Apple Team ID and bundle ID.
 
 Test both canonical invite forms on real devices:
 
@@ -213,13 +210,13 @@ Test both canonical invite forms on real devices:
 - [ ] AAB signer is the production upload key, not debug/temporary
 - [ ] iOS Archive succeeds on macOS with the real team/profile
 - [ ] Android App Links and iOS Universal Links pass on physical devices
-- [ ] Privacy and support URLs return the reviewed static pages over HTTPS
-- [ ] Public-site random routes return `404`; Apple association stays `404`
+- [x] Privacy and support URLs return the reviewed static pages over HTTPS
+- [x] Public-site random routes return `404`; Apple association stays `404`
       until the real Team ID association is published
 - [ ] `versionCode`/`CFBundleVersion` incremented
 - [ ] Privacy policy, data-safety form, listing text, and screenshots are ready
 
 Final Android/iOS signing, Play/App Store accounts, store graphics and
 screenshots, the Apple Team ID and provisioning profile, AAB/IPA upload, and
-physical-device link/session checks are external gates. This guide must not be
-used to claim that production deployment or store submission has happened.
+physical-device link/session checks are external gates. The web/API production
+deployment is recorded separately and does not imply store submission.

@@ -1,4 +1,5 @@
 import {
+  ContributionScopeStatus,
   ConversationEventType,
   ConversationScope,
   CostPaymentType,
@@ -398,43 +399,62 @@ async function seedBackendCompletionDemo(
     },
   });
 
-  const plan =
-    (await prisma.weddingPlan.findFirst({
+  const plan = await prisma.$transaction(async (tx) => {
+    const existingPlan = await tx.weddingPlan.findFirst({
       where: {
         ownerUserId: user.id,
         title: 'Aarast Backend Completion Demo Plan',
       },
-    })) ??
-    (await prisma.weddingPlan.create({
-      data: {
-        ownerUserId: user.id,
-        title: 'Aarast Backend Completion Demo Plan',
-        city: 'Sanaa',
-        location: {
-          governorate: 'Sanaa',
+    });
+    const resolvedPlan =
+      existingPlan ??
+      (await tx.weddingPlan.create({
+        data: {
+          ownerUserId: user.id,
+          title: 'Aarast Backend Completion Demo Plan',
           city: 'Sanaa',
+          location: {
+            governorate: 'Sanaa',
+            city: 'Sanaa',
+          },
+          weddingDate: new Date('2026-12-31T00:00:00.000Z'),
+          priorities: ['budget', 'tasks', 'guests', 'providers'],
+          estimatedBudget: '1500000',
+          currency: 'YER',
+          onboardingPath: OnboardingPath.USER,
+          persona: WeddingPersona.GROOM,
+          onboardingCompletedAt: new Date(),
+          status: WeddingPlanStatus.PLANNING,
         },
+      }));
+
+    const activePlan = await tx.weddingPlan.update({
+      where: { id: resolvedPlan.id },
+      data: {
+        city: 'Sanaa',
         weddingDate: new Date('2026-12-31T00:00:00.000Z'),
         priorities: ['budget', 'tasks', 'guests', 'providers'],
         estimatedBudget: '1500000',
         currency: 'YER',
-        onboardingPath: OnboardingPath.USER,
-        persona: WeddingPersona.GROOM,
-        onboardingCompletedAt: new Date(),
         status: WeddingPlanStatus.PLANNING,
       },
-    }));
+    });
 
-  await prisma.weddingPlan.update({
-    where: { id: plan.id },
-    data: {
-      city: 'Sanaa',
-      weddingDate: new Date('2026-12-31T00:00:00.000Z'),
-      priorities: ['budget', 'tasks', 'guests', 'providers'],
-      estimatedBudget: '1500000',
-      currency: 'YER',
-      status: WeddingPlanStatus.PLANNING,
-    },
+    await tx.contributorHistoryScope.upsert({
+      where: { weddingPlanId: activePlan.id },
+      create: {
+        weddingPlanId: activePlan.id,
+        status: ContributionScopeStatus.ACTIVE,
+        historyCoverageStartsAt: new Date(),
+      },
+      update: {
+        status: ContributionScopeStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+      },
+    });
+
+    return activePlan;
   });
 
   await prisma.user.update({

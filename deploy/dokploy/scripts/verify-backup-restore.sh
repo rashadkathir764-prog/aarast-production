@@ -193,16 +193,35 @@ SELECT
     SELECT expected.name
     FROM (VALUES
       ('"'"'20260802090000_add_contributor_history'"'"'),
-      ('"'"'20260803110000_add_account_deletion_receipts'"'"')
+      ('"'"'20260803110000_add_account_deletion_receipts'"'"'),
+      ('"'"'20260811180000_backfill_missing_contributor_history_scopes'"'"')
     ) AS expected(name)
     LEFT JOIN "_prisma_migrations" applied
       ON applied.migration_name = expected.name
     WHERE applied.finished_at IS NULL OR applied.rolled_back_at IS NOT NULL
   ),
-  (SELECT count(*) FROM "ContributorHistoryScope") =
-    (SELECT count(*) FROM "WeddingPlan"),
-  (SELECT count(*) FROM "ContributorTenure" WHERE "endedAt" IS NULL) =
-    (SELECT count(*) FROM "SharedMember"),
+  NOT EXISTS (
+    SELECT 1
+    FROM "WeddingPlan" AS plan
+    LEFT JOIN "ContributorHistoryScope" AS scope
+      ON scope."weddingPlanId" = plan."id"
+    WHERE scope."id" IS NULL
+      OR (plan."status" = '"'"'PLANNING'"'"' AND scope."status" <> '"'"'ACTIVE'"'"')
+      OR (plan."status" = '"'"'ARCHIVED'"'"' AND scope."status" <> '"'"'ARCHIVED'"'"')
+  ),
+  NOT EXISTS (
+    SELECT 1
+    FROM "SharedMember" AS member
+    JOIN "ContributorHistoryScope" AS scope
+      ON scope."weddingPlanId" = member."weddingPlanId"
+    LEFT JOIN "ContributorTenure" AS tenure
+      ON tenure."historyScopeId" = scope."id"
+      AND tenure."sharedMemberId" = member."id"
+      AND tenure."actorUserId" = member."userId"
+      AND tenure."actorReference" = encode(digest(member."userId", '"'"'sha256'"'"'), '"'"'hex'"'"')
+      AND tenure."endedAt" IS NULL
+    WHERE tenure."id" IS NULL
+  ),
   NOT EXISTS (
     SELECT 1 FROM "BudgetCategory"
     WHERE trim("name") = '"'"''"'"' OR trim("normalizedName") = '"'"''"'"'

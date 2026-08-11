@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import {
+  ContributionScopeStatus,
+  UserStatus,
+  WeddingPlanStatus,
+} from "@prisma/client";
+import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
 
 const read = (path: string) =>
   readFileSync(join(process.cwd(), path), "utf8");
@@ -105,5 +111,202 @@ test("legacy backfill attributes only direct assignment, creation, and inviter e
   assert.doesNotMatch(
     migration,
     /FROM \"(?:Guest|GuestGroup|WeddingCost|CostPayment|PaymentSchedule|BudgetCategory)\"/,
+  );
+});
+
+test("every runtime WeddingPlan creation adds its history scope in the same transaction", () => {
+  const service = read("src/wedding-plans/wedding-plans.service.ts");
+  const createdPlanVariables = [
+    ...service.matchAll(
+      /const\s+(\w+)\s*=\s*await\s+tx\.weddingPlan\.create\s*\(/g,
+    ),
+  ].map((match) => match[1]);
+  const scopedPlanVariables = [
+    ...service.matchAll(
+      /await\s+this\.createContributorHistoryScopeInTransaction\(tx,\s*(\w+)\);/g,
+    ),
+  ].map((match) => match[1]);
+
+  assert.equal(createdPlanVariables.length, 3);
+  assert.deepEqual(scopedPlanVariables.sort(), createdPlanVariables.sort());
+  assert.doesNotMatch(service, /this\.prisma\.weddingPlan\.create\s*\(/);
+  assert.match(
+    service,
+    /createContributorHistoryScopeInTransaction\([\s\S]*tx:\s*Prisma\.TransactionClient[\s\S]*tx\.contributorHistoryScope\.create\([\s\S]*weddingPlanId:\s*plan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*plan\.createdAt/,
+  );
+});
+
+test("create persists plan, ACTIVE history scope, and active selection in one transaction", async () => {
+  const operations: string[] = [];
+  const createdAt = new Date("2026-08-11T15:00:00.000Z");
+  const plan = {
+    id: "plan-created",
+    ownerUserId: "owner-created",
+    title: "Created plan",
+    city: null,
+    location: null,
+    weddingDate: null,
+    priorities: [],
+    estimatedBudget: null,
+    currency: "YER",
+    onboardingPath: null,
+    persona: null,
+    onboardingCompletedAt: null,
+    importMigrationId: null,
+    status: WeddingPlanStatus.PLANNING,
+    createdAt,
+    updatedAt: createdAt,
+  };
+  let scopeMutation: Record<string, unknown> | undefined;
+  const tx = {
+    $queryRaw: async () => {
+      operations.push("actor:lock");
+      return [{ id: plan.ownerUserId, status: UserStatus.ACTIVE }];
+    },
+    weddingPlan: {
+      create: async () => {
+        operations.push("plan:create");
+        return plan;
+      },
+    },
+    contributorHistoryScope: {
+      create: async (mutation: Record<string, unknown>) => {
+        operations.push("scope:create");
+        scopeMutation = mutation;
+        return {};
+      },
+    },
+    user: {
+      update: async () => {
+        operations.push("user:update");
+        return {};
+      },
+    },
+  };
+  const service = new WeddingPlansService(
+    {
+      $transaction: async (work: (client: typeof tx) => Promise<unknown>) => {
+        operations.push("transaction:start");
+        const result = await work(tx);
+        operations.push("transaction:end");
+        return result;
+      },
+    } as any,
+    {} as any,
+    {} as any,
+  );
+
+  await service.create(
+    { id: plan.ownerUserId } as any,
+    { title: plan.title },
+  );
+
+  assert.deepEqual(operations, [
+    "transaction:start",
+    "actor:lock",
+    "plan:create",
+    "scope:create",
+    "user:update",
+    "transaction:end",
+  ]);
+  assert.deepEqual(scopeMutation, {
+    data: {
+      weddingPlanId: plan.id,
+      status: ContributionScopeStatus.ACTIVE,
+      historyCoverageStartsAt: plan.createdAt,
+    },
+  });
+});
+
+test("repair migration backfills only missing scopes without inventing historical coverage", () => {
+  const migration = read(
+    "prisma/migrations/20260811180000_backfill_missing_contributor_history_scopes/migration.sql",
+  );
+
+  assert.match(migration, /^BEGIN;\s*$/m);
+  assert.match(migration, /COMMIT;\s*$/);
+  assert.match(
+    migration,
+    /LOCK TABLE "WeddingPlan", "SharedMember", "ContributorHistoryScope", "ContributorTenure"[\s\S]*IN SHARE ROW EXCLUSIVE MODE/,
+  );
+  assert.match(migration, /CURRENT_TIMESTAMP AS "backfilledAt"/);
+  assert.match(
+    migration,
+    /WHEN plan\."status" = 'ARCHIVED' THEN 'ARCHIVED'::"ContributionScopeStatus"/,
+  );
+  assert.match(
+    migration,
+    /WHEN plan\."status" = 'ARCHIVED' THEN plan\."updatedAt"/,
+  );
+  assert.match(
+    migration,
+    /LEFT JOIN "ContributorHistoryScope" AS scope[\s\S]*WHERE scope\."id" IS NULL/,
+  );
+  assert.match(migration, /ON CONFLICT \("weddingPlanId"\) DO NOTHING/);
+  assert.match(migration, /contributor_history_scope_backfill_incomplete/);
+  assert.match(migration, /INSERT INTO "ContributorTenure"/);
+  assert.match(
+    migration,
+    /encode\(digest\(member\."userId", 'sha256'\), 'hex'\)/,
+  );
+  assert.match(
+    migration,
+    /member\."createdAt"[\s\S]*CURRENT_TIMESTAMP[\s\S]*member\."role"/,
+  );
+  assert.match(migration, /ON CONFLICT \("sharedMemberId"\) DO NOTHING/);
+  assert.match(migration, /contributor_history_scope_status_mismatch/);
+  assert.match(migration, /contributor_current_tenure_backfill_incomplete/);
+  assert.doesNotMatch(
+    migration,
+    /"historyCoverageStartsAt"[\s\S]{0,300}plan\."createdAt"/,
+  );
+});
+
+test("seed creates or repairs the demo plan scope without rewriting coverage", () => {
+  const seed = read("prisma/seed.ts");
+  const demoSeed = seed.slice(
+    seed.indexOf("async function seedBackendCompletionDemo"),
+  );
+
+  assert.match(demoSeed, /prisma\.\$transaction\(async \(tx\) =>/);
+  assert.match(demoSeed, /await tx\.weddingPlan\.create\(/);
+  assert.match(demoSeed, /await tx\.contributorHistoryScope\.upsert\(/);
+  assert.match(
+    demoSeed,
+    /create:[\s\S]*weddingPlanId:\s*activePlan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*new Date\(\)/,
+  );
+  const scopeUpsert = demoSeed.slice(
+    demoSeed.indexOf("await tx.contributorHistoryScope.upsert"),
+    demoSeed.indexOf("return activePlan"),
+  );
+  assert.doesNotMatch(scopeUpsert, /update:[\s\S]*historyCoverageStartsAt/);
+});
+
+test("restore verification allows detached history while requiring every live plan scope and tenure", () => {
+  const verify = read("../deploy/dokploy/scripts/verify-backup-restore.sh");
+
+  assert.doesNotMatch(
+    verify,
+    /count\(\*\) FROM "ContributorHistoryScope"\)\s*=\s*\(SELECT count\(\*\) FROM "WeddingPlan"/,
+  );
+  assert.match(
+    verify,
+    /FROM "WeddingPlan" AS plan[\s\S]*LEFT JOIN "ContributorHistoryScope" AS scope[\s\S]*WHERE scope\."id" IS NULL/,
+  );
+  assert.match(
+    verify,
+    /plan\."status" = '[^\n]*PLANNING[^\n]*scope\."status" <> '[^\n]*ACTIVE/,
+  );
+  assert.match(
+    verify,
+    /FROM "SharedMember" AS member[\s\S]*LEFT JOIN "ContributorTenure" AS tenure[\s\S]*tenure\."sharedMemberId" = member\."id"[\s\S]*WHERE tenure\."id" IS NULL/,
+  );
+  assert.match(
+    verify,
+    /20260811180000_backfill_missing_contributor_history_scopes/,
+  );
+  assert.match(
+    verify,
+    /tenure\."actorReference" = encode\(digest\(member\."userId", '[^\n]*sha256[^\n]*'\), '[^\n]*hex/,
   );
 });

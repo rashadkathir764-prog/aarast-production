@@ -1149,6 +1149,136 @@ test('ownership CLI rejects malformed scan records atomically without reflecting
   }
 });
 
+test('ownership CLI rejects semantically impossible records in scans, baselines, and writes', () => {
+  const exact = (overrides: Partial<OwnershipRecord>) => violation(overrides);
+  const impossible = [
+    exact({ operation: 'findUnique', mode: 'write' }),
+    exact({ operation: 'update', mode: 'read' }),
+    exact({ source: 'sql', operation: 'select', mode: 'write' }),
+    exact({ source: 'sql', operation: 'update', mode: 'read' }),
+    exact({ source: 'delegate', operation: 'select', mode: 'read' }),
+    exact({ source: 'sql', operation: '$queryRaw', mode: 'unknown' }),
+    exact({ model: '<dynamic>', owner: null }),
+    exact({ owner: null }),
+    exact({ owner: 'identity' }),
+    exact({ context: 'planning' }),
+    exact({ reason: 'unclassified-context' }),
+    exact({
+      context: 'unclassified', reason: 'foreign-model',
+    }),
+    exact({
+      context: 'unclassified', reason: 'unclassified-context', owner: null,
+    }),
+    exact({
+      model: 'User', owner: null, operation: 'fields', mode: 'unknown',
+      source: 'delegate', reason: 'unknown-operation',
+    }),
+    exact({
+      model: '<dynamic>', owner: null, operation: 'findMany', mode: 'read',
+      source: 'delegate', reason: 'unknown-operation',
+    }),
+    exact({
+      model: '<dynamic>', owner: null, operation: 'select', mode: 'read',
+      source: 'relation', reason: 'unknown-model',
+    }),
+    exact({
+      model: '<dynamic>', owner: null, operation: 'select', mode: 'read',
+      source: 'sql', reason: 'unknown-sql-composition',
+    }),
+    exact({
+      model: '<dynamic>', owner: null, operation: '$queryRaw', mode: 'unknown',
+      source: 'sql', reason: 'unknown-model',
+    }),
+    exact({
+      model: '<dynamic>', owner: null, operation: 'select', mode: 'read',
+      source: 'sql', reason: 'unknown-operation',
+    }),
+    exact({
+      model: '<dynamic>', owner: null, operation: '$queryRaw', mode: 'unknown',
+      source: 'sql', reason: 'unknown-relation-shape',
+    }),
+    exact({
+      model: 'WeddingPlan', owner: 'identity', operation: 'findMany', mode: 'read',
+      source: 'delegate', reason: 'foreign-model',
+    }),
+  ];
+
+  for (const record of impossible) {
+    const scan = captureOwnershipCli({ scan: [record], saved: ownershipBaseline() });
+    assert.equal(scan.exitCode, 2, `scan accepted ${JSON.stringify(record)}`);
+    assert.deepEqual(scan.stdout, []);
+    assert.deepEqual(scan.stderr, ['ERROR - architecture ownership scan failed']);
+
+    const baseline = captureOwnershipCli({ scan: [], saved: ownershipBaseline([record]) });
+    assert.equal(baseline.exitCode, 2, `baseline accepted ${JSON.stringify(record)}`);
+    assert.deepEqual(baseline.stdout, []);
+    assert.deepEqual(baseline.stderr, ['ERROR - architecture ownership scan failed']);
+
+    let writeCalled = false;
+    const write = captureOwnershipCli({
+      argv: ['--write-baseline'],
+      scan: [record],
+      writeBaseline: () => { writeCalled = true; },
+    });
+    assert.equal(write.exitCode, 2, `writer accepted ${JSON.stringify(record)}`);
+    assert.equal(writeCalled, false);
+    assert.deepEqual(write.stdout, []);
+    assert.deepEqual(write.stderr, ['ERROR - architecture ownership scan failed']);
+  }
+});
+
+test('ownership CLI accepts every legal operation and reason boundary', () => {
+  const legal = [
+    ...['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy']
+      .map((operation) => violation({ operation, mode: 'read' })),
+    ...['create', 'createMany', 'createManyAndReturn', 'update', 'updateMany', 'updateManyAndReturn', 'upsert', 'delete', 'deleteMany']
+      .map((operation) => violation({ operation, mode: 'write' })),
+    violation({
+      model: 'User', owner: 'identity', operation: 'fields', mode: 'unknown',
+      source: 'delegate', reason: 'unknown-operation',
+    }),
+    violation({
+      model: '<dynamic>', owner: null, operation: 'findMany', mode: 'read',
+      source: 'delegate', reason: 'unknown-model',
+    }),
+    violation({
+      model: '<dynamic>', owner: null, operation: 'findMany', mode: 'unknown',
+      source: 'relation', reason: 'unknown-relation-shape',
+    }),
+    violation({
+      model: '<dynamic>', owner: null, operation: '$queryRaw', mode: 'unknown',
+      source: 'sql', reason: 'unknown-sql-composition',
+    }),
+    violation({
+      model: 'UnknownTable', owner: null, operation: 'select', mode: 'read',
+      source: 'sql', reason: 'unknown-model',
+    }),
+    violation({
+      context: 'unclassified', model: 'WeddingPlan', owner: 'planning',
+      operation: 'findMany', mode: 'read', source: 'delegate',
+      reason: 'unclassified-context',
+    }),
+    violation({
+      operation: 'weddingPlan', mode: 'read', source: 'relation',
+    }),
+    violation({
+      operation: 'update', mode: 'read', source: 'relation',
+    }),
+    violation({
+      operation: 'connect+update', mode: 'write', source: 'relation',
+    }),
+    ...['select', 'join', 'using', 'lock'].map((operation) => violation({
+      operation, mode: 'read', source: 'sql',
+    })),
+    ...['insert', 'merge', 'update', 'delete', 'truncate', 'alter', 'drop', 'create', 'copy']
+      .map((operation) => violation({ operation, mode: 'write', source: 'sql' })),
+  ].sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
+
+  const result = captureOwnershipCli({ scan: legal, saved: ownershipBaseline(legal) });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(result.stderr, []);
+});
+
 test('ownership CLI rejects duplicate, sparse, oversized, inherited, accessor, and proxy scan data', () => {
   const safe = violation();
   let accessorInvoked = false;

@@ -77,22 +77,20 @@ const MAX_OWNERSHIP_RECORDS = 10_000;
 const MAX_OWNERSHIP_COUNT = 1_000_000;
 const MAX_REPOSITORY_PATH_LENGTH = 4_096;
 const MAX_IDENTIFIER_LENGTH = 256;
-const SQL_OPERATIONS = new Set([
-  'select',
-  'join',
-  'using',
+const SQL_READ_OPERATIONS = new Set(['select', 'join', 'using', 'lock']);
+const SQL_WRITE_OPERATIONS = new Set([
   'insert',
   'merge',
   'update',
   'delete',
-  'lock',
   'truncate',
   'alter',
   'drop',
   'create',
   'copy',
-  ...RAW_OPERATIONS,
 ]);
+
+let validationRegistryMetadata;
 
 function extractSchemaMetadata(schemaText) {
   const lines = schemaText.split(/\r?\n/);
@@ -1588,32 +1586,82 @@ function canonicalOperation(value) {
     && /^\$?[A-Za-z_][A-Za-z0-9_$]*(?:\+\$?[A-Za-z_][A-Za-z0-9_$]*)*$/.test(value);
 }
 
+function ownershipValidationMetadata() {
+  if (validationRegistryMetadata) return validationRegistryMetadata;
+  const backendRoot = path.resolve(__dirname, '../..');
+  const registry = readJson(
+    path.join(backendRoot, 'architecture', 'ownership-registry.json'),
+    'ownership registry',
+  );
+  const schemaText = fs.readFileSync(path.join(backendRoot, 'prisma', 'schema.prisma'), 'utf8');
+  validationRegistryMetadata = buildRegistryMetadata(
+    registry,
+    extractSchemaMetadata(schemaText),
+  );
+  return validationRegistryMetadata;
+}
+
+function expectedModeForSourceOperation(source, operation) {
+  if (source === 'delegate') {
+    if (READ_OPERATIONS.has(operation)) return 'read';
+    if (WRITE_OPERATIONS.has(operation)) return 'write';
+    return null;
+  }
+  if (source === 'sql') {
+    if (SQL_READ_OPERATIONS.has(operation)) return 'read';
+    if (SQL_WRITE_OPERATIONS.has(operation)) return 'write';
+    return null;
+  }
+  if (source !== 'relation') return null;
+  if (operation.split('+').every((part) => RELATION_WRITES.has(part))) return 'write';
+  return canonicalIdentifier(operation) ? 'read' : null;
+}
+
 function validOperationForRecord(record) {
   if (!canonicalOperation(record.operation)) return false;
-  if (record.reason === 'unknown-operation') {
-    return ['delegate', 'sql'].includes(record.source);
+  if (record.reason === 'unknown-operation') return record.mode === 'unknown';
+  if (record.reason === 'unknown-model' && record.operation === 'dynamic') {
+    return record.source === 'delegate' && record.mode === 'unknown';
   }
-  if (record.source === 'sql') return SQL_OPERATIONS.has(record.operation);
-  if (record.source === 'delegate') {
-    return READ_OPERATIONS.has(record.operation)
-      || WRITE_OPERATIONS.has(record.operation)
-      || record.reason === 'unknown-model';
+  if (record.reason === 'unknown-sql-composition') {
+    return record.mode === 'unknown' && RAW_OPERATIONS.has(record.operation);
   }
   if (record.reason === 'unknown-relation-shape') {
-    return READ_OPERATIONS.has(record.operation) || WRITE_OPERATIONS.has(record.operation);
+    return record.mode === 'unknown'
+      && (READ_OPERATIONS.has(record.operation) || WRITE_OPERATIONS.has(record.operation));
   }
-  if (record.mode === 'write') {
-    return record.operation.split('+').every((operation) => RELATION_WRITES.has(operation));
+  if (record.source === 'relation') {
+    return (record.mode === 'read' && canonicalIdentifier(record.operation))
+      || (record.mode === 'write'
+        && record.operation.split('+').every((operation) => RELATION_WRITES.has(operation)));
   }
-  return record.mode === 'read' && canonicalIdentifier(record.operation);
+  return expectedModeForSourceOperation(record.source, record.operation) === record.mode;
 }
 
 function validReasonShape(record) {
+  const { modelOwners } = ownershipValidationMetadata();
+  const knownOwner = modelOwners.get(record.model) ?? null;
   if (record.reason === 'unknown-model') {
-    return ['delegate', 'sql'].includes(record.source) && record.owner === null;
+    return ['delegate', 'sql'].includes(record.source)
+      && record.owner === null
+      && knownOwner === null
+      && (
+        (record.source === 'delegate' && record.model === '<dynamic>')
+        || (record.source === 'sql'
+          && (record.model === '<dynamic>' || canonicalIdentifier(record.model)))
+      );
   }
   if (record.reason === 'unknown-operation') {
-    return ['delegate', 'sql'].includes(record.source) && record.mode === 'unknown';
+    if (record.source === 'delegate') {
+      return knownOwner !== null
+        && record.owner === knownOwner
+        && !READ_OPERATIONS.has(record.operation)
+        && !WRITE_OPERATIONS.has(record.operation);
+    }
+    return record.source === 'sql'
+      && record.model === '<dynamic>'
+      && record.owner === null
+      && record.operation === 'dynamic';
   }
   if (record.reason === 'unknown-relation-shape') {
     return record.source === 'relation'
@@ -1628,11 +1676,14 @@ function validReasonShape(record) {
       && record.mode === 'unknown';
   }
   if (record.reason === 'unclassified-context') {
-    return record.context === 'unclassified';
+    return record.context === 'unclassified'
+      && knownOwner !== null
+      && record.owner === knownOwner;
   }
   return record.reason === 'foreign-model'
     && record.context !== 'unclassified'
-    && record.owner !== null
+    && knownOwner !== null
+    && record.owner === knownOwner
     && record.owner !== record.context;
 }
 

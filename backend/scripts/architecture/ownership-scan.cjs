@@ -1545,64 +1545,6 @@ function validateBaseline(baseline) {
   return baseline;
 }
 
-function absoluteLocalPathStart(value) {
-  for (let index = 0; index < value.length; index += 1) {
-    const current = value[index];
-    if (value.slice(index, index + 7).toLowerCase() === 'file://') return index;
-    if (current === '\\' && value[index + 1] === '\\') return index;
-    if (
-      /[A-Za-z]/.test(current)
-      && (index === 0 || !/[A-Za-z0-9]/.test(value[index - 1]))
-      && value[index + 1] === ':'
-      && (value[index + 2] === '\\' || value[index + 2] === '/')
-    ) {
-      return index;
-    }
-    if (current !== '/' || value[index + 1] === '/' || value[index - 1] === '/') continue;
-    const previous = value[index - 1] || '';
-    if (!previous || !/[A-Za-z0-9._~%+-]/.test(previous)) return index;
-  }
-  return -1;
-}
-
-function tokenizeSafeWebUrls(value) {
-  let prefix = null;
-  for (let attempt = 0; attempt <= value.length; attempt += 1) {
-    const candidate = `\u0000architecture-web-url-${attempt}-`;
-    if (!value.includes(candidate)) {
-      prefix = candidate;
-      break;
-    }
-  }
-  if (prefix === null) {
-    return { value: '', restore: () => 'sanitized architecture error' };
-  }
-
-  const tokens = [];
-  const protectedValue = value.replace(/\bhttps?:\/\/[^\s<>"'`]+/gi, (url) => {
-    const token = `${prefix}${tokens.length}\u0000`;
-    tokens.push({ token, url });
-    return token;
-  });
-  return {
-    value: protectedValue,
-    restore: (sanitized) => tokens.reduce(
-      (restored, { token, url }) => restored.split(token).join(url),
-      sanitized,
-    ),
-  };
-}
-
-function sanitizeMessage(value) {
-  const firstLine = String(value || 'unknown error').split(/[\r\n]/, 1)[0];
-  const protectedUrls = tokenizeSafeWebUrls(firstLine);
-  const pathStart = absoluteLocalPathStart(protectedUrls.value);
-  const sanitized = pathStart === -1
-    ? protectedUrls.value
-    : `${protectedUrls.value.slice(0, pathStart)}<path>`;
-  return protectedUrls.restore(sanitized);
-}
-
 function writeLine(target, message) {
   if (typeof target === 'function') target(message);
   else if (target && typeof target.write === 'function') target.write(`${message}\n`);
@@ -1644,8 +1586,8 @@ function runCli(dependencies) {
     }
     writeLine(dependencies.stdout, `ownership check passed (${current.length} current records)`);
     return 0;
-  } catch (error) {
-    writeLine(dependencies.stderr, `architecture ownership error: ${sanitizeMessage(error && error.message)}`);
+  } catch {
+    writeLine(dependencies.stderr, 'ERROR - architecture ownership scan failed');
     return 2;
   }
 }

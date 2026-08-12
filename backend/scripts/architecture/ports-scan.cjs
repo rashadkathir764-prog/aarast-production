@@ -775,11 +775,8 @@ function runCli(dependencies) {
       `PASS - architecture ports: forwardRef=${result.counts.forwardRef}, globals=${result.counts.globals}, illegal future imports=${result.counts.illegalFutureImports}, Nest module cycles=${result.counts.nestModuleCycles}`,
     );
     return 0;
-  } catch (error) {
-    writeLine(
-      dependencies.stderr,
-      `architecture ports error: ${sanitizeMessage(error && error.message)}`,
-    );
+  } catch {
+    writeLine(dependencies.stderr, 'ERROR - architecture ports scan failed');
     return 2;
   }
 }

@@ -995,7 +995,7 @@ test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {
   assert.equal(runCli({ ...dependencies, argv: ['--wat'] }), 2);
 });
 
-test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', () => {
+test('ownership CLI never reflects scanner exceptions containing absolute paths', () => {
   const failures = [
     'scan failed [/srv/private/ownership-posix.ts',
     'scan failed "/opt/private/ownership-opt.ts"',
@@ -1017,10 +1017,7 @@ test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', ()
       stderr: (message: string) => output.push(message),
     });
     assert.equal(exitCode, 2);
-    const message = output.join('\n');
-    assert.match(message, /^architecture ownership error:/);
-    assert.doesNotMatch(message, /ownership-(?:posix|drive|unc|extended)|ownership-server|stack detail/i);
-    assert.doesNotMatch(message, /(?:^|\s)(?:\/|[A-Za-z]:[\\/]|\\\\(?:\?|[^\\]))/);
+    assert.deepEqual(output, ['ERROR - architecture ownership scan failed']);
   }
 
   const urlOutput: string[] = [];
@@ -1031,12 +1028,11 @@ test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', ()
     stdout: (message: string) => urlOutput.push(message),
     stderr: (message: string) => urlOutput.push(message),
   }), 2);
-  assert.match(urlOutput.join('\n'), /https:\/\/example\.test\/docs\/path/);
-  assert.doesNotMatch(urlOutput.join('\n'), /stack detail/);
+  assert.deepEqual(urlOutput, ['ERROR - architecture ownership scan failed']);
 });
 
-test('ownership CLI redacts local file URLs while preserving safe web URLs', () => {
-  const localFileUrls = [
+test('ownership CLI never reflects file, web, malformed URL, secret, or sentinel text', () => {
+  const reflectedInputs = [
     'file:///srv/private/ownership-file-posix.ts',
     'file://ownership-server/private/ownership-file-unc.ts',
     'file://ownership-server/share/private/ownership-file-share.ts',
@@ -1044,34 +1040,23 @@ test('ownership CLI redacts local file URLs while preserving safe web URLs', () 
     'file://localhost/C:/private/ownership-file-localhost.ts',
     'file:///%5C%5C%3F%5CC%3A%5Cprivate%5Cownership-file-extended-drive.ts',
     'file:///%5C%5C%3F%5CUNC%5Cownership-server%5Cshare%5Cownership-file-extended-unc.ts',
-  ];
-  for (const localUrl of localFileUrls) {
-    const output: string[] = [];
-    assert.equal(runCli({
-      argv: ['--check'],
-      scan: () => { throw new Error(`scan failed [${localUrl}\nstack detail`); },
-      readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
-      stdout: (message: string) => output.push(message),
-      stderr: (message: string) => output.push(message),
-    }), 2);
-    const message = output.join('\n');
-    assert.equal(message, 'architecture ownership error: scan failed [<path>');
-    assert.doesNotMatch(message, /file:|ownership-file|ownership-server|stack detail/i);
-  }
-
-  for (const webUrl of [
     'https://example.test/docs/C:/safe-guide',
     'http://example.test/docs/ordinary-guide',
-  ]) {
+    'http:/malformed.example/private/ownership-malformed.ts',
+    'https:////ownership-server/private/ownership-malformed-unc.ts',
+    '\u0000architecture-web-url-0-attacker-sentinel\u0000',
+    'TOKEN=ownership-attacker-secret',
+  ];
+  for (const reflectedInput of reflectedInputs) {
     const output: string[] = [];
     assert.equal(runCli({
       argv: ['--check'],
-      scan: () => { throw new Error(`scan failed at ${webUrl}\r\nstack detail`); },
+      scan: () => { throw new Error(`scan failed [${reflectedInput}\r\nstack detail`); },
       readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
     }), 2);
-    assert.equal(output.join('\n'), `architecture ownership error: scan failed at ${webUrl}`);
+    assert.deepEqual(output, ['ERROR - architecture ownership scan failed']);
   }
 });
 
@@ -1116,10 +1101,7 @@ test('baseline validation rejects invalid fields and sensitive strings with sani
       stderr: (message: string) => output.push(message),
     });
     assert.equal(exitCode, 2, `baseline value was accepted: ${JSON.stringify(record)}`);
-    const message = output.join('\n');
-    assert.match(message, /^architecture ownership error:/);
-    assert.doesNotMatch(message, /ownership-leak|ownership-credential|ownership-secret|example\.test|\/tmp\/|[A-Za-z]:[\\/]/i);
-    assert.doesNotMatch(message, /\n\s+at\s/);
+    assert.deepEqual(output, ['ERROR - architecture ownership scan failed']);
   }
 });
 
@@ -1165,12 +1147,19 @@ test('the real wrapper rejects unknown arguments without absolute paths or stack
   assert.doesNotMatch(result.stderr, /\n\s+at\s/);
 });
 
-test('the real ownership CLI sanitizes scanner failures without repository fixtures', () => {
+test('the real ownership CLI never reflects scanner failures without repository fixtures', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-cli-error-'));
   fixtureRoots.push(root);
   const preload = path.join(root, 'throwing-program.cjs');
-  const safeUrl = 'https://example.test/docs/C:/safe-guide';
-  const failureMessage = `alias failed at ${safeUrl} then [file:///srv/private/ownership-real.ts\nstack detail`;
+  const failureMessage = [
+    'ownership-attacker-message',
+    'https://example.test/docs/C:/safe-guide',
+    'file:///srv/private/ownership-real.ts',
+    'http:/malformed.example/private/ownership-malformed.ts',
+    '\u0000architecture-web-url-0-attacker-sentinel\u0000',
+    'TOKEN=ownership-real-secret',
+    '\nstack detail',
+  ].join(' ');
   writeFileSync(preload, [
     "const Module = require('node:module');",
     'const originalLoad = Module._load;',
@@ -1188,10 +1177,7 @@ test('the real ownership CLI sanitizes scanner failures without repository fixtu
   });
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 2, output);
-  assert.equal(
-    result.stderr.trim(),
-    `architecture ownership error: alias failed at ${safeUrl} then [<path>`,
-  );
-  assert.doesNotMatch(output, /ownership-real|file:|stack detail/i);
+  assert.equal(result.stderr.trim(), 'ERROR - architecture ownership scan failed');
+  assert.doesNotMatch(output, /ownership-attacker-message|example\.test|ownership-real|file:|malformed|attacker-sentinel|ownership-real-secret|stack detail/i);
   assert.doesNotMatch(output, /\n\s*at\s+/);
 });

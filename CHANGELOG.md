@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-12 - Modular Monolith R1 Execution Started
+
+- Recorded the owner's decision to continue R1 and later modular-monolith
+  phases locally on the same `modular-monolith` branch without intermediate
+  merges. Immutable R0 candidate
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456` is the R1 comparison base.
+- Established a hard checkpoint after every task: automated gates, managed
+  server smoke, independent review/remediation, clean local commit, and owner
+  application testing before continuation.
+- PR #76 remains unchanged at the R0 candidate; no R1 push, merge, or remote-CI
+  result is claimed by this local execution-start record.
+
 ## 2026-08-12 - Modular Monolith R0 Local Verification
 
 - Established the tracked modular-monolith architecture contract, exact

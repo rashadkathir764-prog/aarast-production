@@ -6,7 +6,9 @@
 
 **Planning base:** externally verified R0 candidate `94b677b7b8e2219e0db2cbc553fa3d26b4876456`
 
-**Execution base:** the immutable merge revision of R0 PR #76, to be recorded before R1 implementation starts
+**Execution base:** owner-approved immutable R0 candidate
+`94b677b7b8e2219e0db2cbc553fa3d26b4876456` on branch
+`modular-monolith`
 
 ## Objective
 
@@ -312,19 +314,32 @@ documentation gates, and a pre/post protected-surface audit.
 
 ## CI and Phase Transition
 
-The R0 `r0-scope` CI job is removed after R0 is merged because its fixed base
-and allowlist are phase-specific. The local R0 scope script/test remain tracked
-as historical verification tooling; R1 does not retarget them into a growing
-allowlist. All other CI jobs and architecture commands remain active.
+Owner decision on 2026-08-12 supersedes the earlier merge-first execution
+assumption: R1 and later modular-monolith phases continue locally on the same
+`modular-monolith` branch without merging between phases. R0 candidate
+`94b677b7b8e2219e0db2cbc553fa3d26b4876456` is the immutable `R1_BASE`; every
+R1 comparison remains anchored to it even as checkpoint commits accumulate.
 
-R1 implementation must not begin from this planning branch. Before execution:
+The branch must not be pushed during staged local execution unless the owner
+explicitly authorizes it, because PR #76 currently points at this branch and a
+push would change the reviewed R0 pull request into a combined R0+R1
+candidate. The R0 `r0-scope` CI job is removed only at R1 closeout, after all
+local R1 gates and owner manual checkpoints pass. The local R0 scope
+script/test remain tracked as historical verification tooling; R1 does not
+retarget them into a growing allowlist. All other CI jobs and architecture
+commands remain active.
 
-1. R0 PR #76 must be merged without additional unreviewed changes.
-2. The immutable R0 merge SHA must be recorded as `R1_BASE` in the execution
-   plan/brief and verified as an ancestor of the R1 branch.
-3. The R1 execution worktree must be clean and created from that SHA.
-4. If the merge result differs from planning base `94b677b7`, the implementer
-   reruns discovery and updates this design and plan before source changes.
+Each R1 task is a hard checkpoint:
+
+1. run its focused and architecture/type-check/build/documentation gates;
+2. run the applicable managed quick server smoke;
+3. complete an independent review and root-cause remediation loop;
+4. leave the branch clean at a checkpoint commit;
+5. stop for the owner's application test and explicit continuation approval.
+
+No later task or later modular-monolith phase starts while the preceding owner
+checkpoint is unresolved. Remote CI is final external evidence when a push is
+eventually authorized; it is not fabricated or replaced by local evidence.
 
 ## Rejected Alternatives
 

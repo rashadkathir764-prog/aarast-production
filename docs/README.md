@@ -93,10 +93,13 @@ changing behavior.
 
 ## Current Working Plan
 
+- `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`
+  - active R1 implementation plan. It runs as separately verified local
+  checkpoints on `modular-monolith`, anchored to immutable R0 candidate
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456`, with an owner application test
+  before each next task.
 - `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md` -
-  approved R0 governance execution plan. It is the only current working plan;
-  archived `docs/superpowers` material remains historical and is not active
-  truth.
+  completed R0 governance plan and historical predecessor to R1.
 
 ## Source Of Truth By Area
 

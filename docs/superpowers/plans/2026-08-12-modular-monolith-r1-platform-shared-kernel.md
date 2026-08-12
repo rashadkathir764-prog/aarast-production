@@ -12,9 +12,16 @@
 
 ## Global Constraints
 
-- R1 implementation starts only after R0 PR #76 is merged and its immutable merge SHA is recorded as `R1_BASE`. Planning base `94b677b7b8e2219e0db2cbc553fa3d26b4876456` is not an execution substitute.
-- Use a new execution worktree/branch created from the verified R0 merge revision. Do not implement R1 on `modular-monolith`, on this planning branch, or on a synthetic PR merge ref.
-- Planned commits below are checkpoints only. Do not create a branch, commit, push, merge, or open a PR unless the owner explicitly authorizes that Git action in the execution session.
+- Owner decision on 2026-08-12 authorizes R1 and later modular-monolith phases
+  to continue locally on the same `modular-monolith` branch without merging
+  between phases. Immutable R0 candidate
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456` is `R1_BASE` for every R1 audit.
+- Do not create another execution branch/worktree and do not merge. Do not push
+  `modular-monolith` during staged R1 execution unless the owner separately
+  authorizes it, because PR #76 currently points at that branch and a push
+  would expand the reviewed R0 candidate.
+- The owner authorizes local checkpoint commits required by this plan. Push,
+  pull-request mutation, and merge remain separately gated Git actions.
 - Preserve all HTTP methods/paths/auth flags, response shapes, error codes/messages, Arabic text, permission decisions, privacy behavior, transaction isolation levels, lock order, advisory locks, retry/backoff, scheduler cadence, environment validation, and health readiness semantics.
 - Do not change `backend/prisma/schema.prisma`, `backend/prisma/migrations/**`, `mobile/lib/**`, `mobile/test/**`, `mobile/integration_test/**`, `admin-web/src/**`, `deploy/**`, Dockerfiles, or Compose files.
 - Keep exactly 52 Prisma models and 76 committed migrations. Derive both counts from source at verification time.
@@ -25,6 +32,27 @@
 - A dependency or ownership baseline is a debt ledger, not permission. Never regenerate a baseline without the exact before/after semantic audit specified below.
 - Never place an absolute local path, environment value, token, credential, URL secret, database identifier, admin identifier, or production identifier in a baseline, plan receipt, test fixture, or diagnostic.
 - Any discovered behavior contradiction stops the current task. Update the design and this plan in the same reviewed change before continuing; do not improvise around it.
+
+## Per-Task Checkpoint Protocol
+
+Every Task 1-6 is executed and accepted separately, using the same discipline
+as R0:
+
+1. finish only the current task and its exact focused/full gates;
+2. run the applicable managed quick server smoke (`smoke:health` at minimum,
+   plus a task-specific smoke when runtime behavior moved);
+3. request an independent read-only review and fix every validated finding at
+   its root before acceptance;
+4. create one clean local checkpoint commit with an evidence report outside
+   tracked source;
+5. stop and wait for the owner's application test and explicit `continue`
+   before starting the next task.
+
+The owner's application test is a continuation gate, not a substitute for
+automated checks. Task 1 has no runtime source change, but still establishes a
+green baseline server smoke before the first relocation task. The same
+checkpoint protocol applies to later modular-monolith phases unless the owner
+explicitly changes it.
 
 ## R1 Completion Contract
 
@@ -133,34 +161,40 @@ R1 is complete only when all conditions are true on one immutable candidate:
 ### Task 1: Freeze the R1 Base, Manifests, and Change Policy
 
 **Files:**
-- Modify only if a discovered fact contradicts the approved design: the R1 design and this plan
+- Modify: the R1 design and this plan to record the owner-approved same-branch
+  checkpoint protocol
+- Modify: `docs/README.md`, `ARCHITECTURE.md`,
+  `docs/project/EXECUTION_PLAN.md`, `docs/project/STATUS.md`, and `CHANGELOG.md`
+  only to transition active phase truth from closed R0 governance to R1 Task 1
 
 **Interfaces:**
-- Consumes: merged PR #76 metadata, live Git tree, R0 architecture baselines, R1 design.
+- Consumes: owner-approved R0 candidate metadata, live Git tree, R0 architecture baselines, R1 design.
 - Produces: immutable `R1_BASE`, exact relocation/import inventories, protected hashes, and a fully green preflight receipt.
 
-- [ ] **Step 1: Prove R0 is externally closed and resolve `R1_BASE`**
+- [ ] **Step 1: Prove the owner-approved R0 candidate and resolve `R1_BASE`**
 
-Run from the repository root after the owner authorizes R1 Git setup and remote
-synchronization. `gh pr view` is read-only; `git fetch` updates local
-remote-tracking refs and therefore requires that explicit Git authorization.
-Stop if `gh` is unavailable or PR #76 is not merged.
+Run from the existing `modular-monolith` worktree. PR inspection is read-only;
+do not fetch, push, merge, or rewrite the remote PR. Stop if the branch or
+candidate revision differs from the owner's approved R0 checkpoint.
 
 ```powershell
-$pr = gh pr view 76 --json state,mergedAt,mergeCommit,url | ConvertFrom-Json
-if ($pr.state -ne 'MERGED' -or -not $pr.mergeCommit.oid) {
-  throw 'R1 cannot start until R0 PR #76 is merged'
+$r1Base = '94b677b7b8e2219e0db2cbc553fa3d26b4876456'
+$pr = gh pr view 76 --json state,headRefName,headRefOid,url | ConvertFrom-Json
+if ($pr.state -ne 'OPEN' -or $pr.headRefName -ne 'modular-monolith') {
+  throw 'PR #76 no longer represents the approved modular-monolith branch'
 }
-$r1Base = $pr.mergeCommit.oid
-git fetch origin main
+if ($pr.headRefOid -ne $r1Base) {
+  throw 'Remote R0 candidate changed; stop before R1 implementation'
+}
 git cat-file -e "$r1Base^{commit}"
 if ($LASTEXITCODE -ne 0) { throw 'R1_BASE commit is unavailable locally' }
-git merge-base --is-ancestor $r1Base origin/main
-if ($LASTEXITCODE -ne 0) { throw 'R1_BASE is not an ancestor of origin/main' }
+git merge-base --is-ancestor $r1Base HEAD
+if ($LASTEXITCODE -ne 0) { throw 'R1_BASE is not an ancestor of current HEAD' }
 $r1Base
 ```
 
-Record `$r1Base` in the Task 1 execution report/brief. Do not replace the design's historical planning-base field.
+Record `$r1Base`, the owner decision, and PR #76's unchanged remote head in the
+Task 1 execution report/brief. Do not claim the open PR contains R1 commits.
 
 - [ ] **Step 2: Verify execution workspace identity and cleanliness**
 
@@ -173,7 +207,7 @@ git diff --name-only $r1Base..HEAD
 
 Expected:
 
-- branch is the owner-authorized R1 execution branch, recommended `modular-monolith-r1`;
+- branch is exactly the owner-authorized `modular-monolith` branch;
 - the R1 design/plan commits are the only intentional diff before implementation;
 - worktree/index are clean;
 - no application, schema, Mobile, Admin, or deployment path differs from `$r1Base`.
@@ -271,6 +305,26 @@ git diff --check
 ```
 
 Expected: PASS.
+
+- [ ] **Step 7: Establish the baseline server and owner checkpoint**
+
+Run the repository-managed health smoke without changing tracked environment
+or test data:
+
+```powershell
+Push-Location .\backend
+npm run smoke:health
+Pop-Location
+```
+
+Expected: the managed isolated Backend starts, readiness/liveness assertions
+pass, and the runner cleans up its process and temporary resources. Then:
+
+- request independent Task 1 review;
+- fix and re-review every validated finding;
+- commit only the R1 contract correction and Task 1 evidence-bearing docs;
+- stop for the owner's application baseline test and explicit continuation
+  approval before Task 2.
 
 ---
 
@@ -989,8 +1043,10 @@ Update `ARCHITECTURE.md`, active docs map, Backend commands, QA commands/test po
 - exact six remaining platform-to-business debts and their R3 removal obligation;
 - sharing -> OTP transport direct consumption remains migration debt until R6;
 - `@Global()` remains until R8;
-- R2 is next and may not start until R1 remote gates close;
-- R0 `r0-scope` job was intentionally removed after R0 closure;
+- R2 is next and may not start until R1 local gates, independent review,
+  managed smoke, and owner application checkpoint close;
+- R0 `r0-scope` job was intentionally removed at R1 closeout because any
+  future push of this same branch represents a combined post-R0 candidate;
 - 52 models/76 migrations remain live truth;
 - no schema, route, product, Mobile, Admin source, or deployment change.
 
@@ -1234,15 +1290,17 @@ git add -A -- `
 git commit -m "docs: record modular monolith R1 verification"
 ```
 
-- [ ] **Step 13: Require remote CI before closing R1**
+- [ ] **Step 13: Close the local R1 checkpoint without mutating PR #76**
 
-After an explicitly authorized push, opening a pull request is mandatory because
-the proposed `modular-monolith-r1` branch does not match the workflow's
-`push` branches (`main`, `phase/**`). Require all remaining CI jobs to pass on
-the PR's immutable head/synthetic merge candidate. A push without a PR is not a
-remote R1 gate. Do not merge automatically. The owner reviews R1 and decides
-whether to merge. R2 planning may use the verified candidate; R2 implementation
-waits for R1 merge and immutable base resolution.
+Do not push or merge as part of the staged R1 execution. Record that remote CI
+is unobserved for the local R1 commits and that PR #76 still points at immutable
+R0 candidate `94b677b7b8e2219e0db2cbc553fa3d26b4876456`.
+
+After local gates, managed smokes, independent review, and the owner's
+application test pass, the owner may authorize the next phase on the same
+branch. If a future push is authorized, treat the updated PR/workflow run as a
+new combined candidate and require every remaining CI job to pass. Never claim
+those remote results before they exist and never merge automatically.
 
 ---
 
@@ -1277,15 +1335,22 @@ waits for R1 merge and immutable base resolution.
   applicable; Task 6 closes the full suite.
 - [ ] Generated docs: API/database/Mobile/Admin route docs remain byte-identical; SCRIPTS has only exact justified command deltas.
 - [ ] Protected surfaces: pre/post fixed-base checks cover schema/migrations/Mobile/Admin source/deploy and test-generated side effects.
-- [ ] Full gates: architecture, check, build, full tests, full managed smokes, Prisma, audits, Admin, Mobile, docs, and remote CI are all required.
+- [ ] Full local gates: architecture, check, build, full tests, full managed
+  smokes, Prisma, audits, Admin, Mobile, and docs are required; remote CI is
+  explicitly recorded as pending until a separately authorized push.
 - [ ] Closure honesty: tracked receipt does not claim mutable HEAD or remote CI; no merge is authorized by this plan.
 - [ ] Completeness scan: every file, error policy, test, command, and decision is named and executable.
 
 ## Execution Handoff
 
-After owner approval and R0 merge, execute in one of these modes:
+After owner approval, execute on the authorized `modular-monolith` branch in
+one of these modes:
 
 1. **Subagent-Driven (recommended):** use `superpowers:subagent-driven-development`; dispatch a fresh implementer per task, then independent specification and quality reviewers before the next task.
 2. **Inline Execution:** use `superpowers:executing-plans`; execute tasks in order with an explicit review checkpoint after each task.
 
-Do not execute R1 merely because this plan exists. The execution session must resolve `R1_BASE`, reconfirm Git authorization, create an isolated execution worktree, re-read the design/plan, and stop on any source or gate drift.
+Do not execute R1 merely because this plan exists. The execution session must
+resolve `R1_BASE`, reconfirm the same-branch Git authorization, re-read the
+design/plan, and stop on any source or gate drift. After every task, stop again
+for independent review and the owner's application checkpoint before
+continuing.

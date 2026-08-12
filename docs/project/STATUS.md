@@ -21,6 +21,19 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
+## Modular Monolith R1 Local Execution - In Progress
+
+Owner direction on 2026-08-12 starts R1 locally on the existing
+`modular-monolith` branch without merging between phases. Immutable R0
+candidate `94b677b7b8e2219e0db2cbc553fa3d26b4876456` is the fixed `R1_BASE`.
+PR #76 remains unchanged remotely while local checkpoint commits accumulate;
+no R1 push, remote-CI result, or merge is claimed here.
+
+R1 uses a hard per-task protocol: automated gates, managed server smoke,
+independent review and remediation, clean checkpoint commit, then owner
+application testing before the next task. Task 1 is the active preflight; no R1
+runtime source move has started at this status point.
+
 ## Modular Monolith R0 Local Verification Receipt - 2026-08-12
 
 R0 governance was verified locally on branch `modular-monolith` against the

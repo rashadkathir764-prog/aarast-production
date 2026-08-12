@@ -315,26 +315,28 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — Active: R0 Governance
+### P3 — Source Quality And Architecture — Active: R1 Platform And Shared Kernel
 
-#### Active R0 — Governance
+#### Active R1 — Platform And Shared Kernel
 
-- P3 R0 Governance is active on `modular-monolith`.
-- R0 has zero application-source moves and does not change runtime behavior,
-  routes, schema, migrations, or deployment artifacts.
-- R0's pull request requires the `r0-scope` fixed-base allowlist job. R1 must
-  remove or retarget that phase-specific job after R0 closes.
-- The tracked R0 receipt records local checks only. The immutable candidate SHA
-  and CI status are resolved from pull-request/workflow metadata and are never
-  back-written into a self-referential tracked document.
-- R0 remains active until every exit gate in the current working plan is green.
-  R1 cannot start until every R0 exit gate is green.
+- R0 governance is closed at immutable candidate
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456`; this revision is the fixed R1
+  comparison base.
+- By owner decision, R1 continues locally on the same `modular-monolith`
+  branch without merging between phases. PR #76 is not pushed or mutated by
+  staged local execution.
+- Each R1 task is independently gated by focused tests,
+  architecture/check/build, applicable managed server smoke, independent
+  review, a clean checkpoint commit, and the owner's application test.
+- R1 moves infrastructure into `platform/` and establishes `shared-kernel/`
+  without route, schema, migration, Mobile, Admin source, deployment, or
+  product-behavior changes.
 
 Current working plan:
-`docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`.
+`docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`.
 
-The numbered P3 modernization work below follows the R0 gate; it is not an
-authorization to start R1 or move source early.
+The numbered P3 modernization work below remains bounded by the active R1
+plan; later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

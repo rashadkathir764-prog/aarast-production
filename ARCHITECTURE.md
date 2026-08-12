@@ -139,13 +139,15 @@ R0 adds architecture tests and does not edit existing behavioral tests.
 
 - Completed P2 checkpoints remain accepted; further P2 implementation is
   paused by owner direction.
-- P3 R0 Governance is active on `modular-monolith` and has zero
-  application-source moves.
-- R0 is not complete until every documented exit gate is green. A phase cannot
-  start until the prior phase gate is green, so R1 cannot start while any R0
-  exit gate is not green.
-- R0's pull request requires the `r0-scope` fixed-base allowlist job. R1 must
-  remove or retarget that phase-specific job after R0 closes.
+- P3 R0 Governance is locally and remotely green at immutable candidate
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456`. By owner decision, R1 continues
+  locally on the same `modular-monolith` branch without merging R0 first.
+- R1 is active. Each R1 task must pass focused gates, architecture/check/build,
+  an applicable managed server smoke, independent review, and the owner's
+  application checkpoint before the next task begins.
+- PR #76 remains pinned remotely to the R0 candidate while local R1 checkpoint
+  commits accumulate. Do not push or merge without separate owner approval.
+  R1 removes the phase-specific `r0-scope` CI job only at R1 closeout.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.
@@ -154,6 +156,6 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   activates the strict Mobile boundary mode.
 
 The current working plan is
-`docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md`. It is a
+`docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`. It is a
 working execution artifact, not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.

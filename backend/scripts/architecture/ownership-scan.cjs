@@ -1548,6 +1548,7 @@ function validateBaseline(baseline) {
 function absoluteLocalPathStart(value) {
   for (let index = 0; index < value.length; index += 1) {
     const current = value[index];
+    if (value.slice(index, index + 7).toLowerCase() === 'file://') return index;
     if (current === '\\' && value[index + 1] === '\\') return index;
     if (
       /[A-Za-z]/.test(current)
@@ -1564,10 +1565,42 @@ function absoluteLocalPathStart(value) {
   return -1;
 }
 
+function tokenizeSafeWebUrls(value) {
+  let prefix = null;
+  for (let attempt = 0; attempt <= value.length; attempt += 1) {
+    const candidate = `\u0000architecture-web-url-${attempt}-`;
+    if (!value.includes(candidate)) {
+      prefix = candidate;
+      break;
+    }
+  }
+  if (prefix === null) {
+    return { value: '', restore: () => 'sanitized architecture error' };
+  }
+
+  const tokens = [];
+  const protectedValue = value.replace(/\bhttps?:\/\/[^\s<>"'`]+/gi, (url) => {
+    const token = `${prefix}${tokens.length}\u0000`;
+    tokens.push({ token, url });
+    return token;
+  });
+  return {
+    value: protectedValue,
+    restore: (sanitized) => tokens.reduce(
+      (restored, { token, url }) => restored.split(token).join(url),
+      sanitized,
+    ),
+  };
+}
+
 function sanitizeMessage(value) {
   const firstLine = String(value || 'unknown error').split(/[\r\n]/, 1)[0];
-  const pathStart = absoluteLocalPathStart(firstLine);
-  return pathStart === -1 ? firstLine : `${firstLine.slice(0, pathStart)}<path>`;
+  const protectedUrls = tokenizeSafeWebUrls(firstLine);
+  const pathStart = absoluteLocalPathStart(protectedUrls.value);
+  const sanitized = pathStart === -1
+    ? protectedUrls.value
+    : `${protectedUrls.value.slice(0, pathStart)}<path>`;
+  return protectedUrls.restore(sanitized);
 }
 
 function writeLine(target, message) {

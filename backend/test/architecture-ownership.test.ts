@@ -1035,6 +1035,46 @@ test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', ()
   assert.doesNotMatch(urlOutput.join('\n'), /stack detail/);
 });
 
+test('ownership CLI redacts local file URLs while preserving safe web URLs', () => {
+  const localFileUrls = [
+    'file:///srv/private/ownership-file-posix.ts',
+    'file://ownership-server/private/ownership-file-unc.ts',
+    'file://ownership-server/share/private/ownership-file-share.ts',
+    'file:///C:/private/ownership-file-drive.ts',
+    'file://localhost/C:/private/ownership-file-localhost.ts',
+    'file:///%5C%5C%3F%5CC%3A%5Cprivate%5Cownership-file-extended-drive.ts',
+    'file:///%5C%5C%3F%5CUNC%5Cownership-server%5Cshare%5Cownership-file-extended-unc.ts',
+  ];
+  for (const localUrl of localFileUrls) {
+    const output: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => { throw new Error(`scan failed [${localUrl}\nstack detail`); },
+      readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    }), 2);
+    const message = output.join('\n');
+    assert.equal(message, 'architecture ownership error: scan failed [<path>');
+    assert.doesNotMatch(message, /file:|ownership-file|ownership-server|stack detail/i);
+  }
+
+  for (const webUrl of [
+    'https://example.test/docs/C:/safe-guide',
+    'http://example.test/docs/ordinary-guide',
+  ]) {
+    const output: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => { throw new Error(`scan failed at ${webUrl}\r\nstack detail`); },
+      readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    }), 2);
+    assert.equal(output.join('\n'), `architecture ownership error: scan failed at ${webUrl}`);
+  }
+});
+
 test('baseline validation rejects invalid fields and sensitive strings with sanitized errors', () => {
   const base: OwnershipRecord = {
     file: 'backend/src/money/x.ts', context: 'finance', owner: 'planning', model: 'WeddingPlan',
@@ -1129,7 +1169,8 @@ test('the real ownership CLI sanitizes scanner failures without repository fixtu
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-cli-error-'));
   fixtureRoots.push(root);
   const preload = path.join(root, 'throwing-program.cjs');
-  const failureMessage = 'alias failed [\\\\?\\UNC\\ownership-server\\private\\ownership-real.ts\nstack detail';
+  const safeUrl = 'https://example.test/docs/C:/safe-guide';
+  const failureMessage = `alias failed at ${safeUrl} then [file:///srv/private/ownership-real.ts\nstack detail`;
   writeFileSync(preload, [
     "const Module = require('node:module');",
     'const originalLoad = Module._load;',
@@ -1147,7 +1188,10 @@ test('the real ownership CLI sanitizes scanner failures without repository fixtu
   });
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 2, output);
-  assert.match(result.stderr, /architecture ownership error:/);
-  assert.doesNotMatch(output, /ownership-server|ownership-real|stack detail|\\\\\?\\UNC/i);
+  assert.equal(
+    result.stderr.trim(),
+    `architecture ownership error: alias failed at ${safeUrl} then [<path>`,
+  );
+  assert.doesNotMatch(output, /ownership-real|file:|stack detail/i);
   assert.doesNotMatch(output, /\n\s*at\s+/);
 });

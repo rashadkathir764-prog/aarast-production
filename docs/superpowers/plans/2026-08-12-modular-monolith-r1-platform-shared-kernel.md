@@ -1148,7 +1148,20 @@ Add layout tests proving no file under `shared-kernel/` imports `platform/`, a l
 
 Use `git mv` to exact targets. Update all consumers and test imports. Do not create a backoffice Nest module or barrel.
 
-Append layout assertions for exact paths and identical Admin permission enum/role mappings.
+Append layout assertions for exact paths and identical Admin permission
+enum/role mappings. Preserve current direct consumers through one exact
+architecture contract for
+`modules/backoffice/domain/admin-permissions.ts`: only `auth/**` and
+`catalogs/**` are foreign allowed sources; `admin/**` is same-context. Add
+dependency-cruiser and ports fixtures proving auth and catalog may import the
+exact file, auth cannot import a sibling, and an unauthorized context such as
+tasks cannot import even the exact file. Do not broaden the exception to a
+directory, glob, barrel, service, repository, Nest runtime, or model access.
+The exact contract is not baseline debt and creates no new baseline record.
+The existing generated `AdminRole` enum import is preserved; PrismaService,
+delegate/model access, queries, and repositories remain forbidden. Add a
+layout assertion that the file has exactly one import: named `AdminRole` from
+`@prisma/client`.
 
 - [ ] **Step 5: Prove `common/` is dissolved and no stale path survives**
 
@@ -1168,6 +1181,9 @@ Make final R1 architecture state exact:
 - ownership registry `currentRoots.platform` is exactly `['platform']`;
 - owners and 52-model membership are byte-identical to R0;
 - dependency-cruiser removes the legacy current-platform rule/root set and enforces `platform-no-business-contexts` plus `shared-kernel-is-foundational`;
+- dependency-cruiser and ports encode only the exact reviewed Backoffice
+  permission-contract exception above, with exact allowed-source, near-miss,
+  and unauthorized-source fixtures;
 - the review-identity -> users debt disappears completely;
 - the dependency baseline contains only the six declared surviving platform-to-business path-relocated edges plus unrelated R0 debt/decreases;
 - ownership baseline current keys are path-relocated only with semantic equality/decrease;

@@ -273,7 +273,17 @@ method names do not change.
 `common/admin/admin-permissions.ts` moves directly to
 `modules/backoffice/domain/admin-permissions.ts`. The enum, role matrix, and
 return behavior are unchanged. No Backoffice Nest module or public port is
-created in R1.
+created in R1. Because the current auth and catalog surfaces already consume
+this pure permission contract, R1 architecture gates allow only `auth/**` and
+`catalogs/**` to import this exact file; `admin/**` belongs to Backoffice and
+needs no exception. Tasks, finance, and every other foreign source remain
+forbidden even from this target. A sibling or any other
+`modules/backoffice/domain/**` target remains forbidden. This exact rule is a
+reviewed pre-port contract, not dependency-baseline debt. Its only generated
+database dependency is the existing `AdminRole` enum; it may not import
+PrismaService, delegates, models, repositories, queries, or Nest runtime. A
+layout test fixes the import surface to exactly one named `AdminRole` import
+from `@prisma/client` and no other import.
 
 ## Architecture Baseline Policy
 
@@ -291,7 +301,9 @@ R1 treats baselines as debt ledgers, never permissions.
 - Ports scanner: the approved Prisma global path changes to
   `backend/src/platform/database/prisma.module.ts`; the exact global count
   remains 2 and `forwardRef()` remains 0. PrismaService provenance recognizes
-  only its new canonical declaration path.
+  only its new canonical declaration path. It also permits only the exact
+  Backoffice permission contract described above, rejects a same-directory
+  near miss, and rejects an unauthorized source importing the exact file.
 - Mobile baseline remains byte-identical and strict mode remains deferred to
   R9.
 - Baseline regeneration is never accepted without a machine-readable before/

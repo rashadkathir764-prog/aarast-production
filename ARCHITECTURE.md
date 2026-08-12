@@ -92,6 +92,19 @@ The binding laws are:
 - Cross-context consumers depend on the owner's public token and types, not on
   its legacy service or repository implementation.
 
+R1 has one exact pre-port exception for the existing Backoffice permission
+contract: current `auth/**` and `catalogs/**` consumers may import only
+`modules/backoffice/domain/admin-permissions.ts`; `admin/**` is the owning
+Backoffice context and needs no exception. The file is a pure enum and
+role-matrix helper that uses only the generated `AdminRole` enum: it creates no
+Nest, PrismaService, model access, query, or repository dependency, and replaces
+the former `common/admin` location. No other
+`modules/backoffice/domain/**` import is allowed across contexts. This exact
+contract is enforced by a near-miss test plus an unauthorized-source test, and
+is not dependency-baseline debt; a later module phase may expose it through a
+public slice. Its import surface is exact: one named `AdminRole` import from
+`@prisma/client` and no other import.
+
 ## Physical Data Ownership
 
 Every Prisma model has one physical owner. Physical ownership applies to root

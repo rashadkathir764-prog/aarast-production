@@ -12,6 +12,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
+import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
 import { ConversationsService } from "../../src/conversations/conversations.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
@@ -48,6 +49,7 @@ assertManagedSmokeEnvironment(process.env);
 const prisma = new PrismaClient();
 const outbox = new OutboxService();
 const permissions = new PermissionService(prisma as any);
+const history = new ContributionHistoryService(prisma as any);
 const notifications = new NotificationsService(
   prisma as any,
   permissions,
@@ -329,6 +331,7 @@ async function assertRevocationWinsBeforeMessage(): Promise<void> {
         permissions,
         notifications,
         {} as any,
+        history,
         dependencies.realtime as any,
       );
       const send = conversations.send(
@@ -523,6 +526,7 @@ async function assertIndependentProviderAuthoritySurvivesMemberRevocation(): Pro
         permissions,
         notifications,
         {} as any,
+        history,
         dependencies.realtime as any,
       );
       const conversations = conversationsService(

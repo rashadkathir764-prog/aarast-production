@@ -8,6 +8,10 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { NotificationsService } from "../../src/notifications/notifications.service";
+import {
+  OutboxEventTypes,
+  type OutboxEventType,
+} from "../../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/sharing/permission.service";
 
@@ -305,22 +309,37 @@ async function assertContentPreferencesControlDurableWork(): Promise<void> {
           "disabled payment reminders must create no notification",
         );
 
-        const notificationIds = (
-          await prisma.notification.findMany({
-            where: { userId: fixture.owner.id },
-            select: { id: true },
-          })
-        ).map((notification) => notification.id);
-        assert.equal(
-          await prisma.outboxEvent.count({
-            where: {
-              aggregateType: "notification",
-              aggregateId: { in: notificationIds },
-            },
-          }),
-          notificationIds.length,
-          "each persisted notification must have exactly one durable outbox event",
+        const persistedNotifications = await prisma.notification.findMany({
+          where: { userId: fixture.owner.id },
+          select: { id: true, type: true },
+        });
+        const notificationIds = persistedNotifications.map(
+          (notification) => notification.id,
         );
+        const deliveryEvents = await prisma.outboxEvent.findMany({
+          where: {
+            aggregateType: "notification",
+            aggregateId: { in: notificationIds },
+          },
+          select: { aggregateId: true, type: true },
+        });
+        for (const notification of persistedNotifications) {
+          const expectedTypes: OutboxEventType[] = [
+            OutboxEventTypes.notificationCreated,
+          ];
+          if (notification.type === NotificationType.TASK_DUE_SOON) {
+            expectedTypes.push(OutboxEventTypes.pushNotificationRequested);
+          }
+          const actualTypes = deliveryEvents
+            .filter((event) => event.aggregateId === notification.id)
+            .map((event) => event.type)
+            .sort();
+          assert.deepEqual(
+            actualTypes,
+            expectedTypes.sort(),
+            `notification ${notification.id} must have the exact durable delivery events`,
+          );
+        }
       } finally {
         await prisma.weddingTask.deleteMany({
           where: { weddingPlanId: fixture.plan.id },

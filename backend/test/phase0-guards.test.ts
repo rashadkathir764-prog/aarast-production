@@ -504,6 +504,7 @@ test('fixture wrapper rejects an unmanaged environment and cleans in finally aft
 test('quote fixture cleanup deletes operation outputs before fixture roots in one transaction', async () => {
   assert.equal(typeof fixtures.cleanupQuoteFixtureGraph, 'function');
   const calls: string[] = [];
+  const updates = new Map<string, unknown>();
   const database = new Proxy({}, {
     get(_target, model: string) {
       if (model === '$executeRaw') {
@@ -516,6 +517,10 @@ test('quote fixture cleanup deletes operation outputs before fixture roots in on
           : model === 'chatMessage'
             ? [{ id: 'message-1' }]
             : [],
+        updateMany: async (value: unknown) => {
+          calls.push(`update:${model}`);
+          updates.set(model, value);
+        },
         deleteMany: async () => { calls.push(model); },
       };
     },
@@ -535,6 +540,31 @@ test('quote fixture cleanup deletes operation outputs before fixture roots in on
   assert.ok(calls.indexOf('conversationEvent') < calls.indexOf('conversation'));
   assert.ok(calls.includes('notification'));
   assert.ok(calls.includes('outboxEvent'));
+
+  const tenureUpdate = updates.get('contributorTenure') as {
+    where: { endedAt: null; historyScope: { weddingPlanId: { in: string[] } } };
+    data: { endedAt: Date; endReason: string; sharedMemberId: null };
+  };
+  const scopeUpdate = updates.get('contributorHistoryScope') as {
+    where: { weddingPlanId: { in: string[] } };
+    data: { status: string; deletedAt: Date };
+  };
+  assert.ok(tenureUpdate.data.endedAt instanceof Date);
+  assert.deepEqual(tenureUpdate.where, {
+    endedAt: null,
+    historyScope: { weddingPlanId: { in: ['plan'] } },
+  });
+  assert.equal(tenureUpdate.data.endReason, 'PLAN_DELETED');
+  assert.equal(tenureUpdate.data.sharedMemberId, null);
+  assert.deepEqual(scopeUpdate.where, { weddingPlanId: { in: ['plan'] } });
+  assert.equal(scopeUpdate.data.status, 'DELETED');
+  assert.equal(scopeUpdate.data.deletedAt, tenureUpdate.data.endedAt);
+  assert.ok(calls.indexOf('update:contributorTenure') < calls.indexOf('sharedMember'));
+  assert.ok(calls.indexOf('update:contributorHistoryScope') < calls.indexOf('sharedMember'));
+  assert.ok(calls.indexOf('update:contributorHistoryScope') < calls.indexOf('weddingPlan'));
+  assert.equal(calls.includes('contributorTenure'), false);
+  assert.equal(calls.includes('contributorHistoryScope'), false);
+  assert.equal(calls.includes('contributionEvent'), false);
 });
 
 test('quote cleanup deletes notification outbox records using collected notification ids', async () => {
@@ -550,6 +580,7 @@ test('quote cleanup deletes notification outbox records using collected notifica
           if (model === 'chatMessage') return [{ id: 'message-1' }];
           return [];
         },
+        updateMany: async (value: unknown) => { calls.push({ model, operation: 'update', value }); },
         deleteMany: async (value: unknown) => { calls.push({ model, operation: 'delete', value }); },
       };
     },

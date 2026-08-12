@@ -211,6 +211,25 @@ async function cleanupQuoteFixtureGraph(prisma, fixture) {
     await tx.conversationParticipant.deleteMany({ where: { conversationId: fixture.conversation.id } });
     await tx.conversation.deleteMany({ where: { id: fixture.conversation.id } });
     await tx.planInvite.deleteMany({ where: { weddingPlanId: fixture.plan.id } });
+    const tenureEndedAt = new Date();
+    await tx.contributorTenure.updateMany({
+      where: {
+        endedAt: null,
+        historyScope: { weddingPlanId: { in: [fixture.plan.id] } },
+      },
+      data: {
+        endedAt: tenureEndedAt,
+        endReason: 'PLAN_DELETED',
+        sharedMemberId: null,
+      },
+    });
+    await tx.contributorHistoryScope.updateMany({
+      where: { weddingPlanId: { in: [fixture.plan.id] } },
+      data: {
+        status: 'DELETED',
+        deletedAt: tenureEndedAt,
+      },
+    });
     await tx.sharedMember.deleteMany({ where: { weddingPlanId: fixture.plan.id } });
     await tx.budgetCategory.deleteMany({ where: { weddingPlanId: fixture.plan.id } });
     await tx.weddingPlan.deleteMany({ where: { id: fixture.plan.id } });

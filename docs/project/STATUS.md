@@ -30,9 +30,10 @@ CI result must come from immutable pull-request/workflow metadata; this tracked
 receipt intentionally makes no claim about its own mutable branch tip or the
 current remote CI state.
 
-The exact fixed-base diff contains these 30 paths:
+The exact fixed-base diff contains these 31 paths:
 
 - `.github/workflows/ci.yml`
+- `.gitleaksignore`
 - `AGENTS.md`
 - `ARCHITECTURE.md`
 - `CHANGELOG.md`
@@ -73,7 +74,7 @@ Compose artifacts; source locations; and business logic were untouched. No
 module, port, repository, barrel, migration, route, endpoint, or product
 behavior was added by R0.
 
-The final review remediation was completed without widening the 30-path scope.
+The final local review remediation initially stayed inside the 30-path scope.
 Commits `003474d9`, `302aec72`, `8de041ce`, `d8788ed8`, `8d0e8116`, and
 `182ade08` close Backend ownership/ports provenance, alias, path-redaction,
 non-reflective diagnostic, and atomic scan-result validation gaps. Commit
@@ -92,6 +93,14 @@ invariants; and derive every context from its registry-backed repository path.
 The independent final local review passed after these remediations. These are
 gate-hardening and documentation corrections only; they add no runtime product
 behavior and make no claim about remote CI state.
+
+The first remote PR run then identified one Gitleaks false positive in the
+historical Symbol-type rejection fixture. Commit `536058bf` removes the
+secret-shaped text from the current test, records only that exact reviewed
+historical fingerprint in `.gitleaksignore`, and expands the fixed R0 scope by
+that one governance file to 31 paths. No Gitleaks rule or file path is disabled.
+The same 37-commit R0 range was rescanned locally with Gitleaks v8.30.1 and
+reported no leaks.
 
 Observed governance baselines:
 
@@ -119,6 +128,7 @@ Local verification evidence:
 | Backend | `npx prisma validate` | PASS with a process-scoped non-secret local validation URL; no database connection was used |
 | Backend | `npm audit --audit-level=high` | PASS: 0 vulnerabilities |
 | Backend | `npm audit --omit=dev` | PASS: 0 vulnerabilities |
+| Secret scan | Gitleaks v8.30.1 over the fixed-base R0 commit range with redaction enabled | PASS: 37 commits scanned, no leaks |
 | Admin | `npm run typecheck` | PASS |
 | Admin | `npm test -- --run` | PASS: 96/96 |
 | Admin | `npm run build` | PASS |

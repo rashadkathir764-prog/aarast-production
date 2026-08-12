@@ -16,7 +16,7 @@
   keys/occurrences (62 core-to-feature, 207 direct-cross-feature). The ports
   gate reports zero `forwardRef()`, two approved globals, zero illegal future
   imports, and zero Nest cycles.
-- Final review remediation stayed inside the same 30-path allowlist. Backend
+- Final local review remediation initially stayed inside the 30-path allowlist. Backend
   commits `003474d9`, `302aec72`, `8de041ce`, `d8788ed8`, `8d0e8116`, and
   `182ade08` close ownership/ports provenance, alias, redaction,
   non-reflective-diagnostic, and atomic-result-validation gaps. Mobile commit
@@ -33,8 +33,14 @@
   path. The independent final local review passed after these remediations.
   None of them adds runtime product behavior, and this local review result
   makes no remote-CI claim.
-- The exact fixed-base diff is: `.github/workflows/ci.yml`, `AGENTS.md`,
-  `ARCHITECTURE.md`, `CHANGELOG.md`,
+- The first PR secret-scan run found one false positive in the historical R0
+  Symbol-type rejection fixture. Commit `536058bf` removes the secret-shaped
+  text from the current test and records only the exact reviewed historical
+  fingerprint in `.gitleaksignore`; it does not disable a rule or file path.
+  The fixed-base scope therefore contains 31 paths, and a local Gitleaks v8.30.1
+  rescan of all 37 R0 commits reported no leaks.
+- The exact fixed-base diff is: `.github/workflows/ci.yml`, `.gitleaksignore`,
+  `AGENTS.md`, `ARCHITECTURE.md`, `CHANGELOG.md`,
   `backend/.dependency-cruiser-known-violations.json`,
   `backend/.dependency-cruiser.cjs`,
   `backend/architecture/ownership-baseline.json`,
@@ -84,6 +90,9 @@
     `npx prisma validate` command then PASSed after setting a process-scoped,
     non-secret local validation URL; validation made no database connection,
     the value was not persisted, and the process environment entry was removed.
+  - Gitleaks v8.30.1 scanned the 37-commit fixed-base R0 range with redaction
+    enabled and PASSed with no leaks after applying the exact reviewed
+    fingerprint.
   - From `admin-web/`: `npm run typecheck` PASS; `npm test -- --run` PASS
     96/96; `npm run build` PASS; `npm run smoke:honesty` PASS 12/12;
     `npm run smoke:routes` PASS 16/16; and

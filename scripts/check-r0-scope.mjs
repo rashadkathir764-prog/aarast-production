@@ -6,6 +6,7 @@ export const R0_BASE = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
 
 export const R0_ALLOWED_PATHS = new Set([
   '.github/workflows/ci.yml',
+  '.gitleaksignore',
   'AGENTS.md',
   'ARCHITECTURE.md',
   'CHANGELOG.md',

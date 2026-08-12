@@ -25,6 +25,7 @@ const scriptPath = path.join(scriptDir, 'check-r0-scope.mjs');
 
 const expectedAllowedPaths = [
   '.github/workflows/ci.yml',
+  '.gitleaksignore',
   'AGENTS.md',
   'ARCHITECTURE.md',
   'CHANGELOG.md',

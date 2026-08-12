@@ -732,7 +732,7 @@ test('runCli validates the exact count schema before rendering success', () => {
     { name: 'infinity', counts: { ...validCounts, globals: Number.POSITIVE_INFINITY } },
     { name: 'unsafe integer', counts: { ...validCounts, globals: Number.MAX_SAFE_INTEGER + 1 } },
     { name: 'bigint', counts: { ...validCounts, globals: 2n } },
-    { name: 'symbol', counts: { ...validCounts, globals: Symbol('TOKEN=exit0-symbol') } },
+    { name: 'symbol', counts: { ...validCounts, globals: Symbol('invalid-symbol-count') } },
     { name: 'array', counts: [0, 2, 0, 0] },
     { name: 'inherited values', counts: Object.create(validCounts) },
     {

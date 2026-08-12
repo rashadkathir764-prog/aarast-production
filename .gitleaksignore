@@ -16,3 +16,7 @@
 436d0da1671913fbc049e4ea769361e0c937f09d:backend/test/invite-delivery.test.ts:generic-api-key:288
 436d0da1671913fbc049e4ea769361e0c937f09d:mobile/test/features/sharing/invite_access_screen_test.dart:generic-api-key:121
 436d0da1671913fbc049e4ea769361e0c937f09d:mobile/test/features/sharing/invite_access_screen_test.dart:generic-api-key:448
+
+# Reviewed R0 Symbol-type rejection fixture from 182ade08f0489b6036a820a6c420d626c067a6c4.
+# The secret-shaped fixture text is also removed from the current test source.
+182ade08f0489b6036a820a6c420d626c067a6c4:backend/test/architecture-ports.test.ts:generic-api-key:735

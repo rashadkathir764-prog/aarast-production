@@ -1303,15 +1303,19 @@ Expected: FAIL because `check-r0-scope.mjs` does not exist.
 - [ ] **Step 3: Implement the fixed-base scope scanner**
 
 Create `scripts/check-r0-scope.mjs` with these exported constants and no
-additional allowed path. The one Mobile application-source entry below is the
-owner-approved Task 5 precondition repair committed as `464a23e0`; it corrects
-one unresolved local import and is not permission for any other Mobile source
-change:
+additional allowed path beyond the exact set. The `.gitleaksignore` entry owns
+one reviewed historical fingerprint for the R0 Symbol-type rejection fixture;
+the secret-shaped fixture text is removed from the current test source, and no
+file- or rule-wide secret-scan bypass is permitted. The one Mobile
+application-source entry below is the owner-approved Task 5 precondition repair
+committed as `464a23e0`; it corrects one unresolved local import and is not
+permission for any other Mobile source change:
 
 ```javascript
 export const R0_BASE = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
 export const R0_ALLOWED_PATHS = new Set([
   '.github/workflows/ci.yml',
+  '.gitleaksignore',
   'AGENTS.md',
   'ARCHITECTURE.md',
   'CHANGELOG.md',

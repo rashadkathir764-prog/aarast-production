@@ -85,8 +85,12 @@ records the distinct PR-head versus synthetic-merge CI semantics. Commit
 scan-error diagnostics non-reflective: malformed or hostile result structures
 fail closed before any diagnostic is rendered, while legitimate scan errors
 emit only a fixed error kind and canonical repository-relative source. The
-independent final local review passed after this remediation. These are gate
-hardening and documentation corrections only; they add no runtime product
+Ownership commits `7c53a9d`, `70d6de05`, and `9fc322b7` apply the same atomic,
+non-reflective boundary to current scans, saved baselines, and baseline writes;
+enforce operation/mode/source, model/owner/reason, and recomputed-key
+invariants; and derive every context from its registry-backed repository path.
+The independent final local review passed after these remediations. These are
+gate-hardening and documentation corrections only; they add no runtime product
 behavior and make no claim about remote CI state.
 
 Observed governance baselines:
@@ -111,7 +115,7 @@ Local verification evidence:
 | Backend | `npm run architecture` | PASS: imports, ownership, and ports |
 | Backend | `npm run check` | PASS |
 | Backend | `npm run build` | PASS |
-| Backend | `npm test` | PASS: 737 total, 736 passed, 1 intentionally skipped |
+| Backend | `npm test` | PASS: 746 total, 745 passed, 1 intentionally skipped |
 | Backend | `npx prisma validate` | PASS with a process-scoped non-secret local validation URL; no database connection was used |
 | Backend | `npm audit --audit-level=high` | PASS: 0 vulnerabilities |
 | Backend | `npm audit --omit=dev` | PASS: 0 vulnerabilities |

@@ -26,9 +26,13 @@
   Mobile commit `019f9a28` validates scan and baseline results atomically and
   makes scan-error diagnostics non-reflective: hostile result structures fail
   closed before output, while legitimate errors emit only a fixed kind and
-  canonical repository-relative source. The independent final local review
-  passed after this remediation. None of these remediations adds runtime
-  product behavior, and this local review result makes no remote-CI claim.
+  canonical repository-relative source. Ownership commits `7c53a9d`,
+  `70d6de05`, and `9fc322b7` validate current scans, saved baselines, and writes
+  atomically without reflecting source-controlled fields; enforce semantic
+  record invariants; and bind every context to its registry-backed repository
+  path. The independent final local review passed after these remediations.
+  None of them adds runtime product behavior, and this local review result
+  makes no remote-CI claim.
 - The exact fixed-base diff is: `.github/workflows/ci.yml`, `AGENTS.md`,
   `ARCHITECTURE.md`, `CHANGELOG.md`,
   `backend/.dependency-cruiser-known-violations.json`,
@@ -72,7 +76,7 @@
     docker-compose.yml` returned no worktree entry; and
     `node .\scripts\check-r0-scope.mjs --check` PASS.
   - From `backend/`: `npm run architecture` PASS; `npm run check` PASS;
-    `npm run build` PASS; `npm test` PASS with 737 total, 736 passed, and one
+    `npm run build` PASS; `npm test` PASS with 746 total, 745 passed, and one
     intentionally skipped; `npm audit --audit-level=high` PASS with zero
     vulnerabilities; and `npm audit --omit=dev` PASS with zero vulnerabilities.
   - From `backend/`: the first bare `npx prisma validate` failed with `P1012`

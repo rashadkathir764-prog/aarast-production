@@ -682,6 +682,114 @@ test('internal directory junction target is accepted under its logical URI', () 
   });
 });
 
+for (const item of [
+  {
+    name: 'relative import',
+    directive: "import 'logical_beta/target.dart';",
+  },
+  {
+    name: 'package export',
+    directive: "export 'package:aarast_mobile/features/alpha/logical_beta/target.dart';",
+  },
+  {
+    name: 'conditional import alternative',
+    directive: [
+      "import 'same.dart'",
+      "  if (dart.library.io) 'logical_beta/target.dart';",
+    ].join('\n'),
+  },
+]) {
+  test(`cross-feature directory junction cannot hide a ${item.name}`, () => {
+    withMobileFixture({
+      'features/alpha/source.dart': item.directive,
+      'features/alpha/same.dart': '',
+      'features/beta/real/target.dart': '',
+    }, ({ mobileLib }) => {
+      const realDirectory = path.join(mobileLib, 'features', 'beta', 'real');
+      const logicalDirectory = path.join(
+        mobileLib,
+        'features',
+        'alpha',
+        'logical_beta',
+      );
+      symlinkSync(realDirectory, logicalDirectory, directoryLinkType());
+      assert.deepEqual(scanMobileBoundaries({ mobileLib }), expectedUnresolved(
+        'mobile/lib/features/alpha/source.dart',
+        'mobile/lib/features/alpha/logical_beta/target.dart',
+      ));
+    });
+  });
+}
+
+test('same-feature junction part aliases use canonical identity for reciprocity', () => {
+  withMobileFixture({
+    'features/alpha/library.dart': "part 'logical_parts/child.dart';\n",
+    'features/alpha/parts/child.dart': "part of '../library.dart';\n",
+  }, ({ mobileLib }) => {
+    const realDirectory = path.join(mobileLib, 'features', 'alpha', 'parts');
+    const logicalDirectory = path.join(
+      mobileLib,
+      'features',
+      'alpha',
+      'logical_parts',
+    );
+    symlinkSync(realDirectory, logicalDirectory, directoryLinkType());
+    assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+      records: [],
+      errors: [],
+    });
+  });
+});
+
+test('cross-feature junction part aliases fail closed before reciprocity can mask them', () => {
+  withMobileFixture({
+    'features/alpha/library.dart': "part 'logical_beta/child.dart';\n",
+    'features/beta/parts/child.dart': "part of '../../alpha/library.dart';\n",
+  }, ({ mobileLib }) => {
+    const realDirectory = path.join(mobileLib, 'features', 'beta', 'parts');
+    const logicalDirectory = path.join(
+      mobileLib,
+      'features',
+      'alpha',
+      'logical_beta',
+    );
+    symlinkSync(realDirectory, logicalDirectory, directoryLinkType());
+    const scan = scanMobileBoundaries({ mobileLib });
+    assert.ok(scan.errors.some((entry) => (
+      entry.source === 'mobile/lib/features/alpha/library.dart'
+      && entry.target === 'mobile/lib/features/alpha/logical_beta/child.dart'
+      && entry.kind === 'unresolved-local-target'
+    )));
+    assert.ok(scan.errors.length > 0);
+  });
+});
+
+test('source directory junction cannot spoof the canonical source feature area', () => {
+  withMobileFixture({
+    'features/alpha/target.dart': '',
+    'features/beta/real/source.dart': "import '../../alpha/target.dart';\n",
+  }, ({ mobileLib }) => {
+    const realDirectory = path.join(mobileLib, 'features', 'beta', 'real');
+    const logicalDirectory = path.join(
+      mobileLib,
+      'features',
+      'alpha',
+      'logical_beta_source',
+    );
+    symlinkSync(realDirectory, logicalDirectory, directoryLinkType());
+    assert.deepEqual(scanMobileBoundaries({ mobileLib }), {
+      records: [record({
+        source: 'mobile/lib/features/beta/real/source.dart',
+        target: 'mobile/lib/features/alpha/target.dart',
+        sourceArea: 'features/beta',
+        targetArea: 'features/alpha',
+        kind: 'direct-cross-feature',
+      })],
+      errors: [],
+    });
+  });
+});
+
 test('directory junction target outside mobile lib fails closed', () => {
   const external = mkdtempSync(path.join(os.tmpdir(), 'aarast-mobile-external-'));
   try {
@@ -783,6 +891,81 @@ part of
     { kind: 'part-of', uris: ['library.dart'] },
   ]);
 });
+
+const interpolationStringCases = [
+  {
+    name: 'double-quoted outer with a nested normal string',
+    source: "final value = \"${\"import 'smuggled.dart';\"}\";",
+  },
+  {
+    name: 'single-quoted outer with a nested normal string',
+    source: "final value = '${\"export 'smuggled.dart';\"}';",
+  },
+  {
+    name: 'triple-quoted outer with a nested triple string',
+    source: `final value = \"\"\"\${'''part 'smuggled.dart';'''}\"\"\";`,
+  },
+  {
+    name: 'raw triple-quoted outer',
+    source: `final value = r'''\${\"import 'smuggled.dart';\"}''';`,
+  },
+  {
+    name: 'nested raw string',
+    source: `final value = \"\${r\"export 'smuggled.dart';\"}\";`,
+  },
+  {
+    name: 'nested braces maps and comments',
+    source: `final value = \"\${{
+      'key': \"import 'smuggled.dart';\",
+      /* a } and \" must not close the expression or outer string */
+      'nested': {'value': \"part 'smuggled.dart';\"},
+    }}\";`,
+  },
+  {
+    name: 'escaped dollar',
+    source: `final value = \"\\\${import 'smuggled.dart';}\";`,
+  },
+  {
+    name: 'dollar identifier',
+    source: `final value = \"$value import 'smuggled.dart';\";`,
+  },
+  {
+    name: 'nested interpolation',
+    source: `final value = \"\${\"\${\"part 'smuggled.dart';\"}\"}\";`,
+  },
+];
+
+for (const item of interpolationStringCases) {
+  test(`Dart interpolation lexer ignores directives in ${item.name}`, () => {
+    assert.deepEqual(
+      parseDartDirectives(`${item.source}\nimport 'real.dart';`),
+      [{ kind: 'import', uris: ['real.dart'] }],
+    );
+  });
+}
+
+test('Dart interpolation lexer ignores nested part text and still finds a real part', () => {
+  const source = [
+    `final value = \"\${\"part 'smuggled.dart';\"}\";`,
+    "part 'real.dart';",
+  ].join('\n');
+  assert.deepEqual(parseDartDirectives(source), [
+    { kind: 'part', uris: ['real.dart'] },
+  ]);
+});
+
+const malformedInterpolationSources = [
+  `final value = \"\${\"unterminated nested string}\";`,
+  `final value = \"\${{'key': 1}\";`,
+  `final value = \"\${/* unterminated comment }\";`,
+  `final value = \"\${\"\${value}\"\";`,
+];
+
+for (const source of malformedInterpolationSources) {
+  test(`malformed Dart interpolation fails closed: ${JSON.stringify(source)}`, () => {
+    assert.throws(() => parseDartDirectives(source), /invalid Dart source/);
+  });
+}
 
 test('bare, dot-relative, parent-relative, and Aarast package URIs resolve as local files', () => {
   withMobileFixture({

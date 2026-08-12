@@ -88,6 +88,71 @@ function lineBreakLength(sourceText, index) {
   return 0;
 }
 
+function skipNestedBlockComment(sourceText, start) {
+  let commentDepth = 1;
+  let index = start + 2;
+  while (index < sourceText.length && commentDepth > 0) {
+    if (sourceText[index] === '/' && sourceText[index + 1] === '*') {
+      commentDepth += 1;
+      index += 2;
+    } else if (sourceText[index] === '*' && sourceText[index + 1] === '/') {
+      commentDepth -= 1;
+      index += 2;
+    } else {
+      index += 1;
+    }
+  }
+  if (commentDepth !== 0) invalidDartSource();
+  return index;
+}
+
+function skipDartInterpolationExpression(sourceText, start) {
+  let index = start;
+  let braceDepth = 1;
+
+  while (index < sourceText.length) {
+    const character = sourceText[index];
+    const next = sourceText[index + 1];
+
+    if (character === '/' && next === '/') {
+      index += 2;
+      while (index < sourceText.length && !/[\r\n]/.test(sourceText[index])) {
+        index += 1;
+      }
+      continue;
+    }
+    if (character === '/' && next === '*') {
+      index = skipNestedBlockComment(sourceText, index);
+      continue;
+    }
+
+    const rawString = character === 'r' && (next === "'" || next === '"');
+    if (character === "'" || character === '"' || rawString) {
+      index = readDartString(sourceText, index, rawString).end;
+      continue;
+    }
+    if (isIdentifierStart(character)) {
+      index += 1;
+      while (isIdentifierPart(sourceText[index])) index += 1;
+      continue;
+    }
+    if (character === '{') {
+      braceDepth += 1;
+      index += 1;
+      continue;
+    }
+    if (character === '}') {
+      braceDepth -= 1;
+      index += 1;
+      if (braceDepth === 0) return index;
+      continue;
+    }
+    index += 1;
+  }
+
+  invalidDartSource();
+}
+
 function readDartString(sourceText, start, rawPrefix = false) {
   const quoteIndex = rawPrefix ? start + 1 : start;
   const quote = sourceText[quoteIndex];
@@ -163,7 +228,17 @@ function readDartString(sourceText, start, rawPrefix = false) {
       index += 2;
       continue;
     }
-    if (!rawPrefix && sourceText[index] === '$') interpolated = true;
+    if (!rawPrefix && sourceText[index] === '$') {
+      interpolated = true;
+      if (sourceText[index + 1] === '{') {
+        index = skipDartInterpolationExpression(sourceText, index + 2);
+        continue;
+      }
+      if (!isIdentifierStart(sourceText[index + 1])) invalidDartSource();
+      index += 2;
+      while (isIdentifierPart(sourceText[index])) index += 1;
+      continue;
+    }
     value += sourceText[index];
     index += 1;
   }
@@ -194,20 +269,7 @@ function tokenizeDart(sourceText) {
       continue;
     }
     if (character === '/' && next === '*') {
-      let commentDepth = 1;
-      index += 2;
-      while (index < sourceText.length && commentDepth > 0) {
-        if (sourceText[index] === '/' && sourceText[index + 1] === '*') {
-          commentDepth += 1;
-          index += 2;
-        } else if (sourceText[index] === '*' && sourceText[index + 1] === '/') {
-          commentDepth -= 1;
-          index += 2;
-        } else {
-          index += 1;
-        }
-      }
-      if (commentDepth !== 0) invalidDartSource();
+      index = skipNestedBlockComment(sourceText, index);
       continue;
     }
 
@@ -415,14 +477,21 @@ function resolveDartTarget(sourceFile, specifier, mobileLib) {
   return path.resolve(path.dirname(sourceFile), specifier);
 }
 
-function existingMobileFile(target, mobileLib, realMobileLib) {
-  if (!isInside(mobileLib, target)) return false;
+function resolveCanonicalMobileFile(target, mobileLib, realMobileLib) {
+  if (!isInside(mobileLib, target)) return null;
   try {
     const realTarget = fs.realpathSync.native(target);
-    return isInside(realMobileLib, realTarget) && fs.statSync(realTarget).isFile();
+    if (!isInside(realMobileLib, realTarget) || !fs.statSync(realTarget).isFile()) {
+      return null;
+    }
+    return realTarget;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function canonicalMobileRepositoryPath(absolutePath, mobileRoot) {
+  return `mobile/lib/${normalizeSlashes(path.relative(mobileRoot, absolutePath))}`;
 }
 
 function areaForPath(repositoryFile) {
@@ -506,12 +575,19 @@ export function scanMobileBoundaries({ mobileLib }) {
   for (const sourceFile of listDartFiles(resolvedMobileLib)) {
     const source = repositoryPath(sourceFile, repoRoot);
     const sourceArea = areaForPath(source);
+    const realSourceFile = fs.realpathSync.native(sourceFile);
+    const realSource = canonicalMobileRepositoryPath(realSourceFile, realMobileLib);
+    const realSourceArea = areaForPath(realSource);
+    if (sourceArea !== realSourceArea) {
+      addError({ source, target: realSource, kind: 'unresolved-local-target' });
+      continue;
+    }
     const directives = parseDartDirectives(fs.readFileSync(sourceFile, 'utf8'));
 
     for (const directive of directives) {
       if (directive.kind === 'part-of' && directive.uris.length === 0) {
         nameStyleParts.push({
-          sourceFile,
+          sourceFile: realSourceFile,
           source,
           name: directive.name || '<invalid-name-style-part-of>',
         });
@@ -522,21 +598,43 @@ export function scanMobileBoundaries({ mobileLib }) {
         const targetFile = resolveDartTarget(sourceFile, specifier, resolvedMobileLib);
         if (targetFile === null) continue;
         const target = repositoryPath(targetFile, repoRoot);
-        if (!existingMobileFile(targetFile, resolvedMobileLib, realMobileLib)) {
+        const realTargetFile = resolveCanonicalMobileFile(
+          targetFile,
+          resolvedMobileLib,
+          realMobileLib,
+        );
+        if (realTargetFile === null) {
+          addError({ source, target, kind: 'unresolved-local-target' });
+          continue;
+        }
+        const logicalTargetArea = areaForPath(target);
+        const realTarget = canonicalMobileRepositoryPath(realTargetFile, realMobileLib);
+        const realTargetArea = areaForPath(realTarget);
+        if (logicalTargetArea !== realTargetArea) {
           addError({ source, target, kind: 'unresolved-local-target' });
           continue;
         }
 
         if (directive.kind === 'part') {
-          partEdges.push({ sourceFile, targetFile, source, target });
+          partEdges.push({
+            sourceFile: realSourceFile,
+            targetFile: realTargetFile,
+            source,
+            target,
+          });
           continue;
         }
         if (directive.kind === 'part-of') {
-          partOfEdges.push({ sourceFile, targetFile, source, target });
+          partOfEdges.push({
+            sourceFile: realSourceFile,
+            targetFile: realTargetFile,
+            source,
+            target,
+          });
           continue;
         }
 
-        const targetArea = areaForPath(target);
+        const targetArea = logicalTargetArea;
         const kind = recordKind(sourceArea, targetArea);
         if (!kind) continue;
         const item = { source, target, sourceArea, targetArea, kind, count: 1 };
@@ -554,6 +652,8 @@ export function scanMobileBoundaries({ mobileLib }) {
     const relationship = relationships.get(key) || {
       libraryFile: edge.sourceFile,
       childFile: edge.targetFile,
+      library: edge.source,
+      child: edge.target,
       part: false,
       partOf: false,
     };
@@ -565,6 +665,8 @@ export function scanMobileBoundaries({ mobileLib }) {
     const relationship = relationships.get(key) || {
       libraryFile: edge.targetFile,
       childFile: edge.sourceFile,
+      library: edge.target,
+      child: edge.source,
       part: false,
       partOf: false,
     };
@@ -579,9 +681,17 @@ export function scanMobileBoundaries({ mobileLib }) {
     return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
   });
   for (const relationship of sortedRelationships) {
-    const library = repositoryPath(relationship.libraryFile, repoRoot);
-    const child = repositoryPath(relationship.childFile, repoRoot);
-    if (areaForPath(library) !== areaForPath(child)) {
+    const library = relationship.library;
+    const child = relationship.child;
+    const realLibrary = canonicalMobileRepositoryPath(
+      relationship.libraryFile,
+      realMobileLib,
+    );
+    const realChild = canonicalMobileRepositoryPath(
+      relationship.childFile,
+      realMobileLib,
+    );
+    if (areaForPath(realLibrary) !== areaForPath(realChild)) {
       addError({ source: library, target: child, kind: 'cross-area-part' });
       continue;
     }

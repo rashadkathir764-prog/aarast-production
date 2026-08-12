@@ -614,17 +614,21 @@ test('ports CLI sanitizes POSIX, drive, UNC, and extended Windows paths', () => 
     counts: { forwardRef: 0, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
   };
   const failures = [
-    'scan failed at /srv/private/ports-posix.ts',
+    'scan failed [/srv/private/ports-posix.ts',
+    'scan failed "/opt/private/ports-opt.ts"',
+    "scan failed='/tmp/private/ports-tmp.ts'",
+    'scan failed (/workspace/aarast/backend/ports-repo.ts)',
     'scan failed at C:\\private\\ports-drive.ts',
-    'scan failed at \\\\ports-server\\private\\ports-unc.ts',
-    'scan failed at \\\\?\\C:\\private\\ports-extended-drive.ts',
-    'scan failed at \\\\?\\UNC\\ports-server\\private\\ports-extended-unc.ts',
+    'scan failed =D:/private/ports-forward-drive.ts',
+    'scan failed {\\\\ports-server\\private\\ports-unc.ts}',
+    'scan failed [\\\\?\\C:\\private\\ports-extended-drive.ts]',
+    'scan failed "\\\\?\\UNC\\ports-server\\private\\ports-extended-unc.ts"',
   ];
-  for (const failure of failures) {
+  for (const [index, failure] of failures.entries()) {
     const output: string[] = [];
     const exitCode = runCli({
       argv: ['--check'],
-      scan: () => { throw new Error(`${failure}\rstack detail`); },
+      scan: () => { throw new Error(`${failure}${index % 2 ? '\n' : '\r\n'}stack detail`); },
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
     });
@@ -635,6 +639,16 @@ test('ports CLI sanitizes POSIX, drive, UNC, and extended Windows paths', () => 
     assert.doesNotMatch(message, /(?:^|\s)(?:\/|[A-Za-z]:[\\/]|\\\\(?:\?|[^\\]))/);
   }
   assert.deepEqual(passing.diagnostics, []);
+
+  const urlOutput: string[] = [];
+  assert.equal(runCli({
+    argv: ['--check'],
+    scan: () => { throw new Error('scan failed at https://example.test/docs/path\nstack detail'); },
+    stdout: (message: string) => urlOutput.push(message),
+    stderr: (message: string) => urlOutput.push(message),
+  }), 2);
+  assert.match(urlOutput.join('\n'), /https:\/\/example\.test\/docs\/path/);
+  assert.doesNotMatch(urlOutput.join('\n'), /stack detail/);
 });
 
 test('the real CLI sanitizes unknown-argument failures', () => {
@@ -655,7 +669,7 @@ test('the real CLI fails closed when TypeChecker alias resolution throws', () =>
   temporaryRoots.push(root);
   const preload = path.join(root, 'throwing-alias-checker.cjs');
   const privatePath = '\\\\?\\UNC\\ports-server\\private\\ports-real.ts';
-  const failureMessage = `alias resolution failed at ${privatePath}\nstack detail`;
+  const failureMessage = `alias resolution failed [${privatePath}\nstack detail`;
   writeFileSync(preload, [
     "const Module = require('node:module');",
     'const originalLoad = Module._load;',
@@ -699,7 +713,7 @@ test('the real CLI fails closed when TypeChecker alias resolution throws', () =>
   });
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /architecture ports error: alias resolution failed at <path>/);
+  assert.match(result.stderr, /architecture ports error: alias resolution failed \[<path>/);
   assert.doesNotMatch(output, /PASS - architecture ports|\[missing-r0-global\]/);
   assert.ok(!output.includes(privatePath));
   assert.doesNotMatch(output, /ports-server|ports-real|\\\\\?\\UNC|stack detail|\n\s*at\s+/i);

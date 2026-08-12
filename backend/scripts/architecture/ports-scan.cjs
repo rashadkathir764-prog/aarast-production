@@ -687,14 +687,29 @@ function scanPorts(options) {
   };
 }
 
+function absoluteLocalPathStart(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const current = value[index];
+    if (current === '\\' && value[index + 1] === '\\') return index;
+    if (
+      /[A-Za-z]/.test(current)
+      && (index === 0 || !/[A-Za-z0-9]/.test(value[index - 1]))
+      && value[index + 1] === ':'
+      && (value[index + 2] === '\\' || value[index + 2] === '/')
+    ) {
+      return index;
+    }
+    if (current !== '/' || value[index + 1] === '/' || value[index - 1] === '/') continue;
+    const previous = value[index - 1] || '';
+    if (!previous || !/[A-Za-z0-9._~%+-]/.test(previous)) return index;
+  }
+  return -1;
+}
+
 function sanitizeMessage(value) {
   const firstLine = String(value || 'unknown error').split(/[\r\n]/, 1)[0];
-  return firstLine
-    .replace(/\\\\\?\\UNC\\[^\r\n]*/gi, '<path>')
-    .replace(/\\\\\?\\[A-Za-z]:\\[^\r\n]*/g, '<path>')
-    .replace(/\\\\[^\\\r\n]+\\[^\r\n]*/g, '<path>')
-    .replace(/[A-Za-z]:[\\/][^\r\n]*/g, '<path>')
-    .replace(/(^|[\s("'=])\/(?!\/)[^\r\n]*/g, '$1<path>');
+  const pathStart = absoluteLocalPathStart(firstLine);
+  return pathStart === -1 ? firstLine : `${firstLine.slice(0, pathStart)}<path>`;
 }
 
 function writeLine(target, message) {

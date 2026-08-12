@@ -350,6 +350,50 @@ test('Prisma static element access and proven delegate aliases cannot bypass own
   ]);
 });
 
+test('raw-operation provenance rejects delegate-bearing local wrappers and preserves true Prisma roots', () => {
+  const options = fixtureProject({
+    'money/local-wrapper.ts': prismaFixture([
+      'const local = {',
+      '  user: prisma.user,',
+      '  $queryRawUnsafe: async (_sql: string) => [],',
+      '};',
+      'const localRaw = local.$queryRawUnsafe;',
+      'const { $queryRawUnsafe: destructuredLocalRaw } = local;',
+      'declare const dynamicOperation: string;',
+      'const dynamicLocalRaw = local[dynamicOperation];',
+      'await local.$queryRawUnsafe(\'SELECT * FROM "WeddingPlan"\');',
+      'await localRaw(\'SELECT * FROM "WeddingPlan"\');',
+      'await destructuredLocalRaw(\'SELECT * FROM "WeddingPlan"\');',
+      'await dynamicLocalRaw(\'SELECT * FROM "WeddingPlan"\');',
+      'await local.user.findMany({ where: { id: "u" } });',
+    ].join('\n')),
+    'admin/prisma-root-controls.ts': prismaFixture([
+      'const serviceRaw = service[\'$queryRawUnsafe\'];',
+      'const { $queryRawUnsafe: transactionRaw } = tx;',
+      'await serviceRaw(\'SELECT * FROM "User"\');',
+      'await transactionRaw(\'SELECT * FROM "Conversation"\');',
+    ].join('\n'), [
+      'declare class PrismaService extends PrismaClient {}',
+      'declare const service: PrismaService;',
+    ].join('\n')),
+  });
+
+  assertExactRecords(scanOwnershipViolations(options), [
+    {
+      file: 'backend/src/admin/prisma-root-controls.ts', model: 'Conversation', owner: 'messaging',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/prisma-root-controls.ts', model: 'User', owner: 'identity',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/money/local-wrapper.ts', model: 'User', owner: 'identity',
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+  ]);
+});
+
 test('proven Prisma dynamic accesses fail closed while local homonyms and alias cycles do not', () => {
   const options = fixtureProject({
     'auth/dynamic-method.ts': prismaFixture(
@@ -953,17 +997,21 @@ test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {
 
 test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', () => {
   const failures = [
-    'scan failed at /srv/private/ownership-posix.ts',
+    'scan failed [/srv/private/ownership-posix.ts',
+    'scan failed "/opt/private/ownership-opt.ts"',
+    "scan failed='/tmp/private/ownership-tmp.ts'",
+    'scan failed (/workspace/aarast/backend/ownership-repo.ts)',
     'scan failed at C:\\private\\ownership-drive.ts',
-    'scan failed at \\\\ownership-server\\private\\ownership-unc.ts',
-    'scan failed at \\\\?\\C:\\private\\ownership-extended-drive.ts',
-    'scan failed at \\\\?\\UNC\\ownership-server\\private\\ownership-extended-unc.ts',
+    'scan failed =D:/private/ownership-forward-drive.ts',
+    'scan failed {\\\\ownership-server\\private\\ownership-unc.ts}',
+    'scan failed [\\\\?\\C:\\private\\ownership-extended-drive.ts]',
+    'scan failed "\\\\?\\UNC\\ownership-server\\private\\ownership-extended-unc.ts"',
   ];
-  for (const failure of failures) {
+  for (const [index, failure] of failures.entries()) {
     const output: string[] = [];
     const exitCode = runCli({
       argv: ['--check'],
-      scan: () => { throw new Error(`${failure}\rstack detail`); },
+      scan: () => { throw new Error(`${failure}${index % 2 ? '\n' : '\r\n'}stack detail`); },
       readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
@@ -974,6 +1022,17 @@ test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', ()
     assert.doesNotMatch(message, /ownership-(?:posix|drive|unc|extended)|ownership-server|stack detail/i);
     assert.doesNotMatch(message, /(?:^|\s)(?:\/|[A-Za-z]:[\\/]|\\\\(?:\?|[^\\]))/);
   }
+
+  const urlOutput: string[] = [];
+  assert.equal(runCli({
+    argv: ['--check'],
+    scan: () => { throw new Error('scan failed at https://example.test/docs/path\nstack detail'); },
+    readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
+    stdout: (message: string) => urlOutput.push(message),
+    stderr: (message: string) => urlOutput.push(message),
+  }), 2);
+  assert.match(urlOutput.join('\n'), /https:\/\/example\.test\/docs\/path/);
+  assert.doesNotMatch(urlOutput.join('\n'), /stack detail/);
 });
 
 test('baseline validation rejects invalid fields and sensitive strings with sanitized errors', () => {
@@ -1070,7 +1129,7 @@ test('the real ownership CLI sanitizes scanner failures without repository fixtu
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-cli-error-'));
   fixtureRoots.push(root);
   const preload = path.join(root, 'throwing-program.cjs');
-  const failureMessage = '\\\\?\\UNC\\ownership-server\\private\\ownership-real.ts\nstack detail';
+  const failureMessage = 'alias failed [\\\\?\\UNC\\ownership-server\\private\\ownership-real.ts\nstack detail';
   writeFileSync(preload, [
     "const Module = require('node:module');",
     'const originalLoad = Module._load;',

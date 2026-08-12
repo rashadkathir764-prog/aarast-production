@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
 
 const R0_GLOBAL_MODULES = new Set([
@@ -46,6 +47,12 @@ const DIAGNOSTIC_MESSAGES = Object.freeze({
   'unresolved-module-import': 'cannot statically resolve Nest module import expression',
 });
 const DIAGNOSTIC_KINDS = new Set(Object.keys(DIAGNOSTIC_MESSAGES));
+const COUNT_KEYS = Object.freeze([
+  'forwardRef',
+  'globals',
+  'illegalFutureImports',
+  'nestModuleCycles',
+]);
 
 function normalizeFsPath(file) {
   return path.resolve(file).replace(/\\/g, '/');
@@ -691,20 +698,132 @@ function scanPorts(options) {
   };
 }
 
-function validateDiagnosticForOutput(item) {
-  if (
-    !item
-    || !DIAGNOSTIC_KINDS.has(item.kind)
-    || typeof item.path !== 'string'
-    || !/^backend\/src\/.+\.ts$/.test(item.path)
-    || item.path.includes('\\')
-    || path.posix.normalize(item.path) !== item.path
-    || !Number.isInteger(item.line)
-    || item.line < 1
-  ) {
-    throw new Error('architecture ports scanner returned an invalid diagnostic');
+function isPlainObject(value) {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && !utilTypes.isProxy(value)
+    && Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+function exactDataObject(value, expectedKeys, description) {
+  if (!isPlainObject(value)) {
+    throw new Error(`${description} must be a plain object`);
   }
-  return DIAGNOSTIC_MESSAGES[item.kind];
+  const actualKeys = Reflect.ownKeys(value);
+  if (
+    actualKeys.length !== expectedKeys.length
+    || actualKeys.some((key) => typeof key !== 'string' || !expectedKeys.includes(key))
+  ) {
+    throw new Error(`${description} has an invalid schema`);
+  }
+  const result = {};
+  for (const key of expectedKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new Error(`${description} cannot contain accessors`);
+    }
+    result[key] = descriptor.value;
+  }
+  return result;
+}
+
+function plainArrayValues(value, description) {
+  if (
+    !Array.isArray(value)
+    || utilTypes.isProxy(value)
+    || Object.getPrototypeOf(value) !== Array.prototype
+  ) {
+    throw new Error(`${description} must be a plain array`);
+  }
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  const length = lengthDescriptor && lengthDescriptor.value;
+  const actualKeys = Reflect.ownKeys(value);
+  if (
+    !Number.isSafeInteger(length)
+    || length < 0
+    || actualKeys.length !== length + 1
+    || actualKeys[actualKeys.length - 1] !== 'length'
+    || actualKeys.slice(0, -1).some((key, index) => key !== String(index))
+  ) {
+    throw new Error(`${description} must be dense and contain no extra properties`);
+  }
+  return actualKeys.slice(0, -1).map((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new Error(`${description} cannot contain accessors`);
+    }
+    return descriptor.value;
+  });
+}
+
+function dataProperty(value, key, description) {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+    throw new Error(`${description} requires a data property named ${key}`);
+  }
+  return descriptor.value;
+}
+
+function canonicalDiagnosticPath(value) {
+  if (
+    typeof value !== 'string'
+    || !value
+    || value.length > 4096
+    || !/^backend\/src\/.+\.ts$/.test(value)
+    || /[\\:\u0000-\u001f\u007f]/.test(value)
+    || value.includes('//')
+    || path.posix.normalize(value) !== value
+  ) {
+    throw new Error('architecture diagnostic path is not canonical');
+  }
+  const segments = value.split('/');
+  if (
+    segments[0] !== 'backend'
+    || segments[1] !== 'src'
+    || segments.some((segment) => !segment || segment === '.' || segment === '..')
+  ) {
+    throw new Error('architecture diagnostic path is not repository-relative');
+  }
+  return value;
+}
+
+function canonicalDiagnostic(item) {
+  if (
+    !isPlainObject(item)
+  ) {
+    throw new Error('architecture diagnostic must be a plain object');
+  }
+  const kind = dataProperty(item, 'kind', 'architecture diagnostic');
+  const diagnosticPath = canonicalDiagnosticPath(
+    dataProperty(item, 'path', 'architecture diagnostic'),
+  );
+  const line = dataProperty(item, 'line', 'architecture diagnostic');
+  if (!DIAGNOSTIC_KINDS.has(kind) || !Number.isSafeInteger(line) || line < 1) {
+    throw new Error('architecture diagnostic kind or line is invalid');
+  }
+  return {
+    kind,
+    path: diagnosticPath,
+    line,
+    message: DIAGNOSTIC_MESSAGES[kind],
+  };
+}
+
+function validateScanResult(value) {
+  const result = exactDataObject(value, ['diagnostics', 'counts'], 'architecture scan result');
+  const diagnostics = plainArrayValues(result.diagnostics, 'architecture diagnostics')
+    .map(canonicalDiagnostic)
+    .sort(compareDiagnostics);
+  const counts = exactDataObject(result.counts, COUNT_KEYS, 'architecture counts');
+  for (const key of COUNT_KEYS) {
+    if (!Number.isSafeInteger(counts[key]) || counts[key] < 0) {
+      throw new Error('architecture counts must be non-negative safe integers');
+    }
+  }
+  return { diagnostics, counts };
 }
 
 function writeLine(target, message) {
@@ -719,17 +838,13 @@ function runCli(dependencies) {
     return 2;
   }
   try {
-    const result = dependencies.scan();
-    if (!result || !Array.isArray(result.diagnostics) || !result.counts) {
-      throw new Error('architecture ports scanner returned an invalid result');
-    }
+    const result = validateScanResult(dependencies.scan());
     if (result.diagnostics.length > 0) {
-      for (const item of [...result.diagnostics].sort(compareDiagnostics)) {
-        const message = validateDiagnosticForOutput(item);
-        writeLine(
-          dependencies.stderr,
-          `${item.path}:${item.line} [${item.kind}] ${message}`,
-        );
+      const lines = result.diagnostics.map((item) => (
+        `${item.path}:${item.line} [${item.kind}] ${item.message}`
+      ));
+      for (const line of lines) {
+        writeLine(dependencies.stderr, line);
       }
       return 1;
     }

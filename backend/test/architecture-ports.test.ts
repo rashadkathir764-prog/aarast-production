@@ -713,6 +713,200 @@ test('other exit-one diagnostics expose only fixed reasons and safe repository p
   ]);
 });
 
+test('runCli validates the exact count schema before rendering success', () => {
+  const validCounts = {
+    forwardRef: 0,
+    globals: 2,
+    illegalFutureImports: 0,
+    nestModuleCycles: 0,
+  };
+  const invalidCounts: Array<{ name: string; counts: unknown }> = [
+    {
+      name: 'attacker-controlled string',
+      counts: { ...validCounts, forwardRef: 'TOKEN=exit0-secret file:///srv/private/counts.ts' },
+    },
+    { name: 'missing key', counts: { forwardRef: 0, globals: 2, illegalFutureImports: 0 } },
+    { name: 'extra key', counts: { ...validCounts, cycles: 0 } },
+    { name: 'negative integer', counts: { ...validCounts, globals: -1 } },
+    { name: 'fraction', counts: { ...validCounts, globals: 1.5 } },
+    { name: 'infinity', counts: { ...validCounts, globals: Number.POSITIVE_INFINITY } },
+    { name: 'unsafe integer', counts: { ...validCounts, globals: Number.MAX_SAFE_INTEGER + 1 } },
+    { name: 'bigint', counts: { ...validCounts, globals: 2n } },
+    { name: 'symbol', counts: { ...validCounts, globals: Symbol('TOKEN=exit0-symbol') } },
+    { name: 'array', counts: [0, 2, 0, 0] },
+    { name: 'inherited values', counts: Object.create(validCounts) },
+    {
+      name: 'throwing value getter',
+      counts: Object.defineProperty({ ...validCounts }, 'globals', {
+        enumerable: true,
+        get() { throw new Error('TOKEN=exit0-getter'); },
+      }),
+    },
+    {
+      name: 'toString trap',
+      counts: {
+        ...validCounts,
+        globals: { toString() { throw new Error('TOKEN=exit0-tostring'); } },
+      },
+    },
+  ];
+
+  for (const fixture of invalidCounts) {
+    const output: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => ({ diagnostics: [], counts: fixture.counts }) as unknown as ScanResult,
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    }), 2, fixture.name);
+    assert.deepEqual(output, ['ERROR - architecture ports scan failed'], fixture.name);
+  }
+});
+
+test('runCli validates and renders a diagnostic batch atomically', () => {
+  const output: string[] = [];
+  assert.equal(runCli({
+    argv: ['--check'],
+    scan: () => ({
+      diagnostics: [
+        {
+          kind: 'forward-ref',
+          path: 'backend/src/tasks/valid.ts',
+          line: 1,
+          message: 'safe-looking first diagnostic',
+        },
+        {
+          kind: 'forward-ref',
+          path: 'backend/src/tasks/z/C:/late-invalid.ts',
+          line: 2,
+          message: 'TOKEN=late-invalid file:///srv/private/late.ts',
+        },
+      ],
+      counts: { forwardRef: 2, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+    }),
+    stdout: (message: string) => output.push(message),
+    stderr: (message: string) => output.push(message),
+  }), 2);
+  assert.deepEqual(output, ['ERROR - architecture ports scan failed']);
+});
+
+test('runCli accepts only canonical diagnostic kinds, paths, and safe integer lines', () => {
+  const invalidDiagnostics: Array<{ name: string; diagnostic: unknown }> = [
+    { name: 'empty path', diagnostic: { kind: 'forward-ref', path: '', line: 1 } },
+    { name: 'absolute path', diagnostic: { kind: 'forward-ref', path: '/srv/private/exit1.ts', line: 1 } },
+    { name: 'drive marker', diagnostic: { kind: 'forward-ref', path: 'backend/src/C:/private/exit1.ts', line: 1 } },
+    { name: 'URL scheme', diagnostic: { kind: 'forward-ref', path: 'backend/src/file://srv/private/exit1.ts', line: 1 } },
+    { name: 'backslash', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks\\exit1.ts', line: 1 } },
+    { name: 'dot segment', diagnostic: { kind: 'forward-ref', path: 'backend/src/./tasks/exit1.ts', line: 1 } },
+    { name: 'parent segment', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/../private/exit1.ts', line: 1 } },
+    { name: 'empty segment', diagnostic: { kind: 'forward-ref', path: 'backend/src//tasks/exit1.ts', line: 1 } },
+    { name: 'NUL', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/exit1\u0000.ts', line: 1 } },
+    { name: 'newline', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/exit1\nTOKEN=x.ts', line: 1 } },
+    { name: 'oversized path', diagnostic: { kind: 'forward-ref', path: `backend/src/tasks/${'x'.repeat(4096)}.ts`, line: 1 } },
+    { name: 'unknown kind', diagnostic: { kind: 'TOKEN=exit1-kind', path: 'backend/src/tasks/exit1.ts', line: 1 } },
+    { name: 'zero line', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/exit1.ts', line: 0 } },
+    { name: 'fraction line', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/exit1.ts', line: 1.5 } },
+    { name: 'unsafe line', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/exit1.ts', line: 1e100 } },
+    { name: 'bigint line', diagnostic: { kind: 'forward-ref', path: 'backend/src/tasks/exit1.ts', line: 1n } },
+    { name: 'array diagnostic', diagnostic: ['forward-ref', 'backend/src/tasks/exit1.ts', 1] },
+    { name: 'inherited diagnostic', diagnostic: Object.create({ kind: 'forward-ref', path: 'backend/src/tasks/exit1.ts', line: 1 }) },
+  ];
+
+  for (const fixture of invalidDiagnostics) {
+    const output: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => ({
+        diagnostics: [fixture.diagnostic],
+        counts: { forwardRef: 1, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+      }) as unknown as ScanResult,
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    }), 2, fixture.name);
+    assert.deepEqual(output, ['ERROR - architecture ports scan failed'], fixture.name);
+  }
+});
+
+test('runCli rejects non-plain scan data and accessors without reflecting traps', () => {
+  const validCounts = {
+    forwardRef: 0,
+    globals: 2,
+    illegalFutureImports: 0,
+    nestModuleCycles: 0,
+  };
+  const inheritedResult = Object.create({ diagnostics: [], counts: validCounts });
+  const arrayResult = Object.assign([], { diagnostics: [], counts: validCounts });
+  const throwingResult = Object.defineProperty({ counts: validCounts }, 'diagnostics', {
+    enumerable: true,
+    get() { throw new Error('TOKEN=result-getter file:///srv/private/result.ts'); },
+  });
+  const diagnosticsSubclass = new (class extends Array<unknown> {})();
+  const hugeSparseDiagnostics = new Array(0xffff_ffff);
+  const proxiedResult = new Proxy({ diagnostics: [], counts: validCounts }, {});
+  const proxiedCounts = new Proxy({ ...validCounts }, {});
+  const proxiedDiagnostics = new Proxy([] as unknown[], {});
+  const throwingDiagnostic = Object.defineProperty({
+    path: 'backend/src/tasks/exit1.ts',
+    line: 1,
+  }, 'kind', {
+    enumerable: true,
+    get() { throw new Error('TOKEN=diagnostic-getter file:///srv/private/diagnostic.ts'); },
+  });
+  const fixtures: Array<{ name: string; result: unknown }> = [
+    { name: 'result array', result: arrayResult },
+    { name: 'inherited result', result: inheritedResult },
+    { name: 'proxied result', result: proxiedResult },
+    { name: 'throwing result getter', result: throwingResult },
+    { name: 'missing result key', result: { diagnostics: [] } },
+    { name: 'extra result key', result: { diagnostics: [], counts: validCounts, extra: 'TOKEN=result-extra' } },
+    { name: 'diagnostics object', result: { diagnostics: {}, counts: validCounts } },
+    { name: 'diagnostics subclass', result: { diagnostics: diagnosticsSubclass, counts: validCounts } },
+    { name: 'huge sparse diagnostics', result: { diagnostics: hugeSparseDiagnostics, counts: validCounts } },
+    { name: 'proxied diagnostics', result: { diagnostics: proxiedDiagnostics, counts: validCounts } },
+    { name: 'proxied counts', result: { diagnostics: [], counts: proxiedCounts } },
+    { name: 'throwing diagnostic getter', result: { diagnostics: [throwingDiagnostic], counts: { ...validCounts, forwardRef: 1 } } },
+  ];
+
+  for (const fixture of fixtures) {
+    const output: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => fixture.result as ScanResult,
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    }), 2, fixture.name);
+    assert.deepEqual(output, ['ERROR - architecture ports scan failed'], fixture.name);
+  }
+
+  const ignoredTrap = Object.defineProperties({
+    kind: 'forward-ref',
+    path: 'backend/src/tasks/exit1.ts',
+    line: 1,
+  }, {
+    message: {
+      enumerable: true,
+      get() { throw new Error('TOKEN=ignored-message-getter'); },
+    },
+    cycle: {
+      enumerable: true,
+      get() { throw new Error('TOKEN=ignored-cycle-getter'); },
+    },
+  });
+  const safeOutput: string[] = [];
+  assert.equal(runCli({
+    argv: ['--check'],
+    scan: () => ({
+      diagnostics: [ignoredTrap],
+      counts: { ...validCounts, forwardRef: 1 },
+    }) as unknown as ScanResult,
+    stdout: (message: string) => safeOutput.push(message),
+    stderr: (message: string) => safeOutput.push(message),
+  }), 1);
+  assert.deepEqual(safeOutput, [
+    'backend/src/tasks/exit1.ts:1 [forward-ref] forwardRef resolved to @nestjs/common is forbidden',
+  ]);
+});
+
 test('a syntactically invalid TypeScript program fails the scan instead of producing a partial graph', () => {
   const options = fixtureProject({
     'backend/src/tasks/broken.ts': 'export const broken = ;\n',

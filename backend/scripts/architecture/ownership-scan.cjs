@@ -1598,6 +1598,7 @@ function ownershipValidationMetadata() {
     registry,
     extractSchemaMetadata(schemaText),
   );
+  validationRegistryMetadata.registry = registry;
   return validationRegistryMetadata;
 }
 
@@ -1694,6 +1695,10 @@ function validateViolation(value) {
   }
   if (![...CONTEXTS, 'unclassified'].includes(record.context)) {
     throw new Error('ownership violation contains an invalid context');
+  }
+  const { registry } = ownershipValidationMetadata();
+  if (contextForRepositoryPath(record.file, registry) !== record.context) {
+    throw new Error('ownership violation context does not match its file');
   }
   if (record.owner !== null && !CONTEXTS.includes(record.owner)) {
     throw new Error('ownership violation contains an invalid owner');

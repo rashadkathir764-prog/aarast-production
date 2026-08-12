@@ -1227,6 +1227,44 @@ test('ownership CLI rejects semantically impossible records in scans, baselines,
   }
 });
 
+test('ownership CLI derives every context from the registry-backed repository path', () => {
+  const invalid = [
+    violation({ context: 'identity' }),
+    violation({ file: 'backend/src/auth/x.ts', context: 'finance' }),
+    violation({ file: 'backend/src/modules/identity/x.ts', context: 'finance' }),
+    violation({ file: 'backend/src/platform/x.ts', context: 'finance' }),
+    violation({ file: 'backend/src/not-a-root/x.ts', context: 'finance' }),
+  ];
+  for (const record of invalid) {
+    const current = captureOwnershipCli({ scan: [record], saved: ownershipBaseline() });
+    assert.equal(current.exitCode, 2, `current context accepted ${JSON.stringify(record)}`);
+    const baseline = captureOwnershipCli({ scan: [], saved: ownershipBaseline([record]) });
+    assert.equal(baseline.exitCode, 2, `baseline context accepted ${JSON.stringify(record)}`);
+    let writeCalled = false;
+    const write = captureOwnershipCli({
+      argv: ['--write-baseline'],
+      scan: [record],
+      writeBaseline: () => { writeCalled = true; },
+    });
+    assert.equal(write.exitCode, 2, `writer context accepted ${JSON.stringify(record)}`);
+    assert.equal(writeCalled, false);
+  }
+
+  const legal = [
+    violation(),
+    violation({ file: 'backend/src/auth/x.ts', context: 'identity' }),
+    violation({ file: 'backend/src/modules/finance/x.ts', context: 'finance' }),
+    violation({
+      file: 'backend/src/platform/x.ts', context: 'platform', owner: 'planning',
+    }),
+    violation({
+      file: 'backend/src/not-a-root/x.ts', context: 'unclassified', owner: 'planning',
+      reason: 'unclassified-context',
+    }),
+  ].sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
+  assert.equal(captureOwnershipCli({ scan: legal, saved: ownershipBaseline(legal) }).exitCode, 0);
+});
+
 test('ownership CLI accepts every legal operation and reason boundary', () => {
   const legal = [
     ...['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy']
@@ -1254,7 +1292,8 @@ test('ownership CLI accepts every legal operation and reason boundary', () => {
       source: 'sql', reason: 'unknown-model',
     }),
     violation({
-      context: 'unclassified', model: 'WeddingPlan', owner: 'planning',
+      file: 'backend/src/not-a-root/x.ts', context: 'unclassified',
+      model: 'WeddingPlan', owner: 'planning',
       operation: 'findMany', mode: 'read', source: 'delegate',
       reason: 'unclassified-context',
     }),

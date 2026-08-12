@@ -23,7 +23,12 @@
   `ff35ea73` closes canonical-junction and nested-interpolation parser bypasses.
   Documentation commit `7f4cd70` reconciles the exact Mobile repair exception,
   official gate commands, and PR-head versus synthetic-merge CI semantics.
-  None of these remediations adds runtime product behavior.
+  Mobile commit `019f9a28` validates scan and baseline results atomically and
+  makes scan-error diagnostics non-reflective: hostile result structures fail
+  closed before output, while legitimate errors emit only a fixed kind and
+  canonical repository-relative source. The independent final local review
+  passed after this remediation. None of these remediations adds runtime
+  product behavior, and this local review result makes no remote-CI claim.
 - The exact fixed-base diff is: `.github/workflows/ci.yml`, `AGENTS.md`,
   `ARCHITECTURE.md`, `CHANGELOG.md`,
   `backend/.dependency-cruiser-known-violations.json`,
@@ -79,7 +84,7 @@
     96/96; `npm run build` PASS; `npm run smoke:honesty` PASS 12/12;
     `npm run smoke:routes` PASS 16/16; and
     `npm run test:container-config` PASS 3/3.
-  - `node --test .\scripts\check-mobile-boundaries.test.mjs` PASS 152/152;
+  - `node --test .\scripts\check-mobile-boundaries.test.mjs` PASS 192/192;
     `node .\scripts\check-mobile-boundaries.mjs --check-baseline` PASS with
     269 current records; from `mobile/`, `flutter analyze --no-pub` PASS with
     no issues and `flutter test --no-pub` PASS 1,151/1,151.

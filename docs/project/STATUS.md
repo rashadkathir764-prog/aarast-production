@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-12
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
@@ -80,9 +80,14 @@ non-reflective diagnostic, and atomic scan-result validation gaps. Commit
 `ff35ea73` makes Mobile boundary parsing fail closed around canonical junction
 identity and nested Dart interpolation. Commit `7f4cd70` reconciles the R0
 plan's protected-source exception, documents the official local gates, and
-records the distinct PR-head versus synthetic-merge CI semantics. These are
-gate hardening and documentation corrections only; they add no runtime product
-behavior.
+records the distinct PR-head versus synthetic-merge CI semantics. Commit
+`019f9a28` validates Mobile scan and baseline results atomically and makes
+scan-error diagnostics non-reflective: malformed or hostile result structures
+fail closed before any diagnostic is rendered, while legitimate scan errors
+emit only a fixed error kind and canonical repository-relative source. The
+independent final local review passed after this remediation. These are gate
+hardening and documentation corrections only; they add no runtime product
+behavior and make no claim about remote CI state.
 
 Observed governance baselines:
 
@@ -116,7 +121,7 @@ Local verification evidence:
 | Admin | `npm run smoke:honesty` | PASS: 12/12 |
 | Admin | `npm run smoke:routes` | PASS: 16/16 |
 | Admin | `npm run test:container-config` | PASS: 3/3 |
-| Mobile architecture | `node --test .\scripts\check-mobile-boundaries.test.mjs` | PASS: 152/152 |
+| Mobile architecture | `node --test .\scripts\check-mobile-boundaries.test.mjs` | PASS: 192/192 |
 | Mobile architecture | `node .\scripts\check-mobile-boundaries.mjs --check-baseline` | PASS: 269 current records |
 | Mobile | `flutter analyze --no-pub` | PASS: no issues |
 | Mobile | `flutter test --no-pub` | PASS: 1,151/1,151, including the repository's current Golden behavior |

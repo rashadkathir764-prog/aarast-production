@@ -34,6 +34,18 @@ const ILLEGAL_IMPORT_KINDS = new Set([
   'platform-business-import',
   'shared-kernel-direction-import',
 ]);
+const DIAGNOSTIC_MESSAGES = Object.freeze({
+  'forward-ref': 'forwardRef resolved to @nestjs/common is forbidden',
+  'unapproved-global': 'Global resolved to @nestjs/common is not in the exact R0 global set',
+  'missing-r0-global': 'required R0 Global decorator is missing',
+  'non-public-cross-module-import': 'cross-module import must target an allowed public slice',
+  'domain-runtime-import': 'domain code cannot import Nest runtime or a foreign business context',
+  'platform-business-import': 'platform cannot import business module code',
+  'shared-kernel-direction-import': 'shared-kernel cannot import platform or business code',
+  'nest-module-cycle': 'Nest module import cycle detected',
+  'unresolved-module-import': 'cannot statically resolve Nest module import expression',
+});
+const DIAGNOSTIC_KINDS = new Set(Object.keys(DIAGNOSTIC_MESSAGES));
 
 function normalizeFsPath(file) {
   return path.resolve(file).replace(/\\/g, '/');
@@ -162,12 +174,12 @@ function lineOf(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 }
 
-function diagnostic(kind, repositoryPath, sourceFile, node, message, extra = {}) {
+function diagnostic(kind, repositoryPath, sourceFile, node, extra = {}) {
   return {
     kind,
     path: repositoryPath,
     line: node ? lineOf(sourceFile, node) : 1,
-    message,
+    message: DIAGNOSTIC_MESSAGES[kind],
     ...extra,
   };
 }
@@ -301,7 +313,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
             repositoryPath,
             sourceFile,
             statement,
-            `domain code cannot import runtime or foreign module '${specifier}'`,
           ));
           continue;
         }
@@ -316,7 +327,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
           repositoryPath,
           sourceFile,
           statement,
-          `shared-kernel cannot import '${targetPath}'`,
         ));
         continue;
       }
@@ -331,7 +341,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
           repositoryPath,
           sourceFile,
           statement,
-          `platform cannot import business module '${targetPath}'`,
         ));
         continue;
       }
@@ -348,7 +357,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
           repositoryPath,
           sourceFile,
           statement,
-          `cross-context imports must target the owner's public slice: '${targetPath}'`,
         ));
         continue;
       }
@@ -364,7 +372,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
           repositoryPath,
           sourceFile,
           statement,
-          `another module's internal slice is private: '${targetPath}'`,
         ));
       }
     }
@@ -467,7 +474,6 @@ function collectModuleGraph(files, checker) {
       owner.path,
       owner.sourceFile,
       node,
-      `cannot statically resolve Nest module import '${node.getText(owner.sourceFile)}'`,
     ));
   };
 
@@ -585,12 +591,12 @@ function collectCycleDiagnostics(graph) {
         const cycleKey = normalized.map((item) => item.key).join(' -> ');
         if (!seenCycles.has(cycleKey)) {
           seenCycles.add(cycleKey);
-          const cycle = normalized.map((item) => item.name).join(' -> ');
+          const cycle = normalized.map((item) => item.path).join(' -> ');
           diagnostics.push({
             kind: 'nest-module-cycle',
             path: normalized[0].path,
             line: normalized[0].line,
-            message: `Nest module cycle: ${cycle}`,
+            message: DIAGNOSTIC_MESSAGES['nest-module-cycle'],
             cycle,
           });
         }
@@ -635,7 +641,6 @@ function scanPorts(options) {
           repositoryPath,
           sourceFile,
           node,
-          'forwardRef resolved to @nestjs/common is forbidden',
         ));
       }
       if (
@@ -650,7 +655,6 @@ function scanPorts(options) {
             repositoryPath,
             sourceFile,
             node,
-            'Global resolved to @nestjs/common is not in the exact R0 global set',
           ));
         }
       }
@@ -665,7 +669,7 @@ function scanPorts(options) {
         kind: 'missing-r0-global',
         path: required,
         line: 1,
-        message: 'required R0 Global decorator is missing',
+        message: DIAGNOSTIC_MESSAGES['missing-r0-global'],
       });
     }
   }
@@ -687,62 +691,20 @@ function scanPorts(options) {
   };
 }
 
-function absoluteLocalPathStart(value) {
-  for (let index = 0; index < value.length; index += 1) {
-    const current = value[index];
-    if (value.slice(index, index + 7).toLowerCase() === 'file://') return index;
-    if (current === '\\' && value[index + 1] === '\\') return index;
-    if (
-      /[A-Za-z]/.test(current)
-      && (index === 0 || !/[A-Za-z0-9]/.test(value[index - 1]))
-      && value[index + 1] === ':'
-      && (value[index + 2] === '\\' || value[index + 2] === '/')
-    ) {
-      return index;
-    }
-    if (current !== '/' || value[index + 1] === '/' || value[index - 1] === '/') continue;
-    const previous = value[index - 1] || '';
-    if (!previous || !/[A-Za-z0-9._~%+-]/.test(previous)) return index;
+function validateDiagnosticForOutput(item) {
+  if (
+    !item
+    || !DIAGNOSTIC_KINDS.has(item.kind)
+    || typeof item.path !== 'string'
+    || !/^backend\/src\/.+\.ts$/.test(item.path)
+    || item.path.includes('\\')
+    || path.posix.normalize(item.path) !== item.path
+    || !Number.isInteger(item.line)
+    || item.line < 1
+  ) {
+    throw new Error('architecture ports scanner returned an invalid diagnostic');
   }
-  return -1;
-}
-
-function tokenizeSafeWebUrls(value) {
-  let prefix = null;
-  for (let attempt = 0; attempt <= value.length; attempt += 1) {
-    const candidate = `\u0000architecture-web-url-${attempt}-`;
-    if (!value.includes(candidate)) {
-      prefix = candidate;
-      break;
-    }
-  }
-  if (prefix === null) {
-    return { value: '', restore: () => 'sanitized architecture error' };
-  }
-
-  const tokens = [];
-  const protectedValue = value.replace(/\bhttps?:\/\/[^\s<>"'`]+/gi, (url) => {
-    const token = `${prefix}${tokens.length}\u0000`;
-    tokens.push({ token, url });
-    return token;
-  });
-  return {
-    value: protectedValue,
-    restore: (sanitized) => tokens.reduce(
-      (restored, { token, url }) => restored.split(token).join(url),
-      sanitized,
-    ),
-  };
-}
-
-function sanitizeMessage(value) {
-  const firstLine = String(value || 'unknown error').split(/[\r\n]/, 1)[0];
-  const protectedUrls = tokenizeSafeWebUrls(firstLine);
-  const pathStart = absoluteLocalPathStart(protectedUrls.value);
-  const sanitized = pathStart === -1
-    ? protectedUrls.value
-    : `${protectedUrls.value.slice(0, pathStart)}<path>`;
-  return protectedUrls.restore(sanitized);
+  return DIAGNOSTIC_MESSAGES[item.kind];
 }
 
 function writeLine(target, message) {
@@ -763,9 +725,10 @@ function runCli(dependencies) {
     }
     if (result.diagnostics.length > 0) {
       for (const item of [...result.diagnostics].sort(compareDiagnostics)) {
+        const message = validateDiagnosticForOutput(item);
         writeLine(
           dependencies.stderr,
-          `${item.path}:${item.line} [${item.kind}] ${sanitizeMessage(item.message)}`,
+          `${item.path}:${item.line} [${item.kind}] ${message}`,
         );
       }
       return 1;

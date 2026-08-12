@@ -483,7 +483,10 @@ test('the live Nest module import graph is acyclic and cycles are normalized', (
   }));
   const diagnostics = diagnosticsOfKind(cycle, 'nest-module-cycle');
   assert.equal(diagnostics.length, 1);
-  assert.equal(diagnostics[0].cycle, 'AModule -> BModule -> CModule -> AModule');
+  assert.equal(
+    diagnostics[0].cycle,
+    'backend/src/cycle/a.module.ts -> backend/src/cycle/b.module.ts -> backend/src/cycle/c.module.ts -> backend/src/cycle/a.module.ts',
+  );
 });
 
 test('external dynamic modules are leaves', () => {
@@ -512,7 +515,10 @@ test('internal dynamic modules create graph edges and reciprocal edges report a 
   }));
   const cycles = diagnosticsOfKind(reciprocal, 'nest-module-cycle');
   assert.equal(cycles.length, 1);
-  assert.equal(cycles[0].cycle, 'AModule -> BModule -> AModule');
+  assert.equal(
+    cycles[0].cycle,
+    'backend/src/dynamic/a.module.ts -> backend/src/dynamic/b.module.ts -> backend/src/dynamic/a.module.ts',
+  );
 });
 
 test('statically resolvable const arrays and spreads contribute module edges', () => {
@@ -530,7 +536,10 @@ test('statically resolvable const arrays and spreads contribute module edges', (
   }));
   const cycles = diagnosticsOfKind(result, 'nest-module-cycle');
   assert.equal(cycles.length, 1);
-  assert.equal(cycles[0].cycle, 'AModule -> BModule -> AModule');
+  assert.equal(
+    cycles[0].cycle,
+    'backend/src/static/a.module.ts -> backend/src/static/b.module.ts -> backend/src/static/a.module.ts',
+  );
 });
 
 test('unresolved spread, identifier, conditional, mutable alias, and helper call fail closed', () => {
@@ -561,6 +570,147 @@ test('unresolved spread, identifier, conditional, mutable alias, and helper call
     }));
     assert.equal(diagnosticsOfKind(result, 'unresolved-module-import').length, 1, expression);
   }
+});
+
+test('real unresolved-module diagnostics never reflect source expressions or literals', () => {
+  const fixtures = [
+    {
+      name: 'string literal',
+      declarations: '',
+      expression: "'http://%file:///srv/private/exit1-real-scan.ts'",
+      forbidden: ['http://%', 'file://', '/srv/private/exit1-real-scan.ts'],
+    },
+    {
+      name: 'helper call with secret-shaped argument',
+      declarations: 'function unresolvedHelper(value: string) { return value; }\n',
+      expression: "unresolvedHelper('TOKEN=exit1-secret')",
+      forbidden: ['unresolvedHelper', 'TOKEN=exit1-secret'],
+    },
+    {
+      name: 'template literal',
+      declarations: '',
+      expression: '`file:///opt/private/exit1-template.ts`',
+      forbidden: ['file://', '/opt/private/exit1-template.ts'],
+    },
+    {
+      name: 'malformed URL',
+      declarations: '',
+      expression: "'https:////exit1-server/private/exit1-malformed.ts'",
+      forbidden: ['https:////', 'exit1-malformed.ts'],
+    },
+    {
+      name: 'multiline path families',
+      declarations: '',
+      expression: '`exit1-source-prefix\n/srv/private/exit1-posix.ts\nC:\\private\\exit1-drive.ts\n\\\\exit1-server\\private\\exit1-unc.ts\n\\\\?\\UNC\\exit1-server\\private\\exit1-extended.ts`',
+      forbidden: ['exit1-source-prefix', 'exit1-posix', 'exit1-drive', 'exit1-unc', 'exit1-extended'],
+    },
+  ];
+
+  for (const [index, fixture] of fixtures.entries()) {
+    const source = `backend/src/unresolved/exit1-${index}.module.ts`;
+    const scanResult = scanPorts(fixtureProject({
+      [source]: [
+        "import { Module } from '@nestjs/common';",
+        fixture.declarations,
+        `@Module({ imports: [${fixture.expression}] })`,
+        `export class ExitOne${index}Module {}`,
+      ].join('\n'),
+    }));
+    const diagnostics = diagnosticsOfKind(scanResult, 'unresolved-module-import');
+    assert.equal(diagnostics.length, 1, fixture.name);
+    assert.equal(
+      diagnostics[0].message,
+      'cannot statically resolve Nest module import expression',
+      fixture.name,
+    );
+
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => scanResult,
+      stdout: (message: string) => stdout.push(message),
+      stderr: (message: string) => stderr.push(message),
+    }), 1, fixture.name);
+    assert.deepEqual(stdout, [], fixture.name);
+    assert.deepEqual(stderr, [
+      `${source}:${diagnostics[0].line} [unresolved-module-import] cannot statically resolve Nest module import expression`,
+    ], fixture.name);
+    for (const forbidden of fixture.forbidden) {
+      assert.equal(stderr[0].includes(forbidden), false, `${fixture.name}: ${forbidden}`);
+    }
+  }
+});
+
+test('other exit-one diagnostics expose only fixed reasons and safe repository paths', () => {
+  const domainSource = 'backend/src/modules/tasks/domain/exit1-domain.ts';
+  const domainResult = scanPorts(fixtureProject({
+    [domainSource]: [
+      "import value from '@nestjs/TOKEN=exit1-domain-secret';",
+      'export default value;',
+    ].join('\n'),
+  }));
+  const domainDiagnostics = diagnosticsOfKind(domainResult, 'domain-runtime-import');
+  assert.equal(domainDiagnostics.length, 1);
+  assert.equal(
+    domainDiagnostics[0].message,
+    'domain code cannot import Nest runtime or a foreign business context',
+  );
+
+  const cycleResult = scanPorts(fixtureProject({
+    'backend/src/cycle-safe/a.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { TOKEN_exit1_cycle_B } from './b.module';",
+      '@Module({ imports: [TOKEN_exit1_cycle_B] })',
+      'export class TOKEN_exit1_cycle_A {}',
+    ].join('\n'),
+    'backend/src/cycle-safe/b.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { TOKEN_exit1_cycle_A } from './a.module';",
+      '@Module({ imports: [TOKEN_exit1_cycle_A] })',
+      'export class TOKEN_exit1_cycle_B {}',
+    ].join('\n'),
+  }));
+  const cycleDiagnostics = diagnosticsOfKind(cycleResult, 'nest-module-cycle');
+  assert.equal(cycleDiagnostics.length, 1);
+  assert.equal(cycleDiagnostics[0].message, 'Nest module import cycle detected');
+  assert.equal(
+    cycleDiagnostics[0].cycle,
+    'backend/src/cycle-safe/a.module.ts -> backend/src/cycle-safe/b.module.ts -> backend/src/cycle-safe/a.module.ts',
+  );
+
+  for (const [result, forbidden] of [
+    [domainResult, ['TOKEN=exit1-domain-secret', '@nestjs/TOKEN']],
+    [cycleResult, ['TOKEN_exit1_cycle_A', 'TOKEN_exit1_cycle_B']],
+  ] as const) {
+    const output: string[] = [];
+    assert.equal(runCli({
+      argv: ['--check'],
+      scan: () => result,
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    }), 1);
+    for (const sourceText of forbidden) assert.equal(output.join('\n').includes(sourceText), false);
+  }
+
+  const injectedOutput: string[] = [];
+  assert.equal(runCli({
+    argv: ['--check'],
+    scan: () => ({
+      diagnostics: [{
+        kind: 'forward-ref',
+        path: 'backend/src/tasks/use.ts',
+        line: 7,
+        message: 'TOKEN=exit1-injected-secret file:///srv/private/exit1-injected.ts',
+      }],
+      counts: { forwardRef: 1, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+    }),
+    stdout: (message: string) => injectedOutput.push(message),
+    stderr: (message: string) => injectedOutput.push(message),
+  }), 1);
+  assert.deepEqual(injectedOutput, [
+    'backend/src/tasks/use.ts:7 [forward-ref] forwardRef resolved to @nestjs/common is forbidden',
+  ]);
 });
 
 test('a syntactically invalid TypeScript program fails the scan instead of producing a partial graph', () => {

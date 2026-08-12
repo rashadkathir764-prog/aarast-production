@@ -23,12 +23,12 @@ import {
   AdminPermission,
   hasAdminPermission,
 } from '../common/admin/admin-permissions';
-import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import {
   enqueueConversationAccessRevoked,
   enqueueUserSessionsRevoked,
 } from '../outbox/realtime-revocation';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AdminMutationExecutor } from './admin-mutation-executor';

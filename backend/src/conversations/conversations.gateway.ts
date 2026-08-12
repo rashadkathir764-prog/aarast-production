@@ -16,8 +16,8 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { resolveJwtSessionScope } from '../auth/access-token-scope';
 import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { toAuthenticatedUser } from '../auth/safe-user';
-import { getCorsOrigins } from '../common/config/cors-origins';
-import { PrismaService } from '../prisma/prisma.service';
+import { getCorsOrigins } from '../platform/config/cors-origins';
+import { PrismaService } from '../platform/database/prisma.service';
 import {
   conversationRoom,
   sessionRoom,

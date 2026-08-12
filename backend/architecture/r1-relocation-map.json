@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "dependencyRuleRenames": [
+    {
+      "from": "current-platform-no-business-contexts",
+      "to": "platform-no-business-contexts"
+    }
+  ],
+  "dependencyPrefixes": [
+    { "from": "src/common/config/", "to": "src/platform/config/" },
+    { "from": "src/common/filters/", "to": "src/platform/http/" },
+    { "from": "src/common/http/", "to": "src/platform/http/" },
+    { "from": "src/common/pagination/", "to": "src/platform/http/" },
+    { "from": "src/common/redis/", "to": "src/platform/redis/" },
+    { "from": "src/common/observability/", "to": "src/platform/observability/" },
+    { "from": "src/common/prisma/", "to": "src/platform/database/" },
+    { "from": "src/common/idempotency/", "to": "src/platform/idempotency/" },
+    { "from": "src/common/validation/money.ts", "to": "src/shared-kernel/money/money.ts" },
+    { "from": "src/common/phone/", "to": "src/shared-kernel/phone/" },
+    { "from": "src/common/privacy/", "to": "src/shared-kernel/privacy/" },
+    { "from": "src/common/time/", "to": "src/shared-kernel/time/" },
+    { "from": "src/common/admin/admin-permissions.ts", "to": "src/modules/backoffice/domain/admin-permissions.ts" },
+    { "from": "src/prisma/", "to": "src/platform/database/" },
+    { "from": "src/outbox/", "to": "src/platform/outbox/" },
+    { "from": "src/health.controller.ts", "to": "src/platform/health/health.controller.ts" },
+    { "from": "src/health/", "to": "src/platform/health/" },
+    { "from": "src/auth/openwa-otp-config.ts", "to": "src/platform/otp-transport/openwa-otp-config.ts" },
+    { "from": "src/auth/openwa-transient-text.ts", "to": "src/platform/otp-transport/openwa-transient-text.ts" },
+    { "from": "src/auth/whatsapp-otp-config.ts", "to": "src/platform/otp-transport/whatsapp-otp-config.ts" },
+    { "from": "src/users/application-user-identity.ts", "to": "src/shared-kernel/privacy/application-user-identity.ts" },
+    { "from": "src/admin/admin-privacy.ts", "to": "src/shared-kernel/privacy/admin-notification-privacy.ts" }
+  ],
+  "ownershipFilePrefixes": [
+    { "from": "backend/src/common/config/", "to": "backend/src/platform/config/" },
+    { "from": "backend/src/common/filters/", "to": "backend/src/platform/http/" },
+    { "from": "backend/src/common/http/", "to": "backend/src/platform/http/" },
+    { "from": "backend/src/common/pagination/", "to": "backend/src/platform/http/" },
+    { "from": "backend/src/common/redis/", "to": "backend/src/platform/redis/" },
+    { "from": "backend/src/common/observability/", "to": "backend/src/platform/observability/" },
+    { "from": "backend/src/common/prisma/", "to": "backend/src/platform/database/" },
+    { "from": "backend/src/common/idempotency/", "to": "backend/src/platform/idempotency/" },
+    { "from": "backend/src/prisma/", "to": "backend/src/platform/database/" },
+    { "from": "backend/src/outbox/", "to": "backend/src/platform/outbox/" },
+    { "from": "backend/src/health.controller.ts", "to": "backend/src/platform/health/health.controller.ts" },
+    { "from": "backend/src/health/", "to": "backend/src/platform/health/" }
+  ]
+}

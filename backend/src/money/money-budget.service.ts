@@ -7,8 +7,8 @@ import {
 import { Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { requiredMoneyAmount } from "../common/validation/money";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
-import { PrismaService } from "../prisma/prisma.service";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
 import {
   MoneyBudgetCategoryDto,

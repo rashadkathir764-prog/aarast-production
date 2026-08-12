@@ -5,7 +5,7 @@ import { AuthErrorCode, authError } from "../auth/auth-error";
 import { AuthService } from "../auth/auth.service";
 import { OtpDispatchContext } from "../auth/otp-dispatch-quota.service";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";
 import { VerifyInviteOtpDto } from "./dto/verify-invite-otp.dto";
 

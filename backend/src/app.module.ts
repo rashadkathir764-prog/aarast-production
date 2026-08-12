@@ -6,11 +6,11 @@ import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis"
 import { IdempotencyInterceptor } from "./common/idempotency/idempotency.interceptor";
 import { IdempotencyCleanupScheduler } from "./common/idempotency/idempotency-cleanup.scheduler";
 import { AdminAuditInterceptor } from "./admin/admin-audit.interceptor";
-import { MetricsController } from "./common/observability/metrics.controller";
-import { ResilientThrottlerStorage } from "./common/redis/resilient-throttler-storage";
-import { HealthController } from "./health.controller";
-import { READINESS_FETCH, ReadinessService } from "./health/readiness.service";
-import { PrismaModule } from "./prisma/prisma.module";
+import { MetricsController } from "./platform/observability/metrics.controller";
+import { ResilientThrottlerStorage } from "./platform/redis/resilient-throttler-storage";
+import { HealthController } from "./platform/health/health.controller";
+import { READINESS_FETCH, ReadinessService } from "./platform/health/readiness.service";
+import { PrismaModule } from "./platform/database/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { MeModule } from "./me/me.module";
 import { WeddingPlansModule } from "./wedding-plans/wedding-plans.module";

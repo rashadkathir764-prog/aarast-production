@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { PrismaService } from "../../prisma/prisma.service";
+import { PrismaService } from "../../platform/database/prisma.service";
 import {
   encodeStoredResponse,
   type ReplayMetadata,

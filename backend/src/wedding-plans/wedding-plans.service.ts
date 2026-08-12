@@ -26,13 +26,13 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   assertWeddingPlanWritable,
   PermissionService,

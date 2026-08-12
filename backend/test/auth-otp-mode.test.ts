@@ -9,8 +9,8 @@ import { AuthService } from '../src/auth/auth.service';
 import { RequestOtpDto } from '../src/auth/dto/request-otp.dto';
 import { VerifyOtpDto } from '../src/auth/dto/verify-otp.dto';
 import { getJwtSecret } from '../src/auth/jwt-secret';
-import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
-import { otpDeliveryOutcomesTotal } from '../src/common/observability/metrics';
+import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
+import { otpDeliveryOutcomesTotal } from '../src/platform/observability/metrics';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
 const safeOtpUnavailableMessage = 'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';

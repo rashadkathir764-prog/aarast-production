@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import test from 'node:test';
 import cors from 'cors';
 import express from 'express';
-import { getCorsOptions } from '../src/common/config/cors-options';
+import { getCorsOptions } from '../src/platform/config/cors-options';
 
 test('browser preflight allows the canonical PUT money-budget route', async () => {
   const previousNodeEnv = process.env.NODE_ENV;

@@ -5,11 +5,11 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import * as Sentry from '@sentry/node';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { getCorsOptions } from './common/config/cors-options';
-import { validateRuntimeEnvironment } from './common/config/runtime-environment';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { requestObservability } from './common/observability/request-observability.middleware';
-import { RedisIoAdapter } from './common/redis/redis-io.adapter';
+import { getCorsOptions } from './platform/config/cors-options';
+import { validateRuntimeEnvironment } from './platform/config/runtime-environment';
+import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
+import { requestObservability } from './platform/observability/request-observability.middleware';
+import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
 
 /**
  * Fail fast on broken configuration: a typo'd env var must stop the

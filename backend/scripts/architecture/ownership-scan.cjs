@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const utilTypes = require('node:util').types;
 const ts = require('typescript');
@@ -1776,12 +1777,73 @@ function writeLine(target, message) {
   else if (target && typeof target.write === 'function') target.write(`${message}\n`);
 }
 
+function pathInside(root, target) {
+  const relative = path.relative(root, target);
+  return relative !== ''
+    && relative !== '..'
+    && !relative.startsWith(`..${path.sep}`)
+    && !path.isAbsolute(relative);
+}
+
+function safeOutputPath(value, mustExist = false) {
+  if (!(typeof value === 'string'
+    && value.length > 0
+    && value.length <= MAX_REPOSITORY_PATH_LENGTH
+    && !/[\u0000-\u001f\u007f]/.test(value)
+    && path.isAbsolute(value)
+    && path.parse(value).root !== path.resolve(value))) {
+    throw new Error('ownership output path is invalid');
+  }
+  const lexicalRoot = path.resolve(os.tmpdir());
+  const realRoot = fs.realpathSync.native(lexicalRoot);
+  const output = path.resolve(value);
+  if (!pathInside(lexicalRoot, output)) throw new Error('ownership output escapes temp');
+  const segments = path.relative(lexicalRoot, output).split(path.sep);
+  let current = lexicalRoot;
+  for (let index = 0; index < segments.length; index += 1) {
+    current = path.join(current, segments[index]);
+    if (!fs.existsSync(current)) {
+      if (mustExist || index !== segments.length - 1) {
+        throw new Error('ownership output parent is missing');
+      }
+      continue;
+    }
+    if (fs.lstatSync(current).isSymbolicLink()) {
+      throw new Error('ownership output contains a link');
+    }
+  }
+  const realParent = fs.realpathSync.native(path.dirname(output));
+  if (realParent !== realRoot && !pathInside(realRoot, realParent)) {
+    throw new Error('ownership output parent escapes temp');
+  }
+  if (fs.existsSync(output)) {
+    const realOutput = fs.realpathSync.native(output);
+    if (!pathInside(realRoot, realOutput) || !fs.statSync(output).isFile()) {
+      throw new Error('ownership output is not a temp file');
+    }
+  } else if (mustExist) {
+    throw new Error('ownership output is missing');
+  }
+  return output;
+}
+
+function validAbsoluteOutputPath(value) {
+  try {
+    safeOutputPath(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function runCli(dependencies) {
   const argv = dependencies.argv || [];
-  if (
-    argv.length !== 1
-    || !['--check', '--write-baseline'].includes(argv[0])
-  ) {
+  const outputMode = argv[0] === '--output';
+  if (outputMode && (argv.length !== 2 || !validAbsoluteOutputPath(argv[1]))) {
+    writeLine(dependencies.stderr, 'ERROR - architecture ownership scan failed');
+    return 2;
+  }
+  if (!outputMode && (argv.length !== 1 || !['--check', '--write-baseline'].includes(argv[0]))) {
     writeLine(dependencies.stderr, 'usage: ownership-scan.cjs --check | --write-baseline');
     return 2;
   }
@@ -1790,17 +1852,25 @@ function runCli(dependencies) {
       dependencies.scan(),
       'ownership scan violations',
     );
+    const candidate = {
+      schemaVersion: SCHEMA_VERSION,
+      sourceRevision: SOURCE_REVISION,
+      violations: current,
+    };
+    validateBaseline(candidate);
+    if (outputMode) {
+      if (typeof dependencies.writeOutput !== 'function') {
+        throw new Error('candidate writer is unavailable');
+      }
+      dependencies.writeOutput(argv[1], candidate);
+      writeLine(dependencies.stdout, `ownership candidate written (${current.length} records)`);
+      return 0;
+    }
     if (argv[0] === '--write-baseline') {
       if (typeof dependencies.writeBaseline !== 'function') {
         throw new Error('baseline writer is unavailable');
       }
-      const baseline = {
-        schemaVersion: SCHEMA_VERSION,
-        sourceRevision: SOURCE_REVISION,
-        violations: current,
-      };
-      validateBaseline(baseline);
-      dependencies.writeBaseline(baseline);
+      dependencies.writeBaseline(candidate);
       writeLine(dependencies.stdout, `ownership baseline written (${current.length} records)`);
       return 0;
     }
@@ -1841,6 +1911,25 @@ function defaultDependencies(argv) {
       `${JSON.stringify(baseline, null, 2)}\n`,
       'utf8',
     ),
+    writeOutput: (target, baseline) => {
+      const authorizedTarget = safeOutputPath(target);
+      const temporary = `${authorizedTarget}.${process.pid}.${Date.now()}.tmp`;
+      try {
+        fs.writeFileSync(temporary, `${JSON.stringify(baseline, null, 2)}\n`, {
+          encoding: 'utf8',
+          flag: 'wx',
+        });
+        safeOutputPath(temporary, true);
+        safeOutputPath(authorizedTarget);
+        fs.renameSync(temporary, authorizedTarget);
+      } finally {
+        try {
+          fs.rmSync(temporary, { force: true });
+        } catch {
+          // The CLI reports only its fixed sanitized failure below.
+        }
+      }
+    },
     stdout: (message) => process.stdout.write(`${message}\n`),
     stderr: (message) => process.stderr.write(`${message}\n`),
   };

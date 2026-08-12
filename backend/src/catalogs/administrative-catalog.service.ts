@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { AdminPermission } from '../common/admin/admin-permissions';
 import { runAuthorizedAdminMutation } from '../admin/admin-mutation-gate';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import {
   AdminDistrictDto,
   AdminGovernorateDto,

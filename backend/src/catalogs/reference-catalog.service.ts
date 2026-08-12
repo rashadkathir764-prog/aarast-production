@@ -9,7 +9,7 @@ import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { AdminPermission } from '../common/admin/admin-permissions';
 import { runAuthorizedAdminMutation } from '../admin/admin-mutation-gate';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import { AdminCatalogItemDto } from './dto/admin-reference-catalog.dto';
 import {
   MONEY_STARTER_CATALOG_KEY,

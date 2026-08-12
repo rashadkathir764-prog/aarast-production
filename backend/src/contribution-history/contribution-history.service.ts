@@ -16,8 +16,8 @@ import {
   SharedMember,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
-import { PrismaService } from "../prisma/prisma.service";
+import { runRetryableTransaction } from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   livePlanAuthorizationWhere,
   PlanAccessContext,

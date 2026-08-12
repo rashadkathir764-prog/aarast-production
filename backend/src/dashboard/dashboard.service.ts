@@ -16,10 +16,10 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import type { ContributionHistorySummaryResponse } from "../contribution-history/contribution-history.contracts";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
+import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
 import { NotificationsService } from "../notifications/notifications.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   PermissionService,
   PlanAccessContext,

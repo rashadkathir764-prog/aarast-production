@@ -13,12 +13,12 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OutboxEventTypes } from '../outbox/outbox.constants';
 import { OutboxService } from '../outbox/outbox.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import {
   assertProviderOperational,
   isProviderOperational,

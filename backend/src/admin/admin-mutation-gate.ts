@@ -10,8 +10,8 @@ import {
   AdminPermission,
   hasAdminPermission,
 } from '../common/admin/admin-permissions';
-import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
-import { PrismaService } from '../prisma/prisma.service';
+import { runSerializableTransaction } from '../platform/database/serializable-transaction';
+import { PrismaService } from '../platform/database/prisma.service';
 
 export interface AuthorizedAdminMutationActor {
   id: string;

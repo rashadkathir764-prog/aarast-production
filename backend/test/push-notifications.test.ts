@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { NotificationType, PushPlatform, UserStatus } from "@prisma/client";
 import { PushDeliveryService } from "../src/push/push-delivery.service";
 import { PushInstallationsService } from "../src/push/push-installations.service";
-import { validateRuntimeEnvironment } from "../src/common/config/runtime-environment";
+import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import {
   isPushNotificationType,
   pushNotificationCopy,

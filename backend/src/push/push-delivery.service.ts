@@ -5,8 +5,8 @@ import {
   isPushNotificationType,
   pushNotificationCopy,
 } from "./push-notification.policy";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
-import { PrismaService } from "../prisma/prisma.service";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 
 const MAX_FCM_TARGETS = 500;
 const PUSH_TTL_MS = 7 * 24 * 60 * 60 * 1000;

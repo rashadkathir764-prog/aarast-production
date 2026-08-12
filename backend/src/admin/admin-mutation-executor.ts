@@ -14,7 +14,7 @@ import {
   lockProviderRatingRows,
   refreshProviderRating,
 } from '../marketplace/provider-review-rating';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import { runAuthorizedAdminMutation } from './admin-mutation-gate';
 import {
   toAdminNotificationResponse,

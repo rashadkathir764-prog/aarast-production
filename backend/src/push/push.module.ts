@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../platform/database/prisma.module";
 import { FirebasePushClient } from "./firebase-push.client";
 import { PushController } from "./push.controller";
 import { PushDeliveryService } from "./push-delivery.service";

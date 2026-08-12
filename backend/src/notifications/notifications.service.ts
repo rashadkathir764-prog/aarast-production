@@ -19,9 +19,9 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import { OutboxEventTypes } from "../outbox/outbox.constants";
 import { OutboxService } from "../outbox/outbox.service";
 import {

@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConversationRealtimeModule } from "../conversations/conversation-realtime.module";
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../platform/database/prisma.module";
 import { PushModule } from "../push/push.module";
 import { OutboxDispatcher } from "./outbox.dispatcher";
 import { OutboxCleanupScheduler } from "./outbox-cleanup.scheduler";

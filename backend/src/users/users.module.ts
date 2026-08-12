@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../platform/database/prisma.module";
 import { MediaModule } from "../media/media.module";
 import { SharingModule } from "../sharing/sharing.module";
 import { ConversationRealtimeModule } from "../conversations/conversation-realtime.module";

@@ -116,6 +116,24 @@ test('mixed legacy/future internal edges and platform-to-future edges fail', () 
   assert.match(output, /current-platform-no-business-contexts/);
 });
 
+test('mixed R1 platform roots enforce their phase-specific rules', () => {
+  const root = fixtureRoot();
+  const baseline = path.join(root, 'known.json');
+  write(root, 'src/planning/seed.ts', 'export const seed = true;\n');
+  const generated = cruise(root, [
+    '--config', configPath, '--output-type', 'baseline', '--output-to', baseline, 'src',
+  ]);
+  assert.equal(generated.status, 0, generated.stderr || generated.stdout);
+  write(root, 'src/auth/legacy.ts', 'export const legacy = true;\n');
+  write(root, 'src/common/legacy-platform.ts', "import '../auth/legacy';\n");
+  write(root, 'src/platform/final-platform.ts', "import '../auth/legacy';\n");
+  const result = cruise(root, ['--config', configPath, '--ignore-known', baseline, 'src']);
+  assert.notEqual(result.status, 0);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert.match(output, /current-platform-no-business-contexts/);
+  assert.match(output, /platform-no-business-contexts/);
+});
+
 test('shared kernel cannot import a legacy business context', () => {
   const root = fixtureRoot();
   const baseline = path.join(root, 'known.json');

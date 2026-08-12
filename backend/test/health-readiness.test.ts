@@ -4,15 +4,15 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { Module, ServiceUnavailableException } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { HealthController } from '../src/health.controller';
+import { HealthController } from '../src/platform/health/health.controller';
 import {
   dependencyRequired,
   READINESS_FETCH,
   ReadinessReport,
   ReadinessService,
-} from '../src/health/readiness.service';
+} from '../src/platform/health/readiness.service';
 import { MediaStorageService } from '../src/media/media-storage.service';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { PrismaService } from '../src/platform/database/prisma.service';
 
 const savedEnvironment = {
   NODE_ENV: process.env.NODE_ENV,

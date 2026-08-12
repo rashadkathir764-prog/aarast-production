@@ -4,7 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { ReadinessService } from './health/readiness.service';
+import { ReadinessService } from './readiness.service';
 
 @SkipThrottle()
 @Controller()

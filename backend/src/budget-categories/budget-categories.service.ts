@@ -20,8 +20,8 @@ import { requiredMoneyAmount } from "../common/validation/money";
 import {
   runRetryableTransaction,
   runSerializableTransaction,
-} from "../common/prisma/serializable-transaction";
-import { PrismaService } from "../prisma/prisma.service";
+} from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   PermissionService,
   type PlanAccessContext,

@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { IdempotencyCleanupScheduler } from '../src/common/idempotency/idempotency-cleanup.scheduler';
-import { metricsRegistry } from '../src/common/observability/metrics';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { metricsRegistry } from '../src/platform/observability/metrics';
+import { PrismaService } from '../src/platform/database/prisma.service';
 
 function idempotencyCleanupWithLock(locked: boolean) {
   let deleteCalls = 0;

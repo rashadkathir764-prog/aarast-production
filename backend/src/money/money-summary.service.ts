@@ -9,8 +9,8 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
-import { PrismaService } from "../prisma/prisma.service";
+import { runRetryableTransaction } from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   PermissionService,
   PlanAccessContext,

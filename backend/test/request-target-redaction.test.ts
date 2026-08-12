@@ -4,7 +4,7 @@ import {
   requestRouteTemplate,
   safeClientRequestId,
   sanitizeRequestTarget,
-} from '../src/common/observability/sanitize-request-target';
+} from '../src/platform/observability/sanitize-request-target';
 
 test('request targets redact invite tokens and sensitive query values', () => {
   const result = sanitizeRequestTarget(

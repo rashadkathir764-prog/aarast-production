@@ -5,8 +5,8 @@ const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
 
-const R0_GLOBAL_MODULES = new Set([
-  'backend/src/prisma/prisma.module.ts',
+const APPROVED_GLOBAL_MODULES = new Set([
+  'backend/src/platform/database/prisma.module.ts',
   'backend/src/conversations/conversation-realtime.module.ts',
 ]);
 
@@ -28,20 +28,33 @@ const BUSINESS_CONTEXTS = new Map([
 const LEGACY_ROOT_TO_CONTEXT = new Map(
   [...BUSINESS_CONTEXTS].flatMap(([context, roots]) => roots.map((root) => [root, context])),
 );
-const LEGACY_PLATFORM_ROOTS = new Set(['common', 'prisma', 'outbox', 'health']);
+const LEGACY_PLATFORM_ROOTS = new Set(['common', 'outbox']);
+const TRANSITIONAL_PLATFORM_BUSINESS_DEBT = new Set([
+  'backend/src/platform/config/runtime-environment.ts|backend/src/auth/jwt-secret.ts',
+  'backend/src/platform/config/runtime-environment.ts|backend/src/auth/openwa-otp-config.ts',
+  'backend/src/platform/config/runtime-environment.ts|backend/src/auth/whatsapp-otp-config.ts',
+  'backend/src/platform/health/readiness.service.ts|backend/src/auth/openwa-otp-config.ts',
+  'backend/src/platform/health/readiness.service.ts|backend/src/media/media-storage.service.ts',
+  'backend/src/platform/outbox/outbox.dispatcher.ts|backend/src/conversations/conversation-realtime.publisher.ts',
+  'backend/src/platform/outbox/outbox.dispatcher.ts|backend/src/push/push-delivery.service.ts',
+  'backend/src/platform/outbox/outbox.module.ts|backend/src/conversations/conversation-realtime.module.ts',
+  'backend/src/platform/outbox/outbox.module.ts|backend/src/push/push.module.ts',
+]);
 const ILLEGAL_IMPORT_KINDS = new Set([
   'non-public-cross-module-import',
   'domain-runtime-import',
   'platform-business-import',
+  'retired-platform-root',
   'shared-kernel-direction-import',
 ]);
 const DIAGNOSTIC_MESSAGES = Object.freeze({
   'forward-ref': 'forwardRef resolved to @nestjs/common is forbidden',
-  'unapproved-global': 'Global resolved to @nestjs/common is not in the exact R0 global set',
-  'missing-r0-global': 'required R0 Global decorator is missing',
+  'unapproved-global': 'Global resolved to @nestjs/common is not in the approved global set',
+  'missing-approved-global': 'required approved Global decorator is missing',
   'non-public-cross-module-import': 'cross-module import must target an allowed public slice',
   'domain-runtime-import': 'domain code cannot import Nest runtime or a foreign business context',
   'platform-business-import': 'platform cannot import business module code',
+  'retired-platform-root': 'retired platform root is forbidden',
   'shared-kernel-direction-import': 'shared-kernel cannot import platform or business code',
   'nest-module-cycle': 'Nest module import cycle detected',
   'unresolved-module-import': 'cannot statically resolve Nest module import expression',
@@ -228,7 +241,7 @@ function resolveModuleFile(moduleSpecifier, sourceFile, compilerOptions) {
 function declarationHasForbiddenDomainRuntime(declaration, symbol) {
   const file = normalizeFsPath(declaration.getSourceFile().fileName).toLowerCase();
   if (file.includes('/node_modules/@nestjs/')) return true;
-  if (!file.endsWith('/src/prisma/prisma.service.ts')) return false;
+  if (!file.endsWith('/src/platform/database/prisma.service.ts')) return false;
   return symbol.getName() === 'PrismaService'
     || Boolean(declaration.name && declaration.name.getText() === 'PrismaService');
 }
@@ -343,6 +356,8 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
         && target.kind === 'business'
         && (source.future || target.future)
       ) {
+        const edge = targetPath ? `${repositoryPath}|${targetPath}` : '';
+        if (TRANSITIONAL_PLATFORM_BUSINESS_DEBT.has(edge)) continue;
         diagnostics.push(diagnostic(
           'platform-business-import',
           repositoryPath,
@@ -638,6 +653,18 @@ function scanPorts(options) {
   const resolvedGlobals = new Set();
 
   for (const { sourceFile, repositoryPath } of files) {
+    if (
+      repositoryPath === 'backend/src/health.controller.ts'
+      || repositoryPath.startsWith('backend/src/health/')
+      || repositoryPath.startsWith('backend/src/prisma/')
+    ) {
+      diagnostics.push(diagnostic(
+        'retired-platform-root',
+        repositoryPath,
+        sourceFile,
+        null,
+      ));
+    }
     function visit(node) {
       if (
         ts.isCallExpression(node)
@@ -656,7 +683,7 @@ function scanPorts(options) {
         && isNestCommonSymbol(node.expression.expression, 'Global', checker)
       ) {
         resolvedGlobals.add(repositoryPath);
-        if (!R0_GLOBAL_MODULES.has(repositoryPath)) {
+        if (!APPROVED_GLOBAL_MODULES.has(repositoryPath)) {
           diagnostics.push(diagnostic(
             'unapproved-global',
             repositoryPath,
@@ -670,13 +697,13 @@ function scanPorts(options) {
     visit(sourceFile);
   }
 
-  for (const required of [...R0_GLOBAL_MODULES].sort()) {
+  for (const required of [...APPROVED_GLOBAL_MODULES].sort()) {
     if (!resolvedGlobals.has(required)) {
       diagnostics.push({
-        kind: 'missing-r0-global',
+        kind: 'missing-approved-global',
         path: required,
         line: 1,
-        message: DIAGNOSTIC_MESSAGES['missing-r0-global'],
+        message: DIAGNOSTIC_MESSAGES['missing-approved-global'],
       });
     }
   }
@@ -871,7 +898,7 @@ function defaultDependencies(argv) {
 }
 
 module.exports = {
-  R0_GLOBAL_MODULES,
+  APPROVED_GLOBAL_MODULES,
   scanPorts,
   runCli,
 };

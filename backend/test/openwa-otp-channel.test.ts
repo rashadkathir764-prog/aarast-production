@@ -6,7 +6,7 @@ import {
 } from '../src/auth/otp-channel';
 import { loadOpenWaOtpConfig } from '../src/auth/openwa-otp-config';
 import { OpenWaTransientDeliveryRejectedError } from '../src/auth/openwa-transient-text';
-import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
+import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();

@@ -6,7 +6,7 @@ import {
   toAdminNotificationPrivacyView,
 } from "../src/admin/admin-privacy";
 import { toReviewIdentity } from "../src/common/privacy/review-identity";
-import { safeTelemetryException } from "../src/common/filters/global-exception.filter";
+import { safeTelemetryException } from "../src/platform/http/global-exception.filter";
 import { UsersService } from "../src/users/users.service";
 
 test("review identity uses an allowlist that excludes contact details", () => {

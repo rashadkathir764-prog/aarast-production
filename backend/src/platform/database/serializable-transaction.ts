@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { PrismaService } from "../../prisma/prisma.service";
+import { PrismaService } from "./prisma.service";
 
 const DEFAULT_ATTEMPTS = 4;
 

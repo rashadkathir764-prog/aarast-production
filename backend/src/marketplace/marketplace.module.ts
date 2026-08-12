@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../platform/database/prisma.module";
 import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { SharingModule } from "../sharing/sharing.module";

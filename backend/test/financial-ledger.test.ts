@@ -31,7 +31,7 @@ test("the payment ledger is append-only and reversals stay in the same cost", ()
 
 test("cost and schedule balance changes lock rows and retry serialization failures", () => {
   const service = read("src/wedding-costs/wedding-costs.service.ts");
-  const retry = read("src/common/prisma/serializable-transaction.ts");
+  const retry = read("src/platform/database/serializable-transaction.ts");
   for (const method of [
     "createCost",
     "updateCost",

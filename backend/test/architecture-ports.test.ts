@@ -13,10 +13,11 @@ import { afterEach, test } from 'node:test';
 type DiagnosticKind =
   | 'forward-ref'
   | 'unapproved-global'
-  | 'missing-r0-global'
+  | 'missing-approved-global'
   | 'non-public-cross-module-import'
   | 'domain-runtime-import'
   | 'platform-business-import'
+  | 'retired-platform-root'
   | 'shared-kernel-direction-import'
   | 'nest-module-cycle'
   | 'unresolved-module-import';
@@ -127,7 +128,7 @@ function fixtureProject(
   ].join('\n'));
   if (options.includeGlobals !== false) {
     const style = options.globalStyle || 'direct';
-    const prismaPath = 'backend/src/prisma/prisma.module.ts';
+    const prismaPath = 'backend/src/platform/database/prisma.module.ts';
     const realtimePath = 'backend/src/conversations/conversation-realtime.module.ts';
     write(root, prismaPath, globalModule(style, 'PrismaModule', options.omitGlobalDecoratorFrom !== prismaPath));
     write(root, realtimePath, globalModule(
@@ -213,9 +214,9 @@ test('forwardRef const initializer alias chains are forbidden without homonym fa
   assert.equal(diagnosticsOfKind(local, 'forward-ref').length, 0);
 });
 
-test('the R0 global set is exact for direct, aliased, and namespace decorators', () => {
+test('the approved global set is exact for direct, aliased, and namespace decorators', () => {
   const allowed = [
-    'backend/src/prisma/prisma.module.ts',
+    'backend/src/platform/database/prisma.module.ts',
     'backend/src/conversations/conversation-realtime.module.ts',
   ];
   for (const style of ['direct', 'alias', 'namespace'] as const) {
@@ -230,20 +231,59 @@ test('the R0 global set is exact for direct, aliased, and namespace decorators',
     assert.deepEqual(diagnosticsOfKind(rogue, 'unapproved-global').map((item) => item.path), [
       'backend/src/auth/rogue-global.module.ts',
     ]);
+    assert.match(diagnosticsOfKind(rogue, 'unapproved-global')[0].message, /approved global set/);
+    assert.doesNotMatch(diagnosticsOfKind(rogue, 'unapproved-global')[0].message, /R0/);
 
     for (const missing of allowed) {
       const result = scanPorts(fixtureProject({}, {
         globalStyle: style,
         omitGlobalDecoratorFrom: missing,
       }));
-      assert.deepEqual(diagnosticsOfKind(result, 'missing-r0-global').map((item) => item.path), [missing]);
+      assert.deepEqual(diagnosticsOfKind(result, 'missing-approved-global').map((item) => item.path), [missing]);
     }
   }
 });
 
-test('Global const initializer alias chains preserve the exact R0 allowlist', () => {
+test('retired prisma and health roots cannot be reintroduced as directories or standalone files', () => {
   const result = scanPorts(fixtureProject({
-    'backend/src/prisma/prisma.module.ts': [
+    'backend/src/prisma/rogue.ts': "import '../auth/target';\n",
+    'backend/src/health/rogue.ts': 'export const rogue = true;\n',
+    'backend/src/health.controller.ts': 'export class LegacyHealthController {}\n',
+    'backend/src/auth/target.ts': 'export const target = true;\n',
+  }));
+  assert.deepEqual(diagnosticsOfKind(result, 'retired-platform-root').map((item) => item.path), [
+    'backend/src/health.controller.ts',
+    'backend/src/health/rogue.ts',
+    'backend/src/prisma/rogue.ts',
+  ]);
+  assert.equal(result.counts.illegalFutureImports, 3);
+});
+
+test('runCli validates retired-root diagnostics through the fixed non-reflective catalog', () => {
+  const output: string[] = [];
+  const exitCode = runCli({
+    argv: ['--check'],
+    scan: () => ({
+      diagnostics: [{
+        kind: 'retired-platform-root',
+        path: 'backend/src/prisma/rogue.ts',
+        line: 1,
+        message: 'TOKEN=untrusted-message',
+      }],
+      counts: { forwardRef: 0, globals: 2, illegalFutureImports: 1, nestModuleCycles: 0 },
+    }),
+    stdout: (message) => output.push(message),
+    stderr: (message) => output.push(message),
+  });
+  assert.equal(exitCode, 1);
+  assert.deepEqual(output, [
+    'backend/src/prisma/rogue.ts:1 [retired-platform-root] retired platform root is forbidden',
+  ]);
+});
+
+test('Global const initializer alias chains preserve the exact approved allowlist', () => {
+  const result = scanPorts(fixtureProject({
+    'backend/src/platform/database/prisma.module.ts': [
       "import * as Nest from '@nestjs/common';",
       'const first = Nest.Global;',
       'const hiddenGlobal = first;',
@@ -356,6 +396,20 @@ test('legacy and future platform code cannot reach future business modules and f
   }
 });
 
+test('only the exact documented transitional platform debt is deferred to the dependency baseline', () => {
+  const exact = scanPorts(fixtureProject({
+    'backend/src/platform/config/runtime-environment.ts': "import { getJwtSecret } from '../../auth/jwt-secret';\nexport const value = getJwtSecret;\n",
+    'backend/src/auth/jwt-secret.ts': 'export const getJwtSecret = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(exact, 'platform-business-import').length, 0);
+
+  const nearMiss = scanPorts(fixtureProject({
+    'backend/src/platform/config/other.ts': "import { getJwtSecret } from '../../auth/jwt-secret';\nexport const value = getJwtSecret;\n",
+    'backend/src/auth/jwt-secret.ts': 'export const getJwtSecret = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(nearMiss, 'platform-business-import').length, 1);
+});
+
 test('future domain code cannot import Nest runtime, PrismaService, or another business module', () => {
   const nest = scanSingle({
     'backend/src/modules/tasks/domain/nest.ts': "import { Module } from '@nestjs/common';\nexport const value = Module;\n",
@@ -363,8 +417,8 @@ test('future domain code cannot import Nest runtime, PrismaService, or another b
   assert.equal(nest.length, 1);
 
   const prisma = scanSingle({
-    'backend/src/modules/tasks/domain/prisma.ts': "import { PrismaService } from '../../../prisma/prisma.service';\nexport type Value = PrismaService;\n",
-    'backend/src/prisma/prisma.service.ts': 'export class PrismaService {}\n',
+    'backend/src/modules/tasks/domain/prisma.ts': "import { PrismaService } from '../../../platform/database/prisma.service';\nexport type Value = PrismaService;\n",
+    'backend/src/platform/database/prisma.service.ts': 'export class PrismaService {}\n',
   }, 'domain-runtime-import');
   assert.equal(prisma.length, 1);
 
@@ -381,18 +435,18 @@ test('future domain code traces PrismaService through named and namespace barrel
       name: 'named import',
       source: 'backend/src/modules/tasks/domain/named-prisma.ts',
       files: {
-        'backend/src/modules/tasks/domain/named-prisma.ts': "import { PrismaService } from '../../../prisma';\nexport type Database = PrismaService;\n",
-        'backend/src/prisma/index.ts': "export { PrismaService } from './prisma.service';\n",
-        'backend/src/prisma/prisma.service.ts': 'export class PrismaService {}\n',
+        'backend/src/modules/tasks/domain/named-prisma.ts': "import { PrismaService } from '../../../platform/database';\nexport type Database = PrismaService;\n",
+        'backend/src/platform/database/index.ts': "export { PrismaService } from './prisma.service';\n",
+        'backend/src/platform/database/prisma.service.ts': 'export class PrismaService {}\n',
       },
     },
     {
       name: 'namespace import',
       source: 'backend/src/modules/tasks/domain/namespace-prisma.ts',
       files: {
-        'backend/src/modules/tasks/domain/namespace-prisma.ts': "import * as Database from '../../../prisma';\nexport type DatabaseService = typeof Database.PrismaService;\n",
-        'backend/src/prisma/index.ts': "export { PrismaService } from './prisma.service';\n",
-        'backend/src/prisma/prisma.service.ts': 'export class PrismaService {}\n',
+        'backend/src/modules/tasks/domain/namespace-prisma.ts': "import * as Database from '../../../platform/database';\nexport type DatabaseService = typeof Database.PrismaService;\n",
+        'backend/src/platform/database/index.ts': "export { PrismaService } from './prisma.service';\n",
+        'backend/src/platform/database/prisma.service.ts': 'export class PrismaService {}\n',
       },
     },
   ];
@@ -1089,6 +1143,6 @@ test('the real CLI never reflects TypeChecker alias resolution failures', () => 
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 2);
   assert.equal(result.stderr.trim(), 'ERROR - architecture ports scan failed');
-  assert.doesNotMatch(output, /PASS - architecture ports|\[missing-r0-global\]/);
+  assert.doesNotMatch(output, /PASS - architecture ports|\[missing-approved-global\]/);
   assert.doesNotMatch(output, /ports-attacker-message|example\.test|ports-real|file:|malformed|attacker-sentinel|ports-real-secret|stack detail|\n\s*at\s+/i);
 });

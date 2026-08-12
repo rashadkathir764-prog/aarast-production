@@ -9,7 +9,7 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   livePlanAuthorizationWhere,
   PermissionService,

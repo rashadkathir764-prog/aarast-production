@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdminGuard } from '../admin/admin.guard';
 import { AdminPermissionGuard } from '../admin/admin-permission.guard';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../platform/database/prisma.module';
 import { AdministrativeCatalogService } from './administrative-catalog.service';
 import {
   AdminAdministrativeCatalogController,

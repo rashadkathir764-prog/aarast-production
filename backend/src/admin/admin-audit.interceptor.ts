@@ -20,8 +20,8 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import {
   requestRouteTemplate,
   safeClientRequestId,
-} from '../common/observability/sanitize-request-target';
-import { PrismaService } from '../prisma/prisma.service';
+} from '../platform/observability/sanitize-request-target';
+import { PrismaService } from '../platform/database/prisma.service';
 
 interface AdminAuditRequest {
   baseUrl?: string;

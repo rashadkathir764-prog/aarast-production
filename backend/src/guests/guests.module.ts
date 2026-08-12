@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../platform/database/prisma.module";
 import { SharingModule } from "../sharing/sharing.module";
 import {
   GuestGroupsController,

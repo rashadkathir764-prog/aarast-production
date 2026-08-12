@@ -17,7 +17,7 @@ import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 import { UserLookupDto } from "./dto/user-lookup.dto";
 import { UsersService } from "./users.service";
-import { safeClientRequestId } from "../common/observability/sanitize-request-target";
+import { safeClientRequestId } from "../platform/observability/sanitize-request-target";
 
 @Controller("api/v1/users")
 @UseGuards(JwtAuthGuard)

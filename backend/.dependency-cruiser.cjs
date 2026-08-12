@@ -38,7 +38,7 @@ const currentPlatformRule = {
   name: 'current-platform-no-business-contexts',
   comment: 'R0 baseline freezes current imports from platform roots into business contexts',
   severity: 'error',
-  from: { path: '^src/(?:common|prisma|outbox|health)(?:/|$)' },
+  from: { path: '^src/(?:common|outbox)(?:/|$)' },
   to: { path: `^src/(?:${allBusinessPaths})(?:/|$)` },
 };
 

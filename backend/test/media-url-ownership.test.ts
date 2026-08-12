@@ -13,7 +13,7 @@ import {
 } from "../src/media/media-upload-policy";
 import { UsersService } from "../src/users/users.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
-import { validateRuntimeEnvironment } from "../src/common/config/runtime-environment";
+import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import { createStrongRuntimeJwtSecret } from "./support/runtime-secrets";
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();

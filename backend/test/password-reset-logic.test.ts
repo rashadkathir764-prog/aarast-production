@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { AuthSessionScope, OtpPurpose } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from '../src/auth/auth.service';
-import { otpVerificationsTotal } from '../src/common/observability/metrics';
+import { otpVerificationsTotal } from '../src/platform/observability/metrics';
 
 async function otpOutcomeCount(outcome: string): Promise<number> {
   const metric = await otpVerificationsTotal.get();

@@ -12,7 +12,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,

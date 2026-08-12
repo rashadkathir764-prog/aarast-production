@@ -4,7 +4,7 @@ import {
   OpenWaTransientDeliveryUncertainError,
   sendOpenWaTransientText,
 } from '../auth/openwa-transient-text';
-import { invitationDeliveryOutcomesTotal } from '../common/observability/metrics';
+import { invitationDeliveryOutcomesTotal } from '../platform/observability/metrics';
 
 export type InvitationDeliveryStatus =
   | 'DELIVERED'

@@ -13,7 +13,7 @@ import { PhoneNormalizer } from "../src/common/phone/phone-normalizer";
 import {
   ResilientThrottlerStorage,
   throttlerStorageFailureType,
-} from "../src/common/redis/resilient-throttler-storage";
+} from "../src/platform/redis/resilient-throttler-storage";
 import {
   endOfRiyadhDay,
   startOfRiyadhDay,

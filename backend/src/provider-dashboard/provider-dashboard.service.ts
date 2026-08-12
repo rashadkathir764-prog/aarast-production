@@ -28,7 +28,7 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { toReviewIdentity } from '../common/privacy/review-identity';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
-import { runSerializableTransaction } from '../common/prisma/serializable-transaction';
+import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import {
   optionalMoneyAmount,
   requiredMoneyAmount,
@@ -47,7 +47,7 @@ import {
 } from '../marketplace/quote-notifications';
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import { assertWeddingPlanWritable } from '../sharing/permission.service';
 import {
   applicationNameFields,

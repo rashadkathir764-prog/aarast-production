@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import * as exceptionFilter from "../src/common/filters/global-exception.filter";
+import * as exceptionFilter from "../src/platform/http/global-exception.filter";
 
 const shouldReportHttpException = (exceptionFilter as {
   shouldReportHttpException?: (route: string, status: number) => boolean;

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -63,6 +65,8 @@ const {
     argv: string[];
     scan: () => OwnershipRecord[];
     readBaseline: () => { schemaVersion: number; sourceRevision: string; violations: OwnershipRecord[] };
+    writeBaseline?: (value: unknown) => void;
+    writeOutput?: (target: string, value: unknown) => void;
     stdout: (message: string) => void;
     stderr: (message: string) => void;
   }) => number;
@@ -207,6 +211,7 @@ function captureOwnershipCli(options: {
   scan?: unknown;
   saved?: unknown;
   writeBaseline?: (value: unknown) => void;
+  writeOutput?: (target: string, value: unknown) => void;
 }) {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -215,6 +220,7 @@ function captureOwnershipCli(options: {
     scan: () => options.scan ?? [],
     readBaseline: () => options.saved ?? ownershipBaseline(),
     writeBaseline: options.writeBaseline,
+    writeOutput: options.writeOutput,
     stdout: (message: string) => stdout.push(message),
     stderr: (message: string) => stderr.push(message),
   };
@@ -1448,6 +1454,82 @@ test('ownership baseline writer validates atomically and preserves the canonical
   assert.equal(invalidWriteCalled, false);
   assert.deepEqual(invalid.stdout, []);
   assert.deepEqual(invalid.stderr, ['ERROR - architecture ownership scan failed']);
+});
+
+test('ownership output mode writes the canonical candidate to an absolute OS-temp path', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-output-'));
+  fixtureRoots.push(root);
+  const outputPath = path.join(root, 'ownership-candidate.json');
+  const safe = violation();
+  let written: { target: string; value: unknown } | undefined;
+  const result = captureOwnershipCli({
+    argv: ['--output', outputPath],
+    scan: [safe],
+    writeOutput: (target, value) => { written = { target, value }; },
+  });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(result.stderr, []);
+  assert.deepEqual(result.stdout, ['ownership candidate written (1 records)']);
+  assert.deepEqual(written, {
+    target: outputPath,
+    value: ownershipBaseline([safe]),
+  });
+});
+
+test('ownership output mode rejects invalid paths and write failures atomically with sanitized exit 2', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-output-failure-'));
+  fixtureRoots.push(root);
+  const outputPath = path.join(root, 'ownership-candidate.json');
+  const safe = violation();
+  let writes = 0;
+  for (const argv of [
+    ['--output'],
+    ['--output', 'relative.json'],
+    ['--output', path.join(backendRoot, 'ownership-candidate.json')],
+    ['--output', outputPath, '--output', outputPath],
+    ['--output', `${outputPath}\u0000TOKEN=secret`],
+  ]) {
+    const result = captureOwnershipCli({
+      argv,
+      scan: [safe],
+      writeOutput: () => { writes += 1; },
+    });
+    assert.equal(result.exitCode, 2);
+    assert.deepEqual(result.stdout, []);
+    assert.deepEqual(result.stderr, ['ERROR - architecture ownership scan failed']);
+  }
+  assert.equal(writes, 0);
+
+  const writeFailure = captureOwnershipCli({
+    argv: ['--output', outputPath],
+    scan: [safe],
+    writeOutput: () => {
+      writes += 1;
+      throw new Error('TOKEN=write-secret C:/private/ownership.json');
+    },
+  });
+  assert.equal(writeFailure.exitCode, 2);
+  assert.equal(writes, 1);
+  assert.deepEqual(writeFailure.stdout, []);
+  assert.deepEqual(writeFailure.stderr, ['ERROR - architecture ownership scan failed']);
+});
+
+test('the real ownership output rejects an OS-temp junction escape without writing outside temp', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-junction-'));
+  const outside = mkdtempSync(path.join(backendRoot, '.ownership-output-outside-'));
+  fixtureRoots.push(root, outside);
+  const junction = path.join(root, 'junction');
+  symlinkSync(outside, junction, 'junction');
+  const outputPath = path.join(junction, 'candidate.json');
+  const result = spawnSync(
+    process.execPath,
+    ['scripts/architecture/ownership-scan.cjs', '--output', outputPath],
+    { cwd: backendRoot, encoding: 'utf8', windowsHide: true },
+  );
+  assert.equal(result.status, 2);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr.trim(), 'ERROR - architecture ownership scan failed');
+  assert.equal(existsSync(path.join(outside, 'candidate.json')), false);
 });
 
 test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {

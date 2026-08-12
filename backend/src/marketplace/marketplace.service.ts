@@ -25,9 +25,9 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { NotificationsService } from "../notifications/notifications.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   livePlanAuthorizationWhere,
   PermissionService,

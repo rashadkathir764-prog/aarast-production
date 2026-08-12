@@ -7,7 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import { otpDeliveryUnavailableError } from './auth-error';
 
 export interface OtpDispatchContext {

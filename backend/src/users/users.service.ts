@@ -19,7 +19,7 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
+import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { MediaStorageService } from "../media/media-storage.service";
 import { enqueueUserSessionsRevoked } from "../outbox/realtime-revocation";
@@ -28,7 +28,7 @@ import {
   lockProviderRatingRows,
   refreshProviderRating,
 } from "../marketplace/provider-review-rating";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
 import {
   applicationNameFields,

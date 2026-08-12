@@ -5,7 +5,7 @@ import {
   OpenWaTransientDeliveryUncertainError,
   sendOpenWaTransientText,
 } from './openwa-transient-text';
-import { readBoundedJson } from '../common/http/bounded-json-response';
+import { readBoundedJson } from '../platform/http/bounded-json-response';
 
 export interface OtpDeliveryResult {
   delivery: 'LOCAL_DEV' | 'WHATSAPP';

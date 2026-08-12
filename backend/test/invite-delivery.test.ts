@@ -6,7 +6,7 @@ import { afterEach, test } from "node:test";
 import { HttpException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { AuthErrorCode } from "../src/auth/auth-error";
-import { invitationDeliveryOutcomesTotal } from "../src/common/observability/metrics";
+import { invitationDeliveryOutcomesTotal } from "../src/platform/observability/metrics";
 import { InviteAccessService } from "../src/sharing/invite-access.service";
 import {
   buildInvitationMessage,

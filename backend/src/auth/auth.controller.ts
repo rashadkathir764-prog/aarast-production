@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import type { Request, Response } from "express";
-import { isProductionEnvironment } from "../common/config/runtime-environment";
+import { isProductionEnvironment } from "../platform/config/runtime-environment";
 import { AuthService } from "./auth.service";
 import { RegisterDto } from "./dto/register.dto";
 import { CompleteRegistrationDto } from "./dto/complete-registration.dto";

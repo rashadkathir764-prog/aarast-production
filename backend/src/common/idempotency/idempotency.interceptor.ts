@@ -17,11 +17,11 @@ import {
   switchMap,
   throwError,
 } from 'rxjs';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../platform/database/prisma.service';
 import {
   requestRouteTemplate,
   safeClientRequestId,
-} from '../observability/sanitize-request-target';
+} from '../../platform/observability/sanitize-request-target';
 
 interface RequestLike {
   baseUrl?: string;

@@ -20,13 +20,13 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { ListQueryDto, pageArgs } from "../common/pagination/list-query.dto";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
   livePlanAuthorizationWhere,

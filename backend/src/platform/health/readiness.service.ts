@@ -1,9 +1,9 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
-import { MediaStorageService } from '../media/media-storage.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { loadOpenWaOtpConfig } from '../auth/openwa-otp-config';
-import { readBoundedJson } from '../common/http/bounded-json-response';
+import { MediaStorageService } from '../../media/media-storage.service';
+import { PrismaService } from '../database/prisma.service';
+import { loadOpenWaOtpConfig } from '../../auth/openwa-otp-config';
+import { readBoundedJson } from '../http/bounded-json-response';
 
 export type DependencyState = 'up' | 'down' | 'disabled';
 

@@ -20,10 +20,10 @@ import {
   otpDeliveryOutcomesTotal,
   otpRequestsTotal,
   otpVerificationsTotal,
-} from "../common/observability/metrics";
+} from "../platform/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
-import { PrismaService } from "../prisma/prisma.service";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 import { RegisterDto } from "./dto/register.dto";
 import { CompleteRegistrationDto } from "./dto/complete-registration.dto";
 import { LoginDto } from "./dto/login.dto";

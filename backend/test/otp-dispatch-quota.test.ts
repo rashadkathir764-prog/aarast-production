@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { HttpException } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Module } from '@nestjs/common';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { PrismaService } from '../src/platform/database/prisma.service';
 import {
   OTP_DISPATCH_NOW,
   OtpDispatchQuotaService,

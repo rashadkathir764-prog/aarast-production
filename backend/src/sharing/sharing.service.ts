@@ -27,16 +27,16 @@ import {
 } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { invitationDeliveryPersistenceFailuresTotal } from "../common/observability/metrics";
+import { invitationDeliveryPersistenceFailuresTotal } from "../platform/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { canonicalPlanContextKey } from "../contexts/context-key";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { NotificationsService } from "../notifications/notifications.service";
 import { enqueueConversationAccessRevoked } from "../outbox/realtime-revocation";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   ApplicationNameSource,
   applicationDisplayName,

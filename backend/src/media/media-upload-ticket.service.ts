@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { MediaUploadStatus, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../platform/database/prisma.service';
 import { assertActiveMutationActorForUpdateInTransaction } from '../users/user-lifecycle-lock';
 import { MediaPurpose } from './media-upload-policy';
 

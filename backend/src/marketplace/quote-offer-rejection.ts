@@ -11,10 +11,10 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
-import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
 import {
   assertQuoteRequestTransition,

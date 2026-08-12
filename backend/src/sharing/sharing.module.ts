@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
 import { NotificationsModule } from "../notifications/notifications.module";
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../platform/database/prisma.module";
 import { PermissionService } from "./permission.service";
 import {
   ApiV1InviteAcceptController,

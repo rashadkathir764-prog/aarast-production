@@ -20,13 +20,13 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import { paymentsRecordedTotal } from "../common/observability/metrics";
+import { paymentsRecordedTotal } from "../platform/observability/metrics";
 import {
   runRetryableTransaction,
   runSerializableTransaction,
-} from "../common/prisma/serializable-transaction";
+} from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../common/validation/money";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   PermissionService,
   type PlanAccessContext,

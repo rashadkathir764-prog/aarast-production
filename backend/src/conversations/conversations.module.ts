@@ -3,7 +3,7 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { MediaModule } from '../media/media.module';
 import { OutboxModule } from '../outbox/outbox.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../platform/database/prisma.module';
 import {
   ConversationsController,
   QuoteRequestConversationsController,

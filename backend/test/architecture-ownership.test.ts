@@ -289,6 +289,129 @@ test('delegate roots use generated symbols and classify local and foreign access
   });
 });
 
+test('Prisma static element access and proven delegate aliases cannot bypass ownership', () => {
+  const options = fixtureProject({
+    'money/element-method.ts': prismaFixture(
+      'await prisma.user[\'findMany\']({ where: { id: "u" } });',
+    ),
+    'money/element-root.ts': prismaFixture(
+      'await prisma[\'weddingPlan\'].findMany({ where: { id: "p" } });',
+    ),
+    'money/const-delegate.ts': prismaFixture([
+      'const delegate = prisma.user;',
+      'await delegate.findMany({ where: { id: "u" } });',
+    ].join('\n')),
+    'money/destructured-delegate.ts': prismaFixture([
+      'const { chatMessage } = prisma;',
+      'await chatMessage.findMany({ where: { id: "m" } });',
+    ].join('\n')),
+    'admin/raw-alias.ts': prismaFixture([
+      'const raw = prisma[\'$queryRawUnsafe\'];',
+      'await raw(\'SELECT * FROM "WeddingPlan"\');',
+    ].join('\n')),
+    'admin/raw-element.ts': prismaFixture(
+      'await prisma[\'$queryRawUnsafe\'](\'SELECT * FROM "Conversation"\');',
+    ),
+    'admin/destructured-raw-alias.ts': prismaFixture([
+      'const { $queryRawUnsafe: raw } = prisma;',
+      'await raw(\'SELECT * FROM "ChatMessage"\');',
+    ].join('\n')),
+  });
+
+  assertExactRecords(scanOwnershipViolations(options), [
+    {
+      file: 'backend/src/admin/destructured-raw-alias.ts', model: 'ChatMessage', owner: 'messaging',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/raw-alias.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/admin/raw-element.ts', model: 'Conversation', owner: 'messaging',
+      operation: 'select', mode: 'read', source: 'sql', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/money/const-delegate.ts', model: 'User', owner: 'identity',
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/money/destructured-delegate.ts', model: 'ChatMessage', owner: 'messaging',
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/money/element-method.ts', model: 'User', owner: 'identity',
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/money/element-root.ts', model: 'WeddingPlan', owner: 'planning',
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
+    },
+  ]);
+});
+
+test('proven Prisma dynamic accesses fail closed while local homonyms and alias cycles do not', () => {
+  const options = fixtureProject({
+    'auth/dynamic-method.ts': prismaFixture(
+      'declare const operation: string; await prisma.user[operation]({});',
+    ),
+    'auth/dynamic-root.ts': prismaFixture(
+      'declare const delegateName: string; await prisma[delegateName].findMany({});',
+    ),
+    'auth/dynamic-delegate-alias.ts': prismaFixture([
+      'declare const delegateName: string;',
+      'const dynamicDelegate = prisma[delegateName];',
+      'await dynamicDelegate.findMany({});',
+    ].join('\n')),
+    'auth/dynamic-method-alias.ts': prismaFixture([
+      'declare const operation: string;',
+      'const dynamicMethod = prisma.user[operation];',
+      'await dynamicMethod({});',
+    ].join('\n')),
+    'auth/dynamic-raw-alias.ts': prismaFixture([
+      'declare const operation: string;',
+      'const dynamicRaw = prisma[operation];',
+      'await dynamicRaw(\'SELECT * FROM "User"\');',
+    ].join('\n')),
+    'auth/local-homonyms.ts': [
+      'const local = {',
+      '  user: { findMany: async () => [] },',
+      '  $queryRawUnsafe: async (_sql: string) => [],',
+      '};',
+      'const delegate = local.user;',
+      'const raw = local[\'$queryRawUnsafe\'];',
+      'void delegate[\'findMany\']();',
+      'void raw(\'SELECT * FROM "WeddingPlan"\');',
+      'const first = second;',
+      'const second = first;',
+      'void first.findMany();',
+    ].join('\n'),
+  });
+
+  assertExactRecords(scanOwnershipViolations(options), [
+    {
+      file: 'backend/src/auth/dynamic-delegate-alias.ts', model: '<dynamic>', owner: null,
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'unknown-model', count: 1,
+    },
+    {
+      file: 'backend/src/auth/dynamic-method.ts', model: 'User', owner: 'identity',
+      operation: 'dynamic', mode: 'unknown', source: 'delegate', reason: 'unknown-operation', count: 1,
+    },
+    {
+      file: 'backend/src/auth/dynamic-method-alias.ts', model: 'User', owner: 'identity',
+      operation: 'dynamic', mode: 'unknown', source: 'delegate', reason: 'unknown-operation', count: 1,
+    },
+    {
+      file: 'backend/src/auth/dynamic-raw-alias.ts', model: '<dynamic>', owner: null,
+      operation: 'dynamic', mode: 'unknown', source: 'sql', reason: 'unknown-operation', count: 1,
+    },
+    {
+      file: 'backend/src/auth/dynamic-root.ts', model: '<dynamic>', owner: null,
+      operation: 'findMany', mode: 'read', source: 'delegate', reason: 'unknown-model', count: 1,
+    },
+  ]);
+});
+
 test('nested delegate calls inside Prisma arguments and SQL interpolations are counted once', () => {
   const options = fixtureProject({
     'money/nested-delegates.ts': prismaFixture([
@@ -828,6 +951,31 @@ test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {
   assert.equal(runCli({ ...dependencies, argv: ['--wat'] }), 2);
 });
 
+test('ownership CLI sanitizes POSIX, drive, UNC, and extended Windows paths', () => {
+  const failures = [
+    'scan failed at /srv/private/ownership-posix.ts',
+    'scan failed at C:\\private\\ownership-drive.ts',
+    'scan failed at \\\\ownership-server\\private\\ownership-unc.ts',
+    'scan failed at \\\\?\\C:\\private\\ownership-extended-drive.ts',
+    'scan failed at \\\\?\\UNC\\ownership-server\\private\\ownership-extended-unc.ts',
+  ];
+  for (const failure of failures) {
+    const output: string[] = [];
+    const exitCode = runCli({
+      argv: ['--check'],
+      scan: () => { throw new Error(`${failure}\rstack detail`); },
+      readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    });
+    assert.equal(exitCode, 2);
+    const message = output.join('\n');
+    assert.match(message, /^architecture ownership error:/);
+    assert.doesNotMatch(message, /ownership-(?:posix|drive|unc|extended)|ownership-server|stack detail/i);
+    assert.doesNotMatch(message, /(?:^|\s)(?:\/|[A-Za-z]:[\\/]|\\\\(?:\?|[^\\]))/);
+  }
+});
+
 test('baseline validation rejects invalid fields and sensitive strings with sanitized errors', () => {
   const base: OwnershipRecord = {
     file: 'backend/src/money/x.ts', context: 'finance', owner: 'planning', model: 'WeddingPlan',
@@ -916,4 +1064,31 @@ test('the real wrapper rejects unknown arguments without absolute paths or stack
   assert.equal(result.status, 2, result.stderr || result.stdout);
   assert.doesNotMatch(result.stderr, new RegExp(repoRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   assert.doesNotMatch(result.stderr, /\n\s+at\s/);
+});
+
+test('the real ownership CLI sanitizes scanner failures without repository fixtures', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-cli-error-'));
+  fixtureRoots.push(root);
+  const preload = path.join(root, 'throwing-program.cjs');
+  const failureMessage = '\\\\?\\UNC\\ownership-server\\private\\ownership-real.ts\nstack detail';
+  writeFileSync(preload, [
+    "const Module = require('node:module');",
+    'const originalLoad = Module._load;',
+    'Module._load = function patchedLoad(request, parent, isMain) {',
+    '  const loaded = originalLoad.call(this, request, parent, isMain);',
+    "  if (request !== 'typescript') return loaded;",
+    `  return { ...loaded, createProgram() { throw new Error(${JSON.stringify(failureMessage)}); } };`,
+    '};',
+  ].join('\n'), 'utf8');
+
+  const cli = path.join(backendRoot, 'scripts', 'architecture', 'ownership-scan.cjs');
+  const result = spawnSync(process.execPath, ['-r', preload, cli, '--check'], {
+    cwd: backendRoot,
+    encoding: 'utf8',
+  });
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert.equal(result.status, 2, output);
+  assert.match(result.stderr, /architecture ownership error:/);
+  assert.doesNotMatch(output, /ownership-server|ownership-real|stack detail|\\\\\?\\UNC/i);
+  assert.doesNotMatch(output, /\n\s*at\s+/);
 });

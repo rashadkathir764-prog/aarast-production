@@ -153,7 +153,7 @@ afterEach(() => {
 });
 
 test('forwardRef is forbidden through direct, aliased, and namespace imports', () => {
-  const fixtures = [
+  const fixtures: string[] = [
     "import { forwardRef } from '@nestjs/common';\nforwardRef(() => class Target {});\n",
     "import { forwardRef as nestForwardRef } from '@nestjs/common';\nnestForwardRef(() => class Target {});\n",
     "import * as Nest from '@nestjs/common';\nNest.forwardRef(() => class Target {});\n",
@@ -164,6 +164,53 @@ test('forwardRef is forbidden through direct, aliased, and namespace imports', (
     assert.equal(diagnostics[0].path, 'backend/src/tasks/forward.ts');
     assert.match(diagnostics[0].message, /@nestjs\/common/);
   }
+});
+
+test('forwardRef const initializer alias chains are forbidden without homonym false positives', () => {
+  const fixtures: Record<string, string>[] = [
+    {
+      'backend/src/tasks/hidden-forward.ts': [
+        "import { forwardRef } from '@nestjs/common';",
+        'const first = forwardRef;',
+        'const hiddenForward = first;',
+        'hiddenForward(() => class Target {});',
+      ].join('\n'),
+    },
+    {
+      'backend/src/tasks/hidden-forward.ts': [
+        "import * as Nest from '@nestjs/common';",
+        'const first = Nest.forwardRef;',
+        'const hiddenForward = first;',
+        'hiddenForward(() => class Target {});',
+      ].join('\n'),
+    },
+    {
+      'backend/src/tasks/nest-barrel.ts': "export { forwardRef } from '@nestjs/common';\n",
+      'backend/src/tasks/hidden-forward.ts': [
+        "import { forwardRef as importedForward } from './nest-barrel';",
+        'const first = importedForward;',
+        'const hiddenForward = first;',
+        'hiddenForward(() => class Target {});',
+      ].join('\n'),
+    },
+  ];
+  for (const files of fixtures) {
+    const hidden = scanPorts(fixtureProject(files));
+    assert.equal(diagnosticsOfKind(hidden, 'forward-ref').length, 1);
+  }
+
+  const local = scanPorts(fixtureProject({
+    'backend/src/tasks/local-forward.ts': [
+      'const forwardRef = (callback: () => unknown) => callback();',
+      'const first = forwardRef;',
+      'const hiddenForward = first;',
+      'hiddenForward(() => class Target {});',
+      'const cycleA = cycleB;',
+      'const cycleB = cycleA;',
+      'void cycleA;',
+    ].join('\n'),
+  }));
+  assert.equal(diagnosticsOfKind(local, 'forward-ref').length, 0);
 });
 
 test('the R0 global set is exact for direct, aliased, and namespace decorators', () => {
@@ -192,6 +239,42 @@ test('the R0 global set is exact for direct, aliased, and namespace decorators',
       assert.deepEqual(diagnosticsOfKind(result, 'missing-r0-global').map((item) => item.path), [missing]);
     }
   }
+});
+
+test('Global const initializer alias chains preserve the exact R0 allowlist', () => {
+  const result = scanPorts(fixtureProject({
+    'backend/src/prisma/prisma.module.ts': [
+      "import * as Nest from '@nestjs/common';",
+      'const first = Nest.Global;',
+      'const hiddenGlobal = first;',
+      '@hiddenGlobal()',
+      '@Nest.Module({})',
+      'export class PrismaModule {}',
+    ].join('\n'),
+    'backend/src/conversations/nest-barrel.ts': "export { Global, Module } from '@nestjs/common';\n",
+    'backend/src/conversations/conversation-realtime.module.ts': [
+      "import { Global, Module } from './nest-barrel';",
+      'const hiddenGlobal = Global;',
+      '@hiddenGlobal()',
+      '@Module({})',
+      'export class ConversationRealtimeModule {}',
+    ].join('\n'),
+  }, { includeGlobals: false }));
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.counts.globals, 2);
+
+  const rogue = scanPorts(fixtureProject({
+    'backend/src/auth/hidden-global.module.ts': [
+      "import { Global, Module } from '@nestjs/common';",
+      'const hiddenGlobal = Global;',
+      '@hiddenGlobal()',
+      '@Module({})',
+      'export class HiddenGlobalModule {}',
+    ].join('\n'),
+  }));
+  assert.deepEqual(diagnosticsOfKind(rogue, 'unapproved-global').map((item) => item.path), [
+    'backend/src/auth/hidden-global.module.ts',
+  ]);
 });
 
 test('future modules import another context through public only', () => {
@@ -525,6 +608,35 @@ test('runCli returns deterministic exits 0, 1, and 2', () => {
   assert.doesNotMatch(stderr.join('\n'), /C:\\private|\nstack/);
 });
 
+test('ports CLI sanitizes POSIX, drive, UNC, and extended Windows paths', () => {
+  const passing: ScanResult = {
+    diagnostics: [],
+    counts: { forwardRef: 0, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+  };
+  const failures = [
+    'scan failed at /srv/private/ports-posix.ts',
+    'scan failed at C:\\private\\ports-drive.ts',
+    'scan failed at \\\\ports-server\\private\\ports-unc.ts',
+    'scan failed at \\\\?\\C:\\private\\ports-extended-drive.ts',
+    'scan failed at \\\\?\\UNC\\ports-server\\private\\ports-extended-unc.ts',
+  ];
+  for (const failure of failures) {
+    const output: string[] = [];
+    const exitCode = runCli({
+      argv: ['--check'],
+      scan: () => { throw new Error(`${failure}\rstack detail`); },
+      stdout: (message: string) => output.push(message),
+      stderr: (message: string) => output.push(message),
+    });
+    assert.equal(exitCode, 2);
+    const message = output.join('\n');
+    assert.match(message, /^architecture ports error:/);
+    assert.doesNotMatch(message, /ports-(?:posix|drive|unc|extended)|ports-server|stack detail/i);
+    assert.doesNotMatch(message, /(?:^|\s)(?:\/|[A-Za-z]:[\\/]|\\\\(?:\?|[^\\]))/);
+  }
+  assert.deepEqual(passing.diagnostics, []);
+});
+
 test('the real CLI sanitizes unknown-argument failures', () => {
   const cli = path.join(backendRoot, 'scripts', 'architecture', 'ports-scan.cjs');
   const result = spawnSync(process.execPath, [cli, '--unknown'], {
@@ -542,7 +654,7 @@ test('the real CLI fails closed when TypeChecker alias resolution throws', () =>
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-ports-alias-error-'));
   temporaryRoots.push(root);
   const preload = path.join(root, 'throwing-alias-checker.cjs');
-  const privatePath = path.join(root, 'private', 'source.ts');
+  const privatePath = '\\\\?\\UNC\\ports-server\\private\\ports-real.ts';
   const failureMessage = `alias resolution failed at ${privatePath}\nstack detail`;
   writeFileSync(preload, [
     "const Module = require('node:module');",
@@ -590,5 +702,5 @@ test('the real CLI fails closed when TypeChecker alias resolution throws', () =>
   assert.match(result.stderr, /architecture ports error: alias resolution failed at <path>/);
   assert.doesNotMatch(output, /PASS - architecture ports|\[missing-r0-global\]/);
   assert.ok(!output.includes(privatePath));
-  assert.doesNotMatch(output, /stack detail|\n\s*at\s+/);
+  assert.doesNotMatch(output, /ports-server|ports-real|\\\\\?\\UNC|stack detail|\n\s*at\s+/i);
 });

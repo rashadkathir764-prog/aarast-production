@@ -120,14 +120,25 @@ function declarationComesFromPackage(declaration, packageName) {
   return file.includes(packagePath);
 }
 
-function isNestCommonSymbol(expression, expectedName, checker) {
-  const symbol = symbolAtExpression(expression, checker);
-  return Boolean(
-    symbol
-    && symbol.getName() === expectedName
+function isNestCommonSymbol(expression, expectedName, checker, seenSymbols = new Set()) {
+  const current = unwrapExpression(expression);
+  const symbol = symbolAtExpression(current, checker);
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  if (
+    symbol.getName() === expectedName
     && (symbol.declarations || []).some((declaration) => (
       declarationComesFromPackage(declaration, '@nestjs/common')
-    )),
+    ))
+  ) {
+    return true;
+  }
+  seenSymbols.add(symbol);
+  const declarations = symbol.declarations || [];
+  if (declarations.length !== 1 || !isConstVariableDeclaration(declarations[0])) return false;
+  const initializer = declarations[0].initializer;
+  return Boolean(
+    initializer
+    && isNestCommonSymbol(initializer, expectedName, checker, seenSymbols)
   );
 }
 
@@ -677,10 +688,13 @@ function scanPorts(options) {
 }
 
 function sanitizeMessage(value) {
-  const firstLine = String(value || 'unknown error').split(/\r?\n/, 1)[0];
+  const firstLine = String(value || 'unknown error').split(/[\r\n]/, 1)[0];
   return firstLine
-    .replace(/[A-Za-z]:[\\/][^\s:]*/g, '<path>')
-    .replace(/\/(?:[^\s/:]+\/)+[^\s:]*/g, '<path>');
+    .replace(/\\\\\?\\UNC\\[^\r\n]*/gi, '<path>')
+    .replace(/\\\\\?\\[A-Za-z]:\\[^\r\n]*/g, '<path>')
+    .replace(/\\\\[^\\\r\n]+\\[^\r\n]*/g, '<path>')
+    .replace(/[A-Za-z]:[\\/][^\r\n]*/g, '<path>')
+    .replace(/(^|[\s("'=])\/(?!\/)[^\r\n]*/g, '$1<path>');
 }
 
 function writeLine(target, message) {

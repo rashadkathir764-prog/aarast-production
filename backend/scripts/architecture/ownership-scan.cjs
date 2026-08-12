@@ -297,47 +297,252 @@ function generatedDelegateModelsForType(type, checker, schemaMetadata, visited =
   return models;
 }
 
+function memberAccessName(expression, checker, visitedSymbols = new Set()) {
+  const current = unwrapExpression(expression);
+  if (ts.isPropertyAccessExpression(current)) return current.name.text;
+  if (!ts.isElementAccessExpression(current) || !current.argumentExpression) return null;
+  return staticString(current.argumentExpression, checker, visitedSymbols);
+}
+
+function memberAccessSymbol(expression, checker, name) {
+  const current = unwrapExpression(expression);
+  if (ts.isPropertyAccessExpression(current)) {
+    return checker.getSymbolAtLocation(current.name);
+  }
+  if (!ts.isElementAccessExpression(current) || name === null) return null;
+  const receiverType = checker.getTypeAtLocation(current.expression);
+  return checker.getPropertyOfType(receiverType, name)
+    || checker.getSymbolAtLocation(current.argumentExpression)
+    || checker.getSymbolAtLocation(current);
+}
+
+function typeIsGeneratedPrismaRoot(type, checker, schemaMetadata, delegateModels, visited = new Set()) {
+  if (!type || visited.has(type) || typeIsAnyOrUnknown(type)) return false;
+  visited.add(type);
+  for (const part of typeParts(type)) {
+    for (const [delegateName, model] of delegateModels) {
+      const property = checker.getPropertyOfType(part, delegateName);
+      if (!property) continue;
+      const declaration = (property.declarations || [])[0];
+      const propertyType = declaration
+        ? checker.getTypeOfSymbolAtLocation(property, declaration)
+        : checker.getDeclaredTypeOfSymbol(property);
+      if (generatedDelegateModelsForType(propertyType, checker, schemaMetadata).has(model)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function expressionIsGeneratedPrismaRoot(expression, checker, schemaMetadata, delegateModels) {
+  return typeIsGeneratedPrismaRoot(
+    checker.getTypeAtLocation(unwrapExpression(expression)),
+    checker,
+    schemaMetadata,
+    delegateModels,
+  );
+}
+
 function delegateModelForExpression(expression, checker, schemaMetadata, delegateModels) {
   const models = generatedDelegateModelsForType(
     checker.getTypeAtLocation(expression),
     checker,
     schemaMetadata,
   );
-  if (ts.isPropertyAccessExpression(expression)) {
-    const candidate = delegateModels.get(expression.name.text);
-    const propertySymbol = checker.getSymbolAtLocation(expression.name);
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    const member = memberAccessName(expression, checker);
+    const candidate = member === null ? null : delegateModels.get(member);
+    const propertySymbol = memberAccessSymbol(expression, checker, member);
     if (candidate && symbolIsGeneratedPrisma(propertySymbol, checker)) models.add(candidate);
   }
   return models.size === 1 ? [...models][0] : null;
 }
 
-function operationFromCall(call, checker, schemaMetadata, delegateModels) {
-  if (!ts.isPropertyAccessExpression(call.expression)) return null;
-  const method = call.expression.name.text;
-  if (RAW_OPERATIONS.has(method)) return null;
-  const methodSymbol = checker.getSymbolAtLocation(call.expression.name);
-  if (!symbolIsGeneratedPrisma(methodSymbol, checker)) return null;
+function expressionHasDynamicPrismaDelegateOrigin(
+  expression,
+  checker,
+  schemaMetadata,
+  delegateModels,
+  visitedSymbols = new Set(),
+) {
+  const current = unwrapExpression(expression);
+  if (
+    ts.isElementAccessExpression(current)
+    && memberAccessName(current, checker, visitedSymbols) === null
+  ) {
+    return expressionIsGeneratedPrismaRoot(
+      current.expression,
+      checker,
+      schemaMetadata,
+      delegateModels,
+    );
+  }
+  if (!ts.isIdentifier(current)) return false;
+  const resolved = constInitializer(current, checker, visitedSymbols);
+  if (!resolved) return false;
+  const nextVisited = new Set(visitedSymbols);
+  nextVisited.add(resolved.symbol);
+  return expressionHasDynamicPrismaDelegateOrigin(
+    resolved.initializer,
+    checker,
+    schemaMetadata,
+    delegateModels,
+    nextVisited,
+  );
+}
+
+function delegateOperationForExpression(
+  expression,
+  checker,
+  schemaMetadata,
+  delegateModels,
+  visitedSymbols = new Set(),
+) {
+  const current = unwrapExpression(expression);
+  if (ts.isIdentifier(current)) {
+    const resolved = constInitializer(current, checker, visitedSymbols);
+    if (!resolved) return null;
+    const nextVisited = new Set(visitedSymbols);
+    nextVisited.add(resolved.symbol);
+    return delegateOperationForExpression(
+      resolved.initializer,
+      checker,
+      schemaMetadata,
+      delegateModels,
+      nextVisited,
+    );
+  }
+  if (!(ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))) {
+    return null;
+  }
+  const method = memberAccessName(current, checker, visitedSymbols);
+  const receiver = current.expression;
   const model = delegateModelForExpression(
-    call.expression.expression,
+    receiver,
     checker,
     schemaMetadata,
     delegateModels,
   );
-  if (!model) return null;
+  if (model && method === null) {
+    return {
+      model, operation: 'dynamic', mode: 'unknown', issue: 'unknown-operation',
+    };
+  }
+  if (method === null) return null;
+  if (RAW_OPERATIONS.has(method)) return null;
+  const methodSymbol = memberAccessSymbol(current, checker, method);
+  if (!model) {
+    if (
+      expressionHasDynamicPrismaDelegateOrigin(
+        receiver,
+        checker,
+        schemaMetadata,
+        delegateModels,
+        visitedSymbols,
+      )
+    ) {
+      return {
+        model: '<dynamic>',
+        operation: method,
+        mode: READ_OPERATIONS.has(method) ? 'read' : WRITE_OPERATIONS.has(method) ? 'write' : 'unknown',
+        issue: 'unknown-model',
+      };
+    }
+    return null;
+  }
+  if (!symbolIsGeneratedPrisma(methodSymbol, checker)) {
+    return {
+      model, operation: method, mode: 'unknown', issue: 'unknown-operation',
+    };
+  }
   const mode = READ_OPERATIONS.has(method)
     ? 'read'
     : WRITE_OPERATIONS.has(method)
       ? 'write'
       : 'unknown';
-  return { model, operation: method, mode };
+  return { model, operation: method, mode, issue: mode === 'unknown' ? 'unknown-operation' : null };
 }
 
-function rawOperationForProperty(property, checker) {
-  if (!ts.isPropertyAccessExpression(property)) return null;
-  const operation = property.name.text;
-  if (!RAW_OPERATIONS.has(operation)) return null;
-  const symbol = checker.getSymbolAtLocation(property.name);
-  return symbolIsGeneratedPrisma(symbol, checker) ? operation : null;
+function operationFromCall(call, checker, schemaMetadata, delegateModels) {
+  return delegateOperationForExpression(
+    call.expression,
+    checker,
+    schemaMetadata,
+    delegateModels,
+  );
+}
+
+function rawOperationForExpression(
+  expression,
+  checker,
+  schemaMetadata,
+  delegateModels,
+  visitedSymbols = new Set(),
+) {
+  const current = unwrapExpression(expression);
+  if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+    const operation = memberAccessName(current, checker, visitedSymbols);
+    if (operation === null) {
+      return expressionIsGeneratedPrismaRoot(
+        current.expression,
+        checker,
+        schemaMetadata,
+        delegateModels,
+      ) ? { operation: 'dynamic', unknown: true } : null;
+    }
+    if (!RAW_OPERATIONS.has(operation)) return null;
+    const symbol = memberAccessSymbol(current, checker, operation);
+    return symbolIsGeneratedPrisma(symbol, checker)
+      || expressionIsGeneratedPrismaRoot(current.expression, checker, schemaMetadata, delegateModels)
+      ? { operation, unknown: false }
+      : null;
+  }
+
+  if (!ts.isIdentifier(current)) return null;
+  const symbol = resolvedSymbol(current, checker);
+  if (!symbol || visitedSymbols.has(symbol)) return null;
+  const nextVisited = new Set(visitedSymbols);
+  nextVisited.add(symbol);
+  const declarations = symbol.declarations || [];
+  if (declarations.length !== 1) return null;
+  const declaration = declarations[0];
+  if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+    const declarationList = declaration.parent;
+    if (
+      ts.isVariableDeclarationList(declarationList)
+      && (declarationList.flags & ts.NodeFlags.Const) !== 0
+    ) {
+      return rawOperationForExpression(
+        declaration.initializer,
+        checker,
+        schemaMetadata,
+        delegateModels,
+        nextVisited,
+      );
+    }
+    return null;
+  }
+  if (!ts.isBindingElement(declaration)) return null;
+  const bindingPattern = declaration.parent;
+  const variable = bindingPattern && bindingPattern.parent;
+  if (
+    !ts.isObjectBindingPattern(bindingPattern)
+    || !ts.isVariableDeclaration(variable)
+    || !variable.initializer
+    || !ts.isVariableDeclarationList(variable.parent)
+    || (variable.parent.flags & ts.NodeFlags.Const) === 0
+  ) {
+    return null;
+  }
+  const operation = staticPropertyName(declaration.propertyName || declaration.name);
+  if (!operation || !RAW_OPERATIONS.has(operation)) return null;
+  return expressionIsGeneratedPrismaRoot(
+    variable.initializer,
+    checker,
+    schemaMetadata,
+    delegateModels,
+  ) ? { operation, unknown: false } : null;
 }
 
 function unwrapExpression(node) {
@@ -1123,15 +1328,39 @@ function classifyOwnershipAccesses(options) {
 
     function visit(node) {
       if (ts.isTaggedTemplateExpression(node)) {
-        const rawOperation = rawOperationForProperty(node.tag, checker);
+        const rawOperation = rawOperationForExpression(
+          node.tag,
+          checker,
+          schemaMetadata,
+          delegateModels,
+        );
         if (rawOperation) {
-          accesses.push(...sqlAccesses(node, checker, makeAccess, rawOperation));
+          if (rawOperation.unknown) {
+            accesses.push(makeAccess({
+              model: '<dynamic>', operation: rawOperation.operation, mode: 'unknown',
+              source: 'sql', issue: 'unknown-operation',
+            }));
+          } else {
+            accesses.push(...sqlAccesses(node, checker, makeAccess, rawOperation.operation));
+          }
         }
       }
       if (ts.isCallExpression(node)) {
-        const rawOperation = rawOperationForProperty(node.expression, checker);
+        const rawOperation = rawOperationForExpression(
+          node.expression,
+          checker,
+          schemaMetadata,
+          delegateModels,
+        );
         if (rawOperation) {
-          accesses.push(...sqlAccesses(node, checker, makeAccess, rawOperation));
+          if (rawOperation.unknown) {
+            accesses.push(makeAccess({
+              model: '<dynamic>', operation: rawOperation.operation, mode: 'unknown',
+              source: 'sql', issue: 'unknown-operation',
+            }));
+          } else {
+            accesses.push(...sqlAccesses(node, checker, makeAccess, rawOperation.operation));
+          }
         } else {
           const delegate = operationFromCall(node, checker, schemaMetadata, delegateModels);
           if (delegate) {
@@ -1140,9 +1369,9 @@ function classifyOwnershipAccesses(options) {
               operation: delegate.operation,
               mode: delegate.mode,
               source: 'delegate',
-              issue: delegate.mode === 'unknown' ? 'unknown-operation' : null,
+              issue: delegate.issue,
             }));
-            if (node.arguments[0]) {
+            if (node.arguments[0] && !delegate.issue) {
               accesses.push(...relationAccesses(
                 node.arguments[0],
                 delegate.model,
@@ -1318,10 +1547,13 @@ function validateBaseline(baseline) {
 }
 
 function sanitizeMessage(value) {
-  const firstLine = String(value || 'unknown error').split(/\r?\n/, 1)[0];
+  const firstLine = String(value || 'unknown error').split(/[\r\n]/, 1)[0];
   return firstLine
-    .replace(/[A-Za-z]:[\\/][^\s:]*/g, '<path>')
-    .replace(/\/(?:[^\s/:]+\/)+[^\s:]*/g, '<path>');
+    .replace(/\\\\\?\\UNC\\[^\r\n]*/gi, '<path>')
+    .replace(/\\\\\?\\[A-Za-z]:\\[^\r\n]*/g, '<path>')
+    .replace(/\\\\[^\\\r\n]+\\[^\r\n]*/g, '<path>')
+    .replace(/[A-Za-z]:[\\/][^\r\n]*/g, '<path>')
+    .replace(/(^|[\s("'=])\/(?!\/)[^\r\n]*/g, '$1<path>');
 }
 
 function writeLine(target, message) {

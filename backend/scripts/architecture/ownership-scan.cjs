@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const utilTypes = require('node:util').types;
 const ts = require('typescript');
 
 const SCHEMA_VERSION = 1;
@@ -71,6 +72,26 @@ const RELATION_WRITES = new Set([
   'upsert',
   'delete',
   'deleteMany',
+]);
+const MAX_OWNERSHIP_RECORDS = 10_000;
+const MAX_OWNERSHIP_COUNT = 1_000_000;
+const MAX_REPOSITORY_PATH_LENGTH = 4_096;
+const MAX_IDENTIFIER_LENGTH = 256;
+const SQL_OPERATIONS = new Set([
+  'select',
+  'join',
+  'using',
+  'insert',
+  'merge',
+  'update',
+  'delete',
+  'lock',
+  'truncate',
+  'alter',
+  'drop',
+  'create',
+  'copy',
+  ...RAW_OPERATIONS,
 ]);
 
 function extractSchemaMetadata(schemaText) {
@@ -1422,21 +1443,39 @@ function scanOwnershipViolations(options) {
 }
 
 function compareWithBaseline(currentRecords, baselineRecords) {
-  const allowed = new Map(baselineRecords.map((record) => [record.key || recordKey(record), record.count]));
-  const additions = currentRecords.filter((record) => {
-    const key = record.key || recordKey(record);
-    return !allowed.has(key) || record.count > allowed.get(key);
+  const current = validateViolationArray(currentRecords, 'ownership scan violations');
+  const saved = validateViolationArray(baselineRecords, 'ownership baseline violations');
+  const allowed = new Map(saved.map((record) => [record.key, record.count]));
+  const additions = current.filter((record) => {
+    return !allowed.has(record.key) || record.count > allowed.get(record.key);
   });
   return { ok: additions.length === 0, additions };
 }
 
 function canonicalBaselineFile(file) {
-  return typeof file === 'string'
-    && /^backend\/src\/.+\.ts$/.test(file)
-    && !file.includes('\\')
-    && !file.split('/').includes('..')
-    && !path.posix.isAbsolute(file)
-    && !path.win32.isAbsolute(file);
+  if (
+    typeof file !== 'string'
+    || file.length === 0
+    || file.length > MAX_REPOSITORY_PATH_LENGTH
+    || !file.startsWith('backend/src/')
+    || !file.endsWith('.ts')
+    || /[\\:\u0000-\u001f\u007f-\u009f%?*"<>|]/.test(file)
+    || path.posix.isAbsolute(file)
+    || path.win32.isAbsolute(file)
+    || path.posix.normalize(file) !== file
+  ) {
+    return false;
+  }
+  const segments = file.split('/');
+  return segments.length >= 4
+    && segments[0] === 'backend'
+    && segments[1] === 'src'
+    && segments.slice(2).every((segment) => (
+      segment !== ''
+      && segment !== '.'
+      && segment !== '..'
+      && /^[A-Za-z0-9_.$'{}@+-]+$/.test(segment)
+    ));
 }
 
 const BASELINE_FIELDS = [
@@ -1462,87 +1501,218 @@ const BASELINE_REASONS = new Set([
   'unknown-sql-composition',
 ]);
 
-function sensitiveBaselineString(value) {
-  return path.posix.isAbsolute(value)
-    || path.win32.isAbsolute(value)
-    || /[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value)
-    || /(?:DATABASE_URL|JWT_SECRET|PASSWORD|SECRET|TOKEN)\s*=/i.test(value)
-    || /BEGIN (?:RSA |OPENSSH )?PRIVATE KEY/i.test(value);
+function exactDataObject(value, expectedFields, description) {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || Array.isArray(value)
+    || utilTypes.isProxy(value)
+    || Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new Error(`${description} must be a plain object`);
+  }
+  const ownKeys = Reflect.ownKeys(value);
+  if (
+    ownKeys.length !== expectedFields.length
+    || ownKeys.some((key) => typeof key !== 'string' || !expectedFields.includes(key))
+  ) {
+    throw new Error(`${description} has an invalid schema`);
+  }
+  const result = {};
+  for (const field of expectedFields) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    if (
+      !descriptor
+      || !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      || !descriptor.enumerable
+    ) {
+      throw new Error(`${description} cannot contain accessors or hidden fields`);
+    }
+    result[field] = descriptor.value;
+  }
+  return result;
 }
 
-function assertNoSensitiveBaselineStrings(value, visited = new Set()) {
-  if (typeof value === 'string') {
-    if (sensitiveBaselineString(value)) {
-      throw new Error('ownership baseline contains an absolute path or secret');
+function denseArrayValues(value, description) {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || utilTypes.isProxy(value)
+    || !Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Array.prototype
+  ) {
+    throw new Error(`${description} must be a plain array`);
+  }
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  const length = lengthDescriptor && lengthDescriptor.value;
+  if (
+    !Number.isSafeInteger(length)
+    || length < 0
+    || length > MAX_OWNERSHIP_RECORDS
+  ) {
+    throw new Error(`${description} has an invalid length`);
+  }
+  const ownKeys = Reflect.ownKeys(value);
+  if (
+    ownKeys.some((key) => typeof key !== 'string')
+    || ownKeys.length !== length + 1
+  ) {
+    throw new Error(`${description} must be dense and contain no extra fields`);
+  }
+  const result = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (
+      !descriptor
+      || !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      || !descriptor.enumerable
+    ) {
+      throw new Error(`${description} contains an invalid item`);
     }
-    return;
+    result.push(descriptor.value);
   }
-  if (!value || typeof value !== 'object' || visited.has(value)) return;
-  visited.add(value);
-  for (const [key, child] of Object.entries(value)) {
-    assertNoSensitiveBaselineStrings(key, visited);
-    assertNoSensitiveBaselineStrings(child, visited);
+  return result;
+}
+
+function canonicalIdentifier(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= MAX_IDENTIFIER_LENGTH
+    && /^[A-Za-z_][A-Za-z0-9_]*$/.test(value);
+}
+
+function canonicalOperation(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= MAX_IDENTIFIER_LENGTH
+    && /^\$?[A-Za-z_][A-Za-z0-9_$]*(?:\+\$?[A-Za-z_][A-Za-z0-9_$]*)*$/.test(value);
+}
+
+function validOperationForRecord(record) {
+  if (!canonicalOperation(record.operation)) return false;
+  if (record.reason === 'unknown-operation') {
+    return ['delegate', 'sql'].includes(record.source);
   }
+  if (record.source === 'sql') return SQL_OPERATIONS.has(record.operation);
+  if (record.source === 'delegate') {
+    return READ_OPERATIONS.has(record.operation)
+      || WRITE_OPERATIONS.has(record.operation)
+      || record.reason === 'unknown-model';
+  }
+  if (record.reason === 'unknown-relation-shape') {
+    return READ_OPERATIONS.has(record.operation) || WRITE_OPERATIONS.has(record.operation);
+  }
+  if (record.mode === 'write') {
+    return record.operation.split('+').every((operation) => RELATION_WRITES.has(operation));
+  }
+  return record.mode === 'read' && canonicalIdentifier(record.operation);
+}
+
+function validReasonShape(record) {
+  if (record.reason === 'unknown-model') {
+    return ['delegate', 'sql'].includes(record.source) && record.owner === null;
+  }
+  if (record.reason === 'unknown-operation') {
+    return ['delegate', 'sql'].includes(record.source) && record.mode === 'unknown';
+  }
+  if (record.reason === 'unknown-relation-shape') {
+    return record.source === 'relation'
+      && record.model === '<dynamic>'
+      && record.owner === null
+      && record.mode === 'unknown';
+  }
+  if (record.reason === 'unknown-sql-composition') {
+    return record.source === 'sql'
+      && record.model === '<dynamic>'
+      && record.owner === null
+      && record.mode === 'unknown';
+  }
+  if (record.reason === 'unclassified-context') {
+    return record.context === 'unclassified';
+  }
+  return record.reason === 'foreign-model'
+    && record.context !== 'unclassified'
+    && record.owner !== null
+    && record.owner !== record.context;
+}
+
+function validateViolation(value) {
+  const record = exactDataObject(value, BASELINE_FIELDS, 'ownership violation');
+  if (!canonicalBaselineFile(record.file)) {
+    throw new Error('ownership violation contains a non-canonical file');
+  }
+  if (![...CONTEXTS, 'unclassified'].includes(record.context)) {
+    throw new Error('ownership violation contains an invalid context');
+  }
+  if (record.owner !== null && !CONTEXTS.includes(record.owner)) {
+    throw new Error('ownership violation contains an invalid owner');
+  }
+  if (record.model !== '<dynamic>' && !canonicalIdentifier(record.model)) {
+    throw new Error('ownership violation contains an invalid model');
+  }
+  if (!BASELINE_MODES.has(record.mode)) {
+    throw new Error('ownership violation contains an invalid mode');
+  }
+  if (!BASELINE_SOURCES.has(record.source)) {
+    throw new Error('ownership violation contains an invalid source');
+  }
+  if (!BASELINE_REASONS.has(record.reason)) {
+    throw new Error('ownership violation contains an invalid reason');
+  }
+  if (!validOperationForRecord(record) || !validReasonShape(record)) {
+    throw new Error('ownership violation fields are inconsistent');
+  }
+  if (
+    !Number.isSafeInteger(record.count)
+    || record.count <= 0
+    || record.count > MAX_OWNERSHIP_COUNT
+  ) {
+    throw new Error('ownership violation contains an invalid count');
+  }
+  const key = recordKey(record);
+  if (typeof record.key !== 'string' || record.key !== key) {
+    throw new Error('ownership violation contains an invalid key');
+  }
+  return {
+    key,
+    file: record.file,
+    context: record.context,
+    owner: record.owner,
+    model: record.model,
+    operation: record.operation,
+    mode: record.mode,
+    source: record.source,
+    reason: record.reason,
+    count: record.count,
+  };
+}
+
+function validateViolationArray(value, description) {
+  const violations = denseArrayValues(value, description).map(validateViolation);
+  const keys = violations.map((record) => record.key);
+  if (!sameArray(keys, [...keys].sort()) || new Set(keys).size !== keys.length) {
+    throw new Error(`${description} keys must be sorted and unique`);
+  }
+  return violations;
 }
 
 function validateBaseline(baseline) {
-  if (!baseline || baseline.schemaVersion !== SCHEMA_VERSION) {
+  const value = exactDataObject(
+    baseline,
+    ['schemaVersion', 'sourceRevision', 'violations'],
+    'ownership baseline',
+  );
+  if (value.schemaVersion !== SCHEMA_VERSION) {
     throw new Error('ownership baseline schemaVersion must be 1');
   }
-  if (!sameArray(Object.keys(baseline).sort(), ['schemaVersion', 'sourceRevision', 'violations'])) {
-    throw new Error('ownership baseline shape is invalid');
-  }
-  if (baseline.sourceRevision !== SOURCE_REVISION) {
+  if (value.sourceRevision !== SOURCE_REVISION) {
     throw new Error('ownership baseline sourceRevision is invalid');
   }
-  if (!Array.isArray(baseline.violations)) {
-    throw new Error('ownership baseline violations must be an array');
-  }
-  assertNoSensitiveBaselineStrings(baseline);
-  const keys = [];
-  for (const record of baseline.violations) {
-    if (!record || typeof record !== 'object' || Array.isArray(record)) {
-      throw new Error('ownership baseline contains an invalid record');
-    }
-    if (!sameArray(Object.keys(record).sort(), BASELINE_FIELDS)) {
-      throw new Error('ownership baseline record shape is invalid');
-    }
-    if (record.key !== recordKey(record)) {
-      throw new Error('ownership baseline contains an invalid key');
-    }
-    if (!canonicalBaselineFile(record.file)) {
-      throw new Error('ownership baseline contains a non-canonical file');
-    }
-    if (![...CONTEXTS, 'unclassified'].includes(record.context)) {
-      throw new Error('ownership baseline contains an invalid context');
-    }
-    if (record.owner !== null && !CONTEXTS.includes(record.owner)) {
-      throw new Error('ownership baseline contains an invalid owner');
-    }
-    if (record.model !== '<dynamic>' && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(record.model)) {
-      throw new Error('ownership baseline contains an invalid model');
-    }
-    if (!/^\$?[A-Za-z_][A-Za-z0-9_$]*(?:\+\$?[A-Za-z_][A-Za-z0-9_$]*)*$/.test(record.operation)) {
-      throw new Error('ownership baseline contains an invalid operation');
-    }
-    if (!BASELINE_MODES.has(record.mode)) {
-      throw new Error('ownership baseline contains an invalid mode');
-    }
-    if (!BASELINE_SOURCES.has(record.source)) {
-      throw new Error('ownership baseline contains an invalid source');
-    }
-    if (!BASELINE_REASONS.has(record.reason)) {
-      throw new Error('ownership baseline contains an invalid reason');
-    }
-    if (!Number.isInteger(record.count) || record.count <= 0) {
-      throw new Error('ownership baseline counts must be positive integers');
-    }
-    keys.push(record.key);
-  }
-  if (!sameArray(keys, [...keys].sort()) || new Set(keys).size !== keys.length) {
-    throw new Error('ownership baseline keys must be sorted and unique');
-  }
-  return baseline;
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    sourceRevision: SOURCE_REVISION,
+    violations: validateViolationArray(value.violations, 'ownership baseline violations'),
+  };
 }
 
 function writeLine(target, message) {
@@ -1560,7 +1730,10 @@ function runCli(dependencies) {
     return 2;
   }
   try {
-    const current = dependencies.scan();
+    const current = validateViolationArray(
+      dependencies.scan(),
+      'ownership scan violations',
+    );
     if (argv[0] === '--write-baseline') {
       if (typeof dependencies.writeBaseline !== 'function') {
         throw new Error('baseline writer is unavailable');
@@ -1579,8 +1752,15 @@ function runCli(dependencies) {
     const comparison = compareWithBaseline(current, baseline.violations);
     if (!comparison.ok) {
       writeLine(dependencies.stderr, `ownership violations added (${comparison.additions.length} records)`);
+      const allowed = new Map(baseline.violations.map((record) => [record.key, record.count]));
       for (const addition of comparison.additions) {
-        writeLine(dependencies.stderr, `${addition.key} count=${addition.count}`);
+        const kind = allowed.has(addition.key)
+          ? 'increased ownership violation'
+          : 'new ownership violation';
+        writeLine(
+          dependencies.stderr,
+          `${kind} [${addition.reason}]: ${addition.file} count=${addition.count}`,
+        );
       }
       return 1;
     }

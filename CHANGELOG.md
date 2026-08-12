@@ -16,6 +16,14 @@
   keys/occurrences (62 core-to-feature, 207 direct-cross-feature). The ports
   gate reports zero `forwardRef()`, two approved globals, zero illegal future
   imports, and zero Nest cycles.
+- Final review remediation stayed inside the same 30-path allowlist. Backend
+  commits `003474d9`, `302aec72`, `8de041ce`, `d8788ed8`, `8d0e8116`, and
+  `182ade08` close ownership/ports provenance, alias, redaction,
+  non-reflective-diagnostic, and atomic-result-validation gaps. Mobile commit
+  `ff35ea73` closes canonical-junction and nested-interpolation parser bypasses.
+  Documentation commit `7f4cd70` reconciles the exact Mobile repair exception,
+  official gate commands, and PR-head versus synthetic-merge CI semantics.
+  None of these remediations adds runtime product behavior.
 - The exact fixed-base diff is: `.github/workflows/ci.yml`, `AGENTS.md`,
   `ARCHITECTURE.md`, `CHANGELOG.md`,
   `backend/.dependency-cruiser-known-violations.json`,
@@ -59,7 +67,7 @@
     docker-compose.yml` returned no worktree entry; and
     `node .\scripts\check-r0-scope.mjs --check` PASS.
   - From `backend/`: `npm run architecture` PASS; `npm run check` PASS;
-    `npm run build` PASS; `npm test` PASS with 721 total, 720 passed, and one
+    `npm run build` PASS; `npm test` PASS with 737 total, 736 passed, and one
     intentionally skipped; `npm audit --audit-level=high` PASS with zero
     vulnerabilities; and `npm audit --omit=dev` PASS with zero vulnerabilities.
   - From `backend/`: the first bare `npx prisma validate` failed with `P1012`
@@ -71,7 +79,7 @@
     96/96; `npm run build` PASS; `npm run smoke:honesty` PASS 12/12;
     `npm run smoke:routes` PASS 16/16; and
     `npm run test:container-config` PASS 3/3.
-  - `node --test .\scripts\check-mobile-boundaries.test.mjs` PASS 132/132;
+  - `node --test .\scripts\check-mobile-boundaries.test.mjs` PASS 152/152;
     `node .\scripts\check-mobile-boundaries.mjs --check-baseline` PASS with
     269 current records; from `mobile/`, `flutter analyze --no-pub` PASS with
     no issues and `flutter test --no-pub` PASS 1,151/1,151.
@@ -87,7 +95,9 @@
   runtime/schema/route/deployment change or business logic, and the approved
   Mobile import correction passed the full Flutter suite. This receipt records
   local evidence only: the authoritative candidate revision and remote CI
-  result belong to immutable PR/workflow metadata, and no mutable branch-tip or
+  result belong to immutable PR/workflow metadata. Closure requires
+  `r0-scope` on the exact immutable PR-head revision and all other CI jobs on
+  the corresponding synthetic merge candidate; no mutable branch-tip or
   current remote-CI claim is made here.
 
 ## Unreleased - Provider Application Completion UX

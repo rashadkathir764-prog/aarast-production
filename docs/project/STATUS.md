@@ -73,6 +73,17 @@ Compose artifacts; source locations; and business logic were untouched. No
 module, port, repository, barrel, migration, route, endpoint, or product
 behavior was added by R0.
 
+The final review remediation was completed without widening the 30-path scope.
+Commits `003474d9`, `302aec72`, `8de041ce`, `d8788ed8`, `8d0e8116`, and
+`182ade08` close Backend ownership/ports provenance, alias, path-redaction,
+non-reflective diagnostic, and atomic scan-result validation gaps. Commit
+`ff35ea73` makes Mobile boundary parsing fail closed around canonical junction
+identity and nested Dart interpolation. Commit `7f4cd70` reconciles the R0
+plan's protected-source exception, documents the official local gates, and
+records the distinct PR-head versus synthetic-merge CI semantics. These are
+gate hardening and documentation corrections only; they add no runtime product
+behavior.
+
 Observed governance baselines:
 
 - dependency-cruiser `18.1.0`: 269 unique known dependency violations. The live
@@ -95,7 +106,7 @@ Local verification evidence:
 | Backend | `npm run architecture` | PASS: imports, ownership, and ports |
 | Backend | `npm run check` | PASS |
 | Backend | `npm run build` | PASS |
-| Backend | `npm test` | PASS: 721 total, 720 passed, 1 intentionally skipped |
+| Backend | `npm test` | PASS: 737 total, 736 passed, 1 intentionally skipped |
 | Backend | `npx prisma validate` | PASS with a process-scoped non-secret local validation URL; no database connection was used |
 | Backend | `npm audit --audit-level=high` | PASS: 0 vulnerabilities |
 | Backend | `npm audit --omit=dev` | PASS: 0 vulnerabilities |
@@ -105,7 +116,7 @@ Local verification evidence:
 | Admin | `npm run smoke:honesty` | PASS: 12/12 |
 | Admin | `npm run smoke:routes` | PASS: 16/16 |
 | Admin | `npm run test:container-config` | PASS: 3/3 |
-| Mobile architecture | `node --test .\scripts\check-mobile-boundaries.test.mjs` | PASS: 132/132 |
+| Mobile architecture | `node --test .\scripts\check-mobile-boundaries.test.mjs` | PASS: 152/152 |
 | Mobile architecture | `node .\scripts\check-mobile-boundaries.mjs --check-baseline` | PASS: 269 current records |
 | Mobile | `flutter analyze --no-pub` | PASS: no issues |
 | Mobile | `flutter test --no-pub` | PASS: 1,151/1,151, including the repository's current Golden behavior |
@@ -129,8 +140,10 @@ No separate local HTTP/database smoke run was required for R0: the only source
 repair is the approved local Dart import URI correction, the full Mobile suite
 passed, and R0 changed no Backend runtime source, schema, migration, route,
 Admin source, deployment artifact, source location, or business logic. Remote
-closure still requires all CI jobs, including the fixed-base `r0-scope` job,
-to pass on one immutable candidate revision.
+closure still requires the fixed-base `r0-scope` job to pass on the exact
+immutable PR-head revision and every other CI job to pass on the corresponding
+synthetic merge candidate for that pull request. This receipt does not claim
+the current remote state of either Git object.
 
 ## Product Position
 

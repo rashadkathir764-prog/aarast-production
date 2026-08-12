@@ -14,7 +14,7 @@ import { Observable, defer, firstValueFrom, from, of } from "rxjs";
 import {
   IdempotencyInterceptor,
   requestFingerprint,
-} from "../src/common/idempotency/idempotency.interceptor";
+} from "../src/platform/idempotency/idempotency.interceptor";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

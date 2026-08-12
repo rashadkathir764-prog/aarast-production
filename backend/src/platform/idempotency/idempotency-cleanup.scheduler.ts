@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { PrismaService } from '../../platform/database/prisma.service';
-import { idempotencyAmbiguousTombstones } from '../../platform/observability/metrics';
+import { PrismaService } from '../database/prisma.service';
+import { idempotencyAmbiguousTombstones } from '../observability/metrics';
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;
 

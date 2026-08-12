@@ -71,7 +71,7 @@ import {
 import {
   enqueueSessionRevoked,
   enqueueUserSessionsRevoked,
-} from "../outbox/realtime-revocation";
+} from "../platform/outbox/realtime-revocation";
 
 export interface AuthResponse {
   user: SafeUser;

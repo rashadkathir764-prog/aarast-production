@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { PrismaService } from '../platform/database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1_000;
 const PROCESSED_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;

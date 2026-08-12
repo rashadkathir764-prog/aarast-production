@@ -14,7 +14,7 @@ import {
 } from "@prisma/client";
 import { ConversationsService } from "../../src/conversations/conversations.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
-import { OutboxService } from "../../src/outbox/outbox.service";
+import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { SharingService } from "../../src/sharing/sharing.service";
 import { PermissionService } from "../../src/sharing/permission.service";
 

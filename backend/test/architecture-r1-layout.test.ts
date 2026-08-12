@@ -78,9 +78,72 @@ test('R1 Task 2 source and tests have no imports of moved legacy paths', () => {
   assert.deepEqual(stale, []);
 });
 
-test('R1 Task 2 mixed ownership roots are exact', () => {
+test('R1 Task 3 mixed ownership roots are exact', () => {
   const registry = JSON.parse(source('architecture/ownership-registry.json')) as {
     currentRoots: { platform: string[] };
   };
-  assert.deepEqual(registry.currentRoots.platform, ['common', 'outbox', 'platform']);
+  assert.deepEqual(registry.currentRoots.platform, ['common', 'platform']);
+});
+
+test('R1 Task 3 idempotency and outbox runtime exist only at canonical paths', () => {
+  const moved = [
+    ['src/common/idempotency/idempotency.interceptor.ts', 'src/platform/idempotency/idempotency.interceptor.ts'],
+    ['src/common/idempotency/idempotency-cleanup.scheduler.ts', 'src/platform/idempotency/idempotency-cleanup.scheduler.ts'],
+    ['src/common/idempotency/idempotency-reconcile.cli.ts', 'src/platform/idempotency/idempotency-reconcile.cli.ts'],
+    ['src/common/idempotency/idempotency-reconciliation.ts', 'src/platform/idempotency/idempotency-reconciliation.ts'],
+    ['src/outbox/outbox.constants.ts', 'src/platform/outbox/outbox.constants.ts'],
+    ['src/outbox/outbox.dispatcher.ts', 'src/platform/outbox/outbox.dispatcher.ts'],
+    ['src/outbox/outbox.module.ts', 'src/platform/outbox/outbox.module.ts'],
+    ['src/outbox/outbox.service.ts', 'src/platform/outbox/outbox.service.ts'],
+    ['src/outbox/outbox.worker.ts', 'src/platform/outbox/outbox.worker.ts'],
+    ['src/outbox/outbox-cleanup.scheduler.ts', 'src/platform/outbox/outbox-cleanup.scheduler.ts'],
+    ['src/outbox/realtime-revocation.ts', 'src/platform/outbox/realtime-revocation.ts'],
+  ];
+  for (const [legacy, canonical] of moved) {
+    assert.equal(existsSync(path.join(backendRoot, legacy)), false, legacy);
+    assert.equal(existsSync(path.join(backendRoot, canonical)), true, canonical);
+  }
+  assert.equal(existsSync(path.join(backendRoot, 'src/outbox')), false, 'src/outbox directory');
+});
+
+test('R1 Task 3 production idempotency command targets the canonical build output', () => {
+  const packageJson = JSON.parse(source('package.json')) as {
+    scripts: Record<string, string>;
+  };
+  assert.equal(
+    packageJson.scripts['prod:reconcile-idempotency'],
+    'node dist/platform/idempotency/idempotency-reconcile.cli.js',
+  );
+});
+
+test('R1 Task 3 preserves outbox scheduling retry and module export contracts', () => {
+  const worker = source('src/platform/outbox/outbox.worker.ts');
+  const cleanup = source('src/platform/outbox/outbox-cleanup.scheduler.ts');
+  const moduleSource = source('src/platform/outbox/outbox.module.ts');
+  assert.match(worker, /const\s+maxAttempts\s*=\s*8\s*;/);
+  assert.match(worker, /@Interval\(1_000\)/);
+  assert.match(cleanup, /const\s+CLEANUP_INTERVAL_MS\s*=\s*6\s*\*\s*60\s*\*\s*60\s*\*\s*1_000\s*;/);
+  assert.match(cleanup, /const\s+PROCESSED_RETENTION_MS\s*=\s*7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1_000\s*;/);
+  assert.match(moduleSource, /exports:\s*\[OutboxService\]/);
+});
+
+test('R1 Task 3 source tests and smokes have no stale idempotency or outbox paths', () => {
+  const roots = [
+    path.join(backendRoot, 'src'),
+    path.join(backendRoot, 'test'),
+    path.join(backendRoot, 'scripts', 'smoke'),
+  ];
+  const stale = roots.flatMap(typescriptFiles)
+    .filter((file) => file !== __filename)
+    .filter((file) => path.basename(file) !== 'architecture-r1-baseline-relocation.test.ts')
+    .filter((file) => {
+      const contents = readFileSync(file, 'utf8');
+      return /(?:src|dist)\/common\/idempotency\//.test(contents)
+        || /(?:src|dist)\/outbox\//.test(contents)
+        || /(?:from\s*['"]|require\(\s*['"])[^'"\n]*common\/idempotency\//.test(contents)
+        || /(?:from\s*['"]|require\(\s*['"])(?![^'"\n]*platform\/outbox\/)[^'"\n]*outbox\//.test(contents);
+    })
+    .map((file) => path.relative(backendRoot, file).replace(/\\/g, '/'))
+    .sort();
+  assert.deepEqual(stale, []);
 });

@@ -9,7 +9,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { NotificationsService } from "../../src/notifications/notifications.service";
-import { OutboxService } from "../../src/outbox/outbox.service";
+import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/sharing/permission.service";
 import { SharingService } from "../../src/sharing/sharing.service";
 

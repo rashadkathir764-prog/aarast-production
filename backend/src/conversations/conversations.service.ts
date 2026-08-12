@@ -16,8 +16,8 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { OutboxEventTypes } from '../outbox/outbox.constants';
-import { OutboxService } from '../outbox/outbox.service';
+import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
+import { OutboxService } from '../platform/outbox/outbox.service';
 import { PrismaService } from '../platform/database/prisma.service';
 import {
   assertProviderOperational,

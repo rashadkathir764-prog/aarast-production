@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { IdempotencyCleanupScheduler } from '../src/common/idempotency/idempotency-cleanup.scheduler';
+import { IdempotencyCleanupScheduler } from '../src/platform/idempotency/idempotency-cleanup.scheduler';
 import { metricsRegistry } from '../src/platform/observability/metrics';
 import { PrismaService } from '../src/platform/database/prisma.service';
 
@@ -74,11 +74,11 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
 
 test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {
   const schedulerSources = [
-    'src/common/idempotency/idempotency-cleanup.scheduler.ts',
+    'src/platform/idempotency/idempotency-cleanup.scheduler.ts',
     'src/auth/login-throttle-cleanup.scheduler.ts',
     'src/notifications/notifications.service.ts',
     'src/media/media-upload-ticket.service.ts',
-    'src/outbox/outbox-cleanup.scheduler.ts',
+    'src/platform/outbox/outbox-cleanup.scheduler.ts',
   ].map((path) => readFileSync(join(process.cwd(), path), 'utf8'));
   const lockKeys = schedulerSources.flatMap((source) =>
     [...source.matchAll(/pg_try_advisory_xact_lock\((\d+),\s*(\d+)\)/g)].map(

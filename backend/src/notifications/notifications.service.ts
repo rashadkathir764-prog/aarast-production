@@ -22,8 +22,8 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
 import { PrismaService } from "../platform/database/prisma.service";
-import { OutboxEventTypes } from "../outbox/outbox.constants";
-import { OutboxService } from "../outbox/outbox.service";
+import { OutboxEventTypes } from "../platform/outbox/outbox.constants";
+import { OutboxService } from "../platform/outbox/outbox.service";
 import {
   assertProviderOperational,
   isProviderOperational,

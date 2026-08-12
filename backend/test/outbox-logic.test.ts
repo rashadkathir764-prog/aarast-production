@@ -6,15 +6,15 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { OutboxEvent } from "@prisma/client";
 import { ConversationRealtimePublisher } from "../src/conversations/conversation-realtime.publisher";
-import { OutboxEventTypes } from "../src/outbox/outbox.constants";
-import { OutboxDispatcher } from "../src/outbox/outbox.dispatcher";
-import { OutboxService } from "../src/outbox/outbox.service";
-import { OutboxCleanupScheduler } from "../src/outbox/outbox-cleanup.scheduler";
+import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
+import { OutboxDispatcher } from "../src/platform/outbox/outbox.dispatcher";
+import { OutboxService } from "../src/platform/outbox/outbox.service";
+import { OutboxCleanupScheduler } from "../src/platform/outbox/outbox-cleanup.scheduler";
 import {
   OutboxWorker,
   outboxFailureCode,
   outboxRetryDelayMs,
-} from "../src/outbox/outbox.worker";
+} from "../src/platform/outbox/outbox.worker";
 
 function event(type: string, payload: OutboxEvent["payload"]): OutboxEvent {
   const now = new Date("2026-07-10T10:00:00.000Z");
@@ -396,7 +396,7 @@ test("outbox retry is bounded and failure storage is redacted", () => {
 
 test("outbox uses transactional inserts and cross-replica skip-locked claims", () => {
   const worker = readFileSync(
-    join(process.cwd(), "src/outbox/outbox.worker.ts"),
+    join(process.cwd(), "src/platform/outbox/outbox.worker.ts"),
     "utf8",
   );
   const notifications = readFileSync(

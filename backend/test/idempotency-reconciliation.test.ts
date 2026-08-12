@@ -5,11 +5,11 @@ import { test } from "node:test";
 import {
   reconcileAmbiguousIdempotencyKey,
   type IdempotencyReconciliationInput,
-} from "../src/common/idempotency/idempotency-reconciliation";
+} from "../src/platform/idempotency/idempotency-reconciliation";
 import {
   parseReconciliationCommand,
   reconciliationConfirmation,
-} from "../src/common/idempotency/idempotency-reconcile.cli";
+} from "../src/platform/idempotency/idempotency-reconcile.cli";
 
 interface StoredKey {
   id: string;

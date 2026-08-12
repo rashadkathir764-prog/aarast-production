@@ -35,7 +35,7 @@ import { ContributionHistoryService } from "../contribution-history/contribution
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { NotificationsService } from "../notifications/notifications.service";
-import { enqueueConversationAccessRevoked } from "../outbox/realtime-revocation";
+import { enqueueConversationAccessRevoked } from "../platform/outbox/realtime-revocation";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   ApplicationNameSource,

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { MediaModule } from '../media/media.module';
-import { OutboxModule } from '../outbox/outbox.module';
+import { OutboxModule } from '../platform/outbox/outbox.module';
 import { PrismaModule } from '../platform/database/prisma.module';
 import {
   ConversationsController,

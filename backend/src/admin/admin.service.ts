@@ -27,7 +27,7 @@ import { runSerializableTransaction } from '../platform/database/serializable-tr
 import {
   enqueueConversationAccessRevoked,
   enqueueUserSessionsRevoked,
-} from '../outbox/realtime-revocation';
+} from '../platform/outbox/realtime-revocation';
 import { PrismaService } from '../platform/database/prisma.service';
 import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
 import { NotificationsService } from '../notifications/notifications.service';

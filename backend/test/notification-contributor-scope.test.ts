@@ -9,7 +9,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { NotificationsService } from "../src/notifications/notifications.service";
-import { OutboxService } from "../src/outbox/outbox.service";
+import { OutboxService } from "../src/platform/outbox/outbox.service";
 
 const now = new Date("2026-08-02T00:00:00.000Z");
 

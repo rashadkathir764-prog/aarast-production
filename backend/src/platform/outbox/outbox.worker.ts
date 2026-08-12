@@ -5,8 +5,8 @@ import { OutboxEvent, Prisma } from '@prisma/client';
 import {
   outboxBacklog,
   outboxDispatchTotal,
-} from '../platform/observability/metrics';
-import { PrismaService } from '../platform/database/prisma.service';
+} from '../observability/metrics';
+import { PrismaService } from '../database/prisma.service';
 import { OutboxDispatcher } from './outbox.dispatcher';
 
 const batchSize = 100;

@@ -10,7 +10,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { NotificationsService } from "../src/notifications/notifications.service";
-import { OutboxService } from "../src/outbox/outbox.service";
+import { OutboxService } from "../src/platform/outbox/outbox.service";
 
 const user = {
   id: "11111111-1111-4111-8111-111111111111",

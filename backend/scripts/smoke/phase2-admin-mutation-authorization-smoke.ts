@@ -12,7 +12,7 @@ import {
 import { ForbiddenException } from "@nestjs/common";
 import { AdminService } from "../../src/admin/admin.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
-import { OutboxService } from "../../src/outbox/outbox.service";
+import { OutboxService } from "../../src/platform/outbox/outbox.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => {

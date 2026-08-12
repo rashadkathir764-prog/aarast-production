@@ -1,7 +1,7 @@
 import { Injectable, Optional } from "@nestjs/common";
 import { OutboxEvent, Prisma } from "@prisma/client";
-import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
-import { PushDeliveryService } from "../push/push-delivery.service";
+import { ConversationRealtimePublisher } from "../../conversations/conversation-realtime.publisher";
+import { PushDeliveryService } from "../../push/push-delivery.service";
 import { OutboxEventTypes } from "./outbox.constants";
 
 @Injectable()

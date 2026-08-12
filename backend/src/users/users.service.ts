@@ -22,7 +22,7 @@ import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { MediaStorageService } from "../media/media-storage.service";
-import { enqueueUserSessionsRevoked } from "../outbox/realtime-revocation";
+import { enqueueUserSessionsRevoked } from "../platform/outbox/realtime-revocation";
 import { FirebasePushClient } from "../push/firebase-push.client";
 import {
   lockProviderRatingRows,

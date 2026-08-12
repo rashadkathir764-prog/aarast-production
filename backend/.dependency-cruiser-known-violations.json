@@ -3647,62 +3647,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/outbox/outbox.dispatcher.ts",
-    "to": "src/conversations/conversation-realtime.publisher.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.publisher",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "current-platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/outbox/outbox.dispatcher.ts",
-    "to": "src/push/push-delivery.service.ts",
-    "unresolvedTo": "../push/push-delivery.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "current-platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/outbox/outbox.module.ts",
-    "to": "src/conversations/conversation-realtime.module.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "current-platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/outbox/outbox.module.ts",
-    "to": "src/push/push.module.ts",
-    "unresolvedTo": "../push/push.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "current-platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/platform/config/runtime-environment.ts",
     "to": "src/auth/jwt-secret.ts",
     "unresolvedTo": "../../auth/jwt-secret",
@@ -3762,6 +3706,62 @@
     "from": "src/platform/health/readiness.service.ts",
     "to": "src/media/media-storage.service.ts",
     "unresolvedTo": "../../media/media-storage.service",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "platform-no-business-contexts"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/platform/outbox/outbox.dispatcher.ts",
+    "to": "src/conversations/conversation-realtime.publisher.ts",
+    "unresolvedTo": "../../conversations/conversation-realtime.publisher",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "platform-no-business-contexts"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/platform/outbox/outbox.dispatcher.ts",
+    "to": "src/push/push-delivery.service.ts",
+    "unresolvedTo": "../../push/push-delivery.service",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "platform-no-business-contexts"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/platform/outbox/outbox.module.ts",
+    "to": "src/conversations/conversation-realtime.module.ts",
+    "unresolvedTo": "../../conversations/conversation-realtime.module",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "platform-no-business-contexts"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/platform/outbox/outbox.module.ts",
+    "to": "src/push/push.module.ts",
+    "unresolvedTo": "../../push/push.module",
     "dependencyTypes": [
       "local",
       "import"

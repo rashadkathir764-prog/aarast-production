@@ -10,8 +10,8 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../src/auth/authenticated-user.interface";
 import { NotificationsService } from "../src/notifications/notifications.service";
-import { OutboxEventTypes } from "../src/outbox/outbox.constants";
-import { OutboxService } from "../src/outbox/outbox.service";
+import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
+import { OutboxService } from "../src/platform/outbox/outbox.service";
 import { PrismaService } from "../src/platform/database/prisma.service";
 import { PermissionService } from "../src/sharing/permission.service";
 import { SharingService } from "../src/sharing/sharing.service";

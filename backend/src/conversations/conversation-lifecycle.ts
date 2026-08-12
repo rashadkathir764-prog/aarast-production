@@ -4,7 +4,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { OutboxEventTypes } from '../outbox/outbox.constants';
+import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
 
 type ConversationTransaction = Pick<
   Prisma.TransactionClient,

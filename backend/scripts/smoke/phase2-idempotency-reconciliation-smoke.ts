@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { reconcileAmbiguousIdempotencyKey } from "../../src/common/idempotency/idempotency-reconciliation";
+import { reconcileAmbiguousIdempotencyKey } from "../../src/platform/idempotency/idempotency-reconciliation";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;

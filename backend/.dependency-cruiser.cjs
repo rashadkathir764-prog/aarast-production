@@ -36,9 +36,9 @@ const contextRules = businessContexts.map(([name, ownRoots]) => {
 
 const currentPlatformRule = {
   name: 'current-platform-no-business-contexts',
-  comment: 'R0 baseline freezes current imports from platform roots into business contexts',
+  comment: 'R1 baseline freezes current imports from remaining legacy platform roots into business contexts',
   severity: 'error',
-  from: { path: '^src/(?:common|outbox)(?:/|$)' },
+  from: { path: '^src/common(?:/|$)' },
   to: { path: `^src/(?:${allBusinessPaths})(?:/|$)` },
 };
 

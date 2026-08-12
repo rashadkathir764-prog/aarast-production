@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { types as utilTypes } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const SCHEMA_VERSION = 1;
@@ -27,6 +28,15 @@ const ERROR_KINDS = new Set([
   'cross-area-part',
   'invalid-part-contract',
 ]);
+const ERROR_MESSAGES = new Map([
+  ['unresolved-local-target', 'unresolved-local-target'],
+  ['cross-area-part', 'cross-area-part'],
+  ['invalid-part-contract', 'invalid-part-contract'],
+]);
+const ERROR_TARGET_PLACEHOLDER = 'mobile/lib/__unresolved_local_target__.dart';
+const MAX_COLLECTION_LENGTH = 10_000;
+const MAX_PATH_LENGTH = 512;
+const MAX_RECORD_COUNT = 1_000_000;
 const RECORD_FIELDS = [
   'count',
   'kind',
@@ -35,6 +45,9 @@ const RECORD_FIELDS = [
   'target',
   'targetArea',
 ];
+const ERROR_FIELDS = ['kind', 'source', 'target'];
+const SCAN_FIELDS = ['errors', 'records'];
+const BASELINE_FIELDS = ['records', 'schemaVersion', 'sourceRevision'];
 
 function isIdentifierStart(character) {
   // Keep the scanner's existing ASCII lexical surface explicit. Unicode
@@ -568,8 +581,15 @@ export function scanMobileBoundaries({ mobileLib }) {
   const nameStyleParts = [];
 
   function addError(item) {
-    if (!ERROR_KINDS.has(item.kind)) return;
-    errors.set(errorKey(item), item);
+    if (!ERROR_KINDS.has(item.kind)) invalidDartSource();
+    const safeItem = {
+      source: item.source,
+      target: canonicalMobileFile(item.target)
+        ? item.target
+        : ERROR_TARGET_PLACEHOLDER,
+      kind: item.kind,
+    };
+    errors.set(errorKey(safeItem), safeItem);
   }
 
   for (const sourceFile of listDartFiles(resolvedMobileLib)) {
@@ -734,79 +754,153 @@ function sameArray(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function sensitiveString(value) {
-  return path.posix.isAbsolute(value)
-    || path.win32.isAbsolute(value)
-    || /[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value)
-    || /(?:DATABASE_URL|JWT_SECRET|PASSWORD|SECRET|TOKEN)\s*=/i.test(value)
-    || /BEGIN (?:RSA |OPENSSH )?PRIVATE KEY/i.test(value);
-}
-
-function assertNoSensitiveStrings(value, visited = new Set()) {
-  if (typeof value === 'string') {
-    if (sensitiveString(value)) {
-      throw new Error('mobile baseline contains an absolute path or secret');
-    }
-    return;
-  }
-  if (!value || typeof value !== 'object' || visited.has(value)) return;
-  visited.add(value);
-  for (const [key, child] of Object.entries(value)) {
-    assertNoSensitiveStrings(key, visited);
-    assertNoSensitiveStrings(child, visited);
-  }
-}
-
 function canonicalMobileFile(value) {
-  return typeof value === 'string'
-    && /^mobile\/lib\/.+\.dart$/.test(value)
-    && !value.includes('\\')
-    && !value.split('/').some((segment) => segment === '.' || segment === '..')
-    && !path.posix.isAbsolute(value)
-    && !path.win32.isAbsolute(value);
+  if (
+    typeof value !== 'string'
+    || value.length === 0
+    || value.length > MAX_PATH_LENGTH
+    || !value.startsWith('mobile/lib/')
+    || !value.endsWith('.dart')
+    || value.includes('\\')
+    || /[\u0000-\u001F\u007F-\u009F:=?*"<>|%]/.test(value)
+    || path.posix.isAbsolute(value)
+    || path.win32.isAbsolute(value)
+    || path.posix.normalize(value) !== value
+  ) return false;
+  const segments = value.split('/');
+  if (segments[0] !== 'mobile' || segments[1] !== 'lib' || segments.length < 3) {
+    return false;
+  }
+  return segments.slice(2).every((segment) => (
+    segment !== ''
+    && segment !== '.'
+    && segment !== '..'
+    && /^[A-Za-z0-9_.$'{}@+-]+$/.test(segment)
+  ));
 }
 
-function validateRecord(item) {
-  if (!item || typeof item !== 'object' || Array.isArray(item)) {
-    throw new Error('mobile baseline contains an invalid record');
+function readPlainObject(value, expectedFields) {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || Array.isArray(value)
+    || utilTypes.isProxy(value)
+    || Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new Error('invalid plain object');
   }
-  if (!sameArray(Object.keys(item).sort(), RECORD_FIELDS)) {
-    throw new Error('mobile baseline record shape is invalid');
+  const ownKeys = Reflect.ownKeys(value);
+  if (
+    ownKeys.some((key) => typeof key !== 'string')
+    || !sameArray([...ownKeys].sort(), expectedFields)
+  ) {
+    throw new Error('invalid plain object shape');
   }
+  const result = {};
+  for (const field of expectedFields) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    if (!descriptor || !Object.hasOwn(descriptor, 'value') || !descriptor.enumerable) {
+      throw new Error('invalid plain object field');
+    }
+    result[field] = descriptor.value;
+  }
+  return result;
+}
+
+function readDenseArray(value, maximumLength = MAX_COLLECTION_LENGTH) {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || utilTypes.isProxy(value)
+    || !Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Array.prototype
+  ) {
+    throw new Error('invalid dense array');
+  }
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  if (
+    !lengthDescriptor
+    || !Object.hasOwn(lengthDescriptor, 'value')
+    || !Number.isSafeInteger(lengthDescriptor.value)
+    || lengthDescriptor.value < 0
+    || lengthDescriptor.value > maximumLength
+  ) {
+    throw new Error('invalid dense array length');
+  }
+  const ownKeys = Reflect.ownKeys(value);
+  if (
+    ownKeys.some((key) => typeof key !== 'string')
+    || ownKeys.length !== lengthDescriptor.value + 1
+  ) {
+    throw new Error('invalid dense array shape');
+  }
+  const result = [];
+  for (let index = 0; index < lengthDescriptor.value; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !Object.hasOwn(descriptor, 'value') || !descriptor.enumerable) {
+      throw new Error('invalid dense array item');
+    }
+    result.push(descriptor.value);
+  }
+  return result;
+}
+
+function validateRecord(value) {
+  const item = readPlainObject(value, RECORD_FIELDS);
   if (!canonicalMobileFile(item.source) || !canonicalMobileFile(item.target)) {
-    throw new Error('mobile baseline contains a non-canonical path');
+    throw new Error('invalid record path');
   }
-  if (item.sourceArea !== areaForPath(item.source) || item.targetArea !== areaForPath(item.target)) {
-    throw new Error('mobile baseline contains an invalid area');
+  if (
+    typeof item.sourceArea !== 'string'
+    || typeof item.targetArea !== 'string'
+    || item.sourceArea !== areaForPath(item.source)
+    || item.targetArea !== areaForPath(item.target)
+  ) {
+    throw new Error('invalid record area');
   }
   if (!RECORD_KINDS.has(item.kind) || item.kind !== recordKind(item.sourceArea, item.targetArea)) {
-    throw new Error('mobile baseline contains an invalid kind');
+    throw new Error('invalid record kind');
   }
-  if (!Number.isInteger(item.count) || item.count <= 0) {
-    throw new Error('mobile baseline counts must be positive integers');
+  if (
+    !Number.isSafeInteger(item.count)
+    || item.count <= 0
+    || item.count > MAX_RECORD_COUNT
+  ) {
+    throw new Error('invalid record count');
   }
+  return item;
+}
+
+function validateError(value) {
+  const item = readPlainObject(value, ERROR_FIELDS);
+  if (
+    !canonicalMobileFile(item.source)
+    || !canonicalMobileFile(item.target)
+    || !ERROR_KINDS.has(item.kind)
+  ) {
+    throw new Error('invalid scan error');
+  }
+  return item;
 }
 
 function validateBaseline(value) {
-  if (!value || value.schemaVersion !== SCHEMA_VERSION) {
-    throw new Error('mobile baseline schemaVersion must be 1');
+  const baseline = readPlainObject(value, BASELINE_FIELDS);
+  if (baseline.schemaVersion !== SCHEMA_VERSION) {
+    throw new Error('invalid baseline schemaVersion');
   }
-  if (!sameArray(Object.keys(value).sort(), ['records', 'schemaVersion', 'sourceRevision'])) {
-    throw new Error('mobile baseline shape is invalid');
+  if (baseline.sourceRevision !== SOURCE_REVISION) {
+    throw new Error('invalid baseline sourceRevision');
   }
-  if (value.sourceRevision !== SOURCE_REVISION) {
-    throw new Error('mobile baseline sourceRevision is invalid');
-  }
-  if (!Array.isArray(value.records)) {
-    throw new Error('mobile baseline records must be an array');
-  }
-  assertNoSensitiveStrings(value);
-  for (const item of value.records) validateRecord(item);
-  const keys = value.records.map(recordKey);
+  const records = readDenseArray(baseline.records).map(validateRecord);
+  const keys = records.map(recordKey);
   if (!sameArray(keys, [...keys].sort()) || new Set(keys).size !== keys.length) {
-    throw new Error('mobile baseline keys must be sorted and unique');
+    throw new Error('invalid baseline record ordering');
   }
-  return value;
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    sourceRevision: SOURCE_REVISION,
+    records,
+  };
 }
 
 function sortedRecords(records) {
@@ -835,23 +929,20 @@ function writeLine(target, message) {
 }
 
 function validateScan(value) {
-  if (!value || !Array.isArray(value.records) || !Array.isArray(value.errors)) {
-    throw new Error('mobile boundary scan result is invalid');
+  const scan = readPlainObject(value, SCAN_FIELDS);
+  const records = readDenseArray(scan.records).map(validateRecord);
+  const errors = readDenseArray(scan.errors).map(validateError);
+  const recordKeys = records.map(recordKey);
+  const errorKeys = errors.map(errorKey);
+  if (new Set(recordKeys).size !== recordKeys.length) {
+    throw new Error('duplicate scan record');
   }
-  for (const item of value.records) validateRecord(item);
-  for (const item of value.errors) {
-    if (
-      !item
-      || typeof item.source !== 'string'
-      || typeof item.target !== 'string'
-      || !ERROR_KINDS.has(item.kind)
-    ) {
-      throw new Error('mobile boundary scan error is invalid');
-    }
+  if (new Set(errorKeys).size !== errorKeys.length) {
+    throw new Error('duplicate scan error');
   }
   return {
-    records: sortedRecords(value.records),
-    errors: [...value.errors].sort((left, right) => compareKeys(left, right, errorKey)),
+    records: sortedRecords(records),
+    errors: errors.sort((left, right) => compareKeys(left, right, errorKey)),
   };
 }
 
@@ -876,7 +967,7 @@ export function runCli(dependencies) {
         `mobile boundary scan errors (${current.errors.length} records)`,
       );
       for (const item of current.errors) {
-        writeLine(dependencies.stderr, `${item.kind}: ${item.source} -> ${item.target}`);
+        writeLine(dependencies.stderr, `${ERROR_MESSAGES.get(item.kind)}: ${item.source}`);
       }
       return 1;
     }

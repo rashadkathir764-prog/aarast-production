@@ -29,6 +29,7 @@ const baselinePath = path.join(
   'mobile-boundaries-baseline.json',
 );
 const sourceRevision = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
+const unresolvedTargetPlaceholder = 'mobile/lib/__unresolved_local_target__.dart';
 
 function withMobileFixture(files, callback) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'aarast-mobile-boundaries-'));
@@ -85,10 +86,28 @@ function captureCli(overrides = {}) {
   };
 }
 
+function assertConfigurationFailure(result) {
+  assert.equal(result.exitCode, 2);
+  assert.deepEqual(result.stdout, []);
+  assert.deepEqual(result.stderr, ['mobile boundary configuration error']);
+}
+
 function expectedUnresolved(source, target) {
+  const safeTarget = (
+    typeof target === 'string'
+    && target.startsWith('mobile/lib/')
+    && target.endsWith('.dart')
+    && !/[\\\u0000-\u001F\u007F-\u009F:=?*"<>|%]/.test(target)
+    && target.split('/').slice(2).every((segment) => (
+      segment !== ''
+      && segment !== '.'
+      && segment !== '..'
+      && /^[A-Za-z0-9_.$'{}@+-]+$/.test(segment)
+    ))
+  ) ? target : unresolvedTargetPlaceholder;
   return {
     records: [],
-    errors: [{ source, target, kind: 'unresolved-local-target' }],
+    errors: [{ source, target: safeTarget, kind: 'unresolved-local-target' }],
   };
 }
 
@@ -576,6 +595,13 @@ for (const source of malformedDirectiveGrammar) {
 }
 
 test('escaped double quote reaches resolution without silent retargeting', () => {
+  assert.deepEqual(
+    parseDartDirectives(String.raw`import "package:aarast_mobile/features/alpha/child\"name.dart";`),
+    [{
+      kind: 'import',
+      uris: ['package:aarast_mobile/features/alpha/child"name.dart'],
+    }],
+  );
   withMobileFixture({
     'core/source.dart': `${String.raw`import "package:aarast_mobile/features/alpha/child\"name.dart";`}\n`,
   }, ({ mobileLib }) => {
@@ -600,6 +626,15 @@ const controlEscapes = new Map([
 
 for (const [escape, decoded] of controlEscapes) {
   test(`Dart control escape \\${escape} is decoded before target resolution`, () => {
+    assert.deepEqual(
+      parseDartDirectives(
+        `import 'package:aarast_mobile/features/alpha/control\\${escape}tail.dart';`,
+      ),
+      [{
+        kind: 'import',
+        uris: [`package:aarast_mobile/features/alpha/control${decoded}tail.dart`],
+      }],
+    );
     withMobileFixture({
       'core/source.dart': `import 'package:aarast_mobile/features/alpha/control\\${escape}tail.dart';\n`,
     }, ({ mobileLib }) => {
@@ -1103,7 +1138,7 @@ test('missing reciprocity and name-style part-of declarations are invalid contra
       },
       {
         source: 'mobile/lib/features/alpha/orphan.dart',
-        target: 'some.named.library',
+        target: unresolvedTargetPlaceholder,
         kind: 'invalid-part-contract',
       },
     ]);
@@ -1206,11 +1241,179 @@ test('every scan error kind fails write, check, and strict modes in canonical or
     assert.equal(result.exitCode, 1, mode);
     assert.equal(baselineAccessed, false, mode);
     assert.deepEqual(result.stderr.slice(1), [
-      'invalid-part-contract: mobile/lib/features/alpha/library.dart -> mobile/lib/features/alpha/child.dart',
-      'unresolved-local-target: mobile/lib/features/alpha/source.dart -> mobile/lib/features/alpha/missing.dart',
-      'cross-area-part: mobile/lib/features/beta/child.dart -> mobile/lib/features/alpha/library.dart',
+      'invalid-part-contract: mobile/lib/features/alpha/library.dart',
+      'unresolved-local-target: mobile/lib/features/alpha/source.dart',
+      'cross-area-part: mobile/lib/features/beta/child.dart',
     ]);
   }
+});
+
+for (const [name, escaped] of [
+  ['LF', String.raw`\nTOKEN=reflected`],
+  ['CR', String.raw`\rTOKEN=reflected`],
+  ['tab', String.raw`\tTOKEN=reflected`],
+  ['form feed', String.raw`\fTOKEN=reflected`],
+  ['backspace', String.raw`\bTOKEN=reflected`],
+  ['vertical tab', String.raw`\vTOKEN=reflected`],
+  ['NUL', String.raw`\x00TOKEN=reflected`],
+]) {
+  test(`decoded ${name} in a local URI cannot inject CLI diagnostics`, () => {
+    withMobileFixture({
+      'core/source.dart': `import 'missing${escaped}.dart';\n`,
+    }, ({ mobileLib }) => {
+      const result = captureCli({
+        scan: () => scanMobileBoundaries({ mobileLib }),
+      });
+      assert.equal(result.exitCode, 1);
+      assert.deepEqual(result.stdout, []);
+      assert.deepEqual(result.stderr, [
+        'mobile boundary scan errors (1 records)',
+        'unresolved-local-target: mobile/lib/core/source.dart',
+      ]);
+      assert.doesNotMatch(result.stderr.join('\n'), /TOKEN=reflected|[\u0000-\u0009\u000B-\u001F\u007F]/);
+    });
+  });
+}
+
+test('legitimate unresolved and part errors remain useful fixed exit-1 diagnostics', () => {
+  withMobileFixture({
+    'features/alpha/library.dart': "part 'child.dart';\n",
+    'features/alpha/child.dart': '// missing reciprocal part-of\n',
+    'features/alpha/missing.dart': "import 'not_found.dart';\n",
+    'features/alpha/orphan.dart': 'part of some.named.library;\n',
+  }, ({ mobileLib }) => {
+    const result = captureCli({
+      scan: () => scanMobileBoundaries({ mobileLib }),
+    });
+    assert.equal(result.exitCode, 1);
+    assert.deepEqual(result.stderr, [
+      'mobile boundary scan errors (3 records)',
+      'invalid-part-contract: mobile/lib/features/alpha/library.dart',
+      'unresolved-local-target: mobile/lib/features/alpha/missing.dart',
+      'invalid-part-contract: mobile/lib/features/alpha/orphan.dart',
+    ]);
+    assert.doesNotMatch(result.stderr.join('\n'), /child\.dart|not_found\.dart|some\.named\.library/);
+  });
+});
+
+const unsafeDiagnosticPaths = [
+  '',
+  '../mobile/lib/core/source.dart',
+  'mobile/lib/core/../source.dart',
+  'mobile\\lib\\core\\source.dart',
+  'C:/mobile/lib/core/source.dart',
+  'C:\\mobile\\lib\\core\\source.dart',
+  '\\\\server\\share\\source.dart',
+  '/mobile/lib/core/source.dart',
+  'file:///mobile/lib/core/source.dart',
+  'package:aarast_mobile/core/source.dart',
+  'mobile/lib/core/TOKEN=reflected.dart',
+  'mobile/lib/core/source.dart\nTOKEN=reflected',
+  'mobile/lib/core/source.dart\0TOKEN=reflected',
+];
+
+for (const field of ['source', 'target']) {
+  for (const value of unsafeDiagnosticPaths) {
+    test(`scan error rejects unsafe ${field} atomically: ${JSON.stringify(value)}`, () => {
+      const valid = {
+        source: 'mobile/lib/core/source.dart',
+        target: 'mobile/lib/core/missing.dart',
+        kind: 'unresolved-local-target',
+      };
+      const result = captureCli({
+        scan: () => ({
+          records: [],
+          errors: [valid, { ...valid, [field]: value }],
+        }),
+      });
+      assertConfigurationFailure(result);
+    });
+  }
+}
+
+test('scan error rejects an arbitrary message without reflecting any partial result', () => {
+  const result = captureCli({
+    scan: () => ({
+      records: [],
+      errors: [{
+        source: 'mobile/lib/core/source.dart',
+        target: 'mobile/lib/core/missing.dart',
+        kind: 'unresolved-local-target',
+        message: 'TOKEN=reflected\nforged diagnostic',
+      }],
+    }),
+  });
+  assertConfigurationFailure(result);
+});
+
+test('scan results reject duplicate records and errors before output', () => {
+  const edge = record();
+  const error = {
+    source: 'mobile/lib/core/source.dart',
+    target: 'mobile/lib/core/missing.dart',
+    kind: 'unresolved-local-target',
+  };
+  for (const scan of [
+    { records: [edge, { ...edge }], errors: [] },
+    { records: [], errors: [error, { ...error }] },
+  ]) {
+    assertConfigurationFailure(captureCli({ scan: () => scan }));
+  }
+});
+
+test('scan validation rejects prototypes, accessors, proxies, symbols, BigInt, and sparse arrays', () => {
+  let getterCalls = 0;
+  const accessorRecord = record();
+  Object.defineProperty(accessorRecord, 'source', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'mobile/lib/core/source.dart';
+    },
+  });
+  const inheritedRecord = Object.assign(Object.create({ inherited: true }), record());
+  const symbolRecord = record();
+  symbolRecord[Symbol('hidden')] = 'TOKEN=reflected';
+  const transparentProxy = new Proxy(record(), {});
+  const throwingProxy = new Proxy(record(), {
+    get() {
+      throw new Error('TOKEN=reflected');
+    },
+  });
+  const sparseRecords = [];
+  sparseRecords.length = 3;
+  sparseRecords[2] = record();
+
+  const scans = [
+    { records: [accessorRecord], errors: [] },
+    { records: [inheritedRecord], errors: [] },
+    { records: [symbolRecord], errors: [] },
+    { records: [transparentProxy], errors: [] },
+    { records: [throwingProxy], errors: [] },
+    { records: [{ ...record(), count: 1n }], errors: [] },
+    { records: [{ ...record(), source: Symbol('source') }], errors: [] },
+    { records: sparseRecords, errors: [] },
+  ];
+  for (const scan of scans) {
+    assertConfigurationFailure(captureCli({ scan: () => scan }));
+  }
+  assert.equal(getterCalls, 0);
+});
+
+test('scan validation rejects oversized arrays before writer or baseline access', () => {
+  let downstreamAccessed = false;
+  const result = captureCli({
+    argv: ['--write-baseline'],
+    scan: () => ({
+      records: Array.from({ length: 10_001 }, () => record()),
+      errors: [],
+    }),
+    writeBaseline: () => {
+      downstreamAccessed = true;
+    },
+  });
+  assertConfigurationFailure(result);
+  assert.equal(downstreamAccessed, false);
 });
 
 test('dependency-injected CLI writes sorted metadata and returns 0, 1, and 2', () => {
@@ -1281,6 +1484,65 @@ test('baseline validation rejects malformed metadata, records, paths, counts, or
       /do-not-print|C:[\\/]|\/tmp\/|aarast-mobile-boundaries-|\bat\s+file:/i,
     );
   }
+});
+
+test('baseline validation rejects hostile object and array shapes without invoking accessors', () => {
+  let getterCalls = 0;
+  const accessorBaseline = baseline();
+  Object.defineProperty(accessorBaseline, 'records', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return [];
+    },
+  });
+  const inheritedBaseline = Object.assign(Object.create({ inherited: true }), baseline());
+  const symbolBaseline = baseline();
+  symbolBaseline[Symbol('hidden')] = 'TOKEN=reflected';
+  const proxyBaseline = new Proxy(baseline(), {});
+  const sparseBaselineRecords = [];
+  sparseBaselineRecords.length = 3;
+  sparseBaselineRecords[2] = record();
+
+  for (const value of [
+    accessorBaseline,
+    inheritedBaseline,
+    symbolBaseline,
+    proxyBaseline,
+    baseline(sparseBaselineRecords),
+    { ...baseline(), schemaVersion: 1n },
+    { ...baseline(), sourceRevision: Symbol('revision') },
+  ]) {
+    assertConfigurationFailure(captureCli({ readBaseline: () => value }));
+  }
+  assert.equal(getterCalls, 0);
+});
+
+test('scan error objects reject accessors and proxies without reflecting traps', () => {
+  let getterCalls = 0;
+  const accessorError = {
+    source: 'mobile/lib/core/source.dart',
+    target: 'mobile/lib/core/missing.dart',
+    kind: 'unresolved-local-target',
+  };
+  Object.defineProperty(accessorError, 'target', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'mobile/lib/core/missing.dart';
+    },
+  });
+  const proxyError = new Proxy({
+    source: 'mobile/lib/core/source.dart',
+    target: 'mobile/lib/core/missing.dart',
+    kind: 'unresolved-local-target',
+  }, {});
+  for (const error of [accessorError, proxyError]) {
+    assertConfigurationFailure(captureCli({
+      scan: () => ({ records: [], errors: [error] }),
+    }));
+  }
+  assert.equal(getterCalls, 0);
 });
 
 test('tracked baseline metadata and records are canonical, sorted, unique, counted, and secret-free', () => {

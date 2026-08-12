@@ -12,7 +12,13 @@
 
 - Work only on branch `modular-monolith`, created from `feafe3db0053d6c66d5f46b56ff9a512861dfbad`.
 - R0 is the first authorized P3 slice. Preserve completed P2 checkpoints; mark further P2 implementation paused while R0 is active.
-- R0 MUST NOT modify anything under `backend/src/**`, `mobile/lib/**`, `admin-web/src/**`, `backend/prisma/schema.prisma`, `backend/prisma/migrations/**`, `deploy/**`, any Dockerfile, or `docker-compose.yml`.
+- R0 MUST NOT modify anything under `backend/src/**`, `admin-web/src/**`,
+  `backend/prisma/schema.prisma`, `backend/prisma/migrations/**`, `deploy/**`,
+  any Dockerfile, or `docker-compose.yml`. Under `mobile/lib/**`, the sole
+  approved exception is the one-line import URI repair in
+  `mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`, committed
+  as `464a23e0`; its content must remain unchanged after that commit. Every
+  other Mobile source path remains protected and untouched.
 - R0 MUST NOT create Nest feature modules, ports, repositories, Flutter barrels, provider-portal files, Admin feature folders, migrations, endpoints, routes, or product behavior.
 - Preserve every HTTP method/path/auth flag, response/error/Arabic contract, transaction isolation level, lock order, permission decision, mobile route, Admin route, offline ownership rule, and deployment artifact.
 - The live Prisma registry contains exactly 52 models and 76 committed migrations at the baseline revision. Derive counts from source during checks; do not use a stale hard-coded test-count invariant.
@@ -48,8 +54,13 @@ R0 is complete only when all of the following are true:
 5. The ports scanner resolves Nest symbols rather than matching spellings, keeps `forwardRef()` at zero, requires the observed `@Global()` path set to equal the two-file R0 allowlist, rejects future cross-module internal imports, and verifies the current Nest module-import graph remains acyclic.
 6. The Mobile checker tokenizes all Dart library directives, rejects unresolved/cross-area `part` relationships immediately, and fails when current `core -> features` or direct cross-feature imports increase, while strict barrel enforcement remains deferred to R9.
 7. CI runs every new architecture gate with the repository-pinned dependency and no network-time `npx` installation; the `r0-scope` PR-head job enforces the fixed-base exact file allowlist automatically.
-8. Existing Backend, Admin, Mobile, docs, image, audit, secret, and managed E2E CI jobs remain green.
-9. The protected application/schema/deployment paths listed in Global Constraints have an empty diff from the R0 base revision.
+8. Existing Backend, Admin, Mobile, docs, image, audit, secret, and managed E2E
+   CI jobs remain green on the pull request's synthetic merge candidate, while
+   `r0-scope` is green on the exact immutable PR-head revision.
+9. The protected application/schema/deployment diff from the R0 base revision
+   contains exactly the approved one-line Mobile import repair committed as
+   `464a23e0`, unchanged afterward; every other protected path listed in Global
+   Constraints has an empty diff.
 
 ## Target File Map
 
@@ -96,7 +107,9 @@ R0 is complete only when all of the following are true:
 - `backend/src/**`
 - `backend/prisma/schema.prisma`
 - `backend/prisma/migrations/**`
-- `mobile/lib/**`
+- `mobile/lib/**`, except the exact owner-approved one-line import URI repair
+  in `mobile/lib/features/welcome_gateway/widgets/aarast_path_card.dart`
+  committed as `464a23e0` and unchanged afterward
 - `mobile/test/**`
 - `mobile/integration_test/**`
 - `admin-web/src/**`
@@ -1344,7 +1357,11 @@ Expected: tests PASS and live gate PASS with only the current R0 plan/deliverabl
 
 - [ ] **Step 5: Add the required R0 scope job to CI**
 
-Add this independent job. Checking out the PR head SHA avoids validating GitHub's synthetic merge commit; `fetch-depth: 0` guarantees the fixed base is present:
+Add this independent job. Checking out the PR head SHA makes this fixed-base
+allowlist validate the exact branch contribution; `fetch-depth: 0` guarantees
+the fixed base is present. The other `pull_request` jobs intentionally keep
+`actions/checkout`'s default synthetic merge candidate so they test whether
+the PR integrates cleanly with its target branch:
 
 ```yaml
   r0-scope:
@@ -1623,7 +1640,11 @@ git commit -m "docs: record modular monolith R0 verification"
 
 - [ ] **Step 11: Require remote CI before closing R0**
 
-After an explicitly authorized push/PR, require the automated `r0-scope` job to validate the exact PR-head candidate against fixed base `feafe3db0053d6c66d5f46b56ff9a512861dfbad`, and require all existing and new jobs to pass on that same candidate revision:
+After an explicitly authorized push/PR, require the automated `r0-scope` job
+to validate the exact immutable PR-head revision against fixed base
+`feafe3db0053d6c66d5f46b56ff9a512861dfbad`. Require every other existing and
+new job to pass on the corresponding synthetic merge candidate produced for
+that same pull request. Do not describe these two Git objects as one revision:
 
 - Backend
 - Backend image
@@ -1653,7 +1674,10 @@ When those external checks are green, close R0 in the PR/review workflow without
 - [ ] Closure consistency: the tracked receipt contains local evidence only; immutable SHA and CI state remain in external PR/workflow metadata, so no self-invalidating follow-up edit exists.
 - [ ] Phase consistency: R0 creates no module, port, repository, barrel, migration, route, endpoint, or product behavior.
 - [ ] Test discovery: Backend architecture tests are top-level under `backend/test/` and are therefore discovered by the current runner.
-- [ ] Source protection: pre/post local gates and the required PR-head `r0-scope` CI job compare the fixed base against the exact allowlist, covering tracked, staged, unstaged, and untracked changes.
+- [ ] Source protection: pre/post local gates and the required PR-head
+  `r0-scope` CI job compare the fixed base against the exact allowlist,
+  covering tracked, staged, unstaged, and untracked changes; all other PR jobs
+  remain green on the corresponding synthetic merge candidate.
 - [ ] Documentation consistency: `ARCHITECTURE.md` is canonical; this plan is a working execution artifact; archived superpowers files remain historical.
 
 ## Execution Handoff

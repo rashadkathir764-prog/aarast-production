@@ -39,12 +39,18 @@ explicit transaction client; it is not a permanent exception.
 From `backend/`:
 
 ```powershell
+npm run architecture
 npm run check
 npm run build
 npm test
 npm run smoke:all
 npx prisma validate
 ```
+
+`npm run architecture` is the incremental modular-monolith gate: it rejects a
+new dependency edge/cycle, new or increased foreign Prisma ownership debt, and
+new ports/global/Nest-graph violations while allowing the committed R0 debt
+baselines only to shrink.
 
 Database-writing smoke and load commands are managed by
 `scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker

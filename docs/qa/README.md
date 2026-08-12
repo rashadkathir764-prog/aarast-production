@@ -32,6 +32,58 @@ other existing-test change is a stop signal and requires explicit review.
 
 R0 itself adds tests and does not edit existing behavioral tests.
 
+## Modular Monolith R0 Gates
+
+Run the fixed-base scope, Mobile boundary, and documentation gates from the
+repository root:
+
+```powershell
+node .\scripts\check-r0-scope.mjs --check
+node --test .\scripts\check-mobile-boundaries.test.mjs
+node .\scripts\check-mobile-boundaries.mjs --check-baseline
+node .\scripts\docs-sync.mjs --check
+node .\scripts\docs-verify.mjs
+git diff --check
+```
+
+Run the Backend gates from `backend/`:
+
+```powershell
+npm run architecture
+npm run check
+npm run build
+npm test
+npx prisma validate
+npm audit --audit-level=high
+npm audit --omit=dev
+```
+
+Run the unchanged Admin quality gates from `admin-web/`:
+
+```powershell
+npm run typecheck
+npm test -- --run
+npm run build
+npm run smoke:honesty
+npm run smoke:routes
+npm run test:container-config
+```
+
+Run the existing Mobile quality gates from `mobile/` after the root Mobile
+boundary commands:
+
+```powershell
+flutter analyze --no-pub
+flutter test --no-pub
+```
+
+R0 CI uses the counted dependency, ownership, and Mobile baseline modes. The
+Backend dependency command with `--no-ignore-known` and
+`node .\scripts\check-mobile-boundaries.mjs --strict` deliberately expose
+current migration debt and are expected to fail today; they are proof/debug
+commands, not R0 CI gates. Dependency strictness is reached by removing the
+known graph debt, while Mobile strict mode becomes the gate in R9.
+
 ## Latest Recorded Full Working-Tree Gate — 2026-08-11
 
 - Backend source guard/check/build/Prisma validation: PASS; unit suite PASS with

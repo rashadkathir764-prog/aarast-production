@@ -1,6 +1,6 @@
 # Modular Monolith R1 Platform and Shared Kernel Design
 
-**Status:** Approved for planning
+**Status:** Approved for staged local execution
 
 **Date:** 2026-08-12
 

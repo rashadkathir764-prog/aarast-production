@@ -1,6 +1,6 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-12
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
@@ -79,8 +79,8 @@ Acceptance:
 ### P2 — Design System And Information Architecture Reset — Paused By Owner Direction
 
 The completed P2 checkpoints below remain accepted. Further P2 implementation
-is paused while P3 R0 Governance is active; this transition does not reopen or
-invalidate the accepted P2 evidence.
+is paused while P3 R1 Platform And Shared Kernel is active; this transition
+does not reopen or invalidate the accepted P2 evidence.
 
 #### Completed checkpoint — semantic foundation, Mobile core journeys, and smart Home
 

@@ -164,8 +164,9 @@ R1 is complete only when all conditions are true on one immutable candidate:
 - Modify: the R1 design and this plan to record the owner-approved same-branch
   checkpoint protocol
 - Modify: `docs/README.md`, `ARCHITECTURE.md`,
-  `docs/project/EXECUTION_PLAN.md`, `docs/project/STATUS.md`, and `CHANGELOG.md`
-  only to transition active phase truth from closed R0 governance to R1 Task 1
+  `docs/project/DECISIONS.md`, `docs/project/EXECUTION_PLAN.md`,
+  `docs/project/STATUS.md`, and `CHANGELOG.md` only to transition active phase
+  truth from closed R0 governance to R1 Task 1
 
 **Interfaces:**
 - Consumes: owner-approved R0 candidate metadata, live Git tree, R0 architecture baselines, R1 design.
@@ -241,11 +242,44 @@ Get-FileHash -Algorithm SHA256 $generatedDocs | Format-Table Path,Hash
 
 - [ ] **Step 4: Capture exact old-path consumer inventories**
 
-Run and save the sorted output in the Task 1 report. Do not manually exclude a consumer.
+Run and save all raw matches plus the derived target/non-target sets in the
+Task 1 report. Do not manually exclude a consumer. The only lexical false
+positives are the exact Nest package controls asserted below; every other raw
+match is a target legacy Aarast path.
 
 ```powershell
 $oldImportPattern = 'common/|prisma/prisma\.(?:module|service)|outbox/|health\.controller|health/readiness|auth/(?:openwa-otp-config|openwa-transient-text|whatsapp-otp-config)|users/application-user-identity|admin/admin-privacy'
-rg -n --glob '*.{ts,js,cjs,mjs}' $oldImportPattern backend/src backend/test backend/scripts | Sort-Object
+$rawOldImportMatches = @(
+  rg -n --glob '*.{ts,js,cjs,mjs}' $oldImportPattern backend/src backend/test backend/scripts |
+    Sort-Object
+)
+$nonTargetNestMatches = @(
+  $rawOldImportMatches | Where-Object {
+    $_.Contains('@nestjs/common') -or $_.Contains('@nestjs\/common')
+  }
+)
+$expectedNonTargetNestMatches = @(
+  'backend/test\architecture-ports.test.ts:113:',
+  'backend/test\architecture-ports.test.ts:165:',
+  'backend/test\sharing-self-leave.test.ts:6:'
+)
+if ($nonTargetNestMatches.Count -ne 3) {
+  throw "Unexpected Nest lexical-match count: $($nonTargetNestMatches.Count)"
+}
+foreach ($prefix in $expectedNonTargetNestMatches) {
+  if (-not ($nonTargetNestMatches | Where-Object { $_.StartsWith($prefix) })) {
+    throw "Missing expected non-target Nest control: $prefix"
+  }
+}
+$oldImportInventory = @(
+  $rawOldImportMatches | Where-Object { $nonTargetNestMatches -notcontains $_ }
+)
+if ($rawOldImportMatches.Count -ne 251 -or $oldImportInventory.Count -ne 248) {
+  throw 'R1 old-import inventory count drift'
+}
+$rawOldImportMatches
+$oldImportInventory
+$nonTargetNestMatches
 rg -n 'dist/common/idempotency|src/common/|src/prisma/|src/outbox/|src/health/' backend backend/package.json docs .github scripts | Sort-Object
 ```
 
@@ -256,6 +290,11 @@ Every line must be classified as one of:
 - moved-source path literal;
 - architecture fixture intentionally representing a legacy path;
 - historical documentation text that must remain historical.
+
+The three `nonTargetNestMatches` are classified as **non-target lexical match
+— preserve unchanged**. They cover Nest package declarations/diagnostics and
+the real `@nestjs/common/constants` behavioral import; no R1 task may rewrite
+them as Aarast legacy `common/` consumers.
 
 Unclassified output is a stop signal.
 
@@ -489,7 +528,12 @@ Move each source to the exact target in the file map. Do not bulk-copy and delet
 
 - [ ] **Step 4: Update every production consumer mechanically**
 
-Use the Task 1 inventory. Update imports in `backend/src/**`, including but not limited to `app.module.ts`, `main.ts`, auth, admin, catalogs, contexts, conversations, dashboard/timeline, guests, marketplace/provider dashboard, media, money/finance roots, notifications/push, sharing, tasks, users, wedding plans/costs, and remaining idempotency/outbox files.
+Use only Task 1's 248-entry `$oldImportInventory`, never the raw 251 lexical
+matches. Update imports in `backend/src/**`, including but not limited to
+`app.module.ts`, `main.ts`, auth, admin, catalogs, contexts, conversations,
+dashboard/timeline, guests, marketplace/provider dashboard, media,
+money/finance roots, notifications/push, sharing, tasks, users, wedding
+plans/costs, and remaining idempotency/outbox files.
 
 Do not change constructor order, provider arrays, controller arrays, function bodies, or strings. Review each production diff with:
 
@@ -501,7 +545,10 @@ Expected: moves plus import/path changes only.
 
 - [ ] **Step 5: Update test and smoke paths without changing behavior**
 
-Update only import/require and moved-source path literals in the exact Task 1 inventory. Required examples include health, CORS, environment, exception-filter, request-target, scheduler-lock, financial-ledger, and PrismaService tests.
+Update only import/require and moved-source path literals in the exact 248-entry
+target inventory. Preserve the three Nest negative controls byte-identically.
+Required examples include health, CORS, environment, exception-filter,
+request-target, scheduler-lock, financial-ledger, and PrismaService tests.
 
 Run a semantic diff audit:
 

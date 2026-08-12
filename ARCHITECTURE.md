@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-12
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data

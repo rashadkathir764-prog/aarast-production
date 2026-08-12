@@ -300,11 +300,16 @@ R1 treats baselines as debt ledgers, never permissions.
 ## Test and Verification Policy
 
 Existing behavioral tests may change only through reviewed import/export/
-require path edits and moved-source path literals required by R1. Assertions,
-fixtures, expected values, Arabic/error text, setup behavior, timeouts, skips,
-and test selection are frozen. Additive R1 tests cover the layout contract,
-Money value object, OTP split, exact global path, stale-import absence, and
-baseline relocation invariants.
+require path edits and moved-source path literals required by R1. One reviewed
+pre-Task-4 QA exception repairs two independently reproduced stale managed-smoke
+harnesses: notification preferences must assert the exact existing dual outbox
+event semantics, and conversation revocation must construct `SharingService`
+with the current real `ContributionHistoryService` dependency. No production
+behavior changes. Outside those exact two hunks, assertions, fixtures, expected
+values, Arabic/error text, setup behavior, timeouts, skips, and test selection
+remain frozen. Additive R1 tests cover the layout contract, Money value object,
+OTP split, exact global path, stale-import absence, and baseline relocation
+invariants.
 
 Every execution checkpoint runs focused tests plus Backend architecture,
 type-check, build, and the relevant existing suite. R1 closeout also runs the

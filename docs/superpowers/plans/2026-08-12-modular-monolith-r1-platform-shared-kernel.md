@@ -27,7 +27,12 @@
 - Keep exactly 52 Prisma models and 76 committed migrations. Derive both counts from source at verification time.
 - Keep `PrismaModule` global in R1. Exactly two approved `@Global()` modules must remain, and `forwardRef()` must remain zero.
 - Do not create business ports, business Nest module slices, repositories, schema folders, migrations, route handlers, DTOs, compatibility barrels, old-path re-exports, fallback imports, or duplicate old/new implementations.
-- Existing behavioral tests may receive only mechanical import/export/require path edits and moved-source path-literal edits required by R1. Do not change assertions, expected values, fixtures, Arabic/error strings, setup semantics, timeouts, skips, or selected test cases.
+- Existing behavioral tests may receive only mechanical import/export/require
+  path edits and moved-source path-literal edits required by R1. The sole
+  reviewed exception is the exact two-file QA precondition below: strengthen
+  one stale outbox event assertion and wire the current real sharing-history
+  dependency. Do not make any other assertion, expected-value, fixture,
+  Arabic/error string, setup, timeout, skip, or test-selection change.
 - Additive R1 tests are allowed and required. Protect every pre-existing test edit with the test-change audit in Task 6.
 - A dependency or ownership baseline is a debt ledger, not permission. Never regenerate a baseline without the exact before/after semantic audit specified below.
 - Never place an absolute local path, environment value, token, credential, URL secret, database identifier, admin identifier, or production identifier in a baseline, plan receipt, test fixture, or diagnostic.
@@ -120,6 +125,10 @@ R1 is complete only when all conditions are true on one immutable candidate:
 
 ### Modify
 
+- `docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-design.md`
+- `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`
+- `backend/scripts/smoke/phase2-notification-preferences-smoke.ts` only through the exact QA precondition
+- `backend/scripts/smoke/phase2-conversation-revocation-smoke.ts` only through the exact QA precondition
 - `backend/src/auth/otp-channel.ts`
 - every live source/test/smoke import or moved-source path literal returned by the exact inventories in Task 1
 - `backend/src/app.module.ts`
@@ -762,6 +771,124 @@ git commit -m "refactor: move idempotency and outbox platform runtime"
 
 ---
 
+### QA Precondition: Repair Two Stale Managed-Smoke Harnesses
+
+This bounded checkpoint is required before Task 4 because independent Task 3
+review reproduced two pre-existing harness failures that would otherwise make
+Task 6 `smoke:all` structurally red. It may modify only:
+
+- `backend/scripts/smoke/phase2-notification-preferences-smoke.ts`;
+- `backend/scripts/smoke/phase2-conversation-revocation-smoke.ts`;
+- this plan contract;
+- `docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-design.md`;
+- `ARCHITECTURE.md`.
+
+No production source, fixture factory, route, schema, migration, product
+behavior, timeout, retry, or environment contract may change.
+
+- [ ] **Step Q1: Prove both current failures before editing**
+
+Run each managed smoke independently. Record the exact existing failures:
+
+- notification preferences persists three notifications but four legitimate
+  outbox events because every notification emits `NOTIFICATION_CREATED` and the
+  existing `TASK_DUE_SOON` push policy also emits
+  `PUSH_NOTIFICATION_REQUESTED`;
+- conversation revocation constructs `SharingService` with its pre-history
+  dependency signature and fails when the current service calls
+  `ContributionHistoryService.ensureTenureInTransaction()`.
+
+- [ ] **Step Q2: Strengthen the notification outbox assertion**
+
+Replace the stale count-only assertion with exact per-notification event-type
+assertions. Require one `NOTIFICATION_CREATED` event for every persisted
+notification, require exactly one additional `PUSH_NOTIFICATION_REQUESTED`
+event only for the existing `TASK_DUE_SOON` notification, and reject duplicate
+or unexpected event types. Do not change notification production behavior.
+
+- [ ] **Step Q3: Wire the current sharing dependency in the smoke harness**
+
+Import and instantiate the real `ContributionHistoryService` with the managed
+smoke Prisma client. Pass it as constructor argument five and realtime as
+argument six at both existing `SharingService` construction sites. Do not stub
+history behavior and do not change the shared fixture factory.
+
+- [ ] **Step Q4: Verify, review, and checkpoint separately**
+
+No other managed or ad-hoc smoke may run concurrently with this checkpoint.
+The environment must be clean before the first command and again after the
+last command. Define and run this read-only audit; it intentionally fails on
+any pre-existing smoke resource instead of deleting it:
+
+```powershell
+function Assert-R1ManagedSmokeEnvironmentClean {
+  $smokeDatabases = @(docker exec aarast-db sh -lc `
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT datname FROM pg_database WHERE datname LIKE ''aarast_smoke_%'' ORDER BY datname;"')
+  if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL smoke audit failed' }
+  if ($smokeDatabases.Count -ne 0) { throw 'Managed smoke database present' }
+
+  $redisDb15 = docker exec aarast-redis redis-cli -n 15 DBSIZE
+  if ($LASTEXITCODE -ne 0) { throw 'Redis smoke audit failed' }
+  if ([int]$redisDb15 -ne 0) { throw 'Managed smoke Redis DB 15 is not empty' }
+
+  $backendRootPattern = [regex]::Escape(
+    'D:\projects\aarast-modular-monolith\backend'
+  )
+  $smokeProcesses = @(Get-CimInstance Win32_Process | Where-Object {
+    $_.Name -eq 'node.exe' -and
+    $_.CommandLine -match $backendRootPattern -and
+    $_.CommandLine -match `
+      'run-isolated-smoke|smoke-isolation-hook|scripts[\\/]smoke|src[\\/]main\.ts'
+  })
+  $smokeProcessIds = @($smokeProcesses | ForEach-Object { $_.ProcessId })
+  $smokeListeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $smokeProcessIds -contains $_.OwningProcess })
+  if ($smokeProcesses.Count -ne 0 -or $smokeListeners.Count -ne 0) {
+    throw 'Managed smoke process or listener present'
+  }
+
+  $smokeBuckets = @(docker compose exec -T media sh -lc `
+    'set -eu; [ -d /data ]; [ -r /data ]; for path in /data/aarast-smoke-*; do [ -d "$path" ] && echo "${path##*/}"; done; exit 0')
+  if ($LASTEXITCODE -ne 0) { throw 'MinIO smoke audit failed' }
+  if ($smokeBuckets.Count -ne 0) { throw 'Managed smoke MinIO bucket present' }
+
+  $tempMatches = @(Get-ChildItem ([IO.Path]::GetTempPath()) -Force |
+    Where-Object { $_.Name -like 'smoke_*' -or $_.Name -like 'aarast-smoke-*' })
+  if ($tempMatches.Count -ne 0) { throw 'Managed smoke OS-temp artifact present' }
+}
+
+Assert-R1ManagedSmokeEnvironmentClean
+
+Push-Location .\backend
+npm run smoke:phase2-notification-preferences
+npm run smoke:phase2-conversation-revocation
+npm run smoke:health
+node --test -r ts-node/register `
+  test/notification-logic.test.ts `
+  test/push-notifications.test.ts `
+  test/contribution-history-freeze.test.ts `
+  test/smoke-isolation.test.ts
+npm run check
+Pop-Location
+git diff --check
+
+Assert-R1ManagedSmokeEnvironmentClean
+```
+
+Request independent read-only review before the checkpoint commit:
+
+```powershell
+git add -- `
+  ARCHITECTURE.md `
+  docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-design.md `
+  docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md `
+  backend/scripts/smoke/phase2-notification-preferences-smoke.ts `
+  backend/scripts/smoke/phase2-conversation-revocation-smoke.ts
+git commit -m "test: repair R1 managed smoke harnesses"
+```
+
+---
+
 ### Task 4: Split and Move Production OTP Transport
 
 **Files:**
@@ -1239,8 +1366,17 @@ For every changed **behavioral** test/smoke hunk, prove it is only:
 
 - import/export/require path;
 - moved-source path literal;
+- the exact reviewed QA-precondition changes in
+  `phase2-notification-preferences-smoke.ts` and
+  `phase2-conversation-revocation-smoke.ts` described above.
 
-Any changed assertion, fixture, expected value, setup/teardown, timeout, skip, or test selection blocks R1.
+For the two QA-precondition files, the only additional allowed hunks are the
+exact per-notification outbox event-type assertions and the real
+`ContributionHistoryService` constructor wiring. Any other assertion, fixture,
+timeout, selection, or setup/teardown change remains a blocker.
+
+Outside that exact exception, any changed assertion, fixture, expected value,
+setup/teardown, timeout, skip, or test selection blocks R1.
 
 Review the three architecture-governance diffs separately. Their only allowed
 non-path changes are:

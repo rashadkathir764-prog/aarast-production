@@ -134,11 +134,16 @@ edits, test-file moves, and DI token wiring edits required by that move. Any
 other existing-test change is a stop signal and requires explicit review.
 
 R1 has one reviewed pre-Task-4 QA exception for two stale managed-smoke
-harnesses only: `phase2-notification-preferences-smoke.ts` verifies the exact
-existing per-notification outbox event types, and
-`phase2-conversation-revocation-smoke.ts` constructs `SharingService` with the
-current real `ContributionHistoryService`. This exception changes no production
-behavior and authorizes no other assertion, fixture, timeout, or setup change.
+harnesses and the shared test cleanup they exercise:
+`phase2-notification-preferences-smoke.ts` verifies the exact existing
+per-notification outbox event types; `phase2-conversation-revocation-smoke.ts`
+constructs `SharingService` with the current real `ContributionHistoryService`;
+and the PostgreSQL fixture cleanup closes active contributor tenures and marks
+their history scopes deleted before removing shared-member/plan fixtures;
+`test/phase0-guards.test.ts` provides the sole allowed cleanup-order/lifecycle
+assertion for that support change. This exception changes no production
+behavior, preserves contribution history, and authorizes no other assertion,
+fixture creation, timeout, or setup change.
 
 R0 adds architecture tests and does not edit existing behavioral tests.
 

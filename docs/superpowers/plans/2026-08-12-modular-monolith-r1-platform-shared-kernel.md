@@ -29,10 +29,12 @@
 - Do not create business ports, business Nest module slices, repositories, schema folders, migrations, route handlers, DTOs, compatibility barrels, old-path re-exports, fallback imports, or duplicate old/new implementations.
 - Existing behavioral tests may receive only mechanical import/export/require
   path edits and moved-source path-literal edits required by R1. The sole
-  reviewed exception is the exact two-file QA precondition below: strengthen
-  one stale outbox event assertion and wire the current real sharing-history
-  dependency. Do not make any other assertion, expected-value, fixture,
-  Arabic/error string, setup, timeout, skip, or test-selection change.
+  reviewed exception is the exact bounded QA precondition below: strengthen
+  one stale outbox event assertion, wire the current real sharing-history
+  dependency, and close the resulting contributor-tenure/history-scope
+  lifecycle in shared test cleanup with one focused ordering regression. Do not
+  make any other assertion, expected-value, fixture creation, Arabic/error
+  string, setup, timeout, skip, or test-selection change.
 - Additive R1 tests are allowed and required. Protect every pre-existing test edit with the test-change audit in Task 6.
 - A dependency or ownership baseline is a debt ledger, not permission. Never regenerate a baseline without the exact before/after semantic audit specified below.
 - Never place an absolute local path, environment value, token, credential, URL secret, database identifier, admin identifier, or production identifier in a baseline, plan receipt, test fixture, or diagnostic.
@@ -129,6 +131,8 @@ R1 is complete only when all conditions are true on one immutable candidate:
 - `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`
 - `backend/scripts/smoke/phase2-notification-preferences-smoke.ts` only through the exact QA precondition
 - `backend/scripts/smoke/phase2-conversation-revocation-smoke.ts` only through the exact QA precondition
+- `backend/test/support/phase0-postgres-support.js` only through the exact QA lifecycle precondition
+- `backend/test/phase0-guards.test.ts` only through the exact QA lifecycle regression
 - `backend/src/auth/otp-channel.ts`
 - every live source/test/smoke import or moved-source path literal returned by the exact inventories in Task 1
 - `backend/src/app.module.ts`
@@ -779,12 +783,18 @@ Task 6 `smoke:all` structurally red. It may modify only:
 
 - `backend/scripts/smoke/phase2-notification-preferences-smoke.ts`;
 - `backend/scripts/smoke/phase2-conversation-revocation-smoke.ts`;
+- `backend/test/support/phase0-postgres-support.js`, only to close contributor
+  tenure/history scope lifecycle before deleting the shared-member fixture;
+- `backend/test/phase0-guards.test.ts`, only for the exact cleanup ordering and
+  lifecycle regression described below;
 - this plan contract;
 - `docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-design.md`;
 - `ARCHITECTURE.md`.
 
-No production source, fixture factory, route, schema, migration, product
-behavior, timeout, retry, or environment contract may change.
+No production source, route, schema, migration, product behavior, timeout,
+retry, or environment contract may change. The shared PostgreSQL test-support
+cleanup may change only at the earliest invalid boundary identified below; no
+fixture creation or business-service behavior may change.
 
 - [ ] **Step Q1: Prove both current failures before editing**
 
@@ -812,6 +822,40 @@ Import and instantiate the real `ContributionHistoryService` with the managed
 smoke Prisma client. Pass it as constructor argument five and realtime as
 argument six at both existing `SharingService` construction sites. Do not stub
 history behavior and do not change the shared fixture factory.
+
+- [ ] **Step Q3a: Close contributor-history lifecycle in shared test cleanup**
+
+After Q3, reproduce the next real failure before changing shared test support:
+the central quote-fixture cleanup attempts to delete `SharedMember` while the
+real history service has left an active `ContributorTenure`, and PostgreSQL
+rejects the invalid lifecycle transition. Add a focused regression to
+`test/phase0-guards.test.ts` first. It must require, in the same cleanup
+transaction and before deleting shared members or wedding plans:
+
+- active tenures for the fixture plans are closed with one shared timestamp,
+  `endReason: 'PLAN_DELETED'`, and `sharedMemberId: null`;
+- the matching history scopes are marked `status: 'DELETED'` with the same
+  timestamp;
+- contribution history/events remain preserved rather than deleted.
+
+Before editing test support, run the regression alone:
+
+```powershell
+Push-Location .\backend
+node --test -r ts-node/register test/phase0-guards.test.ts
+$phase0GuardExit = $LASTEXITCODE
+Pop-Location
+if ($phase0GuardExit -eq 0) {
+  throw 'Expected contributor lifecycle cleanup RED did not occur'
+}
+```
+
+The expected RED is the new assertion showing that lifecycle closure is absent
+or occurs after `SharedMember`/`WeddingPlan` deletion. Then implement only that
+lifecycle closure in
+`test/support/phase0-postgres-support.js`. Reuse the established cleanup
+semantics already exercised by managed conversation smoke support. Do not add a
+stub/no-op history service, bypass a database trigger, or weaken cleanup.
 
 - [ ] **Step Q4: Verify, review, and checkpoint separately**
 
@@ -867,6 +911,7 @@ node --test -r ts-node/register `
   test/notification-logic.test.ts `
   test/push-notifications.test.ts `
   test/contribution-history-freeze.test.ts `
+  test/phase0-guards.test.ts `
   test/smoke-isolation.test.ts
 npm run check
 Pop-Location
@@ -883,7 +928,9 @@ git add -- `
   docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-design.md `
   docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md `
   backend/scripts/smoke/phase2-notification-preferences-smoke.ts `
-  backend/scripts/smoke/phase2-conversation-revocation-smoke.ts
+  backend/scripts/smoke/phase2-conversation-revocation-smoke.ts `
+  backend/test/support/phase0-postgres-support.js `
+  backend/test/phase0-guards.test.ts
 git commit -m "test: repair R1 managed smoke harnesses"
 ```
 
@@ -1370,10 +1417,12 @@ For every changed **behavioral** test/smoke hunk, prove it is only:
   `phase2-notification-preferences-smoke.ts` and
   `phase2-conversation-revocation-smoke.ts` described above.
 
-For the two QA-precondition files, the only additional allowed hunks are the
-exact per-notification outbox event-type assertions and the real
-`ContributionHistoryService` constructor wiring. Any other assertion, fixture,
-timeout, selection, or setup/teardown change remains a blocker.
+For the QA-precondition files, the only additional allowed hunks are the exact
+per-notification outbox event-type assertions, the real
+`ContributionHistoryService` constructor wiring, and the exact shared-fixture
+contributor-tenure/history-scope lifecycle closure plus its focused regression.
+Any other assertion, fixture creation, timeout, selection, or setup/teardown
+change remains a blocker.
 
 Outside that exact exception, any changed assertion, fixture, expected value,
 setup/teardown, timeout, skip, or test selection blocks R1.

@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  OpenWaOtpChannel,
-  OtpDeliveryUncertainError,
-} from '../src/auth/otp-channel';
-import { loadOpenWaOtpConfig } from '../src/auth/openwa-otp-config';
-import { OpenWaTransientDeliveryRejectedError } from '../src/auth/openwa-transient-text';
+import { OtpDeliveryUncertainError } from '../src/platform/otp-transport/otp-delivery';
+import { OpenWaOtpChannel } from '../src/platform/otp-transport/openwa-otp.channel';
+import { loadOpenWaOtpConfig } from '../src/platform/otp-transport/openwa-otp-config';
+import { OpenWaTransientDeliveryRejectedError } from '../src/platform/otp-transport/openwa-transient-text';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 

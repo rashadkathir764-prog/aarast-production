@@ -477,20 +477,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/sharing/invitation-delivery.service.ts",
-    "to": "src/auth/openwa-transient-text.ts",
-    "unresolvedTo": "../auth/openwa-transient-text",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/sharing/invite-access.service.ts",
     "to": "src/auth/auth-error.ts",
     "unresolvedTo": "../auth/auth-error",
@@ -3650,48 +3636,6 @@
     "from": "src/platform/config/runtime-environment.ts",
     "to": "src/auth/jwt-secret.ts",
     "unresolvedTo": "../../auth/jwt-secret",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/config/runtime-environment.ts",
-    "to": "src/auth/openwa-otp-config.ts",
-    "unresolvedTo": "../../auth/openwa-otp-config",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/config/runtime-environment.ts",
-    "to": "src/auth/whatsapp-otp-config.ts",
-    "unresolvedTo": "../../auth/whatsapp-otp-config",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/health/readiness.service.ts",
-    "to": "src/auth/openwa-otp-config.ts",
-    "unresolvedTo": "../../auth/openwa-otp-config",
     "dependencyTypes": [
       "local",
       "import"

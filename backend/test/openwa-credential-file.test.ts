@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
-import { loadOpenWaOtpConfig } from '../src/auth/openwa-otp-config';
-import { OpenWaOtpChannel } from '../src/auth/otp-channel';
+import { OpenWaOtpChannel } from '../src/platform/otp-transport/openwa-otp.channel';
+import { loadOpenWaOtpConfig } from '../src/platform/otp-transport/openwa-otp-config';
 
 const roots: string[] = [];
 

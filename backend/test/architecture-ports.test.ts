@@ -408,6 +408,35 @@ test('only the exact documented transitional platform debt is deferred to the de
     'backend/src/auth/jwt-secret.ts': 'export const getJwtSecret = true;\n',
   }));
   assert.equal(diagnosticsOfKind(nearMiss, 'platform-business-import').length, 1);
+
+  const retiredOtpDebts = [
+    {
+      source: 'backend/src/platform/config/runtime-environment.ts',
+      target: 'backend/src/auth/openwa-otp-config.ts',
+      importLine: "import { value } from '../../auth/openwa-otp-config';\n",
+    },
+    {
+      source: 'backend/src/platform/config/runtime-environment.ts',
+      target: 'backend/src/auth/whatsapp-otp-config.ts',
+      importLine: "import { value } from '../../auth/whatsapp-otp-config';\n",
+    },
+    {
+      source: 'backend/src/platform/health/readiness.service.ts',
+      target: 'backend/src/auth/openwa-otp-config.ts',
+      importLine: "import { value } from '../../auth/openwa-otp-config';\n",
+    },
+  ];
+  for (const debt of retiredOtpDebts) {
+    const result = scanPorts(fixtureProject({
+      [debt.source]: `${debt.importLine}export const use = value;\n`,
+      [debt.target]: 'export const value = true;\n',
+    }));
+    assert.equal(
+      diagnosticsOfKind(result, 'platform-business-import').length,
+      1,
+      `${debt.source}|${debt.target}`,
+    );
+  }
 });
 
 test('future domain code cannot import Nest runtime, PrismaService, or another business module', () => {

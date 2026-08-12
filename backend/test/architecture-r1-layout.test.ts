@@ -147,3 +147,102 @@ test('R1 Task 3 source tests and smokes have no stale idempotency or outbox path
     .sort();
   assert.deepEqual(stale, []);
 });
+
+test('R1 Task 4 OTP transport exists only at canonical paths', () => {
+  const moved = [
+    ['src/auth/openwa-otp-config.ts', 'src/platform/otp-transport/openwa-otp-config.ts'],
+    ['src/auth/openwa-transient-text.ts', 'src/platform/otp-transport/openwa-transient-text.ts'],
+    ['src/auth/whatsapp-otp-config.ts', 'src/platform/otp-transport/whatsapp-otp-config.ts'],
+  ];
+  const created = [
+    'src/platform/otp-transport/otp-delivery.ts',
+    'src/platform/otp-transport/openwa-otp.channel.ts',
+    'src/platform/otp-transport/whatsapp-otp.channel.ts',
+  ];
+
+  for (const [legacy, canonical] of moved) {
+    assert.equal(existsSync(path.join(backendRoot, legacy)), false, legacy);
+    assert.equal(existsSync(path.join(backendRoot, canonical)), true, canonical);
+  }
+  for (const canonical of created) {
+    assert.equal(existsSync(path.join(backendRoot, canonical)), true, canonical);
+  }
+});
+
+test('R1 Task 4 keeps OTP identity policy out of production transports', () => {
+  const identitySource = source('src/auth/otp-channel.ts');
+  assert.match(identitySource, /export\s+interface\s+OtpChannel\b/);
+  assert.match(identitySource, /export\s+class\s+DevEchoOtpChannel\b/);
+  assert.match(identitySource, /export\s+function\s+generateProductionOtpCode\b/);
+  assert.match(
+    identitySource,
+    /randomInt\(0,\s*1_000_000\)\.toString\(\)\.padStart\(6,\s*'0'\)/,
+  );
+  assert.doesNotMatch(identitySource, /\b(?:WhatsAppOtpChannel|OpenWaOtpChannel)\b/);
+  assert.doesNotMatch(
+    identitySource,
+    /graph\.facebook\.com|sendOpenWaTransientText|load(?:WhatsApp|OpenWa)OtpConfig|\bfetch\b|JSON\.stringify/,
+  );
+
+  const registry = JSON.parse(source('architecture/ownership-registry.json')) as {
+    currentRoots: Record<string, string[]>;
+  };
+  const businessRoots = Object.entries(registry.currentRoots)
+    .filter(([owner]) => owner !== 'platform')
+    .flatMap(([, roots]) => roots);
+  const importSpecifiers = /(?:from\s*['"]|require\(\s*['"])([^'"\n]+)/g;
+  const transportRoot = path.join(backendRoot, 'src/platform/otp-transport');
+  for (const file of typescriptFiles(transportRoot)) {
+    const contents = readFileSync(file, 'utf8');
+    const specifiers = [...contents.matchAll(importSpecifiers)].map((match) => match[1]);
+    assert.equal(
+      specifiers.some((specifier) =>
+        specifier.includes('/auth/')
+        || specifier.startsWith('../../auth')
+        || specifier.includes('/modules/')
+        || specifier.startsWith('../../modules')
+        || businessRoots.some((root) => specifier.startsWith(`../../${root}`))),
+      false,
+      path.relative(backendRoot, file),
+    );
+    assert.doesNotMatch(contents, /\brandomInt\b|\bgenerateCode\s*\(|\bgenerateProductionOtpCode\b/);
+  }
+});
+
+test('R1 Task 4 production OTP generator remains six-digit and zero-padded', () => {
+  const { generateProductionOtpCode } = require('../src/auth/otp-channel') as {
+    generateProductionOtpCode: () => string;
+  };
+  const samples = Array.from({ length: 2_000 }, generateProductionOtpCode);
+  assert.equal(samples.every((code) => /^\d{6}$/.test(code)), true);
+});
+
+test('R1 Task 4 delivery uncertainty contract is fixed and secret-safe', () => {
+  const { OtpDeliveryUncertainError } = require(
+    '../src/platform/otp-transport/otp-delivery',
+  ) as {
+    OtpDeliveryUncertainError: new () => Error;
+  };
+  const error = new OtpDeliveryUncertainError();
+  assert.equal(error.name, 'OtpDeliveryUncertainError');
+  assert.equal(error.message, 'OTP delivery outcome is uncertain');
+  assert.deepEqual(Object.keys(error), ['name']);
+});
+
+test('R1 Task 4 AuthService owns selection while sharing keeps named pre-R6 transport debt', () => {
+  const authServiceSource = source('src/auth/auth.service.ts');
+  assert.match(authServiceSource, /from\s+['"]\.\/otp-channel['"]/);
+  assert.match(
+    authServiceSource,
+    /from\s+['"]\.\.\/platform\/otp-transport\/(?:otp-delivery|openwa-otp\.channel|whatsapp-otp\.channel)['"]/,
+  );
+  assert.match(authServiceSource, /generateProductionOtpCode/);
+  assert.match(authServiceSource, /resolveOtpChannel\s*\(/);
+
+  const sharingSource = source('src/sharing/invitation-delivery.service.ts');
+  assert.match(
+    sharingSource,
+    /from\s+['"]\.\.\/platform\/otp-transport\/openwa-transient-text['"]/,
+  );
+  assert.doesNotMatch(sharingSource, /auth\/openwa-transient-text/);
+});

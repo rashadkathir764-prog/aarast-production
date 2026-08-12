@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { OtpDeliveryUncertainError, WhatsAppOtpChannel } from '../src/auth/otp-channel';
-import { loadWhatsAppOtpConfig } from '../src/auth/whatsapp-otp-config';
+import { OtpDeliveryUncertainError } from '../src/platform/otp-transport/otp-delivery';
+import { WhatsAppOtpChannel } from '../src/platform/otp-transport/whatsapp-otp.channel';
+import { loadWhatsAppOtpConfig } from '../src/platform/otp-transport/whatsapp-otp-config';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 

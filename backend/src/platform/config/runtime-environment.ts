@@ -1,5 +1,5 @@
-import { loadWhatsAppOtpConfig } from "../../auth/whatsapp-otp-config";
-import { loadOpenWaOtpConfig } from "../../auth/openwa-otp-config";
+import { loadWhatsAppOtpConfig } from "../otp-transport/whatsapp-otp-config";
+import { loadOpenWaOtpConfig } from "../otp-transport/openwa-otp-config";
 import { getJwtSecret } from "../../auth/jwt-secret";
 
 export function isProductionEnvironment(

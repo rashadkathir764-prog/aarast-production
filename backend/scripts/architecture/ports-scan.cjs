@@ -31,9 +31,6 @@ const LEGACY_ROOT_TO_CONTEXT = new Map(
 const LEGACY_PLATFORM_ROOTS = new Set(['common', 'outbox']);
 const TRANSITIONAL_PLATFORM_BUSINESS_DEBT = new Set([
   'backend/src/platform/config/runtime-environment.ts|backend/src/auth/jwt-secret.ts',
-  'backend/src/platform/config/runtime-environment.ts|backend/src/auth/openwa-otp-config.ts',
-  'backend/src/platform/config/runtime-environment.ts|backend/src/auth/whatsapp-otp-config.ts',
-  'backend/src/platform/health/readiness.service.ts|backend/src/auth/openwa-otp-config.ts',
   'backend/src/platform/health/readiness.service.ts|backend/src/media/media-storage.service.ts',
   'backend/src/platform/outbox/outbox.dispatcher.ts|backend/src/conversations/conversation-realtime.publisher.ts',
   'backend/src/platform/outbox/outbox.dispatcher.ts|backend/src/push/push-delivery.service.ts',

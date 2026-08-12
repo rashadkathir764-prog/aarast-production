@@ -3,7 +3,7 @@ import {
   OpenWaTransientDeliveryRejectedError,
   OpenWaTransientDeliveryUncertainError,
   sendOpenWaTransientText,
-} from '../auth/openwa-transient-text';
+} from '../platform/otp-transport/openwa-transient-text';
 import { invitationDeliveryOutcomesTotal } from '../platform/observability/metrics';
 
 export type InvitationDeliveryStatus =

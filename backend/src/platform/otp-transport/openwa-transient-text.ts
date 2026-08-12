@@ -1,4 +1,4 @@
-import { readBoundedJson } from '../platform/http/bounded-json-response';
+import { readBoundedJson } from '../http/bounded-json-response';
 import { loadOpenWaOtpConfig, OpenWaOtpConfig } from './openwa-otp-config';
 
 export class OpenWaTransientDeliveryUncertainError extends Error {

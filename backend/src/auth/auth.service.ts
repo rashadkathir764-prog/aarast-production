@@ -38,11 +38,14 @@ import { AdminPasswordResetConfirmDto } from "./dto/admin-password-reset-confirm
 import { JwtPayload } from "./jwt-payload.interface";
 import {
   DevEchoOtpChannel,
-  OpenWaOtpChannel,
+  generateProductionOtpCode,
   OtpChannel,
-  OtpDeliveryUncertainError,
-  WhatsAppOtpChannel,
 } from "./otp-channel";
+import {
+  OtpDeliveryUncertainError,
+} from "../platform/otp-transport/otp-delivery";
+import { OpenWaOtpChannel } from "../platform/otp-transport/openwa-otp.channel";
+import { WhatsAppOtpChannel } from "../platform/otp-transport/whatsapp-otp.channel";
 import {
   createOpaqueTokenValue,
   createRefreshTokenValue,
@@ -168,6 +171,11 @@ interface LockedRefreshTokenFamily {
 
 interface LockedRefreshTokenTraversalRow extends LockedRefreshTokenRow {
   depth: number;
+}
+
+interface OtpChannelSelection {
+  channel: OtpChannel;
+  generateCode: () => string;
 }
 
 @Injectable()
@@ -1253,9 +1261,9 @@ export class AuthService {
     allowAcceptedCredentialRecovery = false,
   ): Promise<IssuedOtpResponse> {
     const mode = this.getOtpMode();
-    let channel: OtpChannel;
+    let selection: OtpChannelSelection;
     try {
-      channel = this.requireOtpChannel(mode);
+      selection = this.requireOtpChannel(mode);
     } catch (error) {
       otpDeliveryOutcomesTotal.inc({ purpose, outcome: "unavailable" });
       throw error;
@@ -1264,7 +1272,7 @@ export class AuthService {
       await this.otpDispatchQuota.consume(phone, context);
     }
 
-    const code = channel.generateCode();
+    const code = selection.generateCode();
     const codeHash = await bcryptjs.hash(code, 10);
     const now = new Date();
     const expiresAt = new Date(
@@ -1286,7 +1294,7 @@ export class AuthService {
 
     let delivered;
     try {
-      delivered = await channel.deliver(phone, code, purpose);
+      delivered = await selection.channel.deliver(phone, code, purpose);
     } catch (error) {
       if (error instanceof OtpDeliveryUncertainError) {
         otpDeliveryOutcomesTotal.inc({ purpose, outcome: "uncertain" });
@@ -1329,20 +1337,30 @@ export class AuthService {
    * openwa -> temporary hardened OpenWA transport;
    * disabled -> null (feature off).
    */
-  private resolveOtpChannel(mode: string): OtpChannel | null {
+  private resolveOtpChannel(mode: string): OtpChannelSelection | null {
     if (mode === "dev") {
-      return new DevEchoOtpChannel(this.getDevOtpCode());
+      const fixedCode = this.getDevOtpCode();
+      return {
+        channel: new DevEchoOtpChannel(fixedCode),
+        generateCode: () => fixedCode,
+      };
     }
     if (mode === "whatsapp") {
-      return new WhatsAppOtpChannel();
+      return {
+        channel: new WhatsAppOtpChannel(),
+        generateCode: generateProductionOtpCode,
+      };
     }
     if (mode === "openwa") {
-      return new OpenWaOtpChannel();
+      return {
+        channel: new OpenWaOtpChannel(),
+        generateCode: generateProductionOtpCode,
+      };
     }
     return null;
   }
 
-  private requireOtpChannel(mode: string): OtpChannel {
+  private requireOtpChannel(mode: string): OtpChannelSelection {
     try {
       const channel = this.resolveOtpChannel(mode);
       if (channel) return channel;

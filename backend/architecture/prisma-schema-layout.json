@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "splitBaseRevision": "8ba0db78ac669bd6d17de878b77a4d1e6c5e542d",
+  "baseFile": "_base.prisma",
+  "owners": [
+    {
+      "owner": "backoffice",
+      "file": "backoffice.prisma",
+      "models": ["AdminAuditLog"],
+      "enums": ["AdminRole", "AdminAuditPhase"]
+    },
+    {
+      "owner": "catalog",
+      "file": "catalog.prisma",
+      "models": ["City", "Governorate", "District", "AdministrativeLocality", "ReferenceCatalog", "ReferenceCatalogItem", "ReferenceCatalogItemRevision", "ProviderCategory"],
+      "enums": ["AdministrativeLocalityType"]
+    },
+    {
+      "owner": "collaboration",
+      "file": "collaboration.prisma",
+      "models": ["SharedMember", "ContributorHistoryScope", "ContributorTenure", "ContributionEvent", "PlanInvite"],
+      "enums": ["SharedMemberRole", "ContributionScopeStatus", "ContributorTenureEndReason", "ContributionSection", "ContributionEntityType", "ContributionAction", "ContributionProvenance", "ContributionPermission", "PlanInviteDeliveryStatus"]
+    },
+    {
+      "owner": "finance",
+      "file": "finance.prisma",
+      "models": ["BudgetCategory", "WeddingCost", "CostPayment", "PaymentSchedule"],
+      "enums": ["WeddingCostStatus", "CostPaymentType", "PaymentScheduleStatus"]
+    },
+    {
+      "owner": "guests",
+      "file": "guests.prisma",
+      "models": ["Guest", "GuestGroup"],
+      "enums": ["GuestSide", "GuestStatus", "GuestInvitationStatus", "GuestAttendanceStatus"]
+    },
+    {
+      "owner": "identity",
+      "file": "identity.prisma",
+      "models": ["AccountDeletionReceipt", "User", "AdminLoginChallenge", "AdminPasswordResetChallenge", "RefreshToken", "LoginThrottle", "OtpDispatchQuota", "OtpCode"],
+      "enums": ["UserRole", "AppRole", "UserStatus", "OtpPurpose", "AuthSessionScope"]
+    },
+    {
+      "owner": "marketplace",
+      "file": "marketplace.prisma",
+      "models": ["Provider", "ProviderService", "ProviderServiceImage", "ProviderPackage", "FavoriteProvider", "ProviderReview", "QuoteRequest", "QuoteOffer", "PlanProviderLink"],
+      "enums": ["ProviderStatus", "ReviewStatus", "QuoteRequestStatus", "QuoteOfferStatus", "PlanProviderLinkStatus"]
+    },
+    {
+      "owner": "media",
+      "file": "media.prisma",
+      "models": ["MediaUploadTicket"],
+      "enums": ["MediaUploadStatus"]
+    },
+    {
+      "owner": "messaging",
+      "file": "messaging.prisma",
+      "models": ["Conversation", "ConversationParticipant", "ConversationEvent", "ChatMessage", "ChatAttachment", "ConversationReport"],
+      "enums": ["ConversationScope", "ConversationEventType", "ConversationReportStatus"]
+    },
+    {
+      "owner": "notifications",
+      "file": "notifications.prisma",
+      "models": ["NotificationPreference", "PushInstallation", "Notification"],
+      "enums": ["NotificationType", "NotificationPriority", "PushPlatform"]
+    },
+    {
+      "owner": "planning",
+      "file": "planning.prisma",
+      "models": ["WeddingPlan"],
+      "enums": ["OnboardingPath", "WeddingPersona", "WeddingPlanStatus"]
+    },
+    {
+      "owner": "platform",
+      "file": "platform.prisma",
+      "models": ["IdempotencyKey", "OutboxEvent"],
+      "enums": []
+    },
+    {
+      "owner": "tasks",
+      "file": "tasks.prisma",
+      "models": ["WeddingTask", "WeddingTaskChecklistItem"],
+      "enums": ["WeddingTaskStatus", "WeddingTaskPriority"]
+    }
+  ],
+  "modelOrder": [
+    "IdempotencyKey",
+    "AccountDeletionReceipt",
+    "User",
+    "MediaUploadTicket",
+    "AdminLoginChallenge",
+    "AdminPasswordResetChallenge",
+    "AdminAuditLog",
+    "RefreshToken",
+    "LoginThrottle",
+    "OtpDispatchQuota",
+    "WeddingPlan",
+    "BudgetCategory",
+    "WeddingCost",
+    "CostPayment",
+    "PaymentSchedule",
+    "WeddingTask",
+    "WeddingTaskChecklistItem",
+    "SharedMember",
+    "ContributorHistoryScope",
+    "ContributorTenure",
+    "ContributionEvent",
+    "PlanInvite",
+    "OtpCode",
+    "NotificationPreference",
+    "PushInstallation",
+    "Notification",
+    "OutboxEvent",
+    "Guest",
+    "GuestGroup",
+    "City",
+    "Governorate",
+    "District",
+    "AdministrativeLocality",
+    "ReferenceCatalog",
+    "ReferenceCatalogItem",
+    "ReferenceCatalogItemRevision",
+    "ProviderCategory",
+    "Provider",
+    "ProviderService",
+    "ProviderServiceImage",
+    "ProviderPackage",
+    "FavoriteProvider",
+    "ProviderReview",
+    "QuoteRequest",
+    "QuoteOffer",
+    "PlanProviderLink",
+    "Conversation",
+    "ConversationParticipant",
+    "ConversationEvent",
+    "ChatMessage",
+    "ChatAttachment",
+    "ConversationReport"
+  ]
+}

@@ -389,4 +389,8 @@ R1 is accepted only with all source moves complete, zero stale old-path imports,
 no `common/` directory, 52 models, 76 migrations, zero schema/migration diff,
 exactly two globals at their approved paths, zero `forwardRef`, no new semantic
 dependency/ownership debt, unchanged routes and generated docs, green local
-quality/smoke gates, and green remote CI on the immutable R1 candidate.
+quality/smoke gates, independent final review, and the owner's application
+checkpoint. This is the local R1 closeout that permits R2 to continue on the
+same owner-approved branch without a push. Any future pushed or merge candidate
+must separately bind its immutable revision to green remote CI before merge;
+this local acceptance makes no remote-CI claim.

@@ -1,0 +1,133 @@
+enum ConversationScope {
+  PLAN
+  ACCOUNT
+}
+
+enum ConversationEventType {
+  QUOTE_REQUEST_CREATED
+  QUOTE_REQUEST_CANCELLED
+  QUOTE_REQUEST_REJECTED
+  QUOTE_OFFER_RECEIVED
+  QUOTE_OFFER_REJECTED
+  QUOTE_OFFER_ACCEPTED
+}
+
+enum ConversationReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+model Conversation {
+  id                      String                    @id @default(cuid())
+  scope                   ConversationScope
+  weddingPlanId           String?
+  accountRequesterUserId  String?
+  providerId              String
+  createdByUserId         String?
+  lastActivityAt          DateTime                  @default(now())
+  closedAt                DateTime?
+  customerSideBlockedAt   DateTime?
+  customerSideBlockedById String?
+  providerSideBlockedAt   DateTime?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  weddingPlan             WeddingPlan?              @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  accountRequester        User?                     @relation("ConversationAccountRequester", fields: [accountRequesterUserId], references: [id], onDelete: Cascade)
+  provider                Provider                  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdBy               User?                     @relation("ConversationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  customerSideBlockedBy   User?                     @relation("ConversationCustomerBlockedBy", fields: [customerSideBlockedById], references: [id], onDelete: SetNull)
+  quoteRequests           QuoteRequest[]
+  participants            ConversationParticipant[]
+  messages                ChatMessage[]
+  events                  ConversationEvent[]
+  reports                 ConversationReport[]
+
+  @@index([weddingPlanId, providerId])
+  @@index([accountRequesterUserId, providerId])
+  @@index([providerId, lastActivityAt])
+  @@index([lastActivityAt, createdAt, id])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime     @default(now())
+  revokedAt      DateTime?
+  lastReadAt     DateTime?
+  mutedAt        DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, updatedAt])
+}
+
+model ConversationEvent {
+  id             String                @id @default(cuid())
+  conversationId String
+  quoteRequestId String?
+  quoteOfferId   String?
+  actorUserId    String?
+  type           ConversationEventType
+  occurredAt     DateTime              @default(now())
+  dedupeKey      String                @unique
+  data           Json?
+  createdAt      DateTime              @default(now())
+  conversation   Conversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  quoteRequest   QuoteRequest?         @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer     QuoteOffer?           @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  actorUser      User?                 @relation("ConversationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, occurredAt, id])
+  @@index([quoteRequestId, occurredAt])
+  @@index([quoteOfferId, occurredAt])
+}
+
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  senderUserId   String
+  body           String           @db.Text
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User             @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  attachments    ChatAttachment[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderUserId, createdAt])
+}
+
+model ChatAttachment {
+  id          String      @id @default(cuid())
+  messageId   String
+  storageKey  String
+  contentType String
+  byteSize    Int
+  createdAt   DateTime    @default(now())
+  message     ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model ConversationReport {
+  id             String                   @id @default(cuid())
+  conversationId String
+  reporterUserId String
+  reason         String                   @db.Text
+  status         ConversationReportStatus @default(OPEN)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  conversation   Conversation             @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter       User                     @relation("ConversationReporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, reporterUserId])
+  @@index([status, createdAt])
+}
+

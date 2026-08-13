@@ -1,0 +1,34 @@
+enum AdminRole {
+  SUPER_ADMIN
+  OPERATIONS
+  MODERATOR
+  SUPPORT
+}
+
+enum AdminAuditPhase {
+  ATTEMPT
+  SUCCEEDED
+  FAILED
+}
+
+model AdminAuditLog {
+  id             String          @id @default(cuid())
+  eventId        String
+  actorUserId    String
+  actorAdminRole AdminRole
+  action         String
+  method         String
+  route          String
+  targetId       String?
+  phase          AdminAuditPhase
+  statusCode     Int?
+  errorType      String?
+  requestId      String?
+  createdAt      DateTime        @default(now())
+
+  @@unique([eventId, phase])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+}
+

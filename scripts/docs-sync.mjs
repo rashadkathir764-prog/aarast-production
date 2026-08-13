@@ -29,12 +29,15 @@
  *   2 = unexpected error
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const root = join(__dirname, '..');
+const require = createRequire(import.meta.url);
+const { readPrismaSchemaFiles } = require('../backend/scripts/prisma/schema-files.cjs');
 
 const checkOnly = process.argv.includes('--check');
 
@@ -160,7 +163,9 @@ function renderRoutesMarkdown(routes) {
 // 2) Prisma models
 // ---------------------------------------------------------------------------
 function extractPrismaModels() {
-  const schema = read(join(root, 'backend', 'prisma', 'schema.prisma'));
+  const { combinedText: schema, modelOrder } = readPrismaSchemaFiles({
+    backendRoot: join(root, 'backend'),
+  });
   const lines = schema.split('\n');
   const models = [];
   let current = null;
@@ -184,7 +189,8 @@ function extractPrismaModels() {
       }
     }
   }
-  return models;
+  const byName = new Map(models.map((model) => [model.name, model]));
+  return modelOrder.map((name) => byName.get(name));
 }
 
 function renderModelsMarkdown(models) {

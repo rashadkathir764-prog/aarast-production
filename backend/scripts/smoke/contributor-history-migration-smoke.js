@@ -100,9 +100,11 @@ function createMigrationWorkspace() {
     join(tmpdir(), 'aarast-contributor-history-migration-'),
   );
   const targetPrismaRoot = join(root, 'prisma');
-  const targetMigrationsRoot = join(targetPrismaRoot, 'migrations');
+  const targetMigrationsRoot = join(targetPrismaRoot, 'schema', 'migrations');
   mkdirSync(targetMigrationsRoot, { recursive: true });
-  copyFileSync(join(prismaRoot, 'schema.prisma'), join(targetPrismaRoot, 'schema.prisma'));
+  cpSync(join(prismaRoot, 'schema'), join(targetPrismaRoot, 'schema'), {
+    recursive: true,
+  });
   copyFileSync(
     join(migrationsRoot, 'migration_lock.toml'),
     join(targetMigrationsRoot, 'migration_lock.toml'),
@@ -120,7 +122,7 @@ function createMigrationWorkspace() {
     root,
     prismaRoot: targetPrismaRoot,
     migrationsRoot: targetMigrationsRoot,
-    schemaPath: join(targetPrismaRoot, 'schema.prisma'),
+    schemaPath: join(targetPrismaRoot, 'schema'),
     previousMigrations,
   };
 }

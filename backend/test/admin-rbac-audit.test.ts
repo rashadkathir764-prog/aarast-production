@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { ExecutionContext } from '@nestjs/common';
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AdminRole } from '@prisma/client';
@@ -16,7 +17,7 @@ const root = join(__dirname, '..');
 const read = (path: string) => readFileSync(join(root, path), 'utf8');
 
 test('admin roles and route-level permissions are explicit', () => {
-  const schema = read('prisma/schema.prisma');
+  const schema = readLivePrismaSchema();
   const controller = read('src/admin/admin.controller.ts');
 
   assert.match(
@@ -32,7 +33,7 @@ test('admin roles and route-level permissions are explicit', () => {
 });
 
 test('admin mutations produce append-only redacted audit phases', () => {
-  const schema = read('prisma/schema.prisma');
+  const schema = readLivePrismaSchema();
   const app = read('src/app.module.ts');
   const migration = read(
     'prisma/migrations/20260710183000_admin_rbac_audit/migration.sql',

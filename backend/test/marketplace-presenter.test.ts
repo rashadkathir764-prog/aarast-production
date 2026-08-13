@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import {
   MarketplacePresenter,
   MarketplaceQuery,
@@ -202,7 +203,7 @@ test("provider category audience migration separates groom and bride discovery",
     "prisma/migrations/20260729030000_add_provider_category_audience_catalog/migration.sql",
     "utf8",
   );
-  const schema = readFileSync("prisma/schema.prisma", "utf8");
+  const schema = readLivePrismaSchema();
   const presenter = readFileSync(
     "src/marketplace/marketplace.presenter.ts",
     "utf8",

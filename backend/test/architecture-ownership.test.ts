@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -12,6 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 
 type AccessMode = 'read' | 'write' | 'unknown';
 type AccessSource = 'delegate' | 'relation' | 'sql';
@@ -86,7 +89,7 @@ const sourceRevision = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
 const backendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(__dirname, '../..');
 const liveOptions = { repoRoot, backendRoot };
-const schemaText = readFileSync(path.join(backendRoot, 'prisma', 'schema.prisma'), 'utf8');
+const schemaText = readLivePrismaSchema();
 const registry = JSON.parse(
   readFileSync(path.join(backendRoot, 'architecture', 'ownership-registry.json'), 'utf8'),
 ) as Registry;
@@ -102,7 +105,16 @@ function fixtureProject(files: Record<string, string>): ScanOptions {
   const root = mkdtempSync(path.join(backendRoot, '.ownership-fixture-'));
   fixtureRoots.push(root);
   const fixtureBackend = path.join(root, 'backend');
-  write(root, 'backend/prisma/schema.prisma', schemaText);
+  cpSync(
+    path.join(backendRoot, 'prisma', 'schema'),
+    path.join(fixtureBackend, 'prisma', 'schema'),
+    { recursive: true },
+  );
+  mkdirSync(path.join(fixtureBackend, 'architecture'), { recursive: true });
+  copyFileSync(
+    path.join(backendRoot, 'architecture', 'prisma-schema-layout.json'),
+    path.join(fixtureBackend, 'architecture', 'prisma-schema-layout.json'),
+  );
   write(root, 'backend/architecture/ownership-registry.json', `${JSON.stringify(registry, null, 2)}\n`);
   write(root, 'backend/tsconfig.json', `${JSON.stringify({
     compilerOptions: {

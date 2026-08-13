@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { OutboxEvent } from "@prisma/client";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import { ConversationRealtimePublisher } from "../src/conversations/conversation-realtime.publisher";
 import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
 import { OutboxDispatcher } from "../src/platform/outbox/outbox.dispatcher";
@@ -407,10 +408,7 @@ test("outbox uses transactional inserts and cross-replica skip-locked claims", (
     join(process.cwd(), "src/conversations/conversations.service.ts"),
     "utf8",
   );
-  const schema = readFileSync(
-    join(process.cwd(), "prisma/schema.prisma"),
-    "utf8",
-  );
+  const schema = readLivePrismaSchema();
 
   assert.match(worker, /FOR UPDATE SKIP LOCKED/);
   assert.match(worker, /status: terminal \? 'FAILED' : 'PENDING'/);

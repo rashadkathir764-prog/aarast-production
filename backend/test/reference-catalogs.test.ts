@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import {
   moneyStarterDefaults,
   supportedCatalogIconKeys,
@@ -40,7 +41,7 @@ test('money starter reference defaults are stable and audience-scoped', () => {
 });
 
 test('catalog publication separates drafts from the public bootstrap', () => {
-  const schema = read('prisma/schema.prisma');
+  const schema = readLivePrismaSchema();
   const service = read('src/catalogs/reference-catalog.service.ts');
 
   assert.match(schema, /currentRevision\s+Int/);

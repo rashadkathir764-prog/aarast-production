@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { readLivePrismaModelOrder, readLivePrismaSchema } from './support/live-prisma-schema';
 
 type ManifestOwner = {
   owner: string;
@@ -22,7 +23,6 @@ const R2_BASE = '8ba0db78ac669bd6d17de878b77a4d1e6c5e542d';
 const backendRoot = path.resolve(__dirname, '..');
 const manifestPath = path.join(backendRoot, 'architecture', 'prisma-schema-layout.json');
 const registryPath = path.join(backendRoot, 'architecture', 'ownership-registry.json');
-const schemaPath = path.join(backendRoot, 'prisma', 'schema.prisma');
 
 const expectedOwners: ManifestOwner[] = [
   { owner: 'backoffice', file: 'backoffice.prisma', models: ['AdminAuditLog'], enums: ['AdminRole', 'AdminAuditPhase'] },
@@ -41,7 +41,7 @@ const expectedOwners: ManifestOwner[] = [
 ];
 
 function orderedDeclarations(keyword: 'model' | 'enum') {
-  const schema = readFileSync(schemaPath, 'utf8');
+  const schema = readLivePrismaSchema();
   return [...schema.matchAll(new RegExp(`^${keyword}\\s+([A-Za-z][A-Za-z0-9_]*)\\s*\\{`, 'gm'))]
     .map((match) => match[1]);
 }
@@ -114,7 +114,7 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
       .map(([owner, models]) => [owner, [...models].sort()]),
   ) as Record<string, string[]>;
   assert.deepEqual(registryOwnerModels(manifest.owners, registry), expectedRegistryOwners);
-  assert.deepEqual(manifest.modelOrder, orderedDeclarations('model'));
+  assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
   assert.equal(manifest.modelOrder.length, 52);
   assert.equal(orderedDeclarations('enum').length, 41);

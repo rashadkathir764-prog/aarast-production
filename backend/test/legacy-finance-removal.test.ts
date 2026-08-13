@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 
 const backendRoot = join(__dirname, "..");
 const read = (path: string) =>
   readFileSync(join(backendRoot, path), "utf8");
 
 test("only the unified money domain remains in the live schema and modules", () => {
-  const schema = read("prisma/schema.prisma");
+  const schema = readLivePrismaSchema();
   const appModule = read("src/app.module.ts");
 
   for (const required of [

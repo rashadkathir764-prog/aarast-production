@@ -1,0 +1,102 @@
+enum WeddingCostStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum CostPaymentType {
+  PAYMENT
+  REVERSAL
+}
+
+enum PaymentScheduleStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model BudgetCategory {
+  id              String        @id @default(cuid())
+  weddingPlanId   String
+  name            String
+  normalizedName  String
+  allocatedAmount Decimal?      @db.Decimal(14, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  weddingPlan     WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  weddingCosts    WeddingCost[]
+
+  @@unique([weddingPlanId, normalizedName])
+  @@unique([id, weddingPlanId])
+  @@index([weddingPlanId])
+}
+
+model WeddingCost {
+  id               String            @id @default(cuid())
+  weddingPlanId    String
+  budgetCategoryId String
+  providerId       String?
+  quoteOfferId     String?           @unique
+  title            String
+  partyName        String?
+  partyPhone       String?
+  totalAmount      Decimal           @db.Decimal(14, 2)
+  paidAmount       Decimal           @default(0) @db.Decimal(14, 2)
+  agreementDate    DateTime?
+  status           WeddingCostStatus @default(OPEN)
+  note             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  weddingPlan      WeddingPlan       @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  budgetCategory   BudgetCategory    @relation(fields: [budgetCategoryId, weddingPlanId], references: [id, weddingPlanId], onDelete: Restrict, map: "WeddingCost_category_same_plan_fkey")
+  provider         Provider?         @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  quoteOffer       QuoteOffer?       @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  payments         CostPayment[]
+  paymentSchedules PaymentSchedule[]
+
+  @@index([weddingPlanId, status])
+  @@index([budgetCategoryId])
+  @@index([providerId])
+}
+
+model CostPayment {
+  id                String           @id @default(cuid())
+  weddingCostId     String
+  amount            Decimal          @db.Decimal(14, 2)
+  entryType         CostPaymentType  @default(PAYMENT)
+  paidAt            DateTime         @default(now())
+  method            String?
+  note              String?
+  paymentScheduleId String?
+  reversalOfId      String?          @unique
+  createdAt         DateTime         @default(now())
+  weddingCost       WeddingCost      @relation(fields: [weddingCostId], references: [id], onDelete: Restrict)
+  paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_schedule_same_cost_fkey")
+  reversalOf        CostPayment?     @relation("CostPaymentReversal", fields: [reversalOfId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_reversal_same_cost_fkey")
+  reversedBy        CostPayment?     @relation("CostPaymentReversal")
+
+  @@unique([id, weddingCostId])
+  @@unique([reversalOfId, weddingCostId])
+  @@index([weddingCostId, paidAt])
+  @@index([paymentScheduleId])
+}
+
+model PaymentSchedule {
+  id            String                @id @default(cuid())
+  weddingCostId String
+  amount        Decimal               @db.Decimal(14, 2)
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        PaymentScheduleStatus @default(PENDING)
+  note          String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  weddingCost   WeddingCost           @relation(fields: [weddingCostId], references: [id], onDelete: Cascade)
+  payments      CostPayment[]
+
+  @@unique([id, weddingCostId])
+  @@index([weddingCostId, status, dueDate])
+  @@index([status, dueDate])
+}
+

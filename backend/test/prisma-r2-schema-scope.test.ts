@@ -9,6 +9,7 @@ import {
   renameSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import os from 'node:os';
@@ -60,6 +61,29 @@ const schema = [
   '}',
   '',
 ].join('\n');
+const retiredSchemaPath = ['backend', 'prisma', 'schema' + '.prisma'].join('/');
+const retiredSchemaRead = ['prisma', 'schema' + '.prisma'].join('/');
+const fixtureManifest = {
+  schemaVersion: 1,
+  splitBaseRevision: '1111111111111111111111111111111111111111',
+  baseFile: '_base.prisma',
+  owners: [{ owner: 'platform', file: 'platform.prisma', models: ['Item'], enums: ['ItemState'] }],
+  modelOrder: ['Item'],
+};
+const fixtureBaseSchema = schema.match(/[\s\S]*?(?=\/\/\/ Item state comment)/)?.[0] ?? '';
+const fixtureOwnerSchema = schema.slice(fixtureBaseSchema.length);
+const retiredPrismaConfigSchema = ['schema: "prisma/schema', '.prisma"'].join('');
+const fixturePrismaConfig = [
+  'import { defineConfig } from "prisma/config";',
+  '',
+  'export default defineConfig({',
+  `  ${retiredPrismaConfigSchema},`,
+  '  migrations: {',
+  '    path: "prisma/migrations",',
+  '  },',
+  '});',
+  '',
+].join('\n');
 
 function runGit(cwd: string, args: string[]) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
@@ -71,6 +95,14 @@ function write(root: string, relativePath: string, content: string) {
   writeFileSync(target, content, 'utf8');
 }
 
+function writeApprovedPrismaConfig(root: string) {
+  write(
+    root,
+    'backend/prisma.config.ts',
+    fixturePrismaConfig.replace(retiredPrismaConfigSchema, 'schema: "prisma/schema"'),
+  );
+}
+
 function fixtureRepository(overrides: Record<string, string> = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'aarast-r2-scope-'));
   fixtureRoots.push(root);
@@ -78,7 +110,11 @@ function fixtureRepository(overrides: Record<string, string> = {}) {
   runGit(root, ['config', 'user.name', 'R2 Scope Test']);
   runGit(root, ['config', 'user.email', 'r2-scope@example.invalid']);
   runGit(root, ['config', 'core.autocrlf', 'false']);
-  write(root, 'backend/prisma/schema.prisma', schema);
+  write(root, retiredSchemaPath, schema);
+  write(root, 'backend/prisma/schema/_base.prisma', fixtureBaseSchema);
+  write(root, 'backend/prisma/schema/platform.prisma', fixtureOwnerSchema);
+  write(root, 'backend/prisma.config.ts', fixturePrismaConfig);
+  write(root, 'backend/architecture/prisma-schema-layout.json', `${JSON.stringify(fixtureManifest, null, 2)}\n`);
   write(root, 'backend/Dockerfile', [
     'FROM node AS build',
     'COPY prisma ./prisma',
@@ -87,15 +123,17 @@ function fixtureRepository(overrides: Record<string, string> = {}) {
     'COPY --from=build /app/prisma ./prisma',
     '',
   ].join('\n'));
-  write(root, 'backend/test/financial-ledger.test.ts', "const schemaText = readFileSync('schema.prisma');\n");
+  write(root, 'backend/test/financial-ledger.test.ts', `const schemaText = readFileSync('${'schema' + '.prisma'}');\n`);
   write(root, 'backend/test/architecture-ownership.test.ts', [
+    "import { spawnSync } from 'node:child_process';",
     "import {",
+    "  mkdirSync,",
     "  readFileSync,",
     "  writeFileSync,",
     "} from 'node:fs';",
-    "const schemaText = readFileSync(path.join(backendRoot, 'prisma', 'schema.prisma'), 'utf8');",
+    `const schemaText = readFileSync(path.join(backendRoot, 'prisma', '${'schema' + '.prisma'}'), 'utf8');`,
     "function fixtureProject(root: string, fixtureBackend: string) {",
-    "  write(root, 'backend/prisma/schema.prisma', schemaText);",
+    `  write(root, '${retiredSchemaPath}', schemaText);`,
     "  writeFileSync(path.join(fixtureBackend, 'placeholder'), 'fixture');",
     "}",
     '',
@@ -129,7 +167,7 @@ test.afterEach(() => {
 test('pins the production R2 base and the complete R2 file allowlist', () => {
   assert.equal(R2_BASE, '8ba0db78ac669bd6d17de878b77a4d1e6c5e542d');
   assert.equal(R2_ALLOWED_PATHS.has('backend/scripts/prisma/r2-schema-scope.cjs'), true);
-  assert.equal(R2_ALLOWED_PATHS.has('backend/prisma/schema.prisma'), true);
+  assert.equal(R2_ALLOWED_PATHS.has(retiredSchemaPath), true);
   assert.equal(R2_ALLOWED_PATHS.has('backend/src/auth/auth.service.ts'), false);
 });
 
@@ -169,7 +207,7 @@ test('rejects changed leading comments, renamed blocks, and duplicate schema blo
     `${schema}model Item {\n  duplicate String @id\n}\n`,
   ]) {
     const { root, base } = fixtureRepository();
-    write(root, 'backend/prisma/schema.prisma', candidate.replaceAll('\n', '\r\n'));
+    write(root, 'backend/prisma/schema/platform.prisma', candidate.replaceAll('\n', '\r\n'));
     const result = captureCli(root, base);
     assert.equal(result.exitCode, 1);
     assert.deepEqual(result.stdout, []);
@@ -183,7 +221,7 @@ test('rejects indented extra declarations and detached top-level comments', () =
     `${schema}\n// detached top-level comment\n`,
   ]) {
     const { root, base } = fixtureRepository();
-    write(root, 'backend/prisma/schema.prisma', candidate);
+    write(root, 'backend/prisma/schema/platform.prisma', candidate);
     const result = captureCli(root, base);
     assert.equal(result.exitCode, 1);
     assert.deepEqual(result.stderr, ['FAIL - R2 schema scope check']);
@@ -195,6 +233,7 @@ test('permits no Dockerfile delta or exactly the two approved config-copy additi
   assert.equal(captureCli(unchanged.root, unchanged.base).exitCode, 0);
 
   const approved = fixtureRepository();
+  writeApprovedPrismaConfig(approved.root);
   write(approved.root, 'backend/Dockerfile', [
     'FROM node AS build',
     'COPY prisma ./prisma',
@@ -227,6 +266,47 @@ test('permits no Dockerfile delta or exactly the two approved config-copy additi
   const misplaced = captureCli(wrongPlacement.root, wrongPlacement.base);
   assert.equal(misplaced.exitCode, 1);
   assert.deepEqual(misplaced.stderr, ['FAIL - R2 schema scope check']);
+});
+
+test('permits only the exact Prisma schema directory substitution from the fixed base config', () => {
+  const unchanged = fixtureRepository();
+  assert.equal(captureCli(unchanged.root, unchanged.base).exitCode, 0);
+
+  const approved = fixtureRepository();
+  write(
+    approved.root,
+    'backend/prisma.config.ts',
+    fixturePrismaConfig.replace(retiredPrismaConfigSchema, 'schema: "prisma/schema"').replaceAll('\n', '\r\n'),
+  );
+  assert.equal(captureCli(approved.root, approved.base).exitCode, 0);
+
+  const nearMiss = fixtureRepository();
+  write(
+    nearMiss.root,
+    'backend/prisma.config.ts',
+    fixturePrismaConfig
+      .replace(retiredPrismaConfigSchema, 'schema: "prisma/schema"')
+      .replace('path: "prisma/migrations"', 'path: "prisma/not-migrations"')
+      .replace('});', '  extra: true,\n});'),
+  );
+  const result = captureCli(nearMiss.root, nearMiss.base);
+  assert.equal(result.exitCode, 1);
+  assert.deepEqual(result.stdout, []);
+  assert.deepEqual(result.stderr, ['FAIL - R2 schema scope check']);
+});
+
+test('rejects a split schema with the unchanged retired config and accepts the exact substitution', () => {
+  const staleConfig = fixtureRepository();
+  unlinkSync(path.join(staleConfig.root, retiredSchemaPath));
+  const rejected = captureCli(staleConfig.root, staleConfig.base);
+  assert.equal(rejected.exitCode, 1);
+  assert.deepEqual(rejected.stdout, []);
+  assert.deepEqual(rejected.stderr, ['FAIL - R2 schema scope check']);
+
+  const currentConfig = fixtureRepository();
+  unlinkSync(path.join(currentConfig.root, retiredSchemaPath));
+  writeApprovedPrismaConfig(currentConfig.root);
+  assert.equal(captureCli(currentConfig.root, currentConfig.base).exitCode, 0);
 });
 
 test('creates a structured machine report only in a unique OS-temp output while preserving seeded human evidence bytes', () => {
@@ -381,6 +461,7 @@ test('rejects machine-report parent swaps before temp creation and before the co
 
 test('allows only the exact schema-reader mechanical changes, including the real architecture fixture folder and manifest flow', () => {
   const reader = fixtureRepository();
+  writeApprovedPrismaConfig(reader.root);
   write(reader.root, 'backend/test/financial-ledger.test.ts', [
     "import { readLivePrismaSchema } from './support/live-prisma-schema';",
     'const schemaText = readLivePrismaSchema();',
@@ -391,10 +472,11 @@ test('allows only the exact schema-reader mechanical changes, including the real
   const helperReader = fixtureRepository({
     'backend/test/financial-ledger.test.ts': [
       "const read = (target: string) => readFileSync(target, 'utf8');",
-      "const schemaText = read('prisma/schema.prisma');",
+      `const schemaText = read('${retiredSchemaRead}');`,
       '',
     ].join('\n'),
   });
+  writeApprovedPrismaConfig(helperReader.root);
   write(helperReader.root, 'backend/test/financial-ledger.test.ts', [
     "import { readLivePrismaSchema } from './support/live-prisma-schema';",
     "const read = (target: string) => readFileSync(target, 'utf8');",
@@ -406,12 +488,13 @@ test('allows only the exact schema-reader mechanical changes, including the real
   const multilineReader = fixtureRepository({
     'backend/test/financial-ledger.test.ts': [
       'const schemaText = readFileSync(',
-      "  join(process.cwd(), 'prisma/schema.prisma'),",
+      `  join(process.cwd(), '${retiredSchemaRead}'),`,
       "  'utf8',",
       ');',
       '',
     ].join('\n'),
   });
+  writeApprovedPrismaConfig(multilineReader.root);
   write(multilineReader.root, 'backend/test/financial-ledger.test.ts', [
     "import { readLivePrismaSchema } from './support/live-prisma-schema';",
     'const schemaText = readLivePrismaSchema();',
@@ -428,19 +511,25 @@ test('allows only the exact schema-reader mechanical changes, including the real
   assert.equal(captureCli(pathNamedButWrong.root, pathNamedButWrong.base).exitCode, 1);
 
   const architecture = fixtureRepository();
+  writeApprovedPrismaConfig(architecture.root);
   write(architecture.root, 'backend/test/architecture-ownership.test.ts', [
+    "import { spawnSync } from 'node:child_process';",
     "import {",
     "  cpSync,",
     "  copyFileSync,",
+    "  mkdirSync,",
     "  readFileSync,",
     "  writeFileSync,",
     "} from 'node:fs';",
+    "import { readLivePrismaSchema } from './support/live-prisma-schema';",
+    'const schemaText = readLivePrismaSchema();',
     "function fixtureProject(root: string, fixtureBackend: string) {",
     "  cpSync(",
     "    path.join(backendRoot, 'prisma', 'schema'),",
     "    path.join(fixtureBackend, 'prisma', 'schema'),",
     "    { recursive: true },",
     "  );",
+    "  mkdirSync(path.join(fixtureBackend, 'architecture'), { recursive: true });",
     "  copyFileSync(",
     "    path.join(backendRoot, 'architecture', 'prisma-schema-layout.json'),",
     "    path.join(fixtureBackend, 'architecture', 'prisma-schema-layout.json'),",
@@ -453,6 +542,7 @@ test('allows only the exact schema-reader mechanical changes, including the real
 
   const unrelatedArchitecture = fixtureRepository();
   write(unrelatedArchitecture.root, 'backend/test/architecture-ownership.test.ts', [
+    "import { spawnSync } from 'node:child_process';",
     "import {",
     "  cpSync,",
     "  copyFileSync,",

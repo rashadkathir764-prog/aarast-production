@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { join } from "node:path";
 import type { ExecutionContext } from "@nestjs/common";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { OtpPurpose, UserRole } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
@@ -19,7 +20,7 @@ const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 test("admin login requires a persisted password-bound MFA challenge", () => {
-  const schema = read("prisma/schema.prisma");
+  const schema = readLivePrismaSchema();
   const service = read("src/auth/auth.service.ts");
   const controller = read("src/auth/auth.controller.ts");
 
@@ -221,7 +222,7 @@ test("application and admin credentials stay separated and only admin MFA mints 
 });
 
 test("application and administrator sessions are persisted and revoked by scope", () => {
-  const schema = read("prisma/schema.prisma");
+  const schema = readLivePrismaSchema();
   const service = read("src/auth/auth.service.ts");
   const strategy = read("src/auth/jwt.strategy.ts");
 

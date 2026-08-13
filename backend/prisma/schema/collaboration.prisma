@@ -1,0 +1,231 @@
+enum SharedMemberRole {
+  OWNER
+  GROOM
+  BRIDE
+  FAMILY
+  VIEWER
+  EDITOR
+  FINANCE_MANAGER
+  HELPER
+  CONTRIBUTOR
+  MANAGER
+}
+
+enum ContributionScopeStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum ContributorTenureEndReason {
+  MEMBER_REMOVED
+  MEMBER_LEFT
+  ACCOUNT_DELETED
+  PLAN_DELETED
+}
+
+enum ContributionSection {
+  TASKS
+  GUESTS
+  MONEY
+  PROVIDERS
+  MEMBERS
+  PLAN
+}
+
+enum ContributionEntityType {
+  TASK
+  TASK_CHECKLIST_ITEM
+  GUEST
+  GUEST_GROUP
+  MONEY_ITEM
+  BUDGET_CATEGORY
+  WEDDING_COST
+  COST_PAYMENT
+  PAYMENT_SCHEDULE
+  PROVIDER_ITEM
+  QUOTE_REQUEST
+  PLAN_PROVIDER_LINK
+  MEMBER_ITEM
+  PLAN_INVITE
+  PLAN
+  SECTION
+}
+
+enum ContributionAction {
+  CREATED
+  UPDATED
+  DELETED
+  ASSIGNED
+  UNASSIGNED
+  COMPLETED
+  REOPENED
+  STATUS_CHANGED
+  PAYMENT_RECORDED
+  PAYMENT_REVERSED
+  INVITED
+  SECTION_REVOKED
+  MEMBER_LEFT
+  MEMBER_REMOVED
+  LEGACY_CAPTURED
+}
+
+enum ContributionProvenance {
+  RUNTIME
+  REVOCATION_SNAPSHOT
+  LEGACY_EXPLICIT
+}
+
+enum ContributionPermission {
+  MANAGE_TASKS
+  MANAGE_GUESTS
+  VIEW_MONEY
+  MANAGE_MONEY
+  MANAGE_PROVIDERS
+  MANAGE_MEMBERS
+  MANAGE_PLAN
+}
+
+enum PlanInviteDeliveryStatus {
+  UNKNOWN
+  PENDING
+  DELIVERED
+  UNCERTAIN
+  UNAVAILABLE
+}
+
+model SharedMember {
+  id                   String             @id @default(cuid())
+  weddingPlanId        String
+  userId               String
+  role                 SharedMemberRole   @default(VIEWER)
+  canViewMoney         Boolean            @default(false)
+  canEditPlan          Boolean            @default(false)
+  canManageTasks       Boolean            @default(false)
+  canManageGuests      Boolean            @default(false)
+  canManageProviders   Boolean            @default(false)
+  canInviteMembers     Boolean            @default(false)
+  canManageMoney       Boolean            @default(false)
+  receiveNotifications Boolean            @default(true)
+  authorityVersion     Int                @default(1)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  weddingPlan          WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributorTenure    ContributorTenure?
+
+  @@unique([weddingPlanId, userId])
+}
+
+model ContributorHistoryScope {
+  id                      String                  @id @default(uuid())
+  weddingPlanId           String?                 @unique
+  status                  ContributionScopeStatus @default(ACTIVE)
+  historyCoverageStartsAt DateTime
+  archivedAt              DateTime?
+  deletedAt               DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  weddingPlan             WeddingPlan?            @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  tenures                 ContributorTenure[]
+  events                  ContributionEvent[]
+
+  @@index([status, updatedAt])
+}
+
+model ContributorTenure {
+  id                  String                      @id @default(uuid())
+  historyScopeId      String
+  actorUserId         String?
+  actorReference      String                      @db.Char(64)
+  sharedMemberId      String?                     @unique
+  joinedAt            DateTime
+  trackingStartedAt   DateTime
+  endedAt             DateTime?
+  endReason           ContributorTenureEndReason?
+  roleAtTrackingStart SharedMemberRole
+  roleAtEnd           SharedMemberRole?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  historyScope        ContributorHistoryScope     @relation(fields: [historyScopeId], references: [id], onDelete: Restrict)
+  actorUser           User?                       @relation("ContributorTenureActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  sharedMember        SharedMember?               @relation(fields: [sharedMemberId], references: [id], onDelete: SetNull)
+  events              ContributionEvent[]
+
+  @@unique([id, historyScopeId])
+  @@index([actorUserId, endedAt, joinedAt])
+  @@index([actorReference, endedAt, joinedAt])
+  @@index([historyScopeId, endedAt])
+}
+
+/// Append-only, privacy-allowlisted snapshots of a contributor's own work.
+/// The database trigger created by the migration rejects UPDATE and DELETE.
+model ContributionEvent {
+  id                      String                  @id @default(uuid())
+  historyScopeId          String
+  contributorTenureId     String
+  section                 ContributionSection
+  entityType              ContributionEntityType
+  entityId                String?
+  action                  ContributionAction
+  snapshot                Json
+  snapshotHash            String                  @db.Char(64)
+  snapshotVersion         Int                     @default(1)
+  dedupeKey               String                  @db.VarChar(200)
+  eventFingerprint        String                  @db.Char(64)
+  provenance              ContributionProvenance
+  requiredPermission      ContributionPermission?
+  permissionPolicyVersion Int                     @default(1)
+  authorityVersion        Int                     @default(1)
+  occurredAt              DateTime?
+  capturedAt              DateTime                @default(now())
+  historyScope            ContributorHistoryScope @relation(fields: [historyScopeId], references: [id], onDelete: Restrict)
+  contributorTenure       ContributorTenure       @relation(fields: [contributorTenureId, historyScopeId], references: [id, historyScopeId], onDelete: Restrict)
+
+  @@unique([contributorTenureId, dedupeKey])
+  @@index([contributorTenureId, capturedAt(sort: Desc), id(sort: Desc)])
+  @@index([contributorTenureId, section, entityType, action, entityId])
+  @@index([historyScopeId, section, capturedAt(sort: Desc)])
+  @@index([historyScopeId, entityType, entityId])
+}
+
+model PlanInvite {
+  id                   String                   @id @default(cuid())
+  weddingPlanId        String
+  inviterUserId        String
+  inviteeUserId        String?
+  name                 String?
+  phone                String?
+  normalizedPhone      String?
+  email                String?
+  tokenHash            String                   @unique
+  role                 SharedMemberRole         @default(VIEWER)
+  canViewMoney         Boolean                  @default(false)
+  canEditPlan          Boolean                  @default(false)
+  canManageTasks       Boolean                  @default(false)
+  canManageGuests      Boolean                  @default(false)
+  canManageProviders   Boolean                  @default(false)
+  canInviteMembers     Boolean                  @default(false)
+  canManageMoney       Boolean                  @default(false)
+  receiveNotifications Boolean                  @default(true)
+  expiresAt            DateTime
+  acceptedAt           DateTime?
+  declinedAt           DateTime?
+  revokedAt            DateTime?
+  deliveryStatus       PlanInviteDeliveryStatus @default(UNKNOWN)
+  deliveryAttemptedAt  DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  weddingPlan          WeddingPlan              @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  inviter              User                     @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
+  invitee              User?                    @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+  otpCodes             OtpCode[]
+
+  @@index([weddingPlanId, createdAt])
+  @@index([inviteeUserId, acceptedAt])
+  @@index([phone, acceptedAt])
+  @@index([weddingPlanId, normalizedPhone])
+  @@index([weddingPlanId, email])
+  @@index([expiresAt])
+}
+

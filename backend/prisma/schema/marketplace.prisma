@@ -1,0 +1,246 @@
+enum ProviderStatus {
+  PENDING
+  ACTIVE
+  NEEDS_CHANGES
+  SUSPENDED
+  REJECTED
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+  PENDING
+}
+
+enum QuoteRequestStatus {
+  SENT
+  VIEWED
+  RESPONDED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum QuoteOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PlanProviderLinkStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Provider {
+  id                String             @id @default(uuid())
+  userId            String?            @unique
+  cityId            String
+  primaryCategoryId String?
+  businessName      String
+  ownerName         String?
+  phone             String
+  whatsapp          String?
+  email             String?
+  description       String?            @db.Text
+  address           String?
+  latitude          Decimal?           @db.Decimal(10, 7)
+  longitude         Decimal?           @db.Decimal(10, 7)
+  logoUrl           String?
+  coverUrl          String?
+  status            ProviderStatus     @default(PENDING)
+  reviewNote        String?            @db.Text
+  reviewedAt        DateTime?
+  reviewedById      String?
+  isFeatured        Boolean            @default(false)
+  ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
+  ratingCount       Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  city              City               @relation(fields: [cityId], references: [id])
+  primaryCategory   ProviderCategory?  @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  reviewedBy        User?              @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  services          ProviderService[]
+  packages          ProviderPackage[]
+  favorites         FavoriteProvider[]
+  reviews           ProviderReview[]
+  quoteRequests     QuoteRequest[]
+  quoteOffers       QuoteOffer[]
+  planLinks         PlanProviderLink[]
+  weddingCosts      WeddingCost[]
+  conversations     Conversation[]
+
+  @@index([status, isFeatured])
+  @@index([cityId, status])
+  @@index([primaryCategoryId, status])
+}
+
+model ProviderService {
+  id            String                 @id @default(uuid())
+  providerId    String
+  categoryId    String
+  title         String
+  description   String?                @db.Text
+  basePrice     Decimal?               @db.Decimal(14, 2)
+  priceUnit     String?
+  currency      String                 @default("YER")
+  cityId        String?
+  isActive      Boolean                @default(true)
+  isFeatured    Boolean                @default(false)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  provider      Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category      ProviderCategory       @relation(fields: [categoryId], references: [id])
+  city          City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  images        ProviderServiceImage[]
+  packages      ProviderPackage[]
+  quoteRequests QuoteRequest[]
+
+  @@index([providerId, isActive])
+  @@index([categoryId, isActive])
+  @@index([cityId, isActive])
+}
+
+model ProviderServiceImage {
+  id        String          @id @default(uuid())
+  serviceId String
+  imageUrl  String
+  altText   String?
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  service   ProviderService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, sortOrder])
+}
+
+model ProviderPackage {
+  id          String           @id @default(uuid())
+  providerId  String
+  serviceId   String?
+  title       String
+  description String?          @db.Text
+  price       Decimal?         @db.Decimal(14, 2)
+  currency    String           @default("YER")
+  items       Json?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  provider    Provider         @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service     ProviderService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([providerId, isActive])
+  @@index([serviceId, isActive])
+}
+
+model FavoriteProvider {
+  id         String   @id @default(uuid())
+  userId     String
+  providerId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId])
+  @@index([providerId])
+}
+
+model ProviderReview {
+  id         String       @id @default(uuid())
+  userId     String
+  providerId String
+  rating     Int
+  comment    String?      @db.Text
+  status     ReviewStatus @default(PUBLISHED)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId])
+  @@index([providerId, status])
+}
+
+model QuoteRequest {
+  id                     String              @id @default(uuid())
+  userId                 String
+  weddingPlanId          String?
+  providerId             String
+  serviceId              String?
+  eventDate              DateTime?
+  location               Json?
+  cityId                 String?
+  guestCount             Int?
+  contactName            String?
+  contactPhone           String?
+  contactNormalizedPhone String?
+  message                String?             @db.Text
+  budgetMin              Decimal?            @db.Decimal(14, 2)
+  budgetMax              Decimal?            @db.Decimal(14, 2)
+  status                 QuoteRequestStatus  @default(SENT)
+  acceptedAt             DateTime?
+  rejectedAt             DateTime?
+  cancelledAt            DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan            WeddingPlan?        @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider               Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service                ProviderService?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  city                   City?               @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  offers                 QuoteOffer[]
+  providerLinks          PlanProviderLink[]
+  conversationId         String
+  conversation           Conversation        @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  conversationEvents     ConversationEvent[]
+
+  @@index([userId, status])
+  @@index([providerId, status])
+  @@index([weddingPlanId])
+  @@index([conversationId, createdAt])
+  @@index([contactNormalizedPhone])
+}
+
+model QuoteOffer {
+  id                 String              @id @default(uuid())
+  quoteRequestId     String
+  providerId         String
+  title              String?
+  message            String?             @db.Text
+  amount             Decimal?            @db.Decimal(14, 2)
+  currency           String              @default("YER")
+  validUntil         DateTime?
+  status             QuoteOfferStatus    @default(PENDING)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  quoteRequest       QuoteRequest        @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  provider           Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerLinks      PlanProviderLink[]
+  weddingCosts       WeddingCost[]
+  conversationEvents ConversationEvent[]
+
+  @@index([quoteRequestId, status])
+  @@index([providerId, status])
+}
+
+model PlanProviderLink {
+  id             String                 @id @default(uuid())
+  weddingPlanId  String
+  providerId     String
+  quoteRequestId String?
+  quoteOfferId   String?
+  status         PlanProviderLinkStatus @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  weddingPlan    WeddingPlan            @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  provider       Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  quoteRequest   QuoteRequest?          @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer     QuoteOffer?            @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+
+  @@unique([weddingPlanId, providerId])
+  @@index([providerId, status])
+  @@index([quoteRequestId])
+  @@index([quoteOfferId])
+}
+

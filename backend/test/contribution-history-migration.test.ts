@@ -8,12 +8,13 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 
 const read = (path: string) =>
   readFileSync(join(process.cwd(), path), "utf8");
 
 test("contribution history schema keeps only mutable plan, user, and membership links nullable", () => {
-  const schema = read("prisma/schema.prisma");
+  const schema = readLivePrismaSchema();
   const scope =
     schema.match(/model ContributorHistoryScope \{[\s\S]*?\n\}/)?.[0] ?? "";
   const tenure =

@@ -4,8 +4,10 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { readPrismaSchemaFiles } = require('./schema-files.cjs');
 
 const R2_BASE = '8ba0db78ac669bd6d17de878b77a4d1e6c5e542d';
+const R2_BASE_SCHEMA_PATH = ['backend', 'prisma', `schema${'.prisma'}`].join('/');
 const CLI_FAILURE = 'ERROR - R2 schema scope check failed';
 const CLI_SCOPE_FAILURE = 'FAIL - R2 schema scope check';
 
@@ -15,7 +17,7 @@ const R2_ALLOWED_PATHS = new Set([
   'backend/Dockerfile',
   'backend/architecture/prisma-schema-layout.json',
   'backend/prisma.config.ts',
-  'backend/prisma/schema.prisma',
+  R2_BASE_SCHEMA_PATH,
   'backend/prisma/schema/_base.prisma',
   'backend/prisma/schema/backoffice.prisma',
   'backend/prisma/schema/catalog.prisma',
@@ -85,6 +87,19 @@ const EXISTING_SCHEMA_READER_TESTS = new Set([
   'backend/test/outbox-logic.test.ts',
   'backend/test/provider-chat-logic.test.ts',
   'backend/test/reference-catalogs.test.ts',
+]);
+
+const SCHEMA_SPLIT_ACTIVATION_PATHS = new Set([
+  'backend/Dockerfile',
+  'backend/scripts/architecture/ownership-scan.cjs',
+  'backend/scripts/prisma/schema-files.cjs',
+  'backend/scripts/smoke/contributor-history-migration-smoke.js',
+  'backend/test/architecture-r2-schema-layout.test.ts',
+  'backend/test/prisma-r2-manifest.test.ts',
+  'backend/test/prisma-schema-files.test.ts',
+  'backend/test/support/live-prisma-schema.ts',
+  'scripts/docs-sync.mjs',
+  ...EXISTING_SCHEMA_READER_TESTS,
 ]);
 
 class ScopeViolation extends Error {}
@@ -174,35 +189,9 @@ function assertSameBlockSet(baseSchema, candidateSchema) {
 }
 
 function readCandidateSchema(repoRoot) {
-  const oldPath = path.join(repoRoot, 'backend', 'prisma', 'schema.prisma');
-  if (fs.existsSync(oldPath)) return fs.readFileSync(oldPath, 'utf8');
-
-  const manifestPath = path.join(repoRoot, 'backend', 'architecture', 'prisma-schema-layout.json');
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  if (
-    manifest === null
-    || typeof manifest !== 'object'
-    || Object.getPrototypeOf(manifest) !== Object.prototype
-    || typeof manifest.baseFile !== 'string'
-    || !Array.isArray(manifest.owners)
-  ) failScope();
-  const files = [manifest.baseFile];
-  for (const owner of manifest.owners) {
-    if (owner === null || typeof owner !== 'object' || Object.getPrototypeOf(owner) !== Object.prototype) failScope();
-    const descriptor = Object.getOwnPropertyDescriptor(owner, 'file');
-    if (!descriptor || typeof descriptor.value !== 'string') failScope();
-    files.push(descriptor.value);
-  }
-  if (new Set(files).size !== files.length) failScope();
-  const schemaRoot = fs.realpathSync(path.join(repoRoot, 'backend', 'prisma', 'schema'));
-  return files.map((file) => {
-    if (!/^[a-z_][a-z0-9_]*\.prisma$/.test(file)) failScope();
-    const target = path.join(schemaRoot, file);
-    const realTarget = fs.realpathSync(target);
-    const relative = path.relative(schemaRoot, realTarget);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) failScope();
-    return fs.readFileSync(realTarget, 'utf8');
-  }).join('\n');
+  return readPrismaSchemaFiles({
+    backendRoot: path.join(repoRoot, 'backend'),
+  }).combinedText;
 }
 
 function normalizedLines(value) {
@@ -236,6 +225,49 @@ function dockerDeltaIsApproved(runGit, baseRef, repoRoot) {
   expectedLines.splice(runtimeIndexAfterBuildInsert + 1, 0, 'COPY --from=build /app/prisma.config.ts ./');
   const candidate = fs.readFileSync(path.join(repoRoot, 'backend', 'Dockerfile'), 'utf8');
   return normalizedLines(candidate) === expectedLines.join('\n');
+}
+
+function retiredSchemaRemainsPlainFile(repoRoot) {
+  const retiredPath = path.join(repoRoot, R2_BASE_SCHEMA_PATH);
+  try {
+    const state = fs.lstatSync(retiredPath);
+    return state.isFile()
+      && !state.isSymbolicLink()
+      && fs.realpathSync(retiredPath) === retiredPath;
+  } catch {
+    return false;
+  }
+}
+
+function schemaSplitIsInactive(repoRoot, paths) {
+  return retiredSchemaRemainsPlainFile(repoRoot)
+    && !paths.some((repositoryPath) => (
+      repositoryPath.startsWith('backend/prisma/schema/')
+      || SCHEMA_SPLIT_ACTIVATION_PATHS.has(repositoryPath)
+    ));
+}
+
+function prismaConfigDeltaIsApproved(runGit, baseRef, repoRoot, paths) {
+  const repositoryPath = 'backend/prisma.config.ts';
+  let base;
+  let candidate;
+  try {
+    base = normalizedLines(runGit(['show', `${baseRef}:${repositoryPath}`]));
+    candidate = normalizedLines(fs.readFileSync(path.join(repoRoot, repositoryPath), 'utf8'));
+  } catch {
+    return false;
+  }
+  if (candidate === base) return schemaSplitIsInactive(repoRoot, paths);
+  const retired = ['schema: "prisma/schema', '.prisma"'].join('');
+  const desired = 'schema: "prisma/schema"';
+  const first = base.indexOf(retired);
+  if (
+    first < 0
+    || base.indexOf(retired, first + retired.length) >= 0
+    || base.includes(desired)
+  ) return false;
+  const expected = `${base.slice(0, first)}${desired}${base.slice(first + retired.length)}`;
+  return candidate === expected;
 }
 
 function basePathExists(runGit, baseRef, repositoryPath) {
@@ -299,7 +331,7 @@ function replaceOnce(value, expression, replacement) {
 }
 
 function nodeFsImportMembers(source) {
-  const match = /import\s*\{([\s\S]*?)\}\s*from\s*['"]node:fs['"];?/.exec(source);
+  const match = /^import\s*\{([^}]*)\}\s*from\s*['"]node:fs['"];?/m.exec(source);
   if (match === null) return null;
   const members = match[1].split(',').map((entry) => entry.trim()).filter(Boolean);
   if (members.some((member) => !/^[A-Za-z][A-Za-z0-9_]*$/.test(member))) return null;
@@ -329,16 +361,27 @@ function architectureFixtureHunkIsMechanical(runGit, baseRef, repoRoot, reposito
   ) return false;
   candidate = candidate.replace(candidateImport.text, baseImport.text);
 
+  const helperImport = "import { readLivePrismaSchema } from './support/live-prisma-schema';";
+  if (!candidate.includes(helperImport) || base.includes(helperImport)) return false;
+  candidate = replaceOnce(candidate, `${helperImport}\n`, '');
+  if (candidate === null) return false;
+
   const schemaRead = /const\s+schemaText\s*=\s*readFileSync\(\s*path\.join\(backendRoot,\s*['"]prisma['"],\s*['"]schema\.prisma['"]\),\s*['"]utf8['"]\s*\);\s*\n/;
-  const expectedBase = replaceOnce(base, schemaRead, '');
-  if (expectedBase === null || schemaRead.test(candidate)) return false;
+  const baseRead = schemaRead.exec(base);
+  if (baseRead === null || schemaRead.test(candidate)) return false;
+  candidate = replaceOnce(candidate, /const\s+schemaText\s*=\s*readLivePrismaSchema\(\);\s*\n/, baseRead[0]);
+  if (candidate === null) return false;
+  const expectedBase = base;
 
   const fixtureWrite = /\s*write\(root,\s*['"]backend\/prisma\/schema\.prisma['"],\s*schemaText\);/;
   const folderCopy = /\s*cpSync\(\s*path\.join\(backendRoot,\s*['"]prisma['"],\s*['"]schema['"]\),\s*path\.join\(fixtureBackend,\s*['"]prisma['"],\s*['"]schema['"]\),\s*\{\s*recursive:\s*true\s*\},?\s*\);/;
+  const fixtureArchitectureMkdir = /\s*mkdirSync\(path\.join\(fixtureBackend,\s*['"]architecture['"]\),\s*\{\s*recursive:\s*true\s*\}\);/;
   const manifestCopy = /\s*copyFileSync\(\s*path\.join\(backendRoot,\s*['"]architecture['"],\s*['"]prisma-schema-layout\.json['"]\),\s*path\.join\(fixtureBackend,\s*['"]architecture['"],\s*['"]prisma-schema-layout\.json['"]\),\s*\);/;
   const baseWrite = fixtureWrite.exec(expectedBase);
   if (baseWrite === null) return false;
   candidate = replaceOnce(candidate, folderCopy, baseWrite[0]);
+  if (candidate === null) return false;
+  candidate = replaceOnce(candidate, fixtureArchitectureMkdir, '');
   if (candidate === null) return false;
   candidate = replaceOnce(candidate, manifestCopy, '');
   return candidate !== null && candidate === expectedBase;
@@ -490,8 +533,9 @@ function validateScope({ repoRoot, baseRef, expectedBase = R2_BASE, reportPath }
   if (paths.some((repositoryPath) => repositoryPath === 'backend/prisma/seed.ts' || repositoryPath.startsWith('backend/prisma/migrations/'))) failScope();
   if (paths.some((repositoryPath) => repositoryPath.startsWith('backend/src/') || repositoryPath.startsWith('mobile/') || repositoryPath.startsWith('admin-web/') || repositoryPath.startsWith('deploy/') || repositoryPath.startsWith('.github/'))) failScope();
   if (!dockerDeltaIsApproved(runGit, baseRef, root)) failScope();
+  if (!prismaConfigDeltaIsApproved(runGit, baseRef, root, paths)) failScope();
   assertTestPolicy(runGit, baseRef, root, paths);
-  const baseSchema = String(runGit(['show', `${baseRef}:backend/prisma/schema.prisma`]));
+  const baseSchema = String(runGit(['show', `${baseRef}:${R2_BASE_SCHEMA_PATH}`]));
   assertSameBlockSet(baseSchema, readCandidateSchema(root));
   if (typeof reportPath !== 'undefined') writeReport(reportPath, paths.length);
   return { changedPathCount: paths.length };

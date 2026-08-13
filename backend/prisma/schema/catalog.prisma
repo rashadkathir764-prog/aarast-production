@@ -1,0 +1,156 @@
+enum AdministrativeLocalityType {
+  AREA
+  ISOLATION
+  NEIGHBORHOOD
+  ZONE
+}
+
+model City {
+  id            String            @id @default(uuid())
+  nameAr        String
+  nameEn        String?
+  countryCode   String            @default("YE")
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  providers     Provider[]
+  services      ProviderService[]
+  quoteRequests QuoteRequest[]
+
+  @@unique([nameAr, countryCode])
+  @@index([isActive, sortOrder])
+}
+
+model Governorate {
+  id        String     @id @default(uuid())
+  code      String     @unique
+  nameAr    String
+  nameEn    String
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean    @default(true)
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  districts District[]
+
+  @@index([isActive, sortOrder])
+}
+
+model District {
+  id            String                   @id @default(uuid())
+  governorateId String
+  code          String                   @unique
+  nameAr        String
+  nameEn        String
+  latitude      Float?
+  longitude     Float?
+  isActive      Boolean                  @default(true)
+  sortOrder     Int                      @default(0)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  governorate   Governorate              @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  localities    AdministrativeLocality[]
+
+  @@unique([governorateId, nameAr])
+  @@index([governorateId, isActive, sortOrder])
+}
+
+model AdministrativeLocality {
+  id         String                     @id @default(uuid())
+  districtId String
+  parentId   String?
+  code       String                     @unique
+  type       AdministrativeLocalityType
+  nameAr     String
+  nameEn     String?
+  latitude   Float?
+  longitude  Float?
+  isActive   Boolean                    @default(true)
+  sortOrder  Int                        @default(0)
+  createdAt  DateTime                   @default(now())
+  updatedAt  DateTime                   @updatedAt
+  district   District                   @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  parent     AdministrativeLocality?    @relation("AdministrativeLocalityTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children   AdministrativeLocality[]   @relation("AdministrativeLocalityTree")
+
+  @@unique([districtId, type, nameAr])
+  @@index([districtId, type, isActive, sortOrder])
+  @@index([parentId, isActive, sortOrder])
+}
+
+model ReferenceCatalog {
+  id          String                 @id @default(uuid())
+  key         String                 @unique
+  nameAr      String
+  description String?
+  version     Int                    @default(0)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  items       ReferenceCatalogItem[]
+
+  @@index([isActive, key])
+}
+
+model ReferenceCatalogItem {
+  id                String                         @id @default(uuid())
+  catalogId         String
+  key               String
+  currentRevision   Int                            @default(0)
+  publishedRevision Int                            @default(0)
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  catalog           ReferenceCatalog               @relation(fields: [catalogId], references: [id], onDelete: Restrict)
+  revisions         ReferenceCatalogItemRevision[]
+
+  @@unique([catalogId, key])
+  @@index([catalogId, publishedRevision])
+}
+
+model ReferenceCatalogItemRevision {
+  id              String               @id @default(uuid())
+  itemId          String
+  revision        Int
+  groupKey        String?
+  groupNameAr     String?
+  groupSubtitleAr String?
+  nameAr          String
+  nameEn          String?
+  icon            String?
+  sortOrder       Int                  @default(0)
+  showForGroom    Boolean              @default(true)
+  showForBride    Boolean              @default(true)
+  showForCustomer Boolean              @default(true)
+  showForProvider Boolean              @default(false)
+  isRecommended   Boolean              @default(false)
+  isActive        Boolean              @default(true)
+  metadata        Json?
+  createdAt       DateTime             @default(now())
+  item            ReferenceCatalogItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, revision])
+  @@index([itemId, isActive])
+}
+
+model ProviderCategory {
+  id           String            @id @default(uuid())
+  nameAr       String
+  nameEn       String?
+  slug         String            @unique
+  icon         String?
+  showForGroom Boolean           @default(true)
+  showForBride Boolean           @default(true)
+  isActive     Boolean           @default(true)
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  services     ProviderService[]
+  providers    Provider[]
+
+  @@index([isActive, sortOrder])
+  @@index([showForGroom, isActive, sortOrder])
+  @@index([showForBride, isActive, sortOrder])
+}
+

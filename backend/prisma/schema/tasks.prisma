@@ -1,0 +1,51 @@
+enum WeddingTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum WeddingTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model WeddingTask {
+  id                String                     @id @default(cuid())
+  weddingPlanId     String
+  assigneeUserId    String?
+  responsibleName   String?
+  responsiblePhone  String?
+  responsibleSource String?
+  title             String
+  description       String?
+  dueDate           DateTime?
+  taskCategory      String?
+  reminderAt        DateTime?
+  status            WeddingTaskStatus          @default(TODO)
+  priority          WeddingTaskPriority        @default(MEDIUM)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  weddingPlan       WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  assignee          User?                      @relation("AssignedWeddingTasks", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  checklistItems    WeddingTaskChecklistItem[]
+
+  @@index([weddingPlanId, status])
+  @@index([assigneeUserId])
+}
+
+model WeddingTaskChecklistItem {
+  id        String      @id @default(cuid())
+  taskId    String
+  title     String
+  isDone    Boolean     @default(false)
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  task      WeddingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, sortOrder])
+}
+

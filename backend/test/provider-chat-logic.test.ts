@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import {
   hasJoinedProvider,
   isActiveConversationParticipant,
@@ -51,7 +52,7 @@ test('provider join and active participation never treat a revoked row as live',
 });
 
 test('conversation schema owns plan/account identity instead of one quote request', () => {
-  const schema = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8');
+  const schema = readLivePrismaSchema();
   assert.match(schema, /enum ConversationScope\s*{\s*PLAN\s*ACCOUNT\s*}/s);
   assert.match(schema, /model Conversation\s*{[\s\S]*?scope\s+ConversationScope/);
   assert.match(schema, /weddingPlanId\s+String\?/);

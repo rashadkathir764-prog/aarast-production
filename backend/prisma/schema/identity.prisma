@@ -1,0 +1,188 @@
+enum UserRole {
+  USER
+  ADMIN
+  PROVIDER
+}
+
+/// Anonymous, append-only proof that one account-deletion command committed.
+/// The digest binds the former user id to the high-entropy client request id;
+/// neither source value is retained after the User row is erased.
+model AccountDeletionReceipt {
+  receiptHash String   @id @db.Char(64)
+  deletedAt   DateTime @default(now())
+
+  @@index([deletedAt])
+}
+
+enum AppRole {
+  WEDDING_USER
+  PROVIDER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum OtpPurpose {
+  REGISTER
+  LOGIN
+  INVITE_ACCESS
+  ADMIN_LOGIN
+  VERIFY_PHONE
+  RESET_PASSWORD
+  ADMIN_RESET_PASSWORD
+}
+
+enum AuthSessionScope {
+  APPLICATION
+  ADMIN
+}
+
+model User {
+  id                           String                        @id @default(cuid())
+  name                         String
+  phone                        String?                       @unique
+  email                        String?                       @unique
+  passwordHash                 String
+  appPasswordHash              String?
+  appPasswordConfiguredAt      DateTime?
+  appName                      String?
+  appEmail                     String?                       @unique
+  appAvatarUrl                 String?
+  role                         UserRole                      @default(USER)
+  adminRole                    AdminRole?
+  appRole                      AppRole                       @default(WEDDING_USER)
+  status                       UserStatus                    @default(ACTIVE)
+  phoneVerifiedAt              DateTime?
+  lastLoginAt                  DateTime?
+  avatarUrl                    String?
+  locale                       String                        @default("ar")
+  activeWeddingPlanId          String?
+  onboardingPath               OnboardingPath?
+  persona                      WeddingPersona?
+  onboardingCompletedAt        DateTime?
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  weddingPlans                 WeddingPlan[]                 @relation("OwnedWeddingPlans")
+  activeWeddingPlan            WeddingPlan?                  @relation("ActiveWeddingPlan", fields: [activeWeddingPlanId], references: [id], onDelete: SetNull)
+  sharedWeddingPlans           SharedMember[]
+  notificationPreference       NotificationPreference?
+  notifications                Notification[]
+  pushInstallations            PushInstallation[]
+  providerProfile              Provider?
+  favoriteProviders            FavoriteProvider[]
+  providerReviews              ProviderReview[]
+  quoteRequests                QuoteRequest[]
+  accountConversations         Conversation[]                @relation("ConversationAccountRequester")
+  createdConversations         Conversation[]                @relation("ConversationCreatedBy")
+  customerBlockedConversations Conversation[]                @relation("ConversationCustomerBlockedBy")
+  reviewedProviders            Provider[]                    @relation("ProviderReviewedBy")
+  assignedWeddingTasks         WeddingTask[]                 @relation("AssignedWeddingTasks")
+  sentPlanInvites              PlanInvite[]                  @relation("PlanInviteInviter")
+  receivedPlanInvites          PlanInvite[]                  @relation("PlanInviteInvitee")
+  refreshTokens                RefreshToken[]
+  adminLoginChallenges         AdminLoginChallenge[]
+  adminPasswordResetChallenges AdminPasswordResetChallenge[]
+  conversationParticipants     ConversationParticipant[]
+  chatMessages                 ChatMessage[]                 @relation("ChatMessageSender")
+  conversationReports          ConversationReport[]          @relation("ConversationReporter")
+  conversationEvents           ConversationEvent[]           @relation("ConversationEventActor")
+  mediaUploadTickets           MediaUploadTicket[]
+  contributorTenures           ContributorTenure[]           @relation("ContributorTenureActor")
+}
+
+model AdminLoginChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  otpId      String    @unique
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otp        OtpCode   @relation(fields: [otpId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt])
+  @@index([expiresAt])
+}
+
+model AdminPasswordResetChallenge {
+  id          String    @id @default(cuid())
+  userId      String?
+  otpId       String    @unique
+  tokenHash   String    @unique
+  subjectHash String    @db.Char(64)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  createdAt   DateTime  @default(now())
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  otp         OtpCode   @relation(fields: [otpId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt])
+  @@index([subjectHash, consumedAt])
+  @@index([expiresAt])
+}
+
+model RefreshToken {
+  id           String           @id @default(cuid())
+  userId       String
+  tokenHash    String           @unique
+  scope        AuthSessionScope @default(APPLICATION)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?          @unique
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, scope, revokedAt])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model LoginThrottle {
+  subjectHash     String    @id @db.Char(64)
+  failedCount     Int       @default(0)
+  windowStartedAt DateTime
+  lockedUntil     DateTime?
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  @@index([lockedUntil])
+  @@index([updatedAt])
+}
+
+model OtpDispatchQuota {
+  scope           String   @db.VarChar(32)
+  subjectHash     String   @db.Char(64)
+  count           Int      @default(0)
+  windowStartedAt DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@id([scope, subjectHash])
+  @@index([updatedAt])
+}
+
+model OtpCode {
+  id                          String                       @id @default(uuid())
+  phone                       String
+  codeHash                    String
+  purpose                     OtpPurpose
+  expiresAt                   DateTime
+  consumedAt                  DateTime?
+  attempts                    Int                          @default(0)
+  maxAttempts                 Int                          @default(5)
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  adminLoginChallenge         AdminLoginChallenge?
+  adminPasswordResetChallenge AdminPasswordResetChallenge?
+  planInviteId                String?
+  planInvite                  PlanInvite?                  @relation(fields: [planInviteId], references: [id], onDelete: Cascade)
+
+  @@index([phone, purpose, consumedAt])
+  @@index([phone, purpose, expiresAt])
+  @@index([planInviteId, purpose, consumedAt])
+}
+

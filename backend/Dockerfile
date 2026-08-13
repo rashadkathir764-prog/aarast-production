@@ -8,6 +8,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 COPY tsconfig*.json ./
 COPY scripts/clean-dist.cjs ./scripts/clean-dist.cjs
 COPY scripts/prod/provision-admin.cjs ./scripts/prod/provision-admin.cjs
@@ -68,6 +69,7 @@ RUN npm install --global npm@12.0.2 --no-fund --no-audit \
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts ./
 COPY --from=build /app/scripts/prod/provision-admin.cjs ./scripts/prod/provision-admin.cjs
 COPY --from=build /app/scripts/prod/assert-database-identity.cjs ./scripts/prod/assert-database-identity.cjs
 COPY --from=build /app/scripts/prod/assert-firebase-credentials.cjs ./scripts/prod/assert-firebase-credentials.cjs

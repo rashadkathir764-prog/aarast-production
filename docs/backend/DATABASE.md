@@ -1,6 +1,6 @@
 # Database Plan
 
-This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
+This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema/` as the schema source of truth.
 
 Current documentation snapshot: 2026-08-11. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.

@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const utilTypes = require('node:util').types;
 const ts = require('typescript');
+const { readPrismaSchemaFiles } = require('../prisma/schema-files.cjs');
 
 const SCHEMA_VERSION = 1;
 const SOURCE_REVISION = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
@@ -1288,7 +1289,7 @@ function classifyOwnershipAccesses(options) {
   }
   const repoRoot = path.resolve(options.repoRoot);
   const backendRoot = path.resolve(options.backendRoot);
-  const schemaText = fs.readFileSync(path.join(backendRoot, 'prisma', 'schema.prisma'), 'utf8');
+  const schemaText = readPrismaSchemaFiles({ backendRoot }).combinedText;
   const registry = readJson(
     path.join(backendRoot, 'architecture', 'ownership-registry.json'),
     'ownership registry',
@@ -1594,7 +1595,7 @@ function ownershipValidationMetadata() {
     path.join(backendRoot, 'architecture', 'ownership-registry.json'),
     'ownership registry',
   );
-  const schemaText = fs.readFileSync(path.join(backendRoot, 'prisma', 'schema.prisma'), 'utf8');
+  const schemaText = readPrismaSchemaFiles({ backendRoot }).combinedText;
   validationRegistryMetadata = buildRegistryMetadata(
     registry,
     extractSchemaMetadata(schemaText),

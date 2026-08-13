@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 
 const read = (path: string) =>
   readFileSync(join(process.cwd(), path), "utf8");
 
 test("the payment ledger is append-only and reversals stay in the same cost", () => {
-  const schema = read("prisma/schema.prisma");
+  const schema = readLivePrismaSchema();
   const payment = schema.match(/model CostPayment \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.match(payment, /entryType\s+CostPaymentType/);
   assert.match(payment, /reversalOfId\s+String\?\s+@unique/);
@@ -145,7 +146,7 @@ test("database constraints protect budgets while payment schedules remain non-re
 });
 
 test("the only payment due date belongs to PaymentSchedule", () => {
-  const schema = read("prisma/schema.prisma");
+  const schema = readLivePrismaSchema();
   const cost = schema.match(/model WeddingCost \{[\s\S]*?\n\}/)?.[0] ?? "";
   const schedule = schema.match(/model PaymentSchedule \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.doesNotMatch(cost, /\bdueDate\b/);

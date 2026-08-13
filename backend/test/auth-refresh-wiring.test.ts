@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { AuthSessionScope } from "@prisma/client";
+import { readLivePrismaSchema } from './support/live-prisma-schema';
 import {
   createOpaqueTokenValue,
   createRefreshTokenValue,
@@ -222,10 +223,7 @@ test("changing an application token prefix cannot recover its database session",
 });
 
 test("refresh token schema and authenticated lifecycle stay wired", () => {
-  const schema = readFileSync(
-    join(process.cwd(), "prisma/schema.prisma"),
-    "utf8",
-  );
+  const schema = readLivePrismaSchema();
   const controller = readFileSync(
     join(process.cwd(), "src/auth/auth.controller.ts"),
     "utf8",

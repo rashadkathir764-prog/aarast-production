@@ -1,0 +1,70 @@
+enum GuestSide {
+  GROOM
+  BRIDE
+  FAMILY
+  FRIEND
+  OTHER
+}
+
+enum GuestStatus {
+  INVITED
+  CONFIRMED
+  DECLINED
+  PENDING
+}
+
+enum GuestInvitationStatus {
+  NOT_SENT
+  SENT
+  DELIVERED
+}
+
+enum GuestAttendanceStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+model Guest {
+  id               String                @id @default(cuid())
+  weddingPlanId    String
+  groupId          String?
+  name             String
+  normalizedName   String
+  phone            String?
+  normalizedPhone  String?
+  side             GuestSide             @default(OTHER)
+  status           GuestStatus           @default(INVITED)
+  invitationStatus GuestInvitationStatus @default(NOT_SENT)
+  attendanceStatus GuestAttendanceStatus @default(PENDING)
+  seatsCount       Int                   @default(1)
+  companionsCount  Int                   @default(0)
+  notes            String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  weddingPlan      WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  group            GuestGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@unique([weddingPlanId, normalizedPhone])
+  @@index([weddingPlanId, status])
+  @@index([weddingPlanId, invitationStatus])
+  @@index([weddingPlanId, attendanceStatus])
+  @@index([weddingPlanId, groupId])
+  @@index([weddingPlanId, normalizedName])
+}
+
+model GuestGroup {
+  id            String      @id @default(cuid())
+  weddingPlanId String
+  name          String
+  notes         String?
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  guests        Guest[]
+
+  @@unique([weddingPlanId, name])
+  @@index([weddingPlanId, sortOrder])
+}
+

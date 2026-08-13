@@ -1,0 +1,89 @@
+enum NotificationType {
+  QUOTE_REQUEST_SUBMITTED
+  TASK_ASSIGNED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  PAYMENT_SCHEDULE_DUE_SOON
+  PAYMENT_SCHEDULE_OVERDUE
+  SHARING_INVITATION
+  SHARING_UPDATED
+  SHARING_INVITE_ACCEPTED
+  SHARING_INVITE_DECLINED
+  QUOTE_OFFER_RECEIVED
+  QUOTE_ACCEPTED
+  QUOTE_REJECTED
+  PLAN_UPDATED
+  SYNC_REQUIRED
+  CHAT_MESSAGE_RECEIVED
+  GENERAL
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum PushPlatform {
+  ANDROID
+  IOS
+}
+
+model NotificationPreference {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  pushEnabled             Boolean  @default(false)
+  smsEnabled              Boolean  @default(false)
+  whatsappEnabled         Boolean  @default(false)
+  emailEnabled            Boolean  @default(false)
+  taskRemindersEnabled    Boolean  @default(true)
+  paymentRemindersEnabled Boolean  @default(true)
+  providerMessagesEnabled Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushInstallation {
+  id         String       @id @default(cuid())
+  userId     String
+  fid        String       @unique @db.VarChar(200)
+  platform   PushPlatform
+  enabled    Boolean      @default(true)
+  lastSeenAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, enabled])
+  @@index([updatedAt])
+}
+
+model Notification {
+  id            String               @id @default(cuid())
+  userId        String
+  weddingPlanId String?
+  type          NotificationType
+  priority      NotificationPriority @default(NORMAL)
+  title         String
+  body          String               @db.Text
+  entityType    String?
+  entityId      String?
+  routeTarget   String?
+  data          Json?
+  dedupeKey     String?              @unique
+  readAt        DateTime?
+  archivedAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan   WeddingPlan?         @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+
+  @@index([userId, archivedAt, readAt, createdAt])
+  @@index([userId, archivedAt, createdAt])
+  @@index([userId, weddingPlanId, archivedAt, createdAt])
+  @@index([weddingPlanId, createdAt])
+  @@index([entityType, entityId])
+}
+

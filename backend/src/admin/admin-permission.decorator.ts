@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { AdminPermission } from '../common/admin/admin-permissions';
+import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 
 export const ADMIN_PERMISSIONS_KEY = 'admin_permissions';
 

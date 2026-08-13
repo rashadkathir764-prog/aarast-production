@@ -19,7 +19,7 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
-import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import {
   runRetryableTransaction,
   runSerializableTransaction,

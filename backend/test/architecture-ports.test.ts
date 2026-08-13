@@ -244,19 +244,23 @@ test('the approved global set is exact for direct, aliased, and namespace decora
   }
 });
 
-test('retired prisma and health roots cannot be reintroduced as directories or standalone files', () => {
+test('retired R1 platform roots cannot be reintroduced as directories or standalone files', () => {
   const result = scanPorts(fixtureProject({
+    'backend/src/common/rogue.ts': 'export const rogue = true;\n',
+    'backend/src/outbox/rogue.ts': 'export const rogue = true;\n',
     'backend/src/prisma/rogue.ts': "import '../auth/target';\n",
     'backend/src/health/rogue.ts': 'export const rogue = true;\n',
     'backend/src/health.controller.ts': 'export class LegacyHealthController {}\n',
     'backend/src/auth/target.ts': 'export const target = true;\n',
   }));
   assert.deepEqual(diagnosticsOfKind(result, 'retired-platform-root').map((item) => item.path), [
+    'backend/src/common/rogue.ts',
     'backend/src/health.controller.ts',
     'backend/src/health/rogue.ts',
+    'backend/src/outbox/rogue.ts',
     'backend/src/prisma/rogue.ts',
   ]);
-  assert.equal(result.counts.illegalFutureImports, 3);
+  assert.equal(result.counts.illegalFutureImports, 5);
 });
 
 test('runCli validates retired-root diagnostics through the fixed non-reflective catalog', () => {
@@ -437,6 +441,42 @@ test('only the exact documented transitional platform debt is deferred to the de
       `${debt.source}|${debt.target}`,
     );
   }
+});
+
+test('only auth and catalogs may import the exact Backoffice permission contract', () => {
+  for (const source of [
+    'backend/src/auth/use-permission.ts',
+    'backend/src/catalogs/use-permission.ts',
+  ]) {
+    const allowed = scanPorts(fixtureProject({
+      [source]: "import '../modules/backoffice/domain/admin-permissions';\n",
+      'backend/src/modules/backoffice/domain/admin-permissions.ts':
+        'export const permission = true;\n',
+    }));
+    assert.deepEqual(diagnosticsOfKind(allowed, 'non-public-cross-module-import'), []);
+  }
+
+  const sibling = scanPorts(fixtureProject({
+    'backend/src/auth/use-private.ts': "import '../modules/backoffice/domain/private';\n",
+    'backend/src/modules/backoffice/domain/private.ts': 'export const value = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(sibling, 'non-public-cross-module-import').length, 1);
+
+  const unauthorized = scanPorts(fixtureProject({
+    'backend/src/tasks/use-permission.ts':
+      "import '../modules/backoffice/domain/admin-permissions';\n",
+    'backend/src/modules/backoffice/domain/admin-permissions.ts':
+      'export const permission = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(unauthorized, 'non-public-cross-module-import').length, 1);
+
+  const futureCatalog = scanPorts(fixtureProject({
+    'backend/src/modules/catalog/application/use-permission.ts':
+      "import '../../backoffice/domain/admin-permissions';\n",
+    'backend/src/modules/backoffice/domain/admin-permissions.ts':
+      'export const permission = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(futureCatalog, 'non-public-cross-module-import').length, 1);
 });
 
 test('future domain code cannot import Nest runtime, PrismaService, or another business module', () => {

@@ -26,13 +26,13 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { toReviewIdentity } from '../common/privacy/review-identity';
-import { PhoneNormalizer } from '../common/phone/phone-normalizer';
+import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
+import { PhoneNormalizer } from '../shared-kernel/phone/phone-normalizer';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import {
   optionalMoneyAmount,
   requiredMoneyAmount,
-} from '../common/validation/money';
+} from '../shared-kernel/money/money';
 import { recordConversationEvent } from '../conversations/conversation-lifecycle';
 import {
   assertQuoteRequestTransition,
@@ -52,7 +52,7 @@ import { assertWeddingPlanWritable } from '../sharing/permission.service';
 import {
   applicationNameFields,
   toApplicationUserContact,
-} from '../users/application-user-identity';
+} from '../shared-kernel/privacy/application-user-identity';
 import { weddingLocationResponse } from '../wedding-plans/wedding-location';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';

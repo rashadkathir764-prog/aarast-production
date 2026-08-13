@@ -9,7 +9,7 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import {
   AdminPermission,
   hasAdminPermission,
-} from '../common/admin/admin-permissions';
+} from '../modules/backoffice/domain/admin-permissions';
 import { ADMIN_PERMISSIONS_KEY } from './admin-permission.decorator';
 
 @Injectable()

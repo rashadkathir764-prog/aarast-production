@@ -10,11 +10,11 @@ import type {
   QuoteRequestStatus,
   User,
 } from '@prisma/client';
-import { toReviewIdentity } from '../common/privacy/review-identity';
+import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import {
   maskPhone,
   toAdminNotificationPrivacyView,
-} from './admin-privacy';
+} from '../shared-kernel/privacy/admin-notification-privacy';
 
 export type SafeAdminUser = Pick<
   User,

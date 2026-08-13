@@ -8,8 +8,8 @@ import {
   ReviewStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { AdminPermission } from '../common/admin/admin-permissions';
-import { optionalMoneyAmount } from '../common/validation/money';
+import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
+import { optionalMoneyAmount } from '../shared-kernel/money/money';
 import {
   lockProviderRatingRows,
   refreshProviderRating,

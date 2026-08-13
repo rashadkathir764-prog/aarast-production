@@ -4,8 +4,8 @@ import { NotificationType, UserRole } from "@prisma/client";
 import {
   maskPhone,
   toAdminNotificationPrivacyView,
-} from "../src/admin/admin-privacy";
-import { toReviewIdentity } from "../src/common/privacy/review-identity";
+} from "../src/shared-kernel/privacy/admin-notification-privacy";
+import { toReviewIdentity } from "../src/shared-kernel/privacy/review-identity";
 import { safeTelemetryException } from "../src/platform/http/global-exception.filter";
 import { UsersService } from "../src/users/users.service";
 

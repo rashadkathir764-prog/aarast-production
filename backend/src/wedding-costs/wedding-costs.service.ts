@@ -25,7 +25,7 @@ import {
   runRetryableTransaction,
   runSerializableTransaction,
 } from "../platform/database/serializable-transaction";
-import { requiredMoneyAmount } from "../common/validation/money";
+import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   PermissionService,

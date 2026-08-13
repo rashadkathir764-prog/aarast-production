@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { requiredMoneyAmount } from "../common/validation/money";
+import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import { PermissionService } from "../sharing/permission.service";

@@ -25,9 +25,9 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
-import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { requiredMoneyAmount } from "../common/validation/money";
+import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";

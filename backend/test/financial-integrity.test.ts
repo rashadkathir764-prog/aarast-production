@@ -17,7 +17,7 @@ import { BudgetCategoriesService } from "../src/budget-categories/budget-categor
 import {
   optionalMoneyAmount,
   requiredMoneyAmount,
-} from "../src/common/validation/money";
+} from "../src/shared-kernel/money/money";
 import { MoneyBudgetService } from "../src/money/money-budget.service";
 import { MoneySummaryController } from "../src/money/money-summary.controller";
 import { MoneySummaryService } from "../src/money/money-summary.service";

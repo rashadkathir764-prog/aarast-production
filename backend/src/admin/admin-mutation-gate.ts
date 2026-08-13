@@ -9,7 +9,7 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import {
   AdminPermission,
   hasAdminPermission,
-} from '../common/admin/admin-permissions';
+} from '../modules/backoffice/domain/admin-permissions';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import { PrismaService } from '../platform/database/prisma.service';
 

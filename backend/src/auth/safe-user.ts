@@ -2,7 +2,7 @@ import { AuthenticatedUser } from './authenticated-user.interface';
 import {
   AdminPermission,
   permissionsForAdminRole,
-} from '../common/admin/admin-permissions';
+} from '../modules/backoffice/domain/admin-permissions';
 import { UserRole } from '@prisma/client';
 
 export interface SafeUser {

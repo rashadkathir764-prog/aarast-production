@@ -674,20 +674,6 @@
   {
     "type": "dependency",
     "from": "src/sharing/sharing.service.ts",
-    "to": "src/users/application-user-identity.ts",
-    "unresolvedTo": "../users/application-user-identity",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/sharing.service.ts",
     "to": "src/users/user-lifecycle-lock.ts",
     "unresolvedTo": "../users/user-lifecycle-lock",
     "dependencyTypes": [
@@ -1534,20 +1520,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/dashboard/dashboard-home-queries.ts",
-    "to": "src/users/application-user-identity.ts",
-    "unresolvedTo": "../users/application-user-identity",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -2611,20 +2583,6 @@
   {
     "type": "dependency",
     "from": "src/provider-dashboard/provider-dashboard.service.ts",
-    "to": "src/users/application-user-identity.ts",
-    "unresolvedTo": "../users/application-user-identity",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.service.ts",
     "to": "src/wedding-plans/wedding-location.ts",
     "unresolvedTo": "../wedding-plans/wedding-location",
     "dependencyTypes": [
@@ -2922,20 +2880,6 @@
     "from": "src/conversations/conversations.service.ts",
     "to": "src/sharing/permission.service.ts",
     "unresolvedTo": "../sharing/permission.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.service.ts",
-    "to": "src/users/application-user-identity.ts",
-    "unresolvedTo": "../users/application-user-identity",
     "dependencyTypes": [
       "local",
       "import"
@@ -3615,20 +3559,6 @@
     "rule": {
       "severity": "error",
       "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/common/privacy/review-identity.ts",
-    "to": "src/users/application-user-identity.ts",
-    "unresolvedTo": "../../users/application-user-identity",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "current-platform-no-business-contexts"
     }
   },
   {

@@ -7,7 +7,7 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { AdminPermission } from '../common/admin/admin-permissions';
+import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { runAuthorizedAdminMutation } from '../admin/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
 import { AdminCatalogItemDto } from './dto/admin-reference-catalog.dto';

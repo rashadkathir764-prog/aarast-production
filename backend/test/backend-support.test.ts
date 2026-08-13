@@ -9,7 +9,7 @@ import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import type { ThrottlerStorage } from "@nestjs/throttler";
 import type { ThrottlerStorageRecord } from "@nestjs/throttler/dist/throttler-storage-record.interface";
-import { PhoneNormalizer } from "../src/common/phone/phone-normalizer";
+import { PhoneNormalizer } from "../src/shared-kernel/phone/phone-normalizer";
 import {
   ResilientThrottlerStorage,
   throttlerStorageFailureType,
@@ -17,7 +17,7 @@ import {
 import {
   endOfRiyadhDay,
   startOfRiyadhDay,
-} from "../src/common/time/business-day";
+} from "../src/shared-kernel/time/business-day";
 import { UpdateProfileDto } from "../src/users/dto/update-profile.dto";
 import {
   normalizeWeddingLocationInput,

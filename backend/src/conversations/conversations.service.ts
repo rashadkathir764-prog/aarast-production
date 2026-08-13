@@ -31,7 +31,7 @@ import {
   ApplicationAvatarSource,
   applicationAvatarFields,
   toApplicationUserSummary,
-} from '../users/application-user-identity';
+} from '../shared-kernel/privacy/application-user-identity';
 import { lockUserLifecycleRowsInTransaction } from '../users/user-lifecycle-lock';
 import {
   hasJoinedProvider,

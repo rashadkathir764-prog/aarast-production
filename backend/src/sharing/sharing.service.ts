@@ -28,7 +28,7 @@ import {
 import { createHash, randomBytes } from "crypto";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { invitationDeliveryPersistenceFailuresTotal } from "../platform/observability/metrics";
-import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { canonicalPlanContextKey } from "../contexts/context-key";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
@@ -42,7 +42,7 @@ import {
   applicationDisplayName,
   applicationNameFields,
   toApplicationUserContact,
-} from "../users/application-user-identity";
+} from "../shared-kernel/privacy/application-user-identity";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,

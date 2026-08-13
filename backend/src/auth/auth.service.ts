@@ -21,7 +21,7 @@ import {
   otpRequestsTotal,
   otpVerificationsTotal,
 } from "../platform/observability/metrics";
-import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import { RegisterDto } from "./dto/register.dto";

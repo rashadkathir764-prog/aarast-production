@@ -18,7 +18,7 @@
     "backoffice": ["AdminAuditLog"]
   },
   "currentRoots": {
-    "platform": ["common", "platform"],
+    "platform": ["platform"],
     "identity": ["auth", "users", "me", "contexts"],
     "planning": ["wedding-plans", "onboarding"],
     "finance": ["money", "budget-categories", "wedding-costs"],

@@ -10,7 +10,7 @@ import { AdminPermissionGuard } from '../src/admin/admin-permission.guard';
 import {
   AdminPermission,
   hasAdminPermission,
-} from '../src/common/admin/admin-permissions';
+} from '../src/modules/backoffice/domain/admin-permissions';
 
 const root = join(__dirname, '..');
 const read = (path: string) => readFileSync(join(root, path), 'utf8');

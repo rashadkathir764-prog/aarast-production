@@ -891,7 +891,7 @@ test('each mandatory SQL fixture produces its own exact records', () => {
 
 test('CTE row locks and advisory calls do not invent physical table names', () => {
   const options = fixtureProject({
-    'common/locks.ts': prismaFixture([
+    'platform/locks.ts': prismaFixture([
       'const batchSize = 5;',
       'await tx.$queryRaw(Prisma.sql`',
       '  WITH candidates AS (',

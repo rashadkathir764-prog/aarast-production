@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { BadRequestException } from "@nestjs/common";
 import { ProviderStatus } from "@prisma/client";
-import { optionalMoneyAmount } from "../src/common/validation/money";
+import { optionalMoneyAmount } from "../src/shared-kernel/money/money";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 
 test("provider service prices fail at validation before Prisma can round or overflow", async () => {

@@ -22,7 +22,7 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";

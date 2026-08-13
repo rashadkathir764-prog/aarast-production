@@ -18,7 +18,7 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
-import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import { MediaStorageService } from "../media/media-storage.service";
@@ -33,7 +33,7 @@ import { PermissionService } from "../sharing/permission.service";
 import {
   applicationNameFields,
   toApplicationUserContact,
-} from "./application-user-identity";
+} from "../shared-kernel/privacy/application-user-identity";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 import { assertActiveMutationActorForUpdateInTransaction } from "./user-lifecycle-lock";

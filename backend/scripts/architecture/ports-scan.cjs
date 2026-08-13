@@ -28,7 +28,9 @@ const BUSINESS_CONTEXTS = new Map([
 const LEGACY_ROOT_TO_CONTEXT = new Map(
   [...BUSINESS_CONTEXTS].flatMap(([context, roots]) => roots.map((root) => [root, context])),
 );
-const LEGACY_PLATFORM_ROOTS = new Set(['common', 'outbox']);
+const RETIRED_PLATFORM_ROOTS = new Set(['common', 'outbox']);
+const BACKOFFICE_PERMISSION_CONTRACT =
+  'backend/src/modules/backoffice/domain/admin-permissions.ts';
 const TRANSITIONAL_PLATFORM_BUSINESS_DEBT = new Set([
   'backend/src/platform/config/runtime-environment.ts|backend/src/auth/jwt-secret.ts',
   'backend/src/platform/health/readiness.service.ts|backend/src/media/media-storage.service.ts',
@@ -219,7 +221,7 @@ function classifyRepositoryPath(repositoryPath) {
   }
   if (segments[0] === 'platform') return { kind: 'platform', future: true };
   if (segments[0] === 'shared-kernel') return { kind: 'shared-kernel', future: true };
-  if (LEGACY_PLATFORM_ROOTS.has(segments[0])) return { kind: 'platform', future: false };
+  if (RETIRED_PLATFORM_ROOTS.has(segments[0])) return { kind: 'platform', future: false };
   const context = LEGACY_ROOT_TO_CONTEXT.get(segments[0]);
   if (context) return { kind: 'business', context, future: false, public: false };
   return { kind: 'unclassified', future: false };
@@ -370,6 +372,11 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
         && source.context !== target.context
         && (source.future || target.future)
         && !(target.future && target.public)
+        && !(
+          targetPath === BACKOFFICE_PERMISSION_CONTRACT
+          && (repositoryPath.startsWith('backend/src/auth/')
+            || repositoryPath.startsWith('backend/src/catalogs/'))
+        )
       ) {
         diagnostics.push(diagnostic(
           'non-public-cross-module-import',
@@ -654,6 +661,8 @@ function scanPorts(options) {
       repositoryPath === 'backend/src/health.controller.ts'
       || repositoryPath.startsWith('backend/src/health/')
       || repositoryPath.startsWith('backend/src/prisma/')
+      || repositoryPath.startsWith('backend/src/common/')
+      || repositoryPath.startsWith('backend/src/outbox/')
     ) {
       diagnostics.push(diagnostic(
         'retired-platform-root',

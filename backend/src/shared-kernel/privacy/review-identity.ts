@@ -1,7 +1,7 @@
 import {
   ApplicationNameSource,
   applicationDisplayName,
-} from "../../users/application-user-identity";
+} from "./application-user-identity";
 
 export interface ReviewIdentity {
   id: string;

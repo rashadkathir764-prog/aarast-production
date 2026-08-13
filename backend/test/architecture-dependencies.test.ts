@@ -95,7 +95,7 @@ test('legacy code may consume only a future context public slice', () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
-test('mixed legacy/future internal edges and platform-to-future edges fail', () => {
+test('mixed legacy/future internal edges and canonical platform-to-future edges fail', () => {
   const root = fixtureRoot();
   const baseline = path.join(root, 'known.json');
   write(root, 'src/planning/seed.ts', 'export const seed = true;\n');
@@ -108,15 +108,15 @@ test('mixed legacy/future internal edges and platform-to-future edges fail', () 
   write(root, 'src/modules/tasks/public/index.ts', 'export const taskPort = true;\n');
   write(root, 'src/modules/tasks/application/use.ts', "import '../../../guests/legacy';\n");
   write(root, 'src/tasks/bad.ts', "import '../modules/guests/internal/secret';\n");
-  write(root, 'src/common/platform.ts', "import '../modules/tasks/public/index';\n");
+  write(root, 'src/platform/platform.ts', "import '../modules/tasks/public/index';\n");
   const result = cruise(root, ['--config', configPath, '--ignore-known', baseline, 'src']);
   assert.notEqual(result.status, 0);
   const output = `${result.stdout}\n${result.stderr}`;
   assert.match(output, /context-tasks-cross-context/);
-  assert.match(output, /current-platform-no-business-contexts/);
+  assert.match(output, /platform-no-business-contexts/);
 });
 
-test('mixed R1 platform roots enforce their phase-specific rules', () => {
+test('final R1 platform root enforces the phase-neutral platform rule', () => {
   const root = fixtureRoot();
   const baseline = path.join(root, 'known.json');
   write(root, 'src/planning/seed.ts', 'export const seed = true;\n');
@@ -125,13 +125,12 @@ test('mixed R1 platform roots enforce their phase-specific rules', () => {
   ]);
   assert.equal(generated.status, 0, generated.stderr || generated.stdout);
   write(root, 'src/auth/legacy.ts', 'export const legacy = true;\n');
-  write(root, 'src/common/legacy-platform.ts', "import '../auth/legacy';\n");
   write(root, 'src/platform/final-platform.ts', "import '../auth/legacy';\n");
   const result = cruise(root, ['--config', configPath, '--ignore-known', baseline, 'src']);
   assert.notEqual(result.status, 0);
   const output = `${result.stdout}\n${result.stderr}`;
-  assert.match(output, /current-platform-no-business-contexts/);
   assert.match(output, /platform-no-business-contexts/);
+  assert.doesNotMatch(output, /current-platform-no-business-contexts/);
 });
 
 test('shared kernel cannot import a legacy business context', () => {
@@ -147,4 +146,66 @@ test('shared kernel cannot import a legacy business context', () => {
   const result = cruise(root, ['--config', configPath, '--ignore-known', baseline, 'src']);
   assert.notEqual(result.status, 0);
   assert.match(`${result.stdout}\n${result.stderr}`, /shared-kernel-is-foundational/);
+});
+
+test('only auth and catalogs may import the exact Backoffice permission contract', () => {
+  const allowedRoot = fixtureRoot();
+  write(
+    allowedRoot,
+    'src/modules/backoffice/domain/admin-permissions.ts',
+    'export const permission = true;\n',
+  );
+  write(
+    allowedRoot,
+    'src/auth/use-permission.ts',
+    "import '../modules/backoffice/domain/admin-permissions';\n",
+  );
+  write(
+    allowedRoot,
+    'src/catalogs/use-permission.ts',
+    "import '../modules/backoffice/domain/admin-permissions';\n",
+  );
+  const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
+  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+
+  const siblingRoot = fixtureRoot();
+  write(siblingRoot, 'src/modules/backoffice/domain/private.ts', 'export const value = true;\n');
+  write(
+    siblingRoot,
+    'src/auth/use-private.ts',
+    "import '../modules/backoffice/domain/private';\n",
+  );
+  const sibling = cruise(siblingRoot, ['--config', configPath, 'src']);
+  assert.notEqual(sibling.status, 0);
+  assert.match(`${sibling.stdout}\n${sibling.stderr}`, /context-identity-cross-context/);
+
+  const unauthorizedRoot = fixtureRoot();
+  write(
+    unauthorizedRoot,
+    'src/modules/backoffice/domain/admin-permissions.ts',
+    'export const permission = true;\n',
+  );
+  write(
+    unauthorizedRoot,
+    'src/tasks/use-permission.ts',
+    "import '../modules/backoffice/domain/admin-permissions';\n",
+  );
+  const unauthorized = cruise(unauthorizedRoot, ['--config', configPath, 'src']);
+  assert.notEqual(unauthorized.status, 0);
+  assert.match(`${unauthorized.stdout}\n${unauthorized.stderr}`, /context-tasks-cross-context/);
+
+  const futureCatalogRoot = fixtureRoot();
+  write(
+    futureCatalogRoot,
+    'src/modules/backoffice/domain/admin-permissions.ts',
+    'export const permission = true;\n',
+  );
+  write(
+    futureCatalogRoot,
+    'src/modules/catalog/application/use-permission.ts',
+    "import '../../backoffice/domain/admin-permissions';\n",
+  );
+  const futureCatalog = cruise(futureCatalogRoot, ['--config', configPath, 'src']);
+  assert.notEqual(futureCatalog.status, 0);
+  assert.match(`${futureCatalog.stdout}\n${futureCatalog.stderr}`, /context-catalog-cross-context/);
 });

@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import ts from 'typescript';
 
 const backendRoot = path.resolve(__dirname, '..');
 
@@ -9,14 +18,16 @@ function source(relativePath: string): string {
   return readFileSync(path.join(backendRoot, relativePath), 'utf8');
 }
 
-function typescriptFiles(root: string): string[] {
+function sourceCodeFiles(root: string): string[] {
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const target = path.join(root, entry.name);
-    if (entry.isDirectory()) return typescriptFiles(target);
-    return entry.isFile() && entry.name.endsWith('.ts') ? [target] : [];
+    if (entry.isDirectory()) return sourceCodeFiles(target);
+    return entry.isFile() && /\.(?:ts|js|cjs|mjs)$/.test(entry.name) ? [target] : [];
   });
 }
+
+const task5StalePattern = /(?:src|dist)\/(?:common|prisma|outbox|health)(?:\/|\.)|(?:from\s*['"]|require\(\s*['"])[^'"\n]*(?:\.\.\/common\/|\/users\/application-user-identity|\/admin\/admin-privacy)/;
 
 test('R1 Task 2 platform foundation exists only at canonical paths', () => {
   assert.equal(existsSync(path.join(backendRoot, 'src/prisma')), false, 'src/prisma directory');
@@ -67,7 +78,7 @@ test('R1 Task 2 source and tests have no imports of moved legacy paths', () => {
     || (/health\/readiness/.test(specifier) && !specifier.includes('platform/health/readiness'))
   );
   const roots = ['src', 'test', 'scripts'].map((entry) => path.join(backendRoot, entry));
-  const stale = roots.flatMap(typescriptFiles)
+  const stale = roots.flatMap(sourceCodeFiles)
     .filter((file) => file !== __filename)
     .filter((file) => {
       const contents = readFileSync(file, 'utf8');
@@ -78,11 +89,11 @@ test('R1 Task 2 source and tests have no imports of moved legacy paths', () => {
   assert.deepEqual(stale, []);
 });
 
-test('R1 Task 3 mixed ownership roots are exact', () => {
+test('R1 Task 3 ownership includes the canonical platform root', () => {
   const registry = JSON.parse(source('architecture/ownership-registry.json')) as {
     currentRoots: { platform: string[] };
   };
-  assert.deepEqual(registry.currentRoots.platform, ['common', 'platform']);
+  assert.equal(registry.currentRoots.platform.includes('platform'), true);
 });
 
 test('R1 Task 3 idempotency and outbox runtime exist only at canonical paths', () => {
@@ -133,9 +144,13 @@ test('R1 Task 3 source tests and smokes have no stale idempotency or outbox path
     path.join(backendRoot, 'test'),
     path.join(backendRoot, 'scripts', 'smoke'),
   ];
-  const stale = roots.flatMap(typescriptFiles)
+  const negativeArchitectureFixtures = new Set([
+    'architecture-r1-baseline-relocation.test.ts',
+    'architecture-ports.test.ts',
+  ]);
+  const stale = roots.flatMap(sourceCodeFiles)
     .filter((file) => file !== __filename)
-    .filter((file) => path.basename(file) !== 'architecture-r1-baseline-relocation.test.ts')
+    .filter((file) => !negativeArchitectureFixtures.has(path.basename(file)))
     .filter((file) => {
       const contents = readFileSync(file, 'utf8');
       return /(?:src|dist)\/common\/idempotency\//.test(contents)
@@ -192,7 +207,7 @@ test('R1 Task 4 keeps OTP identity policy out of production transports', () => {
     .flatMap(([, roots]) => roots);
   const importSpecifiers = /(?:from\s*['"]|require\(\s*['"])([^'"\n]+)/g;
   const transportRoot = path.join(backendRoot, 'src/platform/otp-transport');
-  for (const file of typescriptFiles(transportRoot)) {
+  for (const file of sourceCodeFiles(transportRoot)) {
     const contents = readFileSync(file, 'utf8');
     const specifiers = [...contents.matchAll(importSpecifiers)].map((match) => match[1]);
     assert.equal(
@@ -245,4 +260,145 @@ test('R1 Task 4 AuthService owns selection while sharing keeps named pre-R6 tran
     /from\s+['"]\.\.\/platform\/otp-transport\/openwa-transient-text['"]/,
   );
   assert.doesNotMatch(sharingSource, /auth\/openwa-transient-text/);
+});
+
+test('R1 Task 5 shared kernel and backoffice domain exist only at canonical paths', () => {
+  const moved = [
+    ['src/common/validation/money.ts', 'src/shared-kernel/money/money.ts'],
+    ['src/common/phone/phone-normalizer.ts', 'src/shared-kernel/phone/phone-normalizer.ts'],
+    ['src/common/privacy/review-identity.ts', 'src/shared-kernel/privacy/review-identity.ts'],
+    ['src/users/application-user-identity.ts', 'src/shared-kernel/privacy/application-user-identity.ts'],
+    ['src/admin/admin-privacy.ts', 'src/shared-kernel/privacy/admin-notification-privacy.ts'],
+    ['src/common/time/business-day.ts', 'src/shared-kernel/time/business-day.ts'],
+    ['src/common/admin/admin-permissions.ts', 'src/modules/backoffice/domain/admin-permissions.ts'],
+  ];
+  for (const [legacy, canonical] of moved) {
+    assert.equal(existsSync(path.join(backendRoot, legacy)), false, legacy);
+    assert.equal(existsSync(path.join(backendRoot, canonical)), true, canonical);
+  }
+  assert.equal(existsSync(path.join(backendRoot, 'src/common')), false, 'src/common directory');
+});
+
+test('R1 Task 5 shared kernel imports neither platform nor business or module code', () => {
+  const registry = JSON.parse(source('architecture/ownership-registry.json')) as {
+    currentRoots: Record<string, string[]>;
+  };
+  const forbiddenRoots = [
+    'platform',
+    'modules',
+    ...Object.entries(registry.currentRoots)
+      .filter(([owner]) => owner !== 'platform')
+      .flatMap(([, roots]) => roots),
+  ];
+  const importSpecifiers = /(?:from\s*['"]|require\(\s*['"])([^'"\n]+)/g;
+  const sharedKernelRoot = path.join(backendRoot, 'src/shared-kernel');
+  for (const file of sourceCodeFiles(sharedKernelRoot)) {
+    const contents = readFileSync(file, 'utf8');
+    const fileDirectory = path.dirname(file);
+    for (const match of contents.matchAll(importSpecifiers)) {
+      const specifier = match[1];
+      if (!specifier.startsWith('.')) continue;
+      const resolved = path.resolve(fileDirectory, specifier);
+      assert.equal(
+        forbiddenRoots.some((root) =>
+          resolved === path.join(backendRoot, 'src', root)
+          || resolved.startsWith(`${path.join(backendRoot, 'src', root)}${path.sep}`)),
+        false,
+        `${path.relative(backendRoot, file)} -> ${specifier}`,
+      );
+    }
+  }
+});
+
+test('R1 Task 5 platform ownership root and Admin permission contract are exact', () => {
+  const registry = JSON.parse(source('architecture/ownership-registry.json')) as {
+    currentRoots: { platform: string[] };
+  };
+  assert.deepEqual(registry.currentRoots.platform, ['platform']);
+
+  const permissions = require(
+    '../src/modules/backoffice/domain/admin-permissions',
+  ) as typeof import('../src/modules/backoffice/domain/admin-permissions');
+  const expected = [
+    'DASHBOARD_READ', 'REPORTS_READ', 'USERS_READ', 'USERS_WRITE',
+    'PROVIDERS_READ', 'PROVIDERS_WRITE', 'SERVICES_READ', 'SERVICES_WRITE',
+    'CATALOG_READ', 'CATALOG_WRITE', 'REVIEWS_READ', 'REVIEWS_WRITE',
+    'CONVERSATION_REPORTS_READ', 'CONVERSATION_REPORTS_WRITE',
+    'NOTIFICATIONS_READ', 'NOTIFICATIONS_WRITE', 'AUDIT_READ',
+  ];
+  assert.deepEqual(Object.values(permissions.AdminPermission), expected);
+
+  const permissionPath = 'src/modules/backoffice/domain/admin-permissions.ts';
+  const permissionSource = source(permissionPath);
+  const permissionAst = ts.createSourceFile(
+    permissionPath,
+    permissionSource,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = permissionAst.statements.filter(ts.isImportDeclaration);
+  assert.equal(imports.length, 1);
+  const onlyImport = imports[0];
+  assert.equal((onlyImport.moduleSpecifier as ts.StringLiteral).text, '@prisma/client');
+  assert.equal(onlyImport.importClause?.name, undefined);
+  const bindings = onlyImport.importClause?.namedBindings;
+  assert.ok(bindings && ts.isNamedImports(bindings));
+  assert.deepEqual(
+    bindings.elements.map((element) => ({
+      imported: element.propertyName?.text ?? element.name.text,
+      local: element.name.text,
+    })),
+    [{ imported: 'AdminRole', local: 'AdminRole' }],
+  );
+
+  const dependencyConfig = source('.dependency-cruiser.cjs');
+  assert.doesNotMatch(dependencyConfig, /current-platform-no-business-contexts/);
+});
+
+test('R1 Task 5 source tests and scripts have no stale moved paths', () => {
+  const roots = [
+    path.join(backendRoot, 'src'),
+    path.join(backendRoot, 'test'),
+    path.join(backendRoot, 'scripts'),
+  ];
+  const excluded = new Set([
+    path.normalize(path.join(backendRoot, 'test/architecture-r1-baseline-relocation.test.ts')),
+    path.normalize(path.join(backendRoot, 'test/architecture-dependencies.test.ts')),
+    path.normalize(path.join(backendRoot, 'test/architecture-ports.test.ts')),
+    path.normalize(path.join(backendRoot, 'test/legacy-finance-removal.test.ts')),
+    path.normalize(path.join(backendRoot, 'scripts/architecture/r1-baseline-relocation.cjs')),
+    path.normalize(path.join(backendRoot, 'scripts/architecture/ports-scan.cjs')),
+  ]);
+  const stale = roots.flatMap(sourceCodeFiles)
+    .filter((file) => file !== __filename && !excluded.has(path.normalize(file)))
+    .filter((file) => task5StalePattern.test(readFileSync(file, 'utf8')))
+    .map((file) => path.relative(backendRoot, file).replace(/\\/g, '/'))
+    .sort();
+  assert.deepEqual(stale, []);
+});
+
+test('R1 Task 5 stale-path gate scans every supported source-script extension', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r1-task5-stale-'));
+  try {
+    for (const extension of ['ts', 'js', 'cjs', 'mjs']) {
+      writeFileSync(
+        path.join(root, `consumer.${extension}`),
+        "require('../src/common/validation/money');\n",
+        'utf8',
+      );
+    }
+    const stale = sourceCodeFiles(root)
+      .filter((file) => task5StalePattern.test(readFileSync(file, 'utf8')))
+      .map((file) => path.basename(file))
+      .sort();
+    assert.deepEqual(stale, [
+      'consumer.cjs',
+      'consumer.js',
+      'consumer.mjs',
+      'consumer.ts',
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

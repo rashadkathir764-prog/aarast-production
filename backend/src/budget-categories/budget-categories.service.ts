@@ -16,7 +16,7 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import { requiredMoneyAmount } from "../common/validation/money";
+import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import {
   runRetryableTransaction,
   runSerializableTransaction,

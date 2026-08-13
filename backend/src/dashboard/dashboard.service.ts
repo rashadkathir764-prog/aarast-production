@@ -17,7 +17,7 @@ import { ContributionHistoryService } from "../contribution-history/contribution
 import type { ContributionHistorySummaryResponse } from "../contribution-history/contribution-history.contracts";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
-import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../platform/database/prisma.service";
 import {

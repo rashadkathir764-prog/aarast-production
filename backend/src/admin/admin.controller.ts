@@ -15,7 +15,7 @@ import { JwtSessionGuard } from '../auth/jwt-session.guard';
 import { AdminGuard } from './admin.guard';
 import { AdminPermissionGuard } from './admin-permission.guard';
 import { RequireAdminPermission } from './admin-permission.decorator';
-import { AdminPermission } from '../common/admin/admin-permissions';
+import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { AdminService } from './admin.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';

@@ -20,27 +20,54 @@ const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const contextPattern = ([name, roots]) =>
   `(?:${roots.map(escape).join('|')}|modules/${escape(name)})`;
 const allBusinessPaths = businessContexts.map(contextPattern).join('|');
-const contextRules = businessContexts.map(([name, ownRoots]) => {
+const backofficePermissionContract =
+  '^src/modules/backoffice/domain/admin-permissions\\.ts$';
+const makeContextRule = (
+  name,
+  ownRoots,
+  sourceRoots,
+  extraAllowedTarget = null,
+  includeFutureRoot = true,
+) => {
   const ownPaths = contextPattern([name, ownRoots]);
+  const sourcePaths = [
+    ...sourceRoots.map(escape),
+    ...(includeFutureRoot ? [`modules/${escape(name)}`] : []),
+  ].join('|');
   return {
     name: `context-${name}-cross-context`,
     comment: `Only the same context or another context's public slice is importable from ${name}`,
     severity: 'error',
-    from: { path: `^src/${ownPaths}(?:/|$)` },
+    from: { path: `^src/(?:${sourcePaths})(?:/|$)` },
     to: {
       path: `^src/(?:${allBusinessPaths})(?:/|$)`,
-      pathNot: `^src/${ownPaths}(?:/|$)|^src/modules/[^/]+/public(?:/|$)`,
+      pathNot: [
+        `^src/${ownPaths}(?:/|$)` ,
+        '^src/modules/[^/]+/public(?:/|$)',
+        ...(extraAllowedTarget ? [extraAllowedTarget] : []),
+      ],
     },
   };
-});
-
-const currentPlatformRule = {
-  name: 'current-platform-no-business-contexts',
-  comment: 'R1 baseline freezes current imports from remaining legacy platform roots into business contexts',
-  severity: 'error',
-  from: { path: '^src/common(?:/|$)' },
-  to: { path: `^src/(?:${allBusinessPaths})(?:/|$)` },
 };
+const contextRules = businessContexts.flatMap(([name, ownRoots]) => {
+  if (name === 'identity') {
+    return [
+      makeContextRule(name, ownRoots, ['auth'], backofficePermissionContract, false),
+      makeContextRule(name, ownRoots, ownRoots.filter((root) => root !== 'auth')),
+    ];
+  }
+  if (name === 'catalog') {
+    return [
+      makeContextRule(name, ownRoots, ['catalogs'], backofficePermissionContract, false),
+      makeContextRule(name, ownRoots, []),
+    ];
+  }
+  return [makeContextRule(
+    name,
+    ownRoots,
+    ownRoots,
+  )];
+});
 
 module.exports = {
   forbidden: [
@@ -50,7 +77,6 @@ module.exports = {
       from: {},
       to: { circular: true },
     },
-    currentPlatformRule,
     ...contextRules,
     {
       name: 'domain-no-nest-runtime',

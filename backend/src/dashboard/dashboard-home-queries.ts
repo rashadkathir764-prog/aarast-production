@@ -6,7 +6,7 @@ import {
 import {
   applicationNameFields,
   toApplicationUserContact,
-} from "../users/application-user-identity";
+} from "../shared-kernel/privacy/application-user-identity";
 import {
   decimalToNumber,
   moneyOrNull,

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-08-13 - Modular Monolith R1 Local Automated Verification
+## 2026-08-13 - Modular Monolith R1 Local Completion
 
 - Implemented the complete R1 platform/shared-kernel relocation locally on
   branch `modular-monolith`, anchored to immutable `R1_BASE`
@@ -38,8 +38,8 @@
     zero drift/errors/warnings and no protected source side effect.
 - Six exact platform-to-business debts remain assigned to R3; sharing's direct
   OTP transient-policy consumption remains assigned to R6; the two globals
-  remain assigned to R8. R2 may not start until independent final review and
-  the owner's final application checkpoint pass.
+  remain assigned to R8. The independent final review and owner's application
+  checkpoint passed; R2 is next and has not started.
 - R1 preserves API routes, errors and Arabic text, permissions, transaction/
   lock/retry/scheduler semantics, schema/migrations, Mobile/Admin source, and
   deployment artifacts. Expected negative-path logs, DEP0190, Admin
@@ -52,8 +52,11 @@
   remote-fetch serialization regression passes.
 - This entry records local evidence only. PR #76 remains at the R0 candidate;
   no R1 push, merge, or remote-CI success is claimed. Independent source,
-  contract, baseline, and gate review is green; final reviewer runtime sign-off
-  and owner phone verification against the final local image remain pending.
+  contract, baseline, gate, final-image, and runtime review passed with no
+  findings. The owner then passed authenticated login, conversation open/read,
+  and message send from the phone against image revision `d2530c5c`; the
+  container remained up with zero restarts and no circular/TypeError/fatal log
+  match. R1 is locally complete; R2 is next and has not started.
 
 ## 2026-08-12 - Modular Monolith R1 Execution Started
 

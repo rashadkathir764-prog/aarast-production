@@ -177,11 +177,11 @@ R0 adds architecture tests and does not edit existing behavioral tests.
 - P3 R0 Governance is locally and remotely green at immutable candidate
   `94b677b7b8e2219e0db2cbc553fa3d26b4876456`. By owner decision, R1 continues
   locally on the same `modular-monolith` branch without merging R0 first.
-- The R1 target layout is implemented locally: infrastructure lives under
+- R1 is locally complete: infrastructure lives under
   `platform/`, foundational helpers live under `shared-kernel/`, and no
-  `src/common`, `src/prisma`, `src/outbox`, or root health source remains. R1
-  closeout is active until the complete local gates, managed `smoke:all`,
-  independent final review, and owner application checkpoint pass.
+  `src/common`, `src/prisma`, `src/outbox`, or root health source remains. The
+  complete local gates, managed `smoke:all`, independent final source/runtime
+  review, and owner phone application checkpoint all passed on 2026-08-13.
 - PR #76 remains pinned remotely to the R0 candidate while local R1 checkpoint
   commits accumulate. Do not push or merge without separate owner approval.
   The phase-specific `r0-scope` CI job is intentionally removed at local R1
@@ -193,8 +193,7 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   outbox module -> conversation realtime module; and outbox module -> push
   module. Sharing's direct OTP transport consumption remains named migration
   debt until R6. The two approved `@Global()` declarations remain until R8.
-- R2 is next, but may not start before R1 closeout and the owner's application
-  checkpoint are complete. Live schema truth remains 52 models and 76
+- R2 is next and has not started. Live schema truth remains 52 models and 76
   migrations; R1 changes no route, product contract, schema, migration,
   Mobile/Admin source, or deployment artifact.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA

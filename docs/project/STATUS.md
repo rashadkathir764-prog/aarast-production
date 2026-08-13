@@ -21,15 +21,18 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
-## Modular Monolith R1 Local Verification - Final Runtime and Owner Checkpoints Pending
+## Modular Monolith R1 Locally Complete - 2026-08-13
 
 R1 was executed locally on branch `modular-monolith` against immutable
 `R1_BASE` `94b677b7b8e2219e0db2cbc553fa3d26b4876456`. The target Backend layout and
 all automated local closeout gates are green. Independent source, contract,
-baseline, and gate review is green, including the reviewed Redis socket-timer
-root fix. Final reviewer runtime sign-off and the owner's application test
-against the final local server remain required before this section may say R1
-is complete. PR #76 still points to the
+baseline, gate, final-image, and runtime review passed, including the reviewed
+Redis socket-timer root fix. The owner then passed the phone application
+checkpoint against the final local image: authenticated login, conversation
+open/read, and message send succeeded. The container remained running with
+zero restarts; `/live` and `/ready` stayed green; its post-test logs contained
+72 successful API events, including one message `201`, and zero circular/
+`TypeError`/fatal matches. R1 is therefore locally complete. PR #76 still points to the
 immutable R0 candidate; no R1 push, merge, or remote-CI result is claimed.
 
 ### Implemented target and exact move map
@@ -271,6 +274,8 @@ docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-des
 | Docs | `node .\scripts\docs-sync.mjs --check`; `node .\scripts\docs-verify.mjs`; `git diff --check` | PASS: drift/errors/warnings 0 |
 | Protected surfaces | fixed-base preflight and postflight Git checks | PASS: schema/migrations, Mobile, Admin source, deploy, and Compose unchanged; protected worktree clean |
 | Test policy | fixed-base name/status and `-U0` audits | PASS: 0 removed/renamed, 36 reviewed behavioral path/QA/runtime-safety changes, 3 reviewed architecture changes, exact 3 additive tests |
+| Independent review | final source, contract, baseline, image, and runtime review | PASS: no Critical/Important/Minor findings on image revision `d2530c5cdfbff5a4fc5f90433da3a6cfae0652ff` |
+| Owner phone checkpoint | authenticated application flow against `http://10.185.93.102:3120` | PASS: login, conversation open/read, and message send; container remained running with zero restarts and no recurrence of the Redis circular-serialization crash |
 
 Fresh final baseline verification against `R1_BASE` passed. Dependency
 candidate/tracked SHA256 is

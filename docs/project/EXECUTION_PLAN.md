@@ -317,7 +317,7 @@ Acceptance:
 
 ### P3 — Source Quality And Architecture — Active: R1 Closeout
 
-#### Active R1 — Platform And Shared Kernel
+#### Completed R1 — Platform And Shared Kernel
 
 - R0 governance is closed at immutable candidate
   `94b677b7b8e2219e0db2cbc553fa3d26b4876456`; this revision is the fixed R1
@@ -328,9 +328,10 @@ Acceptance:
 - The R1 target layout is implemented locally: infrastructure is under
   `platform/`, foundational helpers are under `shared-kernel/`, and the legacy
   infrastructure roots are gone without compatibility facades.
-- R1 closeout now requires the full local Backend/Admin/Mobile/docs gates,
-  managed `smoke:all`, independent final review, a clean receipt checkpoint,
-  and the owner's application test. R2 is next and may not begin earlier.
+- R1 closed locally on 2026-08-13 after the full Backend/Admin/Mobile/docs
+  gates, managed `smoke:all`, independent final source/runtime review, clean
+  receipt checkpoints, and the owner's phone application test passed. R2 is
+  next and has not started.
 - Six exact platform-to-business edges remain assigned to R3; sharing's direct
   OTP transport consumption remains assigned to R6; the two approved globals
   remain until R8.

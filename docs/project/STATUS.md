@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-08-13
+Snapshot date: 2026-08-14
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
@@ -21,29 +21,50 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
-## Modular Monolith R2 Planning - 2026-08-13
+## Modular Monolith R2 Runtime Candidate - 2026-08-14
 
-R2 design and implementation plan passed independent review and are approved
-for staged local execution on branch `modular-monolith`. Implementation has
-not started. Immutable `R2_BASE` is the R1 local-closeout commit
-`8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`.
+R2 implementation is committed locally on branch `modular-monolith` from
+immutable `R2_BASE`
+`8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. The reviewed implementation
+checkpoints are `9e3e51b54c85e7e6c52da7340c0b678ecf13203e` and
+`186e76d671a07eef835a1f4a7459c843e4ca1d99`. The native schema folder contains
+exactly `_base.prisma` plus 13 owner files, with 52 models, 41 enums, and all
+76 committed migration directories preserved. The retired single schema file
+is absent.
 
-Verified planning facts are 52 Prisma models, 41 enums, 76 committed migration
-directories, Prisma/Client 6.19.3, and 13 current model-owning registry groups.
-The proposed target is 14 native schema files: `_base.prisma` plus one file per
-owner. The plan freezes schema semantics, DMMF, migrations, seed, generated
-docs, Backend application source, Mobile/Admin, packages, workflows, Compose,
-and deployment topology. It documents the exact Docker packaging correction
-required for Prisma to discover the folder and defers the original fate map's
-per-module seed split to the later module-owning phases.
+The complete local pre-runtime gates passed against the committed candidate:
+the R2 fixed-base scope audit reported the reviewed 49 paths; Backend
+architecture, check, build, 848/849 tests with one expected Windows permission
+skip, Prisma folder validation/generation, both migration rehearsals, all 30
+managed smoke packages, and both zero-finding Backend dependency audits passed.
+Admin typecheck, 96/96 tests, build, honesty, routes, and container-config
+contracts passed. Mobile boundary tests, the 269-record baseline, analysis,
+and 1151/1151 tests passed. Documentation sync/verification and whitespace
+checks passed with zero drift, errors, or warnings. Managed smoke cleanup left
+no matching database process, listener, Redis, bucket, container, network,
+volume, or temporary resource.
+
+Schema semantics remain unchanged: migrations and seed are byte-identical to
+the base; normalized DMMF and migrate diff remain equal/empty; dependency and
+ownership baselines remain 260 and 386 records / 782 occurrences; ports remain
+`0/2/0/0`; generated API, Mobile routes, Admin routes, scripts inventory, and
+database model table remain byte-identical. The sole generated-source wording
+change is the reviewed database source path from the retired file to
+`backend/prisma/schema/`.
+
+The next gate is a production-shaped Docker image bound to the immutable full
+SHA of the docs-only runtime-candidate commit, followed by the protected R1/R2
+probe and phone cutover. The owner phone checkpoint is still PENDING; R2 is not
+locally complete and R3 has not started. Remote CI was not run, and no push or
+merge is claimed.
 
 Planning artifacts:
 
 - `docs/superpowers/specs/2026-08-13-modular-monolith-r2-prisma-schema-design.md`
 - `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`
 
-No R2 code/config/schema change, local execution checkpoint, push, merge, or
-remote-CI result is claimed.
+No owner phone PASS, R2 closeout, R3 start, push, merge, or remote-CI result is
+claimed.
 
 ## Modular Monolith R1 Locally Complete - 2026-08-13
 

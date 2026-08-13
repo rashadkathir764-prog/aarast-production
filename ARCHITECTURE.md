@@ -168,6 +168,20 @@ This exception changes no route, payload, token lifetime, permission, or
 disconnect contract; it prevents the existing cross-replica fetch path from
 crashing the Node process.
 
+R2 has one exact existing-test migration exception for the native Prisma
+schema-folder split. These tests may replace only their direct
+retired single-file schema read with the shared live-schema helper:
+`admin-auth-session-security.test.ts`, `admin-rbac-audit.test.ts`,
+`auth-refresh-wiring.test.ts`, `contribution-history-migration.test.ts`,
+`financial-ledger.test.ts`, `legacy-finance-removal.test.ts`,
+`marketplace-presenter.test.ts`, `outbox-logic.test.ts`,
+`provider-chat-logic.test.ts`, and `reference-catalogs.test.ts`.
+`architecture-ownership.test.ts` may additionally replace its single-file
+fixture with the exact schema folder plus manifest. No assertion, expected
+value, behavioral fixture, product/error/Arabic literal, timeout, skip, or test
+selection may change. This exception is inactive until the independently
+reviewed R2 implementation task begins.
+
 R0 adds architecture tests and does not edit existing behavioral tests.
 
 ## Phase Contract
@@ -193,9 +207,14 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   outbox module -> conversation realtime module; and outbox module -> push
   module. Sharing's direct OTP transport consumption remains named migration
   debt until R6. The two approved `@Global()` declarations remain until R8.
-- R2 is next and has not started. Live schema truth remains 52 models and 76
-  migrations; R1 changes no route, product contract, schema, migration,
-  Mobile/Admin source, or deployment artifact.
+- R2 design and execution plan passed independent review and are approved for
+  staged local execution; implementation has not started. Its immutable base is
+  R1 local-closeout commit
+  `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. Live schema truth is 52 models,
+  41 enums, and 76 migrations. The proposed target is Prisma's native schema
+  folder with 13 current model-owner files plus `_base.prisma`; it authorizes
+  no schema, migration, seed, generated-client, route, product, Mobile/Admin,
+  or deployment-topology change.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.
@@ -204,6 +223,6 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   activates the strict Mobile boundary mode.
 
 The current working plan is
-`docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`. It is a
+`docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`. It is a
 working execution artifact, not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.

@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — Active: R1 Closeout
+### P3 — Source Quality And Architecture — Active: R2 Planning
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -338,10 +338,28 @@ Acceptance:
 - R1 preserves all routes, errors/Arabic, permissions, transactions, 52
   models, 76 migrations, Mobile/Admin source, and deployment artifacts.
 
-Current working plan:
-`docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`.
+#### Next R2 — Native Prisma Schema Folder
 
-The numbered P3 modernization work below remains bounded by the active R1
+- R2 design and plan passed independent review and are approved for staged
+  local execution; implementation has not started.
+- Immutable `R2_BASE` is the R1 local-closeout commit
+  `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d` on the same
+  `modular-monolith` branch.
+- The verified live source has 52 models, 41 enums, and 76 migrations. The
+  target is 14 `.prisma` files: `_base.prisma` plus one file for each of the 13
+  current model owners.
+- R2 permits only physical schema organization and the required canonical
+  readers/config/Docker packaging. It authorizes no schema semantic change,
+  migration, seed split, package change, Backend application change,
+  Mobile/Admin change, Compose/deploy change, push, or merge.
+- Local acceptance requires empty migrate diff, normalized DMMF equality,
+  frozen seed/migrations/generated docs, green exhaustive gates, immutable
+  Docker runtime, independent review, and the owner's phone checkpoint.
+
+Current working plan:
+`docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`.
+
+The numbered P3 modernization work below remains bounded by the active R2
 plan; later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.

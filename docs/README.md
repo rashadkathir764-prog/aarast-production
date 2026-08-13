@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-13
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -93,6 +93,13 @@ changing behavior.
 
 ## Current Working Plan
 
+- `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`
+  - independently reviewed R2 plan approved for staged local execution. It
+  specifies a native 14-file
+  Prisma schema folder (13 current model owners plus `_base.prisma`) from
+  immutable R1-closeout base
+  `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. R2 implementation has not
+  started. No push, merge, or remote-CI result is claimed.
 - `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`
   - completed local R1 execution plan. The target `platform/` and
   `shared-kernel/` layout was implemented in separately reviewed checkpoints on

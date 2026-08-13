@@ -21,6 +21,30 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
+## Modular Monolith R2 Planning - 2026-08-13
+
+R2 design and implementation plan passed independent review and are approved
+for staged local execution on branch `modular-monolith`. Implementation has
+not started. Immutable `R2_BASE` is the R1 local-closeout commit
+`8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`.
+
+Verified planning facts are 52 Prisma models, 41 enums, 76 committed migration
+directories, Prisma/Client 6.19.3, and 13 current model-owning registry groups.
+The proposed target is 14 native schema files: `_base.prisma` plus one file per
+owner. The plan freezes schema semantics, DMMF, migrations, seed, generated
+docs, Backend application source, Mobile/Admin, packages, workflows, Compose,
+and deployment topology. It documents the exact Docker packaging correction
+required for Prisma to discover the folder and defers the original fate map's
+per-module seed split to the later module-owning phases.
+
+Planning artifacts:
+
+- `docs/superpowers/specs/2026-08-13-modular-monolith-r2-prisma-schema-design.md`
+- `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`
+
+No R2 code/config/schema change, local execution checkpoint, push, merge, or
+remote-CI result is claimed.
+
 ## Modular Monolith R1 Locally Complete - 2026-08-13
 
 R1 was executed locally on branch `modular-monolith` against immutable

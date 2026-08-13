@@ -86,4 +86,3 @@ model Notification {
   @@index([weddingPlanId, createdAt])
   @@index([entityType, entityId])
 }
-

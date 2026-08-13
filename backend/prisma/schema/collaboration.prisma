@@ -228,4 +228,3 @@ model PlanInvite {
   @@index([weddingPlanId, email])
   @@index([expiresAt])
 }
-

@@ -49,4 +49,3 @@ model WeddingPlan {
   @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
 }
-

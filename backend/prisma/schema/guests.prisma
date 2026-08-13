@@ -67,4 +67,3 @@ model GuestGroup {
   @@unique([weddingPlanId, name])
   @@index([weddingPlanId, sortOrder])
 }
-

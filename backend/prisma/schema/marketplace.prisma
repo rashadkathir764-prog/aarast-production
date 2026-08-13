@@ -243,4 +243,3 @@ model PlanProviderLink {
   @@index([quoteRequestId])
   @@index([quoteOfferId])
 }
-

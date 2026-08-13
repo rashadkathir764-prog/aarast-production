@@ -31,4 +31,3 @@ model AdminAuditLog {
   @@index([action, createdAt])
   @@index([createdAt])
 }
-

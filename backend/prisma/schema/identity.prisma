@@ -185,4 +185,3 @@ model OtpCode {
   @@index([phone, purpose, expiresAt])
   @@index([planInviteId, purpose, consumedAt])
 }
-

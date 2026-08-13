@@ -35,4 +35,3 @@ model MediaUploadTicket {
   @@index([consumedByType, consumedById])
   @@index([status, createdAt])
 }
-

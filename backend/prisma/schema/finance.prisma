@@ -99,4 +99,3 @@ model PaymentSchedule {
   @@index([weddingCostId, status, dueDate])
   @@index([status, dueDate])
 }
-

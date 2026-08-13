@@ -153,4 +153,3 @@ model ProviderCategory {
   @@index([showForGroom, isActive, sortOrder])
   @@index([showForBride, isActive, sortOrder])
 }
-

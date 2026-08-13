@@ -40,4 +40,3 @@ model OutboxEvent {
   @@index([status, nextAttemptAt, createdAt])
   @@index([aggregateType, aggregateId, createdAt])
 }
-

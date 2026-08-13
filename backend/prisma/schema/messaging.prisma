@@ -130,4 +130,3 @@ model ConversationReport {
   @@unique([conversationId, reporterUserId])
   @@index([status, createdAt])
 }
-

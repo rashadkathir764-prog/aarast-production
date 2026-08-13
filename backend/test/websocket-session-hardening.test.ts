@@ -198,6 +198,30 @@ test('an eligible account joins its user room and stays connected', async () => 
   assert.equal(socket.emitted[0]?.event, 'chat:ready');
 });
 
+test('authenticated socket data remains serializable for Redis adapter remote fetches', async () => {
+  const gateway = createGateway({
+    payload: applicationPayload(),
+    user: eligibleUser(),
+  });
+  const socket = createSocket();
+
+  await gateway.handleConnection(socket as any);
+
+  assert.doesNotThrow(() =>
+    JSON.stringify({
+      requestId: 'remote-fetch-request',
+      sockets: [
+        {
+          id: socket.id,
+          handshake: socket.handshake,
+          rooms: socket.joined,
+          data: socket.data,
+        },
+      ],
+    }),
+  );
+});
+
 test('the chat socket is torn down when its access token expires', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const gateway = createGateway({

@@ -32,7 +32,6 @@ type AuthenticatedSocket = Socket & {
     user?: AuthenticatedUser;
     sessionId?: string;
     messageTimestamps?: number[];
-    expiryTimer?: NodeJS.Timeout;
   };
 };
 
@@ -53,6 +52,10 @@ export { conversationRoom, sessionRoom, userRoom };
 })
 export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit {
   private readonly logger = new Logger(ConversationsGateway.name);
+  private readonly tokenExpiryTimers = new WeakMap<
+    AuthenticatedSocket,
+    NodeJS.Timeout
+  >();
 
   @WebSocketServer()
   server!: Server;
@@ -133,9 +136,16 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     socket: AuthenticatedSocket,
     exp: number,
   ): void {
+    const previousTimer = this.tokenExpiryTimers.get(socket);
+    if (previousTimer) {
+      clearTimeout(previousTimer);
+    }
     const millisUntilExpiry = exp * 1000 - Date.now();
     const timer = setTimeout(
-      () => socket.disconnect(true),
+      () => {
+        this.tokenExpiryTimers.delete(socket);
+        socket.disconnect(true);
+      },
       // Access tokens are currently fifteen minutes. Capping an unexpectedly
       // long signed token avoids the Node 32-bit timeout overflow without ever
       // granting an unbounded realtime session.
@@ -144,8 +154,14 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
     // A pending expiry timer must never keep the Node process alive on its own
     // (e.g. during graceful shutdown); the socket server holds the loop open.
     timer.unref?.();
-    socket.data.expiryTimer = timer;
-    socket.on('disconnect', () => clearTimeout(timer));
+    this.tokenExpiryTimers.set(socket, timer);
+    socket.on('disconnect', () => {
+      if (this.tokenExpiryTimers.get(socket) !== timer) {
+        return;
+      }
+      clearTimeout(timer);
+      this.tokenExpiryTimers.delete(socket);
+    });
   }
 
   @SubscribeMessage('conversation:join')

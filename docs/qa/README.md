@@ -32,13 +32,11 @@ other existing-test change is a stop signal and requires explicit review.
 
 R0 itself adds tests and does not edit existing behavioral tests.
 
-## Modular Monolith R0 Gates
+## Modular Monolith R1 Closeout Gates
 
-Run the fixed-base scope, Mobile boundary, and documentation gates from the
-repository root:
+Run the Mobile boundary and documentation gates from the repository root:
 
 ```powershell
-node .\scripts\check-r0-scope.mjs --check
 node --test .\scripts\check-mobile-boundaries.test.mjs
 node .\scripts\check-mobile-boundaries.mjs --check-baseline
 node .\scripts\docs-sync.mjs --check
@@ -56,6 +54,7 @@ npm test
 npx prisma validate
 npm audit --audit-level=high
 npm audit --omit=dev
+npm run smoke:all
 ```
 
 Run the unchanged Admin quality gates from `admin-web/`:
@@ -77,12 +76,21 @@ flutter analyze --no-pub
 flutter test --no-pub
 ```
 
-R0 CI uses the counted dependency, ownership, and Mobile baseline modes. The
+R1 CI keeps the counted dependency, ownership, and Mobile baseline modes. The
+phase-specific R0 fixed-base scope job is removed at R1 closeout; the local
+`check-r0-scope` script and tests remain historical R0 evidence and are not
+retargeted. The
 Backend dependency command with `--no-ignore-known` and
 `node .\scripts\check-mobile-boundaries.mjs --strict` deliberately expose
 current migration debt and are expected to fail today; they are proof/debug
-commands, not R0 CI gates. Dependency strictness is reached by removing the
+commands, not closeout gates. Dependency strictness is reached by removing the
 known graph debt, while Mobile strict mode becomes the gate in R9.
+
+R1 closeout additionally requires the complete managed Backend smoke suite,
+independent review, and the owner's application checkpoint. R2 must not start
+before those pass. The closeout must preserve 52 models, 76 migrations, every
+route/error/Arabic/permission/transaction contract, Mobile and Admin source,
+and deployment artifacts.
 
 ## Latest Recorded Full Working-Tree Gate — 2026-08-11
 

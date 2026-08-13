@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete R1 by dissolving the legacy Backend infrastructure roots into `platform/`, establishing the dependency-safe `shared-kernel/`, and updating every consumer without changing application behavior, API contracts, database structure, deployment artifacts, Mobile, or Admin Web.
+**Goal:** Complete R1 by dissolving the legacy Backend infrastructure roots into `platform/`, establishing the dependency-safe `shared-kernel/`, and updating every consumer without changing application contracts, database structure, deployment artifacts, Mobile, or Admin Web. The sole runtime-safety correction is the reviewed closeout fix that keeps the socket token-expiry timer outside Redis-serializable `socket.data` without changing token lifetime or disconnect behavior.
 
 **Architecture:** R1 is one ordered migration with six green checkpoints. Files are moved to their final platform/shared-kernel homes with no old-path facades. Existing platform-to-business debt is path-relocated only when it maps one-to-one to R0 debt; shared-kernel violations are fixed at the source. Architecture registries, global-module provenance, package runtime paths, and docs are updated in the same checkpoint that changes the corresponding source.
 
@@ -35,6 +35,13 @@
   lifecycle in shared test cleanup with one focused ordering regression. Do not
   make any other assertion, expected-value, fixture creation, Arabic/error
   string, setup, timeout, skip, or test-selection change.
+- One final-review runtime exception is exact and closed: modify only
+  `src/conversations/conversations.gateway.ts` to own token-expiry timer handles
+  in a process-local `WeakMap` rather than Redis-serialized `socket.data`, and
+  add only the matching remote-fetch serialization assertion to
+  `test/websocket-session-hardening.test.ts`. Preserve token expiry duration,
+  disconnect behavior, socket rooms/data contracts, routes, payloads, and
+  permissions.
 - Additive R1 tests are allowed and required. Protect every pre-existing test edit with the test-change audit in Task 6.
 - A dependency or ownership baseline is a debt ledger, not permission. Never regenerate a baseline without the exact before/after semantic audit specified below.
 - Never place an absolute local path, environment value, token, credential, URL secret, database identifier, admin identifier, or production identifier in a baseline, plan receipt, test fixture, or diagnostic.
@@ -1440,6 +1447,15 @@ contributor-tenure/history-scope lifecycle closure plus its focused regression.
 Any other assertion, fixture creation, timeout, selection, or setup/teardown
 change remains a blocker.
 
+The only additional closeout behavioral hunk is the Redis remote-fetch
+serializability regression in `backend/test/websocket-session-hardening.test.ts`
+paired with the exact process-local timer ownership correction in
+`backend/src/conversations/conversations.gateway.ts`. It must prove
+authenticated `socket.data` can be serialized in the adapter's
+`id/handshake/rooms/data` response shape while the existing expiry-disconnect
+test remains green. No other websocket assertion, fixture, timeout, route,
+payload, or permission change is allowed.
+
 Outside that exact exception, any changed assertion, fixture, expected value,
 setup/teardown, timeout, skip, or test selection blocks R1.
 
@@ -1448,12 +1464,17 @@ non-path changes are:
 
 - dependency test: the exact
   `current-platform-no-business-contexts` -> `platform-no-business-contexts`
-  transition and mixed/final-root rejection fixtures;
+  transition, mixed/final-root and shared-kernel rejection fixtures, and the
+  exact Task 5 Backoffice permission-contract allowed/near-miss/unauthorized
+  source fixtures;
 - ownership test: canonical platform/currentRoots fixtures and the tested
-  `--output` OS-temp CLI mode;
+  `--output` OS-temp CLI mode, plus path-only relocation of the platform-owned
+  SQL fixture from retired `common/` to canonical `platform/`;
 - ports test: canonical Prisma/global declaration path, phase-neutral approved-
-  global diagnostic names/messages, and rejection of stale global/provenance
-  paths.
+  global diagnostic names/messages, rejection of stale global/provenance and
+  retired R1 roots, removal of the exact three retired OTP debt allowlists,
+  shared-kernel direction, and the exact Task 5 Backoffice permission-contract
+  allowed/near-miss/unauthorized source fixtures.
 
 No test may be deleted, skipped, weakened, or have unrelated scanner-security,
 atomicity, sanitization, ownership, cycle, or symbol-provenance assertions

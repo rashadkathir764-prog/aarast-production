@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-08-12
+Snapshot date: 2026-08-13
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
@@ -21,18 +21,291 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
-## Modular Monolith R1 Local Execution - In Progress
+## Modular Monolith R1 Local Verification - Final Runtime and Owner Checkpoints Pending
 
-Owner direction on 2026-08-12 starts R1 locally on the existing
-`modular-monolith` branch without merging between phases. Immutable R0
-candidate `94b677b7b8e2219e0db2cbc553fa3d26b4876456` is the fixed `R1_BASE`.
-PR #76 remains unchanged remotely while local checkpoint commits accumulate;
-no R1 push, remote-CI result, or merge is claimed here.
+R1 was executed locally on branch `modular-monolith` against immutable
+`R1_BASE` `94b677b7b8e2219e0db2cbc553fa3d26b4876456`. The target Backend layout and
+all automated local closeout gates are green. Independent source, contract,
+baseline, and gate review is green, including the reviewed Redis socket-timer
+root fix. Final reviewer runtime sign-off and the owner's application test
+against the final local server remain required before this section may say R1
+is complete. PR #76 still points to the
+immutable R0 candidate; no R1 push, merge, or remote-CI result is claimed.
 
-R1 uses a hard per-task protocol: automated gates, managed server smoke,
-independent review and remediation, clean checkpoint commit, then owner
-application testing before the next task. Task 1 is the active preflight; no R1
-runtime source move has started at this status point.
+### Implemented target and exact move map
+
+- `src/common/{config,filters,http,pagination,redis,observability,prisma}` ->
+  `src/platform/{config,http,http,http,redis,observability,database}`.
+- `src/prisma/` -> `src/platform/database/`.
+- root `health.controller.ts` and `src/health/` -> `src/platform/health/`.
+- `src/common/idempotency/` -> `src/platform/idempotency/`.
+- `src/outbox/` -> `src/platform/outbox/`.
+- `src/auth/{openwa-otp-config,openwa-transient-text,whatsapp-otp-config}.ts`
+  -> `src/platform/otp-transport/`, with delivery-only OpenWA/WhatsApp
+  adapters and identity-owned OTP generation/selection.
+- `src/common/validation/money.ts` -> `src/shared-kernel/money/money.ts` and
+  the approved exact Decimal value object.
+- `src/common/phone/` -> `src/shared-kernel/phone/`.
+- `src/common/privacy/`, `src/users/application-user-identity.ts`, and
+  `src/admin/admin-privacy.ts` -> `src/shared-kernel/privacy/`.
+- `src/common/time/` -> `src/shared-kernel/time/`.
+- `src/common/admin/admin-permissions.ts` ->
+  `src/modules/backoffice/domain/admin-permissions.ts`.
+- No old-path facade, barrel, shim, duplicate implementation, symlink, or
+  fallback remains.
+
+The machine-enforced exact prefix vocabulary is tracked at
+`backend/architecture/r1-relocation-map.json`. The combined R1 diff contains
+185 paths. Its exact manifest is the output of:
+
+```powershell
+git diff --name-only 94b677b7b8e2219e0db2cbc553fa3d26b4876456 --
+```
+
+<details>
+<summary>Exact 185-path R1 manifest</summary>
+
+```text
+.github/workflows/ci.yml
+ARCHITECTURE.md
+CHANGELOG.md
+backend/.dependency-cruiser-known-violations.json
+backend/.dependency-cruiser.cjs
+backend/architecture/ownership-registry.json
+backend/architecture/r1-relocation-map.json
+backend/package.json
+backend/scripts/architecture/ownership-scan.cjs
+backend/scripts/architecture/ports-scan.cjs
+backend/scripts/architecture/r1-baseline-relocation.cjs
+backend/scripts/smoke/phase2-admin-mutation-authorization-smoke.ts
+backend/scripts/smoke/phase2-conversation-revocation-smoke.ts
+backend/scripts/smoke/phase2-idempotency-reconciliation-smoke.ts
+backend/scripts/smoke/phase2-notification-authorization-concurrency-smoke.ts
+backend/scripts/smoke/phase2-notification-preferences-smoke.ts
+backend/scripts/smoke/phase2-sharing-permission-concurrency-smoke.ts
+backend/src/admin/admin-audit.controller.ts
+backend/src/admin/admin-audit.interceptor.ts
+backend/src/admin/admin-audit.service.ts
+backend/src/admin/admin-mutation-executor.ts
+backend/src/admin/admin-mutation-gate.ts
+backend/src/admin/admin-permission.decorator.ts
+backend/src/admin/admin-permission.guard.ts
+backend/src/admin/admin-user-status.ts
+backend/src/admin/admin.controller.ts
+backend/src/admin/admin.module.ts
+backend/src/admin/admin.presenter.ts
+backend/src/admin/admin.service.ts
+backend/src/app.module.ts
+backend/src/auth/auth-challenge-cleanup.scheduler.ts
+backend/src/auth/auth.controller.ts
+backend/src/auth/auth.module.ts
+backend/src/auth/auth.service.ts
+backend/src/auth/jwt.strategy.ts
+backend/src/auth/login-throttle-cleanup.scheduler.ts
+backend/src/auth/login-throttle.service.ts
+backend/src/auth/otp-channel.ts
+backend/src/auth/otp-dispatch-quota-cleanup.scheduler.ts
+backend/src/auth/otp-dispatch-quota.service.ts
+backend/src/auth/safe-user.ts
+backend/src/budget-categories/budget-categories.module.ts
+backend/src/budget-categories/budget-categories.service.ts
+backend/src/catalogs/administrative-catalog.service.ts
+backend/src/catalogs/catalogs.controller.ts
+backend/src/catalogs/catalogs.module.ts
+backend/src/catalogs/reference-catalog.service.ts
+backend/src/common/validation/money.ts
+backend/src/contexts/contexts.module.ts
+backend/src/contexts/contexts.service.ts
+backend/src/contribution-history/contribution-history.service.ts
+backend/src/conversations/conversation-lifecycle.ts
+backend/src/conversations/conversations.gateway.ts
+backend/src/conversations/conversations.module.ts
+backend/src/conversations/conversations.service.ts
+backend/src/dashboard/dashboard-home-queries.ts
+backend/src/dashboard/dashboard.module.ts
+backend/src/dashboard/dashboard.service.ts
+backend/src/guests/guests.controller.ts
+backend/src/guests/guests.module.ts
+backend/src/guests/guests.service.ts
+backend/src/main.ts
+backend/src/marketplace/marketplace.module.ts
+backend/src/marketplace/marketplace.presenter.ts
+backend/src/marketplace/marketplace.service.ts
+backend/src/marketplace/provider-review-rating.ts
+backend/src/marketplace/quote-offer-acceptance.ts
+backend/src/marketplace/quote-offer-rejection.ts
+backend/src/marketplace/quote-request-cancellation.ts
+backend/src/marketplace/quote-request-creation.ts
+backend/src/media/media-upload-cleanup.scheduler.ts
+backend/src/media/media-upload-ticket.service.ts
+backend/src/modules/backoffice/domain/admin-permissions.ts
+backend/src/money/money-budget.service.ts
+backend/src/money/money-summary.service.ts
+backend/src/money/money.module.ts
+backend/src/notifications/notifications.module.ts
+backend/src/notifications/notifications.service.ts
+backend/src/platform/config/cors-options.ts
+backend/src/platform/config/cors-origins.ts
+backend/src/platform/config/runtime-environment.ts
+backend/src/platform/database/prisma.module.ts
+backend/src/platform/database/prisma.service.ts
+backend/src/platform/database/serializable-transaction.ts
+backend/src/platform/health/health.controller.ts
+backend/src/platform/health/readiness.service.ts
+backend/src/platform/http/bounded-json-response.ts
+backend/src/platform/http/global-exception.filter.ts
+backend/src/platform/http/list-query.dto.ts
+backend/src/platform/idempotency/idempotency-cleanup.scheduler.ts
+backend/src/platform/idempotency/idempotency-reconcile.cli.ts
+backend/src/platform/idempotency/idempotency-reconciliation.ts
+backend/src/platform/idempotency/idempotency.interceptor.ts
+backend/src/platform/observability/metrics.controller.ts
+backend/src/platform/observability/metrics.ts
+backend/src/platform/observability/request-observability.middleware.ts
+backend/src/platform/observability/sanitize-request-target.ts
+backend/src/platform/otp-transport/openwa-otp-config.ts
+backend/src/platform/otp-transport/openwa-otp.channel.ts
+backend/src/platform/otp-transport/openwa-transient-text.ts
+backend/src/platform/otp-transport/otp-delivery.ts
+backend/src/platform/otp-transport/whatsapp-otp-config.ts
+backend/src/platform/otp-transport/whatsapp-otp.channel.ts
+backend/src/platform/outbox/outbox-cleanup.scheduler.ts
+backend/src/platform/outbox/outbox.constants.ts
+backend/src/platform/outbox/outbox.dispatcher.ts
+backend/src/platform/outbox/outbox.module.ts
+backend/src/platform/outbox/outbox.service.ts
+backend/src/platform/outbox/outbox.worker.ts
+backend/src/platform/outbox/realtime-revocation.ts
+backend/src/platform/redis/redis-io.adapter.ts
+backend/src/platform/redis/resilient-throttler-storage.ts
+backend/src/provider-dashboard/provider-dashboard.module.ts
+backend/src/provider-dashboard/provider-dashboard.service.ts
+backend/src/push/push-delivery.service.ts
+backend/src/push/push-installations.service.ts
+backend/src/push/push.module.ts
+backend/src/shared-kernel/money/money.ts
+backend/src/shared-kernel/phone/phone-normalizer.ts
+backend/src/shared-kernel/privacy/admin-notification-privacy.ts
+backend/src/shared-kernel/privacy/application-user-identity.ts
+backend/src/shared-kernel/privacy/review-identity.ts
+backend/src/shared-kernel/time/business-day.ts
+backend/src/sharing/invitation-delivery.service.ts
+backend/src/sharing/invite-access.service.ts
+backend/src/sharing/permission.service.ts
+backend/src/sharing/sharing.module.ts
+backend/src/sharing/sharing.service.ts
+backend/src/tasks/tasks.controller.ts
+backend/src/tasks/tasks.module.ts
+backend/src/tasks/tasks.service.ts
+backend/src/timeline/timeline.module.ts
+backend/src/timeline/timeline.service.ts
+backend/src/users/users.controller.ts
+backend/src/users/users.module.ts
+backend/src/users/users.service.ts
+backend/src/wedding-costs/wedding-costs.module.ts
+backend/src/wedding-costs/wedding-costs.service.ts
+backend/src/wedding-plans/wedding-plans.module.ts
+backend/src/wedding-plans/wedding-plans.service.ts
+backend/test/admin-auth-session-security.test.ts
+backend/test/admin-rbac-audit.test.ts
+backend/test/architecture-dependencies.test.ts
+backend/test/architecture-ownership.test.ts
+backend/test/architecture-ports.test.ts
+backend/test/architecture-r1-baseline-relocation.test.ts
+backend/test/architecture-r1-layout.test.ts
+backend/test/auth-otp-mode.test.ts
+backend/test/backend-support.test.ts
+backend/test/cors-preflight.test.ts
+backend/test/financial-integrity.test.ts
+backend/test/financial-ledger.test.ts
+backend/test/global-exception-filter.test.ts
+backend/test/health-readiness.test.ts
+backend/test/idempotency-interceptor.test.ts
+backend/test/idempotency-reconciliation.test.ts
+backend/test/invite-delivery.test.ts
+backend/test/media-url-ownership.test.ts
+backend/test/notification-contributor-scope.test.ts
+backend/test/notification-logic.test.ts
+backend/test/notification-mutation-atomicity.test.ts
+backend/test/openwa-credential-file.test.ts
+backend/test/openwa-otp-channel.test.ts
+backend/test/otp-dispatch-quota.test.ts
+backend/test/outbox-logic.test.ts
+backend/test/password-reset-logic.test.ts
+backend/test/phase0-guards.test.ts
+backend/test/privacy-contract.test.ts
+backend/test/provider-price-validation.test.ts
+backend/test/push-notifications.test.ts
+backend/test/request-target-redaction.test.ts
+backend/test/scheduler-lock.test.ts
+backend/test/shared-kernel-money.test.ts
+backend/test/support/phase0-postgres-support.js
+backend/test/websocket-session-hardening.test.ts
+backend/test/whatsapp-otp-channel.test.ts
+docs/README.md
+docs/SCRIPTS.md
+docs/backend/README.md
+docs/project/DECISIONS.md
+docs/project/EXECUTION_PLAN.md
+docs/project/STATUS.md
+docs/qa/README.md
+docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md
+docs/superpowers/specs/2026-08-12-modular-monolith-r1-platform-shared-kernel-design.md
+```
+
+</details>
+
+### Final local evidence
+
+| Area | Command | Result |
+| --- | --- | --- |
+| Backend architecture | `npm run architecture` | PASS: 306 modules, 1314 dependencies, 260 counted known records, ownership 386, ports `forwardRef=0`, globals=2, illegal imports=0, cycles=0 |
+| Backend type/build | `npm run check`; `npm run build` | PASS |
+| Backend tests | `npm test` | PASS: 805 total, 804 passed, 0 failed, 1 expected Windows permission skip; artifact guard PASS |
+| Prisma | `npx prisma validate` | First run P1012 because `DATABASE_URL` was absent; PASS on the schema-only rerun with a process-scoped non-secret local placeholder and no connection or `.env` write |
+| Dependency audit | `npm audit --audit-level=high`; `npm audit --omit=dev` | PASS: 0 vulnerabilities in each |
+| Managed runtime | `npm run smoke:all` | PASS: all 30 registered packages after all 76 migrations; final backend-completion package 76/76; run `smoke_20260813001205991_fad1a26e` cleaned its DB/Redis/process/temp resources |
+| Admin Web | `npm run typecheck`; `npm test -- --run`; `npm run build`; `npm run smoke:honesty`; `npm run smoke:routes`; `npm run test:container-config` | PASS: 96/96 tests, honesty 12/12, routes 16/16, container 3/3 |
+| Mobile architecture | `node --test .\scripts\check-mobile-boundaries.test.mjs`; `node .\scripts\check-mobile-boundaries.mjs --check-baseline` | PASS: 192/192 and 269 current records |
+| Mobile | `flutter analyze --no-pub`; `flutter test --no-pub` | PASS: no analyzer issues; authoritative direct test run 1151/1151 |
+| Docs | `node .\scripts\docs-sync.mjs --check`; `node .\scripts\docs-verify.mjs`; `git diff --check` | PASS: drift/errors/warnings 0 |
+| Protected surfaces | fixed-base preflight and postflight Git checks | PASS: schema/migrations, Mobile, Admin source, deploy, and Compose unchanged; protected worktree clean |
+| Test policy | fixed-base name/status and `-U0` audits | PASS: 0 removed/renamed, 36 reviewed behavioral path/QA/runtime-safety changes, 3 reviewed architecture changes, exact 3 additive tests |
+
+Fresh final baseline verification against `R1_BASE` passed. Dependency
+candidate/tracked SHA256 is
+`76f6d069c27172dc2c8756c04d2282806650d9eeb062043353860b61a1454000`
+with 260 sorted unique records and totals mapped 6 / removed 9 / decreased 0.
+Ownership candidate/tracked SHA256 is
+`a4d478f45c5bfa76123be60e1cc77f99001969951afc219478916c87638ff3e6`
+with 386 keys / 782 occurrences and totals 0/0/0. Mobile baseline remains 269
+records and byte-identical. Registry has 52 models, no exceptions, and
+`currentRoots.platform=['platform']`. Live schema remains 52 models and 76
+migrations.
+
+Six exact platform debts remain for R3: runtime config -> JWT secret;
+readiness -> media storage; outbox dispatcher -> conversation realtime
+publisher; outbox dispatcher -> push delivery; outbox module -> conversation
+realtime module; and outbox module -> push module. Sharing's
+`invitation-delivery.service.ts` direct consumption of platform OpenWA
+transient-text policy remains migration debt until R6. The two approved globals
+remain until R8.
+
+R1 changes no API route, error/Arabic contract, permission, transaction/lock/
+retry/scheduler behavior, schema, migration, Mobile source, Admin source, or
+deployment artifact. Final phone-server review found one pre-existing runtime
+crash: `ConversationsGateway` stored a circular `NodeJS.Timeout` in
+Redis-serialized `socket.data`, so a cross-replica `fetchSockets()` request
+could terminate Node. The reviewed root fix keeps that handle in a process-local
+`WeakMap`; the existing token expiry/disconnect contract remains unchanged and
+the exact Redis response-shape regression is green. The phase-specific
+`r0-scope` CI job alone is removed;
+its local script/tests remain historical evidence. Warnings were not hidden:
+the Backend negative-path logs and DEP0190 notice, Admin ErrorBoundary fixture
+output, and Flutter desktop default-plugin notices are non-failing expected
+test/tool noise. A second Flutter output-tail wrapper returned a PowerShell
+pipeline status 1 after printing `All tests passed`; the authoritative direct
+command returned 0 and 1151/1151.
 
 ## Modular Monolith R0 Local Verification Receipt - 2026-08-12
 

@@ -94,10 +94,12 @@ changing behavior.
 ## Current Working Plan
 
 - `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`
-  - active R1 implementation plan. It runs as separately verified local
-  checkpoints on `modular-monolith`, anchored to immutable R0 candidate
-  `94b677b7b8e2219e0db2cbc553fa3d26b4876456`, with an owner application test
-  before each next task.
+  - active R1 closeout plan. The target `platform/` and `shared-kernel/` layout
+  is implemented in separately reviewed local checkpoints on
+  `modular-monolith`, anchored to immutable R0 candidate
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456`. R1 is not closed until the full
+  local gates, managed smoke suite, independent review, and owner application
+  checkpoint pass.
 - `docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md` -
   completed R0 governance plan and historical predecessor to R1.
 

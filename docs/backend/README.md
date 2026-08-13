@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-13
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -21,12 +21,21 @@ governorate → district → locality hierarchy consumed by Admin and Mobile.
 
 ## Modular Monolith Boundary
 
-R0 documents the target architecture and moves no Backend application source.
-During migration, each context is the union of its legacy roots and
-`src/modules/<context>`. Cross-context Backend code consumes only the owner's
-public contract; it never imports another context's full or internal module.
-The Nest class/import graph remains acyclic, and no new `forwardRef()` or
-`@Global()` use is allowed.
+R1 implements the Backend platform/shared-kernel target layout locally.
+Infrastructure is under `src/platform/`; Money, phone, privacy/application
+identity, and time helpers are under `src/shared-kernel/`; the pure Admin
+permission matrix is under `src/modules/backoffice/domain/`; and the former
+`src/common`, `src/prisma`, `src/outbox`, and root health paths are absent.
+Cross-context Backend code consumes only the owner's public contract, except
+for the exact reviewed pre-port Admin permission contract used only by legacy
+`auth/` and `catalogs/`. The Nest class/import graph remains acyclic, and no new
+`forwardRef()` or `@Global()` use is allowed.
+
+Six frozen platform-to-business dependencies remain for R3: runtime config to
+JWT secret, readiness to media storage, outbox dispatcher to conversation
+realtime and push delivery, and outbox module to the conversation realtime and
+push modules. Sharing consumes an OTP transport directly until R6. The two
+approved globals remain until R8.
 
 Physical ownership covers Prisma root delegates, relation traversal, nested
 writes, and raw-SQL tables. `WeddingPlan` is owned by planning. Finance's
@@ -49,8 +58,9 @@ npx prisma validate
 
 `npm run architecture` is the incremental modular-monolith gate: it rejects a
 new dependency edge/cycle, new or increased foreign Prisma ownership debt, and
-new ports/global/Nest-graph violations while allowing the committed R0 debt
-baselines only to shrink.
+new ports/global/Nest-graph violations while allowing the committed counted
+debt baselines only to shrink. R1 keeps 52 models and 76 migrations and changes
+no API route or database contract.
 
 Database-writing smoke and load commands are managed by
 `scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker

@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — Active: R1 Platform And Shared Kernel
+### P3 — Source Quality And Architecture — Active: R1 Closeout
 
 #### Active R1 — Platform And Shared Kernel
 
@@ -325,12 +325,17 @@ Acceptance:
 - By owner decision, R1 continues locally on the same `modular-monolith`
   branch without merging between phases. PR #76 is not pushed or mutated by
   staged local execution.
-- Each R1 task is independently gated by focused tests,
-  architecture/check/build, applicable managed server smoke, independent
-  review, a clean checkpoint commit, and the owner's application test.
-- R1 moves infrastructure into `platform/` and establishes `shared-kernel/`
-  without route, schema, migration, Mobile, Admin source, deployment, or
-  product-behavior changes.
+- The R1 target layout is implemented locally: infrastructure is under
+  `platform/`, foundational helpers are under `shared-kernel/`, and the legacy
+  infrastructure roots are gone without compatibility facades.
+- R1 closeout now requires the full local Backend/Admin/Mobile/docs gates,
+  managed `smoke:all`, independent final review, a clean receipt checkpoint,
+  and the owner's application test. R2 is next and may not begin earlier.
+- Six exact platform-to-business edges remain assigned to R3; sharing's direct
+  OTP transport consumption remains assigned to R6; the two approved globals
+  remain until R8.
+- R1 preserves all routes, errors/Arabic, permissions, transactions, 52
+  models, 76 migrations, Mobile/Admin source, and deployment artifacts.
 
 Current working plan:
 `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`.

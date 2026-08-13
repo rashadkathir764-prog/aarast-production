@@ -1,6 +1,6 @@
 # Modular Monolith R1 Platform and Shared Kernel Design
 
-**Status:** Approved for staged local execution
+**Status:** Locally implemented and independently source-reviewed; final runtime and owner checkpoints pending
 
 **Date:** 2026-08-12
 
@@ -15,7 +15,11 @@
 R1 dissolves the legacy Backend infrastructure roots into `src/platform/`,
 creates the foundational `src/shared-kernel/`, relocates the current
 backoffice permission domain helper, and updates every repository consumer
-without changing product or runtime behavior.
+without changing product behavior. One closeout runtime-safety correction is
+explicitly included: keep the socket token-expiry timer outside serializable
+`socket.data` so Redis remote socket fetches cannot crash the process. It does
+not change the token lifetime, disconnect contract, route, payload, or
+permission behavior.
 
 R1 is complete only when:
 
@@ -320,8 +324,12 @@ revocation must construct `SharingService` with the current real
 `ContributionHistoryService`; and PostgreSQL fixture teardown must close active
 contributor tenures and mark their history scopes deleted before removing the
 shared-member/plan fixtures. Contribution history remains preserved. No
-production behavior changes. Outside those exact hunks and their focused
-cleanup-order regression, assertions, fixture creation, expected values,
+production behavior changes. A second exact closeout exception moves only the
+access-token expiry `NodeJS.Timeout` from `socket.data` to a process-local
+`WeakMap` in `conversations.gateway.ts` and adds the Redis remote-fetch
+serializability regression in `websocket-session-hardening.test.ts`. Outside
+those exact hunks and their focused cleanup-order regression, assertions,
+fixture creation, expected values,
 Arabic/error text, setup behavior, timeouts, skips, and test selection remain
 frozen. Additive R1 tests cover the layout contract, Money value object, OTP
 split, exact global path, stale-import absence, and baseline relocation

@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-08-13 - Modular Monolith R1 Local Automated Verification
+
+- Implemented the complete R1 platform/shared-kernel relocation locally on
+  branch `modular-monolith`, anchored to immutable `R1_BASE`
+  `94b677b7b8e2219e0db2cbc553fa3d26b4876456`. The exact 185-path combined diff
+  manifest and exact move map are recorded in
+  `docs/project/STATUS.md`; no old-path facade remains.
+- Moved configuration, HTTP, database, Redis, observability, health,
+  idempotency, outbox, and concrete OTP transport code to `src/platform/`;
+  established Money/phone/privacy/application-identity/time under
+  `src/shared-kernel/`; moved the pure Admin permission matrix to
+  `src/modules/backoffice/domain/`.
+- Reconciled the dependency baseline to 260 sorted unique records (mapped 6,
+  removed 9, decreased 0), preserved ownership at 386 keys/782 occurrences,
+  kept Mobile at 269 records, 52 models/76 migrations, forwardRef 0, and the
+  exact two approved globals.
+- Removed only the phase-specific `r0-scope` CI job. Backend architecture and
+  tests, image, E2E, Admin, Mobile, docs, secrets scan, and dependency audit
+  jobs remain. The local R0 scope script/tests remain historical evidence.
+- Exact local commands and results:
+  - Backend `npm run architecture`, `npm run check`, `npm run build`, and
+    `npm test` PASS; 805 total / 804 passed / 0 failed / 1 Windows skip.
+  - Bare `npx prisma validate` produced the documented P1012 because this
+    worktree has no `DATABASE_URL`; schema-only process-scoped local-placeholder
+    rerun PASS without a connection or `.env` write.
+  - `npm audit --audit-level=high` and `npm audit --omit=dev` PASS with 0
+    vulnerabilities.
+  - `npm run smoke:all` PASS: all 30 managed packages after 76 migrations;
+    backend-completion 76/76; run resources cleaned.
+  - Admin `npm run typecheck`, `npm test -- --run`, `npm run build`,
+    `npm run smoke:honesty`, `npm run smoke:routes`, and
+    `npm run test:container-config` PASS: 96/96, 12/12, 16/16, 3/3.
+  - Mobile boundary tests/baseline PASS 192/192 and 269; `flutter analyze
+    --no-pub` PASS; authoritative `flutter test --no-pub` PASS 1151/1151.
+  - Docs sync/verify/diff and fixed-base protected pre/postflight PASS with
+    zero drift/errors/warnings and no protected source side effect.
+- Six exact platform-to-business debts remain assigned to R3; sharing's direct
+  OTP transient-policy consumption remains assigned to R6; the two globals
+  remain assigned to R8. R2 may not start until independent final review and
+  the owner's final application checkpoint pass.
+- R1 preserves API routes, errors and Arabic text, permissions, transaction/
+  lock/retry/scheduler semantics, schema/migrations, Mobile/Admin source, and
+  deployment artifacts. Expected negative-path logs, DEP0190, Admin
+  ErrorBoundary output, and Flutter desktop plugin notices were observed and
+  not hidden.
+- Final phone-server review reproduced and corrected one pre-existing
+  cross-replica crash: the access-token expiry `NodeJS.Timeout` is now kept in
+  a process-local `WeakMap` instead of Redis-serialized `socket.data`. Token
+  lifetime and disconnect behavior are unchanged, and the focused Redis
+  remote-fetch serialization regression passes.
+- This entry records local evidence only. PR #76 remains at the R0 candidate;
+  no R1 push, merge, or remote-CI success is claimed. Independent source,
+  contract, baseline, and gate review is green; final reviewer runtime sign-off
+  and owner phone verification against the final local image remain pending.
+
 ## 2026-08-12 - Modular Monolith R1 Execution Started
 
 - Recorded the owner's decision to continue R1 and later modular-monolith

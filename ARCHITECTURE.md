@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-12
+Snapshot date: 2026-08-14
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -179,8 +179,8 @@ retired single-file schema read with the shared live-schema helper:
 `architecture-ownership.test.ts` may additionally replace its single-file
 fixture with the exact schema folder plus manifest. No assertion, expected
 value, behavioral fixture, product/error/Arabic literal, timeout, skip, or test
-selection may change. This exception is inactive until the independently
-reviewed R2 implementation task begins.
+selection may change. R2 used this exception only for the reviewed mechanical
+reader migration; the frozen assertion and behavior contract remained green.
 
 R0 adds architecture tests and does not edit existing behavioral tests.
 
@@ -207,14 +207,15 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   outbox module -> conversation realtime module; and outbox module -> push
   module. Sharing's direct OTP transport consumption remains named migration
   debt until R6. The two approved `@Global()` declarations remain until R8.
-- R2 design and execution plan passed independent review and are approved for
-  staged local execution; implementation has not started. Its immutable base is
-  R1 local-closeout commit
-  `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. Live schema truth is 52 models,
-  41 enums, and 76 migrations. The proposed target is Prisma's native schema
-  folder with 13 current model-owner files plus `_base.prisma`; it authorizes
-  no schema, migration, seed, generated-client, route, product, Mobile/Admin,
-  or deployment-topology change.
+- R2 local implementation, production-shaped runtime, and owner application
+  checkpoint passed on 2026-08-14 from immutable base
+  `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. The live Prisma source is the
+  native folder with `_base.prisma` plus 13 current model-owner files: exactly
+  52 models, 41 enums, and 76 unchanged migrations. Normalized DMMF and migrate
+  diff prove semantic equivalence; seed, migrations, generated contracts,
+  application behavior, Mobile/Admin source, and deployment topology remain
+  unchanged. The final independent R2 source/contract/runtime/receipt sign-off
+  is requested; R3 has not started.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

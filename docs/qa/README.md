@@ -1,10 +1,10 @@
 # QA And Testing
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-14
 
-Snapshot source: the checked-out canonical `main` content after the 2026-08-11
-production deployment and documentation closure. Resolve its immutable
-revision with `git rev-parse HEAD`.
+Snapshot source: the checked-out branch content. Resolve its immutable revision
+with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
+remote-CI result.
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -86,11 +86,47 @@ current migration debt and are expected to fail today; they are proof/debug
 commands, not closeout gates. Dependency strictness is reached by removing the
 known graph debt, while Mobile strict mode becomes the gate in R9.
 
-R1 closeout additionally requires the complete managed Backend smoke suite,
-independent review, and the owner's application checkpoint. R2 must not start
-before those pass. The closeout must preserve 52 models, 76 migrations, every
+R1 closeout additionally required the complete managed Backend smoke suite,
+independent review, and the owner's application checkpoint; those gates passed
+before R2 began. The closeout preserved 52 models, 76 migrations, every
 route/error/Arabic/permission/transaction contract, Mobile and Admin source,
 and deployment artifacts.
+
+## Modular Monolith R2 Closeout Gates
+
+R2 uses the R1 commands above plus the explicit fixed-base scope verifier,
+Prisma generation and equivalence fingerprints, contributor/guest migration
+rehearsals, and immutable Docker inspection/runtime. Local R2 results on
+2026-08-14 were:
+
+- R2 scope PASS with the reviewed 49-path manifest and unchanged protected
+  Backend application, migration, seed, package, Mobile/Admin, workflow,
+  Compose, and deployment surfaces.
+- Physical/equivalence gates PASS: 14 schema files, 52 models, 41 enums, 76
+  unchanged migrations, byte-identical seed, equal normalized DMMF, and empty
+  migrate diff.
+- Backend architecture/check/build PASS; 848/849 tests PASS with one expected
+  Windows permission skip; both migration rehearsals and all 30 managed smoke
+  packages PASS; both npm audits report zero vulnerabilities.
+- Admin typecheck/build PASS, tests 96/96, honesty 12/12, routes 16/16, and
+  container config 3/3. Mobile boundaries 192/192, baseline 269, analyzer clean,
+  and tests 1151/1151 PASS.
+- Docs sync/verification/whitespace PASS with zero drift, errors, or warnings.
+- Immutable R2 image inspection, protected R1/R2 probe/cutover, localhost/LAN
+  `/live` and `/ready`, dependency readiness, revision, zero-restart, and safe
+  log gates PASS. The stopped R1 container/image remain rollback evidence.
+- Owner phone checkpoint PASS only after installing the corrected, separately
+  packaged R2Local APK. The initial APK embedded the old loopback R1 URL and
+  emitted no R2 HTTP event; it was a client configuration failure, not a
+  Backend result. Sanitized R2 logs then proved successful login and
+  authenticated read/write requests without retaining secrets or raw bodies.
+
+Expected non-failing Backend negative-path/DEP0190 output, Admin ErrorBoundary
+fixture output, Flutter desktop plugin notices, the initial absent
+`DATABASE_URL` Prisma result, and the first `adb` PATH lookup are recorded in
+the full receipt in `docs/project/STATUS.md`. Final independent R2 sign-off is
+requested; R3 is not started. Remote CI was not run, and no push or merge is
+claimed.
 
 ## Latest Recorded Full Working-Tree Gate — 2026-08-11
 

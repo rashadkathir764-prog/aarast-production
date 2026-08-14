@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-14 - Modular Monolith R2 Local Closure Candidate
+
+- Replaced the retired single Prisma schema with the native 14-file folder:
+  `_base.prisma` plus 13 current model-owner files, containing exactly 52
+  models and 41 enums. All 76 migrations and the seed remain byte-identical to
+  immutable `R2_BASE` `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`.
+- Added the fail-closed layout manifest, canonical schema loader, normalized
+  DMMF fingerprint, fixed-base R2 scope gate, and reviewed mechanical migrations
+  for existing schema readers. Prisma config and both Docker stages now discover
+  the folder without a compatibility copy or deprecated fallback.
+- Empty migrate diff, equal normalized DMMF, frozen generated contracts,
+  Backend architecture/check/build/tests/audits/migration rehearsals/all 30
+  smoke packages, unchanged Admin and Mobile gates, docs, scope, and protected
+  surface checks all passed locally.
+- Built immutable image `aarast-backend:r2-final-b40e2961` at revision
+  `b40e2961c4c2e0c1e48ebdf1b4eff8444bc1d63f`; image inspection, protected
+  probe/cutover, local/LAN readiness, dependency health, zero restarts, and
+  sanitized error/log gates passed. The stopped R1 container and image remain
+  available for rollback.
+- The first phone attempt used a stale R1-local APK with a loopback API URL and
+  emitted no R2 request. A separately packaged R2Local APK targeted the verified
+  LAN URL; device reachability and the owner's login/home/core-flow checkpoint
+  then passed. This distinguishes client configuration from Backend behavior.
+- Final independent R2 source/contract/runtime/receipt sign-off is requested.
+  R3 has not started. Remote CI was not run, and no push or merge is claimed.
+
 ## 2026-08-13 - Modular Monolith R1 Local Completion
 
 - Implemented the complete R1 platform/shared-kernel relocation locally on

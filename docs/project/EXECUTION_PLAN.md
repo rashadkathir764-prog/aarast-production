@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — Active: R2 Planning
+### P3 — Source Quality And Architecture — Active: R2 Final Sign-Off
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -330,31 +330,35 @@ Acceptance:
   infrastructure roots are gone without compatibility facades.
 - R1 closed locally on 2026-08-13 after the full Backend/Admin/Mobile/docs
   gates, managed `smoke:all`, independent final source/runtime review, clean
-  receipt checkpoints, and the owner's phone application test passed. R2 is
-  next and has not started.
+  receipt checkpoints, and the owner's phone application test passed. It is the
+  immutable base of the executed R2 candidate.
 - Six exact platform-to-business edges remain assigned to R3; sharing's direct
   OTP transport consumption remains assigned to R6; the two approved globals
   remain until R8.
 - R1 preserves all routes, errors/Arabic, permissions, transactions, 52
   models, 76 migrations, Mobile/Admin source, and deployment artifacts.
 
-#### Next R2 — Native Prisma Schema Folder
+#### R2 — Native Prisma Schema Folder — Local Gates Complete
 
-- R2 design and plan passed independent review and are approved for staged
-  local execution; implementation has not started.
+- R2 implementation, exhaustive local gates, immutable Docker runtime, and the
+  owner's corrected R2Local phone checkpoint passed on 2026-08-14. Final
+  independent source/contract/runtime/receipt sign-off is requested.
 - Immutable `R2_BASE` is the R1 local-closeout commit
   `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d` on the same
   `modular-monolith` branch.
-- The verified live source has 52 models, 41 enums, and 76 migrations. The
-  target is 14 `.prisma` files: `_base.prisma` plus one file for each of the 13
-  current model owners.
-- R2 permits only physical schema organization and the required canonical
-  readers/config/Docker packaging. It authorizes no schema semantic change,
-  migration, seed split, package change, Backend application change,
-  Mobile/Admin change, Compose/deploy change, push, or merge.
-- Local acceptance requires empty migrate diff, normalized DMMF equality,
-  frozen seed/migrations/generated docs, green exhaustive gates, immutable
-  Docker runtime, independent review, and the owner's phone checkpoint.
+- The verified live source is now exactly 14 `.prisma` files:
+  `_base.prisma` plus one file for each of the 13 current model owners, with 52
+  models, 41 enums, and all 76 migrations preserved.
+- The physical schema organization and required canonical readers/config/Docker
+  packaging were implemented without schema semantic, migration, seed, package,
+  Backend application, Mobile/Admin, Compose/deploy, route, or product changes.
+- Empty migrate diff, normalized DMMF equality, frozen seed/migrations/generated
+  docs, exhaustive Backend/Admin/Mobile/docs/smoke/audit gates, immutable Docker
+  probe/cutover, and explicit owner PASS are locally green. The initial phone
+  attempt used a stale loopback R1 APK and emitted no R2 request; only the
+  corrected R2Local APK result is accepted as R2 evidence.
+- R3 is next but has not started. Remote CI was not run, and no push or merge is
+  claimed.
 
 Current working plan:
 `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`.

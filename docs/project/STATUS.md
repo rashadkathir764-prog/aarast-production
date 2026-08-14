@@ -21,7 +21,7 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
-## Modular Monolith R2 Runtime Candidate - 2026-08-14
+## Modular Monolith R2 Local Closure Candidate - 2026-08-14
 
 R2 implementation is committed locally on branch `modular-monolith` from
 immutable `R2_BASE`
@@ -52,19 +52,176 @@ database model table remain byte-identical. The sole generated-source wording
 change is the reviewed database source path from the retired file to
 `backend/prisma/schema/`.
 
-The next gate is a production-shaped Docker image bound to the immutable full
-SHA of the docs-only runtime-candidate commit, followed by the protected R1/R2
-probe and phone cutover. The owner phone checkpoint is still PENDING; R2 is not
-locally complete and R3 has not started. Remote CI was not run, and no push or
-merge is claimed.
+The production-shaped image is
+`aarast-backend:r2-final-b40e2961`, image ID
+`sha256:fcbf41b7ede0c656d7b57bd4ea0fc64b2d960c44acbb1a1a7e8d13e8727ca865`,
+and its OCI revision is the immutable 40-character runtime-candidate commit
+`b40e2961c4c2e0c1e48ebdf1b4eff8444bc1d63f`. Image inspection proved
+`/app/prisma.config.ts`, the exact 14-file schema folder, the absence of the
+retired single file, and successful Prisma discovery. The protected probe and
+cutover passed. `aarast-backend-r2-phone` remains running on
+`aarast_default`, host port 3120, with restart count zero; localhost and the
+owner-confirmed LAN address returned HTTP 200 from `/live` and `/ready` with
+database, Redis, and media healthy. The stopped
+`aarast-backend-r1-phone` container and its R1 image remain available for
+rollback.
+
+The owner phone checkpoint passed after one corrected client build. The first
+attempt used a previously installed R1-local APK whose embedded API URL was
+`127.0.0.1:3115`; it produced no R2 HTTP request and therefore was a client
+configuration failure, not an R2 Backend failure. The corrected debug APK used
+the separate package `com.aarast.aarast_mobile.r2local`, targeted the verified
+LAN R2 URL, and had SHA256
+`f5389e372674c045ab8b48862e4f03847ba21f0ed651ed48afde67495b0eeecb`.
+It was installed and opened on device `R5CY31TM4PW`; device TCP reachability
+passed and the owner explicitly reported PASS. The build's generated desktop
+registrant side effects were restored, so no Mobile code or tracked generated
+file changed.
+
+The post-checkpoint log audit retained only sanitized method, templated path,
+status, and count data. It parsed 43 safe HTTP events, of which 42 succeeded,
+including two successful login events and 21 authenticated successes. Observed
+successful flows included login, registration completion, active-plan/home
+summary reads, provider/profile reads, guest creation and update, conversation
+listing, and logout. No credential, token, phone number, environment value, or
+raw response body was recorded. There was no Prisma-schema-discovery, fatal,
+unhandled, circular-serialization, or `TypeError` match.
+
+| Sanitized method and templated path | Status | Count |
+| --- | ---: | ---: |
+| `GET /api/v1/cities` | 200 | 3 |
+| `GET /api/v1/contexts` | 200 | 3 |
+| `GET /api/v1/conversations` | 200 | 1 |
+| `GET /api/v1/provider-categories` | 200 | 3 |
+| `GET /api/v1/provider/me/packages` | 200 | 1 |
+| `GET /api/v1/provider/me/profile` | 200 | 3 |
+| `GET /api/v1/provider/me/quote-requests` | 200 | 1 |
+| `GET /api/v1/provider/me/reviews` | 200 | 1 |
+| `GET /api/v1/provider/me/services` | 200 | 1 |
+| `GET /api/v1/provider/me/summary` | 200 | 1 |
+| `GET /api/v1/wedding-plans/:planId/dashboard-summary` | 200 | 4 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/guest-groups` | 200 | 1 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/guests` | 200 | 1 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/guests/summary` | 200 | 1 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/invites` | 200 | 2 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/members` | 200 | 2 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/tasks` | 200 | 1 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/tasks/summary` | 200 | 1 |
+| `GET /api/v1/wedding-plans/:weddingPlanId/timeline` | 200 | 1 |
+| `GET /api/v1/wedding-plans/active` | 200 | 1 |
+| `PATCH /api/v1/guests/:id` | 200 | 1 |
+| `POST /api/v1/auth/login` | 200 | 2 |
+| `POST /api/v1/auth/logout` | 200 | 2 |
+| `POST /api/v1/auth/register` | 201 | 1 |
+| `POST /api/v1/auth/register/complete` | 201 | 1 |
+| `POST /api/v1/provider/apply` | 201 | 1 |
+| `POST /api/v1/wedding-plans/:weddingPlanId/guests` | 201 | 1 |
+
+The table contains all 42 successful events in the sanitized set. Conversation
+listing supplies endpoint-level messaging evidence. No successful notification
+path appeared in this retained event set, so no endpoint-specific notification
+claim is made beyond the owner's explicit overall phone PASS.
+
+### Exact R2 candidate manifest
+
+The fixed-base candidate diff contains exactly the following 49 paths from
+`R2_BASE` to the immutable runtime candidate:
+
+```text
+ARCHITECTURE.md
+backend/Dockerfile
+backend/architecture/prisma-schema-layout.json
+backend/prisma.config.ts
+backend/prisma/schema.prisma
+backend/prisma/schema/_base.prisma
+backend/prisma/schema/backoffice.prisma
+backend/prisma/schema/catalog.prisma
+backend/prisma/schema/collaboration.prisma
+backend/prisma/schema/finance.prisma
+backend/prisma/schema/guests.prisma
+backend/prisma/schema/identity.prisma
+backend/prisma/schema/marketplace.prisma
+backend/prisma/schema/media.prisma
+backend/prisma/schema/messaging.prisma
+backend/prisma/schema/notifications.prisma
+backend/prisma/schema/planning.prisma
+backend/prisma/schema/platform.prisma
+backend/prisma/schema/tasks.prisma
+backend/scripts/architecture/ownership-scan.cjs
+backend/scripts/prisma/dmmf-fingerprint.cjs
+backend/scripts/prisma/r2-schema-scope.cjs
+backend/scripts/prisma/schema-files.cjs
+backend/scripts/smoke/contributor-history-migration-smoke.js
+backend/test/admin-auth-session-security.test.ts
+backend/test/admin-rbac-audit.test.ts
+backend/test/architecture-ownership.test.ts
+backend/test/architecture-r2-schema-layout.test.ts
+backend/test/auth-refresh-wiring.test.ts
+backend/test/contribution-history-migration.test.ts
+backend/test/financial-ledger.test.ts
+backend/test/legacy-finance-removal.test.ts
+backend/test/marketplace-presenter.test.ts
+backend/test/outbox-logic.test.ts
+backend/test/prisma-dmmf-fingerprint.test.ts
+backend/test/prisma-r2-manifest.test.ts
+backend/test/prisma-r2-schema-scope.test.ts
+backend/test/prisma-schema-files.test.ts
+backend/test/provider-chat-logic.test.ts
+backend/test/reference-catalogs.test.ts
+backend/test/support/live-prisma-schema.ts
+docs/README.md
+docs/backend/DATABASE.md
+docs/project/DECISIONS.md
+docs/project/EXECUTION_PLAN.md
+docs/project/STATUS.md
+docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md
+docs/superpowers/specs/2026-08-13-modular-monolith-r2-prisma-schema-design.md
+scripts/docs-sync.mjs
+```
+
+The final docs-only closure extends that immutable runtime-candidate manifest
+with exactly `CHANGELOG.md` and `docs/qa/README.md`. The complete final R2
+fixed-base path set is therefore 51 paths; the other eight receipt files were
+already present in the 49-path candidate manifest. No code, schema, migration,
+package, Mobile/Admin, workflow, Compose, or deployment path is added by the
+closure receipt.
+
+### R2 equivalence and gate receipt
+
+| Evidence | Result |
+| --- | --- |
+| Physical schema | PASS: 14 files, 52 models, 41 enums, and 76 migration directories; retired single file absent |
+| Migration and seed freeze | PASS: all 77 migration-root files byte-identical; recursive migration SHA256 `2415eeab05047cf79cc7e11b00703f7bd6b976d344abcd08222bb86b060aa959`; seed SHA256 `67be9b62405f8d02d66da76aafbbe0fc097cb5e9defe4f61a657818d91778643` |
+| Semantic equivalence | PASS: normalized DMMF SHA256 `1c0ddfb1108c4218dd4f8615f5afe7a0971dd72e92feaf2d1414228e6d605eee`; empty migrate diff; schema-block aggregate `cd0dd24dcf0345c26ca7226b999aaa673e5c4eddd40f4439bfecb02f8f5c590c`; normalized comment aggregate `f596d1dabd2d4050f1a97cd0843c055d72d43ecc157a6bf68c64014ff9908932` |
+| Architecture baselines | PASS: dependency 260, SHA256 `76f6d069c27172dc2c8756c04d2282806650d9eeb062043353860b61a1454000`; ownership 386 records/782 occurrences, SHA256 `a4d478f45c5bfa76123be60e1cc77f99001969951afc219478916c87638ff3e6`; ports `0/2/0/0` |
+| Generated truth | PASS: API `23c1d99ff80d6e458dfdea8e83cd87efe80fec18f57b7c8af8e8bf17c0391ee3`; Mobile routes `6de036d60b194c26a5a4e1c8abbca5763cc7b081bf0a75bdd0243fb1ae25bfff`; Admin routes `a1e3ee774bafca860ee0e95461b9e2384c719fcc6c1fb1eb01d6b4b945672e5e`; scripts `2f15a46ef20b20d6e3f83a112bfdb07871dd8b06aa7b796c0ee1e93c09d8bf47`; database model-table `70d35ff8718ed688f5c52c4d509b153362ff45af40d9a753219b47f740cf70d5` |
+| Backend and Prisma | PASS: `npm run architecture`, `npm run check`, `npm run build`, 848/849 tests with one expected Windows permission skip, process-scoped Prisma validate/generate, contributor and guest migration rehearsals, all 30 `smoke:all` packages, and both zero-finding npm audits |
+| Admin Web | PASS: typecheck, 96/96 tests, build, 12 honesty checks, 16 route checks, and 3 container-config tests |
+| Mobile | PASS: 192 boundary tests, 269-record baseline, analyzer with no issues, and 1151/1151 tests |
+| Docs and scope | PASS: R2 scope reported 49 reviewed runtime-candidate paths and 51 final receipt paths; docs sync drift 0; docs verify errors/warnings 0; whitespace check clean |
+| Immutable runtime | PASS: image/revision/schema discovery, probe, cutover, local/LAN health, dependency readiness, zero restarts, safe logs, and preserved R1 rollback |
+| Owner phone | PASS: corrected R2Local client reached the R2 server and the owner explicitly reported success |
+
+The bare `npx prisma validate` invocation first returned P1012 because
+`DATABASE_URL` was absent. Validation and generation then passed with a
+process-scoped, non-secret, non-connecting placeholder which was removed and
+was never written to `.env`. Expected non-failing warnings were retained:
+Backend negative-path/DEP0190 output, Admin ErrorBoundary fixture output, and
+Flutter missing-default-desktop-plugin notices. An initial `adb` lookup through
+`PATH` failed; the installed Android SDK executable then verified the distinct
+R2Local package on the connected device.
+
+R2 implementation, immutable runtime, and owner acceptance are locally green;
+the final independent source/contract/runtime/receipt sign-off is now requested.
+R3 is next and has not started. Remote CI was not run, and no push or merge is
+claimed.
 
 Planning artifacts:
 
 - `docs/superpowers/specs/2026-08-13-modular-monolith-r2-prisma-schema-design.md`
 - `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`
 
-No owner phone PASS, R2 closeout, R3 start, push, merge, or remote-CI result is
-claimed.
+No R3 start, push, merge, or remote-CI result is claimed.
 
 ## Modular Monolith R1 Locally Complete - 2026-08-13
 

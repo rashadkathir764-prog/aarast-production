@@ -2,8 +2,20 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema/` as the schema source of truth.
 
-Current documentation snapshot: 2026-08-11. Route-level behavior belongs in
+Current documentation snapshot: 2026-08-14. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
+
+## R2 Physical Schema Layout
+
+The live Prisma source is the native `backend/prisma/schema/` folder. It has
+exactly 14 files: `_base.prisma` contains the existing generator and datasource,
+and 13 owner files contain exactly 52 models and 41 enums. All 76 migration
+directories and `backend/prisma/seed.ts` are byte-identical to immutable
+`R2_BASE` `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. The R2 normalized DMMF
+fingerprint matched the base, `prisma migrate diff` was empty, and the generated
+model table below remained byte-identical. This is a physical organization
+change only; it does not alter the database, Prisma Client contract, migration
+history, or product behavior.
 
 ## Current And Marketplace Entities
 

@@ -237,6 +237,7 @@ Task 1 measures cumulative R3 scope from that SHA.
 - Modify: `backend/.dependency-cruiser.cjs`
 - Modify: `backend/test/architecture-dependencies.test.ts`
 - Modify: `backend/package.json`
+- Modify (generated derived artifact): `docs/SCRIPTS.md`
 
 **Interfaces:**
 
@@ -326,6 +327,9 @@ are immutable for all later stages; only remaining arrays may shrink.
 Add the exact module metadata, token/implementation/method/consumer records,
 lifecycle providers, and exact allowed changed paths from the tables above and
 the live TypeScript AST. Sort every set canonically and reject duplicates.
+Because Task 1 adds the named `architecture:r3` package script, regenerate the
+tracked `docs/SCRIPTS.md` catalog in the same task and include that exact path
+in the fixed-base allowlist. No other generated documentation may change.
 
 - [ ] **Step 3: Implement scanners fail-closed**
 
@@ -356,10 +360,18 @@ public token. Add near-misses for direct concrete imports, wrong-owner tokens,
 - [ ] **Step 4: Implement fixed-base scope validation**
 
 Pin the exact SHA internally. Validate the manifest's explicit path allowlist,
-not a broad `modules/**` glob. Machine reports are absolute unique OS-temp JSON,
-pairwise distinct from inputs, reparse-safe, and atomically committed with
-rename as the last filesystem operation. CLI failures emit one fixed line and
-exit 2.
+not a broad `modules/**` glob. Machine reports are absolute unique OS-temp JSON
+and pairwise distinct from inputs. Write, flush, and reparse each payload through
+one owned descriptor in a private unique canonical OS-temp staging directory;
+revalidate the non-reparse parent and exact staging identity, then publish with
+one atomic no-clobber hard link as the final committed output operation. Fail
+closed if the filesystem does not support that primitive. This prevents partial
+reports, overwrites, reparse escapes, and ordinary destination/source races.
+Portable Node 22 has no descriptor-bound no-replace publish primitive, so
+hostile same-account mutation of the unpredictable staging entry in the final
+identity-check-to-link interval is explicitly outside this local architecture
+tool's threat model; do not claim general TOCTOU elimination. CLI failures emit
+one fixed line and exit 2.
 
 - [ ] **Step 5: Reach focused GREEN and run the live inventory gate**
 

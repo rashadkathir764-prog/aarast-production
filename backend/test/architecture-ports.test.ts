@@ -19,6 +19,9 @@ type DiagnosticKind =
   | 'platform-business-import'
   | 'retired-platform-root'
   | 'shared-kernel-direction-import'
+  | 'application-composition-import'
+  | 'application-composition-direction'
+  | 'cross-public-runtime-import'
   | 'nest-module-cycle'
   | 'unresolved-module-import';
 
@@ -1214,4 +1217,58 @@ test('the real CLI never reflects TypeChecker alias resolution failures', () => 
   assert.equal(result.stderr.trim(), 'ERROR - architecture ports scan failed');
   assert.doesNotMatch(output, /PASS - architecture ports|\[missing-approved-global\]/);
   assert.doesNotMatch(output, /ports-attacker-message|example\.test|ports-real|file:|malformed|attacker-sentinel|ports-real-secret|stack detail|\n\s*at\s+/i);
+});
+
+test('application composition imports only platform and exact business public slices', () => {
+  const allowed = scanPorts(fixtureProject({
+    'backend/src/platform/outbox/core.ts': 'export const core = true;\n',
+    'backend/src/modules/tasks/public/tasks-public.module.ts': 'export class TasksPublicModule {}\n',
+    'backend/src/application-composition/runtime.ts': [
+      "import '../platform/outbox/core';",
+      "import '../modules/tasks/public/tasks-public.module';",
+    ].join('\n'),
+  }));
+  assert.equal(allowed.diagnostics.length, 0);
+
+  const rejected = scanPorts(fixtureProject({
+    'backend/src/tasks/private.ts': 'export const value = true;\n',
+    'backend/src/modules/tasks/internal/private.ts': 'export const internal = true;\n',
+    'backend/src/application-composition/runtime.ts': [
+      "import '../tasks/private';",
+      "import '../modules/tasks/internal/private';",
+    ].join('\n'),
+    'backend/src/platform/bad.ts': "import '../application-composition/runtime';\n",
+    'backend/src/guests/bad.ts': "import '../application-composition/runtime';\n",
+  }));
+  assert.equal(
+    rejected.diagnostics.filter((item) => item.kind === 'application-composition-import').length,
+    2,
+  );
+  assert.equal(
+    rejected.diagnostics.filter((item) => item.kind === 'application-composition-direction').length,
+    2,
+  );
+});
+
+test('cross-owner public imports are type-only and never Nest metadata imports', () => {
+  const result = scanPorts(fixtureProject({
+    'backend/src/modules/guests/public/types.ts': 'export interface GuestView { id: string }\n',
+    'backend/src/modules/guests/public/guests-public.module.ts': 'export class GuestsPublicModule {}\n',
+    'backend/src/modules/tasks/public/legal.ts': [
+      "import type { GuestView } from '../../guests/public/types';",
+      'export interface TaskView { guest: GuestView }',
+    ].join('\n'),
+    'backend/src/modules/tasks/public/runtime.ts': "import { GuestsPublicModule } from '../../guests/public/guests-public.module'; void GuestsPublicModule;\n",
+    'backend/src/modules/tasks/public/task-public.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { GuestsPublicModule } from '../../guests/public/guests-public.module';",
+      '@Module({ imports: [GuestsPublicModule] })',
+      'export class TaskPublicModule {}',
+    ].join('\n'),
+  }));
+  assert.equal(
+    result.diagnostics.filter((item) => item.kind === 'cross-public-runtime-import').length,
+    2,
+  );
+  assert.equal(result.diagnostics.some((item) => item.path.endsWith('/legal.ts')), false);
 });

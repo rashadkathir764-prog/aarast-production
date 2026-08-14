@@ -68,6 +68,16 @@ const contextRules = businessContexts.flatMap(([name, ownRoots]) => {
     ownRoots,
   )];
 });
+const publicCrossOwnerRules = businessContexts.map(([name]) => ({
+  name: 'public-cross-owner-type-only',
+  comment: `Runtime dependencies from ${name} public to another owner public are forbidden`,
+  severity: 'error',
+  from: { path: `^src/modules/${escape(name)}/public(?:/|$)` },
+  to: {
+    path: `^src/modules/(?!${escape(name)}(?:/|$))[^/]+/public(?:/|$)`,
+    dependencyTypesNot: ['type-only'],
+  },
+}));
 
 module.exports = {
   forbidden: [
@@ -78,6 +88,22 @@ module.exports = {
       to: { circular: true },
     },
     ...contextRules,
+    {
+      name: 'application-composition-public-only',
+      severity: 'error',
+      from: { path: '^src/application-composition(?:/|$)' },
+      to: {
+        path: `^src/(?:${allBusinessPaths})(?:/|$)`,
+        pathNot: '^src/modules/[^/]+/public(?:/|$)',
+      },
+    },
+    {
+      name: 'application-composition-is-root-only',
+      severity: 'error',
+      from: { path: `^src/(?:platform|shared-kernel|${allBusinessPaths})(?:/|$)` },
+      to: { path: '^src/application-composition(?:/|$)' },
+    },
+    ...publicCrossOwnerRules,
     {
       name: 'domain-no-nest-runtime',
       severity: 'error',

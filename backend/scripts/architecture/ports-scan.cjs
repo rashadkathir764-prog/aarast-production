@@ -45,6 +45,9 @@ const ILLEGAL_IMPORT_KINDS = new Set([
   'platform-business-import',
   'retired-platform-root',
   'shared-kernel-direction-import',
+  'application-composition-import',
+  'application-composition-direction',
+  'cross-public-runtime-import',
 ]);
 const DIAGNOSTIC_MESSAGES = Object.freeze({
   'forward-ref': 'forwardRef resolved to @nestjs/common is forbidden',
@@ -55,6 +58,9 @@ const DIAGNOSTIC_MESSAGES = Object.freeze({
   'platform-business-import': 'platform cannot import business module code',
   'retired-platform-root': 'retired platform root is forbidden',
   'shared-kernel-direction-import': 'shared-kernel cannot import platform or business code',
+  'application-composition-import': 'application composition may import only platform and business public slices',
+  'application-composition-direction': 'application composition is a root and cannot be imported',
+  'cross-public-runtime-import': 'cross-owner public imports must be type-only',
   'nest-module-cycle': 'Nest module import cycle detected',
   'unresolved-module-import': 'cannot statically resolve Nest module import expression',
 });
@@ -206,6 +212,9 @@ function diagnostic(kind, repositoryPath, sourceFile, node, extra = {}) {
 function classifyRepositoryPath(repositoryPath) {
   if (!repositoryPath.startsWith('backend/src/')) return { kind: 'external' };
   const segments = repositoryPath.slice('backend/src/'.length).split('/');
+  if (segments[0] === 'application-composition') {
+    return { kind: 'application-composition', future: true };
+  }
   if (segments[0] === 'modules') {
     const context = segments[1];
     if (!BUSINESS_CONTEXTS.has(context)) return { kind: 'unclassified', future: true };
@@ -225,6 +234,20 @@ function classifyRepositoryPath(repositoryPath) {
   const context = LEGACY_ROOT_TO_CONTEXT.get(segments[0]);
   if (context) return { kind: 'business', context, future: false, public: false };
   return { kind: 'unclassified', future: false };
+}
+
+function isTypeOnlyModuleReference(statement) {
+  if (ts.isExportDeclaration(statement)) return Boolean(statement.isTypeOnly);
+  const clause = statement.importClause;
+  if (!clause) return false;
+  if (clause.isTypeOnly) return true;
+  const bindings = clause.namedBindings;
+  return Boolean(
+    bindings
+    && ts.isNamedImports(bindings)
+    && bindings.elements.length > 0
+    && bindings.elements.every((element) => element.isTypeOnly)
+  );
 }
 
 function resolveModuleFile(moduleSpecifier, sourceFile, compilerOptions) {
@@ -321,6 +344,53 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
       const targetFile = resolveModuleFile(specifier, sourceFile, compilerOptions);
       const targetPath = targetFile ? repositoryPathOrNull(targetFile, repoRoot) : null;
       const target = targetPath ? classifyRepositoryPath(targetPath) : { kind: 'external' };
+
+      if (
+        source.kind === 'application-composition'
+        && target.kind !== 'external'
+        && target.kind !== 'platform'
+        && !(target.kind === 'business' && target.future && target.public)
+      ) {
+        diagnostics.push(diagnostic(
+          'application-composition-import',
+          repositoryPath,
+          sourceFile,
+          statement,
+        ));
+        continue;
+      }
+
+      if (
+        target.kind === 'application-composition'
+        && (source.kind === 'platform' || source.kind === 'business' || source.kind === 'shared-kernel')
+      ) {
+        diagnostics.push(diagnostic(
+          'application-composition-direction',
+          repositoryPath,
+          sourceFile,
+          statement,
+        ));
+        continue;
+      }
+
+      if (
+        source.kind === 'business'
+        && source.future
+        && source.public
+        && target.kind === 'business'
+        && target.future
+        && target.public
+        && source.context !== target.context
+        && !isTypeOnlyModuleReference(statement)
+      ) {
+        diagnostics.push(diagnostic(
+          'cross-public-runtime-import',
+          repositoryPath,
+          sourceFile,
+          statement,
+        ));
+        continue;
+      }
 
       if (source.kind === 'business' && source.future && source.domain) {
         if (

@@ -1,0 +1,4916 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
+  "stage": "inventory",
+  "contexts": [
+    "identity",
+    "planning",
+    "finance",
+    "collaboration",
+    "tasks",
+    "guests",
+    "marketplace",
+    "messaging",
+    "notifications",
+    "catalog",
+    "media",
+    "insights",
+    "backoffice"
+  ],
+  "contextRoots": [
+    {
+      "context": "identity",
+      "legacyRoots": [
+        "auth",
+        "users",
+        "me",
+        "contexts"
+      ]
+    },
+    {
+      "context": "planning",
+      "legacyRoots": [
+        "wedding-plans",
+        "onboarding"
+      ]
+    },
+    {
+      "context": "finance",
+      "legacyRoots": [
+        "money",
+        "budget-categories",
+        "wedding-costs"
+      ]
+    },
+    {
+      "context": "collaboration",
+      "legacyRoots": [
+        "sharing",
+        "contribution-history"
+      ]
+    },
+    {
+      "context": "tasks",
+      "legacyRoots": [
+        "tasks"
+      ]
+    },
+    {
+      "context": "guests",
+      "legacyRoots": [
+        "guests"
+      ]
+    },
+    {
+      "context": "marketplace",
+      "legacyRoots": [
+        "marketplace",
+        "provider-dashboard"
+      ]
+    },
+    {
+      "context": "messaging",
+      "legacyRoots": [
+        "conversations"
+      ]
+    },
+    {
+      "context": "notifications",
+      "legacyRoots": [
+        "notifications",
+        "push"
+      ]
+    },
+    {
+      "context": "catalog",
+      "legacyRoots": [
+        "catalogs"
+      ]
+    },
+    {
+      "context": "media",
+      "legacyRoots": [
+        "media"
+      ]
+    },
+    {
+      "context": "insights",
+      "legacyRoots": [
+        "dashboard",
+        "timeline"
+      ]
+    },
+    {
+      "context": "backoffice",
+      "legacyRoots": [
+        "admin"
+      ]
+    }
+  ],
+  "legacyModules": [
+    {
+      "path": "backend/src/admin/admin.module.ts",
+      "className": "AdminModule",
+      "imports": [
+        "ConversationRealtimeModule",
+        "NotificationsModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "AdminAuditService",
+        "AdminGuard",
+        "AdminPermissionGuard",
+        "AdminService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/app.module.ts",
+      "className": "AppModule",
+      "imports": [
+        "AdminModule",
+        "AuthModule",
+        "BudgetCategoriesModule",
+        "CatalogsModule",
+        "ContextsModule",
+        "ContributionHistoryModule",
+        "ConversationsModule",
+        "DashboardModule",
+        "GuestsModule",
+        "MarketplaceModule",
+        "MeModule",
+        "MediaModule",
+        "MoneyModule",
+        "NotificationsModule",
+        "OnboardingModule",
+        "OutboxModule",
+        "PrismaModule",
+        "ProviderDashboardModule",
+        "ScheduleModule.forRoot()",
+        "SharingModule",
+        "TasksModule",
+        "ThrottlerModule.forRootAsync({\n      useFactory: () => {\n        const redisUrl = process.env.REDIS_URL?.trim();\n        // Tunable so load tests and unusual deployments can raise the\n        // global ceiling without a rebuild. Per-route @Throttle limits\n        // on auth endpoints are unaffected.\n        const limit = Number(process.env.THROTTLE_LIMIT ?? 1_000);\n        const ttl = Number(process.env.THROTTLE_TTL_MS ?? 60_000);\n        return {\n          throttlers: [\n            {\n              ttl: Number.isFinite(ttl) && ttl > 0 ? ttl : 60_000,\n              limit: Number.isFinite(limit) && limit > 0 ? limit : 1_000,\n            },\n          ],\n          ...(redisUrl\n            ? {\n                storage: new ResilientThrottlerStorage(\n                  new ThrottlerStorageRedisService(redisUrl),\n                ),\n              }\n            : {}),\n        };\n      },\n    })",
+        "TimelineModule",
+        "UsersModule",
+        "WeddingCostsModule",
+        "WeddingPlansModule"
+      ],
+      "providers": [
+        "IdempotencyCleanupScheduler",
+        "ReadinessService",
+        "{\n      provide: APP_GUARD,\n      useClass: ThrottlerGuard,\n    }",
+        "{\n      provide: APP_INTERCEPTOR,\n      useClass: AdminAuditInterceptor,\n    }",
+        "{\n      provide: APP_INTERCEPTOR,\n      useClass: IdempotencyInterceptor,\n    }",
+        "{ provide: READINESS_FETCH, useValue: fetch }"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/auth/auth.module.ts",
+      "className": "AuthModule",
+      "imports": [
+        "ConversationRealtimeModule",
+        "JwtModule.registerAsync({\n      useFactory: () => ({\n        secret: getJwtSecret(),\n        signOptions: {\n          expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as '15m',\n        },\n      }),\n    })",
+        "PassportModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "AuthChallengeCleanupScheduler",
+        "AuthService",
+        "JwtStrategy",
+        "LoginThrottleCleanupScheduler",
+        "LoginThrottleService",
+        "OtpDispatchQuotaCleanupScheduler",
+        "OtpDispatchQuotaService",
+        "{ provide: OTP_DISPATCH_NOW, useValue: () => new Date() }"
+      ],
+      "exports": [
+        "AuthService",
+        "JwtModule"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/budget-categories/budget-categories.module.ts",
+      "className": "BudgetCategoriesModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "BudgetCategoriesService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/catalogs/catalogs.module.ts",
+      "className": "CatalogsModule",
+      "imports": [
+        "PrismaModule"
+      ],
+      "providers": [
+        "AdminGuard",
+        "AdminPermissionGuard",
+        "AdministrativeCatalogService",
+        "ReferenceCatalogService"
+      ],
+      "exports": [
+        "AdministrativeCatalogService",
+        "ReferenceCatalogService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/contexts/contexts.module.ts",
+      "className": "ContextsModule",
+      "imports": [
+        "AuthModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "ContextsService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/contribution-history/contribution-history.module.ts",
+      "className": "ContributionHistoryModule",
+      "imports": [
+        "AuthModule"
+      ],
+      "providers": [
+        "ContributionHistoryService",
+        "ContributorScopeService"
+      ],
+      "exports": [
+        "ContributionHistoryService",
+        "ContributorScopeService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/conversations/conversation-realtime.module.ts",
+      "className": "ConversationRealtimeModule",
+      "imports": [],
+      "providers": [
+        "ConversationRealtimePublisher"
+      ],
+      "exports": [
+        "ConversationRealtimePublisher"
+      ],
+      "global": true
+    },
+    {
+      "path": "backend/src/conversations/conversations.module.ts",
+      "className": "ConversationsModule",
+      "imports": [
+        "AuthModule",
+        "ConversationRealtimeModule",
+        "MediaModule",
+        "NotificationsModule",
+        "OutboxModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "ConversationsGateway",
+        "ConversationsService"
+      ],
+      "exports": [
+        "ConversationsService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/dashboard/dashboard.module.ts",
+      "className": "DashboardModule",
+      "imports": [
+        "ContributionHistoryModule",
+        "NotificationsModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "DashboardService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/guests/guests.module.ts",
+      "className": "GuestsModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "GuestsService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/marketplace/marketplace.module.ts",
+      "className": "MarketplaceModule",
+      "imports": [
+        "ContributionHistoryModule",
+        "NotificationsModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "MarketplaceService"
+      ],
+      "exports": [
+        "MarketplaceService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/me/me.module.ts",
+      "className": "MeModule",
+      "imports": [
+        "AuthModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/media/media.module.ts",
+      "className": "MediaModule",
+      "imports": [],
+      "providers": [
+        "MediaStorageService",
+        "MediaUploadCleanupScheduler",
+        "MediaUploadTicketService"
+      ],
+      "exports": [
+        "MediaStorageService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/money/money.module.ts",
+      "className": "MoneyModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "MoneyBudgetService",
+        "MoneySummaryService"
+      ],
+      "exports": [
+        "MoneyBudgetService",
+        "MoneySummaryService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/notifications/notifications.module.ts",
+      "className": "NotificationsModule",
+      "imports": [
+        "AuthModule",
+        "OutboxModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "NotificationRemindersScheduler",
+        "NotificationsService",
+        "PermissionService"
+      ],
+      "exports": [
+        "NotificationsService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/onboarding/onboarding.module.ts",
+      "className": "OnboardingModule",
+      "imports": [
+        "AuthModule",
+        "WeddingPlansModule"
+      ],
+      "providers": [
+        "OnboardingService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/platform/database/prisma.module.ts",
+      "className": "PrismaModule",
+      "imports": [],
+      "providers": [
+        "PrismaService"
+      ],
+      "exports": [
+        "PrismaService"
+      ],
+      "global": true
+    },
+    {
+      "path": "backend/src/platform/outbox/outbox.module.ts",
+      "className": "OutboxModule",
+      "imports": [
+        "ConversationRealtimeModule",
+        "PrismaModule",
+        "PushModule"
+      ],
+      "providers": [
+        "OutboxCleanupScheduler",
+        "OutboxDispatcher",
+        "OutboxService",
+        "OutboxWorker"
+      ],
+      "exports": [
+        "OutboxService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/provider-dashboard/provider-dashboard.module.ts",
+      "className": "ProviderDashboardModule",
+      "imports": [
+        "MediaModule",
+        "NotificationsModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "ProviderDashboardService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/push/push.module.ts",
+      "className": "PushModule",
+      "imports": [
+        "AuthModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "FirebasePushClient",
+        "PushDeliveryService",
+        "PushInstallationsService"
+      ],
+      "exports": [
+        "FirebasePushClient",
+        "PushDeliveryService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/sharing/sharing.module.ts",
+      "className": "SharingModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "NotificationsModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "InvitationDeliveryService",
+        "InviteAccessService",
+        "PermissionService",
+        "SharingService"
+      ],
+      "exports": [
+        "PermissionService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/tasks/tasks.module.ts",
+      "className": "TasksModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "NotificationsModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "TasksService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/timeline/timeline.module.ts",
+      "className": "TimelineModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "TimelineService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/users/users.module.ts",
+      "className": "UsersModule",
+      "imports": [
+        "ConversationRealtimeModule",
+        "MediaModule",
+        "PrismaModule",
+        "PushModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "UsersService"
+      ],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/wedding-costs/wedding-costs.module.ts",
+      "className": "WeddingCostsModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "WeddingCostsService"
+      ],
+      "exports": [
+        "WeddingCostsService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/wedding-plans/wedding-plans.module.ts",
+      "className": "WeddingPlansModule",
+      "imports": [
+        "AuthModule",
+        "ContributionHistoryModule",
+        "PrismaModule",
+        "SharingModule"
+      ],
+      "providers": [
+        "WeddingPlansService"
+      ],
+      "exports": [
+        "WeddingPlansService"
+      ],
+      "global": false
+    }
+  ],
+  "crossContextInjections": [
+    {
+      "source": "backend/src/admin/admin.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "backoffice",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/admin/admin.service.ts",
+      "parameter": "realtime",
+      "target": "ConversationRealtimePublisher",
+      "targetPath": "backend/src/conversations/conversation-realtime.publisher.ts",
+      "sourceContext": "backoffice",
+      "targetContext": "messaging",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/auth/auth.service.ts",
+      "parameter": "realtime",
+      "target": "ConversationRealtimePublisher",
+      "targetPath": "backend/src/conversations/conversation-realtime.publisher.ts",
+      "sourceContext": "identity",
+      "targetContext": "messaging",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/budget-categories/budget-categories.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/budget-categories/budget-categories.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/budget-categories/budget-categories.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/contexts/contexts.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "identity",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/conversations/conversations.service.ts",
+      "parameter": "mediaStorage",
+      "target": "MediaStorageService",
+      "targetPath": "backend/src/media/media-storage.service.ts",
+      "sourceContext": "messaging",
+      "targetContext": "media",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/conversations/conversations.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "messaging",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/dashboard/dashboard.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "insights",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/dashboard/dashboard.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "insights",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/dashboard/dashboard.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "insights",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/dashboard/dashboard.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "insights",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/guests/guests.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "guests",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/guests/guests.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "guests",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/guests/guests.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "guests",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/marketplace/marketplace.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "marketplace",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/marketplace/marketplace.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "marketplace",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/marketplace/marketplace.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "marketplace",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/money/money-budget.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/money/money-summary.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/money/money-summary.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/notifications/notifications.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "notifications",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+      "parameter": "mediaStorage",
+      "target": "MediaStorageService",
+      "targetPath": "backend/src/media/media-storage.service.ts",
+      "sourceContext": "marketplace",
+      "targetContext": "media",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "marketplace",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/sharing/invite-access.service.ts",
+      "parameter": "auth",
+      "target": "AuthService",
+      "targetPath": "backend/src/auth/auth.service.ts",
+      "sourceContext": "collaboration",
+      "targetContext": "identity",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/sharing/sharing.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "collaboration",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/sharing/sharing.service.ts",
+      "parameter": "realtime",
+      "target": "ConversationRealtimePublisher",
+      "targetPath": "backend/src/conversations/conversation-realtime.publisher.ts",
+      "sourceContext": "collaboration",
+      "targetContext": "messaging",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/tasks/tasks.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "tasks",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/tasks/tasks.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "tasks",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/tasks/tasks.service.ts",
+      "parameter": "notifications",
+      "target": "NotificationsService",
+      "targetPath": "backend/src/notifications/notifications.service.ts",
+      "sourceContext": "tasks",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/tasks/tasks.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "tasks",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/timeline/timeline.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "insights",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/timeline/timeline.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "insights",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/users/users.service.ts",
+      "parameter": "firebasePush",
+      "target": "FirebasePushClient",
+      "targetPath": "backend/src/push/firebase-push.client.ts",
+      "sourceContext": "identity",
+      "targetContext": "notifications",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/users/users.service.ts",
+      "parameter": "mediaStorage",
+      "target": "MediaStorageService",
+      "targetPath": "backend/src/media/media-storage.service.ts",
+      "sourceContext": "identity",
+      "targetContext": "media",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/users/users.service.ts",
+      "parameter": "permissionService",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "identity",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/users/users.service.ts",
+      "parameter": "realtime",
+      "target": "ConversationRealtimePublisher",
+      "targetPath": "backend/src/conversations/conversation-realtime.publisher.ts",
+      "sourceContext": "identity",
+      "targetContext": "messaging",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/wedding-costs/wedding-costs.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/wedding-costs/wedding-costs.service.ts",
+      "parameter": "contributorScope",
+      "target": "ContributorScopeService",
+      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/wedding-costs/wedding-costs.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "finance",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/wedding-plans/wedding-plans.service.ts",
+      "parameter": "contributionHistory",
+      "target": "ContributionHistoryService",
+      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
+      "sourceContext": "planning",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    },
+    {
+      "source": "backend/src/wedding-plans/wedding-plans.service.ts",
+      "parameter": "permissions",
+      "target": "PermissionService",
+      "targetPath": "backend/src/sharing/permission.service.ts",
+      "sourceContext": "planning",
+      "targetContext": "collaboration",
+      "kind": "constructor-injection"
+    }
+  ],
+  "compositionDependencies": [
+    {
+      "key": "app-jwt-module-availability",
+      "kind": "module-availability",
+      "retirementTask": 5
+    },
+    {
+      "key": "readiness-media-storage",
+      "kind": "provider",
+      "retirementTask": 2
+    },
+    {
+      "key": "outbox-dispatcher-realtime",
+      "kind": "provider",
+      "retirementTask": 2
+    },
+    {
+      "key": "outbox-dispatcher-push",
+      "kind": "provider",
+      "retirementTask": 2
+    },
+    {
+      "key": "outbox-module-realtime",
+      "kind": "module",
+      "retirementTask": 2
+    },
+    {
+      "key": "outbox-module-push",
+      "kind": "module",
+      "retirementTask": 2
+    }
+  ],
+  "providerContracts": [
+    {
+      "token": "IDENTITY_AUTH_PORT",
+      "methods": [
+        "requestInviteOtp",
+        "verifyInviteOtp"
+      ],
+      "implementations": [
+        "AuthService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/sharing/invite-access.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "IDENTITY_ACCESS_TOKEN_VERIFIER",
+      "methods": [
+        "verifyAsync"
+      ],
+      "implementations": [
+        "JwtService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/conversations/conversations.gateway.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "COLLABORATION_PERMISSION_PORT",
+      "methods": [
+        "assertPlanReadable",
+        "assertPlanReadableInTransaction",
+        "assertPlanReadableForUserUpdateInTransaction",
+        "assertPlanManageableForUpdateInTransaction",
+        "assertTaskManageableInTransaction",
+        "assertGuestManageableInTransaction",
+        "assertMoneyReadable",
+        "assertMoneyReadableInTransaction",
+        "assertMoneyManageable",
+        "assertMoneyManageableInTransaction",
+        "assertMoneyManageableForUpdateInTransaction",
+        "assertProviderManageable",
+        "assertProviderManageableInTransaction",
+        "assertProviderAndMoneyManageableInTransaction",
+        "assertMemberManageable",
+        "assertMemberManageableInTransaction",
+        "canViewMoney",
+        "canManageTasks",
+        "canManageGuests",
+        "canManageMoney",
+        "canManagePlan",
+        "canManageProviders",
+        "canManageMembers",
+        "livePlanAuthorizationWhere"
+      ],
+      "implementations": [
+        "PermissionService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/budget-categories/budget-categories.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/contexts/contexts.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/dashboard/dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/guests/guests.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/marketplace/marketplace.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/money/money-budget.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/money/money-summary.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/notifications/notifications.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/tasks/tasks.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/timeline/timeline.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/users/users.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/wedding-costs/wedding-costs.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/wedding-plans/wedding-plans.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "COLLABORATION_HISTORY_PORT",
+      "methods": [
+        "recordInTransaction",
+        "recordForContextInTransaction",
+        "ensureTenureInTransaction"
+      ],
+      "implementations": [
+        "ContributionHistoryService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/budget-categories/budget-categories.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/dashboard/dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/guests/guests.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/marketplace/marketplace.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/tasks/tasks.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/wedding-costs/wedding-costs.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/wedding-plans/wedding-plans.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "COLLABORATION_SCOPE_PORT",
+      "methods": [
+        "qualifyingEntityIds",
+        "qualifyingEntityIdsInTransaction"
+      ],
+      "implementations": [
+        "ContributorScopeService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/budget-categories/budget-categories.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/dashboard/dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/guests/guests.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/money/money-summary.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/tasks/tasks.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/timeline/timeline.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/wedding-costs/wedding-costs.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "MESSAGING_REALTIME_PORT",
+      "methods": [
+        "revokeConversationAccess",
+        "dispatchMessageAvailable",
+        "dispatchActivityAvailable",
+        "dispatchNotificationAvailable",
+        "dispatchConversationAccessRevoked",
+        "dispatchUserSessionsRevoked",
+        "dispatchSessionRevoked",
+        "disconnectUser",
+        "disconnectSession"
+      ],
+      "implementations": [
+        "ConversationRealtimePublisher"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/admin/admin.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/auth/auth.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/sharing/sharing.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/users/users.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "NOTIFICATIONS_PORT",
+      "methods": [
+        "createNotificationInTransaction",
+        "resolveProviderUpdateRecipientInTransaction",
+        "notifyTaskDue",
+        "purgeMoneyForMember",
+        "visibilityWhereForUser"
+      ],
+      "implementations": [
+        "NotificationsService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/admin/admin.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/conversations/conversations.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/dashboard/dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/marketplace/marketplace.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/sharing/sharing.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/tasks/tasks.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "PUSH_DELIVERY_PORT",
+      "methods": [
+        "dispatchNotification"
+      ],
+      "implementations": [
+        "PushDeliveryService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/platform/outbox/outbox.dispatcher.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "PUSH_CAPABILITY_PORT",
+      "methods": [
+        "enabled"
+      ],
+      "implementations": [
+        "FirebasePushClient"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/users/users.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "MEDIA_STORAGE_PORT",
+      "methods": [
+        "createDownloadUrl",
+        "verifyUpload",
+        "verifyPublicMediaUrl",
+        "consumeUpload",
+        "consumePublicMediaUrl",
+        "scheduleTargetDeletion",
+        "scheduleAllOwnedMediaDeletion",
+        "scheduleApplicationIdentityMediaDeletion",
+        "lockAccountDeletionBoundary",
+        "checkReadiness"
+      ],
+      "implementations": [
+        "MediaStorageService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/conversations/conversations.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/users/users.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    }
+  ],
+  "decoratorRuntimeReferences": [
+    {
+      "source": "backend/src/admin/admin-audit.controller.ts",
+      "symbol": "JwtSessionGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "AdminAuditController",
+          "method": null,
+          "routePrefix": "admin/audit-logs",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/admin/admin.controller.ts",
+      "symbol": "JwtSessionGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "AdminController",
+          "method": null,
+          "routePrefix": "admin",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/budget-categories/budget-categories.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "BudgetCategoriesController",
+          "method": null,
+          "routePrefix": "api/v1/budget-categories",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanBudgetCategoriesController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/budget-categories",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/catalogs/catalogs.controller.ts",
+      "symbol": "JwtSessionGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": null,
+          "routePrefix": "admin",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": null,
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/contexts/contexts.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ContextsController",
+          "method": null,
+          "routePrefix": "api/v1/contexts",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/contribution-history/contribution-history.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ContributionHistoryController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/contributions",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/conversations/conversations.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ConversationsController",
+          "method": null,
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "QuoteRequestConversationsController",
+          "method": null,
+          "routePrefix": "api/v1/quote-requests",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/dashboard/dashboard.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "DashboardController",
+          "method": null,
+          "routePrefix": "api/v1/dashboard",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanDashboardController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:planId",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/guests/guests.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "GuestGroupsController",
+          "method": null,
+          "routePrefix": "api/v1/guest-groups",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "GuestsController",
+          "method": null,
+          "routePrefix": "api/v1/guests",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanGuestGroupsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guest-groups",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanGuestsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guests",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/marketplace/marketplace.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ApiV1QuoteOffersController",
+          "method": null,
+          "routePrefix": "api/v1/quote-offers",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1QuoteRequestsController",
+          "method": null,
+          "routePrefix": "api/v1/quote-requests",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanQuoteRequestsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/quote-requests",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "MeMarketplaceController",
+          "method": null,
+          "routePrefix": "api/v1/me",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "createQuoteRequest",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "POST",
+          "routePath": ":id/quote-requests",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "createReview",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "POST",
+          "routePath": ":id/reviews",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "favoriteProvider",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "POST",
+          "routePath": ":id/favorite",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "unfavoriteProvider",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "DELETE",
+          "routePath": ":id/favorite",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ReviewsController",
+          "method": null,
+          "routePrefix": "api/v1/reviews",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/me/me.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "MeController",
+          "method": null,
+          "routePrefix": "api/v1/me",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/media/media.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "MediaController",
+          "method": null,
+          "routePrefix": "api/v1/media/uploads",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/money/money-summary.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "MoneySummaryController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:planId",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/notifications/notifications.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "NotificationsController",
+          "method": null,
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/onboarding/onboarding.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "OnboardingController",
+          "method": null,
+          "routePrefix": "api/v1/onboarding",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/provider-dashboard/provider-dashboard.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ProviderApplicationController",
+          "method": null,
+          "routePrefix": "api/v1/provider",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": null,
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/push/push.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "PushController",
+          "method": null,
+          "routePrefix": "api/v1/push/installations",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/sharing/sharing.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ApiV1InviteAcceptController",
+          "method": null,
+          "routePrefix": "api/v1/invites",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1InvitesController",
+          "method": null,
+          "routePrefix": "api/v1/invites",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanPermissionsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/permissions",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "SharedWeddingPlansController",
+          "method": null,
+          "routePrefix": "api/v1/shared",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/tasks/tasks.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "TasksController",
+          "method": null,
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanTasksController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/tasks",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/timeline/timeline.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "TimelineController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/timeline",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/users/users.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "UsersController",
+          "method": null,
+          "routePrefix": "api/v1/users",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/wedding-costs/wedding-costs.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "CostPaymentsController",
+          "method": null,
+          "routePrefix": "api/v1/cost-payments",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": null,
+          "routePrefix": "api/v1/costs",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "PaymentSchedulesController",
+          "method": null,
+          "routePrefix": "api/v1/payment-schedules",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanCostPaymentsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/cost-payments",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanCostsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/costs",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "WeddingPlanPaymentSchedulesController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/payment-schedules",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/wedding-plans/wedding-plans.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    }
+  ],
+  "adminGuardMetadata": [
+    {
+      "source": "backend/src/admin/admin-audit.controller.ts",
+      "controllerClass": "AdminAuditController",
+      "routePrefix": "admin/audit-logs",
+      "guards": [
+        "JwtSessionGuard",
+        "AdminGuard",
+        "AdminPermissionGuard"
+      ]
+    },
+    {
+      "source": "backend/src/admin/admin.controller.ts",
+      "controllerClass": "AdminController",
+      "routePrefix": "admin",
+      "guards": [
+        "JwtSessionGuard",
+        "AdminGuard",
+        "AdminPermissionGuard"
+      ]
+    },
+    {
+      "source": "backend/src/catalogs/catalogs.controller.ts",
+      "controllerClass": "AdminAdministrativeCatalogController",
+      "routePrefix": "admin",
+      "guards": [
+        "JwtSessionGuard",
+        "AdminGuard",
+        "AdminPermissionGuard"
+      ]
+    },
+    {
+      "source": "backend/src/catalogs/catalogs.controller.ts",
+      "controllerClass": "AdminReferenceCatalogsController",
+      "routePrefix": "admin/reference-catalogs",
+      "guards": [
+        "JwtSessionGuard",
+        "AdminGuard",
+        "AdminPermissionGuard"
+      ]
+    }
+  ],
+  "runtimeDecoratorValueReferences": [
+    {
+      "source": "backend/src/admin/admin-audit.controller.ts",
+      "symbol": "RequireAdminPermission",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "AdminAuditController",
+          "method": "list",
+          "routePrefix": "admin/audit-logs",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/admin/admin-permission.guard.ts",
+      "symbol": "ADMIN_PERMISSIONS_KEY",
+      "kind": "runtime-value",
+      "uses": [
+        {
+          "controllerClass": "AdminPermissionGuard",
+          "method": "canActivate",
+          "routePrefix": null,
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/admin/admin.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "AdminController",
+          "method": "activateProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/activate",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "activateUser",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "users/:id/activate",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "approveProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/approve",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "archiveNotification",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "notifications/:id/archive",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "createCategory",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "provider-categories",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "createCity",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "cities",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "createService",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "services",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteCategory",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "provider-categories/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteCity",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "cities/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteNotification",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "notifications/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteService",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "services/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "disableUser",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "users/:id/disable",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "hideReview",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "reviews/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "markNotificationRead",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "notifications/:id/read",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "rejectProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/reject",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "requestProviderChanges",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/request-changes",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "suspendProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/suspend",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateCategory",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "provider-categories/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateCity",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "cities/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateConversationReportStatus",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "conversation-reports/:id/status",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateReviewStatus",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "reviews/:id/status",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateService",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "services/:id",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/admin/admin.controller.ts",
+      "symbol": "RequireAdminPermission",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "AdminController",
+          "method": "activateProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/activate",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "activateUser",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "users/:id/activate",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "approveProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/approve",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "archiveNotification",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "notifications/:id/archive",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "createCategory",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "provider-categories",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "createCity",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "cities",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "createService",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "services",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteCategory",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "provider-categories/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteCity",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "cities/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteNotification",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "notifications/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "deleteService",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "services/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "disableUser",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "users/:id/disable",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "getDashboardStats",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "dashboard/stats",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "getProviderApplication",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "providers/applications/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "getProvider",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "providers/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "getReportsOverview",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "reports/overview",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "getUnreadNotificationsCount",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "notifications/unread-count",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "getUser",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "users/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "hideReview",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "reviews/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listCategories",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "provider-categories",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listCities",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "cities",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listConversationReports",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "conversation-reports",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listNotifications",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "notifications",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listProviderApplications",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "providers/applications",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listProviders",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "providers",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listReviews",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "reviews",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listServices",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "services",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "listUsers",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "users",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "markNotificationRead",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "notifications/:id/read",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "rejectProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/reject",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "requestProviderChanges",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/request-changes",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "suspendProvider",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "providers/:id/suspend",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateCategory",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "provider-categories/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateCity",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "cities/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateConversationReportStatus",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "conversation-reports/:id/status",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateReviewStatus",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "reviews/:id/status",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminController",
+          "method": "updateService",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "services/:id",
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/budget-categories/budget-categories.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "BudgetCategoriesController",
+          "method": "remove",
+          "routePrefix": "api/v1/budget-categories",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "BudgetCategoriesController",
+          "method": "update",
+          "routePrefix": "api/v1/budget-categories",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanBudgetCategoriesController",
+          "method": "create",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/budget-categories",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanBudgetCategoriesController",
+          "method": "findForPlan",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/budget-categories",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/catalogs/catalogs.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "createDistrict",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "governorates/:id/districts",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "createGovernorate",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "governorates",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "createLocality",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "districts/:id/localities",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "disableDistrict",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "districts/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "disableGovernorate",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "governorates/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "disableLocality",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "localities/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "updateDistrict",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "districts/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "updateGovernorate",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "governorates/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "updateLocality",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "localities/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "createItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "POST",
+          "routePath": ":catalogKey/items",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "disableItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "DELETE",
+          "routePath": ":catalogKey/items/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "publishItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "POST",
+          "routePath": ":catalogKey/items/:id/publish",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "updateItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "PATCH",
+          "routePath": ":catalogKey/items/:id",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/catalogs/catalogs.controller.ts",
+      "symbol": "RequireAdminPermission",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "createDistrict",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "governorates/:id/districts",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "createGovernorate",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "governorates",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "createLocality",
+          "routePrefix": "admin",
+          "routeMethod": "POST",
+          "routePath": "districts/:id/localities",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "disableDistrict",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "districts/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "disableGovernorate",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "governorates/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "disableLocality",
+          "routePrefix": "admin",
+          "routeMethod": "DELETE",
+          "routePath": "localities/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "listDistricts",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "governorates/:id/districts",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "listGovernorates",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "governorates",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "listLocalities",
+          "routePrefix": "admin",
+          "routeMethod": "GET",
+          "routePath": "districts/:id/localities",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "updateDistrict",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "districts/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "updateGovernorate",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "governorates/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminAdministrativeCatalogController",
+          "method": "updateLocality",
+          "routePrefix": "admin",
+          "routeMethod": "PATCH",
+          "routePath": "localities/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "createItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "POST",
+          "routePath": ":catalogKey/items",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "disableItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "DELETE",
+          "routePath": ":catalogKey/items/:id",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "getCatalog",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "GET",
+          "routePath": ":catalogKey",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "listCatalogs",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "publishItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "POST",
+          "routePath": ":catalogKey/items/:id/publish",
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "AdminReferenceCatalogsController",
+          "method": "updateItem",
+          "routePrefix": "admin/reference-catalogs",
+          "routeMethod": "PATCH",
+          "routePath": ":catalogKey/items/:id",
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/contexts/contexts.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ContextsController",
+          "method": "list",
+          "routePrefix": "api/v1/contexts",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ContextsController",
+          "method": "validate",
+          "routePrefix": "api/v1/contexts",
+          "routeMethod": "POST",
+          "routePath": "validate",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/contribution-history/contribution-history.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ContributionHistoryController",
+          "method": "list",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/contributions",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ContributionHistoryController",
+          "method": "summary",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/contributions",
+          "routeMethod": "GET",
+          "routePath": "summary",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/conversations/conversations.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ConversationsController",
+          "method": "block",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "PATCH",
+          "routePath": ":id/block",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "downloadAttachment",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "GET",
+          "routePath": ":id/attachments/:attachmentId/download",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "get",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "list",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "markRead",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "PATCH",
+          "routePath": ":id/read",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "messages",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "GET",
+          "routePath": ":id/messages",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "mute",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "PATCH",
+          "routePath": ":id/mute",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "quoteRequests",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "GET",
+          "routePath": ":id/quote-requests",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "report",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "POST",
+          "routePath": ":id/report",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "send",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "POST",
+          "routePath": ":id/messages",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ConversationsController",
+          "method": "timeline",
+          "routePrefix": "api/v1/conversations",
+          "routeMethod": "GET",
+          "routePath": ":id/timeline",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "QuoteRequestConversationsController",
+          "method": "getForQuote",
+          "routePrefix": "api/v1/quote-requests",
+          "routeMethod": "GET",
+          "routePath": ":quoteRequestId/conversation",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/dashboard/dashboard.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "DashboardController",
+          "method": "getHome",
+          "routePrefix": "api/v1/dashboard",
+          "routeMethod": "GET",
+          "routePath": "home",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanDashboardController",
+          "method": "getDashboardSummary",
+          "routePrefix": "api/v1/wedding-plans/:planId",
+          "routeMethod": "GET",
+          "routePath": "dashboard-summary",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/guests/guests.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "GuestGroupsController",
+          "method": "removeGroup",
+          "routePrefix": "api/v1/guest-groups",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "GuestGroupsController",
+          "method": "updateGroup",
+          "routePrefix": "api/v1/guest-groups",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "GuestsController",
+          "method": "findOne",
+          "routePrefix": "api/v1/guests",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "GuestsController",
+          "method": "remove",
+          "routePrefix": "api/v1/guests",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "GuestsController",
+          "method": "update",
+          "routePrefix": "api/v1/guests",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanGuestGroupsController",
+          "method": "createGroup",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guest-groups",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanGuestGroupsController",
+          "method": "findGroups",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guest-groups",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanGuestsController",
+          "method": "bulkCreate",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guests",
+          "routeMethod": "POST",
+          "routePath": "bulk",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanGuestsController",
+          "method": "create",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guests",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanGuestsController",
+          "method": "findForPlan",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guests",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanGuestsController",
+          "method": "summary",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/guests",
+          "routeMethod": "GET",
+          "routePath": "summary",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/marketplace/marketplace.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ApiV1QuoteOffersController",
+          "method": "acceptOffer",
+          "routePrefix": "api/v1/quote-offers",
+          "routeMethod": "PATCH",
+          "routePath": ":id/accept",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1QuoteOffersController",
+          "method": "rejectOffer",
+          "routePrefix": "api/v1/quote-offers",
+          "routeMethod": "PATCH",
+          "routePath": ":id/reject",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1QuoteRequestsController",
+          "method": "cancelQuoteRequest",
+          "routePrefix": "api/v1/quote-requests",
+          "routeMethod": "PATCH",
+          "routePath": ":id/cancel",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1QuoteRequestsController",
+          "method": "findQuoteRequest",
+          "routePrefix": "api/v1/quote-requests",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanQuoteRequestsController",
+          "method": "createQuoteRequest",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/quote-requests",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanQuoteRequestsController",
+          "method": "findQuoteRequests",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/quote-requests",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "MeMarketplaceController",
+          "method": "cancelMyQuoteRequest",
+          "routePrefix": "api/v1/me",
+          "routeMethod": "PATCH",
+          "routePath": "quote-requests/:id/cancel",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "MeMarketplaceController",
+          "method": "findMyFavoriteProviders",
+          "routePrefix": "api/v1/me",
+          "routeMethod": "GET",
+          "routePath": "favorite-providers",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "MeMarketplaceController",
+          "method": "findMyQuoteRequests",
+          "routePrefix": "api/v1/me",
+          "routeMethod": "GET",
+          "routePath": "quote-requests",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "MeMarketplaceController",
+          "method": "findMyQuoteRequest",
+          "routePrefix": "api/v1/me",
+          "routeMethod": "GET",
+          "routePath": "quote-requests/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "createQuoteRequest",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "POST",
+          "routePath": ":id/quote-requests",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "createReview",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "POST",
+          "routePath": ":id/reviews",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "favoriteProvider",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "POST",
+          "routePath": ":id/favorite",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProvidersController",
+          "method": "unfavoriteProvider",
+          "routePrefix": "api/v1/providers",
+          "routeMethod": "DELETE",
+          "routePath": ":id/favorite",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ReviewsController",
+          "method": "deleteReview",
+          "routePrefix": "api/v1/reviews",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ReviewsController",
+          "method": "updateReview",
+          "routePrefix": "api/v1/reviews",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/me/me.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "MeController",
+          "method": "me",
+          "routePrefix": "api/v1/me",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/media/media.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "MediaController",
+          "method": "presign",
+          "routePrefix": "api/v1/media/uploads",
+          "routeMethod": "POST",
+          "routePath": "presign",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "MediaController",
+          "method": "verify",
+          "routePrefix": "api/v1/media/uploads",
+          "routeMethod": "POST",
+          "routePath": "verify",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/money/money-summary.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "MoneySummaryController",
+          "method": "getMoneySummary",
+          "routePrefix": "api/v1/wedding-plans/:planId",
+          "routeMethod": "GET",
+          "routePath": "money-summary",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "MoneySummaryController",
+          "method": "replaceMoneyBudget",
+          "routePrefix": "api/v1/wedding-plans/:planId",
+          "routeMethod": "PUT",
+          "routePath": "money-budget",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/notifications/notifications.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "NotificationsController",
+          "method": "archive",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "PATCH",
+          "routePath": ":id/archive",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "NotificationsController",
+          "method": "findOne",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "NotificationsController",
+          "method": "list",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "NotificationsController",
+          "method": "markAllRead",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "PATCH",
+          "routePath": "read-all",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "NotificationsController",
+          "method": "markRead",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "PATCH",
+          "routePath": ":id/read",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "NotificationsController",
+          "method": "remove",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "NotificationsController",
+          "method": "unreadCount",
+          "routePrefix": "api/v1/notifications",
+          "routeMethod": "GET",
+          "routePath": "unread-count",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/onboarding/onboarding.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "OnboardingController",
+          "method": "complete",
+          "routePrefix": "api/v1/onboarding",
+          "routeMethod": "POST",
+          "routePath": "complete",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "OnboardingController",
+          "method": "importLocal",
+          "routePrefix": "api/v1/onboarding",
+          "routeMethod": "POST",
+          "routePath": "import-local",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/provider-dashboard/provider-dashboard.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ProviderApplicationController",
+          "method": "apply",
+          "routePrefix": "api/v1/provider",
+          "routeMethod": "POST",
+          "routePath": "apply",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "createPackage",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "POST",
+          "routePath": "packages",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "createQuoteOffer",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "POST",
+          "routePath": "quote-requests/:id/offers",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "createServiceImage",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "POST",
+          "routePath": "services/:id/images",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "createService",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "POST",
+          "routePath": "services",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "deactivatePackage",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "DELETE",
+          "routePath": "packages/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "deactivateService",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "DELETE",
+          "routePath": "services/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "deleteServiceImage",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "DELETE",
+          "routePath": "services/:serviceId/images/:imageId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "findPackages",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "packages",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "findQuoteRequests",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "quote-requests",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "findQuoteRequest",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "quote-requests/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "findReviews",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "reviews",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "findServices",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "services",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "findService",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "services/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "getProfile",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "profile",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "getSummary",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "GET",
+          "routePath": "summary",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "updatePackage",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "PATCH",
+          "routePath": "packages/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "updateProfile",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "PATCH",
+          "routePath": "profile",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "updateQuoteOffer",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "PATCH",
+          "routePath": "quote-offers/:id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "updateQuoteRequestStatus",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "PATCH",
+          "routePath": "quote-requests/:id/status",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "updateServiceImage",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "PATCH",
+          "routePath": "services/:serviceId/images/:imageId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ProviderDashboardController",
+          "method": "updateService",
+          "routePrefix": "api/v1/provider/me",
+          "routeMethod": "PATCH",
+          "routePath": "services/:id",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/push/push.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "PushController",
+          "method": "register",
+          "routePrefix": "api/v1/push/installations",
+          "routeMethod": "PUT",
+          "routePath": "current",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "PushController",
+          "method": "unregister",
+          "routePrefix": "api/v1/push/installations",
+          "routeMethod": "DELETE",
+          "routePath": "current",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/sharing/sharing.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ApiV1InviteAcceptController",
+          "method": "acceptInvite",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "POST",
+          "routePath": ":token/accept",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1InviteAcceptController",
+          "method": "declineInvite",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "POST",
+          "routePath": ":token/decline",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1InvitesController",
+          "method": "findMyInvites",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "GET",
+          "routePath": "mine",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1InvitesController",
+          "method": "getInvite",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "GET",
+          "routePath": ":token",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "cancelInvite",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "DELETE",
+          "routePath": ":inviteId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "createInvite",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "findInvites",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "reissueInvite",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "POST",
+          "routePath": ":inviteId/reissue",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "createMember",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "findMembers",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "leavePlan",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "DELETE",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "removeMember",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "DELETE",
+          "routePath": ":memberId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "updateMember",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "PATCH",
+          "routePath": ":memberId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanPermissionsController",
+          "method": "permissionsForMe",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/permissions",
+          "routeMethod": "GET",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "SharedWeddingPlansController",
+          "method": "findSharedPlans",
+          "routePrefix": "api/v1/shared",
+          "routeMethod": "GET",
+          "routePath": "wedding-plans",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/tasks/tasks.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "TasksController",
+          "method": "assign",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "PATCH",
+          "routePath": ":id/assign",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "TasksController",
+          "method": "createChecklistItem",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "POST",
+          "routePath": ":id/checklist",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "TasksController",
+          "method": "findOne",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "TasksController",
+          "method": "removeChecklistItem",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "DELETE",
+          "routePath": ":id/checklist/:itemId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "TasksController",
+          "method": "remove",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "TasksController",
+          "method": "updateChecklistItem",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "PATCH",
+          "routePath": ":id/checklist/:itemId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "TasksController",
+          "method": "update",
+          "routePrefix": "api/v1/tasks",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanTasksController",
+          "method": "create",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/tasks",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanTasksController",
+          "method": "findForPlan",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/tasks",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanTasksController",
+          "method": "summary",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/tasks",
+          "routeMethod": "GET",
+          "routePath": "summary",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/timeline/timeline.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "TimelineController",
+          "method": "getForPlan",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/timeline",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/users/users.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "UsersController",
+          "method": "deleteMe",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "DELETE",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "getSettings",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "GET",
+          "routePath": "me/settings",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "lookupByPhone",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "GET",
+          "routePath": "lookup",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "updateMe",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "PATCH",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "updateSettings",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "PATCH",
+          "routePath": "me/settings",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/wedding-costs/wedding-costs.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "CostPaymentsController",
+          "method": "get",
+          "routePrefix": "api/v1/cost-payments",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostPaymentsController",
+          "method": "reverse",
+          "routePrefix": "api/v1/cost-payments",
+          "routeMethod": "POST",
+          "routePath": ":id/reverse",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "cancel",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "POST",
+          "routePath": ":id/cancel",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "createPayment",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "POST",
+          "routePath": ":id/payments",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "createSchedule",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "POST",
+          "routePath": ":id/payment-schedules",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "get",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "listPayments",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "GET",
+          "routePath": ":id/payments",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "listSchedules",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "GET",
+          "routePath": ":id/payment-schedules",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "remove",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "CostsController",
+          "method": "update",
+          "routePrefix": "api/v1/costs",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "PaymentSchedulesController",
+          "method": "cancel",
+          "routePrefix": "api/v1/payment-schedules",
+          "routeMethod": "POST",
+          "routePath": ":id/cancel",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "PaymentSchedulesController",
+          "method": "pay",
+          "routePrefix": "api/v1/payment-schedules",
+          "routeMethod": "POST",
+          "routePath": ":id/pay",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "PaymentSchedulesController",
+          "method": "remove",
+          "routePrefix": "api/v1/payment-schedules",
+          "routeMethod": "DELETE",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "PaymentSchedulesController",
+          "method": "update",
+          "routePrefix": "api/v1/payment-schedules",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanCostPaymentsController",
+          "method": "list",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/cost-payments",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanCostsController",
+          "method": "create",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/costs",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanCostsController",
+          "method": "list",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/costs",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlanPaymentSchedulesController",
+          "method": "due",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/payment-schedules",
+          "routeMethod": "GET",
+          "routePath": "due",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/wedding-plans/wedding-plans.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "archive",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "PATCH",
+          "routePath": ":id/archive",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "create",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "findAccessible",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "findActive",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "GET",
+          "routePath": "active",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "findMine",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "GET",
+          "routePath": "my",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "findOne",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "GET",
+          "routePath": ":id",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "setActive",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "POST",
+          "routePath": ":id/set-active",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "WeddingPlansController",
+          "method": "update",
+          "routePrefix": "api/v1/wedding-plans",
+          "routeMethod": "PATCH",
+          "routePath": ":id",
+          "parameterIndex": 0
+        }
+      ]
+    }
+  ],
+  "lifecycleProviders": [
+    {
+      "className": "AuthChallengeCleanupScheduler",
+      "path": "backend/src/auth/auth-challenge-cleanup.scheduler.ts"
+    },
+    {
+      "className": "ConversationsGateway",
+      "path": "backend/src/conversations/conversations.gateway.ts"
+    },
+    {
+      "className": "IdempotencyCleanupScheduler",
+      "path": "backend/src/platform/idempotency/idempotency-cleanup.scheduler.ts"
+    },
+    {
+      "className": "LoginThrottleCleanupScheduler",
+      "path": "backend/src/auth/login-throttle-cleanup.scheduler.ts"
+    },
+    {
+      "className": "MediaUploadCleanupScheduler",
+      "path": "backend/src/media/media-upload-cleanup.scheduler.ts"
+    },
+    {
+      "className": "NotificationRemindersScheduler",
+      "path": "backend/src/notifications/notification-reminders.scheduler.ts"
+    },
+    {
+      "className": "OtpDispatchQuotaCleanupScheduler",
+      "path": "backend/src/auth/otp-dispatch-quota-cleanup.scheduler.ts"
+    },
+    {
+      "className": "OutboxCleanupScheduler",
+      "path": "backend/src/platform/outbox/outbox-cleanup.scheduler.ts"
+    },
+    {
+      "className": "OutboxDispatcher",
+      "path": "backend/src/platform/outbox/outbox.dispatcher.ts"
+    },
+    {
+      "className": "OutboxWorker",
+      "path": "backend/src/platform/outbox/outbox.worker.ts"
+    }
+  ],
+  "initialDuplicateProviders": [
+    "AdminGuard",
+    "AdminPermissionGuard",
+    "PermissionService"
+  ],
+  "remainingDuplicateProviders": [
+    "AdminGuard",
+    "AdminPermissionGuard",
+    "PermissionService"
+  ],
+  "initialPlatformDebts": [
+    "runtime-jwt-secret",
+    "readiness-media-storage",
+    "outbox-dispatcher-realtime",
+    "outbox-dispatcher-push",
+    "outbox-module-realtime",
+    "outbox-module-push"
+  ],
+  "remainingPlatformDebts": [
+    "runtime-jwt-secret",
+    "readiness-media-storage",
+    "outbox-dispatcher-realtime",
+    "outbox-dispatcher-push",
+    "outbox-module-realtime",
+    "outbox-module-push"
+  ],
+  "initialRetiredLegacyProviderEdges": [
+    {
+      "key": "src/admin/admin-audit.interceptor.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin-mutation-executor.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin-mutation-gate.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin-permission.guard.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin-user-status.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin.guard.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin.module.ts|src/conversations/conversation-realtime.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/admin/admin.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin.service.ts|src/conversations/conversation-realtime.publisher.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/admin/admin.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/auth/auth.module.ts|src/conversations/conversation-realtime.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/auth/auth.service.ts|src/conversations/conversation-realtime.publisher.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/budget-categories/budget-categories.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/budget-categories/budget-categories.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/budget-categories/budget-categories.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/budget-categories/budget-categories.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/budget-categories/budget-categories.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/budget-categories/budget-categories.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/budget-categories/budget-categories.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/catalogs/administrative-catalog.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/catalogs/catalogs.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/catalogs/catalogs.module.ts|src/admin/admin-permission.guard.ts",
+      "retirementTask": 7
+    },
+    {
+      "key": "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts",
+      "retirementTask": 7
+    },
+    {
+      "key": "src/catalogs/reference-catalog.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/contexts/contexts.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/contexts/contexts.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/contribution-history/contribution-history.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/contribution-history/contribution-history.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/contribution-history/contribution-history.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/conversations/conversations.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/conversations/conversations.gateway.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/conversations/conversations.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/conversations/conversations.module.ts|src/media/media.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/conversations/conversations.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/conversations/conversations.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/conversations/conversations.service.ts|src/media/media-storage.service.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/conversations/conversations.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/conversations/conversations.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard-contributor-scope.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard-contributor-scope.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/dashboard/dashboard.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/dashboard/dashboard.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/dashboard/dashboard.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/dashboard/dashboard.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/dashboard/dashboard.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/guests/guests.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/guests/guests.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/guests/guests.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/guests/guests.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/guests/guests.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/guests/guests.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/guests/guests.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/guests/guests.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/marketplace-contributor-quote-scope.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/marketplace-write-locks.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/marketplace.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/marketplace/marketplace.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/marketplace.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/marketplace/marketplace.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/marketplace.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/marketplace/marketplace.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/marketplace.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/marketplace/marketplace.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-notifications.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/marketplace/quote-offer-acceptance.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-offer-acceptance.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/marketplace/quote-offer-acceptance.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-offer-rejection.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-offer-rejection.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/marketplace/quote-offer-rejection.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-request-cancellation.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-request-cancellation.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-request-creation.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/marketplace/quote-request-creation.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/marketplace/quote-request-creation.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/media/media-storage.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/media/media.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/money/money-budget.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/money/money-budget.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/money/money-summary.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/money/money-summary.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/money/money-summary.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/money/money-summary.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/money/money.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/money/money.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/money/money.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/notifications/notifications.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/notifications/notifications.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/notifications/notifications.module.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/notifications/notifications.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/notifications/notifications.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/onboarding/onboarding.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/onboarding/onboarding.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/onboarding/onboarding.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.module.ts|src/media/media.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.service.ts|src/media/media-storage.service.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/provider-dashboard/provider-dashboard.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/push/push-installations.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/push/push.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/push/push.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/sharing/invite-access.service.ts|src/auth/auth.service.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/sharing/permission.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/sharing/sharing.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/sharing/sharing.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/sharing/sharing.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/sharing/sharing.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/sharing/sharing.service.ts|src/conversations/conversation-realtime.publisher.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/sharing/sharing.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/tasks/tasks.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/tasks/tasks.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/tasks/tasks.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/tasks/tasks.module.ts|src/notifications/notifications.module.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/tasks/tasks.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/tasks/tasks.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/tasks/tasks.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/tasks/tasks.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/tasks/tasks.service.ts|src/notifications/notifications.service.ts",
+      "retirementTask": 4
+    },
+    {
+      "key": "src/tasks/tasks.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/timeline/timeline.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/timeline/timeline.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/timeline/timeline.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/timeline/timeline.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/timeline/timeline.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/timeline/timeline.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/timeline/timeline.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/users/users.module.ts|src/conversations/conversation-realtime.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/users/users.module.ts|src/media/media.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/users/users.module.ts|src/push/push.module.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/users/users.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/users/users.service.ts|src/conversations/conversation-realtime.publisher.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/users/users.service.ts|src/media/media-storage.service.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/users/users.service.ts|src/push/firebase-push.client.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/users/users.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contributor-scope.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-costs/wedding-costs.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.controller.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.module.ts|src/auth/auth.module.ts",
+      "retirementTask": 5
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.module.ts|src/contribution-history/contribution-history.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.module.ts|src/sharing/sharing.module.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.service.ts|src/auth/authenticated-user.interface.ts",
+      "retirementTask": 2
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-history.service.ts",
+      "retirementTask": 3
+    },
+    {
+      "key": "src/wedding-plans/wedding-plans.service.ts|src/sharing/permission.service.ts",
+      "retirementTask": 3
+    }
+  ],
+  "remainingRetiredLegacyProviderEdges": [
+    "src/admin/admin-audit.interceptor.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin-mutation-executor.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin-mutation-gate.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin-permission.guard.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin-user-status.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin.guard.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin.module.ts|src/conversations/conversation-realtime.module.ts",
+    "src/admin/admin.module.ts|src/notifications/notifications.module.ts",
+    "src/admin/admin.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/admin/admin.service.ts|src/conversations/conversation-realtime.publisher.ts",
+    "src/admin/admin.service.ts|src/notifications/notifications.service.ts",
+    "src/auth/auth.module.ts|src/conversations/conversation-realtime.module.ts",
+    "src/auth/auth.service.ts|src/conversations/conversation-realtime.publisher.ts",
+    "src/budget-categories/budget-categories.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/budget-categories/budget-categories.module.ts|src/auth/auth.module.ts",
+    "src/budget-categories/budget-categories.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/budget-categories/budget-categories.module.ts|src/sharing/sharing.module.ts",
+    "src/budget-categories/budget-categories.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/budget-categories/budget-categories.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/budget-categories/budget-categories.service.ts|src/sharing/permission.service.ts",
+    "src/catalogs/administrative-catalog.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/catalogs/catalogs.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/catalogs/catalogs.module.ts|src/admin/admin-permission.guard.ts",
+    "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts",
+    "src/catalogs/reference-catalog.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/contexts/contexts.module.ts|src/sharing/sharing.module.ts",
+    "src/contexts/contexts.service.ts|src/sharing/permission.service.ts",
+    "src/contribution-history/contribution-history.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/contribution-history/contribution-history.module.ts|src/auth/auth.module.ts",
+    "src/contribution-history/contribution-history.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/conversations/conversations.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/conversations/conversations.gateway.ts|src/auth/authenticated-user.interface.ts",
+    "src/conversations/conversations.module.ts|src/auth/auth.module.ts",
+    "src/conversations/conversations.module.ts|src/media/media.module.ts",
+    "src/conversations/conversations.module.ts|src/notifications/notifications.module.ts",
+    "src/conversations/conversations.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/conversations/conversations.service.ts|src/media/media-storage.service.ts",
+    "src/conversations/conversations.service.ts|src/notifications/notifications.service.ts",
+    "src/conversations/conversations.service.ts|src/sharing/permission.service.ts",
+    "src/dashboard/dashboard-contributor-scope.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/dashboard/dashboard-contributor-scope.ts|src/sharing/permission.service.ts",
+    "src/dashboard/dashboard.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/dashboard/dashboard.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/dashboard/dashboard.module.ts|src/notifications/notifications.module.ts",
+    "src/dashboard/dashboard.module.ts|src/sharing/sharing.module.ts",
+    "src/dashboard/dashboard.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/dashboard/dashboard.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/dashboard/dashboard.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/dashboard/dashboard.service.ts|src/notifications/notifications.service.ts",
+    "src/dashboard/dashboard.service.ts|src/sharing/permission.service.ts",
+    "src/guests/guests.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/guests/guests.module.ts|src/auth/auth.module.ts",
+    "src/guests/guests.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/guests/guests.module.ts|src/sharing/sharing.module.ts",
+    "src/guests/guests.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/guests/guests.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/guests/guests.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/guests/guests.service.ts|src/sharing/permission.service.ts",
+    "src/marketplace/marketplace-contributor-quote-scope.ts|src/sharing/permission.service.ts",
+    "src/marketplace/marketplace-write-locks.ts|src/sharing/permission.service.ts",
+    "src/marketplace/marketplace.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/marketplace/marketplace.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/marketplace/marketplace.module.ts|src/notifications/notifications.module.ts",
+    "src/marketplace/marketplace.module.ts|src/sharing/sharing.module.ts",
+    "src/marketplace/marketplace.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/marketplace/marketplace.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/marketplace/marketplace.service.ts|src/notifications/notifications.service.ts",
+    "src/marketplace/marketplace.service.ts|src/sharing/permission.service.ts",
+    "src/marketplace/quote-notifications.ts|src/notifications/notifications.service.ts",
+    "src/marketplace/quote-offer-acceptance.ts|src/auth/authenticated-user.interface.ts",
+    "src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-history.service.ts",
+    "src/marketplace/quote-offer-acceptance.ts|src/notifications/notifications.service.ts",
+    "src/marketplace/quote-offer-acceptance.ts|src/sharing/permission.service.ts",
+    "src/marketplace/quote-offer-rejection.ts|src/auth/authenticated-user.interface.ts",
+    "src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-history.service.ts",
+    "src/marketplace/quote-offer-rejection.ts|src/notifications/notifications.service.ts",
+    "src/marketplace/quote-offer-rejection.ts|src/sharing/permission.service.ts",
+    "src/marketplace/quote-request-cancellation.ts|src/auth/authenticated-user.interface.ts",
+    "src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-history.service.ts",
+    "src/marketplace/quote-request-cancellation.ts|src/sharing/permission.service.ts",
+    "src/marketplace/quote-request-creation.ts|src/auth/authenticated-user.interface.ts",
+    "src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-history.service.ts",
+    "src/marketplace/quote-request-creation.ts|src/notifications/notifications.service.ts",
+    "src/marketplace/quote-request-creation.ts|src/sharing/permission.service.ts",
+    "src/media/media-storage.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/media/media.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/money/money-budget.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/money/money-budget.service.ts|src/sharing/permission.service.ts",
+    "src/money/money-summary.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/money/money-summary.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/money/money-summary.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/money/money-summary.service.ts|src/sharing/permission.service.ts",
+    "src/money/money.module.ts|src/auth/auth.module.ts",
+    "src/money/money.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/money/money.module.ts|src/sharing/sharing.module.ts",
+    "src/notifications/notifications.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/notifications/notifications.module.ts|src/auth/auth.module.ts",
+    "src/notifications/notifications.module.ts|src/sharing/permission.service.ts",
+    "src/notifications/notifications.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/notifications/notifications.service.ts|src/sharing/permission.service.ts",
+    "src/onboarding/onboarding.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/onboarding/onboarding.module.ts|src/auth/auth.module.ts",
+    "src/onboarding/onboarding.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/provider-dashboard/provider-dashboard.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/provider-dashboard/provider-dashboard.module.ts|src/media/media.module.ts",
+    "src/provider-dashboard/provider-dashboard.module.ts|src/notifications/notifications.module.ts",
+    "src/provider-dashboard/provider-dashboard.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/provider-dashboard/provider-dashboard.service.ts|src/media/media-storage.service.ts",
+    "src/provider-dashboard/provider-dashboard.service.ts|src/notifications/notifications.service.ts",
+    "src/provider-dashboard/provider-dashboard.service.ts|src/sharing/permission.service.ts",
+    "src/push/push-installations.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/push/push.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/push/push.module.ts|src/auth/auth.module.ts",
+    "src/sharing/invite-access.service.ts|src/auth/auth.service.ts",
+    "src/sharing/permission.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/sharing/sharing.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/sharing/sharing.module.ts|src/auth/auth.module.ts",
+    "src/sharing/sharing.module.ts|src/notifications/notifications.module.ts",
+    "src/sharing/sharing.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/sharing/sharing.service.ts|src/conversations/conversation-realtime.publisher.ts",
+    "src/sharing/sharing.service.ts|src/notifications/notifications.service.ts",
+    "src/tasks/tasks.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/tasks/tasks.module.ts|src/auth/auth.module.ts",
+    "src/tasks/tasks.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/tasks/tasks.module.ts|src/notifications/notifications.module.ts",
+    "src/tasks/tasks.module.ts|src/sharing/sharing.module.ts",
+    "src/tasks/tasks.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/tasks/tasks.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/tasks/tasks.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/tasks/tasks.service.ts|src/notifications/notifications.service.ts",
+    "src/tasks/tasks.service.ts|src/sharing/permission.service.ts",
+    "src/timeline/timeline.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/timeline/timeline.module.ts|src/auth/auth.module.ts",
+    "src/timeline/timeline.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/timeline/timeline.module.ts|src/sharing/sharing.module.ts",
+    "src/timeline/timeline.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/timeline/timeline.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/timeline/timeline.service.ts|src/sharing/permission.service.ts",
+    "src/users/users.module.ts|src/conversations/conversation-realtime.module.ts",
+    "src/users/users.module.ts|src/media/media.module.ts",
+    "src/users/users.module.ts|src/push/push.module.ts",
+    "src/users/users.module.ts|src/sharing/sharing.module.ts",
+    "src/users/users.service.ts|src/conversations/conversation-realtime.publisher.ts",
+    "src/users/users.service.ts|src/media/media-storage.service.ts",
+    "src/users/users.service.ts|src/push/firebase-push.client.ts",
+    "src/users/users.service.ts|src/sharing/permission.service.ts",
+    "src/wedding-costs/wedding-costs.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/wedding-costs/wedding-costs.module.ts|src/auth/auth.module.ts",
+    "src/wedding-costs/wedding-costs.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/wedding-costs/wedding-costs.module.ts|src/sharing/sharing.module.ts",
+    "src/wedding-costs/wedding-costs.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contributor-scope.service.ts",
+    "src/wedding-costs/wedding-costs.service.ts|src/sharing/permission.service.ts",
+    "src/wedding-plans/wedding-plans.controller.ts|src/auth/authenticated-user.interface.ts",
+    "src/wedding-plans/wedding-plans.module.ts|src/auth/auth.module.ts",
+    "src/wedding-plans/wedding-plans.module.ts|src/contribution-history/contribution-history.module.ts",
+    "src/wedding-plans/wedding-plans.module.ts|src/sharing/sharing.module.ts",
+    "src/wedding-plans/wedding-plans.service.ts|src/auth/authenticated-user.interface.ts",
+    "src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-history.service.ts",
+    "src/wedding-plans/wedding-plans.service.ts|src/sharing/permission.service.ts"
+  ],
+  "allowedChangedPaths": [
+    "backend/.dependency-cruiser.cjs",
+    "backend/architecture/r3-context-boundaries.json",
+    "backend/package.json",
+    "backend/scripts/architecture/ports-scan.cjs",
+    "backend/scripts/architecture/r3-context-scan.cjs",
+    "backend/scripts/architecture/r3-scope.cjs",
+    "backend/test/architecture-dependencies.test.ts",
+    "backend/test/architecture-ports.test.ts",
+    "backend/test/architecture-r3-contexts.test.ts",
+    "backend/test/architecture-r3-scope.test.ts",
+    "docs/SCRIPTS.md",
+    "docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md",
+    "docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md"
+  ]
+}

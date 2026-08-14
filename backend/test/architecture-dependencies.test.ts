@@ -209,3 +209,49 @@ test('only auth and catalogs may import the exact Backoffice permission contract
   assert.notEqual(futureCatalog.status, 0);
   assert.match(`${futureCatalog.stdout}\n${futureCatalog.stderr}`, /context-catalog-cross-context/);
 });
+
+test('application composition may import platform and business public slices only', () => {
+  const allowedRoot = fixtureRoot();
+  write(allowedRoot, 'src/platform/outbox/core.ts', 'export const core = true;\n');
+  write(allowedRoot, 'src/modules/tasks/public/tasks-public.module.ts', 'export class TasksPublicModule {}\n');
+  write(allowedRoot, 'src/application-composition/runtime.ts', [
+    "import '../platform/outbox/core';",
+    "import '../modules/tasks/public/tasks-public.module';",
+  ].join('\n'));
+  const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
+  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+
+  const rejectedRoot = fixtureRoot();
+  write(rejectedRoot, 'src/tasks/private.ts', 'export const value = true;\n');
+  write(rejectedRoot, 'src/modules/tasks/internal/private.ts', 'export const internal = true;\n');
+  write(rejectedRoot, 'src/application-composition/runtime.ts', [
+    "import '../tasks/private';",
+    "import '../modules/tasks/internal/private';",
+  ].join('\n'));
+  write(rejectedRoot, 'src/platform/bad.ts', "import '../application-composition/runtime';\n");
+  write(rejectedRoot, 'src/guests/bad.ts', "import '../application-composition/runtime';\n");
+  const rejected = cruise(rejectedRoot, ['--config', configPath, 'src']);
+  assert.notEqual(rejected.status, 0);
+  const output = `${rejected.stdout}\n${rejected.stderr}`;
+  assert.match(output, /application-composition-public-only/);
+  assert.match(output, /application-composition-is-root-only/);
+});
+
+test('cross-owner public slices accept type-only imports and reject runtime imports', () => {
+  const root = fixtureRoot();
+  write(root, 'src/modules/guests/public/types.ts', 'export interface GuestView { id: string }\n');
+  write(root, 'src/modules/tasks/public/legal.ts', [
+    "import type { GuestView } from '../../guests/public/types';",
+    'export interface TaskView { guest: GuestView }',
+  ].join('\n'));
+  const legal = cruise(root, ['--config', configPath, 'src']);
+  assert.equal(legal.status, 0, legal.stderr || legal.stdout);
+  write(root, 'src/modules/tasks/public/runtime.ts', [
+    "import { value } from '../../guests/public/value';",
+    'void value;',
+  ].join('\n'));
+  write(root, 'src/modules/guests/public/value.ts', 'export const value = true;\n');
+  const runtime = cruise(root, ['--config', configPath, 'src']);
+  assert.notEqual(runtime.status, 0);
+  assert.match(`${runtime.stdout}\n${runtime.stderr}`, /public-cross-owner-type-only/);
+});

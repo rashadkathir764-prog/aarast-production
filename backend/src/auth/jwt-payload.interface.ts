@@ -1,4 +1,4 @@
-export type JwtSessionScope = 'application' | 'admin';
+import type { JwtSessionScope } from '../modules/identity/public/identity-session.types';
 
 export interface JwtPayload {
   sub: string;

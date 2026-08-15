@@ -10,6 +10,7 @@ import { MetricsController } from "./platform/observability/metrics.controller";
 import { ResilientThrottlerStorage } from "./platform/redis/resilient-throttler-storage";
 import { HealthController } from "./platform/health/health.controller";
 import { READINESS_FETCH, ReadinessService } from "./platform/health/readiness.service";
+import { MEDIA_READINESS_PORT } from "./platform/health/media-readiness.port";
 import { PrismaModule } from "./platform/database/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { MeModule } from "./me/me.module";
@@ -30,7 +31,9 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { GuestsModule } from "./guests/guests.module";
 import { ConversationsModule } from "./conversations/conversations.module";
 import { MediaModule } from "./media/media.module";
-import { OutboxModule } from "./platform/outbox/outbox.module";
+import { MediaStoragePublicModule } from "./modules/media/public/media-storage-public.module";
+import { MEDIA_STORAGE_PORT } from "./modules/media/public/media-storage.port";
+import { ApplicationOutboxRuntimeModule } from "./application-composition/application-outbox-runtime.module";
 import { ContextsModule } from "./contexts/contexts.module";
 import { ContributionHistoryModule } from "./contribution-history/contribution-history.module";
 import { CatalogsModule } from "./catalogs/catalogs.module";
@@ -67,7 +70,7 @@ import { CatalogsModule } from "./catalogs/catalogs.module";
       },
     }),
     PrismaModule,
-    OutboxModule,
+    ApplicationOutboxRuntimeModule,
     AuthModule,
     MeModule,
     WeddingPlansModule,
@@ -87,6 +90,7 @@ import { CatalogsModule } from "./catalogs/catalogs.module";
     AdminModule,
     ConversationsModule,
     MediaModule,
+    MediaStoragePublicModule,
     ContextsModule,
     ContributionHistoryModule,
     CatalogsModule,
@@ -94,6 +98,7 @@ import { CatalogsModule } from "./catalogs/catalogs.module";
   controllers: [HealthController, MetricsController],
   providers: [
     { provide: READINESS_FETCH, useValue: fetch },
+    { provide: MEDIA_READINESS_PORT, useExisting: MEDIA_STORAGE_PORT },
     ReadinessService,
     IdempotencyCleanupScheduler,
     {

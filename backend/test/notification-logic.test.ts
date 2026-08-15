@@ -8,7 +8,7 @@ import {
   NotificationType,
   UserStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../src/auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../src/modules/identity/public/identity-session.types";
 import { NotificationsService } from "../src/notifications/notifications.service";
 import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../src/platform/outbox/outbox.service";

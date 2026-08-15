@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../platform/database/prisma.module";
-import { MediaModule } from "../media/media.module";
 import { SharingModule } from "../sharing/sharing.module";
-import { ConversationRealtimeModule } from "../conversations/conversation-realtime.module";
-import { PushModule } from "../push/push.module";
+import { MediaStoragePublicModule } from "../modules/media/public/media-storage-public.module";
+import { MessagingRealtimePublicModule } from "../modules/messaging/public/messaging-realtime-public.module";
+import { PushCapabilityPublicModule } from "../modules/notifications/public/push-capability-public.module";
 import { UsersController } from "./users.controller";
 import { UsersService } from "./users.service";
 import { AccountDeletionStatusController } from "./account-deletion-status.controller";
@@ -12,9 +12,9 @@ import { AccountDeletionStatusController } from "./account-deletion-status.contr
   imports: [
     PrismaModule,
     SharingModule,
-    MediaModule,
-    ConversationRealtimeModule,
-    PushModule,
+    MediaStoragePublicModule,
+    MessagingRealtimePublicModule,
+    PushCapabilityPublicModule,
   ],
   controllers: [UsersController, AccountDeletionStatusController],
   providers: [UsersService],

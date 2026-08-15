@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, PushPlatform, UserStatus } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import { lockUserLifecycleRowsForUpdateInTransaction } from "../users/user-lifecycle-lock";

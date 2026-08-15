@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
+import { MessagingRealtimePublicModule } from "../modules/messaging/public/messaging-realtime-public.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { PrismaModule } from "../platform/database/prisma.module";
 import { PermissionService } from "./permission.service";
@@ -21,6 +22,7 @@ import { SharingService } from "./sharing.service";
   imports: [
     AuthModule,
     PrismaModule,
+    MessagingRealtimePublicModule,
     NotificationsModule,
     ContributionHistoryModule,
   ],

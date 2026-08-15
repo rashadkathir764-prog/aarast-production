@@ -12,7 +12,7 @@ import {
   WeddingPlanStatus,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import type { ContributionHistorySummaryResponse } from "../contribution-history/contribution-history.contracts";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";

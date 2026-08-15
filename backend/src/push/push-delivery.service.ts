@@ -7,6 +7,7 @@ import {
 } from "./push-notification.policy";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
+import type { PushDeliveryPort } from "../modules/notifications/public/push-delivery.port";
 
 const MAX_FCM_TARGETS = 500;
 const PUSH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -17,7 +18,7 @@ const PERMANENT_FCM_ERRORS = new Set([
 ]);
 
 @Injectable()
-export class PushDeliveryService {
+export class PushDeliveryService implements PushDeliveryPort {
   constructor(
     private readonly prisma: PrismaService,
     private readonly firebase: FirebasePushClient,

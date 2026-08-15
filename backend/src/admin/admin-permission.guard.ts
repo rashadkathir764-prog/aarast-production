@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import {
   AdminPermission,
   hasAdminPermission,

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -25,7 +26,7 @@ import {
   UserStatus,
   WeddingPlan,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import { PhoneNormalizer } from '../shared-kernel/phone/phone-normalizer';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
@@ -45,7 +46,10 @@ import {
   providerRejectedRequestNotification,
   quoteOfferReceivedNotification,
 } from '../marketplace/quote-notifications';
-import { MediaStorageService } from '../media/media-storage.service';
+import {
+  MEDIA_STORAGE_PORT,
+  MediaStoragePort,
+} from '../modules/media/public/media-storage.port';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../platform/database/prisma.service';
 import { assertWeddingPlanWritable } from '../sharing/permission.service';
@@ -106,7 +110,8 @@ export class ProviderDashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-    private readonly mediaStorage: MediaStorageService,
+    @Inject(MEDIA_STORAGE_PORT)
+    private readonly mediaStorage: MediaStoragePort,
   ) {}
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {

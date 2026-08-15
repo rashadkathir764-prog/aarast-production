@@ -1,9 +1,12 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
-import { MediaStorageService } from '../../media/media-storage.service';
 import { PrismaService } from '../database/prisma.service';
 import { loadOpenWaOtpConfig } from '../otp-transport/openwa-otp-config';
 import { readBoundedJson } from '../http/bounded-json-response';
+import {
+  MEDIA_READINESS_PORT,
+  MediaReadinessPort,
+} from './media-readiness.port';
 
 export type DependencyState = 'up' | 'down' | 'disabled';
 
@@ -30,7 +33,8 @@ export const READINESS_FETCH = Symbol('READINESS_FETCH');
 export class ReadinessService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mediaStorage: MediaStorageService,
+    @Inject(MEDIA_READINESS_PORT)
+    private readonly mediaStorage: MediaReadinessPort,
     @Optional()
     @Inject(READINESS_FETCH)
     private readonly fetchImplementation: typeof fetch = fetch,

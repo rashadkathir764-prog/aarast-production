@@ -1,12 +1,13 @@
-import {
-  AppRole,
+import type {
   AdminRole,
+  AppRole,
   OnboardingPath,
   UserRole,
   UserStatus,
   WeddingPersona,
 } from '@prisma/client';
-import type { JwtSessionScope } from './jwt-payload.interface';
+
+export type JwtSessionScope = 'application' | 'admin';
 
 export interface AuthenticatedUser {
   id: string;

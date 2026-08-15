@@ -5,7 +5,7 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import {
   AdminPermission,
   hasAdminPermission,

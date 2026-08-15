@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
@@ -16,14 +17,23 @@ import {
   Prisma,
   UserRole,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
-import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
-import { MediaStorageService } from "../media/media-storage.service";
+import {
+  MESSAGING_REALTIME_PORT,
+  MessagingRealtimePort,
+} from "../modules/messaging/public/messaging-realtime.port";
+import {
+  MEDIA_STORAGE_PORT,
+  MediaStoragePort,
+} from "../modules/media/public/media-storage.port";
 import { enqueueUserSessionsRevoked } from "../platform/outbox/realtime-revocation";
-import { FirebasePushClient } from "../push/firebase-push.client";
+import {
+  PUSH_CAPABILITY_PORT,
+  PushCapabilityPort,
+} from "../modules/notifications/public/push-capability.port";
 import {
   lockProviderRatingRows,
   refreshProviderRating,
@@ -111,11 +121,14 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: PermissionService,
-    private readonly mediaStorage: MediaStorageService,
+    @Inject(MEDIA_STORAGE_PORT)
+    private readonly mediaStorage: MediaStoragePort,
     @Optional()
-    private readonly realtime?: ConversationRealtimePublisher,
+    @Inject(MESSAGING_REALTIME_PORT)
+    private readonly realtime?: MessagingRealtimePort,
     @Optional()
-    private readonly firebasePush?: FirebasePushClient,
+    @Inject(PUSH_CAPABILITY_PORT)
+    private readonly firebasePush?: PushCapabilityPort,
   ) {}
 
   async updateMe(

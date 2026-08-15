@@ -8,7 +8,7 @@ import {
   QuoteOfferStatus,
   QuoteRequestStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";

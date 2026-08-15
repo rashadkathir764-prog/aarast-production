@@ -1,11 +1,15 @@
 import {
   BadRequestException,
   HttpStatus,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
+import {
+  MESSAGING_REALTIME_PORT,
+  MessagingRealtimePort,
+} from "../modules/messaging/public/messaging-realtime.port";
 import {
   AuthSessionScope,
   OtpCode,
@@ -193,7 +197,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly loginThrottle: LoginThrottleService,
     private readonly otpDispatchQuota: OtpDispatchQuotaService,
-    private readonly realtime: ConversationRealtimePublisher,
+    @Inject(MESSAGING_REALTIME_PORT)
+    private readonly realtime: MessagingRealtimePort,
   ) {}
 
   async startRegistration(

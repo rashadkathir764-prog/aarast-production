@@ -19,7 +19,7 @@ import {
   WeddingTaskPriority,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";

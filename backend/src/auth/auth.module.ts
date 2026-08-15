@@ -14,12 +14,12 @@ import {
 } from './otp-dispatch-quota.service';
 import { OtpDispatchQuotaCleanupScheduler } from './otp-dispatch-quota-cleanup.scheduler';
 import { AuthChallengeCleanupScheduler } from './auth-challenge-cleanup.scheduler';
-import { ConversationRealtimeModule } from '../conversations/conversation-realtime.module';
+import { MessagingRealtimePublicModule } from '../modules/messaging/public/messaging-realtime-public.module';
 
 @Module({
   imports: [
     PrismaModule,
-    ConversationRealtimeModule,
+    MessagingRealtimePublicModule,
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => ({

@@ -11,7 +11,7 @@ import {
   Prisma,
   SharedMemberRole,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../src/auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../src/modules/identity/public/identity-session.types";
 import { NotificationsService } from "../src/notifications/notifications.service";
 import {
   PermissionService,

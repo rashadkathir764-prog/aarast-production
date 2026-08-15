@@ -41,22 +41,131 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('R3 scope pins the immutable base and accepts only the explicit Task 0/1 paths', () => {
+test('R3 scope pins the immutable base and accepts only the explicit Task 0/1/2 paths', () => {
   assert.equal(scope().R3_BASE, baseRef);
   const result = scope().validateR3Scope({ repositoryRoot, baseRef });
   assert.equal(result.ok, true);
   assert.deepEqual(result.unexpectedPaths, []);
   assert.deepEqual(result.changedPaths, [
+    'backend/.dependency-cruiser-known-violations.json',
     'backend/.dependency-cruiser.cjs',
     'backend/architecture/r3-context-boundaries.json',
     'backend/package.json',
     'backend/scripts/architecture/ports-scan.cjs',
     'backend/scripts/architecture/r3-context-scan.cjs',
     'backend/scripts/architecture/r3-scope.cjs',
+    'backend/src/admin/admin-audit.interceptor.ts',
+    'backend/src/admin/admin-mutation-executor.ts',
+    'backend/src/admin/admin-mutation-gate.ts',
+    'backend/src/admin/admin-permission.guard.ts',
+    'backend/src/admin/admin-user-status.ts',
+    'backend/src/admin/admin.controller.ts',
+    'backend/src/admin/admin.guard.ts',
+    'backend/src/admin/admin.module.ts',
+    'backend/src/admin/admin.service.ts',
+    'backend/src/app.module.ts',
+    'backend/src/application-composition/application-outbox-runtime.module.ts',
+    'backend/src/auth/access-token-scope.ts',
+    'backend/src/auth/auth.controller.ts',
+    'backend/src/auth/auth.module.ts',
+    'backend/src/auth/auth.service.ts',
+    'backend/src/auth/authenticated-user.interface.ts',
+    'backend/src/auth/current-user.decorator.ts',
+    'backend/src/auth/jwt-auth.guard.ts',
+    'backend/src/auth/jwt-payload.interface.ts',
+    'backend/src/auth/jwt.strategy.ts',
+    'backend/src/auth/safe-user.ts',
+    'backend/src/budget-categories/budget-categories.controller.ts',
+    'backend/src/budget-categories/budget-categories.service.ts',
+    'backend/src/catalogs/administrative-catalog.service.ts',
+    'backend/src/catalogs/catalogs.controller.ts',
+    'backend/src/catalogs/reference-catalog.service.ts',
+    'backend/src/contexts/contexts.controller.ts',
+    'backend/src/contexts/contexts.service.ts',
+    'backend/src/contribution-history/contribution-history.controller.ts',
+    'backend/src/contribution-history/contribution-history.service.ts',
+    'backend/src/conversations/conversation-realtime.publisher.ts',
+    'backend/src/conversations/conversations.controller.ts',
+    'backend/src/conversations/conversations.gateway.ts',
+    'backend/src/conversations/conversations.module.ts',
+    'backend/src/conversations/conversations.service.ts',
+    'backend/src/dashboard/dashboard.controller.ts',
+    'backend/src/dashboard/dashboard.service.ts',
+    'backend/src/guests/guests.controller.ts',
+    'backend/src/guests/guests.service.ts',
+    'backend/src/marketplace/marketplace.controller.ts',
+    'backend/src/marketplace/marketplace.service.ts',
+    'backend/src/marketplace/quote-offer-acceptance.ts',
+    'backend/src/marketplace/quote-offer-rejection.ts',
+    'backend/src/marketplace/quote-request-cancellation.ts',
+    'backend/src/marketplace/quote-request-creation.ts',
+    'backend/src/me/me.controller.ts',
+    'backend/src/media/dto/verify-media-upload.dto.ts',
+    'backend/src/media/media-storage.service.ts',
+    'backend/src/media/media-upload-policy.ts',
+    'backend/src/media/media-upload-ticket.service.ts',
+    'backend/src/media/media.controller.ts',
+    'backend/src/media/media.module.ts',
+    'backend/src/modules/identity/public/identity-session.types.ts',
+    'backend/src/modules/media/internal/media-lifecycle.internal.module.ts',
+    'backend/src/modules/media/internal/media-storage.internal.module.ts',
+    'backend/src/modules/media/public/media-storage-public.module.ts',
+    'backend/src/modules/media/public/media-storage.port.ts',
+    'backend/src/modules/messaging/internal/messaging-realtime.implementation-token.ts',
+    'backend/src/modules/messaging/internal/messaging-realtime.internal.module.ts',
+    'backend/src/modules/messaging/public/messaging-realtime-public.module.ts',
+    'backend/src/modules/messaging/public/messaging-realtime.port.ts',
+    'backend/src/modules/notifications/internal/push-transport.internal.module.ts',
+    'backend/src/modules/notifications/public/push-capability-public.module.ts',
+    'backend/src/modules/notifications/public/push-capability.port.ts',
+    'backend/src/modules/notifications/public/push-delivery-public.module.ts',
+    'backend/src/modules/notifications/public/push-delivery.port.ts',
+    'backend/src/money/money-budget.service.ts',
+    'backend/src/money/money-summary.controller.ts',
+    'backend/src/money/money-summary.service.ts',
+    'backend/src/notifications/notifications.controller.ts',
+    'backend/src/notifications/notifications.module.ts',
+    'backend/src/notifications/notifications.service.ts',
+    'backend/src/onboarding/onboarding.controller.ts',
+    'backend/src/onboarding/onboarding.service.ts',
+    'backend/src/platform/health/media-readiness.port.ts',
+    'backend/src/platform/health/readiness.service.ts',
+    'backend/src/platform/outbox/outbox-core.module.ts',
+    'backend/src/platform/outbox/outbox.dispatcher.ts',
+    'backend/src/platform/outbox/outbox.module.ts',
+    'backend/src/platform/outbox/outbox.ports.ts',
+    'backend/src/provider-dashboard/provider-dashboard.controller.ts',
+    'backend/src/provider-dashboard/provider-dashboard.module.ts',
+    'backend/src/provider-dashboard/provider-dashboard.service.ts',
+    'backend/src/push/firebase-push.client.ts',
+    'backend/src/push/push-delivery.service.ts',
+    'backend/src/push/push-installations.service.ts',
+    'backend/src/push/push.controller.ts',
+    'backend/src/push/push.module.ts',
+    'backend/src/sharing/permission.service.ts',
+    'backend/src/sharing/sharing.controller.ts',
+    'backend/src/sharing/sharing.module.ts',
+    'backend/src/sharing/sharing.service.ts',
+    'backend/src/tasks/tasks.controller.ts',
+    'backend/src/tasks/tasks.service.ts',
+    'backend/src/timeline/timeline.controller.ts',
+    'backend/src/timeline/timeline.service.ts',
+    'backend/src/users/users.controller.ts',
+    'backend/src/users/users.module.ts',
+    'backend/src/users/users.service.ts',
+    'backend/src/wedding-costs/wedding-costs.controller.ts',
+    'backend/src/wedding-costs/wedding-costs.service.ts',
+    'backend/src/wedding-plans/wedding-plans.controller.ts',
+    'backend/src/wedding-plans/wedding-plans.service.ts',
     'backend/test/architecture-dependencies.test.ts',
     'backend/test/architecture-ports.test.ts',
+    'backend/test/architecture-r1-layout.test.ts',
+    'backend/test/architecture-r3-composition.test.ts',
     'backend/test/architecture-r3-contexts.test.ts',
     'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/health-readiness.test.ts',
+    'backend/test/notification-logic.test.ts',
+    'backend/test/sharing-permission-ceiling.test.ts',
     'docs/SCRIPTS.md',
     'docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md',
     'docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md',
@@ -107,6 +216,48 @@ test('scope snapshots reject an incorrect base, unknown paths, traversal, and du
     ...valid,
     changedPaths: ['backend/package.json', 'backend/package.json'],
   }), /duplicate/);
+});
+
+test('scope exposes a high-similarity forbidden deletion instead of collapsing it into an allowed creation', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-rename-regression-'));
+  temporaryRoots.push(root);
+  const reportPath = path.join(root, 'scope.json');
+  const forbiddenSource = 'backend/src/forbidden-auth-session.ts';
+  const allowedDestination = 'backend/src/app.module.ts';
+  const mutableChildProcess = require('node:child_process') as any;
+  const originalExecFileSync = mutableChildProcess.execFileSync;
+  const calls: string[][] = [];
+  delete require.cache[scopePath];
+  mutableChildProcess.execFileSync = (
+    executable: string,
+    args: string[],
+    options: Record<string, unknown>,
+  ) => {
+    if (executable !== 'git') return originalExecFileSync(executable, args, options);
+    calls.push([...args]);
+    if (args[0] === 'diff') {
+      return args.includes('--no-renames')
+        ? `${forbiddenSource}\n${allowedDestination}\n`
+        : `${allowedDestination}\n`;
+    }
+    if (args[0] === 'ls-files') return '';
+    throw new Error('unexpected Git command in rename regression');
+  };
+  try {
+    const isolatedScope = require(scopePath) as ScopeModule;
+    assert.throws(() => isolatedScope.validateR3Scope({
+      repositoryRoot,
+      baseRef,
+      reportPath,
+    }), /scope/);
+    assert.equal(existsSync(reportPath), false);
+    assert.deepEqual(calls[0], [
+      'diff', '--no-renames', '--name-only', baseRef, '--',
+    ]);
+  } finally {
+    mutableChildProcess.execFileSync = originalExecFileSync;
+    delete require.cache[scopePath];
+  }
 });
 
 test('scope input accepts plain dense data only', () => {

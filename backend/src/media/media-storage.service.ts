@@ -16,31 +16,24 @@ import {
 } from '@aws-sdk/client-s3';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { CreateMediaUploadDto } from './dto/create-media-upload.dto';
 import { sanitizeUploadedImage } from './media-image-sanitizer';
 import {
   assertOwnedMediaKey,
-  MediaPurpose,
   normalizeMediaUpload,
   ownedMediaKeyFromUrl,
 } from './media-upload-policy';
-import {
+import { MediaUploadTicketService } from './media-upload-ticket.service';
+import type {
   MediaConsumptionTarget,
-  MediaUploadTicketService,
-} from './media-upload-ticket.service';
-
-export interface VerifiedMediaUpload {
-  key: string;
-  attachmentRef: string | null;
-  publicUrl: string | null;
-  contentType: string;
-  byteSize: number;
-  verified: true;
-}
+  MediaPurpose,
+  MediaStoragePort,
+  VerifiedMediaUpload,
+} from '../modules/media/public/media-storage.port';
 
 @Injectable()
-export class MediaStorageService {
+export class MediaStorageService implements MediaStoragePort {
   static readonly downloadExpiresInSeconds = 120;
 
   constructor(private readonly tickets: MediaUploadTicketService) {}

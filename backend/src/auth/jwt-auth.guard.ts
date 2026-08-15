@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthenticatedUser } from './authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { JwtSessionGuard } from './jwt-session.guard';
 
 @Injectable()

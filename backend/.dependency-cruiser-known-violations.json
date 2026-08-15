@@ -15,93 +15,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/admin/admin-audit.interceptor.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin-mutation-executor.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/admin/admin-mutation-executor.ts",
     "to": "src/marketplace/provider-review-rating.ts",
     "unresolvedTo": "../marketplace/provider-review-rating",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin-mutation-gate.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin-permission.guard.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin-user-status.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -141,65 +57,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/admin/admin.guard.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin.module.ts",
-    "to": "src/conversations/conversation-realtime.module.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/admin/admin.module.ts",
     "to": "src/notifications/notifications.module.ts",
     "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin.service.ts",
-    "to": "src/conversations/conversation-realtime.publisher.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.publisher",
     "dependencyTypes": [
       "local",
       "import"
@@ -228,20 +88,6 @@
     "from": "src/catalogs/administrative-catalog.service.ts",
     "to": "src/admin/admin-mutation-gate.ts",
     "unresolvedTo": "../admin/admin-mutation-gate",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-catalog-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/catalogs/administrative-catalog.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -296,20 +142,6 @@
   {
     "type": "dependency",
     "from": "src/catalogs/catalogs.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-catalog-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/catalogs/catalogs.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -379,34 +211,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/catalogs/reference-catalog.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-catalog-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/contribution-history/contribution-history.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/contribution-history/contribution-history.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
@@ -438,20 +242,6 @@
     "from": "src/contribution-history/contribution-history.module.ts",
     "to": "src/auth/auth.module.ts",
     "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/contribution-history/contribution-history.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -520,36 +310,8 @@
   {
     "type": "dependency",
     "from": "src/sharing/permission.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/permission.service.ts",
     "to": "src/users/user-lifecycle-lock.ts",
     "unresolvedTo": "../users/user-lifecycle-lock",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/sharing.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -618,36 +380,8 @@
   {
     "type": "dependency",
     "from": "src/sharing/sharing.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/sharing.service.ts",
     "to": "src/contexts/context-key.ts",
     "unresolvedTo": "../contexts/context-key",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/sharing.service.ts",
-    "to": "src/conversations/conversation-realtime.publisher.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.publisher",
     "dependencyTypes": [
       "local",
       "import"
@@ -688,20 +422,6 @@
   {
     "type": "dependency",
     "from": "src/budget-categories/budget-categories.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/budget-categories/budget-categories.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -772,20 +492,6 @@
   {
     "type": "dependency",
     "from": "src/budget-categories/budget-categories.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/budget-categories/budget-categories.service.ts",
     "to": "src/contribution-history/contribution-history.service.ts",
     "unresolvedTo": "../contribution-history/contribution-history.service",
     "dependencyTypes": [
@@ -842,36 +548,8 @@
   {
     "type": "dependency",
     "from": "src/money/money-budget.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/money/money-budget.service.ts",
     "to": "src/sharing/permission.service.ts",
     "unresolvedTo": "../sharing/permission.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/money/money-summary.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -900,20 +578,6 @@
     "from": "src/money/money-summary.controller.ts",
     "to": "src/auth/jwt-auth.guard.ts",
     "unresolvedTo": "../auth/jwt-auth.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/money/money-summary.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -996,20 +660,6 @@
   {
     "type": "dependency",
     "from": "src/wedding-costs/wedding-costs.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-costs/wedding-costs.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -1068,20 +718,6 @@
     "from": "src/wedding-costs/wedding-costs.module.ts",
     "to": "src/sharing/sharing.module.ts",
     "unresolvedTo": "../sharing/sharing.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-costs/wedding-costs.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -1150,20 +786,6 @@
   {
     "type": "dependency",
     "from": "src/guests/guests.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-guests-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/guests/guests.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -1234,20 +856,6 @@
   {
     "type": "dependency",
     "from": "src/guests/guests.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-guests-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/guests/guests.service.ts",
     "to": "src/contribution-history/contribution-history.service.ts",
     "unresolvedTo": "../contribution-history/contribution-history.service",
     "dependencyTypes": [
@@ -1299,34 +907,6 @@
     "rule": {
       "severity": "error",
       "name": "context-guests-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/auth/auth.module.ts",
-    "to": "src/conversations/conversation-realtime.module.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/auth/auth.service.ts",
-    "to": "src/conversations/conversation-realtime.publisher.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.publisher",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
     }
   },
   {
@@ -1374,48 +954,6 @@
   {
     "type": "dependency",
     "from": "src/users/users.module.ts",
-    "to": "src/conversations/conversation-realtime.module.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/users/users.module.ts",
-    "to": "src/media/media.module.ts",
-    "unresolvedTo": "../media/media.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/users/users.module.ts",
-    "to": "src/push/push.module.ts",
-    "unresolvedTo": "../push/push.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/users/users.module.ts",
     "to": "src/sharing/sharing.module.ts",
     "unresolvedTo": "../sharing/sharing.module",
     "dependencyTypes": [
@@ -1430,50 +968,8 @@
   {
     "type": "dependency",
     "from": "src/users/users.service.ts",
-    "to": "src/conversations/conversation-realtime.publisher.ts",
-    "unresolvedTo": "../conversations/conversation-realtime.publisher",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/users/users.service.ts",
     "to": "src/marketplace/provider-review-rating.ts",
     "unresolvedTo": "../marketplace/provider-review-rating",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/users/users.service.ts",
-    "to": "src/media/media-storage.service.ts",
-    "unresolvedTo": "../media/media-storage.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-identity-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/users/users.service.ts",
-    "to": "src/push/firebase-push.client.ts",
-    "unresolvedTo": "../push/firebase-push.client",
     "dependencyTypes": [
       "local",
       "import"
@@ -1559,20 +1055,6 @@
   {
     "type": "dependency",
     "from": "src/dashboard/dashboard.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/dashboard/dashboard.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -1631,20 +1113,6 @@
     "from": "src/dashboard/dashboard.module.ts",
     "to": "src/sharing/sharing.module.ts",
     "unresolvedTo": "../sharing/sharing.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/dashboard/dashboard.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -1742,20 +1210,6 @@
   {
     "type": "dependency",
     "from": "src/timeline/timeline.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/timeline/timeline.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -1814,20 +1268,6 @@
     "from": "src/timeline/timeline.module.ts",
     "to": "src/sharing/sharing.module.ts",
     "unresolvedTo": "../sharing/sharing.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/timeline/timeline.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -1898,20 +1338,6 @@
     "from": "src/marketplace/marketplace-write-locks.ts",
     "to": "src/users/user-lifecycle-lock.ts",
     "unresolvedTo": "../users/user-lifecycle-lock",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/marketplace.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -1996,20 +1422,6 @@
     "from": "src/marketplace/marketplace.presenter.ts",
     "to": "src/wedding-plans/wedding-location.ts",
     "unresolvedTo": "../wedding-plans/wedding-location",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/marketplace.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -2107,20 +1519,6 @@
   {
     "type": "dependency",
     "from": "src/marketplace/quote-offer-acceptance.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-offer-acceptance.ts",
     "to": "src/contribution-history/contribution-history.service.ts",
     "unresolvedTo": "../contribution-history/contribution-history.service",
     "dependencyTypes": [
@@ -2205,20 +1603,6 @@
   {
     "type": "dependency",
     "from": "src/marketplace/quote-offer-rejection.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-offer-rejection.ts",
     "to": "src/contribution-history/contribution-history.service.ts",
     "unresolvedTo": "../contribution-history/contribution-history.service",
     "dependencyTypes": [
@@ -2289,20 +1673,6 @@
   {
     "type": "dependency",
     "from": "src/marketplace/quote-request-cancellation.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-request-cancellation.ts",
     "to": "src/contribution-history/contribution-history.service.ts",
     "unresolvedTo": "../contribution-history/contribution-history.service",
     "dependencyTypes": [
@@ -2347,20 +1717,6 @@
     "from": "src/marketplace/quote-request-cancellation.ts",
     "to": "src/sharing/permission.service.ts",
     "unresolvedTo": "../sharing/permission.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-request-creation.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -2431,20 +1787,6 @@
     "from": "src/marketplace/quote-request-creation.ts",
     "to": "src/sharing/permission.service.ts",
     "unresolvedTo": "../sharing/permission.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -2485,20 +1827,6 @@
   {
     "type": "dependency",
     "from": "src/provider-dashboard/provider-dashboard.module.ts",
-    "to": "src/media/media.module.ts",
-    "unresolvedTo": "../media/media.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.module.ts",
     "to": "src/notifications/notifications.module.ts",
     "unresolvedTo": "../notifications/notifications.module",
     "dependencyTypes": [
@@ -2513,36 +1841,8 @@
   {
     "type": "dependency",
     "from": "src/provider-dashboard/provider-dashboard.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.service.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.service.ts",
-    "to": "src/media/media-storage.service.ts",
-    "unresolvedTo": "../media/media-storage.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -2610,37 +1910,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/media/media-storage.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-media-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/media/media-upload-ticket.service.ts",
     "to": "src/users/user-lifecycle-lock.ts",
     "unresolvedTo": "../users/user-lifecycle-lock",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-media-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/media/media.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -2676,20 +1948,6 @@
     "rule": {
       "severity": "error",
       "name": "context-media-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
     }
   },
   {
@@ -2725,20 +1983,6 @@
     "from": "src/conversations/conversations.gateway.ts",
     "to": "src/auth/access-token-scope.ts",
     "unresolvedTo": "../auth/access-token-scope",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.gateway.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -2794,50 +2038,8 @@
   {
     "type": "dependency",
     "from": "src/conversations/conversations.module.ts",
-    "to": "src/media/media.module.ts",
-    "unresolvedTo": "../media/media.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.module.ts",
     "to": "src/notifications/notifications.module.ts",
     "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.service.ts",
-    "to": "src/media/media-storage.service.ts",
-    "unresolvedTo": "../media/media-storage.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -2906,20 +2108,6 @@
   {
     "type": "dependency",
     "from": "src/notifications/notifications.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-notifications-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/notifications/notifications.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -2976,20 +2164,6 @@
   {
     "type": "dependency",
     "from": "src/notifications/notifications.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-notifications-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/notifications/notifications.service.ts",
     "to": "src/provider-dashboard/provider-access-policy.ts",
     "unresolvedTo": "../provider-dashboard/provider-access-policy",
     "dependencyTypes": [
@@ -3032,36 +2206,8 @@
   {
     "type": "dependency",
     "from": "src/push/push-installations.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-notifications-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/push/push-installations.service.ts",
     "to": "src/users/user-lifecycle-lock.ts",
     "unresolvedTo": "../users/user-lifecycle-lock",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-notifications-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/push/push.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -3144,20 +2290,6 @@
   {
     "type": "dependency",
     "from": "src/onboarding/onboarding.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/onboarding/onboarding.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -3188,34 +2320,6 @@
     "from": "src/onboarding/onboarding.module.ts",
     "to": "src/auth/auth.module.ts",
     "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/onboarding/onboarding.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-plans/wedding-plans.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -3286,20 +2390,6 @@
     "from": "src/wedding-plans/wedding-plans.module.ts",
     "to": "src/sharing/sharing.module.ts",
     "unresolvedTo": "../sharing/sharing.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-plans/wedding-plans.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -3382,20 +2472,6 @@
   {
     "type": "dependency",
     "from": "src/tasks/tasks.controller.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/tasks/tasks.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
     "dependencyTypes": [
@@ -3468,20 +2544,6 @@
     "from": "src/tasks/tasks.module.ts",
     "to": "src/sharing/sharing.module.ts",
     "unresolvedTo": "../sharing/sharing.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/tasks/tasks.service.ts",
-    "to": "src/auth/authenticated-user.interface.ts",
-    "unresolvedTo": "../auth/authenticated-user.interface",
     "dependencyTypes": [
       "local",
       "import"
@@ -3566,76 +2628,6 @@
     "from": "src/platform/config/runtime-environment.ts",
     "to": "src/auth/jwt-secret.ts",
     "unresolvedTo": "../../auth/jwt-secret",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/health/readiness.service.ts",
-    "to": "src/media/media-storage.service.ts",
-    "unresolvedTo": "../../media/media-storage.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/outbox/outbox.dispatcher.ts",
-    "to": "src/conversations/conversation-realtime.publisher.ts",
-    "unresolvedTo": "../../conversations/conversation-realtime.publisher",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/outbox/outbox.dispatcher.ts",
-    "to": "src/push/push-delivery.service.ts",
-    "unresolvedTo": "../../push/push-delivery.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/outbox/outbox.module.ts",
-    "to": "src/conversations/conversation-realtime.module.ts",
-    "unresolvedTo": "../../conversations/conversation-realtime.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/outbox/outbox.module.ts",
-    "to": "src/push/push.module.ts",
-    "unresolvedTo": "../../push/push.module",
     "dependencyTypes": [
       "local",
       "import"

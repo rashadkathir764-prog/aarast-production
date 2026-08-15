@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtSessionGuard } from '../auth/jwt-session.guard';
 import { AdminGuard } from './admin.guard';

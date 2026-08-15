@@ -86,6 +86,64 @@ const COMPOSITION_DEPENDENCIES = Object.freeze([
   { key: 'outbox-module-realtime', kind: 'module', retirementTask: 2 },
   { key: 'outbox-module-push', kind: 'module', retirementTask: 2 },
 ]);
+const TASK2_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
+  messagingRealtime: Object.freeze({
+    token: 'backend/src/modules/messaging/public/messaging-realtime.port.ts#MESSAGING_REALTIME_PORT',
+    parameterType: 'backend/src/modules/messaging/public/messaging-realtime.port.ts#MessagingRealtimePort',
+  }),
+  mediaStorage: Object.freeze({
+    token: 'backend/src/modules/media/public/media-storage.port.ts#MEDIA_STORAGE_PORT',
+    parameterType: 'backend/src/modules/media/public/media-storage.port.ts#MediaStoragePort',
+  }),
+  pushCapability: Object.freeze({
+    token: 'backend/src/modules/notifications/public/push-capability.port.ts#PUSH_CAPABILITY_PORT',
+    parameterType: 'backend/src/modules/notifications/public/push-capability.port.ts#PushCapabilityPort',
+  }),
+  pushDelivery: Object.freeze({
+    token: 'backend/src/modules/notifications/public/push-delivery.port.ts#PUSH_DELIVERY_PORT',
+    parameterType: 'backend/src/modules/notifications/public/push-delivery.port.ts#PushDeliveryPort',
+  }),
+  mediaReadiness: Object.freeze({
+    token: 'backend/src/platform/health/media-readiness.port.ts#MEDIA_READINESS_PORT',
+    parameterType: 'backend/src/platform/health/media-readiness.port.ts#MediaReadinessPort',
+  }),
+  outboxRealtime: Object.freeze({
+    token: 'backend/src/platform/outbox/outbox.ports.ts#OUTBOX_REALTIME_SINK',
+    parameterType: 'backend/src/platform/outbox/outbox.ports.ts#OutboxRealtimeSink',
+  }),
+  outboxPush: Object.freeze({
+    token: 'backend/src/platform/outbox/outbox.ports.ts#OUTBOX_PUSH_SINK',
+    parameterType: 'backend/src/platform/outbox/outbox.ports.ts#OutboxPushSink',
+  }),
+});
+const TASK2_CONSUMER_IDENTITIES = new Map([
+  ['MESSAGING_REALTIME_PORT', Object.freeze([
+    TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime,
+  ])],
+  ['MEDIA_STORAGE_PORT', Object.freeze([
+    TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage,
+  ])],
+  ['PUSH_CAPABILITY_PORT', Object.freeze([
+    TASK2_CANONICAL_INJECTION_IDENTITIES.pushCapability,
+  ])],
+  ['PUSH_DELIVERY_PORT', Object.freeze([
+    TASK2_CANONICAL_INJECTION_IDENTITIES.pushDelivery,
+    TASK2_CANONICAL_INJECTION_IDENTITIES.outboxPush,
+  ])],
+]);
+const TASK2_EXACT_CONSTRUCTOR_USES = Object.freeze([
+  Object.freeze({ source: 'backend/src/admin/admin.service.ts', consumerClass: 'backend/src/admin/admin.service.ts#AdminService', parameter: 'realtime', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/auth/auth.service.ts', consumerClass: 'backend/src/auth/auth.service.ts#AuthService', parameter: 'realtime', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/conversations/conversations.service.ts', consumerClass: 'backend/src/conversations/conversations.service.ts#ConversationsService', parameter: 'mediaStorage', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
+  Object.freeze({ source: 'backend/src/platform/health/readiness.service.ts', consumerClass: 'backend/src/platform/health/readiness.service.ts#ReadinessService', parameter: 'mediaStorage', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaReadiness }),
+  Object.freeze({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', consumerClass: 'backend/src/platform/outbox/outbox.dispatcher.ts#OutboxDispatcher', parameter: 'pushDelivery', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.outboxPush }),
+  Object.freeze({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', consumerClass: 'backend/src/platform/outbox/outbox.dispatcher.ts#OutboxDispatcher', parameter: 'realtime', parameterIndex: 0, ...TASK2_CANONICAL_INJECTION_IDENTITIES.outboxRealtime }),
+  Object.freeze({ source: 'backend/src/provider-dashboard/provider-dashboard.service.ts', consumerClass: 'backend/src/provider-dashboard/provider-dashboard.service.ts#ProviderDashboardService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
+  Object.freeze({ source: 'backend/src/sharing/sharing.service.ts', consumerClass: 'backend/src/sharing/sharing.service.ts#SharingService', parameter: 'realtime', parameterIndex: 5, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
+  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'realtime', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'firebasePush', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.pushCapability }),
+]);
 const CONTRACT_SHAPE_HASH = 'c8cd93a74fe8ebcd79dd2cddd3b392b83171ef0752cb2f7545a0b03f48b4d8a5';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
@@ -732,7 +790,18 @@ function scanR3SourceLaws(options) {
           const registrations = providers.get(target.key) || [];
           const registeredExactlyOnce = registrations.length === 1
             && registrations[0].module === internalModule;
-          return exportsImplementation && exactManifestTarget && registeredExactlyOnce;
+          const frozenMessagingBridge = publicToken.name === 'MESSAGING_REALTIME_PORT'
+            && registrations.length === 1
+            && registrations[0].module.path
+              === 'backend/src/conversations/conversation-realtime.module.ts'
+            && registrations[0].module.className === 'ConversationRealtimeModule'
+            && internalModule.imports.some((expression) => {
+              const importedIdentity = symbolIdentity(expression, checker, repoRoot);
+              return importedIdentity
+                && modulesByIdentity.get(importedIdentity.key) === registrations[0].module;
+            });
+          return exportsImplementation && exactManifestTarget
+            && (registeredExactlyOnce || frozenMessagingBridge);
         }) : [];
         const publicTokenBindings = publicContractBindings.get(publicToken.name) || [];
         const publicBindingCount = publicTokenBindings.length;
@@ -1041,15 +1110,26 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
         }
       }
       if (ts.isConstructorDeclaration(node)) {
-        for (const parameter of node.parameters) {
+        const consumerClass = ts.isClassDeclaration(node.parent) && node.parent.name
+          ? symbolIdentity(node.parent.name, checker, repoRoot)
+          : null;
+        for (const [parameterIndex, parameter] of node.parameters.entries()) {
           if (!parameter.type) continue;
           const expression = ts.isTypeReferenceNode(parameter.type) ? parameter.type.typeName : parameter.type;
           const symbol = alias(checker.getSymbolAtLocation(expression), checker);
           if (!symbol) continue;
+          const injectCall = decoratorCall(parameter, 'Inject', checker);
+          const injectionTokenExpression = injectCall?.arguments[0];
+          const parameterTypeIdentity = symbolIdentity(expression, checker, repoRoot);
+          const injectionTokenIdentity = symbolIdentity(injectionTokenExpression, checker, repoRoot);
           allConstructorUses.push({
             source: repositoryPath,
+            consumerClassIdentity: consumerClass?.key || null,
             parameter: parameter.name.getText(sourceFile),
+            parameterIndex,
             target: symbol.getName(),
+            parameterTypeIdentity: parameterTypeIdentity?.key || null,
+            injectionTokenIdentity: injectionTokenIdentity?.key || null,
           });
           if (!sourceContext) continue;
           const declaration = (symbol.declarations || []).find((item) => {
@@ -1116,19 +1196,31 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     }
   }
   const providerContracts = contractDefinitions.map((contract) => {
-    const consumers = injections.filter((item) => contract.implementations.includes(item.target))
-      .map((item) => ({ source: item.source, kind: 'constructor-injection' }));
+    const task2ConsumerIdentities = TASK2_CONSUMER_IDENTITIES.get(contract.token);
+    const consumers = task2ConsumerIdentities
+      ? []
+      : injections.filter((item) => contract.implementations.includes(item.target))
+        .map((item) => ({ source: item.source, kind: 'constructor-injection' }));
+    if (task2ConsumerIdentities) {
+      for (const use of allConstructorUses) {
+        if (task2ConsumerIdentities.some((identity) => (
+          use.injectionTokenIdentity === identity.token
+            && use.parameterTypeIdentity === identity.parameterType
+        ))) {
+          consumers.push({ source: use.source, kind: 'constructor-injection' });
+        }
+      }
+    }
     if (contract.token === 'IDENTITY_ACCESS_TOKEN_VERIFIER'
         && allConstructorUses.some((item) => item.source === 'backend/src/conversations/conversations.gateway.ts'
           && item.target === 'JwtService')) {
       consumers.push({ source: 'backend/src/conversations/conversations.gateway.ts', kind: 'constructor-injection' });
     }
-    if (contract.token === 'PUSH_DELIVERY_PORT'
-        && allConstructorUses.some((item) => item.source === 'backend/src/platform/outbox/outbox.dispatcher.ts'
-          && item.target === 'PushDeliveryService')) {
-      consumers.push({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', kind: 'constructor-injection' });
-    }
-    consumers.sort((left, right) => `${left.source}|${left.kind}`.localeCompare(`${right.source}|${right.kind}`));
+    const uniqueConsumers = [...new Map(consumers.map((item) => [
+      `${item.source}|${item.kind}`,
+      item,
+    ])).values()];
+    uniqueConsumers.sort((left, right) => `${left.source}|${left.kind}`.localeCompare(`${right.source}|${right.kind}`));
     let surfacePresent = true;
     for (const implementation of contract.implementations) {
       let declaration = declarationsByName.get(implementation);
@@ -1146,8 +1238,20 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
       const properties = new Set(checker.getPropertiesOfType(type).map((item) => item.getName()));
       if (contract.methods.some((method) => !properties.has(method))) surfacePresent = false;
     }
-    return { ...contract, consumers, surfacePresent };
+    return { ...contract, consumers: uniqueConsumers, surfacePresent };
   });
+  const task2CanonicalPairs = new Set(Object.values(TASK2_CANONICAL_INJECTION_IDENTITIES)
+    .map((identity) => `${identity.token}|${identity.parameterType}`));
+  const task2ConstructorUseKey = (item) => (
+    `${item.source}|${item.consumerClassIdentity || item.consumerClass}|${item.parameter}|${item.parameterIndex}`
+      + `|${item.injectionTokenIdentity || item.token}|${item.parameterTypeIdentity || item.parameterType}`
+  );
+  const liveTask2ConstructorUses = allConstructorUses.filter((item) => task2CanonicalPairs.has(
+    `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
+  )).map(task2ConstructorUseKey).sort();
+  const exactTask2ConstructorUses = TASK2_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const task2ConstructorInventoryPresent = JSON.stringify(liveTask2ConstructorUses)
+    === JSON.stringify(exactTask2ConstructorUses);
   const retiredEdges = initialRetiredEdges.filter((edge) => {
     const [from, to] = edge.key.split('|');
     return importEdges.has(`backend/${from}|backend/${to}`);
@@ -1156,6 +1260,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     modules, globals, injections, compositionDependencies,
     providerContracts: providerContracts.map(({ surfacePresent, ...contract }) => contract),
     providerContractSurfacesPresent: providerContracts.every((item) => item.surfacePresent),
+    task2ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
   };
@@ -1206,6 +1311,7 @@ function scanR3Contexts(options) {
     || JSON.stringify(livePlatformDebts) !== JSON.stringify(manifest.remainingPlatformDebts)
     || JSON.stringify(live.providerContracts) !== JSON.stringify(manifest.providerContracts)
     || !live.providerContractSurfacesPresent
+    || !live.task2ConstructorInventoryPresent
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)
@@ -1260,7 +1366,8 @@ function runCli(dependencies = {}) {
   const stdout = dependencies.stdout || ((message) => process.stdout.write(`${message}\n`));
   const stderr = dependencies.stderr || ((message) => process.stderr.write(`${message}\n`));
   try {
-    if (argv.length !== 3 || argv[0] !== '--check' || argv[1] !== '--stage' || argv[2] !== 'inventory') {
+    if (argv.length !== 3 || argv[0] !== '--check' || argv[1] !== '--stage'
+        || !/^(?:inventory|task-[2-8])$/u.test(argv[2])) {
       throw new Error('invalid arguments');
     }
     const backendRoot = path.resolve(__dirname, '../..');

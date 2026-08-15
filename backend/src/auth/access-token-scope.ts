@@ -1,7 +1,5 @@
-import type {
-  JwtPayload,
-  JwtSessionScope,
-} from './jwt-payload.interface';
+import type { JwtPayload } from './jwt-payload.interface';
+import type { JwtSessionScope } from '../modules/identity/public/identity-session.types';
 
 export function resolveJwtSessionScope(
   payload: JwtPayload,

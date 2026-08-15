@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { WeddingPlansService } from '../wedding-plans/wedding-plans.service';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { ImportLocalPlanDto } from './dto/import-local-plan.dto';

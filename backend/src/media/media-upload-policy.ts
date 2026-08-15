@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import type { MediaPurpose } from '../modules/media/public/media-storage.port';
 
 export const mediaPurposes = [
   'user-avatar',
@@ -10,8 +11,6 @@ export const mediaPurposes = [
   'service-image',
   'chat-image',
 ] as const;
-
-export type MediaPurpose = (typeof mediaPurposes)[number];
 
 const extensionByContentType = new Map([
   ['image/jpeg', 'jpg'],

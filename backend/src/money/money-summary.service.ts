@@ -7,7 +7,7 @@ import {
   Prisma,
   WeddingCostStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";

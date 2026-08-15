@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { MediaModule } from '../media/media.module';
-import { OutboxModule } from '../platform/outbox/outbox.module';
+import { MediaStoragePublicModule } from '../modules/media/public/media-storage-public.module';
+import { OutboxCoreModule } from '../platform/outbox/outbox-core.module';
 import { PrismaModule } from '../platform/database/prisma.module';
 import {
   ConversationsController,
@@ -17,8 +17,8 @@ import { ConversationRealtimeModule } from './conversation-realtime.module';
     AuthModule,
     PrismaModule,
     NotificationsModule,
-    MediaModule,
-    OutboxModule,
+    MediaStoragePublicModule,
+    OutboxCoreModule,
     ConversationRealtimeModule,
   ],
   controllers: [ConversationsController, QuoteRequestConversationsController],

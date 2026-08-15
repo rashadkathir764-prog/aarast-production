@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,7 +19,7 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import {
   AdminPermission,
   hasAdminPermission,
@@ -29,7 +30,7 @@ import {
   enqueueUserSessionsRevoked,
 } from '../platform/outbox/realtime-revocation';
 import { PrismaService } from '../platform/database/prisma.service';
-import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
+import { MESSAGING_REALTIME_PORT, type MessagingRealtimePort } from '../modules/messaging/public/messaging-realtime.port';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AdminMutationExecutor } from './admin-mutation-executor';
 import { switchProviderStatusNotification } from './provider-status-notification';
@@ -77,7 +78,8 @@ export class AdminService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly realtime: ConversationRealtimePublisher,
+    @Inject(MESSAGING_REALTIME_PORT)
+    private readonly realtime: MessagingRealtimePort,
     private readonly notifications: NotificationsService,
   ) {
     this.mutations = new AdminMutationExecutor(prisma);

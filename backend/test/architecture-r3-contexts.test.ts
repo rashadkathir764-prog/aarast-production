@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -66,22 +68,52 @@ function fixtureProject(files: Record<string, string>) {
   return { repoRoot: root, backendRoot: path.join(root, 'backend') };
 }
 
+function fullSourceFixture(replacements: Array<{
+  relativePath: string;
+  before: string;
+  after: string;
+}>) {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-consumer-identity-'));
+  temporaryRoots.push(root);
+  const fixtureBackend = path.join(root, 'backend');
+  mkdirSync(fixtureBackend, { recursive: true });
+  cpSync(path.join(backendRoot, 'src'), path.join(fixtureBackend, 'src'), { recursive: true });
+  cpSync(path.join(backendRoot, 'tsconfig.json'), path.join(fixtureBackend, 'tsconfig.json'));
+  symlinkSync(
+    path.join(backendRoot, 'node_modules'),
+    path.join(fixtureBackend, 'node_modules'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  for (const replacement of replacements) {
+    const target = path.join(fixtureBackend, 'src', replacement.relativePath);
+    const current = readFileSync(target, 'utf8');
+    assert.ok(current.includes(replacement.before), `${replacement.relativePath}: fixture source`);
+    writeFileSync(target, current.replace(replacement.before, replacement.after), 'utf8');
+  }
+  return {
+    repoRoot: root,
+    backendRoot: fixtureBackend,
+    manifestPath,
+    stage: 'task-2',
+  };
+}
+
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('the canonical R3 manifest freezes the exact inventory ledgers', () => {
+test('the canonical R3 manifest freezes the exact Task 2 ledgers', () => {
   const manifest = scanner().validateR3ContextManifest(loadManifest());
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, '6b06eb096aca8cc6684d365d16e05d4cd8529898');
-  assert.equal(manifest.stage, 'inventory');
+  assert.equal(manifest.stage, 'task-2');
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 27);
-  assert.equal(manifest.crossContextInjections.length, 43);
+  assert.equal(manifest.legacyModules.length, 36);
+  assert.equal(manifest.crossContextInjections.length, 35);
   assert.equal(manifest.compositionDependencies.length, 6);
   assert.equal(manifest.providerContracts.length, 10);
   assert.equal(manifest.decoratorRuntimeReferences.length, 23);
@@ -103,10 +135,12 @@ test('the canonical R3 manifest freezes the exact inventory ledgers', () => {
   ]);
   assert.deepEqual(manifest.remainingDuplicateProviders, manifest.initialDuplicateProviders);
   assert.equal(manifest.initialPlatformDebts.length, 6);
-  assert.deepEqual(manifest.remainingPlatformDebts, manifest.initialPlatformDebts);
+  assert.deepEqual(manifest.remainingPlatformDebts, ['runtime-jwt-secret']);
   assert.deepEqual(
     manifest.remainingRetiredLegacyProviderEdges,
-    manifest.initialRetiredLegacyProviderEdges.map((edge: { key: string }) => edge.key),
+    manifest.initialRetiredLegacyProviderEdges
+      .filter((edge: { retirementTask: number }) => edge.retirementTask > 2)
+      .map((edge: { key: string }) => edge.key),
   );
 });
 
@@ -115,13 +149,16 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   const injectionKeys = manifest.crossContextInjections.map(
     (edge: any) => `${edge.source}|${edge.parameter}|${edge.target}`,
   );
-  assert.equal(new Set(injectionKeys).size, 43);
+  assert.equal(new Set(injectionKeys).size, 35);
   assert.ok(injectionKeys.includes(
     'backend/src/sharing/invite-access.service.ts|auth|AuthService',
   ));
-  assert.ok(injectionKeys.includes(
-    'backend/src/users/users.service.ts|firebasePush|FirebasePushClient',
-  ));
+  assert.equal(
+    injectionKeys.includes(
+      'backend/src/users/users.service.ts|firebasePush|FirebasePushClient',
+    ),
+    false,
+  );
   assert.equal(
     manifest.decoratorRuntimeReferences.filter((item: any) => item.symbol === 'JwtAuthGuard').length,
     20,
@@ -160,25 +197,25 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   );
 });
 
-test('the live TypeScript inventory equals the canonical inventory manifest', () => {
+test('the live TypeScript inventory equals the canonical Task 2 manifest', () => {
   const result = scanner().scanR3Contexts({
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'inventory',
+    stage: 'task-2',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 27,
-    crossContextInjections: 43,
-    compositionDependencies: 6,
+    legacyModules: 36,
+    crossContextInjections: 35,
+    compositionDependencies: 1,
     initialDuplicateProviders: 3,
     remainingDuplicateProviders: 3,
     initialPlatformDebts: 6,
-    remainingPlatformDebts: 6,
+    remainingPlatformDebts: 1,
     initialRetiredLegacyProviderEdges: 163,
-    remainingRetiredLegacyProviderEdges: 163,
+    remainingRetiredLegacyProviderEdges: 96,
     forwardRef: 0,
     globals: 2,
     nestModuleCycles: 0,
@@ -203,7 +240,7 @@ test('I1 live orchestration executes source laws and permits only exact approved
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'inventory',
+    stage: 'task-2',
     sourceLawScan: () => {
       calls += 1;
       return {
@@ -255,12 +292,12 @@ test('same-count manifest identity drift is rejected against live source and the
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'inventory',
+    stage: 'task-2',
   });
   assert.ok(result.diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
 
-test('inventory-stage immutable ledgers reject same-count substitutions', () => {
+test('Task 2 immutable ledgers reject same-count substitutions', () => {
   const manifest = loadManifest();
   assert.throws(() => scanner().validateR3ContextManifest({
     ...manifest,
@@ -351,7 +388,7 @@ test('I3 same-count contract, composition, context-root, and Admin guard substit
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'inventory',
+    stage: 'task-2',
   }), /context root|provider contract|composition|guard|canonical/i);
 });
 
@@ -364,6 +401,277 @@ test('I5 every frozen public token records at least one exact present consumer',
       assert.match(consumer.kind, /^(constructor-injection|function-parameter|type-only|pure-function)$/);
     }
   }
+});
+
+test('Task 2 DI consumers reject independent same-name public and platform Symbols', () => {
+  const options = fullSourceFixture([
+    {
+      relativePath: 'auth/auth.service.ts',
+      before: [
+        'import {',
+        '  MESSAGING_REALTIME_PORT,',
+        '  MessagingRealtimePort,',
+        '} from "../modules/messaging/public/messaging-realtime.port";',
+      ].join('\n'),
+      after: [
+        'import type { MessagingRealtimePort } from "../modules/messaging/public/messaging-realtime.port";',
+        'const MESSAGING_REALTIME_PORT = Symbol("MESSAGING_REALTIME_PORT");',
+      ].join('\n'),
+    },
+    {
+      relativePath: 'platform/outbox/outbox.dispatcher.ts',
+      before: [
+        'import {',
+        '  OUTBOX_PUSH_SINK,',
+        '  OUTBOX_REALTIME_SINK,',
+        '  OutboxPushSink,',
+        '  OutboxRealtimeSink,',
+        '} from "./outbox.ports";',
+      ].join('\n'),
+      after: [
+        'import { OUTBOX_REALTIME_SINK, OutboxPushSink, OutboxRealtimeSink } from "./outbox.ports";',
+        'const OUTBOX_PUSH_SINK = Symbol("OUTBOX_PUSH_SINK");',
+      ].join('\n'),
+    },
+  ]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI consumers reject fake same-name public and platform interface types', () => {
+  const options = fullSourceFixture([
+    {
+      relativePath: 'auth/auth.service.ts',
+      before: [
+        'import {',
+        '  MESSAGING_REALTIME_PORT,',
+        '  MessagingRealtimePort,',
+        '} from "../modules/messaging/public/messaging-realtime.port";',
+      ].join('\n'),
+      after: [
+        'import { MESSAGING_REALTIME_PORT } from "../modules/messaging/public/messaging-realtime.port";',
+        'interface MessagingRealtimePort { disconnectUser(userId: string): void; }',
+      ].join('\n'),
+    },
+    {
+      relativePath: 'platform/outbox/outbox.dispatcher.ts',
+      before: [
+        'import {',
+        '  OUTBOX_PUSH_SINK,',
+        '  OUTBOX_REALTIME_SINK,',
+        '  OutboxPushSink,',
+        '  OutboxRealtimeSink,',
+        '} from "./outbox.ports";',
+      ].join('\n'),
+      after: [
+        'import { OUTBOX_PUSH_SINK, OUTBOX_REALTIME_SINK, OutboxRealtimeSink } from "./outbox.ports";',
+        'interface OutboxPushSink { dispatchNotification(notificationId: string): Promise<void>; }',
+      ].join('\n'),
+    },
+  ]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law rejects a local same-name MEDIA_READINESS_PORT Symbol', () => {
+  const options = fullSourceFixture([{
+    relativePath: 'platform/health/readiness.service.ts',
+    before: [
+      'import {',
+      '  MEDIA_READINESS_PORT,',
+      '  MediaReadinessPort,',
+      "} from './media-readiness.port';",
+    ].join('\n'),
+    after: [
+      "import type { MediaReadinessPort } from './media-readiness.port';",
+      "const MEDIA_READINESS_PORT = Symbol('MEDIA_READINESS_PORT');",
+    ].join('\n'),
+  }]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law rejects a fake same-name MediaReadinessPort type', () => {
+  const options = fullSourceFixture([{
+    relativePath: 'platform/health/readiness.service.ts',
+    before: [
+      'import {',
+      '  MEDIA_READINESS_PORT,',
+      '  MediaReadinessPort,',
+      "} from './media-readiness.port';",
+    ].join('\n'),
+    after: [
+      "import { MEDIA_READINESS_PORT } from './media-readiness.port';",
+      'interface MediaReadinessPort { checkReadiness(): Promise<void>; }',
+    ].join('\n'),
+  }]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law rejects a local same-name OUTBOX_REALTIME_SINK Symbol', () => {
+  const options = fullSourceFixture([{
+    relativePath: 'platform/outbox/outbox.dispatcher.ts',
+    before: [
+      'import {',
+      '  OUTBOX_PUSH_SINK,',
+      '  OUTBOX_REALTIME_SINK,',
+      '  OutboxPushSink,',
+      '  OutboxRealtimeSink,',
+      '} from "./outbox.ports";',
+    ].join('\n'),
+    after: [
+      'import { OUTBOX_PUSH_SINK, OutboxPushSink, OutboxRealtimeSink } from "./outbox.ports";',
+      'const OUTBOX_REALTIME_SINK = Symbol("OUTBOX_REALTIME_SINK");',
+    ].join('\n'),
+  }]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law rejects a fake same-name OutboxRealtimeSink type', () => {
+  const options = fullSourceFixture([{
+    relativePath: 'platform/outbox/outbox.dispatcher.ts',
+    before: [
+      'import {',
+      '  OUTBOX_PUSH_SINK,',
+      '  OUTBOX_REALTIME_SINK,',
+      '  OutboxPushSink,',
+      '  OutboxRealtimeSink,',
+      '} from "./outbox.ports";',
+    ].join('\n'),
+    after: [
+      'import { OUTBOX_PUSH_SINK, OUTBOX_REALTIME_SINK, OutboxPushSink } from "./outbox.ports";',
+      [
+        'interface OutboxRealtimeSink {',
+        '  dispatchMessageAvailable(conversationId: string, event: unknown): Promise<void>;',
+        '  dispatchActivityAvailable(conversationId: string, event: unknown, includeLifecycleEvent: boolean): Promise<void>;',
+        '  dispatchNotificationAvailable(userId: string, event: unknown): Promise<void>;',
+        '  dispatchConversationAccessRevoked(userId: string, conversationIds: string[]): Promise<void>;',
+        '  dispatchUserSessionsRevoked(userId: string): Promise<void>;',
+        '  dispatchSessionRevoked(sessionId: string): Promise<void>;',
+        '}',
+      ].join('\n'),
+    ].join('\n'),
+  }]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law rejects a canonical readiness decoy in another same-file class', () => {
+  const options = fullSourceFixture([
+    {
+      relativePath: 'platform/health/readiness.service.ts',
+      before: [
+        'import {',
+        '  MEDIA_READINESS_PORT,',
+        '  MediaReadinessPort,',
+        "} from './media-readiness.port';",
+      ].join('\n'),
+      after: [
+        'import {',
+        '  MEDIA_READINESS_PORT as CANONICAL_MEDIA_READINESS_PORT,',
+        '  MediaReadinessPort as CanonicalMediaReadinessPort,',
+        "} from './media-readiness.port';",
+        "const MEDIA_READINESS_PORT = Symbol('MEDIA_READINESS_PORT');",
+        'interface MediaReadinessPort { checkReadiness(): Promise<void>; }',
+      ].join('\n'),
+    },
+    {
+      relativePath: 'platform/health/readiness.service.ts',
+      before: [
+        '@Injectable()',
+        'export class ReadinessService {',
+      ].join('\n'),
+      after: [
+        'class SameFileReadinessDecoy {',
+        '  constructor(',
+        '    @Inject(CANONICAL_MEDIA_READINESS_PORT)',
+        '    private readonly mediaStorage: CanonicalMediaReadinessPort,',
+        '  ) {}',
+        '}',
+        '',
+        '@Injectable()',
+        'export class ReadinessService {',
+      ].join('\n'),
+    },
+  ]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law rejects a canonical readiness decoy at another constructor parameter', () => {
+  const options = fullSourceFixture([
+    {
+      relativePath: 'platform/health/readiness.service.ts',
+      before: [
+        'import {',
+        '  MEDIA_READINESS_PORT,',
+        '  MediaReadinessPort,',
+        "} from './media-readiness.port';",
+      ].join('\n'),
+      after: [
+        'import {',
+        '  MEDIA_READINESS_PORT as CANONICAL_MEDIA_READINESS_PORT,',
+        '  MediaReadinessPort as CanonicalMediaReadinessPort,',
+        "} from './media-readiness.port';",
+        "const MEDIA_READINESS_PORT = Symbol('MEDIA_READINESS_PORT');",
+        'interface MediaReadinessPort { checkReadiness(): Promise<void>; }',
+      ].join('\n'),
+    },
+    {
+      relativePath: 'platform/health/readiness.service.ts',
+      before: [
+        '  constructor(',
+        '    private readonly prisma: PrismaService,',
+        '    @Inject(MEDIA_READINESS_PORT)',
+        '    private readonly mediaStorage: MediaReadinessPort,',
+      ].join('\n'),
+      after: [
+        '  constructor(',
+        '    private readonly prisma: PrismaService,',
+        '    @Inject(MEDIA_READINESS_PORT)',
+        '    private readonly mediaStorage: MediaReadinessPort,',
+        '    @Inject(CANONICAL_MEDIA_READINESS_PORT)',
+        '    private readonly canonicalMediaStorage: CanonicalMediaReadinessPort,',
+      ].join('\n'),
+    },
+  ]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('Task 2 DI law accepts canonical readiness aliases at the exact consumer parameter', () => {
+  const options = fullSourceFixture([
+    {
+      relativePath: 'platform/health/readiness.service.ts',
+      before: [
+        'import {',
+        '  MEDIA_READINESS_PORT,',
+        '  MediaReadinessPort,',
+        "} from './media-readiness.port';",
+      ].join('\n'),
+      after: [
+        'import {',
+        '  MEDIA_READINESS_PORT as READINESS_TOKEN,',
+        '  MediaReadinessPort as ReadinessContract,',
+        "} from './media-readiness.port';",
+      ].join('\n'),
+    },
+    {
+      relativePath: 'platform/health/readiness.service.ts',
+      before: [
+        '    @Inject(MEDIA_READINESS_PORT)',
+        '    private readonly mediaStorage: MediaReadinessPort,',
+      ].join('\n'),
+      after: [
+        '    @Inject(READINESS_TOKEN)',
+        '    private readonly mediaStorage: ReadinessContract,',
+      ].join('\n'),
+    },
+  ]);
+  const result = scanner().scanR3Contexts(options);
+  assert.deepEqual(result.diagnostics, []);
 });
 
 test('I6 ledgers retire monotonically only at their declared task', () => {

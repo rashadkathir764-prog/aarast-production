@@ -22,7 +22,7 @@ import { RequestOtpDto } from "./dto/request-otp.dto";
 import { VerifyOtpDto } from "./dto/verify-otp.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { CurrentUser } from "./current-user.decorator";
-import { AuthenticatedUser } from "./authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { toSafeUser } from "./safe-user";
 import { LogoutDto } from "./dto/logout.dto";
 import { RefreshDto } from "./dto/refresh.dto";

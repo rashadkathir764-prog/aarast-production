@@ -3,6 +3,7 @@ import {
   ConflictException,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -26,14 +27,17 @@ import {
   WeddingPlan,
 } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { invitationDeliveryPersistenceFailuresTotal } from "../platform/observability/metrics";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { canonicalPlanContextKey } from "../contexts/context-key";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
-import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
+import {
+  MESSAGING_REALTIME_PORT,
+  MessagingRealtimePort,
+} from "../modules/messaging/public/messaging-realtime.port";
 import { NotificationsService } from "../notifications/notifications.service";
 import { enqueueConversationAccessRevoked } from "../platform/outbox/realtime-revocation";
 import { PrismaService } from "../platform/database/prisma.service";
@@ -269,7 +273,9 @@ export class SharingService {
     private readonly notifications: NotificationsService,
     private readonly invitationDelivery: InvitationDeliveryService,
     private readonly history: ContributionHistoryService,
-    @Optional() private readonly realtime?: ConversationRealtimePublisher,
+    @Optional()
+    @Inject(MESSAGING_REALTIME_PORT)
+    private readonly realtime?: MessagingRealtimePort,
   ) {}
 
   async create(

@@ -6,11 +6,11 @@ import { AdminAuditService } from './admin-audit.service';
 import { AdminGuard } from './admin.guard';
 import { AdminPermissionGuard } from './admin-permission.guard';
 import { AdminService } from './admin.service';
-import { ConversationRealtimeModule } from '../conversations/conversation-realtime.module';
+import { MessagingRealtimePublicModule } from '../modules/messaging/public/messaging-realtime-public.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PrismaModule, ConversationRealtimeModule, NotificationsModule],
+  imports: [PrismaModule, MessagingRealtimePublicModule, NotificationsModule],
   controllers: [AdminController, AdminAuditController],
   providers: [
     AdminGuard,

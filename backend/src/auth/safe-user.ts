@@ -1,4 +1,4 @@
-import { AuthenticatedUser } from './authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import {
   AdminPermission,
   permissionsForAdminRole,

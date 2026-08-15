@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { AdministrativeLocalityType, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { runAuthorizedAdminMutation } from '../admin/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';

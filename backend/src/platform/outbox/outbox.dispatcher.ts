@@ -1,14 +1,21 @@
-import { Injectable, Optional } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { OutboxEvent, Prisma } from "@prisma/client";
-import { ConversationRealtimePublisher } from "../../conversations/conversation-realtime.publisher";
-import { PushDeliveryService } from "../../push/push-delivery.service";
 import { OutboxEventTypes } from "./outbox.constants";
+import {
+  OUTBOX_PUSH_SINK,
+  OUTBOX_REALTIME_SINK,
+  OutboxPushSink,
+  OutboxRealtimeSink,
+} from "./outbox.ports";
 
 @Injectable()
 export class OutboxDispatcher {
   constructor(
-    private readonly realtime: ConversationRealtimePublisher,
-    @Optional() private readonly pushDelivery?: PushDeliveryService,
+    @Inject(OUTBOX_REALTIME_SINK)
+    private readonly realtime: OutboxRealtimeSink,
+    @Optional()
+    @Inject(OUTBOX_PUSH_SINK)
+    private readonly pushDelivery?: OutboxPushSink,
   ) {}
 
   async dispatch(event: OutboxEvent): Promise<void> {

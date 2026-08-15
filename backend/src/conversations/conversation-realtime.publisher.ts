@@ -5,6 +5,7 @@ import {
   sessionRoom,
   userRoom,
 } from './conversation-rooms';
+import type { MessagingRealtimePort } from '../modules/messaging/public/messaging-realtime.port';
 
 export class RealtimeServerUnavailableError extends Error {
   constructor() {
@@ -14,7 +15,7 @@ export class RealtimeServerUnavailableError extends Error {
 }
 
 @Injectable()
-export class ConversationRealtimePublisher {
+export class ConversationRealtimePublisher implements MessagingRealtimePort {
   private server?: Server;
 
   attach(server: Server) {

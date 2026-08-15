@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,9 +13,12 @@ import {
   ProviderStatus,
   UserStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
-import { MediaStorageService } from '../media/media-storage.service';
+import {
+  MEDIA_STORAGE_PORT,
+  MediaStoragePort,
+} from '../modules/media/public/media-storage.port';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
 import { OutboxService } from '../platform/outbox/outbox.service';
@@ -135,7 +139,8 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly realtime: ConversationRealtimePublisher,
-    private readonly mediaStorage: MediaStorageService,
+    @Inject(MEDIA_STORAGE_PORT)
+    private readonly mediaStorage: MediaStoragePort,
     private readonly outbox: OutboxService,
   ) {}
 
@@ -1357,7 +1362,7 @@ export class ConversationsService {
     },
   >(
     message: T,
-    signedDownloads?: Map<string, Awaited<ReturnType<MediaStorageService['createDownloadUrl']>>>,
+    signedDownloads?: Map<string, Awaited<ReturnType<MediaStoragePort['createDownloadUrl']>>>,
   ) {
     const { sender, ...messageWithoutSender } = message;
     const attachments = await Promise.all(

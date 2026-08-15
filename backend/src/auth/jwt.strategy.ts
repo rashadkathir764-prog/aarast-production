@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../platform/database/prisma.service';
 import { resolveJwtSessionScope } from './access-token-scope';
-import { AuthenticatedUser } from './authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { JwtPayload } from './jwt-payload.interface';
 import { toAuthenticatedUser } from './safe-user';
 import { getJwtSecret } from './jwt-secret';

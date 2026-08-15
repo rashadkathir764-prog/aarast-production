@@ -1,6 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AdminRole, Prisma, UserRole, UserStatus } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { authorizeAdminMutationActor } from './admin-mutation-gate';
 

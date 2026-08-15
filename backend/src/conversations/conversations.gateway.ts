@@ -12,7 +12,7 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { resolveJwtSessionScope } from '../auth/access-token-scope';
 import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { toAuthenticatedUser } from '../auth/safe-user';

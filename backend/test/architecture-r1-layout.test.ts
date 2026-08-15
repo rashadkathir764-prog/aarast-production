@@ -104,7 +104,6 @@ test('R1 Task 3 idempotency and outbox runtime exist only at canonical paths', (
     ['src/common/idempotency/idempotency-reconciliation.ts', 'src/platform/idempotency/idempotency-reconciliation.ts'],
     ['src/outbox/outbox.constants.ts', 'src/platform/outbox/outbox.constants.ts'],
     ['src/outbox/outbox.dispatcher.ts', 'src/platform/outbox/outbox.dispatcher.ts'],
-    ['src/outbox/outbox.module.ts', 'src/platform/outbox/outbox.module.ts'],
     ['src/outbox/outbox.service.ts', 'src/platform/outbox/outbox.service.ts'],
     ['src/outbox/outbox.worker.ts', 'src/platform/outbox/outbox.worker.ts'],
     ['src/outbox/outbox-cleanup.scheduler.ts', 'src/platform/outbox/outbox-cleanup.scheduler.ts'],
@@ -114,6 +113,10 @@ test('R1 Task 3 idempotency and outbox runtime exist only at canonical paths', (
     assert.equal(existsSync(path.join(backendRoot, legacy)), false, legacy);
     assert.equal(existsSync(path.join(backendRoot, canonical)), true, canonical);
   }
+  assert.equal(existsSync(path.join(backendRoot, 'src/outbox/outbox.module.ts')), false);
+  assert.equal(existsSync(path.join(backendRoot, 'src/platform/outbox/outbox.module.ts')), false);
+  assert.equal(existsSync(path.join(backendRoot, 'src/platform/outbox/outbox-core.module.ts')), true);
+  assert.equal(existsSync(path.join(backendRoot, 'src/application-composition/application-outbox-runtime.module.ts')), true);
   assert.equal(existsSync(path.join(backendRoot, 'src/outbox')), false, 'src/outbox directory');
 });
 
@@ -130,12 +133,15 @@ test('R1 Task 3 production idempotency command targets the canonical build outpu
 test('R1 Task 3 preserves outbox scheduling retry and module export contracts', () => {
   const worker = source('src/platform/outbox/outbox.worker.ts');
   const cleanup = source('src/platform/outbox/outbox-cleanup.scheduler.ts');
-  const moduleSource = source('src/platform/outbox/outbox.module.ts');
+  const coreModuleSource = source('src/platform/outbox/outbox-core.module.ts');
+  const runtimeModuleSource = source('src/application-composition/application-outbox-runtime.module.ts');
   assert.match(worker, /const\s+maxAttempts\s*=\s*8\s*;/);
   assert.match(worker, /@Interval\(1_000\)/);
   assert.match(cleanup, /const\s+CLEANUP_INTERVAL_MS\s*=\s*6\s*\*\s*60\s*\*\s*60\s*\*\s*1_000\s*;/);
   assert.match(cleanup, /const\s+PROCESSED_RETENTION_MS\s*=\s*7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1_000\s*;/);
-  assert.match(moduleSource, /exports:\s*\[OutboxService\]/);
+  assert.match(coreModuleSource, /providers:\s*\[OutboxService, OutboxCleanupScheduler\]/);
+  assert.match(coreModuleSource, /exports:\s*\[OutboxService\]/);
+  assert.match(runtimeModuleSource, /OutboxDispatcher,\s*\n\s*OutboxWorker,/);
 });
 
 test('R1 Task 3 source tests and smokes have no stale idempotency or outbox paths', () => {

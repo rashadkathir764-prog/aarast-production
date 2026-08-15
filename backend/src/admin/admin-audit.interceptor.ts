@@ -16,7 +16,7 @@ import {
   switchMap,
   throwError,
 } from 'rxjs';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import {
   requestRouteTemplate,
   safeClientRequestId,

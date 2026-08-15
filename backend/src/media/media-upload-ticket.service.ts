@@ -9,21 +9,13 @@ import {
 import { MediaUploadStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../platform/database/prisma.service';
 import { assertActiveMutationActorForUpdateInTransaction } from '../users/user-lifecycle-lock';
-import { MediaPurpose } from './media-upload-policy';
+import type {
+  MediaConsumptionTarget,
+  MediaPurpose,
+} from '../modules/media/public/media-storage.port';
 
 export interface MediaUploadVerificationClaim {
   alreadyVerified: boolean;
-}
-
-export interface MediaConsumptionTarget {
-  type:
-    | 'USER_AVATAR'
-    | 'USER_APP_AVATAR'
-    | 'PROVIDER_LOGO'
-    | 'PROVIDER_COVER'
-    | 'SERVICE_IMAGE'
-    | 'CHAT_ATTACHMENT';
-  id: string;
 }
 
 @Injectable()

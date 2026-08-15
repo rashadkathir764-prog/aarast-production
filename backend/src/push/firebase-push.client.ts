@@ -10,12 +10,13 @@ import {
   FidMulticastMessage,
   getMessaging,
 } from "firebase-admin/messaging";
+import type { PushCapabilityPort } from "../modules/notifications/public/push-capability.port";
 
 export const PUSH_NOTIFICATIONS_ENABLED_ENV = "PUSH_NOTIFICATIONS_ENABLED";
 export const FIREBASE_PROJECT_ID_ENV = "FIREBASE_PROJECT_ID";
 
 @Injectable()
-export class FirebasePushClient {
+export class FirebasePushClient implements PushCapabilityPort {
   private app: App | null = null;
 
   get enabled(): boolean {

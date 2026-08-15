@@ -17,7 +17,7 @@ import {
   GuestStatus,
   Prisma,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import {

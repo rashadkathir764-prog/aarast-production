@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { MediaModule } from '../media/media.module';
+import { MediaStoragePublicModule } from '../modules/media/public/media-storage-public.module';
 import { PrismaModule } from '../platform/database/prisma.module';
 import {
   ProviderApplicationController,
@@ -9,7 +9,7 @@ import {
 import { ProviderDashboardService } from './provider-dashboard.service';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, MediaModule],
+  imports: [PrismaModule, NotificationsModule, MediaStoragePublicModule],
   controllers: [
     ProviderApplicationController,
     ProviderDashboardController,

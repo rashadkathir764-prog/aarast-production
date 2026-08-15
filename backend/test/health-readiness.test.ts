@@ -11,7 +11,10 @@ import {
   ReadinessReport,
   ReadinessService,
 } from '../src/platform/health/readiness.service';
-import { MediaStorageService } from '../src/media/media-storage.service';
+import {
+  MEDIA_READINESS_PORT,
+  MediaReadinessPort,
+} from '../src/platform/health/media-readiness.port';
 import { PrismaService } from '../src/platform/database/prisma.service';
 
 const savedEnvironment = {
@@ -31,7 +34,7 @@ const savedEnvironment = {
   providers: [
     ReadinessService,
     { provide: PrismaService, useValue: {} },
-    { provide: MediaStorageService, useValue: {} },
+    { provide: MEDIA_READINESS_PORT, useValue: {} },
     { provide: READINESS_FETCH, useValue: fetch },
   ],
 })
@@ -77,7 +80,7 @@ test('readiness reports database up and optional dependencies disabled', async (
     {
       $queryRawUnsafe: async () => [{ '?column?': 1 }],
     } as unknown as PrismaService,
-    { checkReadiness: async () => undefined } as MediaStorageService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
   );
   const report = await service.check();
 
@@ -101,7 +104,7 @@ test('production readiness fails closed when Redis and media are absent', async 
     {
       $queryRawUnsafe: async () => [{ '?column?': 1 }],
     } as unknown as PrismaService,
-    { checkReadiness: async () => undefined } as MediaStorageService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
   );
   const report = await service.check();
 
@@ -119,7 +122,7 @@ test('database failure returns a redacted down state', async () => {
         throw new Error('postgres://secret-user:secret-password@db/private');
       },
     } as unknown as PrismaService,
-    { checkReadiness: async () => undefined } as MediaStorageService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
   );
   const report = await service.check();
 
@@ -171,7 +174,7 @@ test('OpenWA readiness requires a connected session and transient transport', as
   const requested: string[] = [];
   const service = new ReadinessService(
     { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
-    { checkReadiness: async () => undefined } as MediaStorageService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
     async (url) => {
       requested.push(url.toString());
       return new Response(
@@ -196,7 +199,7 @@ test('OpenWA readiness fails closed for an upstream instance without the hardene
   process.env.OPENWA_API_KEY = 'a-secure-openwa-api-key-for-tests-only';
   const service = new ReadinessService(
     { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
-    { checkReadiness: async () => undefined } as MediaStorageService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
     async () => new Response('Not Found', { status: 404 }),
   );
 

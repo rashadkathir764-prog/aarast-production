@@ -46,7 +46,7 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
   const result = scope().validateR3Scope({ repositoryRoot, baseRef });
   assert.equal(result.ok, true);
   assert.deepEqual(result.unexpectedPaths, []);
-  assert.deepEqual(result.changedPaths, [
+  const preliminaryChangedPaths = [
     'backend/.dependency-cruiser-known-violations.json',
     'backend/.dependency-cruiser.cjs',
     'backend/architecture/r3-context-boundaries.json',
@@ -253,7 +253,23 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
     'docs/project/STATUS.md',
     'docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md',
     'docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md',
-  ]);
+  ];
+  const finalReceiptChangedPaths = [...new Set([
+    ...preliminaryChangedPaths,
+    'ARCHITECTURE.md',
+    'CHANGELOG.md',
+    'docs/README.md',
+    'docs/project/DECISIONS.md',
+    'docs/project/EXECUTION_PLAN.md',
+    'docs/qa/README.md',
+  ])].sort();
+  assert.equal(
+    [preliminaryChangedPaths, finalReceiptChangedPaths].some(
+      (expected) => JSON.stringify(result.changedPaths) === JSON.stringify(expected),
+    ),
+    true,
+    'live R3 scope must match either the exact preliminary or exact final receipt stage',
+  );
   rmSync(result.reportPath, { force: true });
 });
 

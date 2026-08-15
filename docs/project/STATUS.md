@@ -63,7 +63,9 @@ The Task 9 scope gate was corrected before the immutable runtime build to admit
 only the seven active Markdown receipt/navigation files named by the approved
 plan. Its permanent RED-to-GREEN regression passes 14/14, the manifest and
 scanner allowlists remain byte/order-exact, and the current fixed-base scope is
-206 reviewed paths with zero unexpected paths.
+206 reviewed paths with zero unexpected paths. The live receipt-stage assertion
+accepts only that exact preliminary set or the exact 212-path final receipt set;
+the phase-aware regression is committed before the final immutable runtime build.
 
 Runtime image build, protected probe, port-3120 cutover, sanitized runtime-log
 audit, and the owner phone checkpoint are explicitly pending. The accepted R2

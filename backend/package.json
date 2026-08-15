@@ -77,7 +77,7 @@
     "architecture:imports:baseline": "depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src",
     "architecture:ownership": "node scripts/architecture/ownership-scan.cjs --check",
     "architecture:ports": "node scripts/architecture/ports-scan.cjs --check",
-    "architecture:r3": "node scripts/architecture/r3-context-scan.cjs --check --stage task-6",
+    "architecture:r3": "node scripts/architecture/r3-context-scan.cjs --check --stage task-7",
     "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3"
   },
   "dependencies": {

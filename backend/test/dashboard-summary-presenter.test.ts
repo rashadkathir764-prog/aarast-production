@@ -38,7 +38,7 @@ test('dashboard extraction keeps service wiring, import compatibility and size b
     'utf8',
   );
   const moduleSource = readFileSync(
-    resolve(sourceRoot, 'dashboard.module.ts'),
+    resolve(__dirname, '../src/modules/insights/internal/insights-services.internal.module.ts'),
     'utf8',
   );
   const controllerSource = readFileSync(
@@ -57,7 +57,7 @@ test('dashboard extraction keeps service wiring, import compatibility and size b
     presenterSource,
     /@nestjs|PrismaService|PermissionService|this\.prisma/,
   );
-  assert.match(moduleSource, /providers:\s*\[DashboardService\]/);
+  assert.match(moduleSource, /providers:\s*\[DashboardService,\s*TimelineService\]/);
   assert.match(
     controllerSource,
     /constructor\(private readonly dashboardService: DashboardService\)/,

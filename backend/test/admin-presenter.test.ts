@@ -42,7 +42,10 @@ test('admin extraction keeps DI, mutations and query builders inside AdminServic
   const serviceSource = readFileSync(resolve(sourceRoot, 'admin.service.ts'), 'utf8');
   const presenterSource = readFileSync(resolve(sourceRoot, 'admin.presenter.ts'), 'utf8');
   const controllerSource = readFileSync(resolve(sourceRoot, 'admin.controller.ts'), 'utf8');
-  const moduleSource = readFileSync(resolve(sourceRoot, 'admin.module.ts'), 'utf8');
+  const moduleSource = readFileSync(
+    resolve(__dirname, '../src/modules/backoffice/internal/backoffice-services.internal.module.ts'),
+    'utf8',
+  );
 
   assert.ok(
     serviceSource.split(/\r?\n/).length <= 1250,
@@ -62,7 +65,7 @@ test('admin extraction keeps DI, mutations and query builders inside AdminServic
   assert.doesNotMatch(controllerSource, /admin\.presenter|admin\.contracts/);
   assert.doesNotMatch(moduleSource, /admin\.presenter|admin\.contracts/);
   assert.match(controllerSource, /constructor\(private readonly adminService: AdminService\)/);
-  assert.match(moduleSource, /\bAdminService,\s*\n\s*AdminAuditService/);
+  assert.match(moduleSource, /providers:\s*\[AdminService,\s*AdminAuditService\]/);
 });
 
 test('admin report aggregation preserves totals, formatting and honesty flags', () => {

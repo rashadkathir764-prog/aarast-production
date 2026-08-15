@@ -137,13 +137,12 @@ test('Task 4 migrates the exact foreign service and type consumers', () => {
   }
 });
 
-test('Task 4 replaces full NotificationsModule imports in foreign owners', () => {
+test('Task 4 Notifications public imports remain on the Task 7 owner leaves', () => {
   const modules = [
-    'admin/admin.module.ts',
+    'modules/backoffice/internal/backoffice-services.internal.module.ts',
     'conversations/conversations.module.ts',
-    'dashboard/dashboard.module.ts',
-    'marketplace/marketplace.module.ts',
-    'provider-dashboard/provider-dashboard.module.ts',
+    'modules/insights/internal/insights-services.internal.module.ts',
+    'modules/marketplace/internal/marketplace-services.internal.module.ts',
     'modules/collaboration/internal/collaboration-services.internal.module.ts',
     'modules/tasks/internal/tasks-service.internal.module.ts',
   ];
@@ -173,7 +172,7 @@ test('Task 4 advances the live manifest and exact retirement counts', () => {
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-6');
+  assert.equal(manifest.stage, 'task-7');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -184,9 +183,9 @@ test('Task 4 advances the live manifest and exact retirement counts', () => {
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-6',
+    stage: 'task-7',
   });
   assert.deepEqual(result.diagnostics, []);
-  assert.equal(result.counts.remainingDuplicateProviders, 2);
-  assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 2);
+  assert.equal(result.counts.remainingDuplicateProviders, 0);
+  assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 0);
 });

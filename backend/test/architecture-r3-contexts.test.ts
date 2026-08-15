@@ -94,7 +94,7 @@ function fullSourceFixture(replacements: Array<{
     repoRoot: root,
     backendRoot: fixtureBackend,
     manifestPath,
-    stage: 'task-6',
+    stage: 'task-7',
   };
 }
 
@@ -102,17 +102,17 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('the canonical R3 manifest freezes the exact Task 6 ledgers', () => {
+test('the canonical R3 manifest freezes the exact Task 7 ledgers', () => {
   const manifest = scanner().validateR3ContextManifest(loadManifest());
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, '6b06eb096aca8cc6684d365d16e05d4cd8529898');
-  assert.equal(manifest.stage, 'task-6');
+  assert.equal(manifest.stage, 'task-7');
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 45);
+  assert.equal(manifest.legacyModules.length, 47);
   assert.equal(manifest.crossContextInjections.length, 0);
   assert.equal(manifest.compositionDependencies.length, 6);
   assert.equal(manifest.providerContracts.length, 11);
@@ -133,15 +133,13 @@ test('the canonical R3 manifest freezes the exact Task 6 ledgers', () => {
   assert.deepEqual(manifest.initialDuplicateProviders, [
     'AdminGuard', 'AdminPermissionGuard', 'PermissionService',
   ]);
-  assert.deepEqual(manifest.remainingDuplicateProviders, [
-    'AdminGuard', 'AdminPermissionGuard',
-  ]);
+  assert.deepEqual(manifest.remainingDuplicateProviders, []);
   assert.equal(manifest.initialPlatformDebts.length, 6);
   assert.deepEqual(manifest.remainingPlatformDebts, []);
   assert.deepEqual(
     manifest.remainingRetiredLegacyProviderEdges,
     manifest.initialRetiredLegacyProviderEdges
-      .filter((edge: { retirementTask: number }) => edge.retirementTask > 5)
+      .filter((edge: { retirementTask: number }) => edge.retirementTask > 7)
       .map((edge: { key: string }) => edge.key),
   );
 });
@@ -190,25 +188,25 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   );
 });
 
-test('the live TypeScript inventory equals the canonical Task 6 manifest', () => {
+test('the live TypeScript inventory equals the canonical Task 7 manifest', () => {
   const result = scanner().scanR3Contexts({
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-6',
+    stage: 'task-7',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 45,
+    legacyModules: 47,
     crossContextInjections: 0,
     compositionDependencies: 0,
     initialDuplicateProviders: 3,
-    remainingDuplicateProviders: 2,
+    remainingDuplicateProviders: 0,
     initialPlatformDebts: 6,
     remainingPlatformDebts: 0,
     initialRetiredLegacyProviderEdges: 163,
-    remainingRetiredLegacyProviderEdges: 2,
+    remainingRetiredLegacyProviderEdges: 0,
     forwardRef: 0,
     globals: 2,
     nestModuleCycles: 0,
@@ -233,7 +231,7 @@ test('I1 live orchestration executes source laws and permits only exact approved
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-6',
+    stage: 'task-7',
     sourceLawScan: () => {
       calls += 1;
       return {
@@ -249,11 +247,8 @@ test('I1 live orchestration executes source laws and permits only exact approved
     },
   });
   assert.equal(calls, 1);
-  assert.deepEqual(result.diagnostics, [{
-    kind: 'duplicate-provider',
-    path: 'backend/src/modules/tasks/internal/tasks.module.ts',
-    line: 1,
-  }]);
+  assert.equal(result.diagnostics.length, 5);
+  assert.ok(result.diagnostics.every((item: any) => item.kind === 'duplicate-provider'));
 });
 
 test('same-count manifest identity drift is rejected against live source and the baseline', () => {
@@ -283,7 +278,7 @@ test('same-count manifest identity drift is rejected against live source and the
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-6',
+    stage: 'task-7',
   });
   assert.ok(result.diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
@@ -379,7 +374,7 @@ test('I3 same-count contract, composition, context-root, and Admin guard substit
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-6',
+    stage: 'task-7',
   }), /context root|provider contract|composition|guard|canonical/i);
 });
 

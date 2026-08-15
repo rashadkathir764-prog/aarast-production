@@ -41,7 +41,7 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('R3 scope pins the immutable base and accepts only the explicit through-Task-6 paths', () => {
+test('R3 scope pins the immutable base and accepts only the explicit through-Task-7 paths', () => {
   assert.equal(scope().R3_BASE, baseRef);
   const result = scope().validateR3Scope({ repositoryRoot, baseRef });
   assert.equal(result.ok, true);
@@ -82,6 +82,7 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/budget-categories/budget-categories.service.ts',
     'backend/src/catalogs/administrative-catalog.service.ts',
     'backend/src/catalogs/catalogs.controller.ts',
+    'backend/src/catalogs/catalogs.module.ts',
     'backend/src/catalogs/reference-catalog.service.ts',
     'backend/src/contexts/contexts.controller.ts',
     'backend/src/contexts/contexts.module.ts',
@@ -123,6 +124,10 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/media/media-upload-ticket.service.ts',
     'backend/src/media/media.controller.ts',
     'backend/src/media/media.module.ts',
+    'backend/src/modules/backoffice/backoffice.module.ts',
+    'backend/src/modules/backoffice/internal/backoffice-services.internal.module.ts',
+    'backend/src/modules/catalog/catalog.module.ts',
+    'backend/src/modules/catalog/internal/catalog-services.internal.module.ts',
     'backend/src/modules/collaboration/collaboration.module.ts',
     'backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts',
     'backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts',
@@ -144,8 +149,13 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/modules/identity/public/identity-auth-public.module.ts',
     'backend/src/modules/identity/public/identity-auth.port.ts',
     'backend/src/modules/identity/public/identity-session.types.ts',
+    'backend/src/modules/insights/insights.module.ts',
+    'backend/src/modules/insights/internal/insights-services.internal.module.ts',
+    'backend/src/modules/marketplace/internal/marketplace-services.internal.module.ts',
+    'backend/src/modules/marketplace/marketplace.module.ts',
     'backend/src/modules/media/internal/media-lifecycle.internal.module.ts',
     'backend/src/modules/media/internal/media-storage.internal.module.ts',
+    'backend/src/modules/media/media.module.ts',
     'backend/src/modules/media/public/media-storage-public.module.ts',
     'backend/src/modules/media/public/media-storage.port.ts',
     'backend/src/modules/messaging/internal/messaging-realtime.implementation-token.ts',
@@ -209,12 +219,14 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/wedding-plans/wedding-plans.controller.ts',
     'backend/src/wedding-plans/wedding-plans.module.ts',
     'backend/src/wedding-plans/wedding-plans.service.ts',
+    'backend/test/admin-presenter.test.ts',
     'backend/test/architecture-dependencies.test.ts',
     'backend/test/architecture-ports.test.ts',
     'backend/test/architecture-r1-layout.test.ts',
     'backend/test/architecture-r3-collaboration-ports.test.ts',
     'backend/test/architecture-r3-composition.test.ts',
     'backend/test/architecture-r3-context-modules-a.test.ts',
+    'backend/test/architecture-r3-context-modules-b.test.ts',
     'backend/test/architecture-r3-contexts.test.ts',
     'backend/test/architecture-r3-identity-port.test.ts',
     'backend/test/architecture-r3-notifications-port.test.ts',
@@ -222,6 +234,7 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/test/auth-otp-mode.test.ts',
     'backend/test/auth-refresh-wiring.test.ts',
     'backend/test/contexts.test.ts',
+    'backend/test/dashboard-summary-presenter.test.ts',
     'backend/test/health-readiness.test.ts',
     'backend/test/legacy-finance-removal.test.ts',
     'backend/test/media-url-ownership.test.ts',

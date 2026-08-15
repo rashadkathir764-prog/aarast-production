@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
-  "stage": "task-6",
+  "stage": "task-7",
   "contexts": [
     "identity",
     "planning",
@@ -109,46 +109,27 @@
   ],
   "legacyModules": [
     {
-      "path": "backend/src/admin/admin.module.ts",
-      "className": "AdminModule",
-      "imports": [
-        "MessagingRealtimePublicModule",
-        "NotificationsPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "AdminAuditService",
-        "AdminGuard",
-        "AdminPermissionGuard",
-        "AdminService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
       "path": "backend/src/app.module.ts",
       "className": "AppModule",
       "imports": [
-        "AdminModule",
         "ApplicationOutboxRuntimeModule",
-        "CatalogsModule",
+        "BackofficeModule",
+        "CatalogModule",
         "CollaborationModule",
         "ConversationsModule",
-        "DashboardModule",
         "FinanceModule",
         "GuestsModule",
         "IdentityModule",
+        "InsightsModule",
         "MarketplaceModule",
         "MediaModule",
         "MediaStoragePublicModule",
         "NotificationsModule",
         "PlanningModule",
         "PrismaModule",
-        "ProviderDashboardModule",
         "ScheduleModule.forRoot()",
         "TasksModule",
-        "ThrottlerModule.forRootAsync({\n      useFactory: () => {\n        const redisUrl = process.env.REDIS_URL?.trim();\n        // Tunable so load tests and unusual deployments can raise the\n        // global ceiling without a rebuild. Per-route @Throttle limits\n        // on auth endpoints are unaffected.\n        const limit = Number(process.env.THROTTLE_LIMIT ?? 1_000);\n        const ttl = Number(process.env.THROTTLE_TTL_MS ?? 60_000);\n        return {\n          throttlers: [\n            {\n              ttl: Number.isFinite(ttl) && ttl > 0 ? ttl : 60_000,\n              limit: Number.isFinite(limit) && limit > 0 ? limit : 1_000,\n            },\n          ],\n          ...(redisUrl\n            ? {\n                storage: new ResilientThrottlerStorage(\n                  new ThrottlerStorageRedisService(redisUrl),\n                ),\n              }\n            : {}),\n        };\n      },\n    })",
-        "TimelineModule"
+        "ThrottlerModule.forRootAsync({\n      useFactory: () => {\n        const redisUrl = process.env.REDIS_URL?.trim();\n        // Tunable so load tests and unusual deployments can raise the\n        // global ceiling without a rebuild. Per-route @Throttle limits\n        // on auth endpoints are unaffected.\n        const limit = Number(process.env.THROTTLE_LIMIT ?? 1_000);\n        const ttl = Number(process.env.THROTTLE_TTL_MS ?? 60_000);\n        return {\n          throttlers: [\n            {\n              ttl: Number.isFinite(ttl) && ttl > 0 ? ttl : 60_000,\n              limit: Number.isFinite(limit) && limit > 0 ? limit : 1_000,\n            },\n          ],\n          ...(redisUrl\n            ? {\n                storage: new ResilientThrottlerStorage(\n                  new ThrottlerStorageRedisService(redisUrl),\n                ),\n              }\n            : {}),\n        };\n      },\n    })"
       ],
       "providers": [
         "IdempotencyCleanupScheduler",
@@ -177,24 +158,6 @@
         "{\n      provide: OUTBOX_REALTIME_SINK,\n      useExisting: MESSAGING_REALTIME_PORT,\n    }"
       ],
       "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/catalogs/catalogs.module.ts",
-      "className": "CatalogsModule",
-      "imports": [
-        "PrismaModule"
-      ],
-      "providers": [
-        "AdminGuard",
-        "AdminPermissionGuard",
-        "AdministrativeCatalogService",
-        "ReferenceCatalogService"
-      ],
-      "exports": [
-        "AdministrativeCatalogService",
-        "ReferenceCatalogService"
-      ],
       "global": false
     },
     {
@@ -230,47 +193,57 @@
       "global": false
     },
     {
-      "path": "backend/src/dashboard/dashboard.module.ts",
-      "className": "DashboardModule",
+      "path": "backend/src/modules/backoffice/backoffice.module.ts",
+      "className": "BackofficeModule",
       "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "NotificationsPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "DashboardService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/marketplace/marketplace.module.ts",
-      "className": "MarketplaceModule",
-      "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "NotificationsPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "MarketplaceService"
-      ],
-      "exports": [
-        "MarketplaceService"
-      ],
-      "global": false
-    },
-    {
-      "path": "backend/src/media/media.module.ts",
-      "className": "MediaModule",
-      "imports": [
-        "MediaLifecycleInternalModule",
-        "MediaStorageInternalModule"
+        "BackofficeServicesInternalModule"
       ],
       "providers": [],
       "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/backoffice/internal/backoffice-services.internal.module.ts",
+      "className": "BackofficeServicesInternalModule",
+      "imports": [
+        "MessagingRealtimePublicModule",
+        "NotificationsPublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "AdminAuditService",
+        "AdminService"
+      ],
+      "exports": [
+        "AdminAuditService",
+        "AdminService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/catalog/catalog.module.ts",
+      "className": "CatalogModule",
+      "imports": [
+        "CatalogServicesInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/catalog/internal/catalog-services.internal.module.ts",
+      "className": "CatalogServicesInternalModule",
+      "imports": [
+        "PrismaModule"
+      ],
+      "providers": [
+        "AdministrativeCatalogService",
+        "ReferenceCatalogService"
+      ],
+      "exports": [
+        "AdministrativeCatalogService",
+        "ReferenceCatalogService"
+      ],
       "global": false
     },
     {
@@ -534,6 +507,67 @@
       "global": false
     },
     {
+      "path": "backend/src/modules/insights/insights.module.ts",
+      "className": "InsightsModule",
+      "imports": [
+        "InsightsServicesInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/insights/internal/insights-services.internal.module.ts",
+      "className": "InsightsServicesInternalModule",
+      "imports": [
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
+        "NotificationsPublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "DashboardService",
+        "TimelineService"
+      ],
+      "exports": [
+        "DashboardService",
+        "TimelineService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/marketplace/internal/marketplace-services.internal.module.ts",
+      "className": "MarketplaceServicesInternalModule",
+      "imports": [
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "MediaStoragePublicModule",
+        "NotificationsPublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "MarketplaceService",
+        "ProviderDashboardService"
+      ],
+      "exports": [
+        "MarketplaceService",
+        "ProviderDashboardService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/marketplace/marketplace.module.ts",
+      "className": "MarketplaceModule",
+      "imports": [
+        "MarketplaceServicesInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
       "path": "backend/src/modules/media/internal/media-lifecycle.internal.module.ts",
       "className": "MediaLifecycleInternalModule",
       "imports": [
@@ -561,6 +595,17 @@
         "MediaStorageService",
         "MediaUploadTicketService"
       ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/media/media.module.ts",
+      "className": "MediaModule",
+      "imports": [
+        "MediaLifecycleInternalModule",
+        "MediaStorageInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
       "global": false
     },
     {
@@ -783,20 +828,6 @@
       "global": false
     },
     {
-      "path": "backend/src/provider-dashboard/provider-dashboard.module.ts",
-      "className": "ProviderDashboardModule",
-      "imports": [
-        "MediaStoragePublicModule",
-        "NotificationsPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "ProviderDashboardService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
       "path": "backend/src/push/push.module.ts",
       "className": "PushModule",
       "imports": [
@@ -805,21 +836,6 @@
       ],
       "providers": [
         "PushInstallationsService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/timeline/timeline.module.ts",
-      "className": "TimelineModule",
-      "imports": [
-        "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "IdentityAuthPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "TimelineService"
       ],
       "exports": [],
       "global": false
@@ -3966,10 +3982,7 @@
     "AdminPermissionGuard",
     "PermissionService"
   ],
-  "remainingDuplicateProviders": [
-    "AdminGuard",
-    "AdminPermissionGuard"
-  ],
+  "remainingDuplicateProviders": [],
   "initialPlatformDebts": [
     "runtime-jwt-secret",
     "readiness-media-storage",
@@ -4633,10 +4646,7 @@
       "retirementTask": 3
     }
   ],
-  "remainingRetiredLegacyProviderEdges": [
-    "src/catalogs/catalogs.module.ts|src/admin/admin-permission.guard.ts",
-    "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts"
-  ],
+  "remainingRetiredLegacyProviderEdges": [],
   "allowedChangedPaths": [
     "backend/.dependency-cruiser-known-violations.json",
     "backend/.dependency-cruiser.cjs",
@@ -4822,6 +4832,19 @@
     "backend/test/sharing-permission-ceiling.test.ts",
     "backend/test/whatsapp-otp-channel.test.ts",
     "docs/SCRIPTS.md",
+    "backend/src/catalogs/catalogs.module.ts",
+    "backend/src/modules/backoffice/backoffice.module.ts",
+    "backend/src/modules/backoffice/internal/backoffice-services.internal.module.ts",
+    "backend/src/modules/catalog/catalog.module.ts",
+    "backend/src/modules/catalog/internal/catalog-services.internal.module.ts",
+    "backend/src/modules/insights/insights.module.ts",
+    "backend/src/modules/insights/internal/insights-services.internal.module.ts",
+    "backend/src/modules/marketplace/internal/marketplace-services.internal.module.ts",
+    "backend/src/modules/marketplace/marketplace.module.ts",
+    "backend/src/modules/media/media.module.ts",
+    "backend/test/architecture-r3-context-modules-b.test.ts",
+    "backend/test/admin-presenter.test.ts",
+    "backend/test/dashboard-summary-presenter.test.ts",
     "docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md",
     "docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md"
   ]

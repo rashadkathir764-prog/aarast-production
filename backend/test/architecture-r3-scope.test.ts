@@ -250,6 +250,7 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
     'backend/test/sharing-permission-ceiling.test.ts',
     'backend/test/whatsapp-otp-channel.test.ts',
     'docs/SCRIPTS.md',
+    'docs/project/STATUS.md',
     'docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md',
     'docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md',
   ]);
@@ -277,6 +278,22 @@ test('the scope allowlist is byte/order-exact with the canonical manifest', () =
     [...manifest.allowedChangedPaths.slice(0, -1), 'docs/attacker.md'],
     scope().ALLOWED_PATHS,
   ), /allowlist.*drift/i);
+});
+
+test('Task 9 permits only the seven approved active receipt files', () => {
+  const approvedReceipts = [
+    'ARCHITECTURE.md',
+    'docs/README.md',
+    'docs/project/STATUS.md',
+    'docs/project/DECISIONS.md',
+    'docs/project/EXECUTION_PLAN.md',
+    'docs/qa/README.md',
+    'CHANGELOG.md',
+  ];
+  assert.deepEqual(
+    scope().ALLOWED_PATHS.filter((entry: string) => approvedReceipts.includes(entry)),
+    approvedReceipts,
+  );
 });
 
 test('scope snapshots reject an incorrect base, unknown paths, traversal, and duplicates', () => {

@@ -214,6 +214,13 @@ const ALLOWED_PATHS = Object.freeze([
   'backend/test/architecture-r3-closure.test.ts',
   'docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md',
   'docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md',
+  'ARCHITECTURE.md',
+  'docs/README.md',
+  'docs/project/STATUS.md',
+  'docs/project/DECISIONS.md',
+  'docs/project/EXECUTION_PLAN.md',
+  'docs/qa/README.md',
+  'CHANGELOG.md',
 ]);
 
 function assertPlainObject(value, label) {

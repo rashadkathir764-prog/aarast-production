@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
-  "stage": "task-5",
+  "stage": "task-6",
   "contexts": [
     "identity",
     "planning",
@@ -131,31 +131,24 @@
       "imports": [
         "AdminModule",
         "ApplicationOutboxRuntimeModule",
-        "AuthModule",
-        "BudgetCategoriesModule",
         "CatalogsModule",
-        "ContextsModule",
-        "ContributionHistoryModule",
+        "CollaborationModule",
         "ConversationsModule",
         "DashboardModule",
+        "FinanceModule",
         "GuestsModule",
+        "IdentityModule",
         "MarketplaceModule",
-        "MeModule",
         "MediaModule",
         "MediaStoragePublicModule",
-        "MoneyModule",
         "NotificationsModule",
-        "OnboardingModule",
+        "PlanningModule",
         "PrismaModule",
         "ProviderDashboardModule",
         "ScheduleModule.forRoot()",
-        "SharingModule",
         "TasksModule",
         "ThrottlerModule.forRootAsync({\n      useFactory: () => {\n        const redisUrl = process.env.REDIS_URL?.trim();\n        // Tunable so load tests and unusual deployments can raise the\n        // global ceiling without a rebuild. Per-route @Throttle limits\n        // on auth endpoints are unaffected.\n        const limit = Number(process.env.THROTTLE_LIMIT ?? 1_000);\n        const ttl = Number(process.env.THROTTLE_TTL_MS ?? 60_000);\n        return {\n          throttlers: [\n            {\n              ttl: Number.isFinite(ttl) && ttl > 0 ? ttl : 60_000,\n              limit: Number.isFinite(limit) && limit > 0 ? limit : 1_000,\n            },\n          ],\n          ...(redisUrl\n            ? {\n                storage: new ResilientThrottlerStorage(\n                  new ThrottlerStorageRedisService(redisUrl),\n                ),\n              }\n            : {}),\n        };\n      },\n    })",
-        "TimelineModule",
-        "UsersModule",
-        "WeddingCostsModule",
-        "WeddingPlansModule"
+        "TimelineModule"
       ],
       "providers": [
         "IdempotencyCleanupScheduler",
@@ -187,35 +180,6 @@
       "global": false
     },
     {
-      "path": "backend/src/auth/auth.module.ts",
-      "className": "AuthModule",
-      "imports": [
-        "IdentityAuthInternalModule",
-        "IdentityAuthPublicModule"
-      ],
-      "providers": [],
-      "exports": [
-        "IdentityAuthPublicModule"
-      ],
-      "global": false
-    },
-    {
-      "path": "backend/src/budget-categories/budget-categories.module.ts",
-      "className": "BudgetCategoriesModule",
-      "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "IdentityAuthPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "BudgetCategoriesService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
       "path": "backend/src/catalogs/catalogs.module.ts",
       "className": "CatalogsModule",
       "imports": [
@@ -231,32 +195,6 @@
         "AdministrativeCatalogService",
         "ReferenceCatalogService"
       ],
-      "global": false
-    },
-    {
-      "path": "backend/src/contexts/contexts.module.ts",
-      "className": "ContextsModule",
-      "imports": [
-        "AuthModule",
-        "CollaborationPermissionPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "ContextsService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/contribution-history/contribution-history.module.ts",
-      "className": "ContributionHistoryModule",
-      "imports": [
-        "CollaborationHistoryInternalModule",
-        "CollaborationScopeInternalModule",
-        "IdentityAuthPublicModule"
-      ],
-      "providers": [],
-      "exports": [],
       "global": false
     },
     {
@@ -308,22 +246,6 @@
       "global": false
     },
     {
-      "path": "backend/src/guests/guests.module.ts",
-      "className": "GuestsModule",
-      "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "IdentityAuthPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "GuestsService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
       "path": "backend/src/marketplace/marketplace.module.ts",
       "className": "MarketplaceModule",
       "imports": [
@@ -341,21 +263,23 @@
       "global": false
     },
     {
-      "path": "backend/src/me/me.module.ts",
-      "className": "MeModule",
+      "path": "backend/src/media/media.module.ts",
+      "className": "MediaModule",
       "imports": [
-        "AuthModule"
+        "MediaLifecycleInternalModule",
+        "MediaStorageInternalModule"
       ],
       "providers": [],
       "exports": [],
       "global": false
     },
     {
-      "path": "backend/src/media/media.module.ts",
-      "className": "MediaModule",
+      "path": "backend/src/modules/collaboration/collaboration.module.ts",
+      "className": "CollaborationModule",
       "imports": [
-        "MediaLifecycleInternalModule",
-        "MediaStorageInternalModule"
+        "CollaborationHistoryInternalModule",
+        "CollaborationScopeInternalModule",
+        "CollaborationServicesInternalModule"
       ],
       "providers": [],
       "exports": [],
@@ -410,6 +334,29 @@
       "global": false
     },
     {
+      "path": "backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts",
+      "className": "CollaborationServicesInternalModule",
+      "imports": [
+        "CollaborationHistoryInternalModule",
+        "CollaborationPermissionInternalModule",
+        "IdentityAuthPublicModule",
+        "MessagingRealtimePublicModule",
+        "NotificationsPublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "InvitationDeliveryService",
+        "InviteAccessService",
+        "SharingService"
+      ],
+      "exports": [
+        "InvitationDeliveryService",
+        "InviteAccessService",
+        "SharingService"
+      ],
+      "global": false
+    },
+    {
       "path": "backend/src/modules/collaboration/public/collaboration-history-public.module.ts",
       "className": "CollaborationHistoryPublicModule",
       "imports": [
@@ -452,6 +399,78 @@
       "global": false
     },
     {
+      "path": "backend/src/modules/finance/finance.module.ts",
+      "className": "FinanceModule",
+      "imports": [
+        "FinanceServicesInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/finance/internal/finance-services.internal.module.ts",
+      "className": "FinanceServicesInternalModule",
+      "imports": [
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "BudgetCategoriesService",
+        "MoneyBudgetService",
+        "MoneySummaryService",
+        "WeddingCostsService"
+      ],
+      "exports": [
+        "BudgetCategoriesService",
+        "MoneyBudgetService",
+        "MoneySummaryService",
+        "WeddingCostsService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/guests/guests.module.ts",
+      "className": "GuestsModule",
+      "imports": [
+        "GuestsServiceInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/guests/internal/guests-service.internal.module.ts",
+      "className": "GuestsServiceInternalModule",
+      "imports": [
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "GuestsService"
+      ],
+      "exports": [
+        "GuestsService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/identity/identity.module.ts",
+      "className": "IdentityModule",
+      "imports": [
+        "IdentityAuthInternalModule",
+        "IdentityAuthPublicModule",
+        "IdentityProfileInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
       "path": "backend/src/modules/identity/internal/identity-auth.internal.module.ts",
       "className": "IdentityAuthInternalModule",
       "imports": [
@@ -475,6 +494,26 @@
         "AuthService",
         "IDENTITY_AUTH_IMPLEMENTATION",
         "JwtModule"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/identity/internal/identity-profile.internal.module.ts",
+      "className": "IdentityProfileInternalModule",
+      "imports": [
+        "CollaborationPermissionPublicModule",
+        "MediaStoragePublicModule",
+        "MessagingRealtimePublicModule",
+        "PrismaModule",
+        "PushCapabilityPublicModule"
+      ],
+      "providers": [
+        "ContextsService",
+        "UsersService"
+      ],
+      "exports": [
+        "ContextsService",
+        "UsersService"
       ],
       "global": false
     },
@@ -647,22 +686,59 @@
       "global": false
     },
     {
-      "path": "backend/src/money/money.module.ts",
-      "className": "MoneyModule",
+      "path": "backend/src/modules/planning/internal/planning-services.internal.module.ts",
+      "className": "PlanningServicesInternalModule",
       "imports": [
+        "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
-        "MoneyBudgetService",
-        "MoneySummaryService"
+        "OnboardingService",
+        "WeddingPlansService"
       ],
       "exports": [
-        "MoneyBudgetService",
-        "MoneySummaryService"
+        "OnboardingService",
+        "WeddingPlansService"
       ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/planning/planning.module.ts",
+      "className": "PlanningModule",
+      "imports": [
+        "PlanningServicesInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/tasks/internal/tasks-service.internal.module.ts",
+      "className": "TasksServiceInternalModule",
+      "imports": [
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "NotificationsPublicModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "TasksService"
+      ],
+      "exports": [
+        "TasksService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/tasks/tasks.module.ts",
+      "className": "TasksModule",
+      "imports": [
+        "TasksServiceInternalModule"
+      ],
+      "providers": [],
+      "exports": [],
       "global": false
     },
     {
@@ -675,19 +751,6 @@
       ],
       "providers": [
         "NotificationRemindersScheduler"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/onboarding/onboarding.module.ts",
-      "className": "OnboardingModule",
-      "imports": [
-        "IdentityAuthPublicModule",
-        "WeddingPlansModule"
-      ],
-      "providers": [
-        "OnboardingService"
       ],
       "exports": [],
       "global": false
@@ -747,42 +810,6 @@
       "global": false
     },
     {
-      "path": "backend/src/sharing/sharing.module.ts",
-      "className": "SharingModule",
-      "imports": [
-        "CollaborationHistoryInternalModule",
-        "CollaborationPermissionInternalModule",
-        "IdentityAuthPublicModule",
-        "MessagingRealtimePublicModule",
-        "NotificationsPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "InvitationDeliveryService",
-        "InviteAccessService",
-        "SharingService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/tasks/tasks.module.ts",
-      "className": "TasksModule",
-      "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "IdentityAuthPublicModule",
-        "NotificationsPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "TasksService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
       "path": "backend/src/timeline/timeline.module.ts",
       "className": "TimelineModule",
       "imports": [
@@ -795,57 +822,6 @@
         "TimelineService"
       ],
       "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/users/users.module.ts",
-      "className": "UsersModule",
-      "imports": [
-        "CollaborationPermissionPublicModule",
-        "MediaStoragePublicModule",
-        "MessagingRealtimePublicModule",
-        "PrismaModule",
-        "PushCapabilityPublicModule"
-      ],
-      "providers": [
-        "UsersService"
-      ],
-      "exports": [],
-      "global": false
-    },
-    {
-      "path": "backend/src/wedding-costs/wedding-costs.module.ts",
-      "className": "WeddingCostsModule",
-      "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "CollaborationScopePublicModule",
-        "IdentityAuthPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "WeddingCostsService"
-      ],
-      "exports": [
-        "WeddingCostsService"
-      ],
-      "global": false
-    },
-    {
-      "path": "backend/src/wedding-plans/wedding-plans.module.ts",
-      "className": "WeddingPlansModule",
-      "imports": [
-        "CollaborationHistoryPublicModule",
-        "CollaborationPermissionPublicModule",
-        "IdentityAuthPublicModule",
-        "PrismaModule"
-      ],
-      "providers": [
-        "WeddingPlansService"
-      ],
-      "exports": [
-        "WeddingPlansService"
-      ],
       "global": false
     }
   ],
@@ -4731,6 +4707,7 @@
     "backend/src/marketplace/quote-request-cancellation.ts",
     "backend/src/marketplace/quote-request-creation.ts",
     "backend/src/me/me.controller.ts",
+    "backend/src/me/me.module.ts",
     "backend/src/media/dto/verify-media-upload.dto.ts",
     "backend/src/media/media-storage.service.ts",
     "backend/src/media/media-upload-policy.ts",
@@ -4740,6 +4717,8 @@
     "backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts",
     "backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts",
     "backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts",
+    "backend/src/modules/collaboration/collaboration.module.ts",
     "backend/src/modules/collaboration/public/collaboration-history-public.module.ts",
     "backend/src/modules/collaboration/public/collaboration-history.port.ts",
     "backend/src/modules/collaboration/public/collaboration-permission-public.module.ts",
@@ -4747,6 +4726,8 @@
     "backend/src/modules/collaboration/public/collaboration-scope-public.module.ts",
     "backend/src/modules/collaboration/public/collaboration-scope.port.ts",
     "backend/src/modules/identity/internal/identity-auth.internal.module.ts",
+    "backend/src/modules/identity/internal/identity-profile.internal.module.ts",
+    "backend/src/modules/identity/identity.module.ts",
     "backend/src/modules/identity/public/identity-auth-public.module.ts",
     "backend/src/modules/identity/public/identity-auth.port.ts",
     "backend/src/modules/identity/public/identity-session.types.ts",
@@ -4766,6 +4747,14 @@
     "backend/src/modules/notifications/public/push-capability.port.ts",
     "backend/src/modules/notifications/public/push-delivery-public.module.ts",
     "backend/src/modules/notifications/public/push-delivery.port.ts",
+    "backend/src/modules/finance/finance.module.ts",
+    "backend/src/modules/finance/internal/finance-services.internal.module.ts",
+    "backend/src/modules/guests/guests.module.ts",
+    "backend/src/modules/guests/internal/guests-service.internal.module.ts",
+    "backend/src/modules/planning/internal/planning-services.internal.module.ts",
+    "backend/src/modules/planning/planning.module.ts",
+    "backend/src/modules/tasks/internal/tasks-service.internal.module.ts",
+    "backend/src/modules/tasks/tasks.module.ts",
     "backend/src/money/money-budget.service.ts",
     "backend/src/money/money-summary.controller.ts",
     "backend/src/money/money-summary.service.ts",
@@ -4816,13 +4805,16 @@
     "backend/test/architecture-r1-layout.test.ts",
     "backend/test/architecture-r3-collaboration-ports.test.ts",
     "backend/test/architecture-r3-composition.test.ts",
+    "backend/test/architecture-r3-context-modules-a.test.ts",
     "backend/test/architecture-r3-contexts.test.ts",
     "backend/test/architecture-r3-identity-port.test.ts",
     "backend/test/architecture-r3-notifications-port.test.ts",
     "backend/test/architecture-r3-scope.test.ts",
     "backend/test/auth-otp-mode.test.ts",
     "backend/test/auth-refresh-wiring.test.ts",
+    "backend/test/contexts.test.ts",
     "backend/test/health-readiness.test.ts",
+    "backend/test/legacy-finance-removal.test.ts",
     "backend/test/media-url-ownership.test.ts",
     "backend/test/notification-logic.test.ts",
     "backend/test/openwa-otp-channel.test.ts",

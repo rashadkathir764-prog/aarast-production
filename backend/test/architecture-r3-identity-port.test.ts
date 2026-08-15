@@ -135,23 +135,27 @@ test('Task 5 migrates the exact InviteAccess and WebSocket DI consumers', () => 
   assert.match(gateway, /modules\/identity\/public\/identity-auth\.port/);
 });
 
-test('Task 5 replaces every declared foreign AuthModule edge with the public module', () => {
-  const modules = [
+test('Task 5 AuthModule edges remain retired through the Task 6 cutover', () => {
+  const retiredModules = [
     'budget-categories/budget-categories.module.ts',
     'contribution-history/contribution-history.module.ts',
-    'conversations/conversations.module.ts',
     'guests/guests.module.ts',
     'money/money.module.ts',
-    'notifications/notifications.module.ts',
     'onboarding/onboarding.module.ts',
-    'push/push.module.ts',
     'sharing/sharing.module.ts',
     'tasks/tasks.module.ts',
-    'timeline/timeline.module.ts',
     'wedding-costs/wedding-costs.module.ts',
     'wedding-plans/wedding-plans.module.ts',
   ];
-  for (const path of modules) {
+  for (const path of retiredModules) {
+    assert.equal(existsSync(join(sourceRoot, path)), false, path);
+  }
+  for (const path of [
+    'conversations/conversations.module.ts',
+    'notifications/notifications.module.ts',
+    'push/push.module.ts',
+    'timeline/timeline.module.ts',
+  ]) {
     const text = source(path);
     assert.doesNotMatch(text, /auth\/auth\.module|\bAuthModule\b/, path);
     assert.match(text, /IdentityAuthPublicModule/, path);
@@ -159,7 +163,7 @@ test('Task 5 replaces every declared foreign AuthModule edge with the public mod
 });
 
 test('Task 5 keeps Auth controller and lifecycle providers in one owner path', () => {
-  const full = source('auth/auth.module.ts');
+  const full = source('modules/identity/identity.module.ts');
   const internal = requiredSource(
     'modules/identity/internal/identity-auth.internal.module.ts',
   );
@@ -241,7 +245,7 @@ test('Task 5 advances the live manifest and removes the final platform debt', ()
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-5');
+  assert.equal(manifest.stage, 'task-6');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -252,7 +256,7 @@ test('Task 5 advances the live manifest and removes the final platform debt', ()
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-5',
+    stage: 'task-6',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingPlatformDebts, 0);

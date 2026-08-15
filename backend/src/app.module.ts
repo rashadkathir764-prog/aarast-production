@@ -12,31 +12,24 @@ import { HealthController } from "./platform/health/health.controller";
 import { READINESS_FETCH, ReadinessService } from "./platform/health/readiness.service";
 import { MEDIA_READINESS_PORT } from "./platform/health/media-readiness.port";
 import { PrismaModule } from "./platform/database/prisma.module";
-import { AuthModule } from "./auth/auth.module";
-import { MeModule } from "./me/me.module";
-import { WeddingPlansModule } from "./wedding-plans/wedding-plans.module";
-import { OnboardingModule } from "./onboarding/onboarding.module";
-import { BudgetCategoriesModule } from "./budget-categories/budget-categories.module";
-import { WeddingCostsModule } from "./wedding-costs/wedding-costs.module";
-import { MoneyModule } from "./money/money.module";
-import { TasksModule } from "./tasks/tasks.module";
 import { TimelineModule } from "./timeline/timeline.module";
-import { SharingModule } from "./sharing/sharing.module";
-import { UsersModule } from "./users/users.module";
 import { MarketplaceModule } from "./marketplace/marketplace.module";
 import { ProviderDashboardModule } from "./provider-dashboard/provider-dashboard.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { AdminModule } from "./admin/admin.module";
 import { NotificationsModule } from "./notifications/notifications.module";
-import { GuestsModule } from "./guests/guests.module";
 import { ConversationsModule } from "./conversations/conversations.module";
 import { MediaModule } from "./media/media.module";
 import { MediaStoragePublicModule } from "./modules/media/public/media-storage-public.module";
 import { MEDIA_STORAGE_PORT } from "./modules/media/public/media-storage.port";
 import { ApplicationOutboxRuntimeModule } from "./application-composition/application-outbox-runtime.module";
-import { ContextsModule } from "./contexts/contexts.module";
-import { ContributionHistoryModule } from "./contribution-history/contribution-history.module";
 import { CatalogsModule } from "./catalogs/catalogs.module";
+import { IdentityModule } from "./modules/identity/identity.module";
+import { PlanningModule } from "./modules/planning/planning.module";
+import { FinanceModule } from "./modules/finance/finance.module";
+import { CollaborationModule } from "./modules/collaboration/collaboration.module";
+import { TasksModule } from "./modules/tasks/tasks.module";
+import { GuestsModule } from "./modules/guests/guests.module";
 
 @Module({
   imports: [
@@ -71,17 +64,12 @@ import { CatalogsModule } from "./catalogs/catalogs.module";
     }),
     PrismaModule,
     ApplicationOutboxRuntimeModule,
-    AuthModule,
-    MeModule,
-    WeddingPlansModule,
-    OnboardingModule,
-    BudgetCategoriesModule,
-    WeddingCostsModule,
-    MoneyModule,
+    IdentityModule,
+    PlanningModule,
+    FinanceModule,
+    CollaborationModule,
     TasksModule,
     TimelineModule,
-    SharingModule,
-    UsersModule,
     MarketplaceModule,
     ProviderDashboardModule,
     DashboardModule,
@@ -91,8 +79,6 @@ import { CatalogsModule } from "./catalogs/catalogs.module";
     ConversationsModule,
     MediaModule,
     MediaStoragePublicModule,
-    ContextsModule,
-    ContributionHistoryModule,
     CatalogsModule,
   ],
   controllers: [HealthController, MetricsController],

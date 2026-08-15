@@ -144,8 +144,8 @@ test('Task 4 replaces full NotificationsModule imports in foreign owners', () =>
     'dashboard/dashboard.module.ts',
     'marketplace/marketplace.module.ts',
     'provider-dashboard/provider-dashboard.module.ts',
-    'sharing/sharing.module.ts',
-    'tasks/tasks.module.ts',
+    'modules/collaboration/internal/collaboration-services.internal.module.ts',
+    'modules/tasks/internal/tasks-service.internal.module.ts',
   ];
   for (const path of modules) {
     const text = source(path);
@@ -173,7 +173,7 @@ test('Task 4 advances the live manifest and exact retirement counts', () => {
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-5');
+  assert.equal(manifest.stage, 'task-6');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -184,7 +184,7 @@ test('Task 4 advances the live manifest and exact retirement counts', () => {
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-5',
+    stage: 'task-6',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingDuplicateProviders, 2);

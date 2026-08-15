@@ -652,5 +652,6 @@ test("contexts routes are canonical, authenticated, and module-wired", () => {
   assert.match(controller, /@UseGuards\(JwtAuthGuard\)/);
   assert.match(controller, /@Get\(\)/);
   assert.match(controller, /@Post\("validate"\)/);
-  assert.match(appModule, /ContextsModule/);
+  assert.match(appModule, /IdentityModule/);
+  assert.doesNotMatch(appModule, /ContextsModule/);
 });

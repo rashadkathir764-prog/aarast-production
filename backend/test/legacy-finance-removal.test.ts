@@ -53,8 +53,8 @@ test("only the unified money domain remains in the live schema and modules", () 
   }
 
   assert.doesNotMatch(appModule, /ExpensesModule|FinancialCommitmentsModule|DebtsModule|InstallmentsModule/);
-  assert.match(appModule, /WeddingCostsModule/);
-  assert.match(appModule, /MoneyModule/);
+  assert.match(appModule, /FinanceModule/);
+  assert.doesNotMatch(appModule, /WeddingCostsModule|MoneyModule/);
 });
 
 test("operational seed, load, and smoke tools cannot restore old money paths", () => {

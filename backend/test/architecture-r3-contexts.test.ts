@@ -94,7 +94,7 @@ function fullSourceFixture(replacements: Array<{
     repoRoot: root,
     backendRoot: fixtureBackend,
     manifestPath,
-    stage: 'task-5',
+    stage: 'task-6',
   };
 }
 
@@ -102,17 +102,17 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('the canonical R3 manifest freezes the exact Task 5 ledgers', () => {
+test('the canonical R3 manifest freezes the exact Task 6 ledgers', () => {
   const manifest = scanner().validateR3ContextManifest(loadManifest());
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, '6b06eb096aca8cc6684d365d16e05d4cd8529898');
-  assert.equal(manifest.stage, 'task-5');
+  assert.equal(manifest.stage, 'task-6');
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 46);
+  assert.equal(manifest.legacyModules.length, 45);
   assert.equal(manifest.crossContextInjections.length, 0);
   assert.equal(manifest.compositionDependencies.length, 6);
   assert.equal(manifest.providerContracts.length, 11);
@@ -190,17 +190,17 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   );
 });
 
-test('the live TypeScript inventory equals the canonical Task 5 manifest', () => {
+test('the live TypeScript inventory equals the canonical Task 6 manifest', () => {
   const result = scanner().scanR3Contexts({
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-5',
+    stage: 'task-6',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 46,
+    legacyModules: 45,
     crossContextInjections: 0,
     compositionDependencies: 0,
     initialDuplicateProviders: 3,
@@ -233,7 +233,7 @@ test('I1 live orchestration executes source laws and permits only exact approved
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-5',
+    stage: 'task-6',
     sourceLawScan: () => {
       calls += 1;
       return {
@@ -283,7 +283,7 @@ test('same-count manifest identity drift is rejected against live source and the
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-5',
+    stage: 'task-6',
   });
   assert.ok(result.diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
@@ -379,7 +379,7 @@ test('I3 same-count contract, composition, context-root, and Admin guard substit
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-5',
+    stage: 'task-6',
   }), /context root|provider contract|composition|guard|canonical/i);
 });
 

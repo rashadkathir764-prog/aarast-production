@@ -10,13 +10,14 @@ import { validateRuntimeEnvironment } from './platform/config/runtime-environmen
 import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
 import { requestObservability } from './platform/observability/request-observability.middleware';
 import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
+import { getJwtSecret } from './auth/jwt-secret';
 
 /**
  * Fail fast on broken configuration: a typo'd env var must stop the
  * deployment at boot, not surface as silent degradation at runtime.
  */
 function validateEnvironment(logger: Logger): void {
-  validateRuntimeEnvironment();
+  validateRuntimeEnvironment(process.env, getJwtSecret);
   if (process.env.NODE_ENV !== 'production') {
     logger.warn(
       'NODE_ENV is not "production" — dev conveniences (echoed OTP codes, permissive CORS) are ACTIVE.',

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
-  "stage": "task-4",
+  "stage": "task-5",
   "contexts": [
     "identity",
     "planning",
@@ -190,24 +190,12 @@
       "path": "backend/src/auth/auth.module.ts",
       "className": "AuthModule",
       "imports": [
-        "JwtModule.registerAsync({\n      useFactory: () => ({\n        secret: getJwtSecret(),\n        signOptions: {\n          expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as '15m',\n        },\n      }),\n    })",
-        "MessagingRealtimePublicModule",
-        "PassportModule",
-        "PrismaModule"
+        "IdentityAuthInternalModule",
+        "IdentityAuthPublicModule"
       ],
-      "providers": [
-        "AuthChallengeCleanupScheduler",
-        "AuthService",
-        "JwtStrategy",
-        "LoginThrottleCleanupScheduler",
-        "LoginThrottleService",
-        "OtpDispatchQuotaCleanupScheduler",
-        "OtpDispatchQuotaService",
-        "{ provide: OTP_DISPATCH_NOW, useValue: () => new Date() }"
-      ],
+      "providers": [],
       "exports": [
-        "AuthService",
-        "JwtModule"
+        "IdentityAuthPublicModule"
       ],
       "global": false
     },
@@ -215,10 +203,10 @@
       "path": "backend/src/budget-categories/budget-categories.module.ts",
       "className": "BudgetCategoriesModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -263,9 +251,9 @@
       "path": "backend/src/contribution-history/contribution-history.module.ts",
       "className": "ContributionHistoryModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryInternalModule",
-        "CollaborationScopeInternalModule"
+        "CollaborationScopeInternalModule",
+        "IdentityAuthPublicModule"
       ],
       "providers": [],
       "exports": [],
@@ -287,8 +275,8 @@
       "path": "backend/src/conversations/conversations.module.ts",
       "className": "ConversationsModule",
       "imports": [
-        "AuthModule",
         "ConversationRealtimeModule",
+        "IdentityAuthPublicModule",
         "MediaStoragePublicModule",
         "NotificationsPublicModule",
         "OutboxCoreModule",
@@ -323,10 +311,10 @@
       "path": "backend/src/guests/guests.module.ts",
       "className": "GuestsModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -460,6 +448,49 @@
       ],
       "exports": [
         "COLLABORATION_SCOPE_PORT"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/identity/internal/identity-auth.internal.module.ts",
+      "className": "IdentityAuthInternalModule",
+      "imports": [
+        "JwtModule.registerAsync({\n      useFactory: () => ({\n        secret: getJwtSecret(),\n        signOptions: {\n          expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as '15m',\n        },\n      }),\n    })",
+        "MessagingRealtimePublicModule",
+        "PassportModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "AuthChallengeCleanupScheduler",
+        "AuthService",
+        "JwtStrategy",
+        "LoginThrottleCleanupScheduler",
+        "LoginThrottleService",
+        "OtpDispatchQuotaCleanupScheduler",
+        "OtpDispatchQuotaService",
+        "{ provide: IDENTITY_AUTH_IMPLEMENTATION, useExisting: AuthService }",
+        "{ provide: OTP_DISPATCH_NOW, useValue: () => new Date() }"
+      ],
+      "exports": [
+        "AuthService",
+        "IDENTITY_AUTH_IMPLEMENTATION",
+        "JwtModule"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/identity/public/identity-auth-public.module.ts",
+      "className": "IdentityAuthPublicModule",
+      "imports": [
+        "IdentityAuthInternalModule"
+      ],
+      "providers": [
+        "{ provide: IDENTITY_ACCESS_TOKEN_VERIFIER, useExisting: JwtService }",
+        "{ provide: IDENTITY_AUTH_PORT, useExisting: IDENTITY_AUTH_IMPLEMENTATION }"
+      ],
+      "exports": [
+        "IDENTITY_ACCESS_TOKEN_VERIFIER",
+        "IDENTITY_AUTH_PORT"
       ],
       "global": false
     },
@@ -619,9 +650,9 @@
       "path": "backend/src/money/money.module.ts",
       "className": "MoneyModule",
       "imports": [
-        "AuthModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -638,7 +669,7 @@
       "path": "backend/src/notifications/notifications.module.ts",
       "className": "NotificationsModule",
       "imports": [
-        "AuthModule",
+        "IdentityAuthPublicModule",
         "NotificationsServiceInternalModule",
         "PushModule"
       ],
@@ -652,7 +683,7 @@
       "path": "backend/src/onboarding/onboarding.module.ts",
       "className": "OnboardingModule",
       "imports": [
-        "AuthModule",
+        "IdentityAuthPublicModule",
         "WeddingPlansModule"
       ],
       "providers": [
@@ -706,7 +737,7 @@
       "path": "backend/src/push/push.module.ts",
       "className": "PushModule",
       "imports": [
-        "AuthModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -719,9 +750,9 @@
       "path": "backend/src/sharing/sharing.module.ts",
       "className": "SharingModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryInternalModule",
         "CollaborationPermissionInternalModule",
+        "IdentityAuthPublicModule",
         "MessagingRealtimePublicModule",
         "NotificationsPublicModule",
         "PrismaModule"
@@ -738,10 +769,10 @@
       "path": "backend/src/tasks/tasks.module.ts",
       "className": "TasksModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
         "NotificationsPublicModule",
         "PrismaModule"
       ],
@@ -755,9 +786,9 @@
       "path": "backend/src/timeline/timeline.module.ts",
       "className": "TimelineModule",
       "imports": [
-        "AuthModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -786,10 +817,10 @@
       "path": "backend/src/wedding-costs/wedding-costs.module.ts",
       "className": "WeddingCostsModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -804,9 +835,9 @@
       "path": "backend/src/wedding-plans/wedding-plans.module.ts",
       "className": "WeddingPlansModule",
       "imports": [
-        "AuthModule",
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
+        "IdentityAuthPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -818,17 +849,7 @@
       "global": false
     }
   ],
-  "crossContextInjections": [
-    {
-      "source": "backend/src/sharing/invite-access.service.ts",
-      "parameter": "auth",
-      "target": "AuthService",
-      "targetPath": "backend/src/auth/auth.service.ts",
-      "sourceContext": "collaboration",
-      "targetContext": "identity",
-      "kind": "constructor-injection"
-    }
-  ],
+  "crossContextInjections": [],
   "compositionDependencies": [
     {
       "key": "app-jwt-module-availability",
@@ -3981,9 +4002,7 @@
     "outbox-module-realtime",
     "outbox-module-push"
   ],
-  "remainingPlatformDebts": [
-    "runtime-jwt-secret"
-  ],
+  "remainingPlatformDebts": [],
   "initialRetiredLegacyProviderEdges": [
     {
       "key": "src/admin/admin-audit.interceptor.ts|src/auth/authenticated-user.interface.ts",
@@ -4639,22 +4658,8 @@
     }
   ],
   "remainingRetiredLegacyProviderEdges": [
-    "src/budget-categories/budget-categories.module.ts|src/auth/auth.module.ts",
     "src/catalogs/catalogs.module.ts|src/admin/admin-permission.guard.ts",
-    "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts",
-    "src/contribution-history/contribution-history.module.ts|src/auth/auth.module.ts",
-    "src/conversations/conversations.module.ts|src/auth/auth.module.ts",
-    "src/guests/guests.module.ts|src/auth/auth.module.ts",
-    "src/money/money.module.ts|src/auth/auth.module.ts",
-    "src/notifications/notifications.module.ts|src/auth/auth.module.ts",
-    "src/onboarding/onboarding.module.ts|src/auth/auth.module.ts",
-    "src/push/push.module.ts|src/auth/auth.module.ts",
-    "src/sharing/invite-access.service.ts|src/auth/auth.service.ts",
-    "src/sharing/sharing.module.ts|src/auth/auth.module.ts",
-    "src/tasks/tasks.module.ts|src/auth/auth.module.ts",
-    "src/timeline/timeline.module.ts|src/auth/auth.module.ts",
-    "src/wedding-costs/wedding-costs.module.ts|src/auth/auth.module.ts",
-    "src/wedding-plans/wedding-plans.module.ts|src/auth/auth.module.ts"
+    "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts"
   ],
   "allowedChangedPaths": [
     "backend/.dependency-cruiser-known-violations.json",
@@ -4714,6 +4719,7 @@
     "backend/src/guests/guests.controller.ts",
     "backend/src/guests/guests.module.ts",
     "backend/src/guests/guests.service.ts",
+    "backend/src/main.ts",
     "backend/src/marketplace/marketplace-contributor-quote-scope.ts",
     "backend/src/marketplace/marketplace-write-locks.ts",
     "backend/src/marketplace/marketplace.controller.ts",
@@ -4740,6 +4746,9 @@
     "backend/src/modules/collaboration/public/collaboration-permission.port.ts",
     "backend/src/modules/collaboration/public/collaboration-scope-public.module.ts",
     "backend/src/modules/collaboration/public/collaboration-scope.port.ts",
+    "backend/src/modules/identity/internal/identity-auth.internal.module.ts",
+    "backend/src/modules/identity/public/identity-auth-public.module.ts",
+    "backend/src/modules/identity/public/identity-auth.port.ts",
     "backend/src/modules/identity/public/identity-session.types.ts",
     "backend/src/modules/media/internal/media-lifecycle.internal.module.ts",
     "backend/src/modules/media/internal/media-storage.internal.module.ts",
@@ -4765,7 +4774,9 @@
     "backend/src/notifications/notifications.module.ts",
     "backend/src/notifications/notifications.service.ts",
     "backend/src/onboarding/onboarding.controller.ts",
+    "backend/src/onboarding/onboarding.module.ts",
     "backend/src/onboarding/onboarding.service.ts",
+    "backend/src/platform/config/runtime-environment.ts",
     "backend/src/platform/health/media-readiness.port.ts",
     "backend/src/platform/health/readiness.service.ts",
     "backend/src/platform/outbox/outbox-core.module.ts",
@@ -4780,6 +4791,7 @@
     "backend/src/push/push-installations.service.ts",
     "backend/src/push/push.controller.ts",
     "backend/src/push/push.module.ts",
+    "backend/src/sharing/invite-access.service.ts",
     "backend/src/sharing/permission.service.ts",
     "backend/src/sharing/sharing.controller.ts",
     "backend/src/sharing/sharing.module.ts",
@@ -4805,11 +4817,18 @@
     "backend/test/architecture-r3-collaboration-ports.test.ts",
     "backend/test/architecture-r3-composition.test.ts",
     "backend/test/architecture-r3-contexts.test.ts",
+    "backend/test/architecture-r3-identity-port.test.ts",
     "backend/test/architecture-r3-notifications-port.test.ts",
     "backend/test/architecture-r3-scope.test.ts",
+    "backend/test/auth-otp-mode.test.ts",
+    "backend/test/auth-refresh-wiring.test.ts",
     "backend/test/health-readiness.test.ts",
+    "backend/test/media-url-ownership.test.ts",
     "backend/test/notification-logic.test.ts",
+    "backend/test/openwa-otp-channel.test.ts",
+    "backend/test/push-notifications.test.ts",
     "backend/test/sharing-permission-ceiling.test.ts",
+    "backend/test/whatsapp-otp-channel.test.ts",
     "docs/SCRIPTS.md",
     "docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md",
     "docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md"

@@ -218,6 +218,28 @@ const TASK4_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/sharing/sharing.service.ts', consumerClass: 'backend/src/sharing/sharing.service.ts#SharingService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
   Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
 ]);
+const TASK5_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
+  auth: Object.freeze({
+    token: 'backend/src/modules/identity/public/identity-auth.port.ts#IDENTITY_AUTH_PORT',
+    parameterType: 'backend/src/modules/identity/public/identity-auth.port.ts#IdentityAuthPort',
+  }),
+  verifier: Object.freeze({
+    token: 'backend/src/modules/identity/public/identity-auth.port.ts#IDENTITY_ACCESS_TOKEN_VERIFIER',
+    parameterType: 'backend/src/modules/identity/public/identity-auth.port.ts#IdentityAccessTokenVerifier',
+  }),
+});
+const TASK5_CONSUMER_IDENTITIES = new Map([
+  ['IDENTITY_AUTH_PORT', Object.freeze([
+    TASK5_CANONICAL_INJECTION_IDENTITIES.auth,
+  ])],
+  ['IDENTITY_ACCESS_TOKEN_VERIFIER', Object.freeze([
+    TASK5_CANONICAL_INJECTION_IDENTITIES.verifier,
+  ])],
+]);
+const TASK5_EXACT_CONSTRUCTOR_USES = Object.freeze([
+  Object.freeze({ source: 'backend/src/sharing/invite-access.service.ts', consumerClass: 'backend/src/sharing/invite-access.service.ts#InviteAccessService', parameter: 'auth', parameterIndex: 1, ...TASK5_CANONICAL_INJECTION_IDENTITIES.auth }),
+  Object.freeze({ source: 'backend/src/conversations/conversations.gateway.ts', consumerClass: 'backend/src/conversations/conversations.gateway.ts#ConversationsGateway', parameter: 'jwt', parameterIndex: 0, ...TASK5_CANONICAL_INJECTION_IDENTITIES.verifier }),
+]);
 const CONTRACT_SHAPE_HASH = '2cfbe6583e75a19284f7fb0d2b6f05e47f69291c43b435e7aa3dd3ec9638534f';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
@@ -1290,7 +1312,8 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const providerContracts = contractDefinitions.map((contract) => {
     const canonicalConsumerIdentities = TASK2_CONSUMER_IDENTITIES.get(contract.token)
       || TASK3_CONSUMER_IDENTITIES.get(contract.token)
-      || TASK4_CONSUMER_IDENTITIES.get(contract.token);
+      || TASK4_CONSUMER_IDENTITIES.get(contract.token)
+      || TASK5_CONSUMER_IDENTITIES.get(contract.token);
     const consumers = canonicalConsumerIdentities
       ? []
       : injections.filter((item) => contract.implementations.includes(item.target))
@@ -1362,6 +1385,14 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const exactTask4ConstructorUses = TASK4_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
   const task4ConstructorInventoryPresent = JSON.stringify(liveTask4ConstructorUses)
     === JSON.stringify(exactTask4ConstructorUses);
+  const task5CanonicalPairs = new Set(Object.values(TASK5_CANONICAL_INJECTION_IDENTITIES)
+    .map((identity) => `${identity.token}|${identity.parameterType}`));
+  const liveTask5ConstructorUses = allConstructorUses.filter((item) => task5CanonicalPairs.has(
+    `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
+  )).map(task2ConstructorUseKey).sort();
+  const exactTask5ConstructorUses = TASK5_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const task5ConstructorInventoryPresent = JSON.stringify(liveTask5ConstructorUses)
+    === JSON.stringify(exactTask5ConstructorUses);
   const retiredEdges = initialRetiredEdges.filter((edge) => {
     const [from, to] = edge.key.split('|');
     return importEdges.has(`backend/${from}|backend/${to}`);
@@ -1373,6 +1404,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     task2ConstructorInventoryPresent,
     task3ConstructorInventoryPresent,
     task4ConstructorInventoryPresent,
+    task5ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
   };
@@ -1427,6 +1459,8 @@ function scanR3Contexts(options) {
     || (manifest.stage !== 'task-2' && !live.task3ConstructorInventoryPresent)
     || (['task-4', 'task-5', 'task-6', 'task-7', 'task-8'].includes(manifest.stage)
       && !live.task4ConstructorInventoryPresent)
+    || (['task-5', 'task-6', 'task-7', 'task-8'].includes(manifest.stage)
+      && !live.task5ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)

@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth/auth.module";
+import { IdentityAuthPublicModule } from "../modules/identity/public/identity-auth-public.module";
 import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
 import { CollaborationScopePublicModule } from "../modules/collaboration/public/collaboration-scope-public.module";
 import { PrismaModule } from "../platform/database/prisma.module";
@@ -9,7 +9,7 @@ import { MoneyBudgetService } from "./money-budget.service";
 
 @Module({
   imports: [
-    AuthModule,
+    IdentityAuthPublicModule,
     PrismaModule,
     CollaborationPermissionPublicModule,
     CollaborationScopePublicModule,

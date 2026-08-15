@@ -10,6 +10,7 @@ import {
   isPushNotificationType,
   pushNotificationCopy,
 } from "../src/push/push-notification.policy";
+import { getJwtSecret } from "../src/auth/jwt-secret";
 
 test("push policy is limited to task and chat notification types", () => {
   assert.equal(isPushNotificationType(NotificationType.TASK_ASSIGNED), true);
@@ -35,14 +36,14 @@ test("runtime fails closed when push is enabled without a Firebase project", () 
   };
 
   assert.throws(
-    () => validateRuntimeEnvironment(environment),
+    () => validateRuntimeEnvironment(environment, getJwtSecret),
     /FIREBASE_PROJECT_ID/,
   );
   assert.doesNotThrow(() =>
     validateRuntimeEnvironment({
       ...environment,
       FIREBASE_PROJECT_ID: "aarast-project",
-    }),
+    }, getJwtSecret),
   );
 });
 

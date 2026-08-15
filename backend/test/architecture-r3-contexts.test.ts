@@ -94,7 +94,7 @@ function fullSourceFixture(replacements: Array<{
     repoRoot: root,
     backendRoot: fixtureBackend,
     manifestPath,
-    stage: 'task-4',
+    stage: 'task-5',
   };
 }
 
@@ -102,18 +102,18 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('the canonical R3 manifest freezes the exact Task 4 ledgers', () => {
+test('the canonical R3 manifest freezes the exact Task 5 ledgers', () => {
   const manifest = scanner().validateR3ContextManifest(loadManifest());
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, '6b06eb096aca8cc6684d365d16e05d4cd8529898');
-  assert.equal(manifest.stage, 'task-4');
+  assert.equal(manifest.stage, 'task-5');
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 44);
-  assert.equal(manifest.crossContextInjections.length, 1);
+  assert.equal(manifest.legacyModules.length, 46);
+  assert.equal(manifest.crossContextInjections.length, 0);
   assert.equal(manifest.compositionDependencies.length, 6);
   assert.equal(manifest.providerContracts.length, 11);
   assert.equal(manifest.decoratorRuntimeReferences.length, 23);
@@ -137,11 +137,11 @@ test('the canonical R3 manifest freezes the exact Task 4 ledgers', () => {
     'AdminGuard', 'AdminPermissionGuard',
   ]);
   assert.equal(manifest.initialPlatformDebts.length, 6);
-  assert.deepEqual(manifest.remainingPlatformDebts, ['runtime-jwt-secret']);
+  assert.deepEqual(manifest.remainingPlatformDebts, []);
   assert.deepEqual(
     manifest.remainingRetiredLegacyProviderEdges,
     manifest.initialRetiredLegacyProviderEdges
-      .filter((edge: { retirementTask: number }) => edge.retirementTask > 4)
+      .filter((edge: { retirementTask: number }) => edge.retirementTask > 5)
       .map((edge: { key: string }) => edge.key),
   );
 });
@@ -151,16 +151,7 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   const injectionKeys = manifest.crossContextInjections.map(
     (edge: any) => `${edge.source}|${edge.parameter}|${edge.target}`,
   );
-  assert.equal(new Set(injectionKeys).size, 1);
-  assert.ok(injectionKeys.includes(
-    'backend/src/sharing/invite-access.service.ts|auth|AuthService',
-  ));
-  assert.equal(
-    injectionKeys.includes(
-      'backend/src/users/users.service.ts|firebasePush|FirebasePushClient',
-    ),
-    false,
-  );
+  assert.deepEqual(injectionKeys, []);
   assert.equal(
     manifest.decoratorRuntimeReferences.filter((item: any) => item.symbol === 'JwtAuthGuard').length,
     20,
@@ -199,25 +190,25 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   );
 });
 
-test('the live TypeScript inventory equals the canonical Task 4 manifest', () => {
+test('the live TypeScript inventory equals the canonical Task 5 manifest', () => {
   const result = scanner().scanR3Contexts({
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-4',
+    stage: 'task-5',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 44,
-    crossContextInjections: 1,
-    compositionDependencies: 1,
+    legacyModules: 46,
+    crossContextInjections: 0,
+    compositionDependencies: 0,
     initialDuplicateProviders: 3,
     remainingDuplicateProviders: 2,
     initialPlatformDebts: 6,
-    remainingPlatformDebts: 1,
+    remainingPlatformDebts: 0,
     initialRetiredLegacyProviderEdges: 163,
-    remainingRetiredLegacyProviderEdges: 16,
+    remainingRetiredLegacyProviderEdges: 2,
     forwardRef: 0,
     globals: 2,
     nestModuleCycles: 0,
@@ -242,7 +233,7 @@ test('I1 live orchestration executes source laws and permits only exact approved
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-4',
+    stage: 'task-5',
     sourceLawScan: () => {
       calls += 1;
       return {
@@ -269,9 +260,9 @@ test('same-count manifest identity drift is rejected against live source and the
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-manifest-drift-'));
   temporaryRoots.push(root);
   const manifest = loadManifest();
-  manifest.crossContextInjections[0] = {
-    ...manifest.crossContextInjections[0],
-    target: 'AttackerService',
+  manifest.legacyModules[0] = {
+    ...manifest.legacyModules[0],
+    className: 'AttackerModule',
   };
   manifest.decoratorRuntimeReferences[0] = {
     ...manifest.decoratorRuntimeReferences[0],
@@ -292,7 +283,7 @@ test('same-count manifest identity drift is rejected against live source and the
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-4',
+    stage: 'task-5',
   });
   assert.ok(result.diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
@@ -388,7 +379,7 @@ test('I3 same-count contract, composition, context-root, and Admin guard substit
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-4',
+    stage: 'task-5',
   }), /context root|provider contract|composition|guard|canonical/i);
 });
 

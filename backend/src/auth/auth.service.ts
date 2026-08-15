@@ -11,6 +11,11 @@ import {
   MessagingRealtimePort,
 } from "../modules/messaging/public/messaging-realtime.port";
 import {
+  IdentityAuthPort,
+  InviteOtpVerifyInput,
+  OtpDispatchContext,
+} from "../modules/identity/public/identity-auth.port";
+import {
   AuthSessionScope,
   OtpCode,
   OtpPurpose,
@@ -64,7 +69,6 @@ import {
   LoginThrottleService,
 } from "./login-throttle.service";
 import {
-  OtpDispatchContext,
   OtpDispatchQuotaService,
 } from "./otp-dispatch-quota.service";
 import {
@@ -113,14 +117,6 @@ export interface OtpVerifyResponse {
   accessToken?: string;
   refreshToken?: string;
   refreshTokenExpiresAt?: Date;
-}
-
-export interface InviteOtpVerifyInput {
-  token: string;
-  phone: string;
-  code: string;
-  name?: string;
-  password?: string;
 }
 
 export interface AdminLoginPendingResponse {
@@ -183,7 +179,7 @@ interface OtpChannelSelection {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements IdentityAuthPort {
   private static readonly maxRefreshFamilyDepth = 4_096;
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";

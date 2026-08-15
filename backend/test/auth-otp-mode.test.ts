@@ -762,7 +762,7 @@ test('production runtime fails before boot on a weak JWT secret', () => {
         AUTH_OTP_MODE: 'disabled',
         AUTH_LOGIN_THROTTLE_PEPPER:
           'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
-      }),
+      }, getJwtSecret),
     (error: Error) => {
       assert.doesNotMatch(error.message, new RegExp(weakSecret));
       assert.match(error.message, /JWT_SECRET/);

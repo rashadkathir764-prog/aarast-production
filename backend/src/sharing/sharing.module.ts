@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth/auth.module";
+import { IdentityAuthPublicModule } from "../modules/identity/public/identity-auth-public.module";
 import { CollaborationHistoryInternalModule } from "../modules/collaboration/internal/collaboration-history.internal.module";
 import { CollaborationPermissionInternalModule } from "../modules/collaboration/internal/collaboration-permission.internal.module";
 import { MessagingRealtimePublicModule } from "../modules/messaging/public/messaging-realtime-public.module";
@@ -20,7 +20,7 @@ import { SharingService } from "./sharing.service";
 
 @Module({
   imports: [
-    AuthModule,
+    IdentityAuthPublicModule,
     PrismaModule,
     MessagingRealtimePublicModule,
     NotificationsPublicModule,

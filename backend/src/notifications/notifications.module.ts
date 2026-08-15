@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth/auth.module";
+import { IdentityAuthPublicModule } from "../modules/identity/public/identity-auth-public.module";
 import { PushModule } from "../push/push.module";
 import { NotificationsServiceInternalModule } from "../modules/notifications/internal/notifications-service.internal.module";
 import { NotificationsController } from "./notifications.controller";
@@ -8,7 +8,7 @@ import { NotificationsService } from "./notifications.service";
 
 @Module({
   imports: [
-    AuthModule,
+    IdentityAuthPublicModule,
     PushModule,
     NotificationsServiceInternalModule,
   ],

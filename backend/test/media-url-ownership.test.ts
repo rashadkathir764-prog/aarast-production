@@ -15,6 +15,7 @@ import { UsersService } from "../src/users/users.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import { createStrongRuntimeJwtSecret } from "./support/runtime-secrets";
+import { getJwtSecret } from "../src/auth/jwt-secret";
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const BASE = "https://cdn.example.test";
@@ -60,7 +61,7 @@ test("production rejects client-facing media endpoints without HTTPS", () => {
         AARAST_MEDIA_SIGNED_ENDPOINT: "http://uploads.example.test",
         AARAST_MEDIA_BUCKET: "aarast-media",
         AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
-      }),
+      }, getJwtSecret),
     /AARAST_MEDIA_SIGNED_ENDPOINT must use HTTPS in production/,
   );
 
@@ -76,7 +77,7 @@ test("production rejects client-facing media endpoints without HTTPS", () => {
       AARAST_MEDIA_SIGNED_ENDPOINT: "https://uploads.example.test",
       AARAST_MEDIA_BUCKET: "aarast-media",
       AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
-    }),
+    }, getJwtSecret),
   );
 });
 
@@ -93,7 +94,7 @@ test("production requires an explicit client-reachable signed media endpoint", (
         AARAST_MEDIA_ENDPOINT: "https://media.internal.example.test",
         AARAST_MEDIA_BUCKET: "aarast-media",
         AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
-      }),
+      }, getJwtSecret),
     /AARAST_MEDIA_SIGNED_ENDPOINT/,
   );
 });

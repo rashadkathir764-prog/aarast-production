@@ -5,6 +5,7 @@ import { WhatsAppOtpChannel } from '../src/platform/otp-transport/whatsapp-otp.c
 import { loadWhatsAppOtpConfig } from '../src/platform/otp-transport/whatsapp-otp-config';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
+import { getJwtSecret } from '../src/auth/jwt-secret';
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const config = {
@@ -176,7 +177,7 @@ test('WhatsApp mode fails configuration validation before boot when incomplete',
         JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
         AUTH_OTP_MODE: 'whatsapp',
-      }),
+      }, getJwtSecret),
     /WhatsApp OTP is missing required environment variables/,
   );
 });
@@ -188,7 +189,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://example',
         JWT_SECRET: strongRuntimeJwtSecret,
-      }),
+      }, getJwtSecret),
     /AUTH_OTP_MODE is required in production/,
   );
 
@@ -199,7 +200,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
         DATABASE_URL: 'postgresql://example',
         JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_OTP_MODE: 'dev',
-      }),
+      }, getJwtSecret),
     /forbidden in production/,
   );
 
@@ -215,7 +216,7 @@ test('production rejects dev OTP mode and accepts complete WhatsApp configuratio
       WHATSAPP_ACCESS_TOKEN: config.accessToken,
       WHATSAPP_OTP_TEMPLATE_NAME: config.templateName,
       WHATSAPP_OTP_TEMPLATE_LANGUAGE: config.templateLanguage,
-    }),
+    }, getJwtSecret),
   );
 });
 

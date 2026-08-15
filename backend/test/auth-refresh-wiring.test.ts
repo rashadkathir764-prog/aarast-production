@@ -232,8 +232,11 @@ test("refresh token schema and authenticated lifecycle stay wired", () => {
     join(process.cwd(), "src/auth/auth.service.ts"),
     "utf8",
   );
-  const authModule = readFileSync(
-    join(process.cwd(), "src/auth/auth.module.ts"),
+  const identityAuthInternalModule = readFileSync(
+    join(
+      process.cwd(),
+      "src/modules/identity/internal/identity-auth.internal.module.ts",
+    ),
     "utf8",
   );
 
@@ -245,7 +248,7 @@ test("refresh token schema and authenticated lifecycle stay wired", () => {
   assert.match(service, /refreshToken\.create/);
   assert.match(service, /refreshToken\.update/);
   assert.match(service, /refreshToken\.updateMany/);
-  assert.match(authModule, /JWT_ACCESS_EXPIRES_IN/);
+  assert.match(identityAuthInternalModule, /JWT_ACCESS_EXPIRES_IN/);
 });
 
 test("disabling an account revokes all active refresh sessions", () => {

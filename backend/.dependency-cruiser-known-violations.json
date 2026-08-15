@@ -211,20 +211,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/contribution-history/contribution-history.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/sharing/dto/verify-invite-otp.dto.ts",
     "to": "src/auth/dto/max-utf8-bytes.decorator.ts",
     "unresolvedTo": "../../auth/dto/max-utf8-bytes.decorator",
@@ -242,20 +228,6 @@
     "from": "src/sharing/invite-access.service.ts",
     "to": "src/auth/auth-error.ts",
     "unresolvedTo": "../auth/auth-error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/invite-access.service.ts",
-    "to": "src/auth/auth.service.ts",
-    "unresolvedTo": "../auth/auth.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -323,20 +295,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/sharing/sharing.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/sharing/sharing.service.ts",
     "to": "src/contexts/context-key.ts",
     "unresolvedTo": "../contexts/context-key",
@@ -393,20 +351,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/budget-categories/budget-categories.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/budget-categories/budget-categories.service.ts",
     "to": "src/contribution-history/contribution-snapshot.builder.ts",
     "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
@@ -449,20 +393,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/money/money.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/wedding-costs/wedding-costs.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
@@ -480,20 +410,6 @@
     "from": "src/wedding-costs/wedding-costs.controller.ts",
     "to": "src/auth/jwt-auth.guard.ts",
     "unresolvedTo": "../auth/jwt-auth.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-costs/wedding-costs.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
     "dependencyTypes": [
       "local",
       "import"
@@ -536,20 +452,6 @@
     "from": "src/guests/guests.controller.ts",
     "to": "src/auth/jwt-auth.guard.ts",
     "unresolvedTo": "../auth/jwt-auth.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-guests-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/guests/guests.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
     "dependencyTypes": [
       "local",
       "import"
@@ -676,20 +578,6 @@
     "from": "src/timeline/timeline.controller.ts",
     "to": "src/auth/jwt-auth.guard.ts",
     "unresolvedTo": "../auth/jwt-auth.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/timeline/timeline.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
     "dependencyTypes": [
       "local",
       "import"
@@ -1094,20 +982,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/conversations/conversations.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/conversations/conversations.service.ts",
     "to": "src/provider-dashboard/provider-access-policy.ts",
     "unresolvedTo": "../provider-dashboard/provider-access-policy",
@@ -1153,20 +1027,6 @@
     "from": "src/notifications/notifications.controller.ts",
     "to": "src/auth/jwt-auth.guard.ts",
     "unresolvedTo": "../auth/jwt-auth.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-notifications-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/notifications/notifications.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
     "dependencyTypes": [
       "local",
       "import"
@@ -1248,20 +1108,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/push/push.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-notifications-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/onboarding/dto/import-local-plan.dto.ts",
     "to": "src/guests/dto/create-guest.dto.ts",
     "unresolvedTo": "../../guests/dto/create-guest.dto",
@@ -1318,20 +1164,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/onboarding/onboarding.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/wedding-plans/wedding-plans.controller.ts",
     "to": "src/auth/current-user.decorator.ts",
     "unresolvedTo": "../auth/current-user.decorator",
@@ -1349,20 +1181,6 @@
     "from": "src/wedding-plans/wedding-plans.controller.ts",
     "to": "src/auth/jwt-auth.guard.ts",
     "unresolvedTo": "../auth/jwt-auth.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-plans/wedding-plans.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
     "dependencyTypes": [
       "local",
       "import"
@@ -1444,20 +1262,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/tasks/tasks.module.ts",
-    "to": "src/auth/auth.module.ts",
-    "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/tasks/tasks.service.ts",
     "to": "src/contribution-history/contribution-snapshot.builder.ts",
     "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
@@ -1468,20 +1272,6 @@
     "rule": {
       "severity": "error",
       "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/platform/config/runtime-environment.ts",
-    "to": "src/auth/jwt-secret.ts",
-    "unresolvedTo": "../../auth/jwt-secret",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "platform-no-business-contexts"
     }
   }
 ]

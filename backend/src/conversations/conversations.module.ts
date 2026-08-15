@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { IdentityAuthPublicModule } from '../modules/identity/public/identity-auth-public.module';
 import { NotificationsPublicModule } from '../modules/notifications/public/notifications-public.module';
 import { MediaStoragePublicModule } from '../modules/media/public/media-storage-public.module';
 import { OutboxCoreModule } from '../platform/outbox/outbox-core.module';
@@ -14,7 +14,7 @@ import { ConversationRealtimeModule } from './conversation-realtime.module';
 
 @Module({
   imports: [
-    AuthModule,
+    IdentityAuthPublicModule,
     PrismaModule,
     NotificationsPublicModule,
     MediaStoragePublicModule,

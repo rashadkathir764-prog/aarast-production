@@ -1,5 +1,4 @@
-import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Inject, Logger } from '@nestjs/common';
 import { AuthSessionScope } from '@prisma/client';
 import {
   ConnectedSocket,
@@ -13,6 +12,10 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import {
+  IDENTITY_ACCESS_TOKEN_VERIFIER,
+  IdentityAccessTokenVerifier,
+} from '../modules/identity/public/identity-auth.port';
 import { resolveJwtSessionScope } from '../auth/access-token-scope';
 import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { toAuthenticatedUser } from '../auth/safe-user';
@@ -61,7 +64,8 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
   server!: Server;
 
   constructor(
-    private readonly jwt: JwtService,
+    @Inject(IDENTITY_ACCESS_TOKEN_VERIFIER)
+    private readonly jwt: IdentityAccessTokenVerifier,
     private readonly prisma: PrismaService,
     private readonly conversations: ConversationsService,
     private readonly realtime: ConversationRealtimePublisher,

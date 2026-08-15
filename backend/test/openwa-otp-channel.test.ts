@@ -6,6 +6,7 @@ import { loadOpenWaOtpConfig } from '../src/platform/otp-transport/openwa-otp-co
 import { OpenWaTransientDeliveryRejectedError } from '../src/platform/otp-transport/openwa-transient-text';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
+import { getJwtSecret } from '../src/auth/jwt-secret';
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const { normalizeBaseUrl, buildHistoryUrl } = require('../scripts/smoke/openwa-otp-smoke.js') as {
@@ -213,7 +214,7 @@ test('OpenWA production mode fails closed when its private contract is incomplet
         JWT_SECRET: strongRuntimeJwtSecret,
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
         AUTH_OTP_MODE: 'openwa',
-      }),
+      }, getJwtSecret),
     /OpenWA OTP is missing required environment variables/,
   );
 });
@@ -228,7 +229,7 @@ test('runtime rejects a malformed OTP global safety ceiling before boot', () => 
         AUTH_LOGIN_THROTTLE_PEPPER: 'a-separate-login-throttle-test-secret',
         AUTH_OTP_MODE: 'disabled',
         OTP_GLOBAL_DAILY_LIMIT: '0',
-      }),
+      }, getJwtSecret),
     /OTP_GLOBAL_DAILY_LIMIT/,
   );
 });

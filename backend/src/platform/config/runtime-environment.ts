@@ -1,6 +1,9 @@
 import { loadWhatsAppOtpConfig } from "../otp-transport/whatsapp-otp-config";
 import { loadOpenWaOtpConfig } from "../otp-transport/openwa-otp-config";
-import { getJwtSecret } from "../../auth/jwt-secret";
+
+export type IdentitySecretValidator = (
+  environment: NodeJS.ProcessEnv,
+) => void;
 
 export function isProductionEnvironment(
   environment: NodeJS.ProcessEnv = process.env,
@@ -9,7 +12,8 @@ export function isProductionEnvironment(
 }
 
 export function validateRuntimeEnvironment(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: NodeJS.ProcessEnv,
+  validateIdentitySecret: IdentitySecretValidator,
 ): void {
   const missing = ["DATABASE_URL", "JWT_SECRET"].filter(
     (name) => !environment[name]?.trim(),
@@ -19,7 +23,7 @@ export function validateRuntimeEnvironment(
       `Missing required environment variables: ${missing.join(", ")}`,
     );
   }
-  getJwtSecret(environment);
+  validateIdentitySecret(environment);
 
   const otpMode = environment.AUTH_OTP_MODE?.trim().toLowerCase();
   if (otpMode && !["dev", "whatsapp", "openwa", "disabled"].includes(otpMode)) {

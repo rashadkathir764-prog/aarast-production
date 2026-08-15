@@ -206,6 +206,12 @@ const ALLOWED_PATHS = Object.freeze([
   'backend/test/architecture-r3-context-modules-b.test.ts',
   'backend/test/admin-presenter.test.ts',
   'backend/test/dashboard-summary-presenter.test.ts',
+  'backend/src/modules/messaging/internal/messaging-conversations.internal.module.ts',
+  'backend/src/modules/messaging/messaging.module.ts',
+  'backend/src/modules/notifications/internal/notifications-lifecycle.internal.module.ts',
+  'backend/src/modules/notifications/internal/push-installations.internal.module.ts',
+  'backend/src/modules/notifications/notifications.module.ts',
+  'backend/test/architecture-r3-closure.test.ts',
   'docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md',
   'docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md',
 ]);

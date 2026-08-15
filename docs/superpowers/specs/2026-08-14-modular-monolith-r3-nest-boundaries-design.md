@@ -319,9 +319,14 @@ Task 1 freezes immutable authorization ledgers named `initialPlatformDebts` and
 dependency key and `retirementTask`. Separate `remainingPlatformDebts` and
 `remainingRetiredLegacyProviderEdges` begin as exact copies and may only shrink
 at their declared task. The initial arrays never change, including at strict
-closeout. The dependency baseline may delete only their immutable union, and
-only after the matching source import is absent. It may not add, rename, or
-increase any record; a record not in either initial set may not disappear.
+closeout. The dependency baseline may delete only their immutable union, plus
+the two Task-3 type-only contract reclassifications from
+`dashboard/dashboard.contracts.ts` and `dashboard/dashboard.service.ts` to
+`contribution-history/contribution-history.contracts.ts`, and only after the
+matching source import is absent. Those two records moved to the typed
+Collaboration public contract and ceased to be violations; they are not
+provider-edge debts. It may not add, rename, or increase any record; no other
+record may disappear.
 Ownership baseline records, Mobile baseline records, and the two global
 declarations are byte-frozen in R3 unless an independently reproduced R3 defect
 requires a separately reviewed correction.
@@ -416,8 +421,9 @@ R3 is accepted only when all of the following are true:
   `forwardRef`, or Nest cycle exists;
 - exactly two approved globals remain at their current paths;
 - both remaining debt arrays are empty while both immutable initial ledgers stay
-  byte-exact; their authorized union is absent from the dependency baseline,
-  with no other deletion and no new platform-to-business or baseline debt;
+  byte-exact; their authorized union and the exact two documented Task-3
+  type-only reclassifications are absent from the dependency baseline, with no
+  other deletion and no new platform-to-business or baseline debt;
 - controller, route, and OpenAPI metadata are exact; provider/lifecycle
   ownership is semantically equivalent without duplication; each old concrete
   export is replaced by a manifest-listed public token or proved unused; old

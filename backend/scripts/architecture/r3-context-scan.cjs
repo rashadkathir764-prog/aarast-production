@@ -364,11 +364,13 @@ function validateR3ContextManifest(value) {
   if (Object.keys(manifest).sort().join('|') !== [...required].sort().join('|')) {
     throw new Error('R3 context manifest keys are invalid');
   }
-  const stageMatch = typeof manifest.stage === 'string' && /^(?:inventory|task-[2-8])$/u.exec(manifest.stage);
+  const stageMatch = typeof manifest.stage === 'string' && /^(?:inventory|task-[2-8]|strict)$/u.exec(manifest.stage);
   if (manifest.schemaVersion !== 1 || manifest.baseRevision !== R3_BASE || !stageMatch) {
     throw new Error('R3 context manifest identity is invalid');
   }
-  const completedTask = manifest.stage === 'inventory' ? 1 : Number(manifest.stage.slice('task-'.length));
+  const completedTask = manifest.stage === 'inventory'
+    ? 1
+    : manifest.stage === 'strict' ? 8 : Number(manifest.stage.slice('task-'.length));
   const contexts = uniqueStrings(manifest.contexts, 'contexts');
   if (contexts.join('|') !== CONTEXTS.join('|')) throw new Error('contexts do not match the canonical set');
   const contextRoots = denseArray(manifest.contextRoots, 'context roots').map((item, index) => {
@@ -1457,9 +1459,9 @@ function scanR3Contexts(options) {
     || !live.providerContractSurfacesPresent
     || !live.task2ConstructorInventoryPresent
     || (manifest.stage !== 'task-2' && !live.task3ConstructorInventoryPresent)
-    || (['task-4', 'task-5', 'task-6', 'task-7', 'task-8'].includes(manifest.stage)
+    || (['task-4', 'task-5', 'task-6', 'task-7', 'task-8', 'strict'].includes(manifest.stage)
       && !live.task4ConstructorInventoryPresent)
-    || (['task-5', 'task-6', 'task-7', 'task-8'].includes(manifest.stage)
+    || (['task-5', 'task-6', 'task-7', 'task-8', 'strict'].includes(manifest.stage)
       && !live.task5ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
@@ -1516,7 +1518,7 @@ function runCli(dependencies = {}) {
   const stderr = dependencies.stderr || ((message) => process.stderr.write(`${message}\n`));
   try {
     if (argv.length !== 3 || argv[0] !== '--check' || argv[1] !== '--stage'
-        || !/^(?:inventory|task-[2-8])$/u.test(argv[2])) {
+        || !/^(?:inventory|task-[2-8]|strict)$/u.test(argv[2])) {
       throw new Error('invalid arguments');
     }
     const backendRoot = path.resolve(__dirname, '../..');

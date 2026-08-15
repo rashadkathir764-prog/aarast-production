@@ -41,7 +41,7 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('R3 scope pins the immutable base and accepts only the explicit through-Task-7 paths', () => {
+test('R3 scope pins the immutable base and accepts only the explicit strict paths', () => {
   assert.equal(scope().R3_BASE, baseRef);
   const result = scope().validateR3Scope({ repositoryRoot, baseRef });
   assert.equal(result.ok, true);
@@ -158,12 +158,17 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/modules/media/media.module.ts',
     'backend/src/modules/media/public/media-storage-public.module.ts',
     'backend/src/modules/media/public/media-storage.port.ts',
+    'backend/src/modules/messaging/internal/messaging-conversations.internal.module.ts',
     'backend/src/modules/messaging/internal/messaging-realtime.implementation-token.ts',
     'backend/src/modules/messaging/internal/messaging-realtime.internal.module.ts',
+    'backend/src/modules/messaging/messaging.module.ts',
     'backend/src/modules/messaging/public/messaging-realtime-public.module.ts',
     'backend/src/modules/messaging/public/messaging-realtime.port.ts',
+    'backend/src/modules/notifications/internal/notifications-lifecycle.internal.module.ts',
     'backend/src/modules/notifications/internal/notifications-service.internal.module.ts',
+    'backend/src/modules/notifications/internal/push-installations.internal.module.ts',
     'backend/src/modules/notifications/internal/push-transport.internal.module.ts',
+    'backend/src/modules/notifications/notifications.module.ts',
     'backend/src/modules/notifications/public/notifications-public.module.ts',
     'backend/src/modules/notifications/public/notifications.port.ts',
     'backend/src/modules/notifications/public/push-capability-public.module.ts',
@@ -223,6 +228,7 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/test/architecture-dependencies.test.ts',
     'backend/test/architecture-ports.test.ts',
     'backend/test/architecture-r1-layout.test.ts',
+    'backend/test/architecture-r3-closure.test.ts',
     'backend/test/architecture-r3-collaboration-ports.test.ts',
     'backend/test/architecture-r3-composition.test.ts',
     'backend/test/architecture-r3-context-modules-a.test.ts',

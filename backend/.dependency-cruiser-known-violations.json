@@ -141,34 +141,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/catalogs/catalogs.module.ts",
-    "to": "src/admin/admin-permission.guard.ts",
-    "unresolvedTo": "../admin/admin-permission.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-catalog-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/catalogs/catalogs.module.ts",
-    "to": "src/admin/admin.guard.ts",
-    "unresolvedTo": "../admin/admin.guard",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-catalog-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/catalogs/reference-catalog.service.ts",
     "to": "src/admin/admin-mutation-gate.ts",
     "unresolvedTo": "../admin/admin-mutation-gate",

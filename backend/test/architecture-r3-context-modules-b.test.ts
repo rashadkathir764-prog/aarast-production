@@ -151,7 +151,7 @@ test('Task 7 advances the manifest and retires duplicate providers and remaining
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-7');
+  assert.equal(manifest.stage, 'strict');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -162,7 +162,7 @@ test('Task 7 advances the manifest and retires duplicate providers and remaining
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-7',
+    stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingDuplicateProviders, 0);

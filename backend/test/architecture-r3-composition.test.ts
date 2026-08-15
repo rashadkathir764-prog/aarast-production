@@ -367,31 +367,30 @@ test('Task 2 composes Outbox runtime and readiness at the exact root seams', () 
   assert.doesNotMatch(app, /OutboxModule/);
 });
 
-test('Task 2 keeps the push controller reachable exactly once and transport providers unique', () => {
-  const push = source('push/push.module.ts');
-  assert.match(push, /controllers:\s*\[PushController\]/);
-  assert.match(push, /providers:\s*\[\s*PushInstallationsService\s*\]/);
-  assert.doesNotMatch(push, /FirebasePushClient|PushDeliveryService/);
+test('Task 2 push reachability is preserved through the strict Notifications owner', () => {
+  assert.equal(existsSync(join(sourceRoot, 'push/push.module.ts')), false);
+  const notifications = source('modules/notifications/notifications.module.ts');
+  assert.match(notifications, /controllers:\s*\[NotificationsController, PushController\]/);
+  assert.match(notifications, /PushInstallationsInternalModule/);
+  assert.doesNotMatch(notifications, /FirebasePushClient|PushDeliveryService|PushModule/);
 
-  const notifications = source('notifications/notifications.module.ts');
-  assert.match(notifications, /PushModule/);
-  const task2Sources = [
-    source('app.module.ts'),
-    notifications,
-    source('platform/outbox/outbox-core.module.ts'),
-    source('application-composition/application-outbox-runtime.module.ts'),
-  ].join('\n');
-  assert.equal((task2Sources.match(/\bPushModule\b/g) ?? []).length, 2);
+  const installations = source(
+    'modules/notifications/internal/push-installations.internal.module.ts',
+  );
+  assert.match(installations, /providers:\s*\[PushInstallationsService\]/);
+  const transport = source('modules/notifications/internal/push-transport.internal.module.ts');
+  assert.match(transport, /FirebasePushClient/);
+  assert.match(transport, /PushDeliveryService/);
 });
 
-test('R3 manifest and CLI enforce the live task-7 stage', () => {
+test('R3 manifest and CLI enforce the live strict stage', () => {
   const manifest = JSON.parse(
     readFileSync(
       join(process.cwd(), 'architecture/r3-context-boundaries.json'),
       'utf8',
     ),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-7');
+  assert.equal(manifest.stage, 'strict');
 
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
@@ -407,7 +406,7 @@ test('R3 manifest and CLI enforce the live task-7 stage', () => {
       process.cwd(),
       'architecture/r3-context-boundaries.json',
     ),
-    stage: 'task-7',
+    stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingPlatformDebts, 0);
@@ -416,7 +415,7 @@ test('R3 manifest and CLI enforce the live task-7 stage', () => {
   const output: string[] = [];
   assert.equal(
     scanner.runCli({
-      argv: ['--check', '--stage', 'task-7'],
+      argv: ['--check', '--stage', 'strict'],
       scan: () => result,
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),

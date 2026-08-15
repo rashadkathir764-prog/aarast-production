@@ -137,10 +137,10 @@ test('Task 4 migrates the exact foreign service and type consumers', () => {
   }
 });
 
-test('Task 4 Notifications public imports remain on the Task 7 owner leaves', () => {
+test('Task 4 Notifications public imports remain on the strict owner leaves', () => {
   const modules = [
     'modules/backoffice/internal/backoffice-services.internal.module.ts',
-    'conversations/conversations.module.ts',
+    'modules/messaging/internal/messaging-conversations.internal.module.ts',
     'modules/insights/internal/insights-services.internal.module.ts',
     'modules/marketplace/internal/marketplace-services.internal.module.ts',
     'modules/collaboration/internal/collaboration-services.internal.module.ts',
@@ -154,16 +154,20 @@ test('Task 4 Notifications public imports remain on the Task 7 owner leaves', ()
 });
 
 test('Task 4 keeps controllers and the reminder scheduler only in the owner full module', () => {
-  const full = source('notifications/notifications.module.ts');
+  const full = source('modules/notifications/notifications.module.ts');
+  const lifecycle = source(
+    'modules/notifications/internal/notifications-lifecycle.internal.module.ts',
+  );
   const internal = requiredSource(
     'modules/notifications/internal/notifications-service.internal.module.ts',
   );
   const publicModule = requiredSource(
     'modules/notifications/public/notifications-public.module.ts',
   );
-  assert.match(full, /NotificationsServiceInternalModule/);
-  assert.match(full, /NotificationRemindersScheduler/);
+  assert.match(full, /NotificationsInternalModule/);
+  assert.match(full, /NotificationsLifecycleInternalModule/);
   assert.match(full, /NotificationsController/);
+  assert.match(lifecycle, /NotificationRemindersScheduler/);
   assert.doesNotMatch(internal, /NotificationRemindersScheduler|NotificationsController/);
   assert.doesNotMatch(publicModule, /NotificationRemindersScheduler|NotificationsController|NotificationsService/);
 });
@@ -172,7 +176,7 @@ test('Task 4 advances the live manifest and exact retirement counts', () => {
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-7');
+  assert.equal(manifest.stage, 'strict');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -183,7 +187,7 @@ test('Task 4 advances the live manifest and exact retirement counts', () => {
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-7',
+    stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingDuplicateProviders, 0);

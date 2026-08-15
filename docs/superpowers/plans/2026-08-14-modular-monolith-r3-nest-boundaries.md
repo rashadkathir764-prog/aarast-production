@@ -1001,9 +1001,11 @@ all initial ledgers byte-exact, and require all public token consumer and
 singleton checks. Generate dependency and
 ownership candidates into unique OS-temp paths; require the cumulative
 dependency deletions to equal exactly the immutable manifest union of
-`initialPlatformDebts` and `initialRetiredLegacyProviderEdges`, while both
-remaining arrays are empty, with no other removal, addition, rename, or increase
-and byte-identical ownership semantics before copying the dependency candidate.
+`initialPlatformDebts` and `initialRetiredLegacyProviderEdges` plus the exact two
+Task-3 type-only Dashboard-to-Collaboration contract reclassifications recorded
+in the Task-3 report, while both remaining arrays are empty, with no other
+removal, addition, rename, or increase and byte-identical ownership semantics
+before copying the dependency candidate.
 
 - [ ] **Step 5: Exhaustive local closure**
 

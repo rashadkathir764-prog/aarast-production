@@ -12,8 +12,6 @@ import { HealthController } from "./platform/health/health.controller";
 import { READINESS_FETCH, ReadinessService } from "./platform/health/readiness.service";
 import { MEDIA_READINESS_PORT } from "./platform/health/media-readiness.port";
 import { PrismaModule } from "./platform/database/prisma.module";
-import { NotificationsModule } from "./notifications/notifications.module";
-import { ConversationsModule } from "./conversations/conversations.module";
 import { MediaStoragePublicModule } from "./modules/media/public/media-storage-public.module";
 import { MEDIA_STORAGE_PORT } from "./modules/media/public/media-storage.port";
 import { ApplicationOutboxRuntimeModule } from "./application-composition/application-outbox-runtime.module";
@@ -28,6 +26,8 @@ import { CatalogModule } from "./modules/catalog/catalog.module";
 import { MediaModule } from "./modules/media/media.module";
 import { InsightsModule } from "./modules/insights/insights.module";
 import { BackofficeModule } from "./modules/backoffice/backoffice.module";
+import { MessagingModule } from "./modules/messaging/messaging.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 
 @Module({
   imports: [
@@ -73,7 +73,7 @@ import { BackofficeModule } from "./modules/backoffice/backoffice.module";
     NotificationsModule,
     GuestsModule,
     BackofficeModule,
-    ConversationsModule,
+    MessagingModule,
     MediaModule,
     MediaStoragePublicModule,
   ],

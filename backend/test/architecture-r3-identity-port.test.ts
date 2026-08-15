@@ -135,7 +135,7 @@ test('Task 5 migrates the exact InviteAccess and WebSocket DI consumers', () => 
   assert.match(gateway, /modules\/identity\/public\/identity-auth\.port/);
 });
 
-test('Task 5 AuthModule edges remain retired through the Task 7 cutover', () => {
+test('Task 5 AuthModule edges remain retired through the strict cutover', () => {
   const retiredModules = [
     'budget-categories/budget-categories.module.ts',
     'contribution-history/contribution-history.module.ts',
@@ -151,14 +151,19 @@ test('Task 5 AuthModule edges remain retired through the Task 7 cutover', () => 
     assert.equal(existsSync(join(sourceRoot, path)), false, path);
   }
   for (const path of [
-    'conversations/conversations.module.ts',
-    'notifications/notifications.module.ts',
-    'push/push.module.ts',
+    'modules/messaging/internal/messaging-conversations.internal.module.ts',
     'modules/insights/internal/insights-services.internal.module.ts',
   ]) {
     const text = source(path);
     assert.doesNotMatch(text, /auth\/auth\.module|\bAuthModule\b/, path);
     assert.match(text, /IdentityAuthPublicModule/, path);
+  }
+  for (const path of [
+    'conversations/conversations.module.ts',
+    'notifications/notifications.module.ts',
+    'push/push.module.ts',
+  ]) {
+    assert.equal(existsSync(join(sourceRoot, path)), false, path);
   }
 });
 
@@ -245,7 +250,7 @@ test('Task 5 advances the live manifest and removes the final platform debt', ()
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-7');
+  assert.equal(manifest.stage, 'strict');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -256,7 +261,7 @@ test('Task 5 advances the live manifest and removes the final platform debt', ()
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-7',
+    stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingPlatformDebts, 0);

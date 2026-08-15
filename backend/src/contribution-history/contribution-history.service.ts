@@ -16,12 +16,17 @@ import {
   SharedMember,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { runRetryableTransaction } from "../platform/database/serializable-transaction";
-import { PrismaService } from "../platform/database/prisma.service";
+import {
+  CollaborationHistoryPort,
+  ContributionHistorySummaryResponse,
+  RecordContributionInput,
+} from "../modules/collaboration/public/collaboration-history.port";
 import {
   livePlanAuthorizationWhere,
   PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
+import { runRetryableTransaction } from "../platform/database/serializable-transaction";
+import { PrismaService } from "../platform/database/prisma.service";
 import {
   canonicalJson,
   hashContributionSnapshot,
@@ -29,30 +34,13 @@ import {
 } from "./contribution-snapshot.builder";
 import {
   ContributionHistoryPageResponse,
-  ContributionHistorySummaryResponse,
 } from "./contribution-history.contracts";
 import { ListContributionsDto } from "./dto/list-contributions.dto";
 
 const PERMISSION_POLICY_VERSION = 1;
 
-export interface RecordContributionInput {
-  weddingPlanId: string;
-  actorUserId: string;
-  section: ContributionSection;
-  entityType: ContributionEntityType;
-  entityId?: string | null;
-  action: ContributionAction;
-  snapshot: Prisma.JsonObject;
-  dedupeKey: string;
-  provenance?: ContributionProvenance;
-  requiredPermission?: ContributionPermission | null;
-  permissionPolicyVersion?: number;
-  authorityVersion: number;
-  occurredAt?: Date | null;
-}
-
 @Injectable()
-export class ContributionHistoryService {
+export class ContributionHistoryService implements CollaborationHistoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async recordInTransaction(

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -24,14 +25,21 @@ import {
   runRetryableTransaction,
   runSerializableTransaction,
 } from "../platform/database/serializable-transaction";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import {
+  COLLABORATION_HISTORY_PORT,
+  type CollaborationHistoryPort as ContributionHistoryService,
+} from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
-import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import {
+  COLLABORATION_SCOPE_PORT,
+  type CollaborationScopePort as ContributorScopeService,
+} from "../modules/collaboration/public/collaboration-scope.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { BulkGuestsDto } from "./dto/bulk-guests.dto";
 import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
 import { CreateGuestDto } from "./dto/create-guest.dto";
@@ -104,8 +112,11 @@ export interface GuestsSummaryResponse {
 export class GuestsService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory: ContributionHistoryService,
+    @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope: ContributorScopeService,
   ) {}
 

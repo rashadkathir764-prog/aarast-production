@@ -6,10 +6,10 @@ import {
   QuoteRequest,
 } from "@prisma/client";
 import {
+  type CollaborationPermissionPort as PermissionService,
   livePlanAuthorizationWhere,
-  PermissionService,
   type PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import {
   FULL_QUOTE_VISIBILITY,
   MARKETPLACE_QUOTE_INCLUDE,

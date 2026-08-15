@@ -185,7 +185,7 @@ consumers:
 | identity | `IDENTITY_AUTH_PORT` | invite OTP request and verification |
 | identity | `IDENTITY_ACCESS_TOKEN_VERIFIER` | messaging WebSocket JWT verification |
 | collaboration | `COLLABORATION_PERMISSION_PORT` | plan/member/task/guest/money/provider authorization |
-| collaboration | `COLLABORATION_HISTORY_PORT` | contribution event/tenure recording |
+| collaboration | `COLLABORATION_HISTORY_PORT` | contribution event/tenure recording and the current dashboard summary read |
 | collaboration | `COLLABORATION_SCOPE_PORT` | contribution visibility scopes |
 | messaging | `MESSAGING_REALTIME_PORT` | session/user/conversation invalidation and realtime outbox sink |
 | notifications | `NOTIFICATIONS_PORT` | notification creation, visibility, purge, and task-due behavior |

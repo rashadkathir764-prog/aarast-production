@@ -17,7 +17,7 @@
 | `backend` | `npm run architecture:imports:baseline` | `depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src` |
 | `backend` | `npm run architecture:ownership` | `node scripts/architecture/ownership-scan.cjs --check` |
 | `backend` | `npm run architecture:ports` | `node scripts/architecture/ports-scan.cjs --check` |
-| `backend` | `npm run architecture:r3` | `node scripts/architecture/r3-context-scan.cjs --check --stage task-2` |
+| `backend` | `npm run architecture:r3` | `node scripts/architecture/r3-context-scan.cjs --check --stage task-3` |
 | `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json --noEmit` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |

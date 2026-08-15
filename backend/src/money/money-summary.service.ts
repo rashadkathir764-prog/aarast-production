@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
   ContributionAction,
   ContributionEntityType,
@@ -8,13 +8,17 @@ import {
   WeddingCostStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import {
+  COLLABORATION_SCOPE_PORT,
+  type CollaborationScopePort as ContributorScopeService,
+} from "../modules/collaboration/public/collaboration-scope.port";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 
 type WarningType =
   | "BUDGET_EXCEEDED"
@@ -26,7 +30,9 @@ type WarningType =
 export class MoneySummaryService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
   ) {}
 

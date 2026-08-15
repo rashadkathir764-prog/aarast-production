@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../platform/database/prisma.module";
-import { SharingModule } from "../sharing/sharing.module";
+import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
 import { MediaStoragePublicModule } from "../modules/media/public/media-storage-public.module";
 import { MessagingRealtimePublicModule } from "../modules/messaging/public/messaging-realtime-public.module";
 import { PushCapabilityPublicModule } from "../modules/notifications/public/push-capability-public.module";
@@ -11,7 +11,7 @@ import { AccountDeletionStatusController } from "./account-deletion-status.contr
 @Module({
   imports: [
     PrismaModule,
-    SharingModule,
+    CollaborationPermissionPublicModule,
     MediaStoragePublicModule,
     MessagingRealtimePublicModule,
     PushCapabilityPublicModule,

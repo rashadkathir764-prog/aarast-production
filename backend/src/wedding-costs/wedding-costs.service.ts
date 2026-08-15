@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -17,9 +18,15 @@ import {
   WeddingCostStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import {
+  COLLABORATION_HISTORY_PORT,
+  type CollaborationHistoryPort as ContributionHistoryService,
+} from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
-import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import {
+  COLLABORATION_SCOPE_PORT,
+  type CollaborationScopePort as ContributorScopeService,
+} from "../modules/collaboration/public/collaboration-scope.port";
 import { paymentsRecordedTotal } from "../platform/observability/metrics";
 import {
   runRetryableTransaction,
@@ -28,9 +35,10 @@ import {
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { CreateCostPaymentDto } from "./dto/create-cost-payment.dto";
 import { CreatePaymentScheduleDto } from "./dto/create-payment-schedule.dto";
 import { CreateWeddingCostDto } from "./dto/create-wedding-cost.dto";
@@ -138,8 +146,11 @@ interface NormalizedCounterparty {
 export class WeddingCostsService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
+    @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 

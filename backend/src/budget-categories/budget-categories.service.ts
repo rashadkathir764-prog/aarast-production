@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -13,9 +14,15 @@ import {
   Prisma,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import {
+  COLLABORATION_HISTORY_PORT,
+  type CollaborationHistoryPort as ContributionHistoryService,
+} from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
-import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import {
+  COLLABORATION_SCOPE_PORT,
+  type CollaborationScopePort as ContributorScopeService,
+} from "../modules/collaboration/public/collaboration-scope.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import {
   runRetryableTransaction,
@@ -23,9 +30,10 @@ import {
 } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { CreateBudgetCategoryDto } from "./dto/create-budget-category.dto";
 import { UpdateBudgetCategoryDto } from "./dto/update-budget-category.dto";
 
@@ -45,8 +53,11 @@ export interface BudgetCategoryResponse {
 export class BudgetCategoriesService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
+    @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 

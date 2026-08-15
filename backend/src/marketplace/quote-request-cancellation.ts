@@ -12,15 +12,15 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import type { CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   assertWeddingPlanWritable,
-  PermissionService,
-} from "../sharing/permission.service";
+  type CollaborationPermissionPort as PermissionService,
+} from "../modules/collaboration/public/collaboration-permission.port";
 import {
   assertQuoteRequestTransition,
   lockQuoteRequestTransitionRow,

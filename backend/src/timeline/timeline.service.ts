@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import {
   ContributionAction,
   ContributionEntityType,
@@ -8,12 +8,16 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import {
+  COLLABORATION_SCOPE_PORT,
+  type CollaborationScopePort as ContributorScopeService,
+} from "../modules/collaboration/public/collaboration-scope.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   livePlanAuthorizationWhere,
-  PermissionService,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 
 export interface TimelineTaskResponse {
   id: string;
@@ -48,7 +52,9 @@ type ScheduleWithCost = PaymentSchedule & { weddingCost: { title: string } };
 export class TimelineService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope: ContributorScopeService,
   ) {}
 

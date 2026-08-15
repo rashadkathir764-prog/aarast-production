@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
+import { CollaborationHistoryInternalModule } from "../modules/collaboration/internal/collaboration-history.internal.module";
+import { CollaborationPermissionInternalModule } from "../modules/collaboration/internal/collaboration-permission.internal.module";
 import { MessagingRealtimePublicModule } from "../modules/messaging/public/messaging-realtime-public.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { PrismaModule } from "../platform/database/prisma.module";
-import { PermissionService } from "./permission.service";
 import {
   ApiV1InviteAcceptController,
   ApiV1InviteAccessController,
@@ -24,7 +24,8 @@ import { SharingService } from "./sharing.service";
     PrismaModule,
     MessagingRealtimePublicModule,
     NotificationsModule,
-    ContributionHistoryModule,
+    CollaborationPermissionInternalModule,
+    CollaborationHistoryInternalModule,
   ],
   controllers: [
     ApiV1InviteAccessController,
@@ -36,11 +37,9 @@ import { SharingService } from "./sharing.service";
     ApiV1WeddingPlanPermissionsController,
   ],
   providers: [
-    PermissionService,
     SharingService,
     InvitationDeliveryService,
     InviteAccessService,
   ],
-  exports: [PermissionService],
 })
 export class SharingModule {}

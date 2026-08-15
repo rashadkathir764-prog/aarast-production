@@ -12,7 +12,7 @@ import {
   UserStatus,
   WeddingPlan,
 } from "@prisma/client";
-import { assertWeddingPlanWritable } from "../sharing/permission.service";
+import { assertWeddingPlanWritable } from "../modules/collaboration/public/collaboration-permission.port";
 import { lockUserLifecycleRowsInTransaction } from "../users/user-lifecycle-lock";
 
 export async function lockMarketplaceMutationUsers(

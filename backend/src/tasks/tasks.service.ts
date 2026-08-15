@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -23,18 +24,25 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import {
+  COLLABORATION_HISTORY_PORT,
+  type CollaborationHistoryPort as ContributionHistoryService,
+} from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
-import { ContributorScopeService } from "../contribution-history/contributor-scope.service";
+import {
+  COLLABORATION_SCOPE_PORT,
+  type CollaborationScopePort as ContributorScopeService,
+} from "../modules/collaboration/public/collaboration-scope.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   livePlanAuthorizationWhere,
-  PermissionService,
   PlanAccessContext,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreateTaskDto } from "./dto/create-task.dto";
@@ -98,9 +106,12 @@ export class TasksService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory: ContributionHistoryService,
+    @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope: ContributorScopeService,
   ) {}
 

@@ -30,7 +30,7 @@ import {
 import {
   assertWeddingPlanWritable,
   isWeddingPlanWritable,
-} from '../sharing/permission.service';
+} from '../modules/collaboration/public/collaboration-permission.port';
 import {
   ApplicationAvatarSource,
   applicationAvatarFields,

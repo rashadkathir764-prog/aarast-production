@@ -14,9 +14,9 @@ import {
 import { AuthenticatedUser } from "../src/modules/identity/public/identity-session.types";
 import { NotificationsService } from "../src/notifications/notifications.service";
 import {
-  PermissionService,
   PlanAccessContext,
-} from "../src/sharing/permission.service";
+} from "../src/modules/collaboration/public/collaboration-permission.port";
+import { PermissionService } from "../src/sharing/permission.service";
 import { rolePermissionDefaults } from "../src/sharing/plan-permissions";
 import { SharingService } from "../src/sharing/sharing.service";
 

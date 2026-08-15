@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
-  "stage": "task-2",
+  "stage": "task-3",
   "contexts": [
     "identity",
     "planning",
@@ -216,9 +216,10 @@
       "className": "BudgetCategoriesModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "BudgetCategoriesService"
@@ -249,8 +250,8 @@
       "className": "ContextsModule",
       "imports": [
         "AuthModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationPermissionPublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "ContextsService"
@@ -262,16 +263,12 @@
       "path": "backend/src/contribution-history/contribution-history.module.ts",
       "className": "ContributionHistoryModule",
       "imports": [
-        "AuthModule"
+        "AuthModule",
+        "CollaborationHistoryInternalModule",
+        "CollaborationScopeInternalModule"
       ],
-      "providers": [
-        "ContributionHistoryService",
-        "ContributorScopeService"
-      ],
-      "exports": [
-        "ContributionHistoryService",
-        "ContributorScopeService"
-      ],
+      "providers": [],
+      "exports": [],
       "global": false
     },
     {
@@ -310,10 +307,11 @@
       "path": "backend/src/dashboard/dashboard.module.ts",
       "className": "DashboardModule",
       "imports": [
-        "ContributionHistoryModule",
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
         "NotificationsModule",
-        "PrismaModule",
-        "SharingModule"
+        "PrismaModule"
       ],
       "providers": [
         "DashboardService"
@@ -326,9 +324,10 @@
       "className": "GuestsModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "GuestsService"
@@ -340,10 +339,10 @@
       "path": "backend/src/marketplace/marketplace.module.ts",
       "className": "MarketplaceModule",
       "imports": [
-        "ContributionHistoryModule",
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
         "NotificationsModule",
-        "PrismaModule",
-        "SharingModule"
+        "PrismaModule"
       ],
       "providers": [
         "MarketplaceService"
@@ -372,6 +371,96 @@
       ],
       "providers": [],
       "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts",
+      "className": "CollaborationHistoryInternalModule",
+      "imports": [
+        "PrismaModule"
+      ],
+      "providers": [
+        "ContributionHistoryService",
+        "{\n      provide: COLLABORATION_HISTORY_IMPLEMENTATION,\n      useExisting: ContributionHistoryService,\n    }"
+      ],
+      "exports": [
+        "COLLABORATION_HISTORY_IMPLEMENTATION",
+        "ContributionHistoryService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts",
+      "className": "CollaborationPermissionInternalModule",
+      "imports": [
+        "PrismaModule"
+      ],
+      "providers": [
+        "PermissionService",
+        "{\n      provide: COLLABORATION_PERMISSION_IMPLEMENTATION,\n      useExisting: PermissionService,\n    }"
+      ],
+      "exports": [
+        "COLLABORATION_PERMISSION_IMPLEMENTATION",
+        "PermissionService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts",
+      "className": "CollaborationScopeInternalModule",
+      "imports": [
+        "CollaborationHistoryInternalModule"
+      ],
+      "providers": [
+        "ContributorScopeService",
+        "{\n      provide: COLLABORATION_SCOPE_IMPLEMENTATION,\n      useExisting: ContributorScopeService,\n    }"
+      ],
+      "exports": [
+        "COLLABORATION_SCOPE_IMPLEMENTATION",
+        "ContributorScopeService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/collaboration/public/collaboration-history-public.module.ts",
+      "className": "CollaborationHistoryPublicModule",
+      "imports": [
+        "CollaborationHistoryInternalModule"
+      ],
+      "providers": [
+        "{\n      provide: COLLABORATION_HISTORY_PORT,\n      useExisting: COLLABORATION_HISTORY_IMPLEMENTATION,\n    }"
+      ],
+      "exports": [
+        "COLLABORATION_HISTORY_PORT"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/collaboration/public/collaboration-permission-public.module.ts",
+      "className": "CollaborationPermissionPublicModule",
+      "imports": [
+        "CollaborationPermissionInternalModule"
+      ],
+      "providers": [
+        "{\n      provide: COLLABORATION_PERMISSION_PORT,\n      useExisting: COLLABORATION_PERMISSION_IMPLEMENTATION,\n    }"
+      ],
+      "exports": [
+        "COLLABORATION_PERMISSION_PORT"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/collaboration/public/collaboration-scope-public.module.ts",
+      "className": "CollaborationScopePublicModule",
+      "imports": [
+        "CollaborationScopeInternalModule"
+      ],
+      "providers": [
+        "{\n      provide: COLLABORATION_SCOPE_PORT,\n      useExisting: COLLABORATION_SCOPE_IMPLEMENTATION,\n    }"
+      ],
+      "exports": [
+        "COLLABORATION_SCOPE_PORT"
+      ],
       "global": false
     },
     {
@@ -499,9 +588,9 @@
       "className": "MoneyModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "MoneyBudgetService",
@@ -518,14 +607,14 @@
       "className": "NotificationsModule",
       "imports": [
         "AuthModule",
+        "CollaborationPermissionPublicModule",
         "OutboxCoreModule",
         "PrismaModule",
         "PushModule"
       ],
       "providers": [
         "NotificationRemindersScheduler",
-        "NotificationsService",
-        "PermissionService"
+        "NotificationsService"
       ],
       "exports": [
         "NotificationsService"
@@ -604,7 +693,8 @@
       "className": "SharingModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
+        "CollaborationHistoryInternalModule",
+        "CollaborationPermissionInternalModule",
         "MessagingRealtimePublicModule",
         "NotificationsModule",
         "PrismaModule"
@@ -612,12 +702,9 @@
       "providers": [
         "InvitationDeliveryService",
         "InviteAccessService",
-        "PermissionService",
         "SharingService"
       ],
-      "exports": [
-        "PermissionService"
-      ],
+      "exports": [],
       "global": false
     },
     {
@@ -625,10 +712,11 @@
       "className": "TasksModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
         "NotificationsModule",
-        "PrismaModule",
-        "SharingModule"
+        "PrismaModule"
       ],
       "providers": [
         "TasksService"
@@ -641,9 +729,9 @@
       "className": "TimelineModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "TimelineService"
@@ -655,11 +743,11 @@
       "path": "backend/src/users/users.module.ts",
       "className": "UsersModule",
       "imports": [
+        "CollaborationPermissionPublicModule",
         "MediaStoragePublicModule",
         "MessagingRealtimePublicModule",
         "PrismaModule",
-        "PushCapabilityPublicModule",
-        "SharingModule"
+        "PushCapabilityPublicModule"
       ],
       "providers": [
         "UsersService"
@@ -672,9 +760,10 @@
       "className": "WeddingCostsModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "CollaborationScopePublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "WeddingCostsService"
@@ -689,9 +778,9 @@
       "className": "WeddingPlansModule",
       "imports": [
         "AuthModule",
-        "ContributionHistoryModule",
-        "PrismaModule",
-        "SharingModule"
+        "CollaborationHistoryPublicModule",
+        "CollaborationPermissionPublicModule",
+        "PrismaModule"
       ],
       "providers": [
         "WeddingPlansService"
@@ -713,42 +802,6 @@
       "kind": "constructor-injection"
     },
     {
-      "source": "backend/src/budget-categories/budget-categories.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/budget-categories/budget-categories.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/budget-categories/budget-categories.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/contexts/contexts.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "identity",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
       "source": "backend/src/conversations/conversations.service.ts",
       "parameter": "notifications",
       "target": "NotificationsService",
@@ -759,74 +812,11 @@
     },
     {
       "source": "backend/src/dashboard/dashboard.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "insights",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/dashboard/dashboard.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "insights",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/dashboard/dashboard.service.ts",
       "parameter": "notifications",
       "target": "NotificationsService",
       "targetPath": "backend/src/notifications/notifications.service.ts",
       "sourceContext": "insights",
       "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/dashboard/dashboard.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "insights",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/guests/guests.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "guests",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/guests/guests.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "guests",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/guests/guests.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "guests",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/marketplace/marketplace.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "marketplace",
-      "targetContext": "collaboration",
       "kind": "constructor-injection"
     },
     {
@@ -836,51 +826,6 @@
       "targetPath": "backend/src/notifications/notifications.service.ts",
       "sourceContext": "marketplace",
       "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/marketplace/marketplace.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "marketplace",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/money/money-budget.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/money/money-summary.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/money/money-summary.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/notifications/notifications.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "notifications",
-      "targetContext": "collaboration",
       "kind": "constructor-injection"
     },
     {
@@ -912,110 +857,11 @@
     },
     {
       "source": "backend/src/tasks/tasks.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "tasks",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/tasks/tasks.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "tasks",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/tasks/tasks.service.ts",
       "parameter": "notifications",
       "target": "NotificationsService",
       "targetPath": "backend/src/notifications/notifications.service.ts",
       "sourceContext": "tasks",
       "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/tasks/tasks.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "tasks",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/timeline/timeline.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "insights",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/timeline/timeline.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "insights",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/users/users.service.ts",
-      "parameter": "permissionService",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "identity",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "parameter": "contributorScope",
-      "target": "ContributorScopeService",
-      "targetPath": "backend/src/contribution-history/contributor-scope.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "finance",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/wedding-plans/wedding-plans.service.ts",
-      "parameter": "contributionHistory",
-      "target": "ContributionHistoryService",
-      "targetPath": "backend/src/contribution-history/contribution-history.service.ts",
-      "sourceContext": "planning",
-      "targetContext": "collaboration",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/wedding-plans/wedding-plans.service.ts",
-      "parameter": "permissions",
-      "target": "PermissionService",
-      "targetPath": "backend/src/sharing/permission.service.ts",
-      "sourceContext": "planning",
-      "targetContext": "collaboration",
       "kind": "constructor-injection"
     }
   ],
@@ -1174,7 +1020,8 @@
       "methods": [
         "recordInTransaction",
         "recordForContextInTransaction",
-        "ensureTenureInTransaction"
+        "ensureTenureInTransaction",
+        "summary"
       ],
       "implementations": [
         "ContributionHistoryService"
@@ -4117,8 +3964,7 @@
   ],
   "remainingDuplicateProviders": [
     "AdminGuard",
-    "AdminPermissionGuard",
-    "PermissionService"
+    "AdminPermissionGuard"
   ],
   "initialPlatformDebts": [
     "runtime-jwt-secret",
@@ -4789,99 +4635,37 @@
     "src/admin/admin.module.ts|src/notifications/notifications.module.ts",
     "src/admin/admin.service.ts|src/notifications/notifications.service.ts",
     "src/budget-categories/budget-categories.module.ts|src/auth/auth.module.ts",
-    "src/budget-categories/budget-categories.module.ts|src/contribution-history/contribution-history.module.ts",
-    "src/budget-categories/budget-categories.module.ts|src/sharing/sharing.module.ts",
-    "src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-history.service.ts",
-    "src/budget-categories/budget-categories.service.ts|src/contribution-history/contributor-scope.service.ts",
-    "src/budget-categories/budget-categories.service.ts|src/sharing/permission.service.ts",
     "src/catalogs/catalogs.module.ts|src/admin/admin-permission.guard.ts",
     "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts",
-    "src/contexts/contexts.module.ts|src/sharing/sharing.module.ts",
-    "src/contexts/contexts.service.ts|src/sharing/permission.service.ts",
     "src/contribution-history/contribution-history.module.ts|src/auth/auth.module.ts",
     "src/conversations/conversations.module.ts|src/auth/auth.module.ts",
     "src/conversations/conversations.module.ts|src/notifications/notifications.module.ts",
     "src/conversations/conversations.service.ts|src/notifications/notifications.service.ts",
-    "src/conversations/conversations.service.ts|src/sharing/permission.service.ts",
-    "src/dashboard/dashboard-contributor-scope.ts|src/contribution-history/contributor-scope.service.ts",
-    "src/dashboard/dashboard-contributor-scope.ts|src/sharing/permission.service.ts",
-    "src/dashboard/dashboard.module.ts|src/contribution-history/contribution-history.module.ts",
     "src/dashboard/dashboard.module.ts|src/notifications/notifications.module.ts",
-    "src/dashboard/dashboard.module.ts|src/sharing/sharing.module.ts",
-    "src/dashboard/dashboard.service.ts|src/contribution-history/contribution-history.service.ts",
-    "src/dashboard/dashboard.service.ts|src/contribution-history/contributor-scope.service.ts",
     "src/dashboard/dashboard.service.ts|src/notifications/notifications.service.ts",
-    "src/dashboard/dashboard.service.ts|src/sharing/permission.service.ts",
     "src/guests/guests.module.ts|src/auth/auth.module.ts",
-    "src/guests/guests.module.ts|src/contribution-history/contribution-history.module.ts",
-    "src/guests/guests.module.ts|src/sharing/sharing.module.ts",
-    "src/guests/guests.service.ts|src/contribution-history/contribution-history.service.ts",
-    "src/guests/guests.service.ts|src/contribution-history/contributor-scope.service.ts",
-    "src/guests/guests.service.ts|src/sharing/permission.service.ts",
-    "src/marketplace/marketplace-contributor-quote-scope.ts|src/sharing/permission.service.ts",
-    "src/marketplace/marketplace-write-locks.ts|src/sharing/permission.service.ts",
-    "src/marketplace/marketplace.module.ts|src/contribution-history/contribution-history.module.ts",
     "src/marketplace/marketplace.module.ts|src/notifications/notifications.module.ts",
-    "src/marketplace/marketplace.module.ts|src/sharing/sharing.module.ts",
-    "src/marketplace/marketplace.service.ts|src/contribution-history/contribution-history.service.ts",
     "src/marketplace/marketplace.service.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/marketplace.service.ts|src/sharing/permission.service.ts",
     "src/marketplace/quote-notifications.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-history.service.ts",
     "src/marketplace/quote-offer-acceptance.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-offer-acceptance.ts|src/sharing/permission.service.ts",
-    "src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-history.service.ts",
     "src/marketplace/quote-offer-rejection.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-offer-rejection.ts|src/sharing/permission.service.ts",
-    "src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-history.service.ts",
-    "src/marketplace/quote-request-cancellation.ts|src/sharing/permission.service.ts",
-    "src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-history.service.ts",
     "src/marketplace/quote-request-creation.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-request-creation.ts|src/sharing/permission.service.ts",
-    "src/money/money-budget.service.ts|src/sharing/permission.service.ts",
-    "src/money/money-summary.service.ts|src/contribution-history/contributor-scope.service.ts",
-    "src/money/money-summary.service.ts|src/sharing/permission.service.ts",
     "src/money/money.module.ts|src/auth/auth.module.ts",
-    "src/money/money.module.ts|src/contribution-history/contribution-history.module.ts",
-    "src/money/money.module.ts|src/sharing/sharing.module.ts",
     "src/notifications/notifications.module.ts|src/auth/auth.module.ts",
-    "src/notifications/notifications.module.ts|src/sharing/permission.service.ts",
-    "src/notifications/notifications.service.ts|src/sharing/permission.service.ts",
     "src/onboarding/onboarding.module.ts|src/auth/auth.module.ts",
     "src/provider-dashboard/provider-dashboard.module.ts|src/notifications/notifications.module.ts",
     "src/provider-dashboard/provider-dashboard.service.ts|src/notifications/notifications.service.ts",
-    "src/provider-dashboard/provider-dashboard.service.ts|src/sharing/permission.service.ts",
     "src/push/push.module.ts|src/auth/auth.module.ts",
     "src/sharing/invite-access.service.ts|src/auth/auth.service.ts",
     "src/sharing/sharing.module.ts|src/auth/auth.module.ts",
     "src/sharing/sharing.module.ts|src/notifications/notifications.module.ts",
     "src/sharing/sharing.service.ts|src/notifications/notifications.service.ts",
     "src/tasks/tasks.module.ts|src/auth/auth.module.ts",
-    "src/tasks/tasks.module.ts|src/contribution-history/contribution-history.module.ts",
     "src/tasks/tasks.module.ts|src/notifications/notifications.module.ts",
-    "src/tasks/tasks.module.ts|src/sharing/sharing.module.ts",
-    "src/tasks/tasks.service.ts|src/contribution-history/contribution-history.service.ts",
-    "src/tasks/tasks.service.ts|src/contribution-history/contributor-scope.service.ts",
     "src/tasks/tasks.service.ts|src/notifications/notifications.service.ts",
-    "src/tasks/tasks.service.ts|src/sharing/permission.service.ts",
     "src/timeline/timeline.module.ts|src/auth/auth.module.ts",
-    "src/timeline/timeline.module.ts|src/contribution-history/contribution-history.module.ts",
-    "src/timeline/timeline.module.ts|src/sharing/sharing.module.ts",
-    "src/timeline/timeline.service.ts|src/contribution-history/contributor-scope.service.ts",
-    "src/timeline/timeline.service.ts|src/sharing/permission.service.ts",
-    "src/users/users.module.ts|src/sharing/sharing.module.ts",
-    "src/users/users.service.ts|src/sharing/permission.service.ts",
     "src/wedding-costs/wedding-costs.module.ts|src/auth/auth.module.ts",
-    "src/wedding-costs/wedding-costs.module.ts|src/contribution-history/contribution-history.module.ts",
-    "src/wedding-costs/wedding-costs.module.ts|src/sharing/sharing.module.ts",
-    "src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-history.service.ts",
-    "src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contributor-scope.service.ts",
-    "src/wedding-costs/wedding-costs.service.ts|src/sharing/permission.service.ts",
-    "src/wedding-plans/wedding-plans.module.ts|src/auth/auth.module.ts",
-    "src/wedding-plans/wedding-plans.module.ts|src/contribution-history/contribution-history.module.ts",
-    "src/wedding-plans/wedding-plans.module.ts|src/sharing/sharing.module.ts",
-    "src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-history.service.ts",
-    "src/wedding-plans/wedding-plans.service.ts|src/sharing/permission.service.ts"
+    "src/wedding-plans/wedding-plans.module.ts|src/auth/auth.module.ts"
   ],
   "allowedChangedPaths": [
     "backend/.dependency-cruiser-known-violations.json",
@@ -4891,6 +4675,8 @@
     "backend/scripts/architecture/ports-scan.cjs",
     "backend/scripts/architecture/r3-context-scan.cjs",
     "backend/scripts/architecture/r3-scope.cjs",
+    "backend/scripts/smoke/phase2-sharing-permission-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-task-guest-permission-concurrency-smoke.ts",
     "backend/src/admin/admin-audit.interceptor.ts",
     "backend/src/admin/admin-mutation-executor.ts",
     "backend/src/admin/admin-mutation-gate.ts",
@@ -4913,24 +4699,36 @@
     "backend/src/auth/jwt.strategy.ts",
     "backend/src/auth/safe-user.ts",
     "backend/src/budget-categories/budget-categories.controller.ts",
+    "backend/src/budget-categories/budget-categories.module.ts",
     "backend/src/budget-categories/budget-categories.service.ts",
     "backend/src/catalogs/administrative-catalog.service.ts",
     "backend/src/catalogs/catalogs.controller.ts",
     "backend/src/catalogs/reference-catalog.service.ts",
     "backend/src/contexts/contexts.controller.ts",
+    "backend/src/contexts/contexts.module.ts",
     "backend/src/contexts/contexts.service.ts",
+    "backend/src/contribution-history/contribution-history.contracts.ts",
     "backend/src/contribution-history/contribution-history.controller.ts",
+    "backend/src/contribution-history/contribution-history.module.ts",
     "backend/src/contribution-history/contribution-history.service.ts",
+    "backend/src/contribution-history/contributor-scope.service.ts",
     "backend/src/conversations/conversation-realtime.publisher.ts",
     "backend/src/conversations/conversations.controller.ts",
     "backend/src/conversations/conversations.gateway.ts",
     "backend/src/conversations/conversations.module.ts",
     "backend/src/conversations/conversations.service.ts",
+    "backend/src/dashboard/dashboard-contributor-scope.ts",
+    "backend/src/dashboard/dashboard.contracts.ts",
     "backend/src/dashboard/dashboard.controller.ts",
+    "backend/src/dashboard/dashboard.module.ts",
     "backend/src/dashboard/dashboard.service.ts",
     "backend/src/guests/guests.controller.ts",
+    "backend/src/guests/guests.module.ts",
     "backend/src/guests/guests.service.ts",
+    "backend/src/marketplace/marketplace-contributor-quote-scope.ts",
+    "backend/src/marketplace/marketplace-write-locks.ts",
     "backend/src/marketplace/marketplace.controller.ts",
+    "backend/src/marketplace/marketplace.module.ts",
     "backend/src/marketplace/marketplace.service.ts",
     "backend/src/marketplace/quote-offer-acceptance.ts",
     "backend/src/marketplace/quote-offer-rejection.ts",
@@ -4943,6 +4741,15 @@
     "backend/src/media/media-upload-ticket.service.ts",
     "backend/src/media/media.controller.ts",
     "backend/src/media/media.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts",
+    "backend/src/modules/collaboration/public/collaboration-history-public.module.ts",
+    "backend/src/modules/collaboration/public/collaboration-history.port.ts",
+    "backend/src/modules/collaboration/public/collaboration-permission-public.module.ts",
+    "backend/src/modules/collaboration/public/collaboration-permission.port.ts",
+    "backend/src/modules/collaboration/public/collaboration-scope-public.module.ts",
+    "backend/src/modules/collaboration/public/collaboration-scope.port.ts",
     "backend/src/modules/identity/public/identity-session.types.ts",
     "backend/src/modules/media/internal/media-lifecycle.internal.module.ts",
     "backend/src/modules/media/internal/media-storage.internal.module.ts",
@@ -4960,6 +4767,7 @@
     "backend/src/money/money-budget.service.ts",
     "backend/src/money/money-summary.controller.ts",
     "backend/src/money/money-summary.service.ts",
+    "backend/src/money/money.module.ts",
     "backend/src/notifications/notifications.controller.ts",
     "backend/src/notifications/notifications.module.ts",
     "backend/src/notifications/notifications.service.ts",
@@ -4984,19 +4792,24 @@
     "backend/src/sharing/sharing.module.ts",
     "backend/src/sharing/sharing.service.ts",
     "backend/src/tasks/tasks.controller.ts",
+    "backend/src/tasks/tasks.module.ts",
     "backend/src/tasks/tasks.service.ts",
     "backend/src/timeline/timeline.controller.ts",
+    "backend/src/timeline/timeline.module.ts",
     "backend/src/timeline/timeline.service.ts",
     "backend/src/users/users.controller.ts",
     "backend/src/users/users.module.ts",
     "backend/src/users/users.service.ts",
     "backend/src/wedding-costs/wedding-costs.controller.ts",
+    "backend/src/wedding-costs/wedding-costs.module.ts",
     "backend/src/wedding-costs/wedding-costs.service.ts",
     "backend/src/wedding-plans/wedding-plans.controller.ts",
+    "backend/src/wedding-plans/wedding-plans.module.ts",
     "backend/src/wedding-plans/wedding-plans.service.ts",
     "backend/test/architecture-dependencies.test.ts",
     "backend/test/architecture-ports.test.ts",
     "backend/test/architecture-r1-layout.test.ts",
+    "backend/test/architecture-r3-collaboration-ports.test.ts",
     "backend/test/architecture-r3-composition.test.ts",
     "backend/test/architecture-r3-contexts.test.ts",
     "backend/test/architecture-r3-scope.test.ts",

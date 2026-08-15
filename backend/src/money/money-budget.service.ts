@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -9,7 +10,10 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
+} from "../modules/collaboration/public/collaboration-permission.port";
 import {
   MoneyBudgetCategoryDto,
   ReplaceMoneyBudgetDto,
@@ -39,6 +43,7 @@ export interface MoneyBudgetReplaceResult {
 export class MoneyBudgetService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
   ) {}
 

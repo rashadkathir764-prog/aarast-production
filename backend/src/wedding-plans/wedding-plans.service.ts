@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
 } from "@nestjs/common";
 import {
@@ -28,16 +29,20 @@ import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import {
+  COLLABORATION_HISTORY_PORT,
+  type CollaborationHistoryPort as ContributionHistoryService,
+} from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   assertWeddingPlanWritable,
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { assertActiveMutationActorForUpdateInTransaction } from "../users/user-lifecycle-lock";
 import { CreateWeddingPlanDto } from "./dto/create-wedding-plan.dto";
 import { UpdateWeddingPlanDto } from "./dto/update-wedding-plan.dto";
@@ -96,7 +101,9 @@ export interface LocalPlanImportResponse extends OnboardingCompletionResponse {
 export class WeddingPlansService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory: ContributionHistoryService,
   ) {}
 

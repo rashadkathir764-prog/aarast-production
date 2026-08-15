@@ -8,6 +8,7 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
+import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/sharing/permission.service";
@@ -37,6 +38,7 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any);
+const history = new ContributionHistoryService(prisma as any);
 const notifications = new NotificationsService(
   prisma as any,
   permissions,
@@ -52,6 +54,7 @@ const sharing = new SharingService(
       status: "DELIVERED",
     }),
   } as any,
+  history,
 );
 
 function authenticatedUser(user: {
@@ -492,6 +495,7 @@ async function assertCancellationSupersedesInFlightDelivery(): Promise<void> {
             };
           },
         } as any,
+        history,
       );
       const creating = deliverySharing.createInvite(
         authenticatedUser(fixture.owner),

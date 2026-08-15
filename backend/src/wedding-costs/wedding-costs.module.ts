@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
+import { CollaborationHistoryPublicModule } from "../modules/collaboration/public/collaboration-history-public.module";
+import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
+import { CollaborationScopePublicModule } from "../modules/collaboration/public/collaboration-scope-public.module";
 import { PrismaModule } from "../platform/database/prisma.module";
-import { SharingModule } from "../sharing/sharing.module";
 import {
   CostPaymentsController,
   CostsController,
@@ -14,7 +15,13 @@ import {
 import { WeddingCostsService } from "./wedding-costs.service";
 
 @Module({
-  imports: [AuthModule, PrismaModule, SharingModule, ContributionHistoryModule],
+  imports: [
+    AuthModule,
+    PrismaModule,
+    CollaborationPermissionPublicModule,
+    CollaborationHistoryPublicModule,
+    CollaborationScopePublicModule,
+  ],
   controllers: [
     WeddingPlanCostsController,
     CostsController,

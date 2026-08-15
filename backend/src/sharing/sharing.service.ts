@@ -62,9 +62,9 @@ import {
 import {
   assertWeddingPlanWritable,
   livePlanAuthorizationWhere,
-  PermissionService,
   PlanAccessContext,
-} from "./permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
+import { PermissionService } from "./permission.service";
 import {
   PlanPermissionFlags,
   rolePermissionDefaults,

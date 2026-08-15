@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../platform/database/prisma.module";
-import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
+import { CollaborationHistoryPublicModule } from "../modules/collaboration/public/collaboration-history-public.module";
+import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
 import { NotificationsModule } from "../notifications/notifications.module";
-import { SharingModule } from "../sharing/sharing.module";
 import {
   ApiV1QuoteOffersController,
   ApiV1QuoteRequestsController,
@@ -20,9 +20,9 @@ import { MarketplaceService } from "./marketplace.service";
 @Module({
   imports: [
     PrismaModule,
-    SharingModule,
+    CollaborationPermissionPublicModule,
     NotificationsModule,
-    ContributionHistoryModule,
+    CollaborationHistoryPublicModule,
   ],
   controllers: [
     CitiesController,

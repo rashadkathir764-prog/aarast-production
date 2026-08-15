@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -30,9 +31,10 @@ import {
   PROVIDER_PORTAL_ROUTE,
 } from "../provider-dashboard/provider-access-policy";
 import {
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { isPushNotificationType } from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
@@ -120,6 +122,7 @@ type NotificationVisibilityClient = Pick<
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
     private readonly outbox: OutboxService,
   ) {}

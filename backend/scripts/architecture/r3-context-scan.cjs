@@ -144,7 +144,61 @@ const TASK2_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'realtime', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
   Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'firebasePush', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.pushCapability }),
 ]);
-const CONTRACT_SHAPE_HASH = 'c8cd93a74fe8ebcd79dd2cddd3b392b83171ef0752cb2f7545a0b03f48b4d8a5';
+const TASK3_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
+  permission: Object.freeze({
+    token: 'backend/src/modules/collaboration/public/collaboration-permission.port.ts#COLLABORATION_PERMISSION_PORT',
+    parameterType: 'backend/src/modules/collaboration/public/collaboration-permission.port.ts#CollaborationPermissionPort',
+  }),
+  history: Object.freeze({
+    token: 'backend/src/modules/collaboration/public/collaboration-history.port.ts#COLLABORATION_HISTORY_PORT',
+    parameterType: 'backend/src/modules/collaboration/public/collaboration-history.port.ts#CollaborationHistoryPort',
+  }),
+  scope: Object.freeze({
+    token: 'backend/src/modules/collaboration/public/collaboration-scope.port.ts#COLLABORATION_SCOPE_PORT',
+    parameterType: 'backend/src/modules/collaboration/public/collaboration-scope.port.ts#CollaborationScopePort',
+  }),
+});
+const TASK3_CONSUMER_IDENTITIES = new Map([
+  ['COLLABORATION_PERMISSION_PORT', Object.freeze([
+    TASK3_CANONICAL_INJECTION_IDENTITIES.permission,
+  ])],
+  ['COLLABORATION_HISTORY_PORT', Object.freeze([
+    TASK3_CANONICAL_INJECTION_IDENTITIES.history,
+  ])],
+  ['COLLABORATION_SCOPE_PORT', Object.freeze([
+    TASK3_CANONICAL_INJECTION_IDENTITIES.scope,
+  ])],
+]);
+const TASK3_EXACT_CONSTRUCTOR_USES = Object.freeze([
+  Object.freeze({ source: 'backend/src/budget-categories/budget-categories.service.ts', consumerClass: 'backend/src/budget-categories/budget-categories.service.ts#BudgetCategoriesService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/contexts/contexts.service.ts', consumerClass: 'backend/src/contexts/contexts.service.ts#ContextsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/dashboard/dashboard.service.ts', consumerClass: 'backend/src/dashboard/dashboard.service.ts#DashboardService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/guests/guests.service.ts', consumerClass: 'backend/src/guests/guests.service.ts#GuestsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/marketplace/marketplace.service.ts', consumerClass: 'backend/src/marketplace/marketplace.service.ts#MarketplaceService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/money/money-budget.service.ts', consumerClass: 'backend/src/money/money-budget.service.ts#MoneyBudgetService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/money/money-summary.service.ts', consumerClass: 'backend/src/money/money-summary.service.ts#MoneySummaryService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/notifications/notifications.service.ts', consumerClass: 'backend/src/notifications/notifications.service.ts#NotificationsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/timeline/timeline.service.ts', consumerClass: 'backend/src/timeline/timeline.service.ts#TimelineService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'permissionService', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/wedding-costs/wedding-costs.service.ts', consumerClass: 'backend/src/wedding-costs/wedding-costs.service.ts#WeddingCostsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/wedding-plans/wedding-plans.service.ts', consumerClass: 'backend/src/wedding-plans/wedding-plans.service.ts#WeddingPlansService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/budget-categories/budget-categories.service.ts', consumerClass: 'backend/src/budget-categories/budget-categories.service.ts#BudgetCategoriesService', parameter: 'contributionHistory', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/dashboard/dashboard.service.ts', consumerClass: 'backend/src/dashboard/dashboard.service.ts#DashboardService', parameter: 'contributionHistory', parameterIndex: 4, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/guests/guests.service.ts', consumerClass: 'backend/src/guests/guests.service.ts#GuestsService', parameter: 'contributionHistory', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/marketplace/marketplace.service.ts', consumerClass: 'backend/src/marketplace/marketplace.service.ts#MarketplaceService', parameter: 'contributionHistory', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'contributionHistory', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/wedding-costs/wedding-costs.service.ts', consumerClass: 'backend/src/wedding-costs/wedding-costs.service.ts#WeddingCostsService', parameter: 'contributionHistory', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/wedding-plans/wedding-plans.service.ts', consumerClass: 'backend/src/wedding-plans/wedding-plans.service.ts#WeddingPlansService', parameter: 'contributionHistory', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
+  Object.freeze({ source: 'backend/src/budget-categories/budget-categories.service.ts', consumerClass: 'backend/src/budget-categories/budget-categories.service.ts#BudgetCategoriesService', parameter: 'contributorScope', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+  Object.freeze({ source: 'backend/src/dashboard/dashboard.service.ts', consumerClass: 'backend/src/dashboard/dashboard.service.ts#DashboardService', parameter: 'contributorScope', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+  Object.freeze({ source: 'backend/src/guests/guests.service.ts', consumerClass: 'backend/src/guests/guests.service.ts#GuestsService', parameter: 'contributorScope', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+  Object.freeze({ source: 'backend/src/money/money-summary.service.ts', consumerClass: 'backend/src/money/money-summary.service.ts#MoneySummaryService', parameter: 'contributorScope', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+  Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'contributorScope', parameterIndex: 4, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+  Object.freeze({ source: 'backend/src/timeline/timeline.service.ts', consumerClass: 'backend/src/timeline/timeline.service.ts#TimelineService', parameter: 'contributorScope', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+  Object.freeze({ source: 'backend/src/wedding-costs/wedding-costs.service.ts', consumerClass: 'backend/src/wedding-costs/wedding-costs.service.ts#WeddingCostsService', parameter: 'contributorScope', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
+]);
+const CONTRACT_SHAPE_HASH = 'cd5cc733b080dc582543147bbeb263fa6d552326a0cce3dcc24d647a59d2cc78';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 2048;
@@ -1196,14 +1250,15 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     }
   }
   const providerContracts = contractDefinitions.map((contract) => {
-    const task2ConsumerIdentities = TASK2_CONSUMER_IDENTITIES.get(contract.token);
-    const consumers = task2ConsumerIdentities
+    const canonicalConsumerIdentities = TASK2_CONSUMER_IDENTITIES.get(contract.token)
+      || TASK3_CONSUMER_IDENTITIES.get(contract.token);
+    const consumers = canonicalConsumerIdentities
       ? []
       : injections.filter((item) => contract.implementations.includes(item.target))
         .map((item) => ({ source: item.source, kind: 'constructor-injection' }));
-    if (task2ConsumerIdentities) {
+    if (canonicalConsumerIdentities) {
       for (const use of allConstructorUses) {
-        if (task2ConsumerIdentities.some((identity) => (
+        if (canonicalConsumerIdentities.some((identity) => (
           use.injectionTokenIdentity === identity.token
             && use.parameterTypeIdentity === identity.parameterType
         ))) {
@@ -1252,6 +1307,14 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const exactTask2ConstructorUses = TASK2_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
   const task2ConstructorInventoryPresent = JSON.stringify(liveTask2ConstructorUses)
     === JSON.stringify(exactTask2ConstructorUses);
+  const task3CanonicalPairs = new Set(Object.values(TASK3_CANONICAL_INJECTION_IDENTITIES)
+    .map((identity) => `${identity.token}|${identity.parameterType}`));
+  const liveTask3ConstructorUses = allConstructorUses.filter((item) => task3CanonicalPairs.has(
+    `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
+  )).map(task2ConstructorUseKey).sort();
+  const exactTask3ConstructorUses = TASK3_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const task3ConstructorInventoryPresent = JSON.stringify(liveTask3ConstructorUses)
+    === JSON.stringify(exactTask3ConstructorUses);
   const retiredEdges = initialRetiredEdges.filter((edge) => {
     const [from, to] = edge.key.split('|');
     return importEdges.has(`backend/${from}|backend/${to}`);
@@ -1261,6 +1324,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     providerContracts: providerContracts.map(({ surfacePresent, ...contract }) => contract),
     providerContractSurfacesPresent: providerContracts.every((item) => item.surfacePresent),
     task2ConstructorInventoryPresent,
+    task3ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
   };
@@ -1312,6 +1376,7 @@ function scanR3Contexts(options) {
     || JSON.stringify(live.providerContracts) !== JSON.stringify(manifest.providerContracts)
     || !live.providerContractSurfacesPresent
     || !live.task2ConstructorInventoryPresent
+    || (manifest.stage !== 'task-2' && !live.task3ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)

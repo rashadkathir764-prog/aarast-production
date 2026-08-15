@@ -52,7 +52,7 @@ import {
 } from '../modules/media/public/media-storage.port';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../platform/database/prisma.service';
-import { assertWeddingPlanWritable } from '../sharing/permission.service';
+import { assertWeddingPlanWritable } from '../modules/collaboration/public/collaboration-permission.port';
 import {
   applicationNameFields,
   toApplicationUserContact,

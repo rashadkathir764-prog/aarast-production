@@ -15,14 +15,14 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import type { CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../platform/database/prisma.service";
 import { assertProviderOperational } from "../provider-dashboard/provider-access-policy";
-import { PermissionService } from "../sharing/permission.service";
+import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
 import { weddingCostResponseInclude } from "../wedding-costs/wedding-cost.presenter";
 import {
   assertQuoteRequestTransition,

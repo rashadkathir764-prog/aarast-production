@@ -4,13 +4,14 @@ import {
   ContributionEntityType,
   Prisma,
 } from "@prisma/client";
+import { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
 import {
   ContributionHistoryService,
   contributorActorReference,
 } from "./contribution-history.service";
 
 @Injectable()
-export class ContributorScopeService {
+export class ContributorScopeService implements CollaborationScopePort {
   constructor(private readonly history: ContributionHistoryService) {}
 
   qualifyingEntityIds(

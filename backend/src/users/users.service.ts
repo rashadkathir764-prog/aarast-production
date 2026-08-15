@@ -39,7 +39,10 @@ import {
   refreshProviderRating,
 } from "../marketplace/provider-review-rating";
 import { PrismaService } from "../platform/database/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
+} from "../modules/collaboration/public/collaboration-permission.port";
 import {
   applicationNameFields,
   toApplicationUserContact,
@@ -120,6 +123,7 @@ export function accountDeletionReceiptHash(
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissionService: PermissionService,
     @Inject(MEDIA_STORAGE_PORT)
     private readonly mediaStorage: MediaStoragePort,

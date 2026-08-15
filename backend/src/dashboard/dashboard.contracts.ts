@@ -9,7 +9,7 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { WeddingLocationResponse } from "../wedding-plans/wedding-location";
-import type { ContributionHistorySummaryResponse } from "../contribution-history/contribution-history.contracts";
+import type { ContributionHistorySummaryResponse } from "../modules/collaboration/public/collaboration-history.port";
 
 export interface DashboardPermissionSummary {
   isOwner: boolean;

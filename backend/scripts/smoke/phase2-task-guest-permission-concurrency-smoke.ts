@@ -17,10 +17,10 @@ import { ContributionHistoryService } from "../../src/contribution-history/contr
 import { ContributorScopeService } from "../../src/contribution-history/contributor-scope.service";
 import { GuestsService } from "../../src/guests/guests.service";
 import {
-  PermissionService,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
-} from "../../src/sharing/permission.service";
+} from "../../src/modules/collaboration/public/collaboration-permission.port";
+import { PermissionService } from "../../src/sharing/permission.service";
 import { TasksService } from "../../src/tasks/tasks.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {

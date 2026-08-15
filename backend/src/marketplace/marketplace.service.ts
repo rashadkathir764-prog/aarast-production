@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -23,15 +24,12 @@ import {
   WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
+import { COLLABORATION_HISTORY_PORT, type CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../platform/database/prisma.service";
-import {
-  livePlanAuthorizationWhere,
-  PermissionService,
-} from "../sharing/permission.service";
+import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService, livePlanAuthorizationWhere } from "../modules/collaboration/public/collaboration-permission.port";
 import { normalizeWeddingLocationInput } from "../wedding-plans/wedding-location";
 import { toWeddingCostResponse } from "../wedding-costs/wedding-cost.presenter";
 import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
@@ -78,8 +76,10 @@ export type { PaginatedResponse } from "./marketplace.contracts";
 export class MarketplaceService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 

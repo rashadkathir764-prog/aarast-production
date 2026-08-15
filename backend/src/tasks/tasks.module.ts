@@ -1,9 +1,10 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { ContributionHistoryModule } from "../contribution-history/contribution-history.module";
+import { CollaborationHistoryPublicModule } from "../modules/collaboration/public/collaboration-history-public.module";
+import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
+import { CollaborationScopePublicModule } from "../modules/collaboration/public/collaboration-scope-public.module";
 import { PrismaModule } from "../platform/database/prisma.module";
 import { NotificationsModule } from "../notifications/notifications.module";
-import { SharingModule } from "../sharing/sharing.module";
 import {
   TasksController,
   WeddingPlanTasksController,
@@ -14,9 +15,10 @@ import { TasksService } from "./tasks.service";
   imports: [
     AuthModule,
     PrismaModule,
-    SharingModule,
+    CollaborationPermissionPublicModule,
     NotificationsModule,
-    ContributionHistoryModule,
+    CollaborationHistoryPublicModule,
+    CollaborationScopePublicModule,
   ],
   controllers: [WeddingPlanTasksController, TasksController],
   providers: [TasksService],

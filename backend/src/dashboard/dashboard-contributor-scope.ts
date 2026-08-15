@@ -3,8 +3,8 @@ import {
   ContributionEntityType,
   Prisma,
 } from "@prisma/client";
-import type { ContributorScopeService } from "../contribution-history/contributor-scope.service";
-import type { PlanAccessContext } from "../sharing/permission.service";
+import type { CollaborationScopePort as ContributorScopeService } from "../modules/collaboration/public/collaboration-scope.port";
+import type { PlanAccessContext } from "../modules/collaboration/public/collaboration-permission.port";
 
 export interface DashboardContributorDataScope {
   providersEnabled: boolean;

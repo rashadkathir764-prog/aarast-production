@@ -22,8 +22,3 @@ export interface ContributionHistoryPageResponse {
   events: ContributionHistoryItemResponse[];
   total: number;
 }
-
-export type ContributionHistorySummaryResponse = Record<
-  ContributionSection,
-  number
->;

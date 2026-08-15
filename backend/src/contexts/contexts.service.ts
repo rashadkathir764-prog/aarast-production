@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -20,9 +21,10 @@ import {
   ProviderAccessMode,
 } from "../provider-dashboard/provider-access-policy";
 import {
-  PermissionService,
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
-} from "../sharing/permission.service";
+} from "../modules/collaboration/public/collaboration-permission.port";
 import {
   canonicalPlanContextKey,
   canonicalProviderContextKey,
@@ -81,6 +83,7 @@ type ParsedContextKey =
 export class ContextsService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
   ) {}
 

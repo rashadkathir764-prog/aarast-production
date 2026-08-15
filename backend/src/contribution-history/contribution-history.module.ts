@@ -1,13 +1,15 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { CollaborationHistoryInternalModule } from "../modules/collaboration/internal/collaboration-history.internal.module";
+import { CollaborationScopeInternalModule } from "../modules/collaboration/internal/collaboration-scope.internal.module";
 import { ContributionHistoryController } from "./contribution-history.controller";
-import { ContributionHistoryService } from "./contribution-history.service";
-import { ContributorScopeService } from "./contributor-scope.service";
 
 @Module({
-  imports: [AuthModule],
+  imports: [
+    AuthModule,
+    CollaborationHistoryInternalModule,
+    CollaborationScopeInternalModule,
+  ],
   controllers: [ContributionHistoryController],
-  providers: [ContributionHistoryService, ContributorScopeService],
-  exports: [ContributionHistoryService, ContributorScopeService],
 })
 export class ContributionHistoryModule {}

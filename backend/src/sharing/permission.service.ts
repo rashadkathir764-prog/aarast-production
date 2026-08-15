@@ -1,85 +1,30 @@
 import {
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import {
   Prisma,
-  SharedMember,
   UserStatus,
-  WeddingPlan,
-  WeddingPlanStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
+import {
+  assertWeddingPlanWritable,
+  CollaborationPermissionPort,
+  livePlanAuthorizationWhere,
+  LivePlanPermission,
+  PlanAccessContext,
+  TASK_PERMISSION_REVOKED,
+  TASK_PERMISSION_REVOKED_MESSAGE,
+} from "../modules/collaboration/public/collaboration-permission.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
 } from "../users/user-lifecycle-lock";
 
-export interface PlanAccessContext {
-  plan: WeddingPlan;
-  isOwner: boolean;
-  sharedMember: SharedMember | null;
-}
-
-export type LivePlanPermission =
-  | "canViewMoney"
-  | "canManageMoney"
-  | "canManageTasks"
-  | "canManageGuests"
-  | "canManageProviders"
-  | "canInviteMembers"
-  | "canEditPlan";
-
-export function livePlanAuthorizationWhere(
-  context: PlanAccessContext,
-  currentUserId: string,
-  requiredPermissions: readonly LivePlanPermission[] = [],
-): Prisma.WeddingPlanWhereInput {
-  if (context.isOwner) return { ownerUserId: currentUserId };
-  const member = context.sharedMember;
-  if (!member || member.userId !== currentUserId) {
-    throw new NotFoundException("Wedding plan not found");
-  }
-  return {
-    sharedMembers: {
-      some: {
-        id: member.id,
-        userId: currentUserId,
-        ...Object.fromEntries(
-          requiredPermissions.map((permission) => [permission, true]),
-        ),
-      },
-    },
-  };
-}
-
-export const PLAN_ARCHIVED_READ_ONLY = "PLAN_ARCHIVED_READ_ONLY";
-export const TASK_PERMISSION_REVOKED = "TASK_PERMISSION_REVOKED";
-export const TASK_PERMISSION_REVOKED_MESSAGE =
-  "لم تعد لديك صلاحية لتنفيذ هذه المهمة";
-
-export function isWeddingPlanWritable(
-  plan: Pick<WeddingPlan, "status">,
-): boolean {
-  return plan.status !== WeddingPlanStatus.ARCHIVED;
-}
-
-export function assertWeddingPlanWritable(
-  plan: Pick<WeddingPlan, "status">,
-): void {
-  if (!isWeddingPlanWritable(plan)) {
-    throw new ConflictException({
-      code: PLAN_ARCHIVED_READ_ONLY,
-      message: "Archived wedding plans are read-only",
-    });
-  }
-}
-
 @Injectable()
-export class PermissionService {
+export class PermissionService implements CollaborationPermissionPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async getPlanAccessContext(

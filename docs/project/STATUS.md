@@ -59,6 +59,12 @@ Protected schema, migrations, seed, Mobile, Admin, deployment, workflow, and
 lock-file surfaces have zero R3-base drift. Documentation sync and verification
 report zero drift, errors, and warnings; managed test residue is zero.
 
+The Task 9 scope gate was corrected before the immutable runtime build to admit
+only the seven active Markdown receipt/navigation files named by the approved
+plan. Its permanent RED-to-GREEN regression passes 14/14, the manifest and
+scanner allowlists remain byte/order-exact, and the current fixed-base scope is
+206 reviewed paths with zero unexpected paths.
+
 Runtime image build, protected probe, port-3120 cutover, sanitized runtime-log
 audit, and the owner phone checkpoint are explicitly pending. The accepted R2
 phone container remains running unchanged on port 3120 with restart count zero

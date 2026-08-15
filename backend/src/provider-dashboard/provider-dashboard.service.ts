@@ -50,7 +50,10 @@ import {
   MEDIA_STORAGE_PORT,
   MediaStoragePort,
 } from '../modules/media/public/media-storage.port';
-import { NotificationsService } from '../notifications/notifications.service';
+import {
+  NOTIFICATIONS_PORT,
+  type NotificationsPort,
+} from '../modules/notifications/public/notifications.port';
 import { PrismaService } from '../platform/database/prisma.service';
 import { assertWeddingPlanWritable } from '../modules/collaboration/public/collaboration-permission.port';
 import {
@@ -109,7 +112,8 @@ type ProviderReviewRecord = ProviderReview & {
 export class ProviderDashboardService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     @Inject(MEDIA_STORAGE_PORT)
     private readonly mediaStorage: MediaStoragePort,
   ) {}

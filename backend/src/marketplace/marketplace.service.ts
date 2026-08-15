@@ -27,7 +27,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { COLLABORATION_HISTORY_PORT, type CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { NotificationsService } from "../notifications/notifications.service";
+import { NOTIFICATIONS_PORT, type NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService, livePlanAuthorizationWhere } from "../modules/collaboration/public/collaboration-permission.port";
 import { normalizeWeddingLocationInput } from "../wedding-plans/wedding-location";
@@ -78,7 +78,8 @@ export class MarketplaceService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}

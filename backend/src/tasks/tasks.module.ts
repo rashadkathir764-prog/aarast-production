@@ -4,7 +4,7 @@ import { CollaborationHistoryPublicModule } from "../modules/collaboration/publi
 import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
 import { CollaborationScopePublicModule } from "../modules/collaboration/public/collaboration-scope-public.module";
 import { PrismaModule } from "../platform/database/prisma.module";
-import { NotificationsModule } from "../notifications/notifications.module";
+import { NotificationsPublicModule } from "../modules/notifications/public/notifications-public.module";
 import {
   TasksController,
   WeddingPlanTasksController,
@@ -16,7 +16,7 @@ import { TasksService } from "./tasks.service";
     AuthModule,
     PrismaModule,
     CollaborationPermissionPublicModule,
-    NotificationsModule,
+    NotificationsPublicModule,
     CollaborationHistoryPublicModule,
     CollaborationScopePublicModule,
   ],

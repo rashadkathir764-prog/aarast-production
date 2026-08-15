@@ -34,7 +34,10 @@ import {
   type CollaborationScopePort as ContributorScopeService,
 } from "../modules/collaboration/public/collaboration-scope.port";
 import { PrismaService } from "../platform/database/prisma.service";
-import { NotificationsService } from "../notifications/notifications.service";
+import {
+  NOTIFICATIONS_PORT,
+  type NotificationsPort,
+} from "../modules/notifications/public/notifications.port";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -108,7 +111,8 @@ export class TasksService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory: ContributionHistoryService,
     @Inject(COLLABORATION_SCOPE_PORT)

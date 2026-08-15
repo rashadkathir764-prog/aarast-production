@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
-  "stage": "task-3",
+  "stage": "task-4",
   "contexts": [
     "identity",
     "planning",
@@ -113,7 +113,7 @@
       "className": "AdminModule",
       "imports": [
         "MessagingRealtimePublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -290,7 +290,7 @@
         "AuthModule",
         "ConversationRealtimeModule",
         "MediaStoragePublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "OutboxCoreModule",
         "PrismaModule"
       ],
@@ -310,7 +310,7 @@
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -341,7 +341,7 @@
       "imports": [
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -536,6 +536,24 @@
       "global": false
     },
     {
+      "path": "backend/src/modules/notifications/internal/notifications-service.internal.module.ts",
+      "className": "NotificationsInternalModule",
+      "imports": [
+        "CollaborationPermissionPublicModule",
+        "OutboxCoreModule",
+        "PrismaModule"
+      ],
+      "providers": [
+        "NotificationsService",
+        "{\n      provide: NOTIFICATIONS_IMPLEMENTATION,\n      useExisting: NotificationsService,\n    }"
+      ],
+      "exports": [
+        "NOTIFICATIONS_IMPLEMENTATION",
+        "NotificationsService"
+      ],
+      "global": false
+    },
+    {
       "path": "backend/src/modules/notifications/internal/push-transport.internal.module.ts",
       "className": "PushTransportInternalModule",
       "imports": [
@@ -552,6 +570,20 @@
         "PUSH_CAPABILITY_IMPLEMENTATION",
         "PUSH_DELIVERY_IMPLEMENTATION",
         "PushDeliveryService"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/notifications/public/notifications-public.module.ts",
+      "className": "NotificationsPublicModule",
+      "imports": [
+        "NotificationsInternalModule"
+      ],
+      "providers": [
+        "{\n      provide: NOTIFICATIONS_PORT,\n      useExisting: NOTIFICATIONS_IMPLEMENTATION,\n    }"
+      ],
+      "exports": [
+        "NOTIFICATIONS_PORT"
       ],
       "global": false
     },
@@ -607,18 +639,13 @@
       "className": "NotificationsModule",
       "imports": [
         "AuthModule",
-        "CollaborationPermissionPublicModule",
-        "OutboxCoreModule",
-        "PrismaModule",
+        "NotificationsServiceInternalModule",
         "PushModule"
       ],
       "providers": [
-        "NotificationRemindersScheduler",
-        "NotificationsService"
+        "NotificationRemindersScheduler"
       ],
-      "exports": [
-        "NotificationsService"
-      ],
+      "exports": [],
       "global": false
     },
     {
@@ -666,7 +693,7 @@
       "className": "ProviderDashboardModule",
       "imports": [
         "MediaStoragePublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -696,7 +723,7 @@
         "CollaborationHistoryInternalModule",
         "CollaborationPermissionInternalModule",
         "MessagingRealtimePublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -715,7 +742,7 @@
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
-        "NotificationsModule",
+        "NotificationsPublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -793,75 +820,12 @@
   ],
   "crossContextInjections": [
     {
-      "source": "backend/src/admin/admin.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "backoffice",
-      "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/conversations/conversations.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "messaging",
-      "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/dashboard/dashboard.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "insights",
-      "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/marketplace/marketplace.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "marketplace",
-      "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "marketplace",
-      "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
       "source": "backend/src/sharing/invite-access.service.ts",
       "parameter": "auth",
       "target": "AuthService",
       "targetPath": "backend/src/auth/auth.service.ts",
       "sourceContext": "collaboration",
       "targetContext": "identity",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/sharing/sharing.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "collaboration",
-      "targetContext": "notifications",
-      "kind": "constructor-injection"
-    },
-    {
-      "source": "backend/src/tasks/tasks.service.ts",
-      "parameter": "notifications",
-      "target": "NotificationsService",
-      "targetPath": "backend/src/notifications/notifications.service.ts",
-      "sourceContext": "tasks",
-      "targetContext": "notifications",
       "kind": "constructor-injection"
     }
   ],
@@ -1233,6 +1197,49 @@
         },
         {
           "source": "backend/src/users/users.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "NOTIFICATIONS_PORT",
+      "methods": [
+        "createNotificationInTransaction",
+        "resolveProviderUpdateRecipientInTransaction",
+        "notifyTaskDue",
+        "purgeMoneyForMember",
+        "visibilityWhereForUser"
+      ],
+      "implementations": [
+        "NotificationsService"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/admin/admin.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/conversations/conversations.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/dashboard/dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/marketplace/marketplace.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/sharing/sharing.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/tasks/tasks.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -4632,37 +4639,19 @@
     }
   ],
   "remainingRetiredLegacyProviderEdges": [
-    "src/admin/admin.module.ts|src/notifications/notifications.module.ts",
-    "src/admin/admin.service.ts|src/notifications/notifications.service.ts",
     "src/budget-categories/budget-categories.module.ts|src/auth/auth.module.ts",
     "src/catalogs/catalogs.module.ts|src/admin/admin-permission.guard.ts",
     "src/catalogs/catalogs.module.ts|src/admin/admin.guard.ts",
     "src/contribution-history/contribution-history.module.ts|src/auth/auth.module.ts",
     "src/conversations/conversations.module.ts|src/auth/auth.module.ts",
-    "src/conversations/conversations.module.ts|src/notifications/notifications.module.ts",
-    "src/conversations/conversations.service.ts|src/notifications/notifications.service.ts",
-    "src/dashboard/dashboard.module.ts|src/notifications/notifications.module.ts",
-    "src/dashboard/dashboard.service.ts|src/notifications/notifications.service.ts",
     "src/guests/guests.module.ts|src/auth/auth.module.ts",
-    "src/marketplace/marketplace.module.ts|src/notifications/notifications.module.ts",
-    "src/marketplace/marketplace.service.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-notifications.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-offer-acceptance.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-offer-rejection.ts|src/notifications/notifications.service.ts",
-    "src/marketplace/quote-request-creation.ts|src/notifications/notifications.service.ts",
     "src/money/money.module.ts|src/auth/auth.module.ts",
     "src/notifications/notifications.module.ts|src/auth/auth.module.ts",
     "src/onboarding/onboarding.module.ts|src/auth/auth.module.ts",
-    "src/provider-dashboard/provider-dashboard.module.ts|src/notifications/notifications.module.ts",
-    "src/provider-dashboard/provider-dashboard.service.ts|src/notifications/notifications.service.ts",
     "src/push/push.module.ts|src/auth/auth.module.ts",
     "src/sharing/invite-access.service.ts|src/auth/auth.service.ts",
     "src/sharing/sharing.module.ts|src/auth/auth.module.ts",
-    "src/sharing/sharing.module.ts|src/notifications/notifications.module.ts",
-    "src/sharing/sharing.service.ts|src/notifications/notifications.service.ts",
     "src/tasks/tasks.module.ts|src/auth/auth.module.ts",
-    "src/tasks/tasks.module.ts|src/notifications/notifications.module.ts",
-    "src/tasks/tasks.service.ts|src/notifications/notifications.service.ts",
     "src/timeline/timeline.module.ts|src/auth/auth.module.ts",
     "src/wedding-costs/wedding-costs.module.ts|src/auth/auth.module.ts",
     "src/wedding-plans/wedding-plans.module.ts|src/auth/auth.module.ts"
@@ -4730,6 +4719,7 @@
     "backend/src/marketplace/marketplace.controller.ts",
     "backend/src/marketplace/marketplace.module.ts",
     "backend/src/marketplace/marketplace.service.ts",
+    "backend/src/marketplace/quote-notifications.ts",
     "backend/src/marketplace/quote-offer-acceptance.ts",
     "backend/src/marketplace/quote-offer-rejection.ts",
     "backend/src/marketplace/quote-request-cancellation.ts",
@@ -4759,7 +4749,10 @@
     "backend/src/modules/messaging/internal/messaging-realtime.internal.module.ts",
     "backend/src/modules/messaging/public/messaging-realtime-public.module.ts",
     "backend/src/modules/messaging/public/messaging-realtime.port.ts",
+    "backend/src/modules/notifications/internal/notifications-service.internal.module.ts",
     "backend/src/modules/notifications/internal/push-transport.internal.module.ts",
+    "backend/src/modules/notifications/public/notifications-public.module.ts",
+    "backend/src/modules/notifications/public/notifications.port.ts",
     "backend/src/modules/notifications/public/push-capability-public.module.ts",
     "backend/src/modules/notifications/public/push-capability.port.ts",
     "backend/src/modules/notifications/public/push-delivery-public.module.ts",
@@ -4812,6 +4805,7 @@
     "backend/test/architecture-r3-collaboration-ports.test.ts",
     "backend/test/architecture-r3-composition.test.ts",
     "backend/test/architecture-r3-contexts.test.ts",
+    "backend/test/architecture-r3-notifications-port.test.ts",
     "backend/test/architecture-r3-scope.test.ts",
     "backend/test/health-readiness.test.ts",
     "backend/test/notification-logic.test.ts",

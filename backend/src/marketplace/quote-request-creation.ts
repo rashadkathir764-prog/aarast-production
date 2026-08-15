@@ -18,7 +18,7 @@ import {
   ensureConversationContext,
   recordConversationEvent,
 } from "../conversations/conversation-lifecycle";
-import { NotificationsService } from "../notifications/notifications.service";
+import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
 import { MARKETPLACE_QUOTE_INCLUDE } from "./marketplace.contracts";
@@ -49,7 +49,7 @@ export interface QuoteRequestMutationGuard {
 
 export function createQuoteRequestInTransaction(
   prisma: PrismaService,
-  notifications: NotificationsService,
+  notifications: NotificationsPort,
   input: CreateQuoteRequestTransactionInput,
   guard?: QuoteRequestMutationGuard,
 ) {

@@ -3,7 +3,7 @@ import { AuthModule } from "../auth/auth.module";
 import { CollaborationHistoryInternalModule } from "../modules/collaboration/internal/collaboration-history.internal.module";
 import { CollaborationPermissionInternalModule } from "../modules/collaboration/internal/collaboration-permission.internal.module";
 import { MessagingRealtimePublicModule } from "../modules/messaging/public/messaging-realtime-public.module";
-import { NotificationsModule } from "../notifications/notifications.module";
+import { NotificationsPublicModule } from "../modules/notifications/public/notifications-public.module";
 import { PrismaModule } from "../platform/database/prisma.module";
 import {
   ApiV1InviteAcceptController,
@@ -23,7 +23,7 @@ import { SharingService } from "./sharing.service";
     AuthModule,
     PrismaModule,
     MessagingRealtimePublicModule,
-    NotificationsModule,
+    NotificationsPublicModule,
     CollaborationPermissionInternalModule,
     CollaborationHistoryInternalModule,
   ],

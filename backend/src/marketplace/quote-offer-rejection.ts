@@ -13,7 +13,7 @@ import type { CollaborationHistoryPort as ContributionHistoryService } from "../
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { recordConversationEvent } from "../conversations/conversation-lifecycle";
-import { NotificationsService } from "../notifications/notifications.service";
+import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
 import {
@@ -36,7 +36,7 @@ interface RejectQuoteOfferInput {
 export async function rejectQuoteOfferInTransaction(
   prisma: PrismaService,
   permissions: PermissionService,
-  notifications: NotificationsService,
+  notifications: NotificationsPort,
   input: RejectQuoteOfferInput,
   history?: ContributionHistoryService,
 ) {

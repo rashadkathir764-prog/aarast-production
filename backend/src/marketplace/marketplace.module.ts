@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../platform/database/prisma.module";
 import { CollaborationHistoryPublicModule } from "../modules/collaboration/public/collaboration-history-public.module";
 import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
-import { NotificationsModule } from "../notifications/notifications.module";
+import { NotificationsPublicModule } from "../modules/notifications/public/notifications-public.module";
 import {
   ApiV1QuoteOffersController,
   ApiV1QuoteRequestsController,
@@ -21,7 +21,7 @@ import { MarketplaceService } from "./marketplace.service";
   imports: [
     PrismaModule,
     CollaborationPermissionPublicModule,
-    NotificationsModule,
+    NotificationsPublicModule,
     CollaborationHistoryPublicModule,
   ],
   controllers: [

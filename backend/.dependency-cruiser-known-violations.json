@@ -57,34 +57,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/admin/admin.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/admin/admin.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-backoffice-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/catalogs/administrative-catalog.service.ts",
     "to": "src/admin/admin-mutation-gate.ts",
     "unresolvedTo": "../admin/admin-mutation-gate",
@@ -365,37 +337,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/sharing/sharing.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/sharing/sharing.service.ts",
     "to": "src/contexts/context-key.ts",
     "unresolvedTo": "../contexts/context-key",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-collaboration-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/sharing/sharing.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -701,34 +645,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/dashboard/dashboard.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/dashboard/dashboard.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-insights-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/dashboard/dashboard.service.ts",
     "to": "src/wedding-plans/wedding-location.ts",
     "unresolvedTo": "../wedding-plans/wedding-location",
@@ -827,20 +743,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/marketplace/marketplace.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/marketplace/marketplace.presenter.ts",
     "to": "src/wedding-plans/wedding-location.ts",
     "unresolvedTo": "../wedding-plans/wedding-location",
@@ -856,20 +758,6 @@
   {
     "type": "dependency",
     "from": "src/marketplace/marketplace.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/marketplace.service.ts",
     "to": "src/wedding-costs/wedding-cost.presenter.ts",
     "unresolvedTo": "../wedding-costs/wedding-cost.presenter",
     "dependencyTypes": [
@@ -897,21 +785,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/marketplace/quote-notifications.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/marketplace/quote-offer-acceptance.ts",
     "to": "src/contribution-history/contribution-snapshot.builder.ts",
     "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
@@ -929,20 +802,6 @@
     "from": "src/marketplace/quote-offer-acceptance.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-offer-acceptance.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -996,20 +855,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/marketplace/quote-offer-rejection.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/marketplace/quote-request-cancellation.ts",
     "to": "src/contribution-history/contribution-snapshot.builder.ts",
     "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
@@ -1055,20 +900,6 @@
     "from": "src/marketplace/quote-request-creation.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-request-creation.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -1108,37 +939,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/provider-dashboard/provider-dashboard.service.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/provider-dashboard/provider-dashboard.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -1294,34 +1097,6 @@
     "from": "src/conversations/conversations.module.ts",
     "to": "src/auth/auth.module.ts",
     "unresolvedTo": "../auth/auth.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-messaging-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/conversations/conversations.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
     "dependencyTypes": [
       "local",
       "import"
@@ -1683,37 +1458,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/tasks/tasks.module.ts",
-    "to": "src/notifications/notifications.module.ts",
-    "unresolvedTo": "../notifications/notifications.module",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/tasks/tasks.service.ts",
     "to": "src/contribution-history/contribution-snapshot.builder.ts",
     "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-tasks-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/tasks/tasks.service.ts",
-    "to": "src/notifications/notifications.service.ts",
-    "unresolvedTo": "../notifications/notifications.service",
     "dependencyTypes": [
       "local",
       "import"

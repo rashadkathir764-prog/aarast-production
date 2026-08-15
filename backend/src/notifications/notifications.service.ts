@@ -40,38 +40,14 @@ import {
   assertActiveMutationActorInTransaction,
   lockUserLifecycleRowsInTransaction,
 } from "../users/user-lifecycle-lock";
-
-export interface NotificationResponse {
-  id: string;
-  userId: string;
-  weddingPlanId: string | null;
-  type: NotificationType;
-  priority: NotificationPriority;
-  title: string;
-  body: string;
-  entityType: string | null;
-  entityId: string | null;
-  routeTarget: string | null;
-  data: Prisma.JsonValue | null;
-  readAt: Date | null;
-  archivedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreateNotificationInput {
-  userId: string;
-  weddingPlanId?: string | null;
-  type: NotificationType;
-  priority?: NotificationPriority;
-  title: string;
-  body: string;
-  entityType?: string | null;
-  entityId?: string | null;
-  routeTarget?: string | null;
-  data?: Prisma.InputJsonValue;
-  dedupeKey?: string;
-}
+import {
+  type CreateNotificationInput,
+  type NotificationCreateClient,
+  type NotificationPurgeClient,
+  type NotificationResponse,
+  type NotificationsPort,
+  type NotificationVisibilityClient,
+} from "../modules/notifications/public/notifications.port";
 
 type PlanParticipantNotificationInput = Omit<
   CreateNotificationInput,
@@ -87,16 +63,6 @@ export interface NotificationPageResponse {
   hasMore: boolean;
 }
 
-type NotificationPurgeClient = Pick<
-  Prisma.TransactionClient,
-  "notification" | "outboxEvent"
->;
-
-type NotificationCreateClient = Pick<
-  Prisma.TransactionClient,
-  "$queryRaw" | "notification" | "notificationPreference" | "outboxEvent"
->;
-
 type NotificationContentPreference = Pick<
   NotificationPreference,
   "taskRemindersEnabled" | "paymentRemindersEnabled" | "providerMessagesEnabled"
@@ -107,19 +73,8 @@ type OwnedProviderLifecycle = {
   status: ProviderStatus;
 } | null;
 
-type NotificationVisibilityClient = Pick<
-  Prisma.TransactionClient,
-  | "conversation"
-  | "contributionEvent"
-  | "notification"
-  | "paymentSchedule"
-  | "provider"
-  | "sharedMember"
-  | "weddingTask"
->;
-
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements NotificationsPort {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)

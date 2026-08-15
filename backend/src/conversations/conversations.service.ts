@@ -19,7 +19,10 @@ import {
   MEDIA_STORAGE_PORT,
   MediaStoragePort,
 } from '../modules/media/public/media-storage.port';
-import { NotificationsService } from '../notifications/notifications.service';
+import {
+  NOTIFICATIONS_PORT,
+  type NotificationsPort,
+} from '../modules/notifications/public/notifications.port';
 import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
 import { OutboxService } from '../platform/outbox/outbox.service';
 import { PrismaService } from '../platform/database/prisma.service';
@@ -137,7 +140,8 @@ interface TimelineCursor {
 export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     private readonly realtime: ConversationRealtimePublisher,
     @Inject(MEDIA_STORAGE_PORT)
     private readonly mediaStorage: MediaStoragePort,

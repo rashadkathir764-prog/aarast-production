@@ -1,9 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { PrismaModule } from "../platform/database/prisma.module";
-import { OutboxCoreModule } from "../platform/outbox/outbox-core.module";
 import { PushModule } from "../push/push.module";
-import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
+import { NotificationsServiceInternalModule } from "../modules/notifications/internal/notifications-service.internal.module";
 import { NotificationsController } from "./notifications.controller";
 import { NotificationRemindersScheduler } from "./notification-reminders.scheduler";
 import { NotificationsService } from "./notifications.service";
@@ -11,16 +9,10 @@ import { NotificationsService } from "./notifications.service";
 @Module({
   imports: [
     AuthModule,
-    PrismaModule,
-    OutboxCoreModule,
     PushModule,
-    CollaborationPermissionPublicModule,
+    NotificationsServiceInternalModule,
   ],
   controllers: [NotificationsController],
-  providers: [
-    NotificationsService,
-    NotificationRemindersScheduler,
-  ],
-  exports: [NotificationsService],
+  providers: [NotificationRemindersScheduler],
 })
 export class NotificationsModule {}

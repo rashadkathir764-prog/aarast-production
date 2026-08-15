@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { NotificationsModule } from '../notifications/notifications.module';
+import { NotificationsPublicModule } from '../modules/notifications/public/notifications-public.module';
 import { MediaStoragePublicModule } from '../modules/media/public/media-storage-public.module';
 import { PrismaModule } from '../platform/database/prisma.module';
 import {
@@ -9,7 +9,7 @@ import {
 import { ProviderDashboardService } from './provider-dashboard.service';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, MediaStoragePublicModule],
+  imports: [PrismaModule, NotificationsPublicModule, MediaStoragePublicModule],
   controllers: [
     ProviderApplicationController,
     ProviderDashboardController,

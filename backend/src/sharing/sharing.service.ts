@@ -38,7 +38,10 @@ import {
   MESSAGING_REALTIME_PORT,
   MessagingRealtimePort,
 } from "../modules/messaging/public/messaging-realtime.port";
-import { NotificationsService } from "../notifications/notifications.service";
+import {
+  NOTIFICATIONS_PORT,
+  type NotificationsPort,
+} from "../modules/notifications/public/notifications.port";
 import { enqueueConversationAccessRevoked } from "../platform/outbox/realtime-revocation";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
@@ -270,7 +273,8 @@ export class SharingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     private readonly invitationDelivery: InvitationDeliveryService,
     private readonly history: ContributionHistoryService,
     @Optional()

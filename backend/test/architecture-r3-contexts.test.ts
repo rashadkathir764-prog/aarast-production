@@ -94,7 +94,7 @@ function fullSourceFixture(replacements: Array<{
     repoRoot: root,
     backendRoot: fixtureBackend,
     manifestPath,
-    stage: 'task-3',
+    stage: 'task-4',
   };
 }
 
@@ -102,20 +102,20 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('the canonical R3 manifest freezes the exact Task 3 ledgers', () => {
+test('the canonical R3 manifest freezes the exact Task 4 ledgers', () => {
   const manifest = scanner().validateR3ContextManifest(loadManifest());
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, '6b06eb096aca8cc6684d365d16e05d4cd8529898');
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'task-4');
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 42);
-  assert.equal(manifest.crossContextInjections.length, 8);
+  assert.equal(manifest.legacyModules.length, 44);
+  assert.equal(manifest.crossContextInjections.length, 1);
   assert.equal(manifest.compositionDependencies.length, 6);
-  assert.equal(manifest.providerContracts.length, 10);
+  assert.equal(manifest.providerContracts.length, 11);
   assert.equal(manifest.decoratorRuntimeReferences.length, 23);
   assert.equal(manifest.adminGuardMetadata.length, 4);
   assert.equal(manifest.runtimeDecoratorValueReferences.length, 26);
@@ -141,7 +141,7 @@ test('the canonical R3 manifest freezes the exact Task 3 ledgers', () => {
   assert.deepEqual(
     manifest.remainingRetiredLegacyProviderEdges,
     manifest.initialRetiredLegacyProviderEdges
-      .filter((edge: { retirementTask: number }) => edge.retirementTask > 3)
+      .filter((edge: { retirementTask: number }) => edge.retirementTask > 4)
       .map((edge: { key: string }) => edge.key),
   );
 });
@@ -151,7 +151,7 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   const injectionKeys = manifest.crossContextInjections.map(
     (edge: any) => `${edge.source}|${edge.parameter}|${edge.target}`,
   );
-  assert.equal(new Set(injectionKeys).size, 8);
+  assert.equal(new Set(injectionKeys).size, 1);
   assert.ok(injectionKeys.includes(
     'backend/src/sharing/invite-access.service.ts|auth|AuthService',
   ));
@@ -199,25 +199,25 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
   );
 });
 
-test('the live TypeScript inventory equals the canonical Task 3 manifest', () => {
+test('the live TypeScript inventory equals the canonical Task 4 manifest', () => {
   const result = scanner().scanR3Contexts({
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-3',
+    stage: 'task-4',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 42,
-    crossContextInjections: 8,
+    legacyModules: 44,
+    crossContextInjections: 1,
     compositionDependencies: 1,
     initialDuplicateProviders: 3,
     remainingDuplicateProviders: 2,
     initialPlatformDebts: 6,
     remainingPlatformDebts: 1,
     initialRetiredLegacyProviderEdges: 163,
-    remainingRetiredLegacyProviderEdges: 34,
+    remainingRetiredLegacyProviderEdges: 16,
     forwardRef: 0,
     globals: 2,
     nestModuleCycles: 0,
@@ -242,7 +242,7 @@ test('I1 live orchestration executes source laws and permits only exact approved
     repoRoot,
     backendRoot,
     manifestPath,
-    stage: 'task-3',
+    stage: 'task-4',
     sourceLawScan: () => {
       calls += 1;
       return {
@@ -292,7 +292,7 @@ test('same-count manifest identity drift is rejected against live source and the
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-3',
+    stage: 'task-4',
   });
   assert.ok(result.diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
@@ -388,7 +388,7 @@ test('I3 same-count contract, composition, context-root, and Admin guard substit
     repoRoot,
     backendRoot,
     manifestPath: driftPath,
-    stage: 'task-3',
+    stage: 'task-4',
   }), /context root|provider contract|composition|guard|canonical/i);
 });
 
@@ -837,6 +837,37 @@ test('foreign internal/full/concrete and cross-public runtime imports fail while
   const result = scanner().scanR3SourceLaws(options);
   assert.equal(result.diagnostics.filter((item: any) => item.kind === 'illegal-boundary-import').length, 3);
   assert.equal(result.diagnostics.some((item: any) => item.path.endsWith('/legal.ts')), false);
+});
+
+test('an internal provider leaf may import only a foreign public Nest module used in metadata', () => {
+  const options = fixtureProject({
+    'backend/src/modules/guests/public/guests-public.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      '@Module({})',
+      'export class GuestsPublicModule {}',
+    ].join('\n'),
+    'backend/src/modules/guests/public/guest.types.ts': 'export const runtimeValue = true;\n',
+    'backend/src/modules/tasks/internal/good.internal.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { GuestsPublicModule } from '../../guests/public/guests-public.module';",
+      '@Module({ imports: [GuestsPublicModule] })',
+      'export class GoodInternalModule {}',
+    ].join('\n'),
+    'backend/src/modules/tasks/internal/unused.internal.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { GuestsPublicModule } from '../../guests/public/guests-public.module';",
+      '@Module({})',
+      'export class UnusedInternalModule {}',
+    ].join('\n'),
+    'backend/src/modules/tasks/internal/runtime.ts':
+      "import { runtimeValue } from '../../guests/public/guest.types';\nexport { runtimeValue };\n",
+  });
+  const diagnostics = scanner().scanR3SourceLaws(options).diagnostics.filter(
+    (item: any) => item.kind === 'illegal-boundary-import',
+  );
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/good.internal.module.ts')), false);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/unused.internal.module.ts')), true);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/runtime.ts')), true);
 });
 
 test('application composition may import platform and business public modules only', () => {

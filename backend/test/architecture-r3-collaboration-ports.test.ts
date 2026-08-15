@@ -195,7 +195,10 @@ test('Task 3 foreign consumers no longer import collaboration implementations', 
 
 test('Task 3 removes the notifications PermissionService duplicate', () => {
   const notificationsModule = source('notifications/notifications.module.ts');
-  assert.match(notificationsModule, /CollaborationPermissionPublicModule/);
+  const notificationsInternal = source(
+    'modules/notifications/internal/notifications-service.internal.module.ts',
+  );
+  assert.match(notificationsInternal, /CollaborationPermissionPublicModule/);
   assert.doesNotMatch(notificationsModule, /providers:[\s\S]*PermissionService/);
 });
 
@@ -203,7 +206,7 @@ test('Task 3 advances the live manifest and exact retirement counts', () => {
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), 'architecture/r3-context-boundaries.json'), 'utf8'),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'task-4');
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
       diagnostics: unknown[];
@@ -214,9 +217,9 @@ test('Task 3 advances the live manifest and exact retirement counts', () => {
     repoRoot: join(process.cwd(), '..'),
     backendRoot: process.cwd(),
     manifestPath: join(process.cwd(), 'architecture/r3-context-boundaries.json'),
-    stage: 'task-3',
+    stage: 'task-4',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingDuplicateProviders, 2);
-  assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 34);
+  assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 16);
 });

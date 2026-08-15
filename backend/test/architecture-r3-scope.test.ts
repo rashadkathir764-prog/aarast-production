@@ -41,7 +41,7 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('R3 scope pins the immutable base and accepts only the explicit through-Task-3 paths', () => {
+test('R3 scope pins the immutable base and accepts only the explicit through-Task-4 paths', () => {
   assert.equal(scope().R3_BASE, baseRef);
   const result = scope().validateR3Scope({ repositoryRoot, baseRef });
   assert.equal(result.ok, true);
@@ -109,6 +109,7 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/marketplace/marketplace.controller.ts',
     'backend/src/marketplace/marketplace.module.ts',
     'backend/src/marketplace/marketplace.service.ts',
+    'backend/src/marketplace/quote-notifications.ts',
     'backend/src/marketplace/quote-offer-acceptance.ts',
     'backend/src/marketplace/quote-offer-rejection.ts',
     'backend/src/marketplace/quote-request-cancellation.ts',
@@ -138,7 +139,10 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/src/modules/messaging/internal/messaging-realtime.internal.module.ts',
     'backend/src/modules/messaging/public/messaging-realtime-public.module.ts',
     'backend/src/modules/messaging/public/messaging-realtime.port.ts',
+    'backend/src/modules/notifications/internal/notifications-service.internal.module.ts',
     'backend/src/modules/notifications/internal/push-transport.internal.module.ts',
+    'backend/src/modules/notifications/public/notifications-public.module.ts',
+    'backend/src/modules/notifications/public/notifications.port.ts',
     'backend/src/modules/notifications/public/push-capability-public.module.ts',
     'backend/src/modules/notifications/public/push-capability.port.ts',
     'backend/src/modules/notifications/public/push-delivery-public.module.ts',
@@ -191,6 +195,7 @@ test('R3 scope pins the immutable base and accepts only the explicit through-Tas
     'backend/test/architecture-r3-collaboration-ports.test.ts',
     'backend/test/architecture-r3-composition.test.ts',
     'backend/test/architecture-r3-contexts.test.ts',
+    'backend/test/architecture-r3-notifications-port.test.ts',
     'backend/test/architecture-r3-scope.test.ts',
     'backend/test/health-readiness.test.ts',
     'backend/test/notification-logic.test.ts',

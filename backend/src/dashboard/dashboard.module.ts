@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { NotificationsModule } from "../notifications/notifications.module";
+import { NotificationsPublicModule } from "../modules/notifications/public/notifications-public.module";
 import { CollaborationHistoryPublicModule } from "../modules/collaboration/public/collaboration-history-public.module";
 import { CollaborationPermissionPublicModule } from "../modules/collaboration/public/collaboration-permission-public.module";
 import { CollaborationScopePublicModule } from "../modules/collaboration/public/collaboration-scope-public.module";
@@ -14,7 +14,7 @@ import { DashboardService } from "./dashboard.service";
   imports: [
     PrismaModule,
     CollaborationPermissionPublicModule,
-    NotificationsModule,
+    NotificationsPublicModule,
     CollaborationHistoryPublicModule,
     CollaborationScopePublicModule,
   ],

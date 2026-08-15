@@ -24,7 +24,10 @@ import {
 } from "../modules/collaboration/public/collaboration-scope.port";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
-import { NotificationsService } from "../notifications/notifications.service";
+import {
+  NOTIFICATIONS_PORT,
+  type NotificationsPort,
+} from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   COLLABORATION_PERMISSION_PORT,
@@ -72,7 +75,8 @@ export class DashboardService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
     @Inject(COLLABORATION_HISTORY_PORT)

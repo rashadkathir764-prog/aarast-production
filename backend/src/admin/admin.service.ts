@@ -31,7 +31,7 @@ import {
 } from '../platform/outbox/realtime-revocation';
 import { PrismaService } from '../platform/database/prisma.service';
 import { MESSAGING_REALTIME_PORT, type MessagingRealtimePort } from '../modules/messaging/public/messaging-realtime.port';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NOTIFICATIONS_PORT, type NotificationsPort } from '../modules/notifications/public/notifications.port';
 import { AdminMutationExecutor } from './admin-mutation-executor';
 import { switchProviderStatusNotification } from './provider-status-notification';
 import {
@@ -80,7 +80,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime: MessagingRealtimePort,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATIONS_PORT) private readonly notifications: NotificationsPort,
   ) {
     this.mutations = new AdminMutationExecutor(prisma);
   }

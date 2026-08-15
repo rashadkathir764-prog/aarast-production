@@ -198,7 +198,27 @@ const TASK3_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/timeline/timeline.service.ts', consumerClass: 'backend/src/timeline/timeline.service.ts#TimelineService', parameter: 'contributorScope', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
   Object.freeze({ source: 'backend/src/wedding-costs/wedding-costs.service.ts', consumerClass: 'backend/src/wedding-costs/wedding-costs.service.ts#WeddingCostsService', parameter: 'contributorScope', parameterIndex: 2, ...TASK3_CANONICAL_INJECTION_IDENTITIES.scope }),
 ]);
-const CONTRACT_SHAPE_HASH = 'cd5cc733b080dc582543147bbeb263fa6d552326a0cce3dcc24d647a59d2cc78';
+const TASK4_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
+  notifications: Object.freeze({
+    token: 'backend/src/modules/notifications/public/notifications.port.ts#NOTIFICATIONS_PORT',
+    parameterType: 'backend/src/modules/notifications/public/notifications.port.ts#NotificationsPort',
+  }),
+});
+const TASK4_CONSUMER_IDENTITIES = new Map([
+  ['NOTIFICATIONS_PORT', Object.freeze([
+    TASK4_CANONICAL_INJECTION_IDENTITIES.notifications,
+  ])],
+]);
+const TASK4_EXACT_CONSTRUCTOR_USES = Object.freeze([
+  Object.freeze({ source: 'backend/src/admin/admin.service.ts', consumerClass: 'backend/src/admin/admin.service.ts#AdminService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/conversations/conversations.service.ts', consumerClass: 'backend/src/conversations/conversations.service.ts#ConversationsService', parameter: 'notifications', parameterIndex: 1, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/dashboard/dashboard.service.ts', consumerClass: 'backend/src/dashboard/dashboard.service.ts#DashboardService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/marketplace/marketplace.service.ts', consumerClass: 'backend/src/marketplace/marketplace.service.ts#MarketplaceService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/provider-dashboard/provider-dashboard.service.ts', consumerClass: 'backend/src/provider-dashboard/provider-dashboard.service.ts#ProviderDashboardService', parameter: 'notifications', parameterIndex: 1, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/sharing/sharing.service.ts', consumerClass: 'backend/src/sharing/sharing.service.ts#SharingService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+]);
+const CONTRACT_SHAPE_HASH = '2cfbe6583e75a19284f7fb0d2b6f05e47f69291c43b435e7aa3dd3ec9638534f';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 2048;
@@ -716,7 +736,25 @@ function scanR3SourceLaws(options) {
         if (sourceClass.kind === 'future' && targetClass.context && sourceClass.context !== targetClass.context) {
           const legalType = sourceClass.slice === 'public' && targetClass.kind === 'future'
             && targetClass.slice === 'public' && isTypeOnlyImport(statement);
-          if (!legalType) addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
+          const importedNames = statement.importClause?.namedBindings
+            && ts.isNamedImports(statement.importClause.namedBindings)
+            ? statement.importClause.namedBindings.elements.map((item) => item.name.text)
+            : [];
+          const sourceModuleImports = sourceFile.statements
+            .filter(ts.isClassDeclaration)
+            .flatMap((item) => {
+              const call = decoratorCall(item, 'Module', checker);
+              return call ? metadataTexts(call, 'imports', sourceFile) : [];
+            });
+          const legalPublicModuleDependency = sourceClass.slice === 'internal'
+            && repositoryPath.endsWith('.internal.module.ts')
+            && targetClass.kind === 'future' && targetClass.slice === 'public'
+            && targetPath.endsWith('-public.module.ts')
+            && importedNames.length > 0
+            && importedNames.every((name) => sourceModuleImports.includes(name));
+          if (!legalType && !legalPublicModuleDependency) {
+            addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
+          }
         }
         if (sourceClass.kind === 'future' && sourceClass.slice === 'public' && targetClass.kind === 'legacy') {
           addDiagnostic(diagnostics, 'public-imports-concrete', repositoryPath, sourceFile, statement);
@@ -1251,7 +1289,8 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   }
   const providerContracts = contractDefinitions.map((contract) => {
     const canonicalConsumerIdentities = TASK2_CONSUMER_IDENTITIES.get(contract.token)
-      || TASK3_CONSUMER_IDENTITIES.get(contract.token);
+      || TASK3_CONSUMER_IDENTITIES.get(contract.token)
+      || TASK4_CONSUMER_IDENTITIES.get(contract.token);
     const consumers = canonicalConsumerIdentities
       ? []
       : injections.filter((item) => contract.implementations.includes(item.target))
@@ -1315,6 +1354,14 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const exactTask3ConstructorUses = TASK3_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
   const task3ConstructorInventoryPresent = JSON.stringify(liveTask3ConstructorUses)
     === JSON.stringify(exactTask3ConstructorUses);
+  const task4CanonicalPairs = new Set(Object.values(TASK4_CANONICAL_INJECTION_IDENTITIES)
+    .map((identity) => `${identity.token}|${identity.parameterType}`));
+  const liveTask4ConstructorUses = allConstructorUses.filter((item) => task4CanonicalPairs.has(
+    `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
+  )).map(task2ConstructorUseKey).sort();
+  const exactTask4ConstructorUses = TASK4_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const task4ConstructorInventoryPresent = JSON.stringify(liveTask4ConstructorUses)
+    === JSON.stringify(exactTask4ConstructorUses);
   const retiredEdges = initialRetiredEdges.filter((edge) => {
     const [from, to] = edge.key.split('|');
     return importEdges.has(`backend/${from}|backend/${to}`);
@@ -1325,6 +1372,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     providerContractSurfacesPresent: providerContracts.every((item) => item.surfacePresent),
     task2ConstructorInventoryPresent,
     task3ConstructorInventoryPresent,
+    task4ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
   };
@@ -1377,6 +1425,8 @@ function scanR3Contexts(options) {
     || !live.providerContractSurfacesPresent
     || !live.task2ConstructorInventoryPresent
     || (manifest.stage !== 'task-2' && !live.task3ConstructorInventoryPresent)
+    || (['task-4', 'task-5', 'task-6', 'task-7', 'task-8'].includes(manifest.stage)
+      && !live.task4ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)

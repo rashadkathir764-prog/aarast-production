@@ -385,14 +385,14 @@ test('Task 2 keeps the push controller reachable exactly once and transport prov
   assert.equal((task2Sources.match(/\bPushModule\b/g) ?? []).length, 2);
 });
 
-test('R3 manifest and CLI enforce the live task-3 stage', () => {
+test('R3 manifest and CLI enforce the live task-4 stage', () => {
   const manifest = JSON.parse(
     readFileSync(
       join(process.cwd(), 'architecture/r3-context-boundaries.json'),
       'utf8',
     ),
   ) as { stage: string };
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'task-4');
 
   const scanner = require('../scripts/architecture/r3-context-scan.cjs') as {
     scanR3Contexts: (options: Record<string, unknown>) => {
@@ -408,16 +408,16 @@ test('R3 manifest and CLI enforce the live task-3 stage', () => {
       process.cwd(),
       'architecture/r3-context-boundaries.json',
     ),
-    stage: 'task-3',
+    stage: 'task-4',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.remainingPlatformDebts, 1);
-  assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 34);
+  assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 16);
 
   const output: string[] = [];
   assert.equal(
     scanner.runCli({
-      argv: ['--check', '--stage', 'task-3'],
+      argv: ['--check', '--stage', 'task-4'],
       scan: () => result,
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),

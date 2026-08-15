@@ -1,5 +1,5 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
-import type { CreateNotificationInput } from "../notifications/notifications.service";
+import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
 import { PROVIDER_PORTAL_ROUTE } from "../provider-dashboard/provider-access-policy";
 
 // بناة مدخلات إشعارات دورة عروض الأسعار — نقية بلا Prisma ولا خدمات،

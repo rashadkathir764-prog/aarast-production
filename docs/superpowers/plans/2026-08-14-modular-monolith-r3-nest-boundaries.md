@@ -1091,6 +1091,14 @@ Leave the worktree clean and stop before runtime cutover.
 
 - Modify before runtime only: `docs/project/STATUS.md`, as the immutable
   preliminary candidate receipt with runtime/phone explicitly pending.
+- Runtime-blocker exception discovered by the physical phone gate: modify only
+  `mobile/lib/core/network/api_client.dart`,
+  `mobile/test/core/network/api_client_refresh_test.dart`,
+  `backend/scripts/architecture/r3-scope.cjs`,
+  `backend/architecture/r3-context-boundaries.json`, and
+  `backend/test/architecture-r3-scope.test.ts`. The client change separates
+  account-session and account-context request generations; it must keep both
+  existing stale-account and stale-context cancellation tests green.
 - Modify the remaining approved active Markdown receipt/navigation files only
   after runtime and owner evidence is complete.
 - Create ignored reports under
@@ -1118,6 +1126,12 @@ The owner tests login/OTP, Home, one core read/write, notifications, and
 messaging when available. On FAIL, collect sanitized evidence and immediately
 restore the verified R2 container. On PASS, parse only safe method/path/status
 events and forbidden fatal markers; do not retain tokens, bodies, or secrets.
+
+If the phone gate reproduces the exact session-restore race above, record a
+failing focused test before changing production code, apply only the listed
+Mobile exception, rebuild a new immutable candidate and APK, and repeat this
+step. A successful login alone is insufficient: force-stop/relaunch must restore
+the authenticated dashboard without showing the unauthenticated welcome flow.
 
 - [ ] **Step 4: Write the final receipt and review it independently**
 
@@ -1154,7 +1168,8 @@ without a new owner instruction.
 - [ ] All 13 full modules are created and all superseded metadata is removed at
   a reviewed checkpoint.
 - [ ] Two globals and zero `forwardRef` remain exact.
-- [ ] Existing behavior, tests, schema, API, Mobile, Admin, deployment, and
-  later-phase boundaries are protected.
+- [ ] Existing behavior, tests, schema, API, Admin, deployment, and later-phase
+  boundaries are protected; Mobile differs only by the exact phone-discovered
+  session-restore correction and its regression.
 - [ ] Every task ends with tests, managed smoke, independent review, a local
   checkpoint commit, and owner continuation.

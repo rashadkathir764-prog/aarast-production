@@ -15,7 +15,11 @@ R3 replaces the legacy Nest composition graph with explicit bounded-context
 composition and demand-driven public provider contracts. It removes the six
 frozen platform-to-business dependencies without changing application behavior,
 routes, payloads, errors, permissions, transactions, schedules, schema,
-migrations, Mobile, Admin Web, or deployment topology.
+migrations, Admin Web, or deployment topology. The sole Mobile exception is the
+physical-device session-restore race discovered at the final phone gate: an
+account-context generation change must not invalidate a successful
+`GET /api/v1/auth/me` response. The correction is limited to
+`mobile/lib/core/network/api_client.dart` and its focused regression test.
 
 R3 is complete only when:
 
@@ -61,6 +65,13 @@ but the live graph requires these R3 clarifications:
    Nest already owns those enhancer wrappers in each controller module, so R3
    freezes the exact decorator metadata and removes the redundant explicit
    provider registrations instead of adding an export module or wrappers.
+6. The final physical-device gate reproduced a pre-existing client race: the
+   account-context bootstrap shared one request generation with account-session
+   restoration, so a successful `/auth/me` response could be discarded and the
+   local session torn down. R3 separates those generations at the network
+   boundary while preserving account-change and context-change stale-request
+   rejection. This is a reviewed runtime-blocker correction, not R9 Mobile
+   restructuring.
 
 ## Non-Goals
 
@@ -431,7 +442,8 @@ R3 is accepted only when all of the following are true:
   singleton parity tests pass;
 - the schema remains 14 files, 52 models, 41 enums, and 76 migrations, with
   unchanged seed and normalized DMMF;
-- API, Mobile, Admin Web, Compose/deploy, and product behavior remain unchanged;
+- API, Admin Web, Compose/deploy, and product behavior remain unchanged; Mobile
+  remains unchanged except for the exact session-restore race correction above;
 - all exhaustive local, runtime, independent-review, and owner application
   gates pass;
 - no push, merge, PR mutation, remote-CI claim, or R4+ work occurs without a

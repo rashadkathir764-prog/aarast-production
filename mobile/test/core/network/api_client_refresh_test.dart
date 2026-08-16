@@ -47,6 +47,24 @@ void main() {
     },
   );
 
+  test(
+    'an account context change does not discard a successful session restore response',
+    () async {
+      final adapter = _DelayedSuccessAdapter();
+      final client = ApiClient(tokenProvider: () async => 'account-token');
+      client.dio.httpClientAdapter = adapter;
+      client.bindSessionIdentity('user-a');
+
+      final restore = client.getJson('/api/v1/auth/me');
+      await adapter.started.future.timeout(const Duration(seconds: 2));
+
+      client.bindContextIdentity('plan:one:owner');
+      adapter.release.complete();
+
+      expect(await restore, {'id': 'user-a'});
+    },
+  );
+
   test('POST /api/v1/auth/refresh never triggers session refresh', () async {
     var refreshCalls = 0;
     final adapter = _RefreshAdapter();
@@ -318,6 +336,31 @@ class _CaptureUploadAdapter implements HttpClientAdapter {
     contentLengthHeader = options.headers[Headers.contentLengthHeader];
     ifNoneMatchHeader = options.headers['If-None-Match'];
     return ResponseBody.fromString('', 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _DelayedSuccessAdapter implements HttpClientAdapter {
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    started.complete();
+    await release.future;
+    return ResponseBody.fromString(
+      '{"id":"user-a"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
   }
 
   @override

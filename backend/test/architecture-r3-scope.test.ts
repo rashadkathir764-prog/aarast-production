@@ -253,6 +253,8 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
     'docs/project/STATUS.md',
     'docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md',
     'docs/superpowers/specs/2026-08-14-modular-monolith-r3-nest-boundaries-design.md',
+    'mobile/lib/core/network/api_client.dart',
+    'mobile/test/core/network/api_client_refresh_test.dart',
   ];
   const finalReceiptChangedPaths = [...new Set([
     ...preliminaryChangedPaths,
@@ -309,6 +311,16 @@ test('Task 9 permits only the seven approved active receipt files', () => {
   assert.deepEqual(
     scope().ALLOWED_PATHS.filter((entry: string) => approvedReceipts.includes(entry)),
     approvedReceipts,
+  );
+});
+
+test('Task 9 runtime correction permits only the exact Mobile session restore files', () => {
+  assert.deepEqual(
+    scope().ALLOWED_PATHS.filter((entry: string) => entry.startsWith('mobile/')),
+    [
+      'mobile/lib/core/network/api_client.dart',
+      'mobile/test/core/network/api_client_refresh_test.dart',
+    ],
   );
 });
 

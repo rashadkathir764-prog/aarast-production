@@ -13,7 +13,8 @@ const aarastBackendConnectionErrorMessage =
     'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
 const aarastOtpDeliveryUnavailableMessage =
     'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.';
-const _requestScopeGenerationKey = 'aarast_request_scope_generation';
+const _requestSessionGenerationKey = 'aarast_request_session_generation';
+const _requestContextGenerationKey = 'aarast_request_context_generation';
 const _requestClientIdKey = 'aarast_client_request_id';
 const _requestAttemptKey = 'aarast_request_attempt';
 const _requestAttemptTimerKey = 'aarast_request_attempt_timer';
@@ -47,17 +48,21 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final requestSessionGeneration =
-              options.extra[_requestScopeGenerationKey] as int? ??
+              options.extra[_requestSessionGenerationKey] as int? ??
               _sessionGeneration;
-          options.extra[_requestScopeGenerationKey] = requestSessionGeneration;
+          options.extra[_requestSessionGenerationKey] = requestSessionGeneration;
+          options.extra[_requestContextGenerationKey] =
+              options.extra[_requestContextGenerationKey] as int? ??
+              _contextGeneration;
           _beginRequestAttempt(options);
           final token = await _tokenProvider();
-          if (requestSessionGeneration != _sessionGeneration) {
+          if (_requestUsesAStaleScope(options)) {
             handler.reject(
               DioException(
                 requestOptions: options,
                 type: DioExceptionType.cancel,
-                error: 'The account session changed before the request started',
+                error:
+                    'The account session or context changed before the request started',
               ),
             );
             return;
@@ -156,6 +161,7 @@ class ApiClient {
   );
   Future<bool>? _refreshInFlight;
   int _sessionGeneration = 0;
+  int _contextGeneration = 0;
   String? _sessionIdentity;
   String? _contextIdentity;
 
@@ -352,7 +358,7 @@ class ApiClient {
   void bindContextIdentity(String? contextIdentity) {
     if (_contextIdentity == contextIdentity) return;
     _contextIdentity = contextIdentity;
-    _sessionGeneration += 1;
+    _contextGeneration += 1;
   }
 
   static String? _planIdFromContextKey(String? contextKey) {
@@ -376,17 +382,29 @@ class ApiClient {
   }
 
   bool _requestUsesAStaleScope(RequestOptions options) {
-    final requestGeneration = options.extra[_requestScopeGenerationKey] as int?;
-    return requestGeneration != null && requestGeneration != _sessionGeneration;
+    final requestSessionGeneration =
+        options.extra[_requestSessionGenerationKey] as int?;
+    if (requestSessionGeneration != null &&
+        requestSessionGeneration != _sessionGeneration) {
+      return true;
+    }
+    if (_isAccountSessionRestoreRequest(options)) return false;
+    final requestContextGeneration =
+        options.extra[_requestContextGenerationKey] as int?;
+    return requestContextGeneration != null &&
+        requestContextGeneration != _contextGeneration;
+  }
+
+  bool _isAccountSessionRestoreRequest(RequestOptions request) {
+    return request.method.toUpperCase() == 'GET' &&
+        request.path == '/api/v1/auth/me';
   }
 
   bool _canRefresh(DioException error) {
     final request = error.requestOptions;
-    final isSessionRestoreRequest =
-        request.method.toUpperCase() == 'GET' &&
-        request.path == '/api/v1/auth/me';
     return error.response?.statusCode == 401 &&
-        (!request.path.startsWith('/api/v1/auth') || isSessionRestoreRequest) &&
+        (!request.path.startsWith('/api/v1/auth') ||
+            _isAccountSessionRestoreRequest(request)) &&
         request.extra[_refreshRetryKey] != true &&
         refreshSession != null;
   }

@@ -93,13 +93,15 @@ changing behavior.
 
 ## Current Working Plan
 
+- `docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`
+  - R3 is locally complete from immutable R2 closeout base
+  `6b06eb096aca8cc6684d365d16e05d4cd8529898`. The strict 13-context Nest graph,
+  exhaustive local gates, immutable Docker runtime, independent reviews, and
+  owner phone checkpoint passed. A phone-discovered Mobile session-restore race
+  was corrected and verified by force-stop/relaunch without logout. No push,
+  merge, or remote-CI result is claimed; R4 has not started.
 - `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`
-  - R2 local implementation, immutable Docker runtime, and owner phone
-  checkpoint passed on 2026-08-14. The native schema folder contains 13 current
-  model-owner files plus `_base.prisma` from immutable R1-closeout base
-  `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`; all schema-equivalence and
-  exhaustive local gates passed. Final independent sign-off is requested. R3
-  has not started, and no push, merge, or remote-CI result is claimed.
+  - completed R2 native Prisma schema-folder plan and immutable base for R3.
 - `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`
   - completed local R1 execution plan. The target `platform/` and
   `shared-kernel/` layout was implemented in separately reviewed checkpoints on

@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — Active: R2 Final Sign-Off
+### P3 — Source Quality And Architecture — R3 Locally Complete
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -332,17 +332,17 @@ Acceptance:
   gates, managed `smoke:all`, independent final source/runtime review, clean
   receipt checkpoints, and the owner's phone application test passed. It is the
   immutable base of the executed R2 candidate.
-- Six exact platform-to-business edges remain assigned to R3; sharing's direct
-  OTP transport consumption remains assigned to R6; the two approved globals
-  remain until R8.
+- At R1 closeout, six exact platform-to-business edges were assigned to R3; R3
+  later removed all six. Sharing's direct OTP transport migration remains
+  assigned to R6, and the two approved globals remain until R8.
 - R1 preserves all routes, errors/Arabic, permissions, transactions, 52
   models, 76 migrations, Mobile/Admin source, and deployment artifacts.
 
-#### R2 — Native Prisma Schema Folder — Local Gates Complete
+#### R2 — Native Prisma Schema Folder — Locally Complete
 
-- R2 implementation, exhaustive local gates, immutable Docker runtime, and the
-  owner's corrected R2Local phone checkpoint passed on 2026-08-14. Final
-  independent source/contract/runtime/receipt sign-off is requested.
+- R2 implementation, exhaustive local gates, immutable Docker runtime, the
+  owner's corrected R2Local phone checkpoint, and final independent
+  source/contract/runtime/receipt sign-off passed on 2026-08-14.
 - Immutable `R2_BASE` is the R1 local-closeout commit
   `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d` on the same
   `modular-monolith` branch.
@@ -357,14 +357,33 @@ Acceptance:
   probe/cutover, and explicit owner PASS are locally green. The initial phone
   attempt used a stale loopback R1 APK and emitted no R2 request; only the
   corrected R2Local APK result is accepted as R2 evidence.
-- R3 is next but has not started. Remote CI was not run, and no push or merge is
-  claimed.
+- R2 is the immutable accepted base for completed local R3 execution. Remote CI
+  was not run, and no push or merge is claimed.
+
+#### R3 — Strict Nest Boundaries — Locally Complete
+
+- R3 executed from immutable base
+  `6b06eb096aca8cc6684d365d16e05d4cd8529898` and closed the initial 3 duplicate
+  registrations, 6 platform debts, and 163 retired provider edges across all 13
+  business contexts, with zero `forwardRef()`, cycles, or illegal boundaries.
+- Exhaustive Backend/Admin/Mobile/docs/schema/audit/smoke gates and independent
+  task reviews passed. The final fixed-base scope contains exactly 214 reviewed
+  paths and zero unexpected paths.
+- The phone gate exposed a pre-existing Mobile session-restore race. The exact
+  ApiClient correction was reproduced RED, verified GREEN, and accepted only
+  after the owner reached the dashboard and an independent ADB force-stop and
+  relaunch restored that dashboard without logout.
+- Immutable runtime candidate `dfc5488cf30d4eb36dc2d72c618b2442f34ea058`
+  and the R3Local APK passed identity, health, safe-log, and device gates. The
+  prior R3 and R2 runtimes remain preserved as rollback artifacts.
+- R3 is locally complete. R4 has not started; remote CI was not run, and no push
+  or merge is claimed.
 
 Current working plan:
-`docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`.
+`docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`.
 
-The numbered P3 modernization work below remains bounded by the active R2
-plan; later-phase work must not move forward early.
+The numbered P3 modernization work below treats locally completed R3 as the
+current checkpoint; R4 and later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

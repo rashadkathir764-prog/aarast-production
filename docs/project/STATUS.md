@@ -21,16 +21,17 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
-## Modular Monolith R3 Preliminary Runtime Candidate - 2026-08-16
+## Modular Monolith R3 Local Completion - 2026-08-16
 
 The strict R3 Nest-boundary implementation is committed locally on branch
 `modular-monolith` at implementation checkpoint
 `0cbf5922c3d82e196722569e224754a1dd97dae5`, from immutable `R3_BASE`
 `6b06eb096aca8cc6684d365d16e05d4cd8529898`. The physical phone gate later
 reproduced one pre-existing Mobile session-restore race; its exact reviewed
-correction is committed at `ad99687d00b94929b378bee1605b4d7ed82e8474`.
-The fixed-base scope verifier now reports exactly 208 reviewed cumulative paths
-and zero unexpected paths.
+correction is committed at `ad99687d00b94929b378bee1605b4d7ed82e8474`, and
+the immutable corrected runtime receipt is bound to candidate
+`dfc5488cf30d4eb36dc2d72c618b2442f34ea058`. The fixed-base scope verifier now
+reports exactly 214 reviewed cumulative paths and zero unexpected paths.
 
 The committed architecture state is strict and internally closed: 13 business
 contexts, 340 scanned modules, 1383 dependency edges, 89 known dependency
@@ -41,7 +42,7 @@ module cycles, and zero illegal boundary edges. All superseded Nest metadata is
 retired; the one approved realtime global leaf remains byte-identical.
 
 The full local pre-runtime gates passed. Backend architecture, check, build,
-Prisma validation, 951/952 tests with one intentional Windows permission skip,
+Prisma validation, 953/954 tests with one intentional Windows permission skip,
 both zero-finding npm audits, and all 30 managed smoke packages passed. Admin
 typecheck, 96/96 tests, build, 12 honesty checks, 16 route checks, and 3
 container-config checks passed. Mobile boundary tests passed 192/192 with the
@@ -74,9 +75,8 @@ The Task 9 scope gate was corrected before the immutable runtime build to admit
 only the seven active Markdown receipt/navigation files named by the approved
 plan plus the exact two-file Mobile runtime correction. Its permanent
 RED-to-GREEN regression passes 15/15, the manifest and scanner allowlists remain
-byte/order-exact, and the current fixed-base scope is 208 reviewed paths with
-zero unexpected paths. The live receipt-stage assertion accepts only that exact
-preliminary set or the exact 214-path final receipt set.
+byte/order-exact, and the final fixed-base scope is 214 reviewed paths with zero
+unexpected paths.
 
 The earlier immutable R3 runtime reached port 3120 healthy with restart count
 zero, and the owner passed login, dashboard, core read/write, notifications, and
@@ -85,11 +85,29 @@ HTTP 200 from `/api/v1/auth/me`, but a concurrent account-context selection
 advanced the shared client generation, the Mobile interceptor rejected that
 successful response, and session teardown returned the app to the unauthenticated
 welcome flow. The focused test reproduced this failure before production code
-changed and passes after the network-boundary correction. A new immutable image,
-corrected APK, and owner force-stop/relaunch checkpoint are explicitly pending.
-The accepted R2 container and image remain stopped but preserved as rollback.
-R3 is not locally closed until those gates pass. No push, merge, PR, deployment,
-or remote CI run is claimed, and R4 has not started.
+changed and passes after the network-boundary correction.
+
+The corrected immutable image `aarast-backend:r3-final-dfc5488c` has image ID
+`sha256:1f12732ff5dd6ce201f5a9fedf20f6f1ae91ce8f1baac4fa3c9e3feaee469013`
+and exact OCI revision `dfc5488cf30d4eb36dc2d72c618b2442f34ea058`. Its
+protected probe and cutover passed; localhost and assigned-LAN `/live` and
+`/ready` returned HTTP 200, restart count remained zero, OOM was false, and the
+safe fatal/unhandled/circular/TypeError/Prisma-not-found scan returned zero. The
+previous R3 runtime is stopped and preserved as
+`aarast-backend-r3-rollback-5c76970b`; the accepted R2 container and image also
+remain stopped and preserved.
+
+The corrected APK is package `com.aarast.aarast_mobile.r3local`, version code 8,
+with SHA-256
+`05be807966bd762e5628d35034197cf80c09298d21e97dc2f490a91f9cd4514a`.
+It was installed with data preservation. The owner logged in and reached the
+dashboard; an independent ADB force-stop/relaunch then returned to the
+authenticated dashboard. Sanitized evidence was exactly one
+`SESSION_RESTORED`, zero `SESSION_RESTORE_FAILED`, zero teardown/logout events,
+one HTTP-200 `/api/v1/auth/me`, zero `/api/v1/auth/logout`, and zero server fatal
+markers. No credential, OTP, token, phone number, raw body, or raw log is
+retained. R3 is locally complete. No push, merge, PR, deployment, or remote CI
+run is claimed, and R4 has not started.
 
 ## Modular Monolith R2 Local Closure Candidate - 2026-08-14
 
@@ -283,8 +301,8 @@ R2Local package on the connected device.
 
 R2 implementation, immutable runtime, and owner acceptance are locally green;
 the final independent source/contract/runtime/receipt sign-off is now requested.
-R3 is next and has not started. Remote CI was not run, and no push or merge is
-claimed.
+At that R2 checkpoint, R3 was next and had not started. Remote CI was not run,
+and no push or merge is claimed.
 
 Planning artifacts:
 

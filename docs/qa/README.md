@@ -92,6 +92,32 @@ before R2 began. The closeout preserved 52 models, 76 migrations, every
 route/error/Arabic/permission/transaction contract, Mobile and Admin source,
 and deployment artifacts.
 
+## Modular Monolith R3 Closeout Gates
+
+- Fixed-base R3 scope PASS at exactly 214 reviewed paths and zero unexpected
+  paths; protected schema/migrations/seed/Admin/deployment/workflow/lock-file
+  surfaces remain unchanged.
+- Backend architecture is strict at 13 contexts, zero remaining duplicate
+  registrations out of 3, zero platform debts out of 6, zero retired provider
+  edges out of 163, zero `forwardRef()`, exactly two approved globals, zero
+  cycles, and zero illegal edges. Backend check/build/tests/audits and all 30
+  managed smoke packages passed; schema remains 14 files/52 models/41 enums/76
+  migrations with equal DMMF and empty migrate diff.
+- Admin gates and Mobile boundaries remained green. The exact phone-discovered
+  ApiClient restore regression passed RED-to-GREEN, Flutter analysis passed,
+  and the complete non-Golden Mobile suite passed 1102/1102; no UI source
+  changed, so Goldens were not rerun.
+- Immutable image `aarast-backend:r3-final-dfc5488c` passed protected probe,
+  cutover, revision, zero-restart/OOM, local/LAN `/live` and `/ready`, and safe
+  log checks. Prior R3 and R2 runtimes remain preserved as rollback artifacts.
+- The owner logged in and reached the dashboard in the corrected R3Local APK.
+  Independent ADB force-stop/relaunch then proved `SESSION_RESTORED=1`, restore
+  failure/logout/teardown=0, `/api/v1/auth/me` HTTP 200,
+  `/api/v1/auth/logout`=0, and the authenticated dashboard visible. No secrets
+  or raw bodies/logs were retained.
+- R3 is locally complete. R4 has not started; no push, merge, deployment, or
+  remote-CI result is claimed.
+
 ## Modular Monolith R2 Closeout Gates
 
 R2 uses the R1 commands above plus the explicit fixed-base scope verifier,
@@ -125,8 +151,8 @@ Expected non-failing Backend negative-path/DEP0190 output, Admin ErrorBoundary
 fixture output, Flutter desktop plugin notices, the initial absent
 `DATABASE_URL` Prisma result, and the first `adb` PATH lookup are recorded in
 the full receipt in `docs/project/STATUS.md`. Final independent R2 sign-off is
-requested; R3 is not started. Remote CI was not run, and no push or merge is
-claimed.
+requested; at that R2 checkpoint, R3 had not started. Remote CI was not run,
+and no push or merge is claimed.
 
 ## Latest Recorded Full Working-Tree Gate — 2026-08-11
 

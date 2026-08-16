@@ -201,12 +201,14 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   The phase-specific `r0-scope` CI job is intentionally removed at local R1
   closeout because any future push is a combined post-R0 candidate; all other
   CI jobs remain unchanged and remote results are not claimed locally.
-- Six exact platform-to-business debts remain frozen for R3 removal:
-  runtime config -> JWT secret; readiness -> media storage; outbox dispatcher
-  -> conversation realtime publisher; outbox dispatcher -> push delivery;
-  outbox module -> conversation realtime module; and outbox module -> push
-  module. Sharing's direct OTP transport consumption remains named migration
-  debt until R6. The two approved `@Global()` declarations remain until R8.
+- R3 is locally complete from immutable base
+  `6b06eb096aca8cc6684d365d16e05d4cd8529898`: all 13 business contexts have
+  reviewed full/internal/public Nest boundaries, the initial 3 duplicate
+  registrations, 6 platform-to-business debts, and 163 retired provider edges
+  are all closed, and the live graph has zero `forwardRef()`, zero cycles, and
+  zero illegal boundary edges. The two approved `@Global()` declarations remain
+  scheduled for R8; sharing's direct OTP transport migration remains assigned
+  to R6.
 - R2 local implementation, production-shaped runtime, and owner application
   checkpoint passed on 2026-08-14 from immutable base
   `8ba0db78ac669bd6d17de878b77a4d1e6c5e542d`. The live Prisma source is the
@@ -214,8 +216,14 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   52 models, 41 enums, and 76 unchanged migrations. Normalized DMMF and migrate
   diff prove semantic equivalence; seed, migrations, generated contracts,
   application behavior, Mobile/Admin source, and deployment topology remain
-  unchanged. The final independent R2 source/contract/runtime/receipt sign-off
-  is requested; R3 has not started.
+  unchanged. Independent R2 source/contract/runtime/receipt review passed and
+  the accepted R2 runtime remains preserved as rollback evidence.
+- The R3 phone checkpoint found and corrected one pre-existing Mobile restore
+  race: account-context bootstrap no longer invalidates a successful
+  `/api/v1/auth/me` response. The corrected R3Local APK force-stop/relaunch gate
+  restored the authenticated dashboard, emitted `SESSION_RESTORED`, and emitted
+  neither restore failure nor logout. The immutable R3 runtime and prior R3/R2
+  rollback artifacts remain local; no push, merge, or remote CI is claimed.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.
@@ -224,6 +232,6 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   activates the strict Mobile boundary mode.
 
 The current working plan is
-`docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`. It is a
+`docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`. It is a
 working execution artifact, not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.

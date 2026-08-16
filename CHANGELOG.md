@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-08-16 - Modular Monolith R3 Local Completion
+
+- Implemented demand-driven Nest full/internal/public boundaries for all 13
+  business contexts from immutable R3 base
+  `6b06eb096aca8cc6684d365d16e05d4cd8529898`. Closed all initial duplicate
+  registrations (3/3), platform debts (6/6), and retired provider edges
+  (163/163), with zero `forwardRef()`, cycles, or illegal boundary edges.
+- Added TypeChecker-resolved context, provider-identity, retirement, source-law,
+  and fixed-base scope enforcement. The final local receipt contains exactly 214
+  reviewed cumulative paths and zero unexpected paths.
+- Preserved schema semantics at 14 files, 52 models, 41 enums, and 76 migrations;
+  DMMF remains equal and migrate diff empty. Backend/Admin/Mobile/docs/audit and
+  all managed smoke gates passed without route, API, schema, migration, or
+  deployment expansion.
+- The physical-phone gate reproduced a pre-existing Mobile cold-restore race:
+  account-context bootstrap advanced a shared generation and discarded a real
+  HTTP-200 `/api/v1/auth/me`. Split account-session and selected-context
+  generations at the ApiClient boundary, with permanent RED-to-GREEN and
+  isolation coverage.
+- Built and cut over immutable image `aarast-backend:r3-final-dfc5488c` at exact
+  revision `dfc5488cf30d4eb36dc2d72c618b2442f34ea058`. Local/LAN health, safe logs,
+  restart/OOM state, protected probe, and rollback preservation passed.
+- Installed the corrected `com.aarast.aarast_mobile.r3local` APK with data
+  preservation. The owner reached the dashboard; independent ADB force-stop and
+  relaunch restored the authenticated dashboard with one `SESSION_RESTORED`,
+  one HTTP-200 `/api/v1/auth/me`, and zero restore failure, logout, or fatal
+  markers.
+- R3 is locally complete. The prior R3 and accepted R2 images/containers remain
+  available for rollback. R4 has not started, and no push, merge, deployment, or
+  remote-CI result is claimed.
+
 ## 2026-08-14 - Modular Monolith R2 Local Closure Candidate
 
 - Replaced the retired single Prisma schema with the native 14-file folder:
@@ -24,7 +55,8 @@
   LAN URL; device reachability and the owner's login/home/core-flow checkpoint
   then passed. This distinguishes client configuration from Backend behavior.
 - Final independent R2 source/contract/runtime/receipt sign-off is requested.
-  R3 has not started. Remote CI was not run, and no push or merge is claimed.
+  At that R2 checkpoint, R3 had not started. Remote CI was not run, and no push
+  or merge is claimed.
 
 ## 2026-08-13 - Modular Monolith R1 Local Completion
 

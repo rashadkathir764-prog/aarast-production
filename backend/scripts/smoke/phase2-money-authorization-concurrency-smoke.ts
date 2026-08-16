@@ -19,7 +19,10 @@ import {
 } from "@prisma/client";
 import ts from "typescript";
 import { BudgetCategoriesService } from "../../src/budget-categories/budget-categories.service";
+import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
+import { ContributorScopeService } from "../../src/contribution-history/contributor-scope.service";
 import { MoneyBudgetService } from "../../src/money/money-budget.service";
+import { WeddingPlanBudgetWriter } from "../../src/modules/planning/internal/wedding-plan-budget-writer";
 import { PermissionService } from "../../src/sharing/permission.service";
 import { WeddingCostsService } from "../../src/wedding-costs/wedding-costs.service";
 
@@ -45,8 +48,25 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any);
-const weddingCosts = new WeddingCostsService(prisma as any, permissions);
-const moneyBudget = new MoneyBudgetService(prisma as any, permissions);
+const contributionHistory = new ContributionHistoryService(prisma as any);
+const contributorScope = new ContributorScopeService(contributionHistory);
+const weddingCosts = new WeddingCostsService(
+  prisma as any,
+  permissions,
+  contributorScope,
+  contributionHistory,
+);
+const budgetCategories = new BudgetCategoriesService(
+  prisma as any,
+  permissions,
+  contributorScope,
+  contributionHistory,
+);
+const moneyBudget = new MoneyBudgetService(
+  prisma as any,
+  permissions,
+  new WeddingPlanBudgetWriter(),
+);
 
 interface ControllerMutation {
   file: string;
@@ -618,9 +638,18 @@ async function holdUncommittedMoneyRevocation(
 async function holdUncommittedMembershipRemoval(
   sharedMemberId: string,
 ): Promise<HeldMutation> {
-  return holdUncommittedMutation((tx) =>
-    tx.sharedMember.delete({ where: { id: sharedMemberId } }),
-  );
+  return holdUncommittedMutation(async (tx) => {
+    const member = await tx.sharedMember.findUniqueOrThrow({
+      where: { id: sharedMemberId },
+    });
+    await contributionHistory.closeTenureInTransaction(tx, {
+      weddingPlanId: member.weddingPlanId,
+      actorUserId: member.userId,
+      reason: "MEMBER_REMOVED",
+      roleAtEnd: member.role,
+    });
+    await tx.sharedMember.delete({ where: { id: sharedMemberId } });
+  });
 }
 
 async function holdUncommittedPlanArchive(
@@ -709,24 +738,16 @@ async function createFinanceGraph(fixture: any) {
       canManageMoney: true,
     },
   });
-  const category = await prisma.budgetCategory.create({
-    data: {
-      weddingPlanId: fixture.plan.id,
-      name: `Concurrency category ${fixture.scope}`,
-      normalizedName: `concurrency-category-${fixture.scope}`,
-    },
+  const user = authenticatedUser(fixture.member);
+  const category = await budgetCategories.create(user, fixture.plan.id, {
+    name: `Concurrency category ${fixture.scope}`,
   });
-  const cost = await prisma.weddingCost.create({
-    data: {
-      weddingPlanId: fixture.plan.id,
-      budgetCategoryId: category.id,
-      providerId: fixture.provider.id,
-      title: `Concurrency cost ${fixture.scope}`,
-      totalAmount: new Prisma.Decimal(1_000),
-      paidAmount: new Prisma.Decimal(0),
-      status: WeddingCostStatus.OPEN,
-      note: "unchanged cost note",
-    },
+  const cost = await weddingCosts.createCost(user, fixture.plan.id, {
+    budgetCategoryId: category.id,
+    providerId: fixture.provider.id,
+    title: `Concurrency cost ${fixture.scope}`,
+    totalAmount: "1000",
+    note: "unchanged cost note",
   });
   const schedule = await prisma.paymentSchedule.create({
     data: {

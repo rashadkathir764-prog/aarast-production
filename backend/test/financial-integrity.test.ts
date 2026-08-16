@@ -47,7 +47,11 @@ test("money validation accepts bounded amounts and rejects unsafe values", () =>
     );
   }
 
-  const budget = new MoneyBudgetService({} as any, {} as any);
+  const budget = new MoneyBudgetService({} as any, {} as any, {
+    updateBudgetInTransaction: async () => {
+      throw new Error("validation-only fixture must not write a plan");
+    },
+  });
   assert.throws(() => (budget as any).totalBudget([]), BadRequestException);
   assert.throws(
     () =>
@@ -87,7 +91,11 @@ test("money-budget rejects ambiguous categories and impossible allocations befor
       plan: { currency: "YER" },
     }),
   };
-  const service = new MoneyBudgetService(prisma as any, permissions as any);
+  const service = new MoneyBudgetService(prisma as any, permissions as any, {
+    updateBudgetInTransaction: async () => {
+      throw new Error("invalid input must not write a plan");
+    },
+  });
   const user = { id: "user-1" } as any;
 
   await assert.rejects(
@@ -164,8 +172,7 @@ test("money budget accepts an empty category list but still protects categories 
       },
       findUniqueOrThrow: async () => ({ id: "plan-1", currency: "YER" }),
       update: async () => {
-        transactionEvents.push("budget-update");
-        return {};
+        throw new Error("Finance must not write WeddingPlan directly");
       },
     },
     weddingCost: { count: async () => 0, findMany: async () => [] },
@@ -200,7 +207,20 @@ test("money budget accepts an empty category list but still protects categories 
     canViewMoney: () => true,
     canManageMoney: () => true,
   };
-  const service = new MoneyBudgetService(prisma as any, permissions as any);
+  const planningBudgetWriter = {
+    updateBudgetInTransaction: async (receivedTx: unknown, input: any) => {
+      assert.equal(receivedTx, tx);
+      assert.equal(input.weddingPlanId, "plan-1");
+      assert.equal(input.estimatedBudget?.toString() ?? null, "1000");
+      assert.equal(input.currency, "YER");
+      transactionEvents.push("budget-update");
+    },
+  };
+  const service = new MoneyBudgetService(
+    prisma as any,
+    permissions as any,
+    planningBudgetWriter,
+  );
   const cleared = await service.replace(
     { id: "owner-1" } as any,
     "plan-1",
@@ -232,11 +252,76 @@ test("money budget accepts an empty category list but still protects categories 
         operation(usedTx),
     } as any,
     permissions as any,
+    planningBudgetWriter,
   );
   await assert.rejects(
     () => usedService.replace({ id: "owner-1" } as any, "plan-1", dto),
     ConflictException,
   );
+});
+
+test("money budget delegates the Planning write through the same serializable transaction", async () => {
+  const transactionEvents: string[] = [];
+  const tx = {
+    weddingPlan: {
+      update: async () => {
+        throw new Error("Finance must not write WeddingPlan directly");
+      },
+      findUnique: async () => ({
+        estimatedBudget: new Prisma.Decimal("1000"),
+        currency: "YER",
+      }),
+    },
+    weddingCost: { count: async () => 0, findMany: async () => [] },
+    costPayment: { findMany: async () => [] },
+    paymentSchedule: { findMany: async () => [] },
+    budgetCategory: {
+      findMany: async () => [],
+      deleteMany: async () => ({ count: 0 }),
+      update: async () => {
+        throw new Error("empty replacement must not update categories");
+      },
+      create: async () => {
+        throw new Error("empty replacement must not create categories");
+      },
+    },
+  };
+  const prisma = {
+    $transaction: async (operation: (client: typeof tx) => unknown) =>
+      operation(tx),
+  };
+  const permissions = {
+    assertMoneyManageableForUpdateInTransaction: async () => ({
+      plan: { id: "plan-1", currency: "YER" },
+      isOwner: true,
+      sharedMember: null,
+    }),
+    canViewMoney: () => true,
+    canManageMoney: () => true,
+  };
+  const planningBudgetWriter = {
+    updateBudgetInTransaction: async (receivedTx: unknown, input: any) => {
+      assert.equal(receivedTx, tx);
+      assert.equal(input.weddingPlanId, "plan-1");
+      assert.equal(input.estimatedBudget.toString(), "1000");
+      assert.equal(input.currency, "YER");
+      transactionEvents.push("budget-update");
+    },
+  };
+  const service = new (MoneyBudgetService as any)(
+    prisma,
+    permissions,
+    planningBudgetWriter,
+  ) as MoneyBudgetService;
+
+  const result = await service.replace(
+    { id: "owner-1" } as any,
+    "plan-1",
+    { totalBudget: "1000", currency: "YER", categories: [] },
+  );
+
+  assert.deepEqual(transactionEvents, ["budget-update"]);
+  assert.equal(result.summary.budget.total, "1000");
 });
 
 test("strict finance dates reject impossible and ambiguous calendar input", () => {

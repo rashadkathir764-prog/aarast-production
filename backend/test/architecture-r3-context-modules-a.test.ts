@@ -45,6 +45,7 @@ function moduleClass(path: string, name: string): Function {
 function metadataNames(module: Function, key: string): string[] {
   return ((Reflect.getMetadata(key, module) as Function[] | undefined) ?? [])
     .map((entry) => entry.name)
+    .filter((name): name is string => Boolean(name))
     .sort();
 }
 
@@ -113,6 +114,7 @@ test('Task 6 internal leaves own each non-public implementation exactly once', (
   const expected = new Map<string, string[]>([
     ['modules/identity/internal/identity-profile.internal.module.ts#IdentityProfileInternalModule', ['ContextsService', 'UsersService']],
     ['modules/planning/internal/planning-services.internal.module.ts#PlanningServicesInternalModule', ['OnboardingService', 'WeddingPlansService']],
+    ['modules/planning/internal/planning-budget-write.internal.module.ts#PlanningBudgetWriteInternalModule', ['WeddingPlanBudgetWriter']],
     ['modules/finance/internal/finance-services.internal.module.ts#FinanceServicesInternalModule', ['BudgetCategoriesService', 'MoneyBudgetService', 'MoneySummaryService', 'WeddingCostsService']],
     ['modules/collaboration/internal/collaboration-services.internal.module.ts#CollaborationServicesInternalModule', ['InvitationDeliveryService', 'InviteAccessService', 'SharingService']],
     ['modules/tasks/internal/tasks-service.internal.module.ts#TasksServiceInternalModule', ['TasksService']],

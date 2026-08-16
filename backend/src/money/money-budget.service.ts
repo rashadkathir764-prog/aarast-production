@@ -15,6 +15,10 @@ import {
   type CollaborationPermissionPort as PermissionService,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
+  PLANNING_BUDGET_WRITE_PORT,
+  type PlanningBudgetWritePort,
+} from "../modules/planning/public/planning-budget-write.port";
+import {
   MoneyBudgetCategoryDto,
   ReplaceMoneyBudgetDto,
 } from "./dto/replace-money-budget.dto";
@@ -45,6 +49,8 @@ export class MoneyBudgetService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(PLANNING_BUDGET_WRITE_PORT)
+    private readonly planningBudgetWriter: PlanningBudgetWritePort,
   ) {}
 
   async replace(
@@ -156,9 +162,10 @@ export class MoneyBudgetService {
           });
           idMap[item.clientId!] = created.id;
         }
-        await tx.weddingPlan.update({
-          where: { id: weddingPlanId },
-          data: { estimatedBudget: totalBudget, currency },
+        await this.planningBudgetWriter.updateBudgetInTransaction(tx, {
+          weddingPlanId,
+          estimatedBudget: totalBudget,
+          currency,
         });
         const savedCategories = await tx.budgetCategory.findMany({
           where: { weddingPlanId },

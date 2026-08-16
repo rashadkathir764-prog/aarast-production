@@ -7,6 +7,7 @@ import { WeddingCostsService } from "../../../wedding-costs/wedding-costs.servic
 import { CollaborationHistoryPublicModule } from "../../collaboration/public/collaboration-history-public.module";
 import { CollaborationPermissionPublicModule } from "../../collaboration/public/collaboration-permission-public.module";
 import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";
+import { PlanningBudgetWritePublicModule } from "../../planning/public/planning-budget-write-public.module";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CollaborationScopePublicModule } from "../../collaboration/public/colla
     CollaborationPermissionPublicModule,
     CollaborationHistoryPublicModule,
     CollaborationScopePublicModule,
+    PlanningBudgetWritePublicModule,
   ],
   providers: [
     MoneySummaryService,

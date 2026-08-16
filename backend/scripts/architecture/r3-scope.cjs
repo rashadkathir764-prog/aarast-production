@@ -8,6 +8,40 @@ const { execFileSync } = require('node:child_process');
 const { types: utilTypes } = require('node:util');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
+const R4_BASE = '502b181a2ce624458fd7eae064f194497ec0151e';
+const R4_MANIFEST_PATH = 'backend/architecture/r4-planning-finance-boundary.json';
+const R4_ALLOWED_PATHS = Object.freeze([
+  'ARCHITECTURE.md',
+  'CHANGELOG.md',
+  'backend/architecture/ownership-baseline.json',
+  'backend/architecture/r3-context-boundaries.json',
+  'backend/architecture/r4-planning-finance-boundary.json',
+  'backend/package.json',
+  'backend/scripts/architecture/r3-context-scan.cjs',
+  'backend/scripts/architecture/r3-scope.cjs',
+  'backend/scripts/smoke/phase2-money-authorization-concurrency-smoke.ts',
+  'backend/src/modules/finance/internal/finance-services.internal.module.ts',
+  'backend/src/modules/planning/internal/planning-budget-write.internal.module.ts',
+  'backend/src/modules/planning/internal/wedding-plan-budget-writer.ts',
+  'backend/src/modules/planning/planning.module.ts',
+  'backend/src/modules/planning/public/planning-budget-write-public.module.ts',
+  'backend/src/modules/planning/public/planning-budget-write.port.ts',
+  'backend/src/money/money-budget.service.ts',
+  'backend/test/architecture-r3-context-modules-a.test.ts',
+  'backend/test/architecture-r3-contexts.test.ts',
+  'backend/test/architecture-r3-scope.test.ts',
+  'backend/test/architecture-r4-planning-finance-boundary.test.ts',
+  'backend/test/financial-integrity.test.ts',
+  'docs/README.md',
+  'docs/SCRIPTS.md',
+  'docs/backend/README.md',
+  'docs/project/DECISIONS.md',
+  'docs/project/EXECUTION_PLAN.md',
+  'docs/project/STATUS.md',
+  'docs/qa/README.md',
+  'docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md',
+  'docs/superpowers/specs/2026-08-16-modular-monolith-r4-planning-finance-ownership-design.md',
+]);
 const ALLOWED_PATHS = Object.freeze([
   'backend/.dependency-cruiser-known-violations.json',
   'backend/.dependency-cruiser.cjs',
@@ -264,6 +298,40 @@ function assertAllowedPathsMatch(manifestPaths, scopePaths) {
   }
 }
 
+function validateR4DelegationManifest(value) {
+  assertPlainData(value, 'R4 delegation manifest');
+  const manifest = assertPlainObject(value, 'R4 delegation manifest');
+  if (manifest.schemaVersion !== 1 || manifest.baseRevision !== R4_BASE) {
+    throw new Error('R4 delegation manifest identity is invalid');
+  }
+  if (!['baseline', 'strict', 'complete'].includes(manifest.stage)) {
+    throw new Error('R4 delegation manifest stage is invalid');
+  }
+  const allowedChangedPaths = validatePathList(
+    manifest.allowedChangedPaths,
+    'R4 delegated paths',
+  );
+  if (JSON.stringify(allowedChangedPaths) !== JSON.stringify([...allowedChangedPaths].sort())) {
+    throw new Error('R4 delegated paths must be sorted');
+  }
+  assertAllowedPathsMatch(allowedChangedPaths, R4_ALLOWED_PATHS);
+  for (const requiredPath of [
+    R4_MANIFEST_PATH,
+    'backend/scripts/architecture/r3-scope.cjs',
+    'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/architecture-r4-planning-finance-boundary.test.ts',
+  ]) {
+    if (!allowedChangedPaths.includes(requiredPath)) {
+      throw new Error('R4 delegation manifest is missing a required handoff path');
+    }
+  }
+  return Object.freeze({
+    baseRevision: manifest.baseRevision,
+    stage: manifest.stage,
+    allowedChangedPaths: Object.freeze(allowedChangedPaths),
+  });
+}
+
 function validateScopeSnapshot(value) {
   const snapshot = assertPlainObject(value, 'scope snapshot');
   if (snapshot.baseRef !== R3_BASE) throw new Error('scope base does not equal immutable R3 base');
@@ -470,12 +538,20 @@ function validateR3Scope(options) {
     'r3-context-boundaries.json',
   ), 'utf8'));
   assertAllowedPathsMatch(manifest.allowedChangedPaths, ALLOWED_PATHS);
+  const r4ManifestAbsolutePath = path.join(input.repositoryRoot, ...R4_MANIFEST_PATH.split('/'));
+  const delegatedR4 = fs.existsSync(r4ManifestAbsolutePath)
+    ? validateR4DelegationManifest(JSON.parse(fs.readFileSync(r4ManifestAbsolutePath, 'utf8')))
+    : null;
+  const effectiveAllowedPaths = [...new Set([
+    ...ALLOWED_PATHS,
+    ...(delegatedR4 ? delegatedR4.allowedChangedPaths : []),
+  ])].sort();
   const tracked = gitLines(input.repositoryRoot, ['diff', '--no-renames', '--name-only', R3_BASE, '--']);
   const untracked = gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
   const changedPaths = [...new Set([...tracked, ...untracked])].sort();
   const snapshot = validateScopeSnapshot({
     baseRef: input.baseRef,
-    allowedPaths: [...ALLOWED_PATHS],
+    allowedPaths: effectiveAllowedPaths,
     changedPaths,
   });
   const reportPath = input.reportPath === undefined
@@ -513,7 +589,9 @@ function runCli(dependencies = {}) {
 module.exports = {
   R3_BASE,
   ALLOWED_PATHS,
+  R4_ALLOWED_PATHS,
   assertAllowedPathsMatch,
+  validateR4DelegationManifest,
   writeAtomicJson,
   validateR3Scope,
   validateScopeSnapshot,

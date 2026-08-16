@@ -2547,18 +2547,6 @@
       "count": 1
     },
     {
-      "key": "backend/src/money/money-budget.service.ts|finance|planning|WeddingPlan|update|write|delegate|foreign-model",
-      "file": "backend/src/money/money-budget.service.ts",
-      "context": "finance",
-      "owner": "planning",
-      "model": "WeddingPlan",
-      "operation": "update",
-      "mode": "write",
-      "source": "delegate",
-      "reason": "foreign-model",
-      "count": 1
-    },
-    {
       "key": "backend/src/money/money-summary.service.ts|finance|planning|WeddingPlan|findUnique|read|delegate|foreign-model",
       "file": "backend/src/money/money-summary.service.ts",
       "context": "finance",

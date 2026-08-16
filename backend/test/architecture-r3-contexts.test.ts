@@ -112,10 +112,10 @@ test('the canonical R3 manifest freezes the exact strict ledgers', () => {
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 49);
+  assert.equal(manifest.legacyModules.length, 51);
   assert.equal(manifest.crossContextInjections.length, 0);
   assert.equal(manifest.compositionDependencies.length, 6);
-  assert.equal(manifest.providerContracts.length, 11);
+  assert.equal(manifest.providerContracts.length, 12);
   assert.equal(manifest.decoratorRuntimeReferences.length, 23);
   assert.equal(manifest.adminGuardMetadata.length, 4);
   assert.equal(manifest.runtimeDecoratorValueReferences.length, 26);
@@ -198,7 +198,7 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 49,
+    legacyModules: 51,
     crossContextInjections: 0,
     compositionDependencies: 0,
     initialDuplicateProviders: 3,
@@ -658,6 +658,76 @@ test('Task 2 DI law accepts canonical readiness aliases at the exact consumer pa
   ]);
   const result = scanner().scanR3Contexts(options);
   assert.deepEqual(result.diagnostics, []);
+});
+
+test('R4 DI law rejects a local same-name Planning token and interface', () => {
+  const options = fullSourceFixture([{
+    relativePath: 'money/money-budget.service.ts',
+    before: [
+      'import {',
+      '  PLANNING_BUDGET_WRITE_PORT,',
+      '  type PlanningBudgetWritePort,',
+      '} from "../modules/planning/public/planning-budget-write.port";',
+    ].join('\n'),
+    after: [
+      'import {',
+      '  PLANNING_BUDGET_WRITE_PORT as CANONICAL_PLANNING_BUDGET_WRITE_PORT,',
+      '  type PlanningBudgetWritePort as CanonicalPlanningBudgetWritePort,',
+      '} from "../modules/planning/public/planning-budget-write.port";',
+      "const PLANNING_BUDGET_WRITE_PORT = Symbol('PLANNING_BUDGET_WRITE_PORT');",
+      'interface PlanningBudgetWritePort {',
+      '  updateBudgetInTransaction(tx: Prisma.TransactionClient, input: unknown): Promise<void>;',
+      '}',
+      'void CANONICAL_PLANNING_BUDGET_WRITE_PORT;',
+      'type CanonicalPlanningBudgetWritePortReference = CanonicalPlanningBudgetWritePort;',
+    ].join('\n'),
+  }]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
+});
+
+test('R4 DI law rejects a canonical Planning injection hidden in a same-file decoy', () => {
+  const options = fullSourceFixture([
+    {
+      relativePath: 'money/money-budget.service.ts',
+      before: [
+        'import {',
+        '  PLANNING_BUDGET_WRITE_PORT,',
+        '  type PlanningBudgetWritePort,',
+        '} from "../modules/planning/public/planning-budget-write.port";',
+      ].join('\n'),
+      after: [
+        'import {',
+        '  PLANNING_BUDGET_WRITE_PORT as CANONICAL_PLANNING_BUDGET_WRITE_PORT,',
+        '  type PlanningBudgetWritePort as CanonicalPlanningBudgetWritePort,',
+        '} from "../modules/planning/public/planning-budget-write.port";',
+        "const PLANNING_BUDGET_WRITE_PORT = Symbol('PLANNING_BUDGET_WRITE_PORT');",
+        'interface PlanningBudgetWritePort {',
+        '  updateBudgetInTransaction(tx: Prisma.TransactionClient, input: unknown): Promise<void>;',
+        '}',
+      ].join('\n'),
+    },
+    {
+      relativePath: 'money/money-budget.service.ts',
+      before: [
+        '@Injectable()',
+        'export class MoneyBudgetService {',
+      ].join('\n'),
+      after: [
+        'class PlanningBudgetWriteDecoy {',
+        '  constructor(',
+        '    @Inject(CANONICAL_PLANNING_BUDGET_WRITE_PORT)',
+        '    private readonly planningBudgetWriter: CanonicalPlanningBudgetWritePort,',
+        '  ) {}',
+        '}',
+        '',
+        '@Injectable()',
+        'export class MoneyBudgetService {',
+      ].join('\n'),
+    },
+  ]);
+  const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
+  assert.ok(kinds.includes('inventory-drift'));
 });
 
 test('I6 ledgers retire monotonically only at their declared task', () => {

@@ -368,6 +368,7 @@
         "CollaborationHistoryPublicModule",
         "CollaborationPermissionPublicModule",
         "CollaborationScopePublicModule",
+        "PlanningBudgetWritePublicModule",
         "PrismaModule"
       ],
       "providers": [
@@ -779,6 +780,20 @@
       "global": false
     },
     {
+      "path": "backend/src/modules/planning/internal/planning-budget-write.internal.module.ts",
+      "className": "PlanningBudgetWriteInternalModule",
+      "imports": [],
+      "providers": [
+        "WeddingPlanBudgetWriter",
+        "{\n      provide: PLANNING_BUDGET_WRITE_IMPLEMENTATION,\n      useExisting: WeddingPlanBudgetWriter,\n    }"
+      ],
+      "exports": [
+        "PLANNING_BUDGET_WRITE_IMPLEMENTATION",
+        "WeddingPlanBudgetWriter"
+      ],
+      "global": false
+    },
+    {
       "path": "backend/src/modules/planning/internal/planning-services.internal.module.ts",
       "className": "PlanningServicesInternalModule",
       "imports": [
@@ -800,10 +815,25 @@
       "path": "backend/src/modules/planning/planning.module.ts",
       "className": "PlanningModule",
       "imports": [
+        "PlanningBudgetWritePublicModule",
         "PlanningServicesInternalModule"
       ],
       "providers": [],
       "exports": [],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/planning/public/planning-budget-write-public.module.ts",
+      "className": "PlanningBudgetWritePublicModule",
+      "imports": [
+        "PlanningBudgetWriteInternalModule"
+      ],
+      "providers": [
+        "{\n      provide: PLANNING_BUDGET_WRITE_PORT,\n      useExisting: PLANNING_BUDGET_WRITE_IMPLEMENTATION,\n    }"
+      ],
+      "exports": [
+        "PLANNING_BUDGET_WRITE_PORT"
+      ],
       "global": false
     },
     {
@@ -1274,6 +1304,21 @@
         },
         {
           "source": "backend/src/tasks/tasks.service.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "PLANNING_BUDGET_WRITE_PORT",
+      "methods": [
+        "updateBudgetInTransaction"
+      ],
+      "implementations": [
+        "WeddingPlanBudgetWriter"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/money/money-budget.service.ts",
           "kind": "constructor-injection"
         }
       ]

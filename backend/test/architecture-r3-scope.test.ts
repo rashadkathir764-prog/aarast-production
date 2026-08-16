@@ -22,6 +22,7 @@ const temporaryRoots: string[] = [];
 type ScopeModule = {
   R3_BASE: string;
   ALLOWED_PATHS: readonly string[];
+  R4_ALLOWED_PATHS: readonly string[];
   assertAllowedPathsMatch(manifestPaths: unknown, scopePaths: unknown): void;
   writeAtomicJson(
     reportPath: string,
@@ -265,12 +266,21 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
     'docs/project/EXECUTION_PLAN.md',
     'docs/qa/README.md',
   ])].sort();
+  const r3ChangedPaths = result.changedPaths.filter((entry: string) =>
+    scope().ALLOWED_PATHS.includes(entry));
   assert.equal(
     [preliminaryChangedPaths, finalReceiptChangedPaths].some(
-      (expected) => JSON.stringify(result.changedPaths) === JSON.stringify(expected),
+      (expected) => JSON.stringify(r3ChangedPaths) === JSON.stringify(expected),
     ),
     true,
-    'live R3 scope must match either the exact preliminary or exact final receipt stage',
+    'the immutable R3 portion must match either exact R3 receipt stage',
+  );
+  const delegatedR4Paths = result.changedPaths.filter((entry: string) =>
+    !scope().ALLOWED_PATHS.includes(entry));
+  assert.deepEqual(
+    delegatedR4Paths.filter((entry: string) => !scope().R4_ALLOWED_PATHS.includes(entry)),
+    [],
+    'post-R3 paths must be delegated through the exact R4 phase fence',
   );
   rmSync(result.reportPath, { force: true });
 });

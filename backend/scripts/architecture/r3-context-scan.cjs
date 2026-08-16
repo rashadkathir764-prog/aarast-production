@@ -32,7 +32,7 @@ const DIAGNOSTIC_KINDS = new Set([
   'concrete-public-export', 'illegal-boundary-import', 'illegal-composition-import',
   'public-binding-not-use-existing', 'public-imports-concrete',
   'implementation-token-misuse', 'forward-ref', 'unknown-context',
-  'nest-module-cycle', 'inventory-drift',
+  'nest-module-cycle', 'inventory-drift', 'r4-writer-isolation',
 ]);
 const COUNT_KEYS = Object.freeze([
   'contexts', 'legacyModules', 'crossContextInjections', 'compositionDependencies',
@@ -240,7 +240,27 @@ const TASK5_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/sharing/invite-access.service.ts', consumerClass: 'backend/src/sharing/invite-access.service.ts#InviteAccessService', parameter: 'auth', parameterIndex: 1, ...TASK5_CANONICAL_INJECTION_IDENTITIES.auth }),
   Object.freeze({ source: 'backend/src/conversations/conversations.gateway.ts', consumerClass: 'backend/src/conversations/conversations.gateway.ts#ConversationsGateway', parameter: 'jwt', parameterIndex: 0, ...TASK5_CANONICAL_INJECTION_IDENTITIES.verifier }),
 ]);
-const CONTRACT_SHAPE_HASH = '2cfbe6583e75a19284f7fb0d2b6f05e47f69291c43b435e7aa3dd3ec9638534f';
+const R4_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
+  planningBudgetWrite: Object.freeze({
+    token: 'backend/src/modules/planning/public/planning-budget-write.port.ts#PLANNING_BUDGET_WRITE_PORT',
+    parameterType: 'backend/src/modules/planning/public/planning-budget-write.port.ts#PlanningBudgetWritePort',
+  }),
+});
+const R4_CONSUMER_IDENTITIES = new Map([
+  ['PLANNING_BUDGET_WRITE_PORT', Object.freeze([
+    R4_CANONICAL_INJECTION_IDENTITIES.planningBudgetWrite,
+  ])],
+]);
+const R4_EXACT_CONSTRUCTOR_USES = Object.freeze([
+  Object.freeze({
+    source: 'backend/src/money/money-budget.service.ts',
+    consumerClass: 'backend/src/money/money-budget.service.ts#MoneyBudgetService',
+    parameter: 'planningBudgetWriter',
+    parameterIndex: 2,
+    ...R4_CANONICAL_INJECTION_IDENTITIES.planningBudgetWrite,
+  }),
+]);
+const CONTRACT_SHAPE_HASH = '442b4879213326646cfb479a1f98a6408aebef618b07da3e635db9b5faa3443b';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 2048;
@@ -711,6 +731,93 @@ function moduleMetadata(classNode, call, sourceFile, repositoryPath, diagnostics
   return { classNode, ...metadata };
 }
 
+function exactPropertyAssignments(object, names) {
+  if (!ts.isObjectLiteralExpression(object) || object.properties.length !== names.length) return null;
+  const properties = new Map();
+  for (const property of object.properties) {
+    if (!ts.isPropertyAssignment(property)) return null;
+    const name = propertyName(property);
+    if (!name || properties.has(name)) return null;
+    properties.set(name, property.initializer);
+  }
+  return names.every((name) => properties.has(name)) ? properties : null;
+}
+
+function exactPropertyAccess(expression, root, property) {
+  return ts.isPropertyAccessExpression(expression)
+    && ts.isIdentifier(expression.expression)
+    && expression.expression.text === root
+    && expression.name.text === property;
+}
+
+function exactR4BudgetUpdateStatement(statement) {
+  if (!ts.isExpressionStatement(statement) || !ts.isAwaitExpression(statement.expression)) return false;
+  const call = statement.expression.expression;
+  if (!ts.isCallExpression(call) || call.arguments.length !== 1
+      || !ts.isPropertyAccessExpression(call.expression)
+      || call.expression.name.text !== 'update'
+      || !ts.isPropertyAccessExpression(call.expression.expression)
+      || !exactPropertyAccess(call.expression.expression, 'tx', 'weddingPlan')) return false;
+  const update = exactPropertyAssignments(call.arguments[0], ['where', 'data']);
+  if (!update) return false;
+  const where = exactPropertyAssignments(update.get('where'), ['id']);
+  const data = exactPropertyAssignments(update.get('data'), ['estimatedBudget', 'currency']);
+  return Boolean(where && data
+    && exactPropertyAccess(where.get('id'), 'input', 'weddingPlanId')
+    && exactPropertyAccess(data.get('estimatedBudget'), 'input', 'estimatedBudget')
+    && exactPropertyAccess(data.get('currency'), 'input', 'currency'));
+}
+
+function scanR4PlanningBudgetWriterProgram(program, repoRoot) {
+  const expectedPath = 'backend/src/modules/planning/internal/wedding-plan-budget-writer.ts';
+  const sourceFile = program.getSourceFiles().find((candidate) => {
+    if (candidate.isDeclarationFile) return false;
+    try { return repoPath(candidate.fileName, repoRoot) === expectedPath; } catch { return false; }
+  });
+  if (!sourceFile) return { diagnostics: [] };
+
+  const diagnostics = [];
+  const classes = sourceFile.statements.filter((statement) => (
+    ts.isClassDeclaration(statement) && statement.name?.text === 'WeddingPlanBudgetWriter'
+  ));
+  const writer = classes.length === 1 ? classes[0] : null;
+  const forbiddenImport = sourceFile.statements.some((statement) => {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) return false;
+    const specifier = statement.moduleSpecifier.text.replace(/\\/gu, '/');
+    const importsPrismaService = Boolean(statement.importClause?.namedBindings
+      && ts.isNamedImports(statement.importClause.namedBindings)
+      && statement.importClause.namedBindings.elements.some((element) => (
+        (element.propertyName || element.name).text === 'PrismaService'
+      )));
+    return importsPrismaService || /(?:^|\/)(?:finance|money|budget-categories|wedding-costs)(?:\/|$)/u.test(specifier);
+  });
+  const members = writer ? [...writer.members] : [];
+  const methods = members.filter(ts.isMethodDeclaration);
+  const method = methods.length === 1 && methods[0].name
+    && (ts.isIdentifier(methods[0].name) || ts.isStringLiteral(methods[0].name))
+    && methods[0].name.text === 'updateBudgetInTransaction'
+    ? methods[0] : null;
+  const asyncModifier = Boolean(method?.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword));
+  const exactParameters = Boolean(method && method.parameters.length === 2
+    && ts.isIdentifier(method.parameters[0].name) && method.parameters[0].name.text === 'tx'
+    && ts.isIdentifier(method.parameters[1].name) && method.parameters[1].name.text === 'input');
+  const exactBody = Boolean(method?.body && method.body.statements.length === 1
+    && exactR4BudgetUpdateStatement(method.body.statements[0]));
+  const exactClass = Boolean(writer && classes.length === 1 && members.length === 1
+    && method && asyncModifier && exactParameters && exactBody && !forbiddenImport);
+  if (!exactClass) {
+    addDiagnostic(diagnostics, 'r4-writer-isolation', expectedPath, sourceFile, writer || sourceFile);
+  }
+  return { diagnostics };
+}
+
+function scanR4PlanningBudgetWriter(options) {
+  const repoRoot = path.resolve(options.repoRoot);
+  const backendRoot = path.resolve(options.backendRoot);
+  const { program } = createProgram(backendRoot);
+  return scanR4PlanningBudgetWriterProgram(program, repoRoot);
+}
+
 function scanR3SourceLaws(options) {
   const repoRoot = path.resolve(options.repoRoot);
   const backendRoot = path.resolve(options.backendRoot);
@@ -728,6 +835,7 @@ function scanR3SourceLaws(options) {
     if (sourceFile.isDeclarationFile) return false;
     try { return repoPath(sourceFile.fileName, repoRoot).startsWith('backend/src/'); } catch { return false; }
   });
+  diagnostics.push(...scanR4PlanningBudgetWriterProgram(program, repoRoot).diagnostics);
   for (const sourceFile of sourceFiles) {
     const repositoryPath = repoPath(sourceFile.fileName, repoRoot);
     const sourceClass = classify(repositoryPath);
@@ -876,7 +984,10 @@ function scanR3SourceLaws(options) {
           ? [...manifestImplementations].flatMap((name) => classIdentitiesByName.get(name) || [])
             .filter((identity) => {
               const identityClass = classify(identity.declarationPath);
-              return identityClass.kind === 'legacy' && identityClass.context === moduleClass.context;
+              return identityClass.context === moduleClass.context && (
+                identityClass.kind === 'legacy'
+                || (identityClass.kind === 'future' && identityClass.slice === 'internal')
+              );
             })
           : [];
         const ownerInternalModules = internalModules.filter(
@@ -1315,7 +1426,8 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     const canonicalConsumerIdentities = TASK2_CONSUMER_IDENTITIES.get(contract.token)
       || TASK3_CONSUMER_IDENTITIES.get(contract.token)
       || TASK4_CONSUMER_IDENTITIES.get(contract.token)
-      || TASK5_CONSUMER_IDENTITIES.get(contract.token);
+      || TASK5_CONSUMER_IDENTITIES.get(contract.token)
+      || R4_CONSUMER_IDENTITIES.get(contract.token);
     const consumers = canonicalConsumerIdentities
       ? []
       : injections.filter((item) => contract.implementations.includes(item.target))
@@ -1395,6 +1507,14 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const exactTask5ConstructorUses = TASK5_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
   const task5ConstructorInventoryPresent = JSON.stringify(liveTask5ConstructorUses)
     === JSON.stringify(exactTask5ConstructorUses);
+  const r4CanonicalPairs = new Set(Object.values(R4_CANONICAL_INJECTION_IDENTITIES)
+    .map((identity) => `${identity.token}|${identity.parameterType}`));
+  const liveR4ConstructorUses = allConstructorUses.filter((item) => r4CanonicalPairs.has(
+    `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
+  )).map(task2ConstructorUseKey).sort();
+  const exactR4ConstructorUses = R4_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const r4ConstructorInventoryPresent = JSON.stringify(liveR4ConstructorUses)
+    === JSON.stringify(exactR4ConstructorUses);
   const retiredEdges = initialRetiredEdges.filter((edge) => {
     const [from, to] = edge.key.split('|');
     return importEdges.has(`backend/${from}|backend/${to}`);
@@ -1407,6 +1527,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     task3ConstructorInventoryPresent,
     task4ConstructorInventoryPresent,
     task5ConstructorInventoryPresent,
+    r4ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
   };
@@ -1463,6 +1584,7 @@ function scanR3Contexts(options) {
       && !live.task4ConstructorInventoryPresent)
     || (['task-5', 'task-6', 'task-7', 'task-8', 'strict'].includes(manifest.stage)
       && !live.task5ConstructorInventoryPresent)
+    || (manifest.stage === 'strict' && !live.r4ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)
@@ -1541,6 +1663,7 @@ function runCli(dependencies = {}) {
 module.exports = {
   collectR3DecoratorInventory,
   scanR3Contexts,
+  scanR4PlanningBudgetWriter,
   scanR3SourceLaws,
   validateR3ContextManifest,
   validateR3ScanResult,

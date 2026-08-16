@@ -26,8 +26,11 @@ completion reports.
 The strict R3 Nest-boundary implementation is committed locally on branch
 `modular-monolith` at implementation checkpoint
 `0cbf5922c3d82e196722569e224754a1dd97dae5`, from immutable `R3_BASE`
-`6b06eb096aca8cc6684d365d16e05d4cd8529898`. The fixed-base scope verifier
-reports exactly 205 reviewed cumulative paths and zero unexpected paths.
+`6b06eb096aca8cc6684d365d16e05d4cd8529898`. The physical phone gate later
+reproduced one pre-existing Mobile session-restore race; its exact reviewed
+correction is committed at `ad99687d00b94929b378bee1605b4d7ed82e8474`.
+The fixed-base scope verifier now reports exactly 208 reviewed cumulative paths
+and zero unexpected paths.
 
 The committed architecture state is strict and internally closed: 13 business
 contexts, 340 scanned modules, 1383 dependency edges, 89 known dependency
@@ -43,7 +46,10 @@ both zero-finding npm audits, and all 30 managed smoke packages passed. Admin
 typecheck, 96/96 tests, build, 12 honesty checks, 16 route checks, and 3
 container-config checks passed. Mobile boundary tests passed 192/192 with the
 269-record baseline; Flutter analysis reported no issues and all 1151 tests
-passed. The existing Windows/Linux default-plugin warnings for
+passed before the phone gate. After the exact session correction, the focused
+network and account/context isolation tests passed, Flutter analysis reported no
+issues, and the complete non-Golden suite passed 1102/1102; visual Goldens were
+not rerun because no UI source changed. The existing Windows/Linux default-plugin warnings for
 `shared_preferences`, `image_picker`, `path_provider`, and
 `flutter_secure_storage` were observed and did not fail the gates.
 
@@ -55,25 +61,35 @@ baseline SHA-256 is
 `ebf61ce931e2dafff29a5f1bd7fba338f9993a15bd1d93c862453c0f89a85ac6`,
 and the ownership baseline remains byte-identical at
 `a4d478f45c5bfa76123be60e1cc77f99001969951afc219478916c87638ff3e6`.
-Protected schema, migrations, seed, Mobile, Admin, deployment, workflow, and
-lock-file surfaces have zero R3-base drift. Documentation sync and verification
-report zero drift, errors, and warnings; managed test residue is zero.
+Protected schema, migrations, seed, Admin, deployment, workflow, and lock-file
+surfaces have zero R3-base drift. Mobile differs only in
+`mobile/lib/core/network/api_client.dart` and its focused regression: account
+session and selected-context generations are now independent, so context
+bootstrap cannot discard a successful session-restore response while stale
+account and stale-context requests remain rejected. Documentation sync and
+verification report zero drift, errors, and warnings; managed test residue is
+zero.
 
 The Task 9 scope gate was corrected before the immutable runtime build to admit
 only the seven active Markdown receipt/navigation files named by the approved
-plan. Its permanent RED-to-GREEN regression passes 14/14, the manifest and
-scanner allowlists remain byte/order-exact, and the current fixed-base scope is
-206 reviewed paths with zero unexpected paths. The live receipt-stage assertion
-accepts only that exact preliminary set or the exact 212-path final receipt set;
-the phase-aware regression is committed before the final immutable runtime build.
+plan plus the exact two-file Mobile runtime correction. Its permanent
+RED-to-GREEN regression passes 15/15, the manifest and scanner allowlists remain
+byte/order-exact, and the current fixed-base scope is 208 reviewed paths with
+zero unexpected paths. The live receipt-stage assertion accepts only that exact
+preliminary set or the exact 214-path final receipt set.
 
-Runtime image build, protected probe, port-3120 cutover, sanitized runtime-log
-audit, and the owner phone checkpoint are explicitly pending. The accepted R2
-phone container remains running unchanged on port 3120 with restart count zero
-and `/live` plus `/ready` returning HTTP 200; its exact image remains the
-rollback candidate. R3 is not locally closed until the pending runtime and
-phone gates pass. No push, merge, PR, deployment, or remote CI run is claimed,
-and R4 has not started.
+The earlier immutable R3 runtime reached port 3120 healthy with restart count
+zero, and the owner passed login, dashboard, core read/write, notifications, and
+messaging. Force-stop/relaunch then reproduced the blocker: Backend returned
+HTTP 200 from `/api/v1/auth/me`, but a concurrent account-context selection
+advanced the shared client generation, the Mobile interceptor rejected that
+successful response, and session teardown returned the app to the unauthenticated
+welcome flow. The focused test reproduced this failure before production code
+changed and passes after the network-boundary correction. A new immutable image,
+corrected APK, and owner force-stop/relaunch checkpoint are explicitly pending.
+The accepted R2 container and image remain stopped but preserved as rollback.
+R3 is not locally closed until those gates pass. No push, merge, PR, deployment,
+or remote CI run is claimed, and R4 has not started.
 
 ## Modular Monolith R2 Local Closure Candidate - 2026-08-14
 

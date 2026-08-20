@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-13
+Snapshot date: 2026-08-16
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -31,17 +31,16 @@ for the exact reviewed pre-port Admin permission contract used only by legacy
 `auth/` and `catalogs/`. The Nest class/import graph remains acyclic, and no new
 `forwardRef()` or `@Global()` use is allowed.
 
-Six frozen platform-to-business dependencies remain for R3: runtime config to
-JWT secret, readiness to media storage, outbox dispatcher to conversation
-realtime and push delivery, and outbox module to the conversation realtime and
-push modules. Sharing consumes an OTP transport directly until R6. The two
+R3 closed all six frozen platform-to-business dependencies and all retired
+provider edges. Sharing consumes an OTP transport directly until R6. The two
 approved globals remain until R8.
 
 Physical ownership covers Prisma root delegates, relation traversal, nested
-writes, and raw-SQL tables. `WeddingPlan` is owned by planning. Finance's
-current direct write to `WeddingPlan.estimatedBudget` is temporary R0 baseline
-debt that R4 replaces with a planning public write port accepting the caller's
-explicit transaction client; it is not a permanent exception.
+writes, and raw-SQL tables. `WeddingPlan` is owned by planning. R4 retired
+Finance's former direct `WeddingPlan.estimatedBudget` write: Finance now calls
+the singleton Planning public write port with its exact caller-owned transaction,
+and only Planning performs the delegate update. The removed debt is not an
+exception.
 
 ## Commands
 

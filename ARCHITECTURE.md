@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-14
+Snapshot date: 2026-08-16
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -113,10 +113,11 @@ filters/orderings), nested relation writes, and every physical table referenced
 by raw SQL. An unresolved relation/query shape is architecture debt, not
 implicit permission.
 
-`WeddingPlan` has one physical owner: planning. Finance's current direct write
-to `WeddingPlan.estimatedBudget` is a temporary R0 baseline violation, not a
-permanent architecture exception. R4 must replace it with a planning public
-write port that accepts the caller's explicit transaction client.
+`WeddingPlan` has one physical owner: planning. R4 removed Finance's former
+direct write to `WeddingPlan.estimatedBudget`. Finance now calls the exact
+Planning-owned `PLANNING_BUDGET_WRITE_PORT`, passing the caller's existing
+transaction client; the Planning writer owns the physical update. The former
+R0 baseline violation is retired and is not a permanent exception.
 
 The old E1 treatment is not a target exception. A transaction that spans
 contexts must preserve the caller's transaction boundary through an explicit
@@ -224,14 +225,24 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   restored the authenticated dashboard, emitted `SESSION_RESTORED`, and emitted
   neither restore failure nor logout. The immutable R3 runtime and prior R3/R2
   rollback artifacts remain local; no push, merge, or remote CI is claimed.
+- R4 is locally complete from immutable base
+  `502b181a2ce624458fd7eae064f194497ec0151e`. Finance consumes one singleton
+  Planning public write port and no longer writes `WeddingPlan` directly. The
+  ownership baseline decreased by exactly the frozen debt from 386 records / 782
+  occurrences to 385 / 781. Full Backend gates, affected and aggregate managed
+  smokes, immutable Docker cutover, independent review, and the owner phone
+  money-budget checkpoint passed. API, schema, migrations, Mobile, Admin, and
+  deployment behavior remain unchanged; R5 has not started.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.
-- R3+ creates the documented Nest public/internal/full module pattern. R4
-  removes Finance's current direct `WeddingPlan.estimatedBudget` write. R9
-  activates the strict Mobile boundary mode.
+- R3+ creates the documented Nest public/internal/full module pattern. R4 has
+  removed Finance's direct `WeddingPlan.estimatedBudget` write. R9 activates
+  the strict Mobile boundary mode.
 
-The current working plan is
-`docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`. It is a
-working execution artifact, not a replacement for this contract or the active
+The immutable R4 pre-runtime/application-candidate execution snapshot is
+`docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
+Its in-progress status records the application candidate before authorized
+runtime, phone, and receipt closeout; the active receipts above record the
+later completed local state. It is not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.

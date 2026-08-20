@@ -21,6 +21,57 @@ completion reports.
 - No stash exists. One Codex-managed detached worktree remains untouched because
   deleting worktrees or ignored backups was not part of the authorized cleanup.
 
+## Modular Monolith R4 Local Completion - 2026-08-16
+
+R4 executed locally on branch `modular-monolith` from immutable `R4_BASE`
+`502b181a2ce624458fd7eae064f194497ec0151e`. The reviewed application candidate
+is `536890ccafcabebcd4d095a33c014933d6451fdb` with exactly 22 R4 application,
+architecture, test, plan, and generated-script paths.
+
+Finance no longer touches the Planning-owned `WeddingPlan` delegate. The sole
+`MoneyBudgetService` consumer calls `PLANNING_BUDGET_WRITE_PORT` inside its
+existing serializable transaction, passing the exact transaction object and
+unchanged `weddingPlanId`, estimated budget, and currency to the sole
+`WeddingPlanBudgetWriter`. The public and implementation aliases use
+`useExisting`; there is no duplicate registration, compatibility facade, new
+transaction, retry, catch, or error translation.
+
+The ownership baseline is exactly the R4-base baseline minus the frozen
+`backend/src/money/money-budget.service.ts|finance|planning|WeddingPlan|update|write|delegate|foreign-model`
+record: 385 records / 781 occurrences instead of 386 / 782. No other ownership
+record changed. Architecture passed at 344 modules, 1395 dependencies, 89 known
+dependency records, ownership 385, zero `forwardRef()`, two approved globals,
+and zero cycles or illegal context edges. Check, build, Prisma validation,
+968/969 tests with one intentional Windows permission skip, both zero-finding
+npm audits, affected money/health smokes, and all 30 aggregate smoke packages
+passed. Managed residue was zero. Schema and migrations remain 14 files / 52
+models / 41 enums / 76 migrations; API, Mobile, Admin, CI, Compose, and
+deployment surfaces are unchanged.
+
+Immutable image `aarast-backend:r4-final-536890cc` has image ID
+`sha256:16ef05de0308b71ba9d08c873eb0d74661385901a49589e130478db7c08d025d`
+and exact OCI revision `536890ccafcabebcd4d095a33c014933d6451fdb`. Its
+probe and cutover passed; local and assigned-LAN `/live` and `/ready` returned
+HTTP 200, restart count remained zero, OOM was false, all 76 migrations and the
+native schema folder were discovered, and the safe fatal/unhandled/TypeError/
+Prisma-schema scan was empty. The accepted R3 container/image are stopped and
+preserved for rollback.
+
+The unchanged installed APK is package `com.aarast.aarast_mobile.r3local`,
+version code 8, SHA-256
+`05be807966bd762e5628d35034197cf80c09298d21e97dc2f490a91f9cd4514a`.
+The owner passed login, Home, Money budget and category replacement, reload,
+and force-close/reopen with the session and saved values preserved. Sanitized
+R4 route-template evidence included login HTTP 200, `/api/v1/auth/me` HTTP 200,
+three money-budget PUT HTTP 200 responses, repeated money-summary GET HTTP 200
+responses, zero matched HTTP 5xx, and zero server fatal markers. No OTP,
+credential, token, phone number, financial value, raw body, or raw log is
+retained.
+
+Independent source, ownership, runtime, and phone-evidence review passed with
+no Critical, Important, or Minor findings. R4 is locally complete. No push,
+merge, PR mutation, deployment, or remote CI is claimed, and R5 has not started.
+
 ## Modular Monolith R3 Local Completion - 2026-08-16
 
 The strict R3 Nest-boundary implementation is committed locally on branch
@@ -106,8 +157,8 @@ authenticated dashboard. Sanitized evidence was exactly one
 `SESSION_RESTORED`, zero `SESSION_RESTORE_FAILED`, zero teardown/logout events,
 one HTTP-200 `/api/v1/auth/me`, zero `/api/v1/auth/logout`, and zero server fatal
 markers. No credential, OTP, token, phone number, raw body, or raw log is
-retained. R3 is locally complete. No push, merge, PR, deployment, or remote CI
-run is claimed, and R4 has not started.
+retained. R3 is locally complete and provided the immutable base for R4. No R3
+push, merge, PR, deployment, or remote CI run is claimed.
 
 ## Modular Monolith R2 Local Closure Candidate - 2026-08-14
 

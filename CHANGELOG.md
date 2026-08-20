@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-08-16 - Modular Monolith R4 Local Completion
+
+- Replaced Finance's direct `WeddingPlan` budget write with one exact
+  Planning-owned `PLANNING_BUDGET_WRITE_PORT`. `MoneyBudgetService` passes its
+  existing serializable transaction and unchanged budget input to the sole
+  `WeddingPlanBudgetWriter`; no transaction, retry, error, route, payload, or
+  response behavior changed.
+- Retired exactly the frozen Finance-to-Planning ownership debt. The ownership
+  baseline decreased from 386 records / 782 occurrences to 385 / 781, with no
+  other record or count change.
+- Backend architecture passed at 344 modules, 1395 dependencies, 89 known
+  dependency records, ownership 385, zero `forwardRef()`, two approved globals,
+  and zero cycles or illegal context edges. Check, build, 968/969 tests with one
+  intentional Windows skip, Prisma validation, both zero-finding npm audits,
+  affected money smokes, health, and all 30 aggregate smoke packages passed.
+- Built and cut over immutable image `aarast-backend:r4-final-536890cc` at exact
+  application revision `536890ccafcabebcd4d095a33c014933d6451fdb`. Local and
+  LAN live/ready returned HTTP 200, restart count stayed zero, OOM was false,
+  76 migrations and the native schema folder were discovered, and safe fatal
+  marker checks were empty. The R3 container/image remain stopped and preserved.
+- The owner passed login, Home, money-budget/category replacement, reload, and
+  force-close/reopen on the unchanged R3Local APK. Sanitized R4 evidence included
+  login 200, `/api/v1/auth/me` 200, three money-budget PUT 200 responses, repeated
+  money-summary GET 200 responses, zero HTTP 5xx, and no raw bodies or secrets.
+- R4 is locally complete. No push, merge, PR mutation, deployment, or remote CI
+  is claimed, and R5 has not started.
+
 ## 2026-08-16 - Modular Monolith R3 Local Completion
 
 - Implemented demand-driven Nest full/internal/public boundaries for all 13

@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R3 Locally Complete
+### P3 — Source Quality And Architecture — R4 Locally Complete
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -376,14 +376,31 @@ Acceptance:
 - Immutable runtime candidate `dfc5488cf30d4eb36dc2d72c618b2442f34ea058`
   and the R3Local APK passed identity, health, safe-log, and device gates. The
   prior R3 and R2 runtimes remain preserved as rollback artifacts.
-- R3 is locally complete. R4 has not started; remote CI was not run, and no push
-  or merge is claimed.
+- R3 is locally complete and provided the immutable base for completed R4.
+
+#### R4 — Planning/Finance Physical Ownership — Locally Complete
+
+- R4 executed from immutable base
+  `502b181a2ce624458fd7eae064f194497ec0151e` and routed Finance's one direct
+  `WeddingPlan` budget write through the singleton Planning public write port.
+- The caller-owned serializable transaction, input fields, mutation order,
+  retry/error behavior, routes, payloads, and response ordering remain unchanged.
+  The ownership baseline is exactly 385 records / 781 occurrences after removing
+  only the frozen Finance-to-Planning debt.
+- Architecture/check/build/tests/audits, affected and aggregate managed smokes,
+  schema/docs/frozen-surface checks, immutable Docker probe/cutover, independent
+  review, and the owner Money save/reload/force-close checkpoint passed locally.
+- Application candidate `536890ccafcabebcd4d095a33c014933d6451fdb` runs as
+  `aarast-backend:r4-final-536890cc` with local/LAN live/ready HTTP 200, zero
+  restarts, and the stopped R3 artifact preserved for rollback.
+- R4 is locally complete. Remote CI was not run; no push, merge, PR mutation, or
+  deployment is claimed. R5 has not started.
 
 Current working plan:
-`docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`.
+`docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
-The numbered P3 modernization work below treats locally completed R3 as the
-current checkpoint; R4 and later-phase work must not move forward early.
+The numbered P3 modernization work below treats locally completed R4 as the
+current checkpoint; R5 and later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

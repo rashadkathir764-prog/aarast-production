@@ -92,6 +92,31 @@ before R2 began. The closeout preserved 52 models, 76 migrations, every
 route/error/Arabic/permission/transaction contract, Mobile and Admin source,
 and deployment artifacts.
 
+## Modular Monolith R4 Closeout Gates
+
+- Fixed-base R4 scope and permanent near-miss gates passed for the exact
+  Planning write port, Finance consumer, transaction identity, implementation
+  ownership, and 22-path application candidate.
+- Ownership is exactly the R4 base minus one frozen Finance-to-Planning
+  `WeddingPlan.update` debt: 385 records / 781 occurrences. Architecture passed
+  at 344 modules / 1395 dependencies / 89 known records, ownership 385, zero
+  `forwardRef()`, two approved globals, and zero cycles or illegal edges.
+- Backend check/build, 968/969 tests with one intentional Windows permission
+  skip, Prisma validation, both zero-finding audits, money-budget 50/50,
+  money-APIs 60/60, money authorization/concurrency, health, and all 30 managed
+  smoke packages passed. Managed residue was zero.
+- Immutable image `aarast-backend:r4-final-536890cc` at application revision
+  `536890ccafcabebcd4d095a33c014933d6451fdb` passed probe/cutover, schema and 76
+  migration discovery, zero restart/OOM, local/LAN live/ready HTTP 200, and safe
+  log checks. R3 remains stopped and preserved for rollback.
+- On the unchanged R3Local APK, the owner passed login, Home, Money budget and
+  category save/reload, and force-close/reopen. Sanitized route evidence showed
+  successful auth/session, money-budget writes and money-summary reads, with no
+  HTTP 5xx or server fatal markers and no retained secrets or financial values.
+- Independent review found no Critical, Important, or Minor issue. R4 is locally
+  complete; R5 has not started. No push, merge, deployment, PR mutation, or
+  remote-CI result is claimed.
+
 ## Modular Monolith R3 Closeout Gates
 
 - Fixed-base R3 scope PASS at exactly 214 reviewed paths and zero unexpected
@@ -115,8 +140,8 @@ and deployment artifacts.
   failure/logout/teardown=0, `/api/v1/auth/me` HTTP 200,
   `/api/v1/auth/logout`=0, and the authenticated dashboard visible. No secrets
   or raw bodies/logs were retained.
-- R3 is locally complete. R4 has not started; no push, merge, deployment, or
-  remote-CI result is claimed.
+- R3 is locally complete and provided the immutable base for R4; no R3 push,
+  merge, deployment, or remote-CI result is claimed.
 
 ## Modular Monolith R2 Closeout Gates
 

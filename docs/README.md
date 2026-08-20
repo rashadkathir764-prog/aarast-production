@@ -91,15 +91,24 @@ changing behavior.
 
 - `docs/archive/README.md`
 
-## Current Working Plan
+## Modular Monolith Status And Plans
 
+- `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`
+  - immutable pre-runtime/application-candidate execution snapshot. Its
+  in-progress status records the stop before authorized Git, runtime, phone, and
+  final receipts; this active index plus `docs/project/STATUS.md`, decisions,
+  QA, and the changelog record the later closeout. R4 is locally complete from immutable base
+  `502b181a2ce624458fd7eae064f194497ec0151e`. Finance now routes the one
+  `WeddingPlan` budget write through the Planning public port, the exact
+  ownership debt is retired, exhaustive local gates and immutable runtime passed,
+  and the owner confirmed saved Money values after force-close/reopen. No push,
+  merge, deployment, or remote-CI result is claimed; R5 has not started.
 - `docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`
-  - R3 is locally complete from immutable R2 closeout base
+  - completed R3 strict Nest-boundary plan from immutable R2 closeout base
   `6b06eb096aca8cc6684d365d16e05d4cd8529898`. The strict 13-context Nest graph,
   exhaustive local gates, immutable Docker runtime, independent reviews, and
   owner phone checkpoint passed. A phone-discovered Mobile session-restore race
-  was corrected and verified by force-stop/relaunch without logout. No push,
-  merge, or remote-CI result is claimed; R4 has not started.
+  was corrected and verified by force-stop/relaunch without logout.
 - `docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md`
   - completed R2 native Prisma schema-folder plan and immutable base for R3.
 - `docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md`

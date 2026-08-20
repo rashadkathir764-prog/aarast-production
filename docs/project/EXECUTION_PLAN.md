@@ -394,13 +394,26 @@ Acceptance:
   `aarast-backend:r4-final-536890cc` with local/LAN live/ready HTTP 200, zero
   restarts, and the stopped R3 artifact preserved for rollback.
 - R4 is locally complete. Remote CI was not run; no push, merge, PR mutation, or
-  deployment is claimed. R5 has not started.
+  deployment is claimed.
 
 Current working plan:
+`docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
+
+R5 starts from immutable local R4 receipt
+`9dab73acdc187a4a18d8a675713d8ded40a16d02`. Its approved scope is the exact
+44-file Identity source consolidation from `auth`, `users`, `me`, and
+`contexts` into `modules/identity`, plus deterministic import, manifest,
+dependency-baseline, ownership-baseline, test, smoke, and receipt updates. It
+does not change application behavior, schema, model ownership semantics,
+Mobile, Admin, deployment, or another business context. Implementation remains
+pending the Task 0 planning checkpoint; R6 and later work must not start early.
+
+The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
 The numbered P3 modernization work below treats locally completed R4 as the
-current checkpoint; R5 and later-phase work must not move forward early.
+immutable base and the R5 plan above as the current checkpoint; R6 and
+later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

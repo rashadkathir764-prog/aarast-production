@@ -6,6 +6,23 @@ This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
 
+## Modular Monolith R5 Planning Approved - 2026-08-20
+
+R5 planning is approved on branch `modular-monolith` from immutable local R4
+receipt `9dab73acdc187a4a18d8a675713d8ded40a16d02`. The worktree was clean at the
+planning preflight. The live Identity source contains 44 TypeScript files in
+four legacy roots: 31 under `auth`, 8 under `users`, 1 under `me`, and 4 under
+`contexts`.
+
+The approved design moves those files one-to-one into the existing
+`modules/identity` public/internal/api boundary, deletes all four old roots, and
+reconciles path-indexed dependency and ownership evidence without changing
+routes, auth/OTP/session behavior, schema, migrations, model ownership
+semantics, Mobile, Admin, workflows, deployment, or Compose. Local checkpoint
+commits are allowed; no branch/worktree creation, push, merge, PR mutation,
+deployment, remote-CI claim, or R6 work is authorized. R5 implementation has
+not started.
+
 ## Repository Baseline
 
 - Repository root: `D:\projects\aarast`.
@@ -70,7 +87,8 @@ retained.
 
 Independent source, ownership, runtime, and phone-evidence review passed with
 no Critical, Important, or Minor findings. R4 is locally complete. No push,
-merge, PR mutation, deployment, or remote CI is claimed, and R5 has not started.
+merge, PR mutation, deployment, or remote CI is claimed. It is the immutable
+base for the approved R5 plan above.
 
 ## Modular Monolith R3 Local Completion - 2026-08-16
 

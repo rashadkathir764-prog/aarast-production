@@ -93,6 +93,13 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`
+  - owner-approved R5 implementation plan from immutable local R4 receipt
+  `9dab73acdc187a4a18d8a675713d8ded40a16d02`. It moves the 44 current Identity
+  source files from `auth`, `users`, `me`, and `contexts` into the existing
+  `modules/identity` boundary with exact baseline path relocation and no API,
+  behavior, schema, Mobile, Admin, or deployment change. Implementation has not
+  started; no push, merge, deployment, remote CI, or R6 work is claimed.
 - `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`
   - immutable pre-runtime/application-candidate execution snapshot. Its
   in-progress status records the stop before authorized Git, runtime, phone, and
@@ -102,7 +109,8 @@ changing behavior.
   `WeddingPlan` budget write through the Planning public port, the exact
   ownership debt is retired, exhaustive local gates and immutable runtime passed,
   and the owner confirmed saved Money values after force-close/reopen. No push,
-  merge, deployment, or remote-CI result is claimed; R5 has not started.
+  merge, deployment, or remote-CI result is claimed. It is the completed base
+  for the separately approved R5 plan above.
 - `docs/superpowers/plans/2026-08-14-modular-monolith-r3-nest-boundaries.md`
   - completed R3 strict Nest-boundary plan from immutable R2 closeout base
   `6b06eb096aca8cc6684d365d16e05d4cd8529898`. The strict 13-context Nest graph,

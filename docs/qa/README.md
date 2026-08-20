@@ -114,8 +114,26 @@ and deployment artifacts.
   successful auth/session, money-budget writes and money-summary reads, with no
   HTTP 5xx or server fatal markers and no retained secrets or financial values.
 - Independent review found no Critical, Important, or Minor issue. R4 is locally
-  complete; R5 has not started. No push, merge, deployment, PR mutation, or
-  remote-CI result is claimed.
+  complete and is the immutable base for the approved R5 plan. No push, merge,
+  deployment, PR mutation, or remote-CI result is claimed.
+
+## Modular Monolith R5 Planned Gates
+
+- Fixed-base R5 manifest proves the exact 44 one-to-one Identity moves and
+  rejects missing, extra, converging, overlapping, traversal, stale-root, and
+  compatibility-path near-misses.
+- R3 Nest/provider/controller/decorator/lifecycle inventories remain exact;
+  dependency records remain 89 and ownership remains 385 records / 781
+  occurrences after deterministic path relocation only.
+- Existing Auth, OTP, session, profile, context, account-deletion, WebSocket,
+  scheduler, and route assertions remain frozen except mechanical import/path
+  edits.
+- Full Backend architecture/check/build/tests, Prisma equivalence, audits,
+  managed Identity/auth/context/account-deletion plus aggregate smokes, residue
+  audits, frozen Mobile/Admin/deployment surfaces, immutable runtime, owner
+  phone exercise, independent review, and truthful receipts are required.
+- R5 implementation has not started. R6, push, merge, PR mutation, deployment,
+  and remote-CI claims remain forbidden.
 
 ## Modular Monolith R3 Closeout Gates
 

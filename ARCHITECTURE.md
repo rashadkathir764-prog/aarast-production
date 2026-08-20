@@ -232,7 +232,14 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   occurrences to 385 / 781. Full Backend gates, affected and aggregate managed
   smokes, immutable Docker cutover, independent review, and the owner phone
   money-budget checkpoint passed. API, schema, migrations, Mobile, Admin, and
-  deployment behavior remain unchanged; R5 has not started.
+  deployment behavior remain unchanged.
+- R5 planning is owner-approved from immutable base
+  `9dab73acdc187a4a18d8a675713d8ded40a16d02`. R5 consolidates the 44 current
+  Identity files from `auth`, `users`, `me`, and `contexts` into the existing
+  `modules/identity` public/internal/full boundary. It is a source and
+  path-indexed-evidence relocation only: routes, auth/OTP/session behavior,
+  schema, migrations, model ownership semantics, Mobile, Admin, and deployment
+  remain frozen. Implementation has not started, and R6 is not authorized.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

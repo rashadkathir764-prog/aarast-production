@@ -392,15 +392,15 @@ test('I5 every frozen public token records at least one exact present consumer',
 test('Task 2 DI consumers reject independent same-name public and platform Symbols', () => {
   const options = fullSourceFixture([
     {
-      relativePath: 'auth/auth.service.ts',
+      relativePath: 'modules/identity/internal/auth/auth.service.ts',
       before: [
         'import {',
         '  MESSAGING_REALTIME_PORT,',
         '  MessagingRealtimePort,',
-        '} from "../modules/messaging/public/messaging-realtime.port";',
+        '} from "../../../messaging/public/messaging-realtime.port";',
       ].join('\n'),
       after: [
-        'import type { MessagingRealtimePort } from "../modules/messaging/public/messaging-realtime.port";',
+        'import type { MessagingRealtimePort } from "../../../messaging/public/messaging-realtime.port";',
         'const MESSAGING_REALTIME_PORT = Symbol("MESSAGING_REALTIME_PORT");',
       ].join('\n'),
     },
@@ -427,15 +427,15 @@ test('Task 2 DI consumers reject independent same-name public and platform Symbo
 test('Task 2 DI consumers reject fake same-name public and platform interface types', () => {
   const options = fullSourceFixture([
     {
-      relativePath: 'auth/auth.service.ts',
+      relativePath: 'modules/identity/internal/auth/auth.service.ts',
       before: [
         'import {',
         '  MESSAGING_REALTIME_PORT,',
         '  MessagingRealtimePort,',
-        '} from "../modules/messaging/public/messaging-realtime.port";',
+        '} from "../../../messaging/public/messaging-realtime.port";',
       ].join('\n'),
       after: [
-        'import { MESSAGING_REALTIME_PORT } from "../modules/messaging/public/messaging-realtime.port";',
+        'import { MESSAGING_REALTIME_PORT } from "../../../messaging/public/messaging-realtime.port";',
         'interface MessagingRealtimePort { disconnectUser(userId: string): void; }',
       ].join('\n'),
     },
@@ -914,6 +914,31 @@ test('only relocated SafeUser may import the exact Backoffice permission contrac
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user.ts')), false);
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/not-safe-user.ts')), true);
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user-private.ts')), true);
+});
+
+test('R5 relocated Identity internals preserve only their two exact pre-existing pure helper imports', () => {
+  const options = fixtureProject({
+    'backend/src/provider-dashboard/provider-access-policy.ts':
+      'export const providerAccessPolicy = true;\n',
+    'backend/src/provider-dashboard/private.ts': 'export const privateValue = true;\n',
+    'backend/src/marketplace/provider-review-rating.ts':
+      'export const refreshProviderRating = true;\n',
+    'backend/src/modules/identity/internal/profile/contexts.service.ts':
+      "import { providerAccessPolicy } from '../../../../provider-dashboard/provider-access-policy';\nexport { providerAccessPolicy };\n",
+    'backend/src/modules/identity/internal/profile/users.service.ts':
+      "import { refreshProviderRating } from '../../../../marketplace/provider-review-rating';\nexport { refreshProviderRating };\n",
+    'backend/src/modules/identity/internal/profile/bad-contexts.service.ts':
+      "import { providerAccessPolicy } from '../../../../provider-dashboard/provider-access-policy';\nexport { providerAccessPolicy };\n",
+    'backend/src/modules/identity/internal/profile/bad-target.service.ts':
+      "import { privateValue } from '../../../../provider-dashboard/private';\nexport { privateValue };\n",
+  });
+  const diagnostics = scanner().scanR3SourceLaws(options).diagnostics.filter(
+    (item: any) => item.kind === 'illegal-boundary-import',
+  );
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/contexts.service.ts')), false);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/users.service.ts')), false);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/bad-contexts.service.ts')), true);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/bad-target.service.ts')), true);
 });
 
 test('an internal provider leaf may import only a foreign public Nest module used in metadata', () => {

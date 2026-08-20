@@ -18,7 +18,7 @@ import {
 import sharp from 'sharp';
 import { MediaStorageService } from '../../src/media/media-storage.service';
 import { MediaUploadTicketService } from '../../src/media/media-upload-ticket.service';
-import { UsersService } from '../../src/users/users.service';
+import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   assertManagedSmokeEnvironment: (environment?: NodeJS.ProcessEnv) => unknown;

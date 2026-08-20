@@ -6,11 +6,11 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { UsersController } from "../src/users/users.controller";
+import { UsersController } from "../src/modules/identity/api/users.controller";
 import {
   UsersService,
   accountDeletionReceiptHash,
-} from "../src/users/users.service";
+} from "../src/modules/identity/internal/profile/users.service";
 
 test("DELETE /users/me rejects a missing client request id before deletion", () => {
   let calls = 0;

@@ -19,10 +19,10 @@ import {
 import {
   AvailableContextRole,
   ContextsService,
-} from "../src/contexts/contexts.service";
-import { ValidateContextDto } from "../src/contexts/dto/validate-context.dto";
+} from "../src/modules/identity/internal/profile/contexts.service";
+import { ValidateContextDto } from "../src/modules/identity/api/context-dto/validate-context.dto";
 import { PermissionService } from "../src/sharing/permission.service";
-import { UpdateProfileDto } from "../src/users/dto/update-profile.dto";
+import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-profile.dto";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
 
 const currentUser = { id: "user-1" } as any;
@@ -643,7 +643,7 @@ test("public profile validation rejects appRole while preserving persona updates
 test("contexts routes are canonical, authenticated, and module-wired", () => {
   const root = join(__dirname, "..");
   const controller = readFileSync(
-    join(root, "src/contexts/contexts.controller.ts"),
+    join(root, "src/modules/identity/api/contexts.controller.ts"),
     "utf8",
   );
   const appModule = readFileSync(join(root, "src/app.module.ts"), "utf8");

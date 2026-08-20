@@ -14,7 +14,7 @@ const CONTEXTS = Object.freeze([
   'backoffice',
 ]);
 const ROOTS = Object.freeze({
-  identity: ['auth', 'users', 'me', 'contexts'],
+  identity: [],
   planning: ['wedding-plans', 'onboarding'],
   finance: ['money', 'budget-categories', 'wedding-costs'],
   collaboration: ['sharing', 'contribution-history'],
@@ -140,9 +140,9 @@ const TASK2_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', consumerClass: 'backend/src/platform/outbox/outbox.dispatcher.ts#OutboxDispatcher', parameter: 'realtime', parameterIndex: 0, ...TASK2_CANONICAL_INJECTION_IDENTITIES.outboxRealtime }),
   Object.freeze({ source: 'backend/src/provider-dashboard/provider-dashboard.service.ts', consumerClass: 'backend/src/provider-dashboard/provider-dashboard.service.ts#ProviderDashboardService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
   Object.freeze({ source: 'backend/src/sharing/sharing.service.ts', consumerClass: 'backend/src/sharing/sharing.service.ts#SharingService', parameter: 'realtime', parameterIndex: 5, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
-  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
-  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'realtime', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
-  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'firebasePush', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.pushCapability }),
+  Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
+  Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'realtime', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'firebasePush', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.pushCapability }),
 ]);
 const TASK3_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
   permission: Object.freeze({
@@ -171,7 +171,7 @@ const TASK3_CONSUMER_IDENTITIES = new Map([
 ]);
 const TASK3_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/budget-categories/budget-categories.service.ts', consumerClass: 'backend/src/budget-categories/budget-categories.service.ts#BudgetCategoriesService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
-  Object.freeze({ source: 'backend/src/contexts/contexts.service.ts', consumerClass: 'backend/src/contexts/contexts.service.ts#ContextsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/modules/identity/internal/profile/contexts.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/contexts.service.ts#ContextsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/dashboard/dashboard.service.ts', consumerClass: 'backend/src/dashboard/dashboard.service.ts#DashboardService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/guests/guests.service.ts', consumerClass: 'backend/src/guests/guests.service.ts#GuestsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/marketplace/marketplace.service.ts', consumerClass: 'backend/src/marketplace/marketplace.service.ts#MarketplaceService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
@@ -180,7 +180,7 @@ const TASK3_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/notifications/notifications.service.ts', consumerClass: 'backend/src/notifications/notifications.service.ts#NotificationsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/timeline/timeline.service.ts', consumerClass: 'backend/src/timeline/timeline.service.ts#TimelineService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
-  Object.freeze({ source: 'backend/src/users/users.service.ts', consumerClass: 'backend/src/users/users.service.ts#UsersService', parameter: 'permissionService', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
+  Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'permissionService', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/wedding-costs/wedding-costs.service.ts', consumerClass: 'backend/src/wedding-costs/wedding-costs.service.ts#WeddingCostsService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/wedding-plans/wedding-plans.service.ts', consumerClass: 'backend/src/wedding-plans/wedding-plans.service.ts#WeddingPlansService', parameter: 'permissions', parameterIndex: 1, ...TASK3_CANONICAL_INJECTION_IDENTITIES.permission }),
   Object.freeze({ source: 'backend/src/budget-categories/budget-categories.service.ts', consumerClass: 'backend/src/budget-categories/budget-categories.service.ts#BudgetCategoriesService', parameter: 'contributionHistory', parameterIndex: 3, ...TASK3_CANONICAL_INJECTION_IDENTITIES.history }),
@@ -828,6 +828,10 @@ function scanR3SourceLaws(options) {
   const relocatedSafeUser = 'backend/src/modules/identity/public/safe-user.ts';
   const backofficePermissionContract =
     'backend/src/modules/backoffice/domain/admin-permissions.ts';
+  const relocatedIdentityPureHelpers = new Set([
+    'backend/src/modules/identity/internal/profile/contexts.service.ts->backend/src/provider-dashboard/provider-access-policy.ts',
+    'backend/src/modules/identity/internal/profile/users.service.ts->backend/src/marketplace/provider-review-rating.ts',
+  ]);
   const contractsByToken = new Map((options.providerContracts || []).map((contract) => [
     contract.token,
     new Set(contract.implementations),
@@ -892,8 +896,11 @@ function scanR3SourceLaws(options) {
             && targetPath.endsWith('.port.ts');
           const legalRelocatedPermissionContract = repositoryPath === relocatedSafeUser
             && targetPath === backofficePermissionContract;
+          const legalRelocatedIdentityPureHelper = relocatedIdentityPureHelpers.has(
+            `${repositoryPath}->${targetPath}`,
+          );
           if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
-              && !legalRelocatedPermissionContract) {
+              && !legalRelocatedPermissionContract && !legalRelocatedIdentityPureHelper) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
         }

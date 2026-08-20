@@ -236,6 +236,61 @@ test('only legacy auth/catalogs and relocated SafeUser may import the exact Back
   );
 });
 
+test('R5 relocated Identity internals retain only their two exact pure helper dependencies', () => {
+  const allowedRoot = fixtureRoot();
+  write(
+    allowedRoot,
+    'src/modules/identity/internal/profile/contexts.service.ts',
+    "import '../../../../provider-dashboard/provider-access-policy';\n",
+  );
+  write(
+    allowedRoot,
+    'src/provider-dashboard/provider-access-policy.ts',
+    'export const providerAccessPolicy = true;\n',
+  );
+  write(
+    allowedRoot,
+    'src/modules/identity/internal/profile/users.service.ts',
+    "import '../../../../marketplace/provider-review-rating';\n",
+  );
+  write(
+    allowedRoot,
+    'src/marketplace/provider-review-rating.ts',
+    'export const refreshProviderRating = true;\n',
+  );
+  const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
+  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+
+  const siblingSourceRoot = fixtureRoot();
+  write(
+    siblingSourceRoot,
+    'src/modules/identity/internal/profile/not-contexts.service.ts',
+    "import '../../../../provider-dashboard/provider-access-policy';\n",
+  );
+  write(
+    siblingSourceRoot,
+    'src/provider-dashboard/provider-access-policy.ts',
+    'export const providerAccessPolicy = true;\n',
+  );
+  const siblingSource = cruise(siblingSourceRoot, ['--config', configPath, 'src']);
+  assert.notEqual(siblingSource.status, 0);
+  assert.match(`${siblingSource.stdout}\n${siblingSource.stderr}`, /context-identity-cross-context/);
+
+  const siblingTargetRoot = fixtureRoot();
+  write(
+    siblingTargetRoot,
+    'src/modules/identity/internal/profile/contexts.service.ts',
+    "import '../../../../provider-dashboard/private';\n",
+  );
+  write(siblingTargetRoot, 'src/provider-dashboard/private.ts', 'export const value = true;\n');
+  const siblingTarget = cruise(siblingTargetRoot, ['--config', configPath, 'src']);
+  assert.notEqual(siblingTarget.status, 0);
+  assert.match(
+    `${siblingTarget.stdout}\n${siblingTarget.stderr}`,
+    /context-identity-(?:relocated-contexts-helper-)?cross-context/,
+  );
+});
+
 test('application composition may import platform and business public slices only', () => {
   const allowedRoot = fixtureRoot();
   write(allowedRoot, 'src/platform/outbox/core.ts', 'export const core = true;\n');

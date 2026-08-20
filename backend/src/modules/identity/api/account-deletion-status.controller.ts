@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { AccountDeletionStatusDto } from "./dto/account-deletion-status.dto";
-import { UsersService } from "./users.service";
+import { AccountDeletionStatusDto } from "./user-dto/account-deletion-status.dto";
+import { UsersService } from "../internal/profile/users.service";
 
 @Controller("api/v1/account-deletions")
 export class AccountDeletionStatusController {

@@ -18,7 +18,7 @@ import {
   endOfRiyadhDay,
   startOfRiyadhDay,
 } from "../src/shared-kernel/time/business-day";
-import { UpdateProfileDto } from "../src/users/dto/update-profile.dto";
+import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-profile.dto";
 import {
   normalizeWeddingLocationInput,
   weddingLocationResponse,

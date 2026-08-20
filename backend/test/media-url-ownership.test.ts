@@ -11,7 +11,7 @@ import {
   normalizeOwnedMediaUrl,
   requireOwnedMediaUrl,
 } from "../src/media/media-upload-policy";
-import { UsersService } from "../src/users/users.service";
+import { UsersService } from "../src/modules/identity/internal/profile/users.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import { createStrongRuntimeJwtSecret } from "./support/runtime-secrets";

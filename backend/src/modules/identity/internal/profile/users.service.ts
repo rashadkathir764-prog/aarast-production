@@ -17,39 +17,39 @@ import {
   Prisma,
   UserRole,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { SafeUser, toSafeUser } from "../modules/identity/public/safe-user";
-import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
-import { runRetryableTransaction } from "../platform/database/serializable-transaction";
+import { AuthenticatedUser } from "../../public/identity-session.types";
+import { SafeUser, toSafeUser } from "../../public/safe-user";
+import { PhoneNormalizer } from "../../../../shared-kernel/phone/phone-normalizer";
+import { runRetryableTransaction } from "../../../../platform/database/serializable-transaction";
 import {
   MESSAGING_REALTIME_PORT,
   MessagingRealtimePort,
-} from "../modules/messaging/public/messaging-realtime.port";
+} from "../../../messaging/public/messaging-realtime.port";
 import {
   MEDIA_STORAGE_PORT,
   MediaStoragePort,
-} from "../modules/media/public/media-storage.port";
-import { enqueueUserSessionsRevoked } from "../platform/outbox/realtime-revocation";
+} from "../../../media/public/media-storage.port";
+import { enqueueUserSessionsRevoked } from "../../../../platform/outbox/realtime-revocation";
 import {
   PUSH_CAPABILITY_PORT,
   PushCapabilityPort,
-} from "../modules/notifications/public/push-capability.port";
+} from "../../../notifications/public/push-capability.port";
 import {
   lockProviderRatingRows,
   refreshProviderRating,
-} from "../marketplace/provider-review-rating";
-import { PrismaService } from "../platform/database/prisma.service";
+} from "../../../../marketplace/provider-review-rating";
+import { PrismaService } from "../../../../platform/database/prisma.service";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
-} from "../modules/collaboration/public/collaboration-permission.port";
+} from "../../../collaboration/public/collaboration-permission.port";
 import {
   applicationNameFields,
   toApplicationUserContact,
-} from "../shared-kernel/privacy/application-user-identity";
-import { UpdateProfileDto } from "./dto/update-profile.dto";
-import { UpdateSettingsDto } from "./dto/update-settings.dto";
-import { assertActiveMutationActorForUpdateInTransaction } from "../modules/identity/public/user-lifecycle-lock";
+} from "../../../../shared-kernel/privacy/application-user-identity";
+import { UpdateProfileDto } from "../../api/user-dto/update-profile.dto";
+import { UpdateSettingsDto } from "../../api/user-dto/update-settings.dto";
+import { assertActiveMutationActorForUpdateInTransaction } from "../../public/user-lifecycle-lock";
 
 export interface NotificationPreferenceResponse {
   id: string;

@@ -7,7 +7,7 @@ import {
 } from "../src/shared-kernel/privacy/admin-notification-privacy";
 import { toReviewIdentity } from "../src/shared-kernel/privacy/review-identity";
 import { safeTelemetryException } from "../src/platform/http/global-exception.filter";
-import { UsersService } from "../src/users/users.service";
+import { UsersService } from "../src/modules/identity/internal/profile/users.service";
 
 test("review identity uses an allowlist that excludes contact details", () => {
   const rawReviewer = {

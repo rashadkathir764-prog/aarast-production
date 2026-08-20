@@ -17,7 +17,7 @@ import {
 } from "@prisma/client";
 import { JwtService } from "@nestjs/jwt";
 import { AdminService } from "../../src/admin/admin.service";
-import { ContextsService } from "../../src/contexts/contexts.service";
+import { ContextsService } from "../../src/modules/identity/internal/profile/contexts.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
 import { PermissionService } from "../../src/sharing/permission.service";
 

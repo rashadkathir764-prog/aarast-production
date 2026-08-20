@@ -20,12 +20,7 @@
   "contextRoots": [
     {
       "context": "identity",
-      "legacyRoots": [
-        "auth",
-        "users",
-        "me",
-        "contexts"
-      ]
+      "legacyRoots": []
     },
     {
       "context": "planning",
@@ -994,10 +989,6 @@
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/contexts/contexts.service.ts",
-          "kind": "constructor-injection"
-        },
-        {
           "source": "backend/src/dashboard/dashboard.service.ts",
           "kind": "constructor-injection"
         },
@@ -1007,6 +998,14 @@
         },
         {
           "source": "backend/src/marketplace/marketplace.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/modules/identity/internal/profile/contexts.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
+          "source": "backend/src/modules/identity/internal/profile/users.service.ts",
           "kind": "constructor-injection"
         },
         {
@@ -1027,10 +1026,6 @@
         },
         {
           "source": "backend/src/timeline/timeline.service.ts",
-          "kind": "constructor-injection"
-        },
-        {
-          "source": "backend/src/users/users.service.ts",
           "kind": "constructor-injection"
         },
         {
@@ -1151,11 +1146,11 @@
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/sharing/sharing.service.ts",
+          "source": "backend/src/modules/identity/internal/profile/users.service.ts",
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/users/users.service.ts",
+          "source": "backend/src/sharing/sharing.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -1228,7 +1223,7 @@
       ],
       "consumers": [
         {
-          "source": "backend/src/users/users.service.ts",
+          "source": "backend/src/modules/identity/internal/profile/users.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -1256,11 +1251,11 @@
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+          "source": "backend/src/modules/identity/internal/profile/users.service.ts",
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/users/users.service.ts",
+          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -1395,21 +1390,6 @@
           "controllerClass": "AdminReferenceCatalogsController",
           "method": null,
           "routePrefix": "admin/reference-catalogs",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        }
-      ]
-    },
-    {
-      "source": "backend/src/contexts/contexts.controller.ts",
-      "symbol": "JwtAuthGuard",
-      "kind": "decorator-runtime",
-      "uses": [
-        {
-          "controllerClass": "ContextsController",
-          "method": null,
-          "routePrefix": "api/v1/contexts",
           "routeMethod": null,
           "routePath": null,
           "parameterIndex": null
@@ -1596,7 +1576,37 @@
       ]
     },
     {
-      "source": "backend/src/me/me.controller.ts",
+      "source": "backend/src/media/media.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "MediaController",
+          "method": null,
+          "routePrefix": "api/v1/media/uploads",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/modules/identity/api/contexts.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ContextsController",
+          "method": null,
+          "routePrefix": "api/v1/contexts",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
+      "source": "backend/src/modules/identity/api/me.controller.ts",
       "symbol": "JwtAuthGuard",
       "kind": "decorator-runtime",
       "uses": [
@@ -1611,14 +1621,14 @@
       ]
     },
     {
-      "source": "backend/src/media/media.controller.ts",
+      "source": "backend/src/modules/identity/api/users.controller.ts",
       "symbol": "JwtAuthGuard",
       "kind": "decorator-runtime",
       "uses": [
         {
-          "controllerClass": "MediaController",
+          "controllerClass": "UsersController",
           "method": null,
-          "routePrefix": "api/v1/media/uploads",
+          "routePrefix": "api/v1/users",
           "routeMethod": null,
           "routePath": null,
           "parameterIndex": null
@@ -1795,21 +1805,6 @@
           "controllerClass": "TimelineController",
           "method": null,
           "routePrefix": "api/v1/wedding-plans/:weddingPlanId/timeline",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        }
-      ]
-    },
-    {
-      "source": "backend/src/users/users.controller.ts",
-      "symbol": "JwtAuthGuard",
-      "kind": "decorator-runtime",
-      "uses": [
-        {
-          "controllerClass": "UsersController",
-          "method": null,
-          "routePrefix": "api/v1/users",
           "routeMethod": null,
           "routePath": null,
           "parameterIndex": null
@@ -2748,29 +2743,6 @@
       ]
     },
     {
-      "source": "backend/src/contexts/contexts.controller.ts",
-      "symbol": "CurrentUser",
-      "kind": "runtime-decorator",
-      "uses": [
-        {
-          "controllerClass": "ContextsController",
-          "method": "list",
-          "routePrefix": "api/v1/contexts",
-          "routeMethod": "GET",
-          "routePath": "",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ContextsController",
-          "method": "validate",
-          "routePrefix": "api/v1/contexts",
-          "routeMethod": "POST",
-          "routePath": "validate",
-          "parameterIndex": 0
-        }
-      ]
-    },
-    {
       "source": "backend/src/contribution-history/contribution-history.controller.ts",
       "symbol": "CurrentUser",
       "kind": "runtime-decorator",
@@ -3150,21 +3122,6 @@
       ]
     },
     {
-      "source": "backend/src/me/me.controller.ts",
-      "symbol": "CurrentUser",
-      "kind": "runtime-decorator",
-      "uses": [
-        {
-          "controllerClass": "MeController",
-          "method": "me",
-          "routePrefix": "api/v1/me",
-          "routeMethod": "GET",
-          "routePath": "",
-          "parameterIndex": 0
-        }
-      ]
-    },
-    {
       "source": "backend/src/media/media.controller.ts",
       "symbol": "CurrentUser",
       "kind": "runtime-decorator",
@@ -3183,6 +3140,91 @@
           "routePrefix": "api/v1/media/uploads",
           "routeMethod": "POST",
           "routePath": "verify",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/modules/identity/api/contexts.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ContextsController",
+          "method": "list",
+          "routePrefix": "api/v1/contexts",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ContextsController",
+          "method": "validate",
+          "routePrefix": "api/v1/contexts",
+          "routeMethod": "POST",
+          "routePath": "validate",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/modules/identity/api/me.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "MeController",
+          "method": "me",
+          "routePrefix": "api/v1/me",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
+      "source": "backend/src/modules/identity/api/users.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "UsersController",
+          "method": "deleteMe",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "DELETE",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "getSettings",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "GET",
+          "routePath": "me/settings",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "lookupByPhone",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "GET",
+          "routePath": "lookup",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "updateMe",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "PATCH",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "UsersController",
+          "method": "updateSettings",
+          "routePrefix": "api/v1/users",
+          "routeMethod": "PATCH",
+          "routePath": "me/settings",
           "parameterIndex": 0
         }
       ]
@@ -3727,53 +3769,6 @@
           "routePrefix": "api/v1/wedding-plans/:weddingPlanId/timeline",
           "routeMethod": "GET",
           "routePath": "",
-          "parameterIndex": 0
-        }
-      ]
-    },
-    {
-      "source": "backend/src/users/users.controller.ts",
-      "symbol": "CurrentUser",
-      "kind": "runtime-decorator",
-      "uses": [
-        {
-          "controllerClass": "UsersController",
-          "method": "deleteMe",
-          "routePrefix": "api/v1/users",
-          "routeMethod": "DELETE",
-          "routePath": "me",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "UsersController",
-          "method": "getSettings",
-          "routePrefix": "api/v1/users",
-          "routeMethod": "GET",
-          "routePath": "me/settings",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "UsersController",
-          "method": "lookupByPhone",
-          "routePrefix": "api/v1/users",
-          "routeMethod": "GET",
-          "routePath": "lookup",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "UsersController",
-          "method": "updateMe",
-          "routePrefix": "api/v1/users",
-          "routeMethod": "PATCH",
-          "routePath": "me",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "UsersController",
-          "method": "updateSettings",
-          "routePrefix": "api/v1/users",
-          "routeMethod": "PATCH",
-          "routePath": "me/settings",
           "parameterIndex": 0
         }
       ]

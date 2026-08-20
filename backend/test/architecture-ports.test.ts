@@ -522,6 +522,35 @@ test('only the bootstrap root may import the relocated internal JWT secret valid
   assert.equal(diagnosticsOfKind(sibling, 'non-public-cross-module-import').length, 1);
 });
 
+test('R5 relocated Identity internals keep only the two exact pre-existing pure helper edges', () => {
+  const allowed = scanPorts(fixtureProject({
+    'backend/src/modules/identity/internal/profile/contexts.service.ts':
+      "import { providerAccessPolicy } from '../../../../provider-dashboard/provider-access-policy';\nexport { providerAccessPolicy };\n",
+    'backend/src/provider-dashboard/provider-access-policy.ts':
+      'export const providerAccessPolicy = true;\n',
+    'backend/src/modules/identity/internal/profile/users.service.ts':
+      "import { refreshProviderRating } from '../../../../marketplace/provider-review-rating';\nexport { refreshProviderRating };\n",
+    'backend/src/marketplace/provider-review-rating.ts':
+      'export const refreshProviderRating = true;\n',
+  }));
+  assert.deepEqual(diagnosticsOfKind(allowed, 'non-public-cross-module-import'), []);
+
+  const siblingSource = scanPorts(fixtureProject({
+    'backend/src/modules/identity/internal/profile/not-contexts.service.ts':
+      "import '../../../../provider-dashboard/provider-access-policy';\n",
+    'backend/src/provider-dashboard/provider-access-policy.ts':
+      'export const providerAccessPolicy = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(siblingSource, 'non-public-cross-module-import').length, 1);
+
+  const siblingTarget = scanPorts(fixtureProject({
+    'backend/src/modules/identity/internal/profile/contexts.service.ts':
+      "import '../../../../provider-dashboard/private';\n",
+    'backend/src/provider-dashboard/private.ts': 'export const privateValue = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(siblingTarget, 'non-public-cross-module-import').length, 1);
+});
+
 test('future domain code cannot import Nest runtime, PrismaService, or another business module', () => {
   const nest = scanSingle({
     'backend/src/modules/tasks/domain/nest.ts': "import { Module } from '@nestjs/common';\nexport const value = Module;\n",

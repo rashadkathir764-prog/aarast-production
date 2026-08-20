@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { ContextsService } from "../../../contexts/contexts.service";
-import { UsersService } from "../../../users/users.service";
+import { ContextsService } from "./profile/contexts.service";
+import { UsersService } from "./profile/users.service";
 import { PrismaModule } from "../../../platform/database/prisma.module";
 import { CollaborationPermissionPublicModule } from "../../collaboration/public/collaboration-permission-public.module";
 import { MediaStoragePublicModule } from "../../media/public/media-storage-public.module";

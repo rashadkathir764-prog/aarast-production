@@ -13,22 +13,22 @@ import {
   WeddingPersona,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { PrismaService } from "../platform/database/prisma.service";
+import { AuthenticatedUser } from "../../public/identity-session.types";
+import { PrismaService } from "../../../../platform/database/prisma.service";
 import {
   providerAccessPolicy,
   ProviderAccessCapabilities,
   ProviderAccessMode,
-} from "../provider-dashboard/provider-access-policy";
+} from "../../../../provider-dashboard/provider-access-policy";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
-} from "../modules/collaboration/public/collaboration-permission.port";
+} from "../../../collaboration/public/collaboration-permission.port";
 import {
   canonicalPlanContextKey,
   canonicalProviderContextKey,
-} from "../modules/identity/public/context-key";
+} from "../../public/context-key";
 
 export enum AvailableContextRole {
   OWNER = "OWNER",

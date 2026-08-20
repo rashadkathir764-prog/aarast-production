@@ -3,7 +3,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
-import { UsersService } from "../src/users/users.service";
+import { UsersService } from "../src/modules/identity/internal/profile/users.service";
 
 const currentUser = {
   id: "user-1",

@@ -40,9 +40,23 @@ const AUTH_STAGE_HASHES = Object.freeze({
   'backend/src/modules/identity/internal/auth/otp-dispatch-quota-cleanup.scheduler.ts': '2ad3813b9aa260e075912b3d352292518ba2995c4e0c07eba6b572d22ed47594',
   'backend/src/modules/identity/internal/auth/otp-dispatch-quota.service.ts': '15610b3d0cef600f541379e655c1861095033c14088714fe81c1ab30c821786f',
   'backend/src/modules/identity/internal/auth/refresh-token-policy.ts': '75bbdad072c93d286ebafdeca29e116dcfab6e147e4d5bbeeb009c54173675d4',
-  'backend/src/modules/identity/identity.module.ts': '6725cd5dbe7ae0e57826a10e8a56dc581cc9a04154f7a499250a9140cb014b15',
+  'backend/src/modules/identity/identity.module.ts': '30bc5a6272e1ab61c23c8991b9dde2d1d693b5ea5bb523d3459fa429776fe6b8',
   'backend/src/modules/identity/internal/identity-auth.internal.module.ts': '901f103d8ceda80f3338dfe93b4121b33090079ddfc24f9694dad562359975de',
   'backend/src/main.ts': '3d8d6cf5c950be5e301d905cb922d708dd9fc18d74fbe654b48a8c507d4659b5',
+});
+const PROFILE_STAGE_HASHES = Object.freeze({
+  'backend/src/modules/identity/api/contexts.controller.ts': '4f0da66fa89ea43a3f2f4a779a2937d7f9229d511353835d87681f731bf70d52',
+  'backend/src/modules/identity/internal/profile/contexts.service.ts': 'dc002bb485abb8fc7e07957db7a86459ec244d929623c886b41c157a959affc8',
+  'backend/src/modules/identity/api/context-dto/validate-context.dto.ts': 'f0f2b6145ad6d4767577f7e5d827b2a33a5aec0a2688139b81171fc869df6d55',
+  'backend/src/modules/identity/api/me.controller.ts': 'aa541765674450e347f3ba2f0c8d6e36f23100d2c80cd66b23d47a6bffeb0a75',
+  'backend/src/modules/identity/api/account-deletion-status.controller.ts': 'e819551d0eea5497318c03b3b782121fb3692a0daf8aa445e050d47179a046be',
+  'backend/src/modules/identity/api/user-dto/account-deletion-status.dto.ts': 'abf6e0fdc9e3f52b8bedb43e8d0971869bbdee8f43f52d8df84186f9a187633d',
+  'backend/src/modules/identity/api/user-dto/update-profile.dto.ts': '608a20c00abd2e56c8b025abc3d267126919b75343ddb71eccaf70b464dfca10',
+  'backend/src/modules/identity/api/user-dto/update-settings.dto.ts': 'a984bf7ec5305b154501ad8ec888013bca867860c4053f75eb6257180fd9ebd6',
+  'backend/src/modules/identity/api/user-dto/user-lookup.dto.ts': 'cee52f86c98cd790d4e22348cdd9b762058c5219c6afee6426c29f22bd552e79',
+  'backend/src/modules/identity/api/users.controller.ts': 'c02ed21af85593eb9032029f5072232f32d82023d9485ef16172363961ec2a59',
+  'backend/src/modules/identity/internal/profile/users.service.ts': 'a8edc6ce6264010098842d7a6b7a806eb0a6cf76c2e6e4a5d45a3bf81cfb109c',
+  'backend/src/modules/identity/internal/identity-profile.internal.module.ts': '7c5aea591785d6e2c963125f6247a777859212abfd943467f41ba4aaee074cf8',
 });
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 4096;
@@ -291,6 +305,29 @@ function validateR5AuthStage(repositoryRoot) {
   }
 }
 
+function validateR5ProfileStage(repositoryRoot) {
+  for (const [relative, expectedHash] of Object.entries(PROFILE_STAGE_HASHES)) {
+    const inspected = inspectExistingPath(repositoryRoot, relative, 'file');
+    if (!inspected.exists) throw new Error('R5 profile stage drift detected');
+    const absolute = path.join(repositoryRoot, ...relative.split('/'));
+    if (normalizedFileHash(absolute) !== expectedHash) {
+      throw new Error('R5 profile stage drift detected');
+    }
+  }
+}
+
+function validateR5RetiredRoots(repositoryRoot, manifestValue) {
+  const manifest = validateR5Manifest(manifestValue);
+  for (const rootName of manifest.retiredRoots) {
+    const legacyRoot = inspectExistingPath(
+      repositoryRoot,
+      `backend/src/${rootName}`,
+      'directory',
+    );
+    if (legacyRoot.exists) throw new Error('R5 retired identity root remains');
+  }
+}
+
 function moveStage(move) {
   if (move.to.includes('/public/')) return 'task-2';
   if (move.to.includes('/internal/auth/') || move.to.includes('/api/auth')) return 'task-3';
@@ -447,14 +484,8 @@ function scanR5Identity(options) {
     validateR5AuthStage(input.repositoryRoot);
   }
   if (manifest.stage === 'strict') {
-    for (const rootName of manifest.retiredRoots) {
-      const legacyRoot = inspectExistingPath(
-        input.repositoryRoot,
-        `backend/src/${rootName}`,
-        'directory',
-      );
-      if (legacyRoot.exists) throw new Error('R5 retired identity root remains');
-    }
+    validateR5ProfileStage(input.repositoryRoot);
+    validateR5RetiredRoots(input.repositoryRoot, manifest);
   }
   return Object.freeze({ ok: true, stage: manifest.stage, moves: manifest.moves.length });
 }
@@ -487,6 +518,8 @@ module.exports = {
   validateR5Manifest,
   scanR5Identity,
   validateR5AuthStage,
+  validateR5ProfileStage,
+  validateR5RetiredRoots,
   mapOwnershipRecordsForR5,
   runCli,
 };

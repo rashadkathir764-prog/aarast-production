@@ -14,7 +14,7 @@ import {
 } from "@prisma/client";
 import { AdminService } from "../../src/admin/admin.service";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
-import { UsersService } from "../../src/users/users.service";
+import { UsersService } from "../../src/modules/identity/internal/profile/users.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;

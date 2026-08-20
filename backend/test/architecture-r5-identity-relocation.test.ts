@@ -176,8 +176,10 @@ type R5Scanner = {
     manifest: unknown;
   }): { ok: boolean };
   validateR5AuthStage(repositoryRoot: string): void;
+  validateR5ProfileStage(repositoryRoot: string): void;
   mapOwnershipRecordsForR5(records: Array<Record<string, unknown>>, manifest: R5Manifest):
     Array<Record<string, unknown>>;
+  validateR5RetiredRoots(repositoryRoot: string, manifest: R5Manifest): void;
 };
 
 test('R5 scope includes the exact dependency boundary config required by Task 2', () => {
@@ -260,7 +262,7 @@ test('R5 manifest pins the exact 44 one-to-one moves', () => {
 
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, r5Base);
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'strict');
   assert.deepEqual(manifest.moves, expectedMoves);
   assert.equal(manifest.moves.length, 44);
   assert.equal(new Set(manifest.moves.map((move) => move.from)).size, 44);
@@ -394,12 +396,12 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     { cwd: backendRoot, encoding: 'utf8' },
   );
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=task-3, moves=44/u);
+  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=strict, moves=44/u);
 });
 
 test('R5 public contracts exist only at the ten canonical target paths', () => {
   const manifest = readManifest();
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'strict');
   assert.deepEqual(
     manifest.publicRuntimeContracts.map(({ source, target }) => ({ source, target })),
     expectedPublicRuntimeContracts.map(({ source, target }) => ({ source, target })),
@@ -435,7 +437,7 @@ test('R5 public contracts exist only at the ten canonical target paths', () => {
 
 test('R5 auth API and internals occupy only their canonical Task 3 paths', () => {
   const manifest = readManifest();
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'strict');
   const authMoves = manifest.moves.filter(
     (move) => move.to.includes('/internal/auth/') || move.to.includes('/api/auth'),
   );
@@ -489,6 +491,71 @@ test('R5 auth parity rejects provider, DTO, and error-body drift', () => {
     assert.throws(() => r5.validateR5AuthStage(fixtureRoot), /auth.*drift/i);
     writeFileSync(target, original, 'utf8');
   }
+});
+
+test('R5 strict roots remove every legacy Identity directory and reject recreation', () => {
+  const r5 = loadScanner();
+  const manifest = r5.validateR5Manifest(readManifest());
+  assert.equal(manifest.stage, 'strict');
+  for (const root of manifest.retiredRoots) {
+    assert.equal(existsSync(path.join(repositoryRoot(), 'backend', 'src', root)), false);
+  }
+
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-retired-roots-'));
+  temporaryRoots.push(fixtureRoot);
+  const recreated = path.join(fixtureRoot, 'backend', 'src', 'auth', 'facade.ts');
+  mkdirSync(path.dirname(recreated), { recursive: true });
+  writeFileSync(recreated, "export * from '../../../modules/identity/public/auth-error';\n", 'utf8');
+  assert.throws(
+    () => r5.validateR5RetiredRoots(fixtureRoot, manifest),
+    /retired identity root/i,
+  );
+  rmSync(path.join(fixtureRoot, 'backend', 'src', 'auth'), { recursive: true, force: true });
+
+  const outside = path.join(fixtureRoot, 'outside-auth');
+  mkdirSync(outside, { recursive: true });
+  const linked = path.join(fixtureRoot, 'backend', 'src', 'auth');
+  mkdirSync(path.dirname(linked), { recursive: true });
+  symlinkSync(outside, linked, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(
+    () => r5.validateR5RetiredRoots(fixtureRoot, manifest),
+    /retired identity root|reparse|junction/i,
+  );
+});
+
+test('R5 profile API and internal bodies reject post-move drift', () => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-profile-parity-'));
+  temporaryRoots.push(fixtureRoot);
+  const manifest = readManifest();
+  const paths = [
+    ...manifest.moves
+      .filter((move) => !move.to.includes('/public/')
+        && !move.to.includes('/internal/auth/')
+        && !move.to.includes('/api/auth'))
+      .map((move) => move.to),
+    'backend/src/modules/identity/internal/identity-profile.internal.module.ts',
+  ];
+  for (const relative of paths) {
+    const source = path.join(repositoryRoot(), ...relative.split('/'));
+    const target = path.join(fixtureRoot, ...relative.split('/'));
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileSync(source, target);
+  }
+  const r5 = loadScanner();
+  assert.doesNotThrow(() => r5.validateR5ProfileStage(fixtureRoot));
+  const target = path.join(
+    fixtureRoot,
+    'backend',
+    'src',
+    'modules',
+    'identity',
+    'api',
+    'user-dto',
+    'update-profile.dto.ts',
+  );
+  const original = readFileSync(target, 'utf8');
+  writeFileSync(target, `${original}\nexport const copiedBehavior = true;\n`, 'utf8');
+  assert.throws(() => r5.validateR5ProfileStage(fixtureRoot), /profile.*drift/i);
 });
 
 function repositoryRoot(): string {

@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../modules/identity/public/current-user.decorator";
-import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
-import { ContextsService } from "./contexts.service";
-import { ValidateContextDto } from "./dto/validate-context.dto";
+import { AuthenticatedUser } from "../public/identity-session.types";
+import { CurrentUser } from "../public/current-user.decorator";
+import { JwtAuthGuard } from "../public/jwt-auth.guard";
+import { ContextsService } from "../internal/profile/contexts.service";
+import { ValidateContextDto } from "./context-dto/validate-context.dto";
 
 @Controller("api/v1/contexts")
 @UseGuards(JwtAuthGuard)

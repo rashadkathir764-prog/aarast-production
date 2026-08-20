@@ -12,7 +12,7 @@ import {
 } from "@prisma/client";
 import { AdminService } from "../src/admin/admin.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
-import { UsersService } from "../src/users/users.service";
+import { UsersService } from "../src/modules/identity/internal/profile/users.service";
 
 test("an administrator app profile cannot overwrite the administrator identity", async () => {
   const now = new Date();

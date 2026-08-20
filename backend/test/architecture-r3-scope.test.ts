@@ -16,6 +16,11 @@ import { afterEach, test } from 'node:test';
 const backendRoot = path.resolve(__dirname, '..');
 const repositoryRoot = path.resolve(backendRoot, '..');
 const scopePath = path.join(backendRoot, 'scripts', 'architecture', 'r3-scope.cjs');
+const r5ManifestPath = path.join(
+  backendRoot,
+  'architecture',
+  'r5-identity-relocation.json',
+);
 const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const temporaryRoots: string[] = [];
 
@@ -23,6 +28,7 @@ type ScopeModule = {
   R3_BASE: string;
   ALLOWED_PATHS: readonly string[];
   R4_ALLOWED_PATHS: readonly string[];
+  R5_ALLOWED_PATHS: readonly string[];
   assertAllowedPathsMatch(manifestPaths: unknown, scopePaths: unknown): void;
   writeAtomicJson(
     reportPath: string,
@@ -30,6 +36,11 @@ type ScopeModule = {
     dependencies?: Record<string, unknown>,
   ): void;
   validateR3Scope(options: Record<string, unknown>): any;
+  validateR5IdentityManifest(value: unknown): {
+    baseRevision: string;
+    stage: string;
+    allowedChangedPaths: readonly string[];
+  };
   validateScopeSnapshot(value: unknown): any;
   runCli(dependencies: Record<string, unknown>): number;
 };
@@ -278,9 +289,11 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
   const delegatedR4Paths = result.changedPaths.filter((entry: string) =>
     !scope().ALLOWED_PATHS.includes(entry));
   assert.deepEqual(
-    delegatedR4Paths.filter((entry: string) => !scope().R4_ALLOWED_PATHS.includes(entry)),
+    delegatedR4Paths.filter((entry: string) =>
+      !scope().R4_ALLOWED_PATHS.includes(entry)
+      && !scope().R5_ALLOWED_PATHS.includes(entry)),
     [],
-    'post-R3 paths must be delegated through the exact R4 phase fence',
+    'post-R3 paths must be delegated through an exact approved phase fence',
   );
   rmSync(result.reportPath, { force: true });
 });
@@ -306,6 +319,53 @@ test('the scope allowlist is byte/order-exact with the canonical manifest', () =
     [...manifest.allowedChangedPaths.slice(0, -1), 'docs/attacker.md'],
     scope().ALLOWED_PATHS,
   ), /allowlist.*drift/i);
+});
+
+test('R5 delegates only its fixed-base exact cumulative path fence', () => {
+  assert.equal(existsSync(r5ManifestPath), true, 'R5 manifest must exist');
+  const value = JSON.parse(readFileSync(r5ManifestPath, 'utf8'));
+  const delegated = scope().validateR5IdentityManifest(value);
+
+  assert.equal(delegated.baseRevision, '9dab73acdc187a4a18d8a675713d8ded40a16d02');
+  assert.equal(delegated.stage, 'inventory');
+  assert.deepEqual(delegated.allowedChangedPaths, scope().R5_ALLOWED_PATHS);
+  assert.equal(
+    delegated.allowedChangedPaths.includes(
+      'docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md',
+    ),
+    true,
+  );
+  assert.equal(
+    delegated.allowedChangedPaths.includes(
+      'docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md',
+    ),
+    true,
+  );
+
+  const wrongBase = structuredClone(value);
+  wrongBase.baseRevision = '0'.repeat(40);
+  assert.throws(
+    () => scope().validateR5IdentityManifest(wrongBase),
+    /R5 identity manifest identity/i,
+  );
+
+  const reordered = structuredClone(value);
+  [reordered.allowedChangedPaths[0], reordered.allowedChangedPaths[1]] = [
+    reordered.allowedChangedPaths[1],
+    reordered.allowedChangedPaths[0],
+  ];
+  assert.throws(
+    () => scope().validateR5IdentityManifest(reordered),
+    /sorted|allowlist.*drift/i,
+  );
+
+  const substituted = structuredClone(value);
+  substituted.allowedChangedPaths[substituted.allowedChangedPaths.length - 1] =
+    'docs/attacker.md';
+  assert.throws(
+    () => scope().validateR5IdentityManifest(substituted),
+    /sorted|allowlist.*drift/i,
+  );
 });
 
 test('Task 9 permits only the seven approved active receipt files', () => {

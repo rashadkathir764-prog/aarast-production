@@ -1,0 +1,465 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "9dab73acdc187a4a18d8a675713d8ded40a16d02",
+  "stage": "inventory",
+  "moves": [
+    {
+      "from": "backend/src/auth/access-token-scope.ts",
+      "to": "backend/src/modules/identity/public/access-token-scope.ts"
+    },
+    {
+      "from": "backend/src/auth/auth-challenge-cleanup.scheduler.ts",
+      "to": "backend/src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler.ts"
+    },
+    {
+      "from": "backend/src/auth/auth-error.ts",
+      "to": "backend/src/modules/identity/public/auth-error.ts"
+    },
+    {
+      "from": "backend/src/auth/auth.controller.ts",
+      "to": "backend/src/modules/identity/api/auth.controller.ts"
+    },
+    {
+      "from": "backend/src/auth/auth.service.ts",
+      "to": "backend/src/modules/identity/internal/auth/auth.service.ts"
+    },
+    {
+      "from": "backend/src/auth/current-user.decorator.ts",
+      "to": "backend/src/modules/identity/public/current-user.decorator.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/admin-password-reset-confirm.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/admin-password-reset-confirm.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/admin-password-reset-request.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/admin-password-reset-request.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/complete-admin-login.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/complete-admin-login.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/complete-registration.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/complete-registration.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/login.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/login.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/logout.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/logout.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/max-utf8-bytes.decorator.ts",
+      "to": "backend/src/modules/identity/public/max-utf8-bytes.decorator.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/password-reset-confirm.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/password-reset-confirm.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/password-reset-request.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/password-reset-request.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/refresh.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/refresh.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/register.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/register.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/request-otp.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/request-otp.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/dto/verify-otp.dto.ts",
+      "to": "backend/src/modules/identity/api/auth-dto/verify-otp.dto.ts"
+    },
+    {
+      "from": "backend/src/auth/jwt-auth.guard.ts",
+      "to": "backend/src/modules/identity/public/jwt-auth.guard.ts"
+    },
+    {
+      "from": "backend/src/auth/jwt-payload.interface.ts",
+      "to": "backend/src/modules/identity/public/jwt-payload.interface.ts"
+    },
+    {
+      "from": "backend/src/auth/jwt-secret.ts",
+      "to": "backend/src/modules/identity/internal/auth/jwt-secret.ts"
+    },
+    {
+      "from": "backend/src/auth/jwt-session.guard.ts",
+      "to": "backend/src/modules/identity/public/jwt-session.guard.ts"
+    },
+    {
+      "from": "backend/src/auth/jwt.strategy.ts",
+      "to": "backend/src/modules/identity/internal/auth/jwt.strategy.ts"
+    },
+    {
+      "from": "backend/src/auth/login-throttle-cleanup.scheduler.ts",
+      "to": "backend/src/modules/identity/internal/auth/login-throttle-cleanup.scheduler.ts"
+    },
+    {
+      "from": "backend/src/auth/login-throttle.service.ts",
+      "to": "backend/src/modules/identity/internal/auth/login-throttle.service.ts"
+    },
+    {
+      "from": "backend/src/auth/otp-channel.ts",
+      "to": "backend/src/modules/identity/internal/auth/otp-channel.ts"
+    },
+    {
+      "from": "backend/src/auth/otp-dispatch-quota-cleanup.scheduler.ts",
+      "to": "backend/src/modules/identity/internal/auth/otp-dispatch-quota-cleanup.scheduler.ts"
+    },
+    {
+      "from": "backend/src/auth/otp-dispatch-quota.service.ts",
+      "to": "backend/src/modules/identity/internal/auth/otp-dispatch-quota.service.ts"
+    },
+    {
+      "from": "backend/src/auth/refresh-token-policy.ts",
+      "to": "backend/src/modules/identity/internal/auth/refresh-token-policy.ts"
+    },
+    {
+      "from": "backend/src/auth/safe-user.ts",
+      "to": "backend/src/modules/identity/public/safe-user.ts"
+    },
+    {
+      "from": "backend/src/contexts/context-key.ts",
+      "to": "backend/src/modules/identity/public/context-key.ts"
+    },
+    {
+      "from": "backend/src/contexts/contexts.controller.ts",
+      "to": "backend/src/modules/identity/api/contexts.controller.ts"
+    },
+    {
+      "from": "backend/src/contexts/contexts.service.ts",
+      "to": "backend/src/modules/identity/internal/profile/contexts.service.ts"
+    },
+    {
+      "from": "backend/src/contexts/dto/validate-context.dto.ts",
+      "to": "backend/src/modules/identity/api/context-dto/validate-context.dto.ts"
+    },
+    {
+      "from": "backend/src/me/me.controller.ts",
+      "to": "backend/src/modules/identity/api/me.controller.ts"
+    },
+    {
+      "from": "backend/src/users/account-deletion-status.controller.ts",
+      "to": "backend/src/modules/identity/api/account-deletion-status.controller.ts"
+    },
+    {
+      "from": "backend/src/users/dto/account-deletion-status.dto.ts",
+      "to": "backend/src/modules/identity/api/user-dto/account-deletion-status.dto.ts"
+    },
+    {
+      "from": "backend/src/users/dto/update-profile.dto.ts",
+      "to": "backend/src/modules/identity/api/user-dto/update-profile.dto.ts"
+    },
+    {
+      "from": "backend/src/users/dto/update-settings.dto.ts",
+      "to": "backend/src/modules/identity/api/user-dto/update-settings.dto.ts"
+    },
+    {
+      "from": "backend/src/users/dto/user-lookup.dto.ts",
+      "to": "backend/src/modules/identity/api/user-dto/user-lookup.dto.ts"
+    },
+    {
+      "from": "backend/src/users/user-lifecycle-lock.ts",
+      "to": "backend/src/modules/identity/public/user-lifecycle-lock.ts"
+    },
+    {
+      "from": "backend/src/users/users.controller.ts",
+      "to": "backend/src/modules/identity/api/users.controller.ts"
+    },
+    {
+      "from": "backend/src/users/users.service.ts",
+      "to": "backend/src/modules/identity/internal/profile/users.service.ts"
+    }
+  ],
+  "publicRuntimeContracts": [
+    {
+      "source": "backend/src/auth/access-token-scope.ts",
+      "target": "backend/src/modules/identity/public/access-token-scope.ts",
+      "declarations": [
+        "function:resolveJwtSessionScope"
+      ]
+    },
+    {
+      "source": "backend/src/auth/auth-error.ts",
+      "target": "backend/src/modules/identity/public/auth-error.ts",
+      "declarations": [
+        "const:AuthErrorCode",
+        "const:OTP_DELIVERY_UNAVAILABLE_MESSAGE",
+        "function:authError",
+        "function:otpDeliveryUnavailableError",
+        "type:AuthErrorCode"
+      ]
+    },
+    {
+      "source": "backend/src/auth/current-user.decorator.ts",
+      "target": "backend/src/modules/identity/public/current-user.decorator.ts",
+      "declarations": [
+        "const:CurrentUser"
+      ]
+    },
+    {
+      "source": "backend/src/auth/dto/max-utf8-bytes.decorator.ts",
+      "target": "backend/src/modules/identity/public/max-utf8-bytes.decorator.ts",
+      "declarations": [
+        "function:MaxUtf8Bytes"
+      ]
+    },
+    {
+      "source": "backend/src/auth/jwt-auth.guard.ts",
+      "target": "backend/src/modules/identity/public/jwt-auth.guard.ts",
+      "declarations": [
+        "class:JwtAuthGuard"
+      ]
+    },
+    {
+      "source": "backend/src/auth/jwt-payload.interface.ts",
+      "target": "backend/src/modules/identity/public/jwt-payload.interface.ts",
+      "declarations": [
+        "interface:JwtPayload"
+      ]
+    },
+    {
+      "source": "backend/src/auth/jwt-session.guard.ts",
+      "target": "backend/src/modules/identity/public/jwt-session.guard.ts",
+      "declarations": [
+        "class:JwtSessionGuard"
+      ]
+    },
+    {
+      "source": "backend/src/auth/safe-user.ts",
+      "target": "backend/src/modules/identity/public/safe-user.ts",
+      "declarations": [
+        "function:toAuthenticatedUser",
+        "function:toSafeUser",
+        "interface:SafeUser"
+      ]
+    },
+    {
+      "source": "backend/src/contexts/context-key.ts",
+      "target": "backend/src/modules/identity/public/context-key.ts",
+      "declarations": [
+        "function:canonicalPlanContextKey",
+        "function:canonicalProviderContextKey",
+        "type:PlanContextKeyRole"
+      ]
+    },
+    {
+      "source": "backend/src/users/user-lifecycle-lock.ts",
+      "target": "backend/src/modules/identity/public/user-lifecycle-lock.ts",
+      "declarations": [
+        "function:assertActiveMutationActorForUpdateInTransaction",
+        "function:assertActiveMutationActorInTransaction",
+        "function:lockUserLifecycleRowsForUpdateInTransaction",
+        "function:lockUserLifecycleRowsInTransaction",
+        "interface:LockedUserLifecycleRow"
+      ]
+    }
+  ],
+  "retiredRoots": [
+    "auth",
+    "contexts",
+    "me",
+    "users"
+  ],
+  "expectedBaselines": {
+    "dependencyRecords": 89,
+    "ownershipRecords": 385,
+    "ownershipOccurrences": 781
+  },
+  "allowedChangedPaths": [
+    "ARCHITECTURE.md",
+    "CHANGELOG.md",
+    "backend/.dependency-cruiser-known-violations.json",
+    "backend/architecture/ownership-baseline.json",
+    "backend/architecture/r3-context-boundaries.json",
+    "backend/architecture/r5-identity-relocation.json",
+    "backend/package.json",
+    "backend/scripts/architecture/ports-scan.cjs",
+    "backend/scripts/architecture/r3-context-scan.cjs",
+    "backend/scripts/architecture/r3-scope.cjs",
+    "backend/scripts/architecture/r5-identity-scan.cjs",
+    "backend/scripts/smoke/account-deletion-smoke.ts",
+    "backend/scripts/smoke/phase1-identity-smoke.ts",
+    "backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-auth-retention-smoke.ts",
+    "backend/scripts/smoke/phase2-provider-rating-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase3-context-transition-smoke.ts",
+    "backend/src/admin/admin-audit.controller.ts",
+    "backend/src/admin/admin.controller.ts",
+    "backend/src/auth/access-token-scope.ts",
+    "backend/src/auth/auth-challenge-cleanup.scheduler.ts",
+    "backend/src/auth/auth-error.ts",
+    "backend/src/auth/auth.controller.ts",
+    "backend/src/auth/auth.service.ts",
+    "backend/src/auth/current-user.decorator.ts",
+    "backend/src/auth/dto/admin-password-reset-confirm.dto.ts",
+    "backend/src/auth/dto/admin-password-reset-request.dto.ts",
+    "backend/src/auth/dto/complete-admin-login.dto.ts",
+    "backend/src/auth/dto/complete-registration.dto.ts",
+    "backend/src/auth/dto/login.dto.ts",
+    "backend/src/auth/dto/logout.dto.ts",
+    "backend/src/auth/dto/max-utf8-bytes.decorator.ts",
+    "backend/src/auth/dto/password-reset-confirm.dto.ts",
+    "backend/src/auth/dto/password-reset-request.dto.ts",
+    "backend/src/auth/dto/refresh.dto.ts",
+    "backend/src/auth/dto/register.dto.ts",
+    "backend/src/auth/dto/request-otp.dto.ts",
+    "backend/src/auth/dto/verify-otp.dto.ts",
+    "backend/src/auth/jwt-auth.guard.ts",
+    "backend/src/auth/jwt-payload.interface.ts",
+    "backend/src/auth/jwt-secret.ts",
+    "backend/src/auth/jwt-session.guard.ts",
+    "backend/src/auth/jwt.strategy.ts",
+    "backend/src/auth/login-throttle-cleanup.scheduler.ts",
+    "backend/src/auth/login-throttle.service.ts",
+    "backend/src/auth/otp-channel.ts",
+    "backend/src/auth/otp-dispatch-quota-cleanup.scheduler.ts",
+    "backend/src/auth/otp-dispatch-quota.service.ts",
+    "backend/src/auth/refresh-token-policy.ts",
+    "backend/src/auth/safe-user.ts",
+    "backend/src/budget-categories/budget-categories.controller.ts",
+    "backend/src/catalogs/catalogs.controller.ts",
+    "backend/src/contexts/context-key.ts",
+    "backend/src/contexts/contexts.controller.ts",
+    "backend/src/contexts/contexts.service.ts",
+    "backend/src/contexts/dto/validate-context.dto.ts",
+    "backend/src/contribution-history/contribution-history.controller.ts",
+    "backend/src/conversations/conversations.controller.ts",
+    "backend/src/conversations/conversations.gateway.ts",
+    "backend/src/conversations/conversations.service.ts",
+    "backend/src/dashboard/dashboard.controller.ts",
+    "backend/src/guests/guests.controller.ts",
+    "backend/src/main.ts",
+    "backend/src/marketplace/marketplace-write-locks.ts",
+    "backend/src/marketplace/marketplace.controller.ts",
+    "backend/src/me/me.controller.ts",
+    "backend/src/media/media-upload-ticket.service.ts",
+    "backend/src/media/media.controller.ts",
+    "backend/src/modules/identity/api/account-deletion-status.controller.ts",
+    "backend/src/modules/identity/api/auth-dto/admin-password-reset-confirm.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/admin-password-reset-request.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/complete-admin-login.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/complete-registration.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/login.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/logout.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/password-reset-confirm.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/password-reset-request.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/refresh.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/register.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/request-otp.dto.ts",
+    "backend/src/modules/identity/api/auth-dto/verify-otp.dto.ts",
+    "backend/src/modules/identity/api/auth.controller.ts",
+    "backend/src/modules/identity/api/context-dto/validate-context.dto.ts",
+    "backend/src/modules/identity/api/contexts.controller.ts",
+    "backend/src/modules/identity/api/me.controller.ts",
+    "backend/src/modules/identity/api/user-dto/account-deletion-status.dto.ts",
+    "backend/src/modules/identity/api/user-dto/update-profile.dto.ts",
+    "backend/src/modules/identity/api/user-dto/update-settings.dto.ts",
+    "backend/src/modules/identity/api/user-dto/user-lookup.dto.ts",
+    "backend/src/modules/identity/api/users.controller.ts",
+    "backend/src/modules/identity/identity.module.ts",
+    "backend/src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler.ts",
+    "backend/src/modules/identity/internal/auth/auth.service.ts",
+    "backend/src/modules/identity/internal/auth/jwt-secret.ts",
+    "backend/src/modules/identity/internal/auth/jwt.strategy.ts",
+    "backend/src/modules/identity/internal/auth/login-throttle-cleanup.scheduler.ts",
+    "backend/src/modules/identity/internal/auth/login-throttle.service.ts",
+    "backend/src/modules/identity/internal/auth/otp-channel.ts",
+    "backend/src/modules/identity/internal/auth/otp-dispatch-quota-cleanup.scheduler.ts",
+    "backend/src/modules/identity/internal/auth/otp-dispatch-quota.service.ts",
+    "backend/src/modules/identity/internal/auth/refresh-token-policy.ts",
+    "backend/src/modules/identity/internal/identity-auth.internal.module.ts",
+    "backend/src/modules/identity/internal/identity-profile.internal.module.ts",
+    "backend/src/modules/identity/internal/profile/contexts.service.ts",
+    "backend/src/modules/identity/internal/profile/users.service.ts",
+    "backend/src/modules/identity/public/access-token-scope.ts",
+    "backend/src/modules/identity/public/auth-error.ts",
+    "backend/src/modules/identity/public/context-key.ts",
+    "backend/src/modules/identity/public/current-user.decorator.ts",
+    "backend/src/modules/identity/public/jwt-auth.guard.ts",
+    "backend/src/modules/identity/public/jwt-payload.interface.ts",
+    "backend/src/modules/identity/public/jwt-session.guard.ts",
+    "backend/src/modules/identity/public/max-utf8-bytes.decorator.ts",
+    "backend/src/modules/identity/public/safe-user.ts",
+    "backend/src/modules/identity/public/user-lifecycle-lock.ts",
+    "backend/src/money/money-summary.controller.ts",
+    "backend/src/notifications/notifications.controller.ts",
+    "backend/src/notifications/notifications.service.ts",
+    "backend/src/onboarding/onboarding.controller.ts",
+    "backend/src/provider-dashboard/provider-dashboard.controller.ts",
+    "backend/src/provider-dashboard/provider-mutation-locks.ts",
+    "backend/src/push/push-installations.service.ts",
+    "backend/src/push/push.controller.ts",
+    "backend/src/sharing/dto/verify-invite-otp.dto.ts",
+    "backend/src/sharing/invite-access.service.ts",
+    "backend/src/sharing/permission.service.ts",
+    "backend/src/sharing/sharing.controller.ts",
+    "backend/src/sharing/sharing.service.ts",
+    "backend/src/tasks/tasks.controller.ts",
+    "backend/src/timeline/timeline.controller.ts",
+    "backend/src/users/account-deletion-status.controller.ts",
+    "backend/src/users/dto/account-deletion-status.dto.ts",
+    "backend/src/users/dto/update-profile.dto.ts",
+    "backend/src/users/dto/update-settings.dto.ts",
+    "backend/src/users/dto/user-lookup.dto.ts",
+    "backend/src/users/user-lifecycle-lock.ts",
+    "backend/src/users/users.controller.ts",
+    "backend/src/users/users.service.ts",
+    "backend/src/wedding-costs/wedding-costs.controller.ts",
+    "backend/src/wedding-plans/wedding-plans.controller.ts",
+    "backend/src/wedding-plans/wedding-plans.service.ts",
+    "backend/test/account-deletion-recovery.test.ts",
+    "backend/test/account-deletion.test.ts",
+    "backend/test/admin-app-identity.test.ts",
+    "backend/test/admin-auth-session-security.test.ts",
+    "backend/test/admin-password-recovery.test.ts",
+    "backend/test/architecture-dependencies.test.ts",
+    "backend/test/architecture-ownership.test.ts",
+    "backend/test/architecture-ports.test.ts",
+    "backend/test/architecture-r3-closure.test.ts",
+    "backend/test/architecture-r3-context-modules-a.test.ts",
+    "backend/test/architecture-r3-context-modules-b.test.ts",
+    "backend/test/architecture-r3-contexts.test.ts",
+    "backend/test/architecture-r3-identity-port.test.ts",
+    "backend/test/architecture-r3-scope.test.ts",
+    "backend/test/architecture-r4-planning-finance-boundary.test.ts",
+    "backend/test/architecture-r5-identity-relocation.test.ts",
+    "backend/test/auth-challenge-cleanup.test.ts",
+    "backend/test/auth-otp-mode.test.ts",
+    "backend/test/auth-password-policy.test.ts",
+    "backend/test/auth-refresh-wiring.test.ts",
+    "backend/test/auth-registration-security.test.ts",
+    "backend/test/backend-support.test.ts",
+    "backend/test/contexts.test.ts",
+    "backend/test/invite-delivery.test.ts",
+    "backend/test/login-throttle.test.ts",
+    "backend/test/media-url-ownership.test.ts",
+    "backend/test/notification-settings-truth.test.ts",
+    "backend/test/openwa-otp-channel.test.ts",
+    "backend/test/otp-controller-context.test.ts",
+    "backend/test/otp-dispatch-quota.test.ts",
+    "backend/test/password-reset-logic.test.ts",
+    "backend/test/privacy-contract.test.ts",
+    "backend/test/push-notifications.test.ts",
+    "backend/test/scheduler-lock.test.ts",
+    "backend/test/whatsapp-otp-channel.test.ts",
+    "docs/README.md",
+    "docs/SCRIPTS.md",
+    "docs/backend/README.md",
+    "docs/project/DECISIONS.md",
+    "docs/project/EXECUTION_PLAN.md",
+    "docs/project/STATUS.md",
+    "docs/qa/README.md",
+    "docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md",
+    "docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md"
+  ]
+}

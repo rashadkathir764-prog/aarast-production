@@ -6,10 +6,15 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { types: utilTypes } = require('node:util');
+const {
+  R5_BASE,
+  validateR5Manifest,
+} = require('./r5-identity-scan.cjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const R4_BASE = '502b181a2ce624458fd7eae064f194497ec0151e';
 const R4_MANIFEST_PATH = 'backend/architecture/r4-planning-finance-boundary.json';
+const R5_MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
 const R4_ALLOWED_PATHS = Object.freeze([
   'ARCHITECTURE.md',
   'CHANGELOG.md',
@@ -258,6 +263,15 @@ const ALLOWED_PATHS = Object.freeze([
   'docs/qa/README.md',
   'CHANGELOG.md',
 ]);
+const R5_ALLOWED_PATHS = Object.freeze([
+  ...validateR5Manifest(JSON.parse(fs.readFileSync(path.join(
+    __dirname,
+    '..',
+    '..',
+    'architecture',
+    'r5-identity-relocation.json',
+  ), 'utf8'))).allowedChangedPaths,
+]);
 
 function assertPlainObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !utilTypes.isProxy(value)) {
@@ -329,6 +343,30 @@ function validateR4DelegationManifest(value) {
     baseRevision: manifest.baseRevision,
     stage: manifest.stage,
     allowedChangedPaths: Object.freeze(allowedChangedPaths),
+  });
+}
+
+function validateR5IdentityManifest(value) {
+  const manifest = validateR5Manifest(value);
+  if (manifest.baseRevision !== R5_BASE) {
+    throw new Error('R5 identity manifest identity is invalid');
+  }
+  assertAllowedPathsMatch(manifest.allowedChangedPaths, R5_ALLOWED_PATHS);
+  for (const requiredPath of [
+    R5_MANIFEST_PATH,
+    'backend/scripts/architecture/r3-scope.cjs',
+    'backend/scripts/architecture/r5-identity-scan.cjs',
+    'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/architecture-r5-identity-relocation.test.ts',
+  ]) {
+    if (!manifest.allowedChangedPaths.includes(requiredPath)) {
+      throw new Error('R5 identity manifest is missing a required handoff path');
+    }
+  }
+  return Object.freeze({
+    baseRevision: manifest.baseRevision,
+    stage: manifest.stage,
+    allowedChangedPaths: Object.freeze([...manifest.allowedChangedPaths]),
   });
 }
 
@@ -542,9 +580,14 @@ function validateR3Scope(options) {
   const delegatedR4 = fs.existsSync(r4ManifestAbsolutePath)
     ? validateR4DelegationManifest(JSON.parse(fs.readFileSync(r4ManifestAbsolutePath, 'utf8')))
     : null;
+  const r5ManifestAbsolutePath = path.join(input.repositoryRoot, ...R5_MANIFEST_PATH.split('/'));
+  const delegatedR5 = fs.existsSync(r5ManifestAbsolutePath)
+    ? validateR5IdentityManifest(JSON.parse(fs.readFileSync(r5ManifestAbsolutePath, 'utf8')))
+    : null;
   const effectiveAllowedPaths = [...new Set([
     ...ALLOWED_PATHS,
     ...(delegatedR4 ? delegatedR4.allowedChangedPaths : []),
+    ...(delegatedR5 ? delegatedR5.allowedChangedPaths : []),
   ])].sort();
   const tracked = gitLines(input.repositoryRoot, ['diff', '--no-renames', '--name-only', R3_BASE, '--']);
   const untracked = gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
@@ -590,8 +633,10 @@ module.exports = {
   R3_BASE,
   ALLOWED_PATHS,
   R4_ALLOWED_PATHS,
+  R5_ALLOWED_PATHS,
   assertAllowedPathsMatch,
   validateR4DelegationManifest,
+  validateR5IdentityManifest,
   writeAtomicJson,
   validateR3Scope,
   validateScopeSnapshot,

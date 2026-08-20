@@ -79,7 +79,8 @@
     "architecture:ports": "node scripts/architecture/ports-scan.cjs --check",
     "architecture:r3": "node scripts/architecture/r3-context-scan.cjs --check --stage strict",
     "architecture:r4": "node --test -r ts-node/register test/architecture-r4-planning-finance-boundary.test.ts",
-    "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4"
+    "architecture:r5": "node scripts/architecture/r5-identity-scan.cjs --check",
+    "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

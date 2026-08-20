@@ -44,7 +44,7 @@ import { PasswordResetRequestDto } from "./dto/password-reset-request.dto";
 import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
 import { AdminPasswordResetRequestDto } from "./dto/admin-password-reset-request.dto";
 import { AdminPasswordResetConfirmDto } from "./dto/admin-password-reset-confirm.dto";
-import { JwtPayload } from "./jwt-payload.interface";
+import { JwtPayload } from "../modules/identity/public/jwt-payload.interface";
 import {
   DevEchoOtpChannel,
   generateProductionOtpCode,
@@ -63,7 +63,7 @@ import {
   refreshTokenExpiry,
   RefreshTokenScope,
 } from "./refresh-token-policy";
-import { SafeUser, toSafeUser } from "./safe-user";
+import { SafeUser, toSafeUser } from "../modules/identity/public/safe-user";
 import {
   LoginThrottleRealm,
   LoginThrottleService,
@@ -75,10 +75,10 @@ import {
   authError,
   AuthErrorCode,
   otpDeliveryUnavailableError,
-} from "./auth-error";
+} from "../modules/identity/public/auth-error";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
-} from "../users/user-lifecycle-lock";
+} from "../modules/identity/public/user-lifecycle-lock";
 import {
   enqueueSessionRevoked,
   enqueueUserSessionsRevoked,

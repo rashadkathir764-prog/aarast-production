@@ -9,8 +9,8 @@ import { OtpPurpose, UserRole } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AdminGuard } from "../src/admin/admin.guard";
 import { AuthService } from "../src/auth/auth.service";
-import { JwtAuthGuard } from "../src/auth/jwt-auth.guard";
-import { resolveJwtSessionScope } from "../src/auth/access-token-scope";
+import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
+import { resolveJwtSessionScope } from "../src/modules/identity/public/access-token-scope";
 import {
   createOpaqueTokenValue,
   hashRefreshToken,
@@ -247,7 +247,7 @@ test("public OTP cannot mint or invalidate an administrator MFA code", () => {
 });
 
 test("all access JWTs are bound to a live revocable server session", () => {
-  const payload = read("src/auth/jwt-payload.interface.ts");
+  const payload = read("src/modules/identity/public/jwt-payload.interface.ts");
   const service = read("src/auth/auth.service.ts");
   const strategy = read("src/auth/jwt.strategy.ts");
 

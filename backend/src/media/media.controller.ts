@@ -1,8 +1,8 @@
 import { Body, Controller, Header, Post, UseGuards } from "@nestjs/common";
 import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../auth/current-user.decorator";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CurrentUser } from "../modules/identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { CreateMediaUploadDto } from "./dto/create-media-upload.dto";
 import { VerifyMediaUploadDto } from "./dto/verify-media-upload.dto";
 import { MediaStorageService } from "./media-storage.service";

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "9dab73acdc187a4a18d8a675713d8ded40a16d02",
-  "stage": "inventory",
+  "stage": "task-2",
   "moves": [
     {
       "from": "backend/src/auth/access-token-scope.ts",
@@ -279,6 +279,7 @@
     "ARCHITECTURE.md",
     "CHANGELOG.md",
     "backend/.dependency-cruiser-known-violations.json",
+    "backend/.dependency-cruiser.cjs",
     "backend/architecture/ownership-baseline.json",
     "backend/architecture/r3-context-boundaries.json",
     "backend/architecture/r5-identity-relocation.json",

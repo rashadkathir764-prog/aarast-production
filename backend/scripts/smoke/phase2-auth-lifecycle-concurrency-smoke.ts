@@ -10,7 +10,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
-import { AuthErrorCode } from "../../src/auth/auth-error";
+import { AuthErrorCode } from "../../src/modules/identity/public/auth-error";
 import { AuthService } from "../../src/auth/auth.service";
 import {
   createRefreshTokenValue,

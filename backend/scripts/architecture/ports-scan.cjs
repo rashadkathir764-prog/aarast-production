@@ -31,6 +31,7 @@ const LEGACY_ROOT_TO_CONTEXT = new Map(
 const RETIRED_PLATFORM_ROOTS = new Set(['common', 'outbox']);
 const BACKOFFICE_PERMISSION_CONTRACT =
   'backend/src/modules/backoffice/domain/admin-permissions.ts';
+const RELOCATED_SAFE_USER = 'backend/src/modules/identity/public/safe-user.ts';
 const TRANSITIONAL_PLATFORM_BUSINESS_DEBT = new Set([
   'backend/src/platform/config/runtime-environment.ts|backend/src/auth/jwt-secret.ts',
   'backend/src/platform/health/readiness.service.ts|backend/src/media/media-storage.service.ts',
@@ -445,7 +446,8 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
         && !(
           targetPath === BACKOFFICE_PERMISSION_CONTRACT
           && (repositoryPath.startsWith('backend/src/auth/')
-            || repositoryPath.startsWith('backend/src/catalogs/'))
+            || repositoryPath.startsWith('backend/src/catalogs/')
+            || repositoryPath === RELOCATED_SAFE_USER)
         )
       ) {
         diagnostics.push(diagnostic(

@@ -31,7 +31,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { invitationDeliveryPersistenceFailuresTotal } from "../platform/observability/metrics";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { canonicalPlanContextKey } from "../contexts/context-key";
+import { canonicalPlanContextKey } from "../modules/identity/public/context-key";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
 import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
 import {
@@ -53,7 +53,7 @@ import {
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
-} from "../users/user-lifecycle-lock";
+} from "../modules/identity/public/user-lifecycle-lock";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { LeavePlanDto } from "./dto/leave-plan.dto";

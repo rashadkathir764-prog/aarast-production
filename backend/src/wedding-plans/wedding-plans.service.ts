@@ -25,7 +25,7 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { SafeUser, toSafeUser } from "../auth/safe-user";
+import { SafeUser, toSafeUser } from "../modules/identity/public/safe-user";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
@@ -43,7 +43,7 @@ import {
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
 } from "../modules/collaboration/public/collaboration-permission.port";
-import { assertActiveMutationActorForUpdateInTransaction } from "../users/user-lifecycle-lock";
+import { assertActiveMutationActorForUpdateInTransaction } from "../modules/identity/public/user-lifecycle-lock";
 import { CreateWeddingPlanDto } from "./dto/create-wedding-plan.dto";
 import { UpdateWeddingPlanDto } from "./dto/update-wedding-plan.dto";
 import {

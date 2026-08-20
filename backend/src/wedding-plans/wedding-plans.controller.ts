@@ -8,8 +8,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../auth/current-user.decorator";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CurrentUser } from "../modules/identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { CreateWeddingPlanDto } from "./dto/create-wedding-plan.dto";
 import { UpdateWeddingPlanDto } from "./dto/update-wedding-plan.dto";
 import { WeddingPlansService } from "./wedding-plans.service";

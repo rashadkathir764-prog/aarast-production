@@ -1,4 +1,4 @@
-import type { JwtSessionScope } from '../modules/identity/public/identity-session.types';
+import type { JwtSessionScope } from './identity-session.types';
 
 export interface JwtPayload {
   sub: string;

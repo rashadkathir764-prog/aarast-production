@@ -9,8 +9,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../auth/current-user.decorator";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CurrentUser } from "../modules/identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { BudgetCategoriesService } from "./budget-categories.service";
 import { CreateBudgetCategoryDto } from "./dto/create-budget-category.dto";
 import { UpdateBudgetCategoryDto } from "./dto/update-budget-category.dto";

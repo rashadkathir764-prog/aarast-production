@@ -28,7 +28,7 @@ import {
 import {
   canonicalPlanContextKey,
   canonicalProviderContextKey,
-} from "./context-key";
+} from "../modules/identity/public/context-key";
 
 export enum AvailableContextRole {
   OWNER = "OWNER",

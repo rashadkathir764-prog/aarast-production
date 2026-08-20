@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { JwtSessionGuard } from '../auth/jwt-session.guard';
+import { CurrentUser } from '../modules/identity/public/current-user.decorator';
+import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
 import { AdminGuard } from '../admin/admin.guard';
 import { AdminPermissionGuard } from '../admin/admin-permission.guard';
 import { RequireAdminPermission } from '../admin/admin-permission.decorator';

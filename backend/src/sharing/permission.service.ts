@@ -21,7 +21,7 @@ import { PrismaService } from "../platform/database/prisma.service";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
-} from "../users/user-lifecycle-lock";
+} from "../modules/identity/public/user-lifecycle-lock";
 
 @Injectable()
 export class PermissionService implements CollaborationPermissionPort {

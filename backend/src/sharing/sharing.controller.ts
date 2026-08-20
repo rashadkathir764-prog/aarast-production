@@ -11,8 +11,8 @@ import {
 } from "@nestjs/common";
 import { Request } from "express";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../auth/current-user.decorator";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CurrentUser } from "../modules/identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { LeavePlanDto } from "./dto/leave-plan.dto";

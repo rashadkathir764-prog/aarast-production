@@ -14,7 +14,7 @@ const STATIC_HASHES = Object.freeze({
   publicRuntimeContracts: '408ba2aeef53e6fdbccfcbaecad2a47ff055cf78d969ee07fd322d4aa10261d2',
   retiredRoots: '36ddd91996084e08e19a1645e8382d94dd3005d4f2d77b5c7653c5e707ef0984',
   expectedBaselines: '368149a364608a40b3e66411e9a74d4d01b2d1ee1ed761ff0f627a25e39524c7',
-  allowedChangedPaths: 'ee4d93ce65f92defda51ac9bda9d4cc810d9440b00b8a2c0f4d1164045d0cda8',
+  allowedChangedPaths: '69bfc7d611ba098eabc81063dc595c83873071f286ab40db0ff130340a24c21a',
 });
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 4096;

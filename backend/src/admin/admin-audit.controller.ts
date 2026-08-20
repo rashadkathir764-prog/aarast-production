@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { JwtSessionGuard } from '../auth/jwt-session.guard';
+import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminGuard } from './admin.guard';

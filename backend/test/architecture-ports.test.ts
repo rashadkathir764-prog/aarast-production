@@ -446,7 +446,7 @@ test('only the exact documented transitional platform debt is deferred to the de
   }
 });
 
-test('only auth and catalogs may import the exact Backoffice permission contract', () => {
+test('only legacy auth/catalogs and relocated SafeUser may import the exact Backoffice permission contract', () => {
   for (const source of [
     'backend/src/auth/use-permission.ts',
     'backend/src/catalogs/use-permission.ts',
@@ -480,6 +480,28 @@ test('only auth and catalogs may import the exact Backoffice permission contract
       'export const permission = true;\n',
   }));
   assert.equal(diagnosticsOfKind(futureCatalog, 'non-public-cross-module-import').length, 1);
+
+  const relocatedSafeUser = scanPorts(fixtureProject({
+    'backend/src/modules/identity/public/safe-user.ts':
+      "import '../../backoffice/domain/admin-permissions';\n",
+    'backend/src/modules/backoffice/domain/admin-permissions.ts':
+      'export const permission = true;\n',
+  }));
+  assert.deepEqual(
+    diagnosticsOfKind(relocatedSafeUser, 'non-public-cross-module-import'),
+    [],
+  );
+
+  const futureIdentitySibling = scanPorts(fixtureProject({
+    'backend/src/modules/identity/public/not-safe-user.ts':
+      "import '../../backoffice/domain/admin-permissions';\n",
+    'backend/src/modules/backoffice/domain/admin-permissions.ts':
+      'export const permission = true;\n',
+  }));
+  assert.equal(
+    diagnosticsOfKind(futureIdentitySibling, 'non-public-cross-module-import').length,
+    1,
+  );
 });
 
 test('future domain code cannot import Nest runtime, PrismaService, or another business module', () => {

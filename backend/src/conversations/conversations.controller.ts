@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../modules/identity/public/current-user.decorator';
+import { JwtAuthGuard } from '../modules/identity/public/jwt-auth.guard';
 import { ConversationToggleDto, ReportConversationDto } from './dto/conversation-action.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';

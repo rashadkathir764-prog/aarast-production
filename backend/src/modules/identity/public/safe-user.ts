@@ -1,8 +1,8 @@
-import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import { AuthenticatedUser } from './identity-session.types';
 import {
   AdminPermission,
   permissionsForAdminRole,
-} from '../modules/backoffice/domain/admin-permissions';
+} from '../../backoffice/domain/admin-permissions';
 import { UserRole } from '@prisma/client';
 
 export interface SafeUser {

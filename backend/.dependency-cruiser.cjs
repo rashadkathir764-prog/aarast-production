@@ -22,12 +22,14 @@ const contextPattern = ([name, roots]) =>
 const allBusinessPaths = businessContexts.map(contextPattern).join('|');
 const backofficePermissionContract =
   '^src/modules/backoffice/domain/admin-permissions\\.ts$';
+const relocatedSafeUser = '^src/modules/identity/public/safe-user\\.ts$';
 const makeContextRule = (
   name,
   ownRoots,
   sourceRoots,
   extraAllowedTarget = null,
   includeFutureRoot = true,
+  excludedSource = null,
 ) => {
   const ownPaths = contextPattern([name, ownRoots]);
   const sourcePaths = [
@@ -38,7 +40,10 @@ const makeContextRule = (
     name: `context-${name}-cross-context`,
     comment: `Only the same context or another context's public slice is importable from ${name}`,
     severity: 'error',
-    from: { path: `^src/(?:${sourcePaths})(?:/|$)` },
+    from: {
+      path: `^src/(?:${sourcePaths})(?:/|$)`,
+      ...(excludedSource ? { pathNot: excludedSource } : {}),
+    },
     to: {
       path: `^src/(?:${allBusinessPaths})(?:/|$)`,
       pathNot: [
@@ -53,7 +58,19 @@ const contextRules = businessContexts.flatMap(([name, ownRoots]) => {
   if (name === 'identity') {
     return [
       makeContextRule(name, ownRoots, ['auth'], backofficePermissionContract, false),
-      makeContextRule(name, ownRoots, ownRoots.filter((root) => root !== 'auth')),
+      makeContextRule(
+        name,
+        ownRoots,
+        ownRoots.filter((root) => root !== 'auth'),
+        null,
+        true,
+        relocatedSafeUser,
+      ),
+      {
+        ...makeContextRule(name, ownRoots, [], backofficePermissionContract),
+        name: 'context-identity-relocated-safe-user-cross-context',
+        from: { path: relocatedSafeUser },
+      },
     ];
   }
   if (name === 'catalog') {

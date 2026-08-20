@@ -148,7 +148,7 @@ test('shared kernel cannot import a legacy business context', () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /shared-kernel-is-foundational/);
 });
 
-test('only auth and catalogs may import the exact Backoffice permission contract', () => {
+test('only legacy auth/catalogs and relocated SafeUser may import the exact Backoffice permission contract', () => {
   const allowedRoot = fixtureRoot();
   write(
     allowedRoot,
@@ -164,6 +164,11 @@ test('only auth and catalogs may import the exact Backoffice permission contract
     allowedRoot,
     'src/catalogs/use-permission.ts',
     "import '../modules/backoffice/domain/admin-permissions';\n",
+  );
+  write(
+    allowedRoot,
+    'src/modules/identity/public/safe-user.ts',
+    "import '../../backoffice/domain/admin-permissions';\n",
   );
   const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
   assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
@@ -208,6 +213,27 @@ test('only auth and catalogs may import the exact Backoffice permission contract
   const futureCatalog = cruise(futureCatalogRoot, ['--config', configPath, 'src']);
   assert.notEqual(futureCatalog.status, 0);
   assert.match(`${futureCatalog.stdout}\n${futureCatalog.stderr}`, /context-catalog-cross-context/);
+
+  const futureIdentitySiblingRoot = fixtureRoot();
+  write(
+    futureIdentitySiblingRoot,
+    'src/modules/backoffice/domain/admin-permissions.ts',
+    'export const permission = true;\n',
+  );
+  write(
+    futureIdentitySiblingRoot,
+    'src/modules/identity/public/not-safe-user.ts',
+    "import '../../backoffice/domain/admin-permissions';\n",
+  );
+  const futureIdentitySibling = cruise(
+    futureIdentitySiblingRoot,
+    ['--config', configPath, 'src'],
+  );
+  assert.notEqual(futureIdentitySibling.status, 0);
+  assert.match(
+    `${futureIdentitySibling.stdout}\n${futureIdentitySibling.stderr}`,
+    /context-identity-cross-context/,
+  );
 });
 
 test('application composition may import platform and business public slices only', () => {

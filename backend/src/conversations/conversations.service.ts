@@ -39,7 +39,7 @@ import {
   applicationAvatarFields,
   toApplicationUserSummary,
 } from '../shared-kernel/privacy/application-user-identity';
-import { lockUserLifecycleRowsInTransaction } from '../users/user-lifecycle-lock';
+import { lockUserLifecycleRowsInTransaction } from '../modules/identity/public/user-lifecycle-lock';
 import {
   hasJoinedProvider,
   isActiveConversationParticipant,

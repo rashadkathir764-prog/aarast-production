@@ -895,6 +895,27 @@ test('foreign internal/full/concrete and cross-public runtime imports fail while
   assert.equal(result.diagnostics.some((item: any) => item.path.endsWith('/legal.ts')), false);
 });
 
+test('only relocated SafeUser may import the exact Backoffice permission contract', () => {
+  const options = fixtureProject({
+    'backend/src/modules/backoffice/domain/admin-permissions.ts':
+      'export const permission = true;\n',
+    'backend/src/modules/backoffice/domain/private.ts':
+      'export const privateValue = true;\n',
+    'backend/src/modules/identity/public/safe-user.ts':
+      "import { permission } from '../../backoffice/domain/admin-permissions';\nexport { permission };\n",
+    'backend/src/modules/identity/public/not-safe-user.ts':
+      "import { permission } from '../../backoffice/domain/admin-permissions';\nexport { permission };\n",
+    'backend/src/modules/identity/public/safe-user-private.ts':
+      "import { privateValue } from '../../backoffice/domain/private';\nexport { privateValue };\n",
+  });
+  const diagnostics = scanner().scanR3SourceLaws(options).diagnostics.filter(
+    (item: any) => item.kind === 'illegal-boundary-import',
+  );
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user.ts')), false);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/not-safe-user.ts')), true);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user-private.ts')), true);
+});
+
 test('an internal provider leaf may import only a foreign public Nest module used in metadata', () => {
   const options = fixtureProject({
     'backend/src/modules/guests/public/guests-public.module.ts': [
@@ -1312,15 +1333,15 @@ test('I2 resolves the canonical external package instead of trusting a path subs
 
 test('I4 decorator inventory follows actual checker-resolved use down to controller method and route', () => {
   const options = fixtureProject({
-    'backend/src/auth/jwt-auth.guard.ts': 'export class JwtAuthGuard {}\n',
-    'backend/src/auth/current-user.decorator.ts': 'export function CurrentUser(): ParameterDecorator { return () => undefined; }\n',
+    'backend/src/modules/identity/public/jwt-auth.guard.ts': 'export class JwtAuthGuard {}\n',
+    'backend/src/modules/identity/public/current-user.decorator.ts': 'export function CurrentUser(): ParameterDecorator { return () => undefined; }\n',
     'backend/src/admin/admin.guard.ts': 'export class AdminGuard {}\n',
     'backend/src/admin/admin-permission.guard.ts': 'export class AdminPermissionGuard {}\n',
-    'backend/src/auth/jwt-session.guard.ts': 'export class JwtSessionGuard {}\n',
+    'backend/src/modules/identity/public/jwt-session.guard.ts': 'export class JwtSessionGuard {}\n',
     'backend/src/tasks/task.controller.ts': [
       "import { Controller, Get, UseGuards } from '@nestjs/common';",
-      "import { JwtAuthGuard as Guard } from '../auth/jwt-auth.guard';",
-      "import { CurrentUser } from '../auth/current-user.decorator';",
+      "import { JwtAuthGuard as Guard } from '../modules/identity/public/jwt-auth.guard';",
+      "import { CurrentUser } from '../modules/identity/public/current-user.decorator';",
       "@Controller('tasks')",
       'export class TaskController {',
       "  @UseGuards(Guard)",
@@ -1330,7 +1351,7 @@ test('I4 decorator inventory follows actual checker-resolved use down to control
     ].join('\n'),
     'backend/src/tasks/unused.controller.ts': [
       "import { Controller } from '@nestjs/common';",
-      "import { JwtAuthGuard } from '../auth/jwt-auth.guard';",
+      "import { JwtAuthGuard } from '../modules/identity/public/jwt-auth.guard';",
       "@Controller('unused') export class UnusedController {}",
       'void JwtAuthGuard;',
     ].join('\n'),
@@ -1347,7 +1368,7 @@ test('I4 decorator inventory follows actual checker-resolved use down to control
     ].join('\n'),
     'backend/src/admin/admin.controller.ts': [
       "import { Controller, Get, UseGuards } from '@nestjs/common';",
-      "import { JwtSessionGuard } from '../auth/jwt-session.guard';",
+      "import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';",
       "import { AdminGuard } from './admin.guard';",
       "import { AdminPermissionGuard } from './admin-permission.guard';",
       "@UseGuards(JwtSessionGuard, AdminGuard, AdminPermissionGuard)",

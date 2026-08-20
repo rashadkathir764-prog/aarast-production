@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { afterEach, test } from "node:test";
 import { HttpException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { AuthErrorCode } from "../src/auth/auth-error";
+import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
 import { invitationDeliveryOutcomesTotal } from "../src/platform/observability/metrics";
 import { InviteAccessService } from "../src/sharing/invite-access.service";
 import {

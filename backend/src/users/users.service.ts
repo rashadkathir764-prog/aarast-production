@@ -18,7 +18,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { SafeUser, toSafeUser } from "../auth/safe-user";
+import { SafeUser, toSafeUser } from "../modules/identity/public/safe-user";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import {
@@ -49,7 +49,7 @@ import {
 } from "../shared-kernel/privacy/application-user-identity";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
-import { assertActiveMutationActorForUpdateInTransaction } from "./user-lifecycle-lock";
+import { assertActiveMutationActorForUpdateInTransaction } from "../modules/identity/public/user-lifecycle-lock";
 
 export interface NotificationPreferenceResponse {
   id: string;

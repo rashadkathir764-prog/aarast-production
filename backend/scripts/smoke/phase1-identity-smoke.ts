@@ -15,7 +15,7 @@ import * as bcryptjs from 'bcryptjs';
 import { AdminService } from '../../src/admin/admin.service';
 import { AuthService } from '../../src/auth/auth.service';
 import { LoginThrottleService } from '../../src/auth/login-throttle.service';
-import { toAuthenticatedUser } from '../../src/auth/safe-user';
+import { toAuthenticatedUser } from '../../src/modules/identity/public/safe-user';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   assertManagedSmokeEnvironment: (

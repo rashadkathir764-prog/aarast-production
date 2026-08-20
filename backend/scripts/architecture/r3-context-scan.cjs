@@ -825,6 +825,9 @@ function scanR3SourceLaws(options) {
   const diagnostics = [];
   const modules = [];
   const imports = [];
+  const relocatedSafeUser = 'backend/src/modules/identity/public/safe-user.ts';
+  const backofficePermissionContract =
+    'backend/src/modules/backoffice/domain/admin-permissions.ts';
   const contractsByToken = new Map((options.providerContracts || []).map((contract) => [
     contract.token,
     new Set(contract.implementations),
@@ -884,7 +887,9 @@ function scanR3SourceLaws(options) {
             && targetPath.endsWith('-public.module.ts')
             && importedNames.length > 0
             && importedNames.every((name) => sourceModuleImports.includes(name));
-          if (!legalType && !legalPublicModuleDependency) {
+          const legalRelocatedPermissionContract = repositoryPath === relocatedSafeUser
+            && targetPath === backofficePermissionContract;
+          if (!legalType && !legalPublicModuleDependency && !legalRelocatedPermissionContract) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
         }
@@ -1125,13 +1130,13 @@ const ROUTE_DECORATORS = new Map([
   ['Delete', 'DELETE'], ['Options', 'OPTIONS'], ['Head', 'HEAD'], ['All', 'ALL'],
 ]);
 const GUARD_DECLARATIONS = new Map([
-  ['JwtAuthGuard', 'backend/src/auth/jwt-auth.guard.ts'],
-  ['JwtSessionGuard', 'backend/src/auth/jwt-session.guard.ts'],
+  ['JwtAuthGuard', 'backend/src/modules/identity/public/jwt-auth.guard.ts'],
+  ['JwtSessionGuard', 'backend/src/modules/identity/public/jwt-session.guard.ts'],
   ['AdminGuard', 'backend/src/admin/admin.guard.ts'],
   ['AdminPermissionGuard', 'backend/src/admin/admin-permission.guard.ts'],
 ]);
 const CUSTOM_DECORATOR_DECLARATIONS = new Map([
-  ['CurrentUser', 'backend/src/auth/current-user.decorator.ts'],
+  ['CurrentUser', 'backend/src/modules/identity/public/current-user.decorator.ts'],
   ['RequireAdminPermission', 'backend/src/admin/admin-permission.decorator.ts'],
 ]);
 

@@ -13,7 +13,7 @@ import {
   WeddingPlan,
 } from "@prisma/client";
 import { assertWeddingPlanWritable } from "../modules/collaboration/public/collaboration-permission.port";
-import { lockUserLifecycleRowsInTransaction } from "../users/user-lifecycle-lock";
+import { lockUserLifecycleRowsInTransaction } from "../modules/identity/public/user-lifecycle-lock";
 
 export async function lockMarketplaceMutationUsers(
   tx: Prisma.TransactionClient,

@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../auth/current-user.decorator";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CurrentUser } from "../modules/identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { ListQueryDto } from "../platform/http/list-query.dto";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";

@@ -16,9 +16,9 @@ import {
   IDENTITY_ACCESS_TOKEN_VERIFIER,
   IdentityAccessTokenVerifier,
 } from '../modules/identity/public/identity-auth.port';
-import { resolveJwtSessionScope } from '../auth/access-token-scope';
-import type { JwtPayload } from '../auth/jwt-payload.interface';
-import { toAuthenticatedUser } from '../auth/safe-user';
+import { resolveJwtSessionScope } from '../modules/identity/public/access-token-scope';
+import type { JwtPayload } from '../modules/identity/public/jwt-payload.interface';
+import { toAuthenticatedUser } from '../modules/identity/public/safe-user';
 import { getCorsOrigins } from '../platform/config/cors-origins';
 import { PrismaService } from '../platform/database/prisma.service';
 import {

@@ -39,7 +39,7 @@ import { isPushNotificationType } from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
   lockUserLifecycleRowsInTransaction,
-} from "../users/user-lifecycle-lock";
+} from "../modules/identity/public/user-lifecycle-lock";
 import {
   type CreateNotificationInput,
   type NotificationCreateClient,

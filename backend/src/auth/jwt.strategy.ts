@@ -3,10 +3,10 @@ import { AuthSessionScope } from '@prisma/client';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../platform/database/prisma.service';
-import { resolveJwtSessionScope } from './access-token-scope';
+import { resolveJwtSessionScope } from '../modules/identity/public/access-token-scope';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { JwtPayload } from './jwt-payload.interface';
-import { toAuthenticatedUser } from './safe-user';
+import { JwtPayload } from '../modules/identity/public/jwt-payload.interface';
+import { toAuthenticatedUser } from '../modules/identity/public/safe-user';
 import { getJwtSecret } from './jwt-secret';
 
 @Injectable()

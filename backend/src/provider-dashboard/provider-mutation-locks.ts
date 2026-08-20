@@ -1,6 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { Prisma, Provider, UserStatus } from "@prisma/client";
-import { lockUserLifecycleRowsInTransaction } from "../users/user-lifecycle-lock";
+import { lockUserLifecycleRowsInTransaction } from "../modules/identity/public/user-lifecycle-lock";
 import {
   assertProviderOperational,
   assertProviderProfileWritable,

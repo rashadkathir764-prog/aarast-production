@@ -1,12 +1,12 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
 import { createHash } from "node:crypto";
-import { AuthErrorCode, authError } from "../auth/auth-error";
+import { AuthErrorCode, authError } from "../modules/identity/public/auth-error";
 import {
   IDENTITY_AUTH_PORT,
   IdentityAuthPort,
+  OtpDispatchContext,
 } from "../modules/identity/public/identity-auth.port";
-import { OtpDispatchContext } from "../auth/otp-dispatch-quota.service";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { PrismaService } from "../platform/database/prisma.service";
 import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";

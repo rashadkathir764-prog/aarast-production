@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { MediaUploadStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../platform/database/prisma.service';
-import { assertActiveMutationActorForUpdateInTransaction } from '../users/user-lifecycle-lock';
+import { assertActiveMutationActorForUpdateInTransaction } from '../modules/identity/public/user-lifecycle-lock';
 import type {
   MediaConsumptionTarget,
   MediaPurpose,

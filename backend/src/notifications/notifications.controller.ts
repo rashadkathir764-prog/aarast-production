@@ -10,8 +10,8 @@ import {
 } from "@nestjs/common";
 import { NotificationType } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../auth/current-user.decorator";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CurrentUser } from "../modules/identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { NotificationsService } from "./notifications.service";
 
 @Controller("api/v1/notifications")

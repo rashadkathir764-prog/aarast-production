@@ -176,6 +176,11 @@ type R5Scanner = {
   }): { ok: boolean };
 };
 
+test('R5 scope includes the exact dependency boundary config required by Task 2', () => {
+  const manifest = loadScanner().validateR5Manifest(readManifest());
+  assert.equal(manifest.allowedChangedPaths.includes('backend/.dependency-cruiser.cjs'), true);
+});
+
 const temporaryRoots: string[] = [];
 
 afterEach(() => {
@@ -220,7 +225,7 @@ test('R5 manifest pins the exact 44 one-to-one moves', () => {
 
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, r5Base);
-  assert.equal(manifest.stage, 'inventory');
+  assert.equal(manifest.stage, 'task-2');
   assert.deepEqual(manifest.moves, expectedMoves);
   assert.equal(manifest.moves.length, 44);
   assert.equal(new Set(manifest.moves.map((move) => move.from)).size, 44);
@@ -283,6 +288,7 @@ test('R5 inventory rejects a junction-backed legacy source root', () => {
   const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-inventory-'));
   temporaryRoots.push(fixtureRoot);
   const manifest = readManifest();
+  manifest.stage = 'inventory';
   for (const move of manifest.moves) writePlainFile(fixtureRoot, move.from);
 
   const authRoot = path.join(fixtureRoot, 'backend', 'src', 'auth');
@@ -301,6 +307,7 @@ test('R5 inventory rejects drifted or hollow public runtime contracts', () => {
   const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-public-'));
   temporaryRoots.push(fixtureRoot);
   const manifest = readManifest();
+  manifest.stage = 'inventory';
   for (const move of manifest.moves) writePlainFile(fixtureRoot, move.from);
 
   assert.throws(
@@ -352,5 +359,42 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     { cwd: backendRoot, encoding: 'utf8' },
   );
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=inventory, moves=44/u);
+  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=task-2, moves=44/u);
 });
+
+test('R5 public contracts exist only at the ten canonical target paths', () => {
+  const manifest = readManifest();
+  assert.equal(manifest.stage, 'task-2');
+  assert.deepEqual(
+    manifest.publicRuntimeContracts.map(({ source, target }) => ({ source, target })),
+    expectedPublicRuntimeContracts.map(({ source, target }) => ({ source, target })),
+  );
+  for (const contract of expectedPublicRuntimeContracts) {
+    assert.equal(existsSync(path.join(repositoryRoot(), ...contract.source.split('/'))), false);
+    assert.equal(existsSync(path.join(repositoryRoot(), ...contract.target.split('/'))), true);
+  }
+
+  const identityAuthPort = readFileSync(path.join(
+    backendRoot,
+    'src',
+    'modules',
+    'identity',
+    'public',
+    'identity-auth.port.ts',
+  ), 'utf8');
+  assert.equal(
+    (identityAuthPort.match(/export interface OtpDispatchContext/gu) || []).length,
+    1,
+  );
+  const quotaSource = readFileSync(path.join(
+    backendRoot,
+    'src',
+    'auth',
+    'otp-dispatch-quota.service.ts',
+  ), 'utf8');
+  assert.equal(quotaSource.includes('export interface OtpDispatchContext'), false);
+});
+
+function repositoryRoot(): string {
+  return path.resolve(backendRoot, '..');
+}

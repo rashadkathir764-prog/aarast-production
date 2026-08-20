@@ -191,7 +191,7 @@ test('R1 Task 4 OTP transport exists only at canonical paths', () => {
 });
 
 test('R1 Task 4 keeps OTP identity policy out of production transports', () => {
-  const identitySource = source('src/auth/otp-channel.ts');
+  const identitySource = source('src/modules/identity/internal/auth/otp-channel.ts');
   assert.match(identitySource, /export\s+interface\s+OtpChannel\b/);
   assert.match(identitySource, /export\s+class\s+DevEchoOtpChannel\b/);
   assert.match(identitySource, /export\s+function\s+generateProductionOtpCode\b/);
@@ -231,7 +231,7 @@ test('R1 Task 4 keeps OTP identity policy out of production transports', () => {
 });
 
 test('R1 Task 4 production OTP generator remains six-digit and zero-padded', () => {
-  const { generateProductionOtpCode } = require('../src/auth/otp-channel') as {
+  const { generateProductionOtpCode } = require('../src/modules/identity/internal/auth/otp-channel') as {
     generateProductionOtpCode: () => string;
   };
   const samples = Array.from({ length: 2_000 }, generateProductionOtpCode);
@@ -251,7 +251,7 @@ test('R1 Task 4 delivery uncertainty contract is fixed and secret-safe', () => {
 });
 
 test('R1 Task 4 AuthService owns selection while sharing keeps named pre-R6 transport debt', () => {
-  const authServiceSource = source('src/auth/auth.service.ts');
+  const authServiceSource = source('src/modules/identity/internal/auth/auth.service.ts');
   assert.match(authServiceSource, /from\s+['"]\.\/otp-channel['"]/);
   assert.match(
     authServiceSource,

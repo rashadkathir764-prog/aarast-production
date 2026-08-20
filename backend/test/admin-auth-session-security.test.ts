@@ -8,21 +8,21 @@ import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { OtpPurpose, UserRole } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AdminGuard } from "../src/admin/admin.guard";
-import { AuthService } from "../src/auth/auth.service";
+import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
 import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
 import { resolveJwtSessionScope } from "../src/modules/identity/public/access-token-scope";
 import {
   createOpaqueTokenValue,
   hashRefreshToken,
-} from "../src/auth/refresh-token-policy";
+} from "../src/modules/identity/internal/auth/refresh-token-policy";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 test("admin login requires a persisted password-bound MFA challenge", () => {
   const schema = readLivePrismaSchema();
-  const service = read("src/auth/auth.service.ts");
-  const controller = read("src/auth/auth.controller.ts");
+  const service = read("src/modules/identity/internal/auth/auth.service.ts");
+  const controller = read("src/modules/identity/api/auth.controller.ts");
 
   assert.match(schema, /model AdminLoginChallenge/);
   assert.match(schema, /otpId\s+String\s+@unique/);
@@ -37,7 +37,7 @@ test("admin login requires a persisted password-bound MFA challenge", () => {
 });
 
 test("admin MFA can securely verify a pre-MFA administrator phone", () => {
-  const service = read("src/auth/auth.service.ts");
+  const service = read("src/modules/identity/internal/auth/auth.service.ts");
   const startBlock = service.slice(
     service.indexOf("async startAdminLogin("),
     service.indexOf("async completeAdminLogin("),
@@ -65,7 +65,7 @@ test("admin MFA can securely verify a pre-MFA administrator phone", () => {
 });
 
 test("admin refresh is a rotating HttpOnly cookie session", () => {
-  const controller = read("src/auth/auth.controller.ts");
+  const controller = read("src/modules/identity/api/auth.controller.ts");
   const main = read("src/main.ts");
   const corsOptions = read("src/platform/config/cors-options.ts");
 
@@ -195,7 +195,7 @@ test("access-token scope is explicit, non-contradictory, and enforced by product
 });
 
 test("application and admin credentials stay separated and only admin MFA mints admin access", () => {
-  const service = read("src/auth/auth.service.ts");
+  const service = read("src/modules/identity/internal/auth/auth.service.ts");
   const credentialsBlock = service.slice(
     service.indexOf("private async validatePasswordCredentials("),
     service.indexOf("async refresh("),
@@ -216,15 +216,15 @@ test("application and admin credentials stay separated and only admin MFA mints 
   assert.match(read("src/admin/admin.guard.ts"), /adminMfa !== true/);
   assert.match(read("src/admin/admin.guard.ts"), /sessionScope !== 'admin'/);
   assert.match(
-    read("src/auth/jwt.strategy.ts"),
+    read("src/modules/identity/internal/auth/jwt.strategy.ts"),
     /resolveJwtSessionScope\(payload\)/,
   );
 });
 
 test("application and administrator sessions are persisted and revoked by scope", () => {
   const schema = readLivePrismaSchema();
-  const service = read("src/auth/auth.service.ts");
-  const strategy = read("src/auth/jwt.strategy.ts");
+  const service = read("src/modules/identity/internal/auth/auth.service.ts");
+  const strategy = read("src/modules/identity/internal/auth/jwt.strategy.ts");
 
   assert.match(schema, /enum AuthSessionScope/);
   assert.match(schema, /scope\s+AuthSessionScope\s+@default\(APPLICATION\)/);
@@ -239,8 +239,8 @@ test("application and administrator sessions are persisted and revoked by scope"
 });
 
 test("public OTP cannot mint or invalidate an administrator MFA code", () => {
-  const requestDto = read("src/auth/dto/request-otp.dto.ts");
-  const verifyDto = read("src/auth/dto/verify-otp.dto.ts");
+  const requestDto = read("src/modules/identity/api/auth-dto/request-otp.dto.ts");
+  const verifyDto = read("src/modules/identity/api/auth-dto/verify-otp.dto.ts");
 
   assert.doesNotMatch(requestDto, /OtpPurpose\.ADMIN_LOGIN/);
   assert.doesNotMatch(verifyDto, /OtpPurpose\.ADMIN_LOGIN/);
@@ -248,8 +248,8 @@ test("public OTP cannot mint or invalidate an administrator MFA code", () => {
 
 test("all access JWTs are bound to a live revocable server session", () => {
   const payload = read("src/modules/identity/public/jwt-payload.interface.ts");
-  const service = read("src/auth/auth.service.ts");
-  const strategy = read("src/auth/jwt.strategy.ts");
+  const service = read("src/modules/identity/internal/auth/auth.service.ts");
+  const strategy = read("src/modules/identity/internal/auth/jwt.strategy.ts");
 
   assert.match(payload, /sid\?: string/);
   assert.match(payload, /scope: JwtSessionScope/);

@@ -7,9 +7,9 @@ import {
   Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../platform/database/prisma.service';
-import { otpDeliveryUnavailableError } from '../modules/identity/public/auth-error';
-import type { OtpDispatchContext } from '../modules/identity/public/identity-auth.port';
+import { PrismaService } from '../../../../platform/database/prisma.service';
+import { otpDeliveryUnavailableError } from '../../public/auth-error';
+import type { OtpDispatchContext } from '../../public/identity-auth.port';
 
 interface QuotaPolicy {
   scope: string;

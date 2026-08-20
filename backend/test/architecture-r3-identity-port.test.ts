@@ -85,7 +85,7 @@ test('Task 5 public tokens resolve to the exact AuthService and JwtService insta
     IDENTITY_ACCESS_TOKEN_VERIFIER,
     IDENTITY_AUTH_PORT,
   } = require('../src/modules/identity/public/identity-auth.port');
-  const { AuthService } = require('../src/auth/auth.service');
+  const { AuthService } = require('../src/modules/identity/internal/auth/auth.service');
   const { JwtService } = require('@nestjs/jwt');
   const { PrismaService } = require('../src/platform/database/prisma.service');
 

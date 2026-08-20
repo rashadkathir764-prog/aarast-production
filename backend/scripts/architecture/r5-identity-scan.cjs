@@ -14,7 +14,35 @@ const STATIC_HASHES = Object.freeze({
   publicRuntimeContracts: '408ba2aeef53e6fdbccfcbaecad2a47ff055cf78d969ee07fd322d4aa10261d2',
   retiredRoots: '36ddd91996084e08e19a1645e8382d94dd3005d4f2d77b5c7653c5e707ef0984',
   expectedBaselines: '368149a364608a40b3e66411e9a74d4d01b2d1ee1ed761ff0f627a25e39524c7',
-  allowedChangedPaths: '69bfc7d611ba098eabc81063dc595c83873071f286ab40db0ff130340a24c21a',
+  allowedChangedPaths: 'cf12610ad5749d23b9979e452e3cec02c0f4d0670b28fa9849ce1ce58b553db5',
+});
+const AUTH_STAGE_HASHES = Object.freeze({
+  'backend/src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler.ts': '3e648ecf471097575ce9a3bd58b3e369cdc6481d031e8699a488686ddbd62ac4',
+  'backend/src/modules/identity/api/auth.controller.ts': 'b2a12009154ff773cfdeea207467673b5d45ff5397ed0f3162efdc4dcc2aace0',
+  'backend/src/modules/identity/internal/auth/auth.service.ts': '18e18c339e156c614643f1fa3501897f78426c69bd0f6ff16091a9c1bff09388',
+  'backend/src/modules/identity/api/auth-dto/admin-password-reset-confirm.dto.ts': '08b03870968877f13a57bd1d6381cbedb0441790904a9c71513343aa6ab337e1',
+  'backend/src/modules/identity/api/auth-dto/admin-password-reset-request.dto.ts': '99db47869fd4a69121c456368aa9c950f1a04fdb223ec2d1cf5dfa0f0aeba782',
+  'backend/src/modules/identity/api/auth-dto/complete-admin-login.dto.ts': 'a728c65d2a8d73eaccbd5ddfc6f019bb69758b3bc0d51e970f91b33443b45bb3',
+  'backend/src/modules/identity/api/auth-dto/complete-registration.dto.ts': '73f27c87065ef23f40d4beed6f614cb1e5072799bc6377e12643f67d77c348b6',
+  'backend/src/modules/identity/api/auth-dto/login.dto.ts': '72eb8b68c5dd7286adf0dc720cd2ec46b10a98d0f86b5f5bcc9802373b5d7c87',
+  'backend/src/modules/identity/api/auth-dto/logout.dto.ts': '765b1403a565c220d11f0f3e305b5f79c237434c0323ec5bd89711439496138c',
+  'backend/src/modules/identity/api/auth-dto/password-reset-confirm.dto.ts': 'c50ba21d476c9dea0dd64138cf1c421bdaeee39284cb23205da0179f53d073a9',
+  'backend/src/modules/identity/api/auth-dto/password-reset-request.dto.ts': '063e1a909cd2c44536b6f0f610657183b28437e32ddcc474b1208c4a3f53ee00',
+  'backend/src/modules/identity/api/auth-dto/refresh.dto.ts': 'b99e06eeb60b35da89bff3e96ad6feee0a9c1aefbcf57b5ed0d89a693f79e4e0',
+  'backend/src/modules/identity/api/auth-dto/register.dto.ts': '1da820f62172b53511aa84d7f83a9c89fe84e327c4c29e88566709e6cb58281b',
+  'backend/src/modules/identity/api/auth-dto/request-otp.dto.ts': 'b63f2b7adb381be46c17d3fcad614a2ec1fb690d2cbcac52aee30fc32e6482fc',
+  'backend/src/modules/identity/api/auth-dto/verify-otp.dto.ts': 'eb414cee0767fe180662d25a0d00bf9574629f577cb82ed5b67c26f1fed510f2',
+  'backend/src/modules/identity/internal/auth/jwt-secret.ts': '935ee2c98d5580698363060dc50fb900572ff12515c3ef94ba349f492958b5b5',
+  'backend/src/modules/identity/internal/auth/jwt.strategy.ts': '53e81a8ae84368462e835a9148cbc9a90e64f232a5a15212348a81b72521d118',
+  'backend/src/modules/identity/internal/auth/login-throttle-cleanup.scheduler.ts': 'ec26f161cb9558d1791f5097d9c609d2fc2fd7bad8eb72a871a5fef42b1bf769',
+  'backend/src/modules/identity/internal/auth/login-throttle.service.ts': '434f3e1e5ae72ad29f37ffae0c2e61d98940e475c64f0a42c762443a65753913',
+  'backend/src/modules/identity/internal/auth/otp-channel.ts': 'eabda733c0d29c9825e58887223ad108175de342a83c6404d128777ab2ed9939',
+  'backend/src/modules/identity/internal/auth/otp-dispatch-quota-cleanup.scheduler.ts': '2ad3813b9aa260e075912b3d352292518ba2995c4e0c07eba6b572d22ed47594',
+  'backend/src/modules/identity/internal/auth/otp-dispatch-quota.service.ts': '15610b3d0cef600f541379e655c1861095033c14088714fe81c1ab30c821786f',
+  'backend/src/modules/identity/internal/auth/refresh-token-policy.ts': '75bbdad072c93d286ebafdeca29e116dcfab6e147e4d5bbeeb009c54173675d4',
+  'backend/src/modules/identity/identity.module.ts': '6725cd5dbe7ae0e57826a10e8a56dc581cc9a04154f7a499250a9140cb014b15',
+  'backend/src/modules/identity/internal/identity-auth.internal.module.ts': '901f103d8ceda80f3338dfe93b4121b33090079ddfc24f9694dad562359975de',
+  'backend/src/main.ts': '3d8d6cf5c950be5e301d905cb922d708dd9fc18d74fbe654b48a8c507d4659b5',
 });
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 4096;
@@ -247,10 +275,54 @@ function inspectExistingPath(repositoryRoot, relative, expected) {
   return { exists: true };
 }
 
+function normalizedFileHash(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8').replace(/\r\n/gu, '\n');
+  return crypto.createHash('sha256').update(text).digest('hex');
+}
+
+function validateR5AuthStage(repositoryRoot) {
+  for (const [relative, expectedHash] of Object.entries(AUTH_STAGE_HASHES)) {
+    const inspected = inspectExistingPath(repositoryRoot, relative, 'file');
+    if (!inspected.exists) throw new Error('R5 auth stage drift detected');
+    const absolute = path.join(repositoryRoot, ...relative.split('/'));
+    if (normalizedFileHash(absolute) !== expectedHash) {
+      throw new Error('R5 auth stage drift detected');
+    }
+  }
+}
+
 function moveStage(move) {
   if (move.to.includes('/public/')) return 'task-2';
   if (move.to.includes('/internal/auth/') || move.to.includes('/api/auth')) return 'task-3';
   return 'task-4';
+}
+
+function mapOwnershipRecordsForR5(records, manifestValue) {
+  const manifest = validateR5Manifest(manifestValue);
+  const currentStage = STAGES.indexOf(manifest.stage);
+  if (!Array.isArray(records)) throw new Error('R5 ownership records must be an array');
+  const completedMoves = new Map(manifest.moves
+    .filter((move) => currentStage >= STAGES.indexOf(moveStage(move)))
+    .map((move) => [move.from, move.to]));
+  const mapped = records.map((record, index) => {
+    assertDeepPlainData(record, `R5 ownership records[${index}]`);
+    const item = plainObject(record, `R5 ownership records[${index}]`);
+    if (typeof item.file !== 'string' || typeof item.key !== 'string'
+        || !item.key.startsWith(`${item.file}|`)) {
+      throw new Error('R5 ownership record identity is invalid');
+    }
+    const target = completedMoves.get(item.file);
+    if (!target) return { ...item };
+    return {
+      ...item,
+      file: target,
+      key: `${target}${item.key.slice(item.file.length)}`,
+    };
+  }).sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
+  if (new Set(mapped.map((record) => record.key)).size !== mapped.length) {
+    throw new Error('R5 ownership relocation collides');
+  }
+  return mapped;
 }
 
 function exportedDeclarations(filePath) {
@@ -371,6 +443,9 @@ function scanR5Identity(options) {
     }
   }
   validatePublicRuntimeSurface(input.repositoryRoot, manifest);
+  if (currentStage >= STAGES.indexOf('task-3')) {
+    validateR5AuthStage(input.repositoryRoot);
+  }
   if (manifest.stage === 'strict') {
     for (const rootName of manifest.retiredRoots) {
       const legacyRoot = inspectExistingPath(
@@ -411,6 +486,8 @@ module.exports = {
   STAGES,
   validateR5Manifest,
   scanR5Identity,
+  validateR5AuthStage,
+  mapOwnershipRecordsForR5,
   runCli,
 };
 

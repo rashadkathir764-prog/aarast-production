@@ -10,7 +10,7 @@ import {
   isPushNotificationType,
   pushNotificationCopy,
 } from "../src/push/push-notification.policy";
-import { getJwtSecret } from "../src/auth/jwt-secret";
+import { getJwtSecret } from "../src/modules/identity/internal/auth/jwt-secret";
 
 test("push policy is limited to task and chat notification types", () => {
   assert.equal(isPushNotificationType(NotificationType.TASK_ASSIGNED), true);

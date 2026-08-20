@@ -75,7 +75,7 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
 test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {
   const schedulerSources = [
     'src/platform/idempotency/idempotency-cleanup.scheduler.ts',
-    'src/auth/login-throttle-cleanup.scheduler.ts',
+    'src/modules/identity/internal/auth/login-throttle-cleanup.scheduler.ts',
     'src/notifications/notifications.service.ts',
     'src/media/media-upload-ticket.service.ts',
     'src/platform/outbox/outbox-cleanup.scheduler.ts',

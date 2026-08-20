@@ -5,7 +5,7 @@ import { WhatsAppOtpChannel } from '../src/platform/otp-transport/whatsapp-otp.c
 import { loadWhatsAppOtpConfig } from '../src/platform/otp-transport/whatsapp-otp-config';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
-import { getJwtSecret } from '../src/auth/jwt-secret';
+import { getJwtSecret } from '../src/modules/identity/internal/auth/jwt-secret';
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const config = {

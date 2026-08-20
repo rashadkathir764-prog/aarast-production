@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AuthSessionScope, OtpPurpose } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
-import { AuthService } from '../src/auth/auth.service';
+import { AuthService } from '../src/modules/identity/internal/auth/auth.service';
 
 type StoredUser = ReturnType<typeof userFixture>;
 

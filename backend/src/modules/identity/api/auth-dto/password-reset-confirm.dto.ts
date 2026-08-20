@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { MaxUtf8Bytes } from '../../modules/identity/public/max-utf8-bytes.decorator';
+import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
 
 export class PasswordResetConfirmDto {
   @IsString()

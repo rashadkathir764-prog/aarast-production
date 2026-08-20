@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { PrismaService } from '../platform/database/prisma.service';
+import { PrismaService } from '../../../../platform/database/prisma.service';
 import { LoginThrottleService } from './login-throttle.service';
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;

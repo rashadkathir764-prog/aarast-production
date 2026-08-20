@@ -6,7 +6,7 @@ import { loadOpenWaOtpConfig } from '../src/platform/otp-transport/openwa-otp-co
 import { OpenWaTransientDeliveryRejectedError } from '../src/platform/otp-transport/openwa-transient-text';
 import { validateRuntimeEnvironment } from '../src/platform/config/runtime-environment';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
-import { getJwtSecret } from '../src/auth/jwt-secret';
+import { getJwtSecret } from '../src/modules/identity/internal/auth/jwt-secret';
 
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 const { normalizeBaseUrl, buildHistoryUrl } = require('../scripts/smoke/openwa-otp-smoke.js') as {

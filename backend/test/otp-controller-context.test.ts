@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { OtpPurpose } from '@prisma/client';
-import { AuthController } from '../src/auth/auth.controller';
+import { AuthController } from '../src/modules/identity/api/auth.controller';
 
 test('every OTP-producing auth route forwards the trusted request IP', async () => {
   const calls: Array<{ method: string; ip?: string }> = [];

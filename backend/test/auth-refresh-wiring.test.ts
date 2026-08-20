@@ -12,8 +12,8 @@ import {
   hashRefreshToken,
   isRefreshTokenForScope,
   refreshTokenExpiry,
-} from "../src/auth/refresh-token-policy";
-import { AuthService } from "../src/auth/auth.service";
+} from "../src/modules/identity/internal/auth/refresh-token-policy";
+import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
 
 test("refresh token policy creates opaque hashed expiring tokens", () => {
   const applicationToken = createRefreshTokenValue();
@@ -225,11 +225,11 @@ test("changing an application token prefix cannot recover its database session",
 test("refresh token schema and authenticated lifecycle stay wired", () => {
   const schema = readLivePrismaSchema();
   const controller = readFileSync(
-    join(process.cwd(), "src/auth/auth.controller.ts"),
+    join(process.cwd(), "src/modules/identity/api/auth.controller.ts"),
     "utf8",
   );
   const service = readFileSync(
-    join(process.cwd(), "src/auth/auth.service.ts"),
+    join(process.cwd(), "src/modules/identity/internal/auth/auth.service.ts"),
     "utf8",
   );
   const identityAuthInternalModule = readFileSync(

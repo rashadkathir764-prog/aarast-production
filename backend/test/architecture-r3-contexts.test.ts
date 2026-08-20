@@ -947,6 +947,28 @@ test('an internal provider leaf may import only a foreign public Nest module use
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/runtime.ts')), true);
 });
 
+test('an internal provider may consume a foreign public port but not arbitrary runtime values', () => {
+  const options = fixtureProject({
+    'backend/src/modules/messaging/public/messaging.port.ts': [
+      "export const MESSAGING_PORT = Symbol('MESSAGING_PORT');",
+      'export interface MessagingPort { send(): void }',
+    ].join('\n'),
+    'backend/src/modules/messaging/public/runtime-helper.ts':
+      'export const runtimeHelper = true;\n',
+    'backend/src/modules/identity/internal/auth.service.ts': [
+      "import { MESSAGING_PORT, type MessagingPort } from '../../messaging/public/messaging.port';",
+      'export class AuthService { constructor(readonly port: MessagingPort) { void MESSAGING_PORT; } }',
+    ].join('\n'),
+    'backend/src/modules/identity/internal/bad.service.ts':
+      "import { runtimeHelper } from '../../messaging/public/runtime-helper';\nexport const value = runtimeHelper;\n",
+  });
+  const diagnostics = scanner().scanR3SourceLaws(options).diagnostics.filter(
+    (item: any) => item.kind === 'illegal-boundary-import',
+  );
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/auth.service.ts')), false);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/bad.service.ts')), true);
+});
+
 test('application composition may import platform and business public modules only', () => {
   const options = fixtureProject({
     'backend/src/platform/outbox/core.ts': 'export const core = true;\n',

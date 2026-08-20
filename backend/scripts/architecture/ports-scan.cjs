@@ -32,6 +32,8 @@ const RETIRED_PLATFORM_ROOTS = new Set(['common', 'outbox']);
 const BACKOFFICE_PERMISSION_CONTRACT =
   'backend/src/modules/backoffice/domain/admin-permissions.ts';
 const RELOCATED_SAFE_USER = 'backend/src/modules/identity/public/safe-user.ts';
+const R5_BOOTSTRAP_JWT_SECRET_EDGE =
+  'backend/src/main.ts|backend/src/modules/identity/internal/auth/jwt-secret.ts';
 const TRANSITIONAL_PLATFORM_BUSINESS_DEBT = new Set([
   'backend/src/platform/config/runtime-environment.ts|backend/src/auth/jwt-secret.ts',
   'backend/src/platform/health/readiness.service.ts|backend/src/media/media-storage.service.ts',
@@ -464,6 +466,7 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
         && target.future
         && target.internal
         && !(source.kind === 'business' && source.context === target.context)
+        && `${repositoryPath}|${targetPath}` !== R5_BOOTSTRAP_JWT_SECRET_EDGE
       ) {
         diagnostics.push(diagnostic(
           'non-public-cross-module-import',

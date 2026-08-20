@@ -11,11 +11,11 @@ import {
 } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AuthErrorCode } from "../../src/modules/identity/public/auth-error";
-import { AuthService } from "../../src/auth/auth.service";
+import { AuthService } from "../../src/modules/identity/internal/auth/auth.service";
 import {
   createRefreshTokenValue,
   hashRefreshToken,
-} from "../../src/auth/refresh-token-policy";
+} from "../../src/modules/identity/internal/auth/refresh-token-policy";
 import { InviteAccessService } from "../../src/sharing/invite-access.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {

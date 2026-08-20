@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "9dab73acdc187a4a18d8a675713d8ded40a16d02",
-  "stage": "task-2",
+  "stage": "task-3",
   "moves": [
     {
       "from": "backend/src/auth/access-token-scope.ts",
@@ -284,6 +284,7 @@
     "backend/architecture/r3-context-boundaries.json",
     "backend/architecture/r5-identity-relocation.json",
     "backend/package.json",
+    "backend/scripts/architecture/ownership-scan.cjs",
     "backend/scripts/architecture/ports-scan.cjs",
     "backend/scripts/architecture/r3-context-scan.cjs",
     "backend/scripts/architecture/r3-scope.cjs",
@@ -426,6 +427,7 @@
     "backend/test/architecture-dependencies.test.ts",
     "backend/test/architecture-ownership.test.ts",
     "backend/test/architecture-ports.test.ts",
+    "backend/test/architecture-r1-layout.test.ts",
     "backend/test/architecture-r3-closure.test.ts",
     "backend/test/architecture-r3-context-modules-a.test.ts",
     "backend/test/architecture-r3-context-modules-b.test.ts",

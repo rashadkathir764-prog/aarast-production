@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { CompleteRegistrationDto } from "../src/auth/dto/complete-registration.dto";
-import { LoginDto } from "../src/auth/dto/login.dto";
-import { PasswordResetConfirmDto } from "../src/auth/dto/password-reset-confirm.dto";
-import { AdminPasswordResetConfirmDto } from "../src/auth/dto/admin-password-reset-confirm.dto";
+import { CompleteRegistrationDto } from "../src/modules/identity/api/auth-dto/complete-registration.dto";
+import { LoginDto } from "../src/modules/identity/api/auth-dto/login.dto";
+import { PasswordResetConfirmDto } from "../src/modules/identity/api/auth-dto/password-reset-confirm.dto";
+import { AdminPasswordResetConfirmDto } from "../src/modules/identity/api/auth-dto/admin-password-reset-confirm.dto";
 
 async function errorsFor<T extends object>(type: new () => T, value: object) {
   return validate(plainToInstance(type, value));

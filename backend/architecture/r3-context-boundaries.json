@@ -1147,7 +1147,7 @@
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/auth/auth.service.ts",
+          "source": "backend/src/modules/identity/internal/auth/auth.service.ts",
           "kind": "constructor-injection"
         },
         {
@@ -4004,7 +4004,7 @@
   "lifecycleProviders": [
     {
       "className": "AuthChallengeCleanupScheduler",
-      "path": "backend/src/auth/auth-challenge-cleanup.scheduler.ts"
+      "path": "backend/src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler.ts"
     },
     {
       "className": "ConversationsGateway",
@@ -4016,7 +4016,7 @@
     },
     {
       "className": "LoginThrottleCleanupScheduler",
-      "path": "backend/src/auth/login-throttle-cleanup.scheduler.ts"
+      "path": "backend/src/modules/identity/internal/auth/login-throttle-cleanup.scheduler.ts"
     },
     {
       "className": "MediaUploadCleanupScheduler",
@@ -4028,7 +4028,7 @@
     },
     {
       "className": "OtpDispatchQuotaCleanupScheduler",
-      "path": "backend/src/auth/otp-dispatch-quota-cleanup.scheduler.ts"
+      "path": "backend/src/modules/identity/internal/auth/otp-dispatch-quota-cleanup.scheduler.ts"
     },
     {
       "className": "OutboxCleanupScheduler",

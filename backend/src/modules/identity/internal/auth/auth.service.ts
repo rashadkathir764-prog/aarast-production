@@ -9,12 +9,12 @@ import { JwtService } from "@nestjs/jwt";
 import {
   MESSAGING_REALTIME_PORT,
   MessagingRealtimePort,
-} from "../modules/messaging/public/messaging-realtime.port";
+} from "../../../messaging/public/messaging-realtime.port";
 import {
   IdentityAuthPort,
   InviteOtpVerifyInput,
   OtpDispatchContext,
-} from "../modules/identity/public/identity-auth.port";
+} from "../../public/identity-auth.port";
 import {
   AuthSessionScope,
   OtpCode,
@@ -29,22 +29,22 @@ import {
   otpDeliveryOutcomesTotal,
   otpRequestsTotal,
   otpVerificationsTotal,
-} from "../platform/observability/metrics";
-import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
-import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { PrismaService } from "../platform/database/prisma.service";
-import { RegisterDto } from "./dto/register.dto";
-import { CompleteRegistrationDto } from "./dto/complete-registration.dto";
-import { LoginDto } from "./dto/login.dto";
-import { RequestOtpDto } from "./dto/request-otp.dto";
-import { VerifyOtpDto } from "./dto/verify-otp.dto";
-import { LogoutDto } from "./dto/logout.dto";
-import { RefreshDto } from "./dto/refresh.dto";
-import { PasswordResetRequestDto } from "./dto/password-reset-request.dto";
-import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
-import { AdminPasswordResetRequestDto } from "./dto/admin-password-reset-request.dto";
-import { AdminPasswordResetConfirmDto } from "./dto/admin-password-reset-confirm.dto";
-import { JwtPayload } from "../modules/identity/public/jwt-payload.interface";
+} from "../../../../platform/observability/metrics";
+import { PhoneNormalizer } from "../../../../shared-kernel/phone/phone-normalizer";
+import { runSerializableTransaction } from "../../../../platform/database/serializable-transaction";
+import { PrismaService } from "../../../../platform/database/prisma.service";
+import { RegisterDto } from "../../api/auth-dto/register.dto";
+import { CompleteRegistrationDto } from "../../api/auth-dto/complete-registration.dto";
+import { LoginDto } from "../../api/auth-dto/login.dto";
+import { RequestOtpDto } from "../../api/auth-dto/request-otp.dto";
+import { VerifyOtpDto } from "../../api/auth-dto/verify-otp.dto";
+import { LogoutDto } from "../../api/auth-dto/logout.dto";
+import { RefreshDto } from "../../api/auth-dto/refresh.dto";
+import { PasswordResetRequestDto } from "../../api/auth-dto/password-reset-request.dto";
+import { PasswordResetConfirmDto } from "../../api/auth-dto/password-reset-confirm.dto";
+import { AdminPasswordResetRequestDto } from "../../api/auth-dto/admin-password-reset-request.dto";
+import { AdminPasswordResetConfirmDto } from "../../api/auth-dto/admin-password-reset-confirm.dto";
+import { JwtPayload } from "../../public/jwt-payload.interface";
 import {
   DevEchoOtpChannel,
   generateProductionOtpCode,
@@ -52,9 +52,9 @@ import {
 } from "./otp-channel";
 import {
   OtpDeliveryUncertainError,
-} from "../platform/otp-transport/otp-delivery";
-import { OpenWaOtpChannel } from "../platform/otp-transport/openwa-otp.channel";
-import { WhatsAppOtpChannel } from "../platform/otp-transport/whatsapp-otp.channel";
+} from "../../../../platform/otp-transport/otp-delivery";
+import { OpenWaOtpChannel } from "../../../../platform/otp-transport/openwa-otp.channel";
+import { WhatsAppOtpChannel } from "../../../../platform/otp-transport/whatsapp-otp.channel";
 import {
   createOpaqueTokenValue,
   createRefreshTokenValue,
@@ -63,7 +63,7 @@ import {
   refreshTokenExpiry,
   RefreshTokenScope,
 } from "./refresh-token-policy";
-import { SafeUser, toSafeUser } from "../modules/identity/public/safe-user";
+import { SafeUser, toSafeUser } from "../../public/safe-user";
 import {
   LoginThrottleRealm,
   LoginThrottleService,
@@ -75,14 +75,14 @@ import {
   authError,
   AuthErrorCode,
   otpDeliveryUnavailableError,
-} from "../modules/identity/public/auth-error";
+} from "../../public/auth-error";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
-} from "../modules/identity/public/user-lifecycle-lock";
+} from "../../public/user-lifecycle-lock";
 import {
   enqueueSessionRevoked,
   enqueueUserSessionsRevoked,
-} from "../platform/outbox/realtime-revocation";
+} from "../../../../platform/outbox/realtime-revocation";
 
 export interface AuthResponse {
   user: SafeUser;

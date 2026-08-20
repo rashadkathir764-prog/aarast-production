@@ -5,8 +5,8 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { runRetryableTransaction } from "../platform/database/serializable-transaction";
-import { PrismaService } from "../platform/database/prisma.service";
+import { runRetryableTransaction } from "../../../../platform/database/serializable-transaction";
+import { PrismaService } from "../../../../platform/database/prisma.service";
 
 export type LoginThrottleRealm = "application" | "admin";
 

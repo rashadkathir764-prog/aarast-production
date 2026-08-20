@@ -3,8 +3,8 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HttpException, HttpStatus } from "@nestjs/common";
-import { LoginThrottleService } from "../src/auth/login-throttle.service";
-import { LoginThrottleCleanupScheduler } from "../src/auth/login-throttle-cleanup.scheduler";
+import { LoginThrottleService } from "../src/modules/identity/internal/auth/login-throttle.service";
+import { LoginThrottleCleanupScheduler } from "../src/modules/identity/internal/auth/login-throttle-cleanup.scheduler";
 
 process.env.AUTH_LOGIN_THROTTLE_PEPPER =
   "test-only-login-throttle-pepper-with-32-bytes";

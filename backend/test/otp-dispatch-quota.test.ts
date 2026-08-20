@@ -7,7 +7,7 @@ import { PrismaService } from '../src/platform/database/prisma.service';
 import {
   OTP_DISPATCH_NOW,
   OtpDispatchQuotaService,
-} from '../src/auth/otp-dispatch-quota.service';
+} from '../src/modules/identity/internal/auth/otp-dispatch-quota.service';
 
 @Module({
   providers: [

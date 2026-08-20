@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { MaxUtf8Bytes } from '../../modules/identity/public/max-utf8-bytes.decorator';
+import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
 
 // Email is intentionally absent. A phone OTP proves phone ownership only and
 // must never be used to probe, claim, or replace an unverified email address.

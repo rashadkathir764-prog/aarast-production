@@ -10,7 +10,7 @@ import { validateRuntimeEnvironment } from './platform/config/runtime-environmen
 import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
 import { requestObservability } from './platform/observability/request-observability.middleware';
 import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
-import { getJwtSecret } from './auth/jwt-secret';
+import { getJwtSecret } from './modules/identity/internal/auth/jwt-secret';
 
 /**
  * Fail fast on broken configuration: a typo'd env var must stop the

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -174,11 +175,45 @@ type R5Scanner = {
     repositoryRoot: string;
     manifest: unknown;
   }): { ok: boolean };
+  validateR5AuthStage(repositoryRoot: string): void;
+  mapOwnershipRecordsForR5(records: Array<Record<string, unknown>>, manifest: R5Manifest):
+    Array<Record<string, unknown>>;
 };
 
 test('R5 scope includes the exact dependency boundary config required by Task 2', () => {
   const manifest = loadScanner().validateR5Manifest(readManifest());
   assert.equal(manifest.allowedChangedPaths.includes('backend/.dependency-cruiser.cjs'), true);
+  assert.equal(
+    manifest.allowedChangedPaths.includes('backend/scripts/architecture/ownership-scan.cjs'),
+    true,
+  );
+});
+
+test('R5 maps ownership paths at the active stage without changing semantics', () => {
+  const r5 = loadScanner();
+  const manifest = r5.validateR5Manifest(readManifest());
+  const original = {
+    key: 'backend/src/auth/auth.service.ts|identity|collaboration|PlanInvite|findFirst|read|delegate|foreign-model',
+    file: 'backend/src/auth/auth.service.ts',
+    context: 'identity',
+    owner: 'collaboration',
+    model: 'PlanInvite',
+    operation: 'findFirst',
+    mode: 'read',
+    source: 'delegate',
+    reason: 'foreign-model',
+    count: 3,
+  };
+  const [mapped] = r5.mapOwnershipRecordsForR5([original], manifest);
+  assert.equal(mapped.file, 'backend/src/modules/identity/internal/auth/auth.service.ts');
+  assert.equal(
+    mapped.key,
+    'backend/src/modules/identity/internal/auth/auth.service.ts|identity|collaboration|PlanInvite|findFirst|read|delegate|foreign-model',
+  );
+  assert.deepEqual(
+    { ...mapped, file: original.file, key: original.key },
+    original,
+  );
 });
 
 const temporaryRoots: string[] = [];
@@ -225,7 +260,7 @@ test('R5 manifest pins the exact 44 one-to-one moves', () => {
 
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, r5Base);
-  assert.equal(manifest.stage, 'task-2');
+  assert.equal(manifest.stage, 'task-3');
   assert.deepEqual(manifest.moves, expectedMoves);
   assert.equal(manifest.moves.length, 44);
   assert.equal(new Set(manifest.moves.map((move) => move.from)).size, 44);
@@ -359,12 +394,12 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     { cwd: backendRoot, encoding: 'utf8' },
   );
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=task-2, moves=44/u);
+  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=task-3, moves=44/u);
 });
 
 test('R5 public contracts exist only at the ten canonical target paths', () => {
   const manifest = readManifest();
-  assert.equal(manifest.stage, 'task-2');
+  assert.equal(manifest.stage, 'task-3');
   assert.deepEqual(
     manifest.publicRuntimeContracts.map(({ source, target }) => ({ source, target })),
     expectedPublicRuntimeContracts.map(({ source, target }) => ({ source, target })),
@@ -389,10 +424,71 @@ test('R5 public contracts exist only at the ten canonical target paths', () => {
   const quotaSource = readFileSync(path.join(
     backendRoot,
     'src',
+    'modules',
+    'identity',
+    'internal',
     'auth',
     'otp-dispatch-quota.service.ts',
   ), 'utf8');
   assert.equal(quotaSource.includes('export interface OtpDispatchContext'), false);
+});
+
+test('R5 auth API and internals occupy only their canonical Task 3 paths', () => {
+  const manifest = readManifest();
+  assert.equal(manifest.stage, 'task-3');
+  const authMoves = manifest.moves.filter(
+    (move) => move.to.includes('/internal/auth/') || move.to.includes('/api/auth'),
+  );
+  assert.equal(authMoves.length, 23);
+  for (const move of authMoves) {
+    assert.equal(existsSync(path.join(repositoryRoot(), ...move.from.split('/'))), false);
+    assert.equal(existsSync(path.join(repositoryRoot(), ...move.to.split('/'))), true);
+  }
+});
+
+test('R5 auth parity rejects provider, DTO, and error-body drift', () => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-auth-parity-'));
+  temporaryRoots.push(fixtureRoot);
+  const manifest = readManifest();
+  const paths = [
+    ...manifest.moves
+      .filter((move) => move.to.includes('/internal/auth/') || move.to.includes('/api/auth'))
+      .map((move) => move.to),
+    'backend/src/modules/identity/identity.module.ts',
+    'backend/src/modules/identity/internal/identity-auth.internal.module.ts',
+    'backend/src/main.ts',
+  ];
+  for (const relative of paths) {
+    const source = path.join(repositoryRoot(), ...relative.split('/'));
+    const target = path.join(fixtureRoot, ...relative.split('/'));
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileSync(source, target);
+  }
+  const r5 = loadScanner();
+  assert.doesNotThrow(() => r5.validateR5AuthStage(fixtureRoot));
+
+  const mutations = [
+    {
+      path: 'backend/src/modules/identity/internal/identity-auth.internal.module.ts',
+      replace: ['useExisting: AuthService', 'useClass: AuthService'],
+    },
+    {
+      path: 'backend/src/modules/identity/api/auth-dto/login.dto.ts',
+      replace: ['@MaxLength(40)', '@MaxLength(41)'],
+    },
+    {
+      path: 'backend/src/modules/identity/internal/auth/auth.service.ts',
+      replace: ['قد يستغرق وصول الرمز لحظات', 'قد يتغير وصول الرمز'],
+    },
+  ];
+  for (const mutation of mutations) {
+    const target = path.join(fixtureRoot, ...mutation.path.split('/'));
+    const original = readFileSync(target, 'utf8');
+    assert.equal(original.includes(mutation.replace[0]), true, mutation.path);
+    writeFileSync(target, original.replace(mutation.replace[0], mutation.replace[1]), 'utf8');
+    assert.throws(() => r5.validateR5AuthStage(fixtureRoot), /auth.*drift/i);
+    writeFileSync(target, original, 'utf8');
+  }
 });
 
 function repositoryRoot(): string {

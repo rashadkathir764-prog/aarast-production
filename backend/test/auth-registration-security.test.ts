@@ -7,9 +7,9 @@ import { ValidationPipe } from "@nestjs/common";
 import { OtpPurpose, Prisma } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
-import { AuthService } from "../src/auth/auth.service";
-import { RegisterDto } from "../src/auth/dto/register.dto";
-import { JwtStrategy } from "../src/auth/jwt.strategy";
+import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
+import { RegisterDto } from "../src/modules/identity/api/auth-dto/register.dto";
+import { JwtStrategy } from "../src/modules/identity/internal/auth/jwt.strategy";
 
 const { registerVerified } = require("../scripts/smoke/verified-registration");
 const TEST_INVITE_TOKEN = "a".repeat(43);

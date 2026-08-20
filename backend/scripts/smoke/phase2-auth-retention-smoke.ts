@@ -3,7 +3,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
-import { AuthChallengeCleanupScheduler } from "../../src/auth/auth-challenge-cleanup.scheduler";
+import { AuthChallengeCleanupScheduler } from "../../src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;

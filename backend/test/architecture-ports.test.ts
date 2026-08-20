@@ -504,6 +504,24 @@ test('only legacy auth/catalogs and relocated SafeUser may import the exact Back
   );
 });
 
+test('only the bootstrap root may import the relocated internal JWT secret validator', () => {
+  const allowed = scanPorts(fixtureProject({
+    'backend/src/main.ts':
+      "import { getJwtSecret } from './modules/identity/internal/auth/jwt-secret';\nexport { getJwtSecret };\n",
+    'backend/src/modules/identity/internal/auth/jwt-secret.ts':
+      'export const getJwtSecret = true;\n',
+  }));
+  assert.deepEqual(diagnosticsOfKind(allowed, 'non-public-cross-module-import'), []);
+
+  const sibling = scanPorts(fixtureProject({
+    'backend/src/bootstrap-helper.ts':
+      "import { getJwtSecret } from './modules/identity/internal/auth/jwt-secret';\nexport { getJwtSecret };\n",
+    'backend/src/modules/identity/internal/auth/jwt-secret.ts':
+      'export const getJwtSecret = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(sibling, 'non-public-cross-module-import').length, 1);
+});
+
 test('future domain code cannot import Nest runtime, PrismaService, or another business module', () => {
   const nest = scanSingle({
     'backend/src/modules/tasks/domain/nest.ts': "import { Module } from '@nestjs/common';\nexport const value = Module;\n",

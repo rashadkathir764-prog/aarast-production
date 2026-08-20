@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AuthChallengeCleanupScheduler } from "../src/auth/auth-challenge-cleanup.scheduler";
+import { AuthChallengeCleanupScheduler } from "../src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler";
 
 test("one replica removes only security state older than the retention window", async () => {
   const whereClauses: unknown[] = [];

@@ -133,7 +133,7 @@ const TASK2_CONSUMER_IDENTITIES = new Map([
 ]);
 const TASK2_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/admin/admin.service.ts', consumerClass: 'backend/src/admin/admin.service.ts#AdminService', parameter: 'realtime', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
-  Object.freeze({ source: 'backend/src/auth/auth.service.ts', consumerClass: 'backend/src/auth/auth.service.ts#AuthService', parameter: 'realtime', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/modules/identity/internal/auth/auth.service.ts', consumerClass: 'backend/src/modules/identity/internal/auth/auth.service.ts#AuthService', parameter: 'realtime', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
   Object.freeze({ source: 'backend/src/conversations/conversations.service.ts', consumerClass: 'backend/src/conversations/conversations.service.ts#ConversationsService', parameter: 'mediaStorage', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
   Object.freeze({ source: 'backend/src/platform/health/readiness.service.ts', consumerClass: 'backend/src/platform/health/readiness.service.ts#ReadinessService', parameter: 'mediaStorage', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaReadiness }),
   Object.freeze({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', consumerClass: 'backend/src/platform/outbox/outbox.dispatcher.ts#OutboxDispatcher', parameter: 'pushDelivery', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.outboxPush }),
@@ -887,9 +887,13 @@ function scanR3SourceLaws(options) {
             && targetPath.endsWith('-public.module.ts')
             && importedNames.length > 0
             && importedNames.every((name) => sourceModuleImports.includes(name));
+          const legalInternalPortDependency = sourceClass.slice === 'internal'
+            && targetClass.kind === 'future' && targetClass.slice === 'public'
+            && targetPath.endsWith('.port.ts');
           const legalRelocatedPermissionContract = repositoryPath === relocatedSafeUser
             && targetPath === backofficePermissionContract;
-          if (!legalType && !legalPublicModuleDependency && !legalRelocatedPermissionContract) {
+          if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
+              && !legalRelocatedPermissionContract) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
         }
@@ -1205,7 +1209,7 @@ function collectR3DecoratorInventory(options) {
           const exactGuard = GUARD_DECLARATIONS.get(identity.name) === identity.declarationPath;
           guardNames.push(exactGuard ? identity.name : `${identity.name}@${identity.declarationPath}`);
           if (exactGuard && ['JwtAuthGuard', 'JwtSessionGuard'].includes(identity.name)
-              && source !== 'backend/src/auth/auth.controller.ts') {
+              && source !== 'backend/src/modules/identity/api/auth.controller.ts') {
             addUse(groupedGuards, source, identity.name, 'decorator-runtime', useRecord(
               controllerClass, method, routePrefix, route.routeMethod, route.routePath,
             ));
@@ -1239,7 +1243,7 @@ function collectR3DecoratorInventory(options) {
         for (let parameterIndex = 0; parameterIndex < member.parameters.length; parameterIndex += 1) {
           const parameter = member.parameters[parameterIndex];
           if (namedDecoratorCall(parameter, 'CurrentUser', checker, repoRoot)
-              && source !== 'backend/src/auth/auth.controller.ts') {
+              && source !== 'backend/src/modules/identity/api/auth.controller.ts') {
             addUse(groupedRuntime, source, 'CurrentUser', 'runtime-decorator', useRecord(
               controllerClass, method, routePrefix, route.routeMethod, route.routePath, parameterIndex,
             ));

@@ -1,5 +1,5 @@
 import { randomInt } from 'crypto';
-import { OtpDeliveryResult } from '../platform/otp-transport/otp-delivery';
+import { OtpDeliveryResult } from '../../../../platform/otp-transport/otp-delivery';
 
 /**
  * Seam for OTP delivery. AuthService owns generation/storage/verification;

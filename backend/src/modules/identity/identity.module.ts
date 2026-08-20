@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AccountDeletionStatusController } from "../../users/account-deletion-status.controller";
-import { AuthController } from "../../auth/auth.controller";
+import { AuthController } from "./api/auth.controller";
 import { ContextsController } from "../../contexts/contexts.controller";
 import { MeController } from "../../me/me.controller";
 import { UsersController } from "../../users/users.controller";

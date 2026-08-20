@@ -1876,10 +1876,16 @@ function runCli(dependencies) {
       return 0;
     }
     const baseline = validateBaseline(dependencies.readBaseline());
-    const comparison = compareWithBaseline(current, baseline.violations);
+    const effectiveBaseline = typeof dependencies.mapBaseline === 'function'
+      ? validateViolationArray(
+        dependencies.mapBaseline(baseline.violations),
+        'mapped ownership baseline violations',
+      )
+      : baseline.violations;
+    const comparison = compareWithBaseline(current, effectiveBaseline);
     if (!comparison.ok) {
       writeLine(dependencies.stderr, `ownership violations added (${comparison.additions.length} records)`);
-      const allowed = new Map(baseline.violations.map((record) => [record.key, record.count]));
+      const allowed = new Map(effectiveBaseline.map((record) => [record.key, record.count]));
       for (const addition of comparison.additions) {
         const kind = allowed.has(addition.key)
           ? 'increased ownership violation'
@@ -1903,10 +1909,17 @@ function defaultDependencies(argv) {
   const backendRoot = path.resolve(__dirname, '../..');
   const repoRoot = path.resolve(backendRoot, '..');
   const baselinePath = path.join(backendRoot, 'architecture', 'ownership-baseline.json');
+  const r5ManifestPath = path.join(backendRoot, 'architecture', 'r5-identity-relocation.json');
   return {
     argv,
     scan: () => scanOwnershipViolations({ repoRoot, backendRoot }),
     readBaseline: () => readJson(baselinePath, 'ownership baseline'),
+    mapBaseline: (records) => {
+      if (!fs.existsSync(r5ManifestPath)) return records;
+      const r5 = require('./r5-identity-scan.cjs');
+      const manifest = readJson(r5ManifestPath, 'R5 identity manifest');
+      return r5.mapOwnershipRecordsForR5(records, manifest);
+    },
     writeBaseline: (baseline) => fs.writeFileSync(
       baselinePath,
       `${JSON.stringify(baseline, null, 2)}\n`,

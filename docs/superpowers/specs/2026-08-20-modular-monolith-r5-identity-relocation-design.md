@@ -253,6 +253,22 @@ New R5 tests may add architecture, path, identity, baseline, and route-parity
 assertions. A behavioral change discovered during execution stops R5 and
 requires a separately approved correction; it is not hidden inside relocation.
 
+Task 6 found three stale smoke harnesses whose setup no longer satisfied
+production contracts that already existed at the immutable R5 base: the
+`AdminService` notifications port, application-password completion state, and
+the provider review transition order. The owner authorized one exact test-only
+QA correction checkpoint on 2026-08-22. It changes no application source or
+runtime contract. `r5-identity-relocation.json` pins the base and approved
+normalized SHA-256 bytes for exactly these files and the live R5 scanner rejects
+any different path, extra correction, or later byte drift:
+
+- `backend/scripts/smoke/phase1-identity-smoke.ts`;
+- `backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts`;
+- `backend/scripts/smoke/phase3-context-transition-smoke.ts`.
+
+This narrow checkpoint is the sole exception to the existing-test freeze. It
+does not authorize assertion, error, timeout, selection, or production changes.
+
 ## Delivery Checkpoints
 
 R5 uses nine checkpoints:

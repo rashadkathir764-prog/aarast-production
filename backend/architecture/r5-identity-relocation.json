@@ -264,6 +264,26 @@
       ]
     }
   ],
+  "qaHarnessCorrections": [
+    {
+      "path": "backend/scripts/smoke/phase1-identity-smoke.ts",
+      "baseSha256": "f1b1fd95ecaf57ed81981e431b0bbc7fb1398cc46f704ac8db31390b48e63c9c",
+      "approvedSha256": "a3173fc013a25d8620853c8cbf2e9c038b532ac7795a6a935f30ade25eea4299",
+      "rationale": "Align stale Admin notifications and application-password fixtures with contracts present at R5_BASE."
+    },
+    {
+      "path": "backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts",
+      "baseSha256": "83e696422f5e362a7403e257a6ab456cb8469bdbd781ef5d0a4468aceb6fb399",
+      "approvedSha256": "6fd69232d2e9669c67db0f6391fc041a8866c367d4101594544f90fac62703cc",
+      "rationale": "Align stale application-password fixtures with contracts present at R5_BASE."
+    },
+    {
+      "path": "backend/scripts/smoke/phase3-context-transition-smoke.ts",
+      "baseSha256": "312bc052b194eec91d92d6acb7454ab534b43a701d81c2c315c2d04a07fcf4fb",
+      "approvedSha256": "d48ea3cd44b9c90b8cbe8499d7375a0caca14e991c9ee4f3a0c4170c3d4a215e",
+      "rationale": "Align stale Admin notifications, application-password, and provider-transition fixtures with contracts present at R5_BASE."
+    }
+  ],
   "retiredRoots": [
     "auth",
     "contexts",

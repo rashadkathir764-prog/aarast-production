@@ -22,7 +22,10 @@
   `docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md`:
   exact `deepmerge-ts@8.0.1`, Prisma 6.19.3 preserved, full compatibility proof,
   and no other dependency movement.
-- Existing behavioral tests may change only for exact import/path-literal relocation.
+- Existing behavioral tests may change only for exact import/path-literal
+  relocation, except the separately owner-authorized Task 6 QA checkpoint that
+  pins the exact bytes of three stale smoke harness corrections in the R5
+  manifest. No other fixture or setup change is permitted.
 - Do not create compatibility barrels, re-exports, duplicate implementations, symlinks, junctions, or fallback imports.
 - Do not begin R6 before R5 final local review and owner approval.
 
@@ -508,6 +511,17 @@ public-contract debts, and 385 ownership records / 781 occurrences.
 Mutate one dependency `dependencyTypes`, one ownership `operation`, converge two
 base paths into one target, and add one foreign model access. Each fixture must
 fail with a fixed sanitized diagnostic.
+
+- [ ] **Step 2A: Close the separately approved stale-smoke checkpoint**
+
+Prove from the immutable R5 base that `AdminService` already required the
+notifications port, application sessions already required
+`appPasswordConfiguredAt`, and provider review already rejected `REJECT` after
+`SUSPENDED`. Add the exact three corrections to
+`r5-identity-relocation.json` with base/approved normalized SHA-256 values.
+Require permanent RED then GREEN coverage for exact acceptance, a substituted
+path, an extra correction, and later file-byte drift. No application source,
+assertion, error text, timeout, or smoke selection may change.
 
 - [ ] **Step 3: Replace tracked baselines only after verifier PASS**
 

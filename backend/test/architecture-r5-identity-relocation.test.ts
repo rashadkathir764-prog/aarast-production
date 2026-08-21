@@ -150,6 +150,12 @@ const expectedPublicRuntimeContracts = [
 ];
 
 type Move = { from: string; to: string };
+type QaHarnessCorrection = {
+  path: string;
+  baseSha256: string;
+  approvedSha256: string;
+  rationale: string;
+};
 type R5Manifest = {
   schemaVersion: number;
   baseRevision: string;
@@ -160,6 +166,7 @@ type R5Manifest = {
     target: string;
     declarations: string[];
   }>;
+  qaHarnessCorrections: QaHarnessCorrection[];
   retiredRoots: string[];
   expectedBaselines: {
     dependencyRecords: number;
@@ -194,7 +201,33 @@ type R5Scanner = {
     packageJson: unknown;
     packageLock: unknown;
   }): { active: boolean };
+  verifyR5QaHarnessCorrections(options: {
+    repositoryRoot: string;
+    manifest: R5Manifest;
+    readBaseFile?: (relativePath: string) => string;
+  }): { corrections: number };
 };
+
+const expectedQaHarnessCorrections: QaHarnessCorrection[] = [
+  {
+    path: 'backend/scripts/smoke/phase1-identity-smoke.ts',
+    baseSha256: 'f1b1fd95ecaf57ed81981e431b0bbc7fb1398cc46f704ac8db31390b48e63c9c',
+    approvedSha256: 'a3173fc013a25d8620853c8cbf2e9c038b532ac7795a6a935f30ade25eea4299',
+    rationale: 'Align stale Admin notifications and application-password fixtures with contracts present at R5_BASE.',
+  },
+  {
+    path: 'backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts',
+    baseSha256: '83e696422f5e362a7403e257a6ab456cb8469bdbd781ef5d0a4468aceb6fb399',
+    approvedSha256: '6fd69232d2e9669c67db0f6391fc041a8866c367d4101594544f90fac62703cc',
+    rationale: 'Align stale application-password fixtures with contracts present at R5_BASE.',
+  },
+  {
+    path: 'backend/scripts/smoke/phase3-context-transition-smoke.ts',
+    baseSha256: '312bc052b194eec91d92d6acb7454ab534b43a701d81c2c315c2d04a07fcf4fb',
+    approvedSha256: 'd48ea3cd44b9c90b8cbe8499d7375a0caca14e991c9ee4f3a0c4170c3d4a215e',
+    rationale: 'Align stale Admin notifications, application-password, and provider-transition fixtures with contracts present at R5_BASE.',
+  },
+];
 
 test('R5 scope includes the exact dependency boundary config required by Task 2', () => {
   const manifest = loadScanner().validateR5Manifest(readManifest());
@@ -373,6 +406,58 @@ test('R5 manifest pins the exact 44 one-to-one moves', () => {
     ownershipOccurrences: 781,
   });
   assert.deepEqual(manifest.publicRuntimeContracts, expectedPublicRuntimeContracts);
+  assert.deepEqual(manifest.qaHarnessCorrections, expectedQaHarnessCorrections);
+});
+
+test('R5 authorizes only the exact three test-only QA harness corrections', () => {
+  const scanner = loadScanner();
+  const repositoryRoot = path.resolve(backendRoot, '..');
+  const manifest = scanner.validateR5Manifest(readManifest());
+
+  assert.deepEqual(
+    scanner.verifyR5QaHarnessCorrections({ repositoryRoot, manifest }),
+    { corrections: 3 },
+  );
+
+  const substituted = cloneManifest();
+  substituted.qaHarnessCorrections[0].path = 'backend/scripts/smoke/account-deletion-smoke.ts';
+  assert.throws(() => scanner.validateR5Manifest(substituted), /QA harness|manifest.*drift/i);
+
+  const extra = cloneManifest();
+  extra.qaHarnessCorrections.push({
+    ...extra.qaHarnessCorrections[0],
+    path: 'backend/scripts/smoke/phase2-auth-retention-smoke.ts',
+  });
+  assert.throws(() => scanner.validateR5Manifest(extra), /QA harness|manifest.*drift/i);
+
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-qa-correction-'));
+  temporaryRoots.push(fixtureRoot);
+  for (const correction of manifest.qaHarnessCorrections) {
+    const destination = path.join(fixtureRoot, ...correction.path.split('/'));
+    mkdirSync(path.dirname(destination), { recursive: true });
+    copyFileSync(path.join(repositoryRoot, ...correction.path.split('/')), destination);
+  }
+  const drifted = manifest.qaHarnessCorrections[0];
+  writeFileSync(
+    path.join(fixtureRoot, ...drifted.path.split('/')),
+    `${readFileSync(path.join(fixtureRoot, ...drifted.path.split('/')), 'utf8')}\n// unauthorized drift\n`,
+    'utf8',
+  );
+  assert.throws(
+    () => scanner.verifyR5QaHarnessCorrections({
+      repositoryRoot: fixtureRoot,
+      manifest,
+      readBaseFile: (relativePath) => {
+        const result = spawnSync('git', ['show', `${r5Base}:${relativePath}`], {
+          cwd: repositoryRoot,
+          encoding: 'utf8',
+        });
+        assert.equal(result.status, 0);
+        return result.stdout;
+      },
+    }),
+    /QA harness.*drift/i,
+  );
 });
 
 test('R5 manifest rejects move and public-surface drift before filesystem access', () => {

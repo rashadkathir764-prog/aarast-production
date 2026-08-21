@@ -30,6 +30,15 @@ reviewed mechanical import/export/require edits, moved-source path-literal
 edits, test-file moves, and DI token wiring edits required by that move. Any
 other existing-test change is a stop signal and requires explicit review.
 
+R5 Task 6 used that stop signal and received explicit owner authorization for
+one test-only correction checkpoint. Exactly three stale smoke harnesses were
+aligned with production contracts already present at `R5_BASE`: the Admin
+notifications dependency, completed application-password fixtures, and valid
+provider-transition ordering. Their base and approved bytes are pinned in the
+R5 manifest and enforced by the live scanner. This is not a general fixture
+exception; every other behavioral assertion, fixture, setup, error, timeout,
+and selection remains frozen.
+
 R0 itself adds tests and does not edit existing behavioral tests.
 
 ## Modular Monolith R1 Closeout Gates
@@ -151,7 +160,7 @@ and deployment artifacts.
   occurrences after deterministic path relocation only.
 - Existing Auth, OTP, session, profile, context, account-deletion, WebSocket,
   scheduler, and route assertions remain frozen except mechanical import/path
-  edits.
+  edits and the exact three hash-pinned Task 6 smoke-harness corrections.
 - Full Backend architecture/check/build/tests, Prisma equivalence, audits,
   managed Identity/auth/context/account-deletion plus aggregate smokes, residue
   audits, frozen Mobile/Admin/deployment surfaces, immutable runtime, owner

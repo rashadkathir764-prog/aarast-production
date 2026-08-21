@@ -27,6 +27,7 @@ const R5_SECURITY_CHECKPOINT_PATHS = Object.freeze([
 const STATIC_HASHES = Object.freeze({
   moves: 'b4cfefb11fa70c69d02e5d72324eec3411c69954b17b97d55839beb49c798f66',
   publicRuntimeContracts: '408ba2aeef53e6fdbccfcbaecad2a47ff055cf78d969ee07fd322d4aa10261d2',
+  qaHarnessCorrections: '8ec309583ce994774e044b9d242575e069cc27bab70e50ac62707a274bf654f0',
   retiredRoots: '36ddd91996084e08e19a1645e8382d94dd3005d4f2d77b5c7653c5e707ef0984',
   expectedBaselines: '5c693143b483f7df2eb9e732adb6ba55f1ba1409fa22fa247e4aa5129e98da1e',
   allowedChangedPaths: 'fe9232b6c4584090baf4a910d78eac3d2eed517c970046ea56dc0f734b210d35',
@@ -232,6 +233,29 @@ function validatePublicRuntimeContract(value, label) {
   });
 }
 
+function validateQaHarnessCorrection(value, label) {
+  const correction = exactObject(
+    value,
+    ['path', 'baseSha256', 'approvedSha256', 'rationale'],
+    label,
+  );
+  for (const key of ['baseSha256', 'approvedSha256']) {
+    if (typeof correction[key] !== 'string' || !/^[a-f0-9]{64}$/u.test(correction[key])) {
+      throw new Error(`${label}.${key} is invalid`);
+    }
+  }
+  if (typeof correction.rationale !== 'string' || correction.rationale.length === 0
+      || correction.rationale.length > MAX_TEXT_LENGTH) {
+    throw new Error(`${label}.rationale is invalid`);
+  }
+  return Object.freeze({
+    path: relativePath(correction.path, `${label}.path`),
+    baseSha256: correction.baseSha256,
+    approvedSha256: correction.approvedSha256,
+    rationale: correction.rationale,
+  });
+}
+
 function validatePathList(value, label) {
   const entries = denseArray(value, label).map(
     (entry, index) => relativePath(entry, `${label}[${index}]`),
@@ -251,6 +275,7 @@ function validateR5Manifest(value) {
     'stage',
     'moves',
     'publicRuntimeContracts',
+    'qaHarnessCorrections',
     'retiredRoots',
     'expectedBaselines',
     'allowedChangedPaths',
@@ -269,6 +294,18 @@ function validateR5Manifest(value) {
     contract,
     `R5 identity manifest public runtime[${index}]`,
   ));
+  const qaHarnessCorrections = denseArray(
+    manifest.qaHarnessCorrections,
+    'R5 identity manifest QA harness corrections',
+  ).map((correction, index) => validateQaHarnessCorrection(
+    correction,
+    `R5 identity manifest QA harness corrections[${index}]`,
+  ));
+  const correctionPaths = qaHarnessCorrections.map((correction) => correction.path);
+  if (new Set(correctionPaths).size !== correctionPaths.length
+      || JSON.stringify(correctionPaths) !== JSON.stringify([...correctionPaths].sort())) {
+    throw new Error('R5 identity manifest QA harness corrections must be sorted and unique');
+  }
   const retiredRoots = denseArray(manifest.retiredRoots, 'R5 identity manifest retired roots')
     .map((root, index) => relativePath(root, `R5 identity manifest retired roots[${index}]`));
   const expectedBaselines = exactObject(manifest.expectedBaselines, [
@@ -293,6 +330,7 @@ function validateR5Manifest(value) {
   const staticValues = {
     moves,
     publicRuntimeContracts,
+    qaHarnessCorrections,
     retiredRoots,
     expectedBaselines,
     allowedChangedPaths,
@@ -308,6 +346,7 @@ function validateR5Manifest(value) {
     stage: manifest.stage,
     moves: Object.freeze(moves),
     publicRuntimeContracts: Object.freeze(publicRuntimeContracts),
+    qaHarnessCorrections: Object.freeze(qaHarnessCorrections),
     retiredRoots: Object.freeze(retiredRoots),
     expectedBaselines: Object.freeze({ ...expectedBaselines }),
     allowedChangedPaths: Object.freeze(allowedChangedPaths),
@@ -374,8 +413,48 @@ function inspectExistingPath(repositoryRoot, relative, expected) {
 }
 
 function normalizedFileHash(filePath) {
-  const text = fs.readFileSync(filePath, 'utf8').replace(/\r\n/gu, '\n');
-  return crypto.createHash('sha256').update(text).digest('hex');
+  return normalizedTextHash(fs.readFileSync(filePath, 'utf8'));
+}
+
+function normalizedTextHash(text) {
+  if (typeof text !== 'string') throw new Error('R5 QA harness source is invalid');
+  return crypto.createHash('sha256').update(text.replace(/\r\n/gu, '\n')).digest('hex');
+}
+
+function verifyR5QaHarnessCorrections(options) {
+  const input = plainObject(options, 'R5 QA harness verifier options');
+  const keys = Object.keys(input).sort();
+  if (keys.some((key) => !['manifest', 'readBaseFile', 'repositoryRoot'].includes(key))
+      || !keys.includes('manifest') || !keys.includes('repositoryRoot')) {
+    throw new Error('R5 QA harness verifier options are invalid');
+  }
+  if (typeof input.repositoryRoot !== 'string' || !path.isAbsolute(input.repositoryRoot)) {
+    throw new Error('R5 QA harness repository root must be absolute');
+  }
+  const manifest = validateR5Manifest(input.manifest);
+  const readBaseFile = input.readBaseFile === undefined
+    ? (relative) => execFileSync(
+      'git',
+      ['show', `${R5_BASE}:${relative}`],
+      { cwd: input.repositoryRoot, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
+    )
+    : input.readBaseFile;
+  if (typeof readBaseFile !== 'function') {
+    throw new Error('R5 QA harness base reader is invalid');
+  }
+  for (const correction of manifest.qaHarnessCorrections) {
+    if (!manifest.allowedChangedPaths.includes(correction.path)) {
+      throw new Error('R5 QA harness correction is outside the candidate scope');
+    }
+    const inspected = inspectExistingPath(input.repositoryRoot, correction.path, 'file');
+    if (!inspected.exists) throw new Error('R5 QA harness correction is missing');
+    if (normalizedTextHash(readBaseFile(correction.path)) !== correction.baseSha256
+        || normalizedFileHash(path.join(input.repositoryRoot, ...correction.path.split('/')))
+          !== correction.approvedSha256) {
+      throw new Error('R5 QA harness correction drift detected');
+    }
+  }
+  return Object.freeze({ corrections: manifest.qaHarnessCorrections.length });
 }
 
 function validateR5AuthStage(repositoryRoot) {
@@ -720,6 +799,10 @@ function scanR5Identity(options) {
   if (manifest.stage === 'strict') {
     validateR5ProfileStage(input.repositoryRoot);
     validateR5RetiredRoots(input.repositoryRoot, manifest);
+    verifyR5QaHarnessCorrections({
+      repositoryRoot: input.repositoryRoot,
+      manifest,
+    });
   }
   return Object.freeze({ ok: true, stage: manifest.stage, moves: manifest.moves.length });
 }
@@ -873,6 +956,7 @@ module.exports = {
   validateR5ProfileStage,
   validateR5RetiredRoots,
   validateR5SecurityCheckpointScope,
+  verifyR5QaHarnessCorrections,
   mapOwnershipRecordsForR5,
   expectedR5DependencyRecords,
   verifyR5Baselines,

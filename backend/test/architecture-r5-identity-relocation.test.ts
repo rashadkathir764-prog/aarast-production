@@ -179,7 +179,21 @@ type R5Scanner = {
   validateR5ProfileStage(repositoryRoot: string): void;
   mapOwnershipRecordsForR5(records: Array<Record<string, unknown>>, manifest: R5Manifest):
     Array<Record<string, unknown>>;
+  expectedR5DependencyRecords(records: Array<Record<string, unknown>>, manifest: R5Manifest):
+    Array<Record<string, unknown>>;
+  verifyR5Baselines(options: {
+    baseDependency: Array<Record<string, unknown>>;
+    candidateDependency: Array<Record<string, unknown>>;
+    baseOwnership: Record<string, unknown>;
+    candidateOwnership: Record<string, unknown>;
+    manifest: R5Manifest;
+  }): { dependencyRecords: number; retiredDependencyRecords: number; ownershipRecords: number; ownershipOccurrences: number };
   validateR5RetiredRoots(repositoryRoot: string, manifest: R5Manifest): void;
+  validateR5SecurityCheckpointScope(input: {
+    changedPaths: string[];
+    packageJson: unknown;
+    packageLock: unknown;
+  }): { active: boolean };
 };
 
 test('R5 scope includes the exact dependency boundary config required by Task 2', () => {
@@ -189,6 +203,91 @@ test('R5 scope includes the exact dependency boundary config required by Task 2'
     manifest.allowedChangedPaths.includes('backend/scripts/architecture/ownership-scan.cjs'),
     true,
   );
+});
+
+test('R5 Task 5A package security scope authorizes only the exact checkpoint paths', () => {
+  const manifest = loadScanner().validateR5Manifest(readManifest());
+  const requiredPaths = [
+    'backend/package-lock.json',
+    'backend/scripts/security/prisma-config-merge-security.cjs',
+    'backend/test/prisma-config-merge-security.test.ts',
+    'docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md',
+    'docs/superpowers/specs/2026-08-21-r5-prisma-config-merge-security-checkpoint-design.md',
+  ];
+
+  assert.deepEqual(
+    requiredPaths.filter((relativePath) => !manifest.allowedChangedPaths.includes(relativePath)),
+    [],
+  );
+  for (const forbiddenPath of [
+    'backend/src/security/prisma-config-merge.ts',
+    'backend/prisma/schema/security.prisma',
+    'backend/Dockerfile',
+    'Mobile/pubspec.lock',
+  ]) {
+    assert.equal(manifest.allowedChangedPaths.includes(forbiddenPath), false);
+  }
+});
+
+test('R5 Task 5A package security scope rejects every mandated near-miss', () => {
+  const r5 = loadScanner();
+  assert.equal(typeof r5.validateR5SecurityCheckpointScope, 'function');
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const checkpointPaths = [
+    'backend/architecture/r5-identity-relocation.json',
+    'backend/package-lock.json',
+    'backend/package.json',
+    'backend/scripts/security/prisma-config-merge-security.cjs',
+    'backend/test/architecture-r5-identity-relocation.test.ts',
+    'backend/test/prisma-config-merge-security.test.ts',
+    'docs/SCRIPTS.md',
+    'docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md',
+    'docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md',
+    'docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md',
+    'docs/superpowers/specs/2026-08-21-r5-prisma-config-merge-security-checkpoint-design.md',
+  ];
+  assert.doesNotThrow(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson,
+    packageLock,
+  }));
+
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: ['backend/package-lock.json'],
+    packageJson,
+    packageLock,
+  }));
+
+  const unrelatedDependency = structuredClone(packageJson);
+  unrelatedDependency.dependencies['scope-near-miss'] = '1.0.0';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: unrelatedDependency,
+    packageLock,
+  }));
+
+  const rangedOverride = structuredClone(packageJson);
+  rangedOverride.overrides['deepmerge-ts'] = '^8.0.1';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: rangedOverride,
+    packageLock,
+  }));
+
+  const changedPrisma = structuredClone(packageJson);
+  changedPrisma.dependencies.prisma = '^7.0.0';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: changedPrisma,
+    packageLock,
+  }));
+
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: [...checkpointPaths, 'backend/scripts/security/extra-implementation.cjs'],
+    packageJson,
+    packageLock,
+  }));
 });
 
 test('R5 maps ownership paths at the active stage without changing semantics', () => {
@@ -269,7 +368,7 @@ test('R5 manifest pins the exact 44 one-to-one moves', () => {
   assert.equal(new Set(manifest.moves.map((move) => move.to)).size, 44);
   assert.deepEqual(manifest.retiredRoots, ['auth', 'contexts', 'me', 'users']);
   assert.deepEqual(manifest.expectedBaselines, {
-    dependencyRecords: 89,
+    dependencyRecords: 31,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });
@@ -556,6 +655,135 @@ test('R5 profile API and internal bodies reject post-move drift', () => {
   const original = readFileSync(target, 'utf8');
   writeFileSync(target, `${original}\nexport const copiedBehavior = true;\n`, 'utf8');
   assert.throws(() => r5.validateR5ProfileStage(fixtureRoot), /profile.*drift/i);
+});
+
+test('R5 baseline verifier accepts only the exact remaining dependency and mapped ownership semantics', () => {
+  const r5 = loadScanner();
+  const manifest = r5.validateR5Manifest(readManifest());
+  const baseDependencyResult = spawnSync('git', [
+    'show', `${r5Base}:backend/.dependency-cruiser-known-violations.json`,
+  ], { cwd: repositoryRoot(), encoding: 'utf8' });
+  assert.equal(baseDependencyResult.status, 0, baseDependencyResult.stderr);
+  const baseDependency = JSON.parse(
+    baseDependencyResult.stdout,
+  ) as Array<Record<string, unknown>>;
+  const baseOwnershipResult = spawnSync('git', [
+    'show', `${r5Base}:backend/architecture/ownership-baseline.json`,
+  ], { cwd: repositoryRoot(), encoding: 'utf8' });
+  assert.equal(baseOwnershipResult.status, 0, baseOwnershipResult.stderr);
+  const baseOwnership = JSON.parse(
+    baseOwnershipResult.stdout,
+  ) as { violations: Array<Record<string, unknown>> } & Record<string, unknown>;
+  const candidateDependency = r5.expectedR5DependencyRecords(baseDependency, manifest);
+  const candidateOwnership = {
+    ...baseOwnership,
+    violations: r5.mapOwnershipRecordsForR5(baseOwnership.violations, manifest),
+  };
+  const verified = r5.verifyR5Baselines({
+    baseDependency,
+    candidateDependency,
+    baseOwnership,
+    candidateOwnership,
+    manifest,
+  });
+  assert.deepEqual(verified, {
+    dependencyRecords: 31,
+    retiredDependencyRecords: 58,
+    ownershipRecords: 385,
+    ownershipOccurrences: 781,
+  });
+
+  const candidateRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-baseline-cli-'));
+  temporaryRoots.push(candidateRoot);
+  const dependencyPath = path.join(candidateRoot, 'dependency.json');
+  const ownershipPath = path.join(candidateRoot, 'ownership.json');
+  writeFileSync(dependencyPath, `${JSON.stringify(candidateDependency, null, 2)}\n`, 'utf8');
+  writeFileSync(ownershipPath, `${JSON.stringify(candidateOwnership, null, 2)}\n`, 'utf8');
+  const cli = spawnSync(process.execPath, [
+    scannerPath,
+    '--check',
+    '--dependency-candidate', dependencyPath,
+    '--ownership-candidate', ownershipPath,
+  ], { cwd: backendRoot, encoding: 'utf8' });
+  assert.equal(cli.status, 0, cli.stderr || cli.stdout);
+  assert.match(cli.stdout, /dependency=31, retired=58, ownership=385\/781/u);
+
+  const aliased = spawnSync(process.execPath, [
+    scannerPath,
+    '--check',
+    '--dependency-candidate', dependencyPath,
+    '--ownership-candidate', dependencyPath,
+  ], { cwd: backendRoot, encoding: 'utf8' });
+  assert.equal(aliased.status, 2);
+  assert.equal(aliased.stderr, 'ERROR - R5 Identity relocation validation failed\n');
+
+  const junctionTarget = mkdtempSync(path.join(tmpdir(), 'aarast-r5-baseline-junction-target-'));
+  temporaryRoots.push(junctionTarget);
+  copyFileSync(dependencyPath, path.join(junctionTarget, 'dependency.json'));
+  const junction = path.join(candidateRoot, 'linked');
+  symlinkSync(junctionTarget, junction, process.platform === 'win32' ? 'junction' : 'dir');
+  const escaped = spawnSync(process.execPath, [
+    scannerPath,
+    '--check',
+    '--dependency-candidate', path.join(junction, 'dependency.json'),
+    '--ownership-candidate', ownershipPath,
+  ], { cwd: backendRoot, encoding: 'utf8' });
+  assert.equal(escaped.status, 2);
+  assert.equal(escaped.stderr, 'ERROR - R5 Identity relocation validation failed\n');
+
+  const dependencyDrift = structuredClone(candidateDependency);
+  dependencyDrift[0].dependencyTypes = ['local', 'type-only'];
+  assert.throws(() => r5.verifyR5Baselines({
+    baseDependency,
+    candidateDependency: dependencyDrift,
+    baseOwnership,
+    candidateOwnership,
+    manifest,
+  }), /dependency baseline drift/i);
+
+  const reorderedDependency = structuredClone(candidateDependency);
+  [reorderedDependency[0], reorderedDependency[1]] = [
+    reorderedDependency[1], reorderedDependency[0],
+  ];
+  assert.throws(() => r5.verifyR5Baselines({
+    baseDependency,
+    candidateDependency: reorderedDependency,
+    baseOwnership,
+    candidateOwnership,
+    manifest,
+  }), /dependency baseline drift/i);
+
+  const ownershipDrift = structuredClone(candidateOwnership);
+  ownershipDrift.violations[0].operation = 'deleteMany';
+  assert.throws(() => r5.verifyR5Baselines({
+    baseDependency,
+    candidateDependency,
+    baseOwnership,
+    candidateOwnership: ownershipDrift,
+    manifest,
+  }), /ownership baseline drift/i);
+
+  const foreignAccess = structuredClone(candidateOwnership);
+  foreignAccess.violations.push({
+    ...foreignAccess.violations[0],
+    key: 'backend/src/modules/identity/internal/profile/users.service.ts|identity|finance|WeddingCost|create|write|delegate|foreign-model',
+    file: 'backend/src/modules/identity/internal/profile/users.service.ts',
+    context: 'identity',
+    owner: 'finance',
+    model: 'WeddingCost',
+    operation: 'create',
+    mode: 'write',
+    source: 'delegate',
+    reason: 'foreign-model',
+    count: 1,
+  });
+  assert.throws(() => r5.verifyR5Baselines({
+    baseDependency,
+    candidateDependency,
+    baseOwnership,
+    candidateOwnership: foreignAccess,
+    manifest,
+  }), /ownership baseline drift/i);
 });
 
 function repositoryRoot(): string {

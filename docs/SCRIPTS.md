@@ -29,6 +29,7 @@
 | `backend` | `npm run prod:bootstrap-marketplace` | `node scripts/prod/bootstrap-marketplace.cjs` |
 | `backend` | `npm run prod:provision-admin` | `node scripts/prod/provision-admin.cjs` |
 | `backend` | `npm run prod:reconcile-idempotency` | `node dist/platform/idempotency/idempotency-reconcile.cli.js` |
+| `backend` | `npm run security:prisma-config-merge` | `node scripts/security/prisma-config-merge-security.cjs --check` |
 | `backend` | `npm run seed` | `ts-node prisma/seed.ts` |
 | `backend` | `npm run smoke` | `node scripts/smoke/run-isolated-smoke.js health-smoke.js auth-smoke.js` |
 | `backend` | `npm run smoke:account-deletion` | `node scripts/smoke/run-isolated-smoke.js account-deletion-smoke.ts` |

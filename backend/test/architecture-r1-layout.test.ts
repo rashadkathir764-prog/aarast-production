@@ -255,7 +255,7 @@ test('R1 Task 4 AuthService owns selection while sharing keeps named pre-R6 tran
   assert.match(authServiceSource, /from\s+['"]\.\/otp-channel['"]/);
   assert.match(
     authServiceSource,
-    /from\s+['"]\.\.\/platform\/otp-transport\/(?:otp-delivery|openwa-otp\.channel|whatsapp-otp\.channel)['"]/,
+    /from\s+['"]\.\.\/\.\.\/\.\.\/\.\.\/platform\/otp-transport\/(?:otp-delivery|openwa-otp\.channel|whatsapp-otp\.channel)['"]/,
   );
   assert.match(authServiceSource, /generateProductionOtpCode/);
   assert.match(authServiceSource, /resolveOtpChannel\s*\(/);

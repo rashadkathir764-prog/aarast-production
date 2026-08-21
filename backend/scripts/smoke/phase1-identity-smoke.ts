@@ -46,7 +46,9 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const realtime = { disconnectUser: () => undefined };
-const service = new AdminService(prisma as any, realtime as any);
+const service = new AdminService(prisma as any, realtime as any, {
+  createNotificationInTransaction: async () => null,
+} as any);
 const loginThrottle = new LoginThrottleService(prisma as any);
 const jwtService = new JwtService({ secret: process.env.JWT_SECRET });
 const authService = new AuthService(
@@ -205,6 +207,13 @@ async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
       const secret = process.env.JWT_SECRET;
       assert.ok(secret);
       const jwt = new JwtService({ secret });
+      await prisma.user.update({
+        where: { id: fixture.actingAdmin.id },
+        data: {
+          appPasswordHash: await bcryptjs.hash('Phase1 application password', 4),
+          appPasswordConfiguredAt: new Date(),
+        },
+      });
       const [adminSession, applicationSession] = await prisma.$transaction([
         prisma.refreshToken.create({
           data: {
@@ -310,6 +319,13 @@ async function assertCorrectAndWrongOtpRaceHasOneWinner(): Promise<void> {
   await withFixture(
     (environment) => createOtpAttemptFixture(prisma, environment),
     async (fixture) => {
+      await prisma.user.update({
+        where: { id: fixture.user.id },
+        data: {
+          appPasswordHash: await bcryptjs.hash('Phase1 OTP application password', 4),
+          appPasswordConfiguredAt: new Date(),
+        },
+      });
       const otp = await prisma.otpCode.update({
         where: { id: fixture.otp.id },
         data: { codeHash: await bcryptjs.hash('654321', 4) },

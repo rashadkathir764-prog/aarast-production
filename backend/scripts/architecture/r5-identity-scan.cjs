@@ -1,7 +1,9 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
@@ -9,12 +11,25 @@ const ts = require('typescript');
 const R5_BASE = '9dab73acdc187a4a18d8a675713d8ded40a16d02';
 const MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
 const STAGES = Object.freeze(['inventory', 'task-2', 'task-3', 'task-4', 'strict']);
+const R5_SECURITY_CHECKPOINT_PATHS = Object.freeze([
+  'backend/architecture/r5-identity-relocation.json',
+  'backend/package-lock.json',
+  'backend/package.json',
+  'backend/scripts/security/prisma-config-merge-security.cjs',
+  'backend/test/architecture-r5-identity-relocation.test.ts',
+  'backend/test/prisma-config-merge-security.test.ts',
+  'docs/SCRIPTS.md',
+  'docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md',
+  'docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md',
+  'docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md',
+  'docs/superpowers/specs/2026-08-21-r5-prisma-config-merge-security-checkpoint-design.md',
+]);
 const STATIC_HASHES = Object.freeze({
   moves: 'b4cfefb11fa70c69d02e5d72324eec3411c69954b17b97d55839beb49c798f66',
   publicRuntimeContracts: '408ba2aeef53e6fdbccfcbaecad2a47ff055cf78d969ee07fd322d4aa10261d2',
   retiredRoots: '36ddd91996084e08e19a1645e8382d94dd3005d4f2d77b5c7653c5e707ef0984',
-  expectedBaselines: '368149a364608a40b3e66411e9a74d4d01b2d1ee1ed761ff0f627a25e39524c7',
-  allowedChangedPaths: 'cf12610ad5749d23b9979e452e3cec02c0f4d0670b28fa9849ce1ce58b553db5',
+  expectedBaselines: '5c693143b483f7df2eb9e732adb6ba55f1ba1409fa22fa247e4aa5129e98da1e',
+  allowedChangedPaths: 'fe9232b6c4584090baf4a910d78eac3d2eed517c970046ea56dc0f734b210d35',
 });
 const AUTH_STAGE_HASHES = Object.freeze({
   'backend/src/modules/identity/internal/auth/auth-challenge-cleanup.scheduler.ts': '3e648ecf471097575ce9a3bd58b3e369cdc6481d031e8699a488686ddbd62ac4',
@@ -58,6 +73,43 @@ const PROFILE_STAGE_HASHES = Object.freeze({
   'backend/src/modules/identity/internal/profile/users.service.ts': 'a8edc6ce6264010098842d7a6b7a806eb0a6cf76c2e6e4a5d45a3bf81cfb109c',
   'backend/src/modules/identity/internal/identity-profile.internal.module.ts': '7c5aea591785d6e2c963125f6247a777859212abfd943467f41ba4aaee074cf8',
 });
+const R5_BASE_DEPENDENCY_HASH =
+  'd912959a094fe96403267114f346cbe0082f4764dabd451bc78a8f18502a21b0';
+const R5_BASE_OWNERSHIP_HASH =
+  '228edf06082b914f56f4c4d98468640c448ed35ae873620a7f72df6ac1a9c26a';
+const REMAINING_DEPENDENCY_KEYS = Object.freeze([
+  'context-backoffice-cross-context|src/admin/admin-mutation-executor.ts|src/marketplace/provider-review-rating.ts',
+  'context-catalog-cross-context|src/catalogs/administrative-catalog.service.ts|src/admin/admin-mutation-gate.ts',
+  'context-catalog-cross-context|src/catalogs/catalogs.controller.ts|src/admin/admin-permission.decorator.ts',
+  'context-catalog-cross-context|src/catalogs/catalogs.controller.ts|src/admin/admin-permission.guard.ts',
+  'context-catalog-cross-context|src/catalogs/catalogs.controller.ts|src/admin/admin.guard.ts',
+  'context-catalog-cross-context|src/catalogs/reference-catalog.service.ts|src/admin/admin-mutation-gate.ts',
+  'context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-guests-cross-context|src/guests/guests.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-insights-cross-context|src/dashboard/dashboard.contracts.ts|src/wedding-plans/wedding-location.ts',
+  'context-insights-cross-context|src/dashboard/dashboard.service.ts|src/wedding-plans/wedding-location.ts',
+  'context-marketplace-cross-context|src/marketplace/marketplace.presenter.ts|src/wedding-plans/wedding-location.ts',
+  'context-marketplace-cross-context|src/marketplace/marketplace.service.ts|src/wedding-costs/wedding-cost.presenter.ts',
+  'context-marketplace-cross-context|src/marketplace/marketplace.service.ts|src/wedding-plans/wedding-location.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/wedding-costs/wedding-cost.presenter.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/provider-dashboard/provider-dashboard.service.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/provider-dashboard/provider-dashboard.service.ts|src/wedding-plans/wedding-location.ts',
+  'context-messaging-cross-context|src/conversations/conversations.service.ts|src/provider-dashboard/provider-access-policy.ts',
+  'context-notifications-cross-context|src/notifications/notifications.service.ts|src/provider-dashboard/provider-access-policy.ts',
+  'context-planning-cross-context|src/onboarding/dto/import-local-plan.dto.ts|src/guests/dto/create-guest.dto.ts',
+  'context-planning-cross-context|src/onboarding/dto/import-local-plan.dto.ts|src/tasks/dto/create-task.dto.ts',
+  'context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+]);
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 4096;
 
@@ -225,7 +277,7 @@ function validateR5Manifest(value) {
     'ownershipOccurrences',
   ], 'R5 identity manifest expected baselines');
   for (const [key, expected] of Object.entries({
-    dependencyRecords: 89,
+    dependencyRecords: 31,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   })) {
@@ -260,6 +312,38 @@ function validateR5Manifest(value) {
     expectedBaselines: Object.freeze({ ...expectedBaselines }),
     allowedChangedPaths: Object.freeze(allowedChangedPaths),
   });
+}
+
+function validateR5SecurityCheckpointScope(value) {
+  const input = exactObject(value, ['changedPaths', 'packageJson', 'packageLock'], 'R5 security scope');
+  const changedPaths = validatePathList(input.changedPaths, 'R5 security changed paths');
+  const triggerPaths = new Set([
+    'backend/package-lock.json',
+    'backend/scripts/security/prisma-config-merge-security.cjs',
+    'backend/test/prisma-config-merge-security.test.ts',
+    'docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md',
+    'docs/superpowers/specs/2026-08-21-r5-prisma-config-merge-security-checkpoint-design.md',
+  ]);
+  const active = changedPaths.some((relative) => triggerPaths.has(relative));
+  if (!active) return Object.freeze({ active: false });
+  for (const requiredPath of R5_SECURITY_CHECKPOINT_PATHS) {
+    if (!changedPaths.includes(requiredPath)) {
+      throw new Error('R5 security checkpoint path set is incomplete');
+    }
+  }
+  for (const relative of changedPaths) {
+    if ((relative.startsWith('backend/scripts/security/')
+          && relative !== 'backend/scripts/security/prisma-config-merge-security.cjs')
+        || (relative.startsWith('backend/test/prisma-config-merge-security')
+          && relative !== 'backend/test/prisma-config-merge-security.test.ts')) {
+      throw new Error('R5 security checkpoint contains an extra implementation path');
+    }
+  }
+  require('../security/prisma-config-merge-security.cjs').validatePackageGraph(
+    input.packageJson,
+    input.packageLock,
+  );
+  return Object.freeze({ active: true });
 }
 
 function isInside(parent, candidate) {
@@ -360,6 +444,156 @@ function mapOwnershipRecordsForR5(records, manifestValue) {
     throw new Error('R5 ownership relocation collides');
   }
   return mapped;
+}
+
+function dependencyRecordKey(record) {
+  return `${record.rule.name}|${record.from}|${record.to}`;
+}
+
+function validateDependencyRecords(value, label) {
+  const records = denseArray(value, label).map((item, index) => {
+    const record = exactObject(item, [
+      'type', 'from', 'to', 'unresolvedTo', 'dependencyTypes', 'rule',
+    ], `${label}[${index}]`);
+    if (record.type !== 'dependency') throw new Error(`${label} has an invalid type`);
+    for (const key of ['from', 'to', 'unresolvedTo']) {
+      if (typeof record[key] !== 'string' || record[key].length === 0
+          || record[key].length > MAX_TEXT_LENGTH) {
+        throw new Error(`${label} has an invalid path`);
+      }
+    }
+    const dependencyTypes = denseArray(
+      record.dependencyTypes,
+      `${label}[${index}] dependency types`,
+    );
+    if (dependencyTypes.length === 0 || dependencyTypes.some((type) => (
+      typeof type !== 'string' || type.length === 0 || type.length > 128
+    )) || new Set(dependencyTypes).size !== dependencyTypes.length) {
+      throw new Error(`${label} has invalid dependency types`);
+    }
+    const rule = exactObject(record.rule, ['severity', 'name'], `${label}[${index}] rule`);
+    if (rule.severity !== 'error' || typeof rule.name !== 'string'
+        || !/^context-[a-z-]+-cross-context$/u.test(rule.name)) {
+      throw new Error(`${label} has an invalid rule`);
+    }
+    return {
+      type: record.type,
+      from: record.from,
+      to: record.to,
+      unresolvedTo: record.unresolvedTo,
+      dependencyTypes: [...dependencyTypes],
+      rule: { severity: rule.severity, name: rule.name },
+    };
+  });
+  const keys = records.map(dependencyRecordKey);
+  if (new Set(keys).size !== keys.length) throw new Error(`${label} contains a collision`);
+  return records;
+}
+
+function expectedR5DependencyRecords(records, manifestValue) {
+  const manifest = validateR5Manifest(manifestValue);
+  const base = validateDependencyRecords(records, 'R5 base dependency baseline');
+  if (base.length !== 89 || hash(base) !== R5_BASE_DEPENDENCY_HASH) {
+    throw new Error('R5 base dependency baseline identity is invalid');
+  }
+  const moves = new Map(manifest.moves.map((move) => [
+    move.from.replace(/^backend\//u, ''),
+    move.to.replace(/^backend\//u, ''),
+  ]));
+  const mapped = base.map((record) => ({
+    ...record,
+    from: moves.get(record.from) || record.from,
+    to: moves.get(record.to) || record.to,
+  }));
+  const expectedKeys = new Set(REMAINING_DEPENDENCY_KEYS);
+  const remaining = mapped.filter((record) => expectedKeys.has(dependencyRecordKey(record)));
+  if (remaining.length !== manifest.expectedBaselines.dependencyRecords
+      || JSON.stringify(remaining.map(dependencyRecordKey))
+        !== JSON.stringify(REMAINING_DEPENDENCY_KEYS)) {
+    throw new Error('R5 dependency retirement ledger is invalid');
+  }
+  return remaining;
+}
+
+function validateOwnershipBaseline(value, label) {
+  const baseline = exactObject(
+    value,
+    ['schemaVersion', 'sourceRevision', 'violations'],
+    label,
+  );
+  if (baseline.schemaVersion !== 1 || typeof baseline.sourceRevision !== 'string'
+      || !/^[0-9a-f]{40}$/u.test(baseline.sourceRevision)) {
+    throw new Error(`${label} identity is invalid`);
+  }
+  const violations = denseArray(baseline.violations, `${label} violations`).map(
+    (record, index) => {
+      assertDeepPlainData(record, `${label} violations[${index}]`);
+      return { ...plainObject(record, `${label} violations[${index}]`) };
+    },
+  );
+  return {
+    schemaVersion: baseline.schemaVersion,
+    sourceRevision: baseline.sourceRevision,
+    violations,
+  };
+}
+
+function verifyR5Baselines(options) {
+  const input = exactObject(options, [
+    'baseDependency', 'candidateDependency', 'baseOwnership',
+    'candidateOwnership', 'manifest',
+  ], 'R5 baseline verifier input');
+  const manifest = validateR5Manifest(input.manifest);
+  const baseDependency = validateDependencyRecords(
+    input.baseDependency,
+    'R5 base dependency baseline',
+  );
+  if (hash(baseDependency) !== R5_BASE_DEPENDENCY_HASH) {
+    throw new Error('R5 base dependency baseline identity is invalid');
+  }
+  const expectedDependency = expectedR5DependencyRecords(baseDependency, manifest);
+  const candidateDependency = validateDependencyRecords(
+    input.candidateDependency,
+    'R5 dependency candidate',
+  );
+  if (JSON.stringify(candidateDependency) !== JSON.stringify(expectedDependency)) {
+    throw new Error('R5 dependency baseline drift detected');
+  }
+
+  const baseOwnership = validateOwnershipBaseline(
+    input.baseOwnership,
+    'R5 base ownership baseline',
+  );
+  if (hash(baseOwnership) !== R5_BASE_OWNERSHIP_HASH) {
+    throw new Error('R5 base ownership baseline identity is invalid');
+  }
+  const candidateOwnership = validateOwnershipBaseline(
+    input.candidateOwnership,
+    'R5 ownership candidate',
+  );
+  const expectedOwnership = {
+    ...baseOwnership,
+    violations: mapOwnershipRecordsForR5(baseOwnership.violations, manifest),
+  };
+  if (JSON.stringify(candidateOwnership) !== JSON.stringify(expectedOwnership)) {
+    throw new Error('R5 ownership baseline drift detected');
+  }
+  const ownershipOccurrences = candidateOwnership.violations.reduce((total, record) => {
+    if (!Number.isSafeInteger(record.count) || record.count < 1) {
+      throw new Error('R5 ownership baseline drift detected');
+    }
+    return total + record.count;
+  }, 0);
+  if (candidateOwnership.violations.length !== manifest.expectedBaselines.ownershipRecords
+      || ownershipOccurrences !== manifest.expectedBaselines.ownershipOccurrences) {
+    throw new Error('R5 ownership baseline drift detected');
+  }
+  return Object.freeze({
+    dependencyRecords: candidateDependency.length,
+    retiredDependencyRecords: baseDependency.length - candidateDependency.length,
+    ownershipRecords: candidateOwnership.violations.length,
+    ownershipOccurrences,
+  });
 }
 
 function exportedDeclarations(filePath) {
@@ -490,19 +724,137 @@ function scanR5Identity(options) {
   return Object.freeze({ ok: true, stage: manifest.stage, moves: manifest.moves.length });
 }
 
+function fileIdentity(status) {
+  return Object.freeze({
+    dev: status.dev,
+    ino: status.ino,
+    size: status.size,
+    mtimeMs: status.mtimeMs,
+    ctimeMs: status.ctimeMs,
+  });
+}
+
+function sameFileIdentity(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.size === right.size
+    && left.mtimeMs === right.mtimeMs && left.ctimeMs === right.ctimeMs;
+}
+
+function readTempCandidateJson(candidatePath) {
+  if (typeof candidatePath !== 'string' || !path.isAbsolute(candidatePath)) {
+    throw new Error('R5 candidate path is invalid');
+  }
+  const tempRoot = (fs.realpathSync.native || fs.realpathSync)(os.tmpdir());
+  const resolved = path.resolve(candidatePath);
+  const relative = path.relative(tempRoot, resolved);
+  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..'
+      || path.isAbsolute(relative)) {
+    throw new Error('R5 candidate path is outside OS temp');
+  }
+  let cursor = tempRoot;
+  for (const part of relative.split(path.sep)) {
+    cursor = path.join(cursor, part);
+    const status = fs.lstatSync(cursor);
+    if (status.isSymbolicLink()) throw new Error('R5 candidate path contains a reparse point');
+  }
+  const beforePath = fs.lstatSync(resolved);
+  if (!beforePath.isFile()) throw new Error('R5 candidate is not a plain file');
+  const beforeReal = (fs.realpathSync.native || fs.realpathSync)(resolved);
+  if (!isInside(tempRoot, beforeReal)) throw new Error('R5 candidate escapes OS temp');
+  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
+  const descriptor = fs.openSync(resolved, flags);
+  try {
+    const beforeDescriptor = fs.fstatSync(descriptor);
+    if (!beforeDescriptor.isFile()
+        || !sameFileIdentity(fileIdentity(beforePath), fileIdentity(beforeDescriptor))) {
+      throw new Error('R5 candidate identity changed');
+    }
+    const textValue = fs.readFileSync(descriptor, 'utf8');
+    const afterDescriptor = fs.fstatSync(descriptor);
+    const afterPath = fs.lstatSync(resolved);
+    const afterReal = (fs.realpathSync.native || fs.realpathSync)(resolved);
+    if (afterReal !== beforeReal
+        || !sameFileIdentity(fileIdentity(beforeDescriptor), fileIdentity(afterDescriptor))
+        || !sameFileIdentity(fileIdentity(afterDescriptor), fileIdentity(afterPath))) {
+      throw new Error('R5 candidate identity changed');
+    }
+    return Object.freeze({
+      value: JSON.parse(textValue),
+      realPath: beforeReal,
+      identity: fileIdentity(afterDescriptor),
+    });
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function readBaseJson(repositoryRoot, relativePath) {
+  return JSON.parse(execFileSync(
+    'git',
+    ['show', `${R5_BASE}:${relativePath}`],
+    { cwd: repositoryRoot, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
+  ));
+}
+
+function liveChangedPaths(repositoryRoot) {
+  const options = { cwd: repositoryRoot, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 };
+  const tracked = execFileSync(
+    'git',
+    ['diff', '--no-renames', '--name-only', R5_BASE, '--'],
+    options,
+  ).split(/\r?\n/u).filter(Boolean);
+  const untracked = execFileSync(
+    'git',
+    ['ls-files', '--others', '--exclude-standard'],
+    options,
+  ).split(/\r?\n/u).filter(Boolean);
+  return [...new Set([...tracked, ...untracked])].sort();
+}
+
 function runCli(dependencies = {}) {
   const argv = dependencies.argv || process.argv.slice(2);
   const stdout = dependencies.stdout || ((message) => process.stdout.write(`${message}\n`));
   const stderr = dependencies.stderr || ((message) => process.stderr.write(`${message}\n`));
   try {
-    if (argv.length !== 1 || argv[0] !== '--check') throw new Error('invalid arguments');
+    const baselineMode = argv.length === 5
+      && argv[0] === '--check'
+      && argv[1] === '--dependency-candidate'
+      && argv[3] === '--ownership-candidate';
+    if (!((argv.length === 1 && argv[0] === '--check') || baselineMode)) {
+      throw new Error('invalid arguments');
+    }
     const repositoryRoot = path.resolve(__dirname, '../../..');
     const manifest = JSON.parse(fs.readFileSync(
       path.join(repositoryRoot, ...MANIFEST_PATH.split('/')),
       'utf8',
     ));
+    validateR5SecurityCheckpointScope({
+      changedPaths: liveChangedPaths(repositoryRoot),
+      packageJson: JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package.json'), 'utf8')),
+      packageLock: JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package-lock.json'), 'utf8')),
+    });
     const result = scanR5Identity({ repositoryRoot, manifest });
-    stdout(`PASS - R5 Identity relocation: stage=${result.stage}, moves=${result.moves}`);
+    if (baselineMode) {
+      const dependencyCandidate = readTempCandidateJson(argv[2]);
+      const ownershipCandidate = readTempCandidateJson(argv[4]);
+      if (dependencyCandidate.realPath === ownershipCandidate.realPath
+          || (dependencyCandidate.identity.dev === ownershipCandidate.identity.dev
+            && dependencyCandidate.identity.ino === ownershipCandidate.identity.ino)) {
+        throw new Error('R5 candidate paths alias');
+      }
+      const readBase = dependencies.readBaseJson || ((relative) => (
+        readBaseJson(repositoryRoot, relative)
+      ));
+      const baseline = verifyR5Baselines({
+        baseDependency: readBase('backend/.dependency-cruiser-known-violations.json'),
+        candidateDependency: dependencyCandidate.value,
+        baseOwnership: readBase('backend/architecture/ownership-baseline.json'),
+        candidateOwnership: ownershipCandidate.value,
+        manifest,
+      });
+      stdout(`PASS - R5 baselines: dependency=${baseline.dependencyRecords}, retired=${baseline.retiredDependencyRecords}, ownership=${baseline.ownershipRecords}/${baseline.ownershipOccurrences}`);
+    } else {
+      stdout(`PASS - R5 Identity relocation: stage=${result.stage}, moves=${result.moves}`);
+    }
     return 0;
   } catch {
     stderr('ERROR - R5 Identity relocation validation failed');
@@ -520,7 +872,10 @@ module.exports = {
   validateR5AuthStage,
   validateR5ProfileStage,
   validateR5RetiredRoots,
+  validateR5SecurityCheckpointScope,
   mapOwnershipRecordsForR5,
+  expectedR5DependencyRecords,
+  verifyR5Baselines,
   runCli,
 };
 

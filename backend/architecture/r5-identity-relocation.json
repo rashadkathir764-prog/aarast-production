@@ -271,7 +271,7 @@
     "users"
   ],
   "expectedBaselines": {
-    "dependencyRecords": 89,
+    "dependencyRecords": 31,
     "ownershipRecords": 385,
     "ownershipOccurrences": 781
   },
@@ -283,12 +283,14 @@
     "backend/architecture/ownership-baseline.json",
     "backend/architecture/r3-context-boundaries.json",
     "backend/architecture/r5-identity-relocation.json",
+    "backend/package-lock.json",
     "backend/package.json",
     "backend/scripts/architecture/ownership-scan.cjs",
     "backend/scripts/architecture/ports-scan.cjs",
     "backend/scripts/architecture/r3-context-scan.cjs",
     "backend/scripts/architecture/r3-scope.cjs",
     "backend/scripts/architecture/r5-identity-scan.cjs",
+    "backend/scripts/security/prisma-config-merge-security.cjs",
     "backend/scripts/smoke/account-deletion-smoke.ts",
     "backend/scripts/smoke/phase1-identity-smoke.ts",
     "backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts",
@@ -429,6 +431,8 @@
     "backend/test/architecture-ports.test.ts",
     "backend/test/architecture-r1-layout.test.ts",
     "backend/test/architecture-r3-closure.test.ts",
+    "backend/test/architecture-r3-collaboration-ports.test.ts",
+    "backend/test/architecture-r3-composition.test.ts",
     "backend/test/architecture-r3-context-modules-a.test.ts",
     "backend/test/architecture-r3-context-modules-b.test.ts",
     "backend/test/architecture-r3-contexts.test.ts",
@@ -451,7 +455,9 @@
     "backend/test/otp-controller-context.test.ts",
     "backend/test/otp-dispatch-quota.test.ts",
     "backend/test/password-reset-logic.test.ts",
+    "backend/test/prisma-config-merge-security.test.ts",
     "backend/test/privacy-contract.test.ts",
+    "backend/test/provider-rating-atomicity.test.ts",
     "backend/test/push-notifications.test.ts",
     "backend/test/scheduler-lock.test.ts",
     "backend/test/whatsapp-otp-channel.test.ts",
@@ -463,6 +469,8 @@
     "docs/project/STATUS.md",
     "docs/qa/README.md",
     "docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md",
-    "docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md"
+    "docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md",
+    "docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md",
+    "docs/superpowers/specs/2026-08-21-r5-prisma-config-merge-security-checkpoint-design.md"
   ]
 }

@@ -261,7 +261,26 @@ function assertStrictOwnershipDelta(
   base: { violations: Array<Record<string, unknown>> },
   current: { violations: Array<Record<string, unknown>> },
 ) {
-  const expected = base.violations.filter((entry) => entry.key !== ownershipDebtKey);
+  const r5Manifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r5-identity-relocation.json',
+  ), 'utf8'));
+  const r5Scanner = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r5-identity-scan.cjs',
+  )) as {
+    mapOwnershipRecordsForR5(
+      records: Array<Record<string, unknown>>,
+      manifestValue: unknown,
+    ): Array<Record<string, unknown>>;
+  };
+  const expected = r5Scanner.mapOwnershipRecordsForR5(
+    base.violations.filter((entry) => entry.key !== ownershipDebtKey),
+    r5Manifest,
+  );
   assert.equal(
     base.violations.filter((entry) => entry.key === ownershipDebtKey).length,
     1,

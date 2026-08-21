@@ -10,6 +10,7 @@
     "build": "node scripts/clean-dist.cjs && tsc -p tsconfig.build.json",
     "test": "node scripts/run-tests-with-artifact-guard.js",
     "prisma:generate": "prisma generate",
+    "security:prisma-config-merge": "node scripts/security/prisma-config-merge-security.cjs --check",
     "smoke": "node scripts/smoke/run-isolated-smoke.js health-smoke.js auth-smoke.js",
     "smoke:health": "node scripts/smoke/run-isolated-smoke.js health-smoke.js",
     "smoke:auth": "node scripts/smoke/run-isolated-smoke.js auth-smoke.js",
@@ -115,6 +116,7 @@
   },
   "overrides": {
     "brace-expansion": "5.0.9",
+    "deepmerge-ts": "8.0.1",
     "multer": "2.2.0",
     "uuid": "11.1.1"
   },

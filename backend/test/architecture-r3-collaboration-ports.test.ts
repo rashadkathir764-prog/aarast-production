@@ -160,7 +160,7 @@ test('Task 3 leaves alias public tokens to one owner implementation', async () =
 test('Task 3 foreign consumers no longer import collaboration implementations', () => {
   const foreignConsumers = [
     'budget-categories/budget-categories.service.ts',
-    'contexts/contexts.service.ts',
+    'modules/identity/internal/profile/contexts.service.ts',
     'dashboard/dashboard-contributor-scope.ts',
     'dashboard/dashboard.service.ts',
     'guests/guests.service.ts',
@@ -177,7 +177,7 @@ test('Task 3 foreign consumers no longer import collaboration implementations', 
     'provider-dashboard/provider-dashboard.service.ts',
     'tasks/tasks.service.ts',
     'timeline/timeline.service.ts',
-    'users/users.service.ts',
+    'modules/identity/internal/profile/users.service.ts',
     'wedding-costs/wedding-costs.service.ts',
     'wedding-plans/wedding-plans.service.ts',
   ];

@@ -50,7 +50,9 @@ The live R5 base contains:
 - 4 files under `backend/src/contexts`;
 - 13 business contexts, zero remaining R3 provider/platform debts, zero Nest
   cycles, zero `forwardRef()`, and exactly two approved globals;
-- 89 dependency-baseline records and 385 ownership records / 781 occurrences.
+- 31 remaining dependency-baseline records after exactly 58 obsolete
+  cross-context debts are resolved by the ten public-runtime moves, plus 385
+  ownership records / 781 occurrences.
 
 R5 therefore moves Identity source and path-indexed evidence. It does not try
 to eliminate all foreign reads/writes of Identity-owned Prisma models. That is
@@ -71,8 +73,10 @@ R5 does not:
 - remove sharing's direct transient OTP transport use; that remains R6;
 - move another business context, remove either approved global, activate R9
   Mobile strict mode, or start R10 Admin restructuring;
-- edit Mobile, Admin Web, deployment, Compose, workflows, package-lock files,
-  or production configuration;
+- edit Mobile, Admin Web, deployment, Compose, workflows, or production
+  configuration; the sole package-lock exception is the approved R5 Task 5A
+  Prisma Config merge security checkpoint, which may resolve only
+  `deepmerge-ts@8.0.1` while Prisma remains 6.19.3;
 - use a compatibility facade, old-path barrel, duplicate class, symlink,
   junction, fallback import, or mixed old/new runtime;
 - push, merge, mutate PR #76, deploy, or claim remote CI.
@@ -229,8 +233,9 @@ The dependency and ownership candidates are generated only after source and
 focused behavior gates pass. Comparison uses the immutable R5 base plus the
 exact move map:
 
-- dependency records remain 89 with identical rule/from/to/unresolved/type
-  semantics after deterministic path mapping;
+- the 31 remaining dependency records have identical rule/from/to/unresolved/
+  type semantics after deterministic path mapping, and the only 58 removals are
+  the exact base debts whose targets became the ten approved public contracts;
 - ownership remains 385 records / 781 occurrences with identical context,
   owner, model, operation, mode, source, reason, and count after file/key path
   mapping;
@@ -250,16 +255,18 @@ requires a separately approved correction; it is not hidden inside relocation.
 
 ## Delivery Checkpoints
 
-R5 uses eight checkpoints:
+R5 uses nine checkpoints:
 
 1. approve and locally checkpoint the design/plan;
 2. freeze the 44-file move/scope/baseline contract with RED architecture tests;
 3. move the ten public runtime/type/pure contracts and their consumers;
 4. move the Auth API and implementation;
 5. move Users/Me/Contexts API and implementation and delete all old roots;
-6. reconcile baselines and run exhaustive static/behavior/smoke gates;
-7. create an immutable local image, protected cutover, and owner phone test;
-8. complete independent review and truthful local receipts.
+6. reconcile baselines and begin exhaustive static/behavior/smoke gates;
+7. complete the separately specified Task 5A Prisma Config merge security
+   checkpoint when the newly published High advisory makes both audits red;
+8. create an immutable local image, protected cutover, and owner phone test;
+9. complete independent review and truthful local receipts.
 
 Every checkpoint leaves a reviewable candidate. No later checkpoint starts
 while an earlier focused gate or review finding is unresolved.
@@ -272,6 +279,9 @@ At minimum R5 runs:
 - R3, R4, dependency, ownership, ports, and full architecture gates;
 - Backend type-check, build, full tests, Prisma validation/generation/diff, and
   both npm audits;
+- Task 5A's permanent declared/locked/installed dependency proof, circular
+  merge regression, real Prisma Config load, DMMF/migration equivalence, and
+  temporary no-cutover image probe;
 - focused auth, refresh, OTP, password recovery, session, users, contexts,
   account deletion, WebSocket, scheduler, and route tests;
 - managed `smoke:health`, `smoke:auth`, `smoke:auth-verification`,

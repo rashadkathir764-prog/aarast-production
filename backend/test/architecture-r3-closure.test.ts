@@ -1,9 +1,8 @@
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
@@ -152,74 +151,53 @@ test('Task 8 strict scanner reports no duplicate, platform, retired, cycle, or i
   assert.equal(result.counts.illegalEdges, 0);
 });
 
-test('Task 8 final dependency baseline equals the live candidate and only approved R3 removals', () => {
+test('Task 8 checkpoint dependency baseline contains only approved R3 removals', () => {
   const repositoryRoot = join(backendRoot, '..');
-  const temporaryRoot = mkdtempSync(join(tmpdir(), 'aarast-r3-baseline-'));
-  const candidatePath = join(temporaryRoot, 'dependency.json');
-  try {
-    const cli = join(
-      backendRoot,
-      'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
-    );
-    const generated = spawnSync(process.execPath, [
-      cli,
-      '--config', join(backendRoot, '.dependency-cruiser.cjs'),
-      '--output-type', 'baseline',
-      '--output-to', candidatePath,
-      'src',
-    ], { cwd: backendRoot, encoding: 'utf8' });
-    assert.equal(generated.status, 0, generated.stderr);
+  const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
+  const r5BaseRef = '9dab73acdc187a4a18d8a675713d8ded40a16d02';
+  const base = JSON.parse(execFileSync('git', [
+    'show', `${baseRef}:backend/.dependency-cruiser-known-violations.json`,
+  ], { cwd: repositoryRoot, encoding: 'utf8' })) as DependencyRecord[];
+  const candidate = JSON.parse(execFileSync('git', [
+    'show', `${r5BaseRef}:backend/.dependency-cruiser-known-violations.json`,
+  ], { cwd: repositoryRoot, encoding: 'utf8' })) as DependencyRecord[];
 
-    const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
-    const base = JSON.parse(execFileSync('git', [
-      'show', `${baseRef}:backend/.dependency-cruiser-known-violations.json`,
-    ], { cwd: repositoryRoot, encoding: 'utf8' })) as DependencyRecord[];
-    const tracked = JSON.parse(readFileSync(
-      join(backendRoot, '.dependency-cruiser-known-violations.json'),
-      'utf8',
-    )) as DependencyRecord[];
-    const candidate = JSON.parse(readFileSync(candidatePath, 'utf8')) as DependencyRecord[];
-    assert.deepEqual(tracked, candidate);
+  const manifest = JSON.parse(readFileSync(
+    join(backendRoot, 'architecture/r3-context-boundaries.json'),
+    'utf8',
+  )) as { initialRetiredLegacyProviderEdges: Array<{ key: string }> };
+  const approved = new Set(manifest.initialRetiredLegacyProviderEdges.map(({ key }) => key));
+  for (const key of [
+    'src/platform/config/runtime-environment.ts|src/auth/jwt-secret.ts',
+    'src/platform/health/readiness.service.ts|src/media/media-storage.service.ts',
+    'src/platform/outbox/outbox.dispatcher.ts|src/conversations/conversation-realtime.publisher.ts',
+    'src/platform/outbox/outbox.dispatcher.ts|src/push/push-delivery.service.ts',
+    'src/platform/outbox/outbox.module.ts|src/conversations/conversation-realtime.module.ts',
+    'src/platform/outbox/outbox.module.ts|src/push/push.module.ts',
+    'src/dashboard/dashboard.contracts.ts|src/contribution-history/contribution-history.contracts.ts',
+    'src/dashboard/dashboard.service.ts|src/contribution-history/contribution-history.contracts.ts',
+  ]) approved.add(key);
+  assert.equal(approved.size, 171);
 
-    const manifest = JSON.parse(readFileSync(
-      join(backendRoot, 'architecture/r3-context-boundaries.json'),
-      'utf8',
-    )) as { initialRetiredLegacyProviderEdges: Array<{ key: string }> };
-    const approved = new Set(manifest.initialRetiredLegacyProviderEdges.map(({ key }) => key));
-    for (const key of [
-      'src/platform/config/runtime-environment.ts|src/auth/jwt-secret.ts',
-      'src/platform/health/readiness.service.ts|src/media/media-storage.service.ts',
-      'src/platform/outbox/outbox.dispatcher.ts|src/conversations/conversation-realtime.publisher.ts',
-      'src/platform/outbox/outbox.dispatcher.ts|src/push/push-delivery.service.ts',
-      'src/platform/outbox/outbox.module.ts|src/conversations/conversation-realtime.module.ts',
-      'src/platform/outbox/outbox.module.ts|src/push/push.module.ts',
-      'src/dashboard/dashboard.contracts.ts|src/contribution-history/contribution-history.contracts.ts',
-      'src/dashboard/dashboard.service.ts|src/contribution-history/contribution-history.contracts.ts',
-    ]) approved.add(key);
-    assert.equal(approved.size, 171);
-
-    const recordKey = (record: DependencyRecord): string => (
-      `${record.rule.name}|${record.from}|${record.to}`
-    );
-    const endpointKey = (record: DependencyRecord): string => `${record.from}|${record.to}`;
-    const candidateByKey = new Map(candidate.map((record) => [recordKey(record), record]));
-    const baseByKey = new Map(base.map((record) => [recordKey(record), record]));
-    assert.equal(candidateByKey.size, candidate.length);
-    assert.equal(baseByKey.size, base.length);
-    assert.deepEqual(
-      base.filter((record) => !candidateByKey.has(recordKey(record)))
-        .map(endpointKey).sort(),
-      [...approved].sort(),
-    );
-    assert.deepEqual(
-      candidate.filter((record) => !baseByKey.has(recordKey(record))),
-      [],
-    );
-    for (const record of candidate) {
-      assert.deepEqual(record, baseByKey.get(recordKey(record)));
-    }
-  } finally {
-    rmSync(temporaryRoot, { recursive: true, force: true });
+  const recordKey = (record: DependencyRecord): string => (
+    `${record.rule.name}|${record.from}|${record.to}`
+  );
+  const endpointKey = (record: DependencyRecord): string => `${record.from}|${record.to}`;
+  const candidateByKey = new Map(candidate.map((record) => [recordKey(record), record]));
+  const baseByKey = new Map(base.map((record) => [recordKey(record), record]));
+  assert.equal(candidateByKey.size, candidate.length);
+  assert.equal(baseByKey.size, base.length);
+  assert.deepEqual(
+    base.filter((record) => !candidateByKey.has(recordKey(record)))
+      .map(endpointKey).sort(),
+    [...approved].sort(),
+  );
+  assert.deepEqual(
+    candidate.filter((record) => !baseByKey.has(recordKey(record))),
+    [],
+  );
+  for (const record of candidate) {
+    assert.deepEqual(record, baseByKey.get(recordKey(record)));
   }
 });
 

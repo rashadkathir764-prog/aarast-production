@@ -86,6 +86,7 @@ async function configurePassword(userId: string, password: string) {
     where: { id: userId },
     data: {
       passwordHash: await bcryptjs.hash(password, 4),
+      appPasswordConfiguredAt: new Date(),
       status: UserStatus.ACTIVE,
       phoneVerifiedAt: new Date(),
     },
@@ -453,6 +454,10 @@ async function assertInviteOtpContextsStayIsolated(): Promise<void> {
   await withFixture(
     (environment) => createPermissionRevocationFixture(prisma, environment),
     async (fixture) => {
+      await configurePassword(
+        fixture.member.id,
+        fixturePassword(fixture.scope, "invite-otp-context"),
+      );
       const phone = fixture.member.phone;
       const tokenA = "A".repeat(43);
       const tokenB = "B".repeat(43);

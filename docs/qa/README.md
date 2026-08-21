@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-08-14
+Snapshot date: 2026-08-21
 
 Snapshot source: the checked-out branch content. Resolve its immutable revision
 with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
@@ -117,13 +117,37 @@ and deployment artifacts.
   complete and is the immutable base for the approved R5 plan. No push, merge,
   deployment, PR mutation, or remote-CI result is claimed.
 
-## Modular Monolith R5 Planned Gates
+## Modular Monolith R5 Task 5A Security Checkpoint
+
+- The exact `deepmerge-ts` 8.0.1 override, canonical package/lock
+  fingerprints, installed `@prisma/config` resolution, recursive and ordinary
+  merge semantics, input/primordial immutability, plain-data output, and
+  isolated-worker completion passed the permanent security checker.
+- R5 security/scope coverage passed 30/30 and rejects lock-only activation,
+  unrelated dependencies, ranged overrides, Prisma version drift, and extra
+  implementation paths. Independent adversarial review found no Critical,
+  Important, or Minor issue.
+- Full architecture/check/build and 1005/1006 Backend tests passed with one
+  intentional Windows permission skip. Both npm audits reported zero
+  vulnerabilities. Nine targeted managed smokes and all 30 aggregate smoke
+  packages passed with zero managed residue.
+- Prisma remained 6.19.3. Validate/generate passed at 14 schema files, 52
+  models, 41 enums, and 76 migrations; DMMF and migration SQL stayed
+  byte-identical. Frozen application, Mobile, Admin, schema, migration,
+  deployment, workflow, and Dockerfile surfaces did not change.
+- The immutable isolated image passed patched dependency identity, security,
+  migration discovery, health/readiness, restart/OOM, and sanitized startup
+  checks, then the probe was removed. The existing phone runtime was not cut
+  over; no phone QA was required because application behavior did not change.
+
+## Modular Monolith R5 Remaining Gates
 
 - Fixed-base R5 manifest proves the exact 44 one-to-one Identity moves and
   rejects missing, extra, converging, overlapping, traversal, stale-root, and
   compatibility-path near-misses.
-- R3 Nest/provider/controller/decorator/lifecycle inventories remain exact;
-  dependency records remain 89 and ownership remains 385 records / 781
+- R3 Nest/provider/controller/decorator/lifecycle inventories remain exact.
+  The dependency baseline contains 31 records after the exact 58 authorized
+  public-contract debts were retired; ownership remains 385 records / 781
   occurrences after deterministic path relocation only.
 - Existing Auth, OTP, session, profile, context, account-deletion, WebSocket,
   scheduler, and route assertions remain frozen except mechanical import/path
@@ -132,8 +156,9 @@ and deployment artifacts.
   managed Identity/auth/context/account-deletion plus aggregate smokes, residue
   audits, frozen Mobile/Admin/deployment surfaces, immutable runtime, owner
   phone exercise, independent review, and truthful receipts are required.
-- R5 implementation has not started. R6, push, merge, PR mutation, deployment,
-  and remote-CI claims remain forbidden.
+- Task 5A is locally complete. Final R5 closeout still requires the remaining
+  approved tasks and their own verification. R6, push, merge, PR mutation,
+  deployment, and remote-CI claims remain forbidden.
 
 ## Modular Monolith R3 Closeout Gates
 

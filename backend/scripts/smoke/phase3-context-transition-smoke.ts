@@ -43,6 +43,8 @@ const providerDashboard = new ProviderDashboardService(
 const admin = new AdminService(prisma as any, {
   disconnectUser: () => undefined,
   revokeConversationAccess: () => undefined,
+} as any, {
+  createNotificationInTransaction: async () => null,
 } as any);
 
 function phone(label: string): string {
@@ -136,6 +138,7 @@ async function main(): Promise<void> {
           name: `Phase 3 account ${runId}`,
           phone: phone("account"),
           passwordHash: "managed-smoke-not-a-credential",
+          appPasswordConfiguredAt: new Date(),
           phoneVerifiedAt: new Date(),
           role: UserRole.USER,
           appRole: AppRole.WEDDING_USER,
@@ -280,6 +283,17 @@ async function main(): Promise<void> {
     false,
   );
 
+  await admin.rejectProvider(authenticated(adminUser), application.id, {
+    reason: "Phase 3 managed smoke",
+  });
+  await assertWeddingContextsPreserved(
+    account.id,
+    ProviderStatus.REJECTED,
+    "READ_ONLY",
+    false,
+    false,
+  );
+
   await admin.approveProvider(authenticated(adminUser), application.id);
   await assertWeddingContextsPreserved(
     account.id,
@@ -295,17 +309,6 @@ async function main(): Promise<void> {
   await assertWeddingContextsPreserved(
     account.id,
     ProviderStatus.SUSPENDED,
-    "READ_ONLY",
-    false,
-    false,
-  );
-
-  await admin.rejectProvider(authenticated(adminUser), application.id, {
-    reason: "Phase 3 managed smoke",
-  });
-  await assertWeddingContextsPreserved(
-    account.id,
-    ProviderStatus.REJECTED,
     "READ_ONLY",
     false,
     false,

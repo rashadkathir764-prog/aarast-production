@@ -1,10 +1,59 @@
 # Current Status
 
-Snapshot date: 2026-08-16
+Snapshot date: 2026-08-21
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R5 Task 5A Local Security Checkpoint - 2026-08-21
+
+R5 Task 5A is locally complete on branch `modular-monolith`. The checkpoint
+keeps Prisma, Prisma Client, and Prisma Config pinned at 6.19.3 and resolves the
+transitive `deepmerge-ts` security finding CVE-2026-40345 with an exact root
+override to patched 8.0.1. A Prisma 7 major upgrade, downgrade, audit
+suppression, and `npm audit fix --force` were rejected because none is a
+smaller verified correction for the active R5 candidate. The override may be
+removed only after the pinned Prisma line resolves a non-affected merge package
+without it and the same security, semantic, audit, build, smoke, and runtime
+gates pass.
+
+The permanent checker proves the canonical package/lock fingerprints, exact
+installed resolution through `@prisma/config`, one patched package root,
+recursive and ordinary Prisma-config merge behavior, complete input and
+primordial immutability, safe plain-data output, and an authenticated isolated
+worker completion. The R5 phase scanner also requires the exact 11-path
+security-checkpoint activation and rejects lock-only activation, unrelated
+dependencies, ranged overrides, Prisma version drift, and extra implementation
+paths. Independent adversarial review passed with no Critical, Important, or
+Minor findings.
+
+The final uncommitted application candidate before its authorized local
+checkpoint contained 24 reviewed paths with sorted `path|SHA-256` aggregate
+`d07b7907667181ca24cec80b1de6b77f56cea74d7be6f0108bb7212e5fdd12a6`.
+Security/R5 focused tests passed 30/30; full Backend tests passed 1005/1006
+with one intentional Windows permission skip; architecture passed at 344
+modules, 1395 dependencies, 31 known records, ownership 385, zero
+`forwardRef()`, two approved globals, and zero cycles or illegal edges. Check,
+build, both zero-finding audits, nine targeted managed smokes, all 30 aggregate
+smoke packages, docs, and protected-surface gates passed. Managed residue was
+zero.
+
+Prisma validate/generate passed with 14 schema files, 52 models, 41 enums, and
+76 migrations. The DMMF and migration SQL remained byte-identical with
+SHA-256 `0511990aa3a32e92ecb15837699aceb8b41b9c8faa736103c926fda3db034d3f`
+and `0b6e9f853f6fc5a4b9fbdd3e2cafbf78d74f9d88f3242f1f208616519eef5248`.
+The final isolated image was
+`aarast-backend:r5-prisma-security-d07b7907667181ca24cec80b1de6b77f56cea74d7be6f0108bb7212e5fdd12a6`,
+image ID
+`sha256:dd2a2be20e9843a388aa3990edeab966b5f769503a4e352ba25c3f60e1fd97a9`.
+It passed dependency identity, security, migration discovery, `/live`,
+`/ready`, restart/OOM, and sanitized startup checks; the probe was removed.
+The existing phone runtime was not cut over and remained healthy. No phone QA
+was requested because application behavior did not change.
+
+This is one local security checkpoint inside R5, not final R5 closeout. No
+push, merge, PR mutation, deployment, remote CI, or R6 work is claimed.
 
 ## Modular Monolith R5 Planning Approved - 2026-08-20
 
@@ -20,8 +69,9 @@ reconciles path-indexed dependency and ownership evidence without changing
 routes, auth/OTP/session behavior, schema, migrations, model ownership
 semantics, Mobile, Admin, workflows, deployment, or Compose. Local checkpoint
 commits are allowed; no branch/worktree creation, push, merge, PR mutation,
-deployment, remote-CI claim, or R6 work is authorized. R5 implementation has
-not started.
+deployment, remote-CI claim, or R6 work is authorized. Task 5A has since
+completed locally as recorded above; the remaining approved R5 work still
+requires its own gates and closeout.
 
 ## Repository Baseline
 

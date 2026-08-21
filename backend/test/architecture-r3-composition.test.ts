@@ -52,7 +52,10 @@ test('Task 2 moves the exact Identity session types without a compatibility path
     identityTypes,
     /export type JwtSessionScope\s*=\s*['"]application['"]\s*\|\s*['"]admin['"]/,
   );
-  assert.doesNotMatch(source('auth/jwt-payload.interface.ts'), /type JwtSessionScope/);
+  assert.doesNotMatch(
+    source('modules/identity/public/jwt-payload.interface.ts'),
+    /type JwtSessionScope/,
+  );
 
   const legacyImports: string[] = [];
   const scan = (path: string) => {
@@ -295,7 +298,7 @@ test('Task 2 migrates only the eight frozen foreign provider consumers', () => {
       [['MESSAGING_REALTIME_PORT'], ['ConversationRealtimePublisher']],
     ],
     [
-      'auth/auth.service.ts',
+      'modules/identity/internal/auth/auth.service.ts',
       [['MESSAGING_REALTIME_PORT'], ['ConversationRealtimePublisher']],
     ],
     [
@@ -303,7 +306,7 @@ test('Task 2 migrates only the eight frozen foreign provider consumers', () => {
       [['MESSAGING_REALTIME_PORT'], ['ConversationRealtimePublisher']],
     ],
     [
-      'users/users.service.ts',
+      'modules/identity/internal/profile/users.service.ts',
       [
         ['MESSAGING_REALTIME_PORT', 'MEDIA_STORAGE_PORT', 'PUSH_CAPABILITY_PORT'],
         ['ConversationRealtimePublisher', 'MediaStorageService', 'FirebasePushClient'],

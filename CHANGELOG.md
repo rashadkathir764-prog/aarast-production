@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-08-21 - R5 Prisma Config Merge Security Checkpoint
+
+- Kept Prisma, Prisma Client, and Prisma Config at 6.19.3 while pinning the
+  affected transitive merge implementation from 7.1.5 to exact patched
+  `deepmerge-ts` 8.0.1 for CVE-2026-40345. No force-fix, audit suppression,
+  downgrade, or Prisma major upgrade was used.
+- Added permanent package/lock, installed-resolution, recursive merge,
+  input/primordial immutability, safe-output, and authenticated-worker checks.
+  The R5 gate also rejects lock-only activation, unrelated dependency drift,
+  ranged overrides, Prisma version drift, and extra implementation paths.
+- Security/R5 tests passed 30/30; architecture/check/build, 1005/1006 Backend
+  tests with one intentional Windows skip, both zero-finding audits, nine
+  targeted smokes, all 30 aggregate smoke packages, docs, and cleanup passed.
+- Preserved Prisma semantics at 14 schema files, 52 models, 41 enums, and 76
+  migrations with byte-identical DMMF and migration SQL. Frozen application,
+  Mobile, Admin, deployment, schema, migration, and Dockerfile surfaces did not
+  change.
+- The immutable isolated image passed dependency identity, security,
+  migrations, live/ready, restart/OOM, and sanitized startup checks. The probe
+  was removed and the existing phone runtime was not cut over. Independent
+  review passed with no findings.
+- This is a local R5 Task 5A checkpoint; final R5 closeout remains pending. No
+  push, merge, PR mutation, deployment, remote CI, or R6 is claimed.
+
 ## 2026-08-16 - Modular Monolith R4 Local Completion
 
 - Replaced Finance's direct `WeddingPlan` budget write with one exact

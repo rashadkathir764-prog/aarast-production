@@ -16,7 +16,12 @@
 - Immutable R5 base is `9dab73acdc187a4a18d8a675713d8ded40a16d02`.
 - Local commits are allowed; branch creation, worktrees, push, merge, PR mutation, deployment, and remote-CI claims are forbidden.
 - Preserve all routes, payloads, status codes, DTO rules, auth/OTP/session behavior, errors, scheduler timing, locks, transactions, and provider identity.
-- Do not modify Prisma schema, migrations, seed, Mobile, Admin Web, workflows, deployment, Compose, or package-lock files.
+- Do not modify Prisma schema, migrations, seed, Mobile, Admin Web, workflows,
+  deployment, or Compose. The sole package-lock exception is the approved
+  Task 5A plan at
+  `docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md`:
+  exact `deepmerge-ts@8.0.1`, Prisma 6.19.3 preserved, full compatibility proof,
+  and no other dependency movement.
 - Existing behavioral tests may change only for exact import/path-literal relocation.
 - Do not create compatibility barrels, re-exports, duplicate implementations, symlinks, junctions, or fallback imports.
 - Do not begin R6 before R5 final local review and owner approval.
@@ -33,7 +38,7 @@
 | `backend/src/modules/identity/internal/profile/*` | Users and Contexts concrete services |
 | `backend/src/modules/identity/api/*` | Identity controllers and DTOs |
 | `backend/architecture/r3-context-boundaries.json` | Path-mapped strict Nest inventory with Identity legacy roots empty |
-| `backend/.dependency-cruiser-known-violations.json` | Same 89 semantic records after exact path mapping |
+| `backend/.dependency-cruiser-known-violations.json` | 31 remaining semantic records after exact mapping; 58 exact public-contract debts retired |
 | `backend/architecture/ownership-baseline.json` | Same 385 records / 781 occurrences after exact path mapping |
 | `.superpowers/sdd/2026-08-20-modular-monolith-r5-identity-relocation/task-*-report.md` | Ignored human checkpoint evidence |
 
@@ -468,7 +473,15 @@ git commit -m "refactor: consolidate identity source layout"
 - Create ignored: `.superpowers/sdd/2026-08-20-modular-monolith-r5-identity-relocation/task-5-report.md`
 
 **Interfaces:**
-- Produces: dependency 89-record and ownership 385/781 path-equivalent baselines.
+- Produces: dependency 31-record remaining baseline after exactly 58 approved
+  public-contract debt retirements, and ownership 385/781 path-equivalent baseline.
+
+**Task 5A security prerequisite:** After the verified baseline candidate exists
+and before Step 4 can be accepted, execute
+`docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md`.
+The High advisory was published after earlier receipts and now makes both npm
+audits red through Prisma Config. Task 5 and Task 5A remain one atomic reviewed
+local checkpoint; no intermediate red-audit or red-scope commit is allowed.
 
 - [ ] **Step 1: Generate candidates outside the repository**
 
@@ -487,8 +500,8 @@ try {
 }
 ```
 
-Expected: verifier reports only exact move-map relocation, 89 dependency
-records, and 385 ownership records / 781 occurrences.
+Expected: verifier reports 31 remaining dependency records, exactly 58 retired
+public-contract debts, and 385 ownership records / 781 occurrences.
 
 - [ ] **Step 2: Prove semantic-drift RED fixtures**
 
@@ -688,7 +701,8 @@ Set-Location ..
 ```
 
 Expected: documentation drift/errors/warnings 0, R5 strict PASS, architecture
-green, dependency 89, ownership 385/781, four legacy roots absent.
+green, dependency 31 with exactly 58 public-contract debts retired, ownership
+385/781, four legacy roots absent.
 
 - [ ] **Step 4: Create optional local docs receipt commit**
 
@@ -718,8 +732,9 @@ PR #76, claim remote CI, or begin R6.
 - Cross-context runtime/type/pure helpers are exact pre-existing consumers, not
   speculative ports.
 - R3 provider/controller/route/decorator/lifecycle laws remain live.
-- Dependency and ownership baselines allow path relocation only and keep
-  89 records and 385/781 respectively.
+- Dependency reconciliation permits only the exact 58 base debts eliminated by
+  the ten approved public-contract moves; the remaining 31 records and all
+  385/781 ownership evidence are path/semantic equivalent.
 - Schema, behavior, Mobile, Admin, deployment, workflows, locks, and packages
   remain frozen.
 - Runtime and phone acceptance are tied to one immutable local candidate with

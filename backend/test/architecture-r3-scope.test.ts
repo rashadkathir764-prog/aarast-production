@@ -327,7 +327,7 @@ test('R5 delegates only its fixed-base exact cumulative path fence', () => {
   const delegated = scope().validateR5IdentityManifest(value);
 
   assert.equal(delegated.baseRevision, '9dab73acdc187a4a18d8a675713d8ded40a16d02');
-  assert.equal(delegated.stage, 'inventory');
+  assert.equal(delegated.stage, 'strict');
   assert.deepEqual(delegated.allowedChangedPaths, scope().R5_ALLOWED_PATHS);
   assert.equal(
     delegated.allowedChangedPaths.includes(

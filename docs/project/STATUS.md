@@ -1,42 +1,60 @@
 # Current Status
 
-Snapshot date: 2026-08-22
+Snapshot date: 2026-08-23
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
 
-## Modular Monolith R6 Planning Approved - 2026-08-22
+## Modular Monolith R6 Local Completion - 2026-08-23
 
-R6 planning is owner-approved on branch `modular-monolith` from immutable
-completed-R5 base `ce0c0d19824bff79d91417e2fe4617914c6bcd70`.
-Application implementation has not started.
+R6 is locally complete on branch `modular-monolith` from immutable completed-R5
+base `ce0c0d19824bff79d91417e2fe4617914c6bcd70` at application candidate
+`cefe07a76b0e615d4fecbb666514d9a2b87a7d37`. The tracked docs-only receipt is
+the commit containing this status; its SHA is recorded externally after commit
+because a commit cannot truthfully contain its own final hash.
 
-The verified scope is one direct dependency:
-`backend/src/sharing/invitation-delivery.service.ts` imports the concrete
-OpenWA transient sender and its uncertain/rejected errors from
-`backend/src/platform/otp-transport/openwa-transient-text.ts`. R6 introduces
-one provider-neutral Identity public port, a private Identity adapter over that
-unchanged sender, and a Collaboration cutover to the public Symbol token.
-Invitation text, condition order, statuses, persistence, metrics, privacy-safe
-logs, error behavior, timeouts, retries, OTP behavior, routes, schema,
-migrations, Mobile, Admin, workflows, Compose, and deployment stay frozen.
+Identity now owns one provider-neutral transient-delivery public Symbol, input,
+interface, and uncertain/rejected errors. Its sole private adapter calls the
+unchanged platform OpenWA sender once and maps only the two known concrete
+errors. Collaboration consumes only the Identity public module and port. The R3
+inventory is reconciled exactly and R6 is strict with zero concrete protected
+imports. Invitation text, condition order, statuses, persistence, metrics,
+privacy-safe logs, unknown-error identity, timeouts, retries, OTP behavior,
+routes, schema, migrations, Mobile, Admin, workflows, Compose, and deployment
+remain frozen.
 
-The current focused baseline passes 28 tests with one intentional Windows
-permission skip out of 29. Full architecture passes at 344 modules, 1395
-dependencies, 31 known dependency records, ownership 385 records / 781
-occurrences, zero `forwardRef()`, two approved globals, zero illegal edges,
-and zero cycles. R3 remains at 13 contexts with zero duplicate registrations,
-zero platform debts, and zero retired provider edges; R4 and strict R5 gates
-remain green. Backend check passes, and the preserved R5 runtime still reports
-local `/live` and `/ready` HTTP 200 with zero restart and no OOM.
+Final local verification passed: architecture at 348 modules, 1405
+dependencies, 31 known dependency records, ownership 385 records, zero
+`forwardRef()`, two approved globals, zero cycles/illegal edges, all 13 R3
+contexts, strict R5 and strict R6; check; build; 1021/1022 Backend tests with
+one intentional Windows permission skip; Prisma 6.19.3 validate/generate and
+equivalence; both npm audits with zero vulnerabilities; all 30 managed smoke
+packages; documentation; protected surfaces; whitespace; and residue checks.
+The final verification-only correction aligned stale R1/R3/Prisma receipts and
+moved temporary test fixtures under the ignored test-fixture root, removing a
+full-suite untracked-file race without changing product behavior or the lock.
 
-The approved design and task plan require test-first scope gates, singleton
-port binding, exact consumer behavior proof, R3 debt reconciliation, full
-Backend/Prisma/audit/smoke verification, immutable Docker cutover, and a real
-authenticated phone sharing journey before local R6 completion. Real-recipient
-OpenWA delivery is not automatic and requires separate confirmation. R7 has not
-started. No push, merge, PR mutation, deployment, or remote CI is claimed.
+Immutable image
+`aarast-backend:r6-candidate-cefe07a76b0e615d4fecbb666514d9a2b87a7d37`,
+image ID
+`sha256:ebaf53768a855f31c101147bed06ce7a9648efea798abd2e7d11584c2084afb5`,
+passed isolated probe and protected cutover. Local/LAN `/live` and `/ready`
+returned 200; database, Redis, and media were up; restart count was zero, OOM
+was false, and sanitized fatal/secret markers were zero. OpenWA was disabled.
+The R5 image/container remain stopped and preserved for rollback.
+
+The authenticated phone journey reached the R6 LAN endpoint and passed session
+restore, sharing reads, invitation create 201, invitation reissue 201, related
+reads, force-close/reopen, dashboard restore, and persistent sharing state. The
+UI truthfully reported that provider delivery was unavailable; no real WhatsApp
+delivery or real-recipient OpenWA smoke is claimed. No credential, token, phone
+number, OTP, invitation token, raw body, or business value was retained.
+
+R6 is a local completion only. No push, merge, PR mutation, deployment, or
+remote CI is claimed. External Meta/OpenWA production activation is outside
+this architecture phase. R7 has not started and requires a separate design and
+owner approval.
 
 ## Modular Monolith R5 Local Completion - 2026-08-22
 

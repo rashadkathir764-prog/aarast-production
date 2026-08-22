@@ -93,13 +93,21 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md`
+  and
+  `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md`
+  - exact local R6 completion specification and execution receipt from
+  completed-R5 base `ce0c0d19824bff79d91417e2fe4617914c6bcd70` at
+  application candidate `cefe07a76b0e615d4fecbb666514d9a2b87a7d37`.
+  Identity owns the provider-neutral public transient-delivery port and private
+  adapter; Collaboration no longer imports the concrete OpenWA transport. Full
+  local gates, immutable runtime, and phone sharing/restore passed with OpenWA
+  disabled truthfully and R5 preserved for rollback. R7 has not started; no
+  push, merge, deployment, or remote CI is claimed.
 - `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md`
-  - owner-approved local R6 design and task plan from completed-R5 base
-  `ce0c0d19824bff79d91417e2fe4617914c6bcd70`. R6 removes only
-  Collaboration's named concrete OpenWA transient-sender dependency through an
-  Identity-owned public port and private adapter. Application implementation
-  has not started; behavior/schema/Mobile/Admin/deployment stay frozen, R7 is
-  not authorized, and no push, merge, deployment, or remote CI is claimed.
+  - immutable approved R6 execution plan. Its unchecked runtime/closeout boxes
+  preserve the pre-execution snapshot; the active completion receipts above
+  record the later local result.
 - `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`
   - immutable R5 execution snapshot from local R4 receipt
   `9dab73acdc187a4a18d8a675713d8ded40a16d02`. Its in-progress wording records

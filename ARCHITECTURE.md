@@ -244,15 +244,17 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   ownership semantics, Mobile, Admin, and deployment remain frozen. Full local
   gates, immutable runtime cutover, and the owner phone checkpoint passed. No
   push, merge, deployment, or remote CI is claimed.
-- R6 planning is owner-approved from immutable completed-R5 base
-  `ce0c0d19824bff79d91417e2fe4617914c6bcd70`. The one named scope is
-  Collaboration's direct import of the concrete OpenWA transient sender in
-  `InvitationDeliveryService`. Identity will own a provider-neutral public
-  transient-delivery port and a private adapter over the unchanged platform
-  sender; Collaboration will consume only that public port. Dependency evidence
-  remains 31 records and ownership remains 385 records / 781 occurrences.
-  Application implementation has not started, R7 is not authorized, and no
-  push, merge, deployment, or remote-CI result is claimed.
+- R6 is locally complete from immutable completed-R5 base
+  `ce0c0d19824bff79d91417e2fe4617914c6bcd70` at application candidate
+  `cefe07a76b0e615d4fecbb666514d9a2b87a7d37`. Identity owns one
+  provider-neutral public transient-delivery port and one private adapter over
+  the unchanged platform OpenWA sender. Collaboration consumes only the public
+  Identity module and Symbol; R6 is strict with zero concrete protected
+  imports. Dependency evidence remains 31 records and ownership remains 385
+  records / 781 occurrences. Full local gates, immutable runtime cutover, and
+  the authenticated phone sharing journey passed with OpenWA truthfully
+  disabled and the stopped R5 runtime preserved for rollback. R7 has not
+  started, and no push, merge, deployment, or remote-CI result is claimed.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

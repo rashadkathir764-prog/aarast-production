@@ -178,41 +178,42 @@ and deployment artifacts.
   application work is governed by the separately approved plan below; push,
   merge, PR mutation, deployment, and remote-CI claims remain forbidden.
 
-## Modular Monolith R6 Planned Gates
+## Modular Monolith R6 Closeout Gates
 
-- Fixed-base R6 scope must allow only the approved manifest/scanner/tests,
-  Identity public/internal delivery boundary, Collaboration injection cutover,
-  exact R3 reconciliation, generated script docs, and final receipts.
-- Permanent R6 tests must fail on another concrete sender, a Collaboration
-  platform transport import, an Identity internal/full-module import,
-  `useClass` duplication, a second token alias, retries, swallowed or remapped
-  unknown errors, changed input, provider-specific public types, protected
-  OpenWA/OTP changes, or unrelated baseline movement.
-- Focused behavior coverage is
-  `invite-delivery.test.ts`, `openwa-otp-channel.test.ts`,
-  `openwa-credential-file.test.ts`, R3 context/scope tests, and the new R6
-  architecture test. Existing invitation assertions, Arabic copy, fixtures,
-  setup, branch order, status, metric, log, persistence, and error behavior
-  remain frozen except exact DI/import wiring.
-- Aggregate architecture must retain dependency evidence at 31 records and
-  ownership at 385 records / 781 occurrences, with zero `forwardRef()`, two
-  approved globals, zero cycles/illegal edges, all 13 R3 contexts, and green R4
-  and strict R5 gates.
-- Full candidate verification requires Backend architecture, check, build,
-  tests, Prisma validate/generate and equivalence, both high-level audits,
-  targeted managed smokes, all `smoke:all` packages, protected surfaces,
-  documentation, whitespace, and residue checks.
-- Immutable Docker proof must bind the exact candidate revision and pass
-  migration discovery, local/LAN `/live` and `/ready`, dependency readiness,
-  zero restart/OOM, and sanitized logs while preserving the R5 rollback.
-- Phone acceptance must use an R6-bound LAN endpoint and cover authenticated
-  login/context restore, sharing invitation create, reissue, related read, and
-  full close/reopen. If OpenWA delivery is disabled, record that truthfully.
-  Real-recipient OpenWA smoke is externally mutating and requires separate
-  owner confirmation and a dedicated recipient; never retain a code, phone,
-  token, raw body, or business value.
-- Passing these gates authorizes only local R6 closeout. It does not authorize
-  R7, push, merge, PR mutation, deployment, or remote CI.
+- Fixed-base scope passed for the approved manifest/scanner/tests, Identity
+  public/internal delivery boundary, Collaboration injection cutover, exact R3
+  reconciliation, generated script docs, and final receipts. R6 is strict with
+  zero Collaboration concrete transport imports and two protected OpenWA files.
+- Permanent adversarial tests reject another concrete sender, internal/full
+  Identity imports, `useClass` duplication, token/type lookalikes, retries,
+  swallowed/remapped unknown errors, changed input, provider-specific public
+  types, protected OpenWA/OTP changes, and unrelated baseline movement.
+- Aggregate architecture passed at 348 modules, 1405 dependencies, 31 known
+  dependency records, ownership 385 records, zero `forwardRef()`, two approved
+  globals, zero cycles/illegal edges, all 13 R3 contexts, and green R4, strict
+  R5, and strict R6 gates.
+- Backend architecture/check/build passed. Tests passed 1021/1022 with one
+  intentional Windows permission skip. Prisma 6.19.3 validate/generate and
+  equivalence passed; both npm audits reported zero vulnerabilities; all 30
+  managed smoke packages, docs, protected surfaces, whitespace, and residue
+  checks passed.
+- A final verification-only correction updated stale R1/R3/Prisma receipts and
+  relocated temporary test fixtures under the ignored fixture root. Repeated
+  stress and full-suite runs proved the untracked-file race removed without
+  changing a behavioral assertion, product implementation, or package lock.
+- Immutable candidate `cefe07a76b0e615d4fecbb666514d9a2b87a7d37`
+  passed image audit, migration discovery, isolated probe, protected cutover,
+  local/LAN `/live` and `/ready` 200, database/Redis/media readiness, zero
+  restart/OOM, and sanitized logs. R5 remains stopped and preserved for rollback.
+- The authenticated phone checkpoint reached R6 and passed session/context
+  restore, sharing reads, invitation create 201, reissue 201, related reads,
+  full close/reopen, dashboard restore, and persistent sharing state. OpenWA
+  was disabled and the UI reported delivery unavailable; no real WhatsApp
+  delivery, credential, token, phone, OTP, raw body, or business value is
+  claimed or retained.
+- R6 is locally complete only. External Meta/OpenWA activation remains outside
+  scope. R7 has not started; push, merge, PR mutation, deployment, and remote CI
+  are not claimed.
 
 ## Modular Monolith R3 Closeout Gates
 

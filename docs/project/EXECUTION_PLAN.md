@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R6 Planning Approved
+### P3 — Source Quality And Architecture — R6 Locally Complete
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -419,28 +419,31 @@ Acceptance:
 - R5 is locally complete. Remote CI was not run; no push, merge, PR mutation,
   or deployment is claimed.
 
-Current working plan:
+Completed R6 execution plan:
 `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md`.
 
-#### R6 — Sharing OTP Transport Port — Planning Approved
+#### R6 — Sharing OTP Transport Port — Locally Complete
 
-- R6 starts from immutable completed-R5 docs base
+- R6 executed from immutable completed-R5 docs base
   `ce0c0d19824bff79d91417e2fe4617914c6bcd70`.
-- The exact current debt is
-  `src/sharing/invitation-delivery.service.ts` importing the concrete
-  platform OpenWA transient sender and its provider-specific errors.
-- Identity will own one provider-neutral public port. Its private adapter calls
-  the unchanged platform sender exactly once and maps only the known uncertain
-  and rejected errors. Collaboration imports only the Identity public module.
-- The plan separates scope/scanner, port/adapter, consumer cutover, R3 debt
-  reconciliation, exhaustive candidate verification, immutable Docker/phone
-  evidence, and local closeout checkpoints.
+- At application candidate `cefe07a76b0e615d4fecbb666514d9a2b87a7d37`,
+  Identity owns one provider-neutral public port. Its private adapter calls the
+  unchanged platform sender exactly once and maps only the known uncertain and
+  rejected errors. Collaboration imports only the Identity public module.
+- Scope/scanner, port/adapter, consumer cutover, R3 reconciliation, exhaustive
+  candidate verification, immutable Docker/phone evidence, and local closeout
+  were completed in separate checkpoints.
 - Dependency evidence stays at 31 records and ownership stays at 385 records /
   781 occurrences. Routes, messages, statuses, metrics, logs, persistence,
   timeouts, retries, schema, Mobile, Admin, workflows, Compose, and deployment
-  remain frozen.
-- Application implementation has not started. R7, push, merge, PR mutation,
-  deployment, and remote CI are not authorized.
+  stayed frozen.
+- Architecture/check/build, 1021/1022 tests with one intentional skip, Prisma
+  equivalence, both zero-finding audits, all 30 managed smoke packages, docs,
+  protected surfaces, immutable runtime, and the authenticated phone
+  sharing/restore journey passed. OpenWA remained disabled; no real-recipient
+  delivery is claimed. R5 remains stopped and preserved for rollback.
+- R6 is locally complete. R7 has not started; push, merge, PR mutation,
+  deployment, and remote CI are not claimed.
 
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
@@ -452,7 +455,7 @@ The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
 The numbered P3 modernization work below remains subordinate to the approved
-R6 plan. R7 and later-phase work must not move forward early.
+R6 completion receipts. R7 and later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

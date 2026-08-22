@@ -98,146 +98,6 @@ function fullSourceFixture(replacements: Array<{
   };
 }
 
-function r6Task2SourceFixture(replacements: Array<{
-  relativePath: string;
-  before: string;
-  after: string;
-}> = []) {
-  const fixture = fullSourceFixture([]);
-  const identityPath = path.join(
-    fixture.backendRoot,
-    'src/modules/identity/identity.module.ts',
-  );
-  let identitySource = readFileSync(identityPath, 'utf8');
-  if (!identitySource.includes('IdentityTransientDeliveryPublicModule')) {
-    identitySource = identitySource.replace(
-      'import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";',
-      [
-        'import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";',
-        'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";',
-      ].join('\n'),
-    ).replace(
-      '    IdentityAuthPublicModule,\n  ],',
-      '    IdentityAuthPublicModule,\n    IdentityTransientDeliveryPublicModule,\n  ],',
-    );
-    writeFileSync(identityPath, identitySource, 'utf8');
-  }
-
-  const files: Record<string, string> = {
-    'backend/src/modules/identity/public/identity-transient-delivery.port.ts': [
-      'export type IdentityTransientDeliveryInput = { phone: string; text: string };',
-      'export interface IdentityTransientDeliveryPort { send(input: IdentityTransientDeliveryInput): Promise<void>; }',
-      "export const IDENTITY_TRANSIENT_DELIVERY_PORT = Symbol('IDENTITY_TRANSIENT_DELIVERY_PORT');",
-      'export class IdentityTransientDeliveryUncertainError extends Error {}',
-      'export class IdentityTransientDeliveryRejectedError extends Error {}',
-    ].join('\n'),
-    'backend/src/modules/identity/internal/identity-transient-delivery.adapter.ts': [
-      "import { Injectable } from '@nestjs/common';",
-      "import { sendOpenWaTransientText } from '../../../platform/otp-transport/openwa-transient-text';",
-      "import type { IdentityTransientDeliveryInput, IdentityTransientDeliveryPort } from '../public/identity-transient-delivery.port';",
-      '@Injectable()',
-      'export class IdentityTransientDeliveryAdapter implements IdentityTransientDeliveryPort {',
-      '  async send(input: IdentityTransientDeliveryInput): Promise<void> { await sendOpenWaTransientText(input); }',
-      '}',
-    ].join('\n'),
-    'backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts': [
-      "import { Module } from '@nestjs/common';",
-      "import { IdentityTransientDeliveryAdapter } from './identity-transient-delivery.adapter';",
-      "export const IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION = Symbol('IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION');",
-      '@Module({',
-      '  providers: [IdentityTransientDeliveryAdapter, { provide: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION, useExisting: IdentityTransientDeliveryAdapter }],',
-      '  exports: [IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION],',
-      '})',
-      'export class IdentityTransientDeliveryInternalModule {}',
-    ].join('\n'),
-    'backend/src/modules/identity/public/identity-transient-delivery-public.module.ts': [
-      "import { Module } from '@nestjs/common';",
-      "import { IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION, IdentityTransientDeliveryInternalModule } from '../internal/identity-transient-delivery.internal.module';",
-      "import { IDENTITY_TRANSIENT_DELIVERY_PORT } from './identity-transient-delivery.port';",
-      '@Module({',
-      '  imports: [IdentityTransientDeliveryInternalModule],',
-      '  providers: [{ provide: IDENTITY_TRANSIENT_DELIVERY_PORT, useExisting: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION }],',
-      '  exports: [IDENTITY_TRANSIENT_DELIVERY_PORT],',
-      '})',
-      'export class IdentityTransientDeliveryPublicModule {}',
-    ].join('\n'),
-  };
-  for (const [relativePath, content] of Object.entries(files)) {
-    write(fixture.repoRoot, relativePath, content);
-  }
-
-  const collaborationPath = path.join(
-    fixture.backendRoot,
-    'src/modules/collaboration/internal/collaboration-services.internal.module.ts',
-  );
-  let collaborationSource = readFileSync(collaborationPath, 'utf8');
-  const task3ModuleImport =
-    'import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";\n';
-  const task3ModuleEntry = '    IdentityTransientDeliveryPublicModule,\n';
-  if (collaborationSource.includes(task3ModuleImport)) {
-    assert.ok(collaborationSource.includes(task3ModuleEntry));
-    collaborationSource = collaborationSource
-      .replace(task3ModuleImport, '')
-      .replace(task3ModuleEntry, '');
-    writeFileSync(collaborationPath, collaborationSource, 'utf8');
-  }
-
-  const consumerPath = path.join(
-    fixture.backendRoot,
-    'src/sharing/invitation-delivery.service.ts',
-  );
-  let consumerSource = readFileSync(consumerPath, 'utf8');
-  if (consumerSource.includes('this.transientDelivery.send')) {
-    consumerSource = consumerSource
-      .replace("import { Inject, Injectable, Logger } from '@nestjs/common';", "import { Injectable, Logger } from '@nestjs/common';")
-      .replace(
-        [
-          'import {',
-          '  IDENTITY_TRANSIENT_DELIVERY_PORT,',
-          '  IdentityTransientDeliveryPort,',
-          '  IdentityTransientDeliveryRejectedError,',
-          '  IdentityTransientDeliveryUncertainError,',
-          "} from '../modules/identity/public/identity-transient-delivery.port';",
-        ].join('\n'),
-        [
-          'import {',
-          '  OpenWaTransientDeliveryRejectedError,',
-          '  OpenWaTransientDeliveryUncertainError,',
-          '  sendOpenWaTransientText,',
-          "} from '../platform/otp-transport/openwa-transient-text';",
-        ].join('\n'),
-      )
-      .replace(
-        [
-          '  constructor(',
-          '    @Inject(IDENTITY_TRANSIENT_DELIVERY_PORT)',
-          '    private readonly transientDelivery: IdentityTransientDeliveryPort,',
-          '  ) {}',
-          '',
-        ].join('\n'),
-        '',
-      )
-      .replace('this.transientDelivery.send', 'sendOpenWaTransientText')
-      .replace(
-        'IdentityTransientDeliveryUncertainError',
-        'OpenWaTransientDeliveryUncertainError',
-      )
-      .replace(
-        'IdentityTransientDeliveryRejectedError',
-        'OpenWaTransientDeliveryRejectedError',
-      );
-    writeFileSync(consumerPath, consumerSource, 'utf8');
-  }
-
-  for (const replacement of replacements) {
-    const target = path.join(fixture.backendRoot, 'src', replacement.relativePath);
-    const current = readFileSync(target, 'utf8');
-    assert.ok(current.includes(replacement.before), `${replacement.relativePath}: R6 fixture source`);
-    writeFileSync(target, current.replace(replacement.before, replacement.after), 'utf8');
-  }
-  return fixture;
-}
-
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -252,10 +112,24 @@ test('the canonical R3 manifest freezes the exact strict ledgers', () => {
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
     'backoffice',
   ]);
-  assert.equal(manifest.legacyModules.length, 51);
+  assert.equal(manifest.legacyModules.length, 53);
   assert.equal(manifest.crossContextInjections.length, 0);
   assert.equal(manifest.compositionDependencies.length, 6);
-  assert.equal(manifest.providerContracts.length, 12);
+  assert.equal(manifest.providerContracts.length, 13);
+  assert.deepEqual(
+    manifest.providerContracts.find(
+      (contract: { token: string }) => contract.token === 'IDENTITY_TRANSIENT_DELIVERY_PORT',
+    ),
+    {
+      token: 'IDENTITY_TRANSIENT_DELIVERY_PORT',
+      methods: ['send'],
+      implementations: ['IdentityTransientDeliveryAdapter'],
+      consumers: [{
+        source: 'backend/src/sharing/invitation-delivery.service.ts',
+        kind: 'constructor-injection',
+      }],
+    },
+  );
   assert.equal(manifest.decoratorRuntimeReferences.length, 23);
   assert.equal(manifest.adminGuardMetadata.length, 4);
   assert.equal(manifest.runtimeDecoratorValueReferences.length, 26);
@@ -338,7 +212,7 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 51,
+    legacyModules: 53,
     crossContextInjections: 0,
     compositionDependencies: 0,
     initialDuplicateProviders: 3,
@@ -354,18 +228,7 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
   });
 });
 
-test('R6 Task 2 projects only the exact pending Identity delivery module delta', () => {
-  const fixture = r6Task2SourceFixture();
-  const result = scanner().scanR3Contexts({
-    ...fixture,
-    manifestPath,
-    stage: 'strict',
-  });
-  assert.deepEqual(result.diagnostics, []);
-  assert.equal(result.counts.legacyModules, 51);
-});
-
-test('R6 Task 3 projects only the exact pending Collaboration public-module delta', () => {
+test('R6 Task 4 records the final Identity delivery modules and Collaboration public import', () => {
   const fixture = fullSourceFixture([]);
   const result = scanner().scanR3Contexts({
     ...fixture,
@@ -373,7 +236,7 @@ test('R6 Task 3 projects only the exact pending Collaboration public-module delt
     stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
-  assert.equal(result.counts.legacyModules, 51);
+  assert.equal(result.counts.legacyModules, 53);
 
   const duplicate = fullSourceFixture([{
     relativePath:
@@ -395,8 +258,8 @@ test('R6 Task 3 projects only the exact pending Collaboration public-module delt
   }).diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
 
-test('R6 Task 2 rejects useClass, duplicate adapter registration, and public transport imports', () => {
-  const useClass = r6Task2SourceFixture([{
+test('R6 Task 4 rejects boundary bypasses, concrete injection, and token lookalikes', () => {
+  const useClass = fullSourceFixture([{
     relativePath: 'modules/identity/public/identity-transient-delivery-public.module.ts',
     before: 'useExisting: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION',
     after: 'useClass: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION',
@@ -407,7 +270,7 @@ test('R6 Task 2 rejects useClass, duplicate adapter registration, and public tra
     stage: 'strict',
   }).diagnostics.some((item: any) => item.kind === 'public-binding-not-use-existing'));
 
-  const duplicate = r6Task2SourceFixture();
+  const duplicate = fullSourceFixture([]);
   write(duplicate.repoRoot, 'backend/src/modules/identity/internal/duplicate-delivery.internal.module.ts', [
     "import { Module } from '@nestjs/common';",
     "import { IdentityTransientDeliveryAdapter } from './identity-transient-delivery.adapter';",
@@ -420,7 +283,7 @@ test('R6 Task 2 rejects useClass, duplicate adapter registration, and public tra
     stage: 'strict',
   }).diagnostics.some((item: any) => item.kind === 'duplicate-provider'));
 
-  const concretePublicImport = r6Task2SourceFixture([{
+  const concretePublicImport = fullSourceFixture([{
     relativePath: 'modules/identity/public/identity-transient-delivery.port.ts',
     before: 'export type IdentityTransientDeliveryInput',
     after: [
@@ -434,6 +297,68 @@ test('R6 Task 2 rejects useClass, duplicate adapter registration, and public tra
     manifestPath,
     stage: 'strict',
   }).diagnostics.some((item: any) => item.kind === 'public-imports-concrete'));
+
+  const internalModuleImport = fullSourceFixture([{
+    relativePath: 'modules/collaboration/internal/collaboration-services.internal.module.ts',
+    before: [
+      'import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";',
+      'import { MessagingRealtimePublicModule }',
+    ].join('\n'),
+    after: [
+      'import { IdentityTransientDeliveryInternalModule as IdentityTransientDeliveryPublicModule } from "../../identity/internal/identity-transient-delivery.internal.module";',
+      'import { MessagingRealtimePublicModule }',
+    ].join('\n'),
+  }]);
+  assert.notDeepEqual(scanner().scanR3Contexts({
+    ...internalModuleImport,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics, []);
+
+  const concreteAdapter = fullSourceFixture([{
+    relativePath: 'sharing/invitation-delivery.service.ts',
+    before: [
+      "} from '../modules/identity/public/identity-transient-delivery.port';",
+      "import { invitationDeliveryOutcomesTotal }",
+    ].join('\n'),
+    after: [
+      "} from '../modules/identity/public/identity-transient-delivery.port';",
+      "import { IdentityTransientDeliveryAdapter } from '../modules/identity/internal/identity-transient-delivery.adapter';",
+      "import { invitationDeliveryOutcomesTotal }",
+    ].join('\n'),
+  }, {
+    relativePath: 'sharing/invitation-delivery.service.ts',
+    before: 'private readonly transientDelivery: IdentityTransientDeliveryPort,',
+    after: 'private readonly transientDelivery: IdentityTransientDeliveryAdapter,',
+  }]);
+  assert.notDeepEqual(scanner().scanR3Contexts({
+    ...concreteAdapter,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics, []);
+
+  const lookalike = fullSourceFixture([{
+    relativePath: 'sharing/invitation-delivery.service.ts',
+    before: [
+      'import {',
+      '  IDENTITY_TRANSIENT_DELIVERY_PORT,',
+      '  IdentityTransientDeliveryPort,',
+      '  IdentityTransientDeliveryRejectedError,',
+      '  IdentityTransientDeliveryUncertainError,',
+      "} from '../modules/identity/public/identity-transient-delivery.port';",
+    ].join('\n'),
+    after: [
+      "const IDENTITY_TRANSIENT_DELIVERY_PORT = Symbol('IDENTITY_TRANSIENT_DELIVERY_PORT');",
+      'interface IdentityTransientDeliveryPort { send(input: { phone: string; text: string }): Promise<void>; }',
+      'class IdentityTransientDeliveryRejectedError extends Error {}',
+      'class IdentityTransientDeliveryUncertainError extends Error {}',
+    ].join('\n'),
+  }]);
+  assert.notDeepEqual(scanner().scanR3Contexts({
+    ...lookalike,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics, []);
 });
 
 test('I1 live orchestration executes source laws and permits only exact approved duplicate identities', () => {
@@ -517,6 +442,10 @@ test('Task 2 immutable ledgers reject same-count substitutions', () => {
     initialPlatformDebts: [...manifest.initialPlatformDebts.slice(0, 5), 'attacker-debt'],
     remainingPlatformDebts: [...manifest.initialPlatformDebts.slice(0, 5), 'attacker-debt'],
   }), /platform debt/i);
+  assert.throws(() => scanner().validateR3ContextManifest({
+    ...manifest,
+    initialRetiredLegacyProviderEdges: manifest.initialRetiredLegacyProviderEdges.slice(1),
+  }), /retired|ledger|canonical/i);
 });
 
 test('I3 deeply validates nested manifest data and rejects noncanonical same-count records', () => {

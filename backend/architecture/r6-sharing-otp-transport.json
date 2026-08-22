@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "ce0c0d19824bff79d91417e2fe4617914c6bcd70",
-  "stage": "task-3",
+  "stage": "strict",
   "currentConcreteDependency": {
     "consumer": "backend/src/sharing/invitation-delivery.service.ts",
     "transport": "backend/src/platform/otp-transport/openwa-transient-text.ts",

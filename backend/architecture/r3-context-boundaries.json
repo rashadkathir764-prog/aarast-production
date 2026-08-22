@@ -288,6 +288,7 @@
         "CollaborationHistoryInternalModule",
         "CollaborationPermissionInternalModule",
         "IdentityAuthPublicModule",
+        "IdentityTransientDeliveryPublicModule",
         "MessagingRealtimePublicModule",
         "NotificationsPublicModule",
         "PrismaModule"
@@ -413,7 +414,8 @@
       "imports": [
         "IdentityAuthInternalModule",
         "IdentityAuthPublicModule",
-        "IdentityProfileInternalModule"
+        "IdentityProfileInternalModule",
+        "IdentityTransientDeliveryPublicModule"
       ],
       "providers": [],
       "exports": [],
@@ -467,6 +469,19 @@
       "global": false
     },
     {
+      "path": "backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts",
+      "className": "IdentityTransientDeliveryInternalModule",
+      "imports": [],
+      "providers": [
+        "IdentityTransientDeliveryAdapter",
+        "{\n      provide: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION,\n      useExisting: IdentityTransientDeliveryAdapter,\n    }"
+      ],
+      "exports": [
+        "IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION"
+      ],
+      "global": false
+    },
+    {
       "path": "backend/src/modules/identity/public/identity-auth-public.module.ts",
       "className": "IdentityAuthPublicModule",
       "imports": [
@@ -479,6 +494,20 @@
       "exports": [
         "IDENTITY_ACCESS_TOKEN_VERIFIER",
         "IDENTITY_AUTH_PORT"
+      ],
+      "global": false
+    },
+    {
+      "path": "backend/src/modules/identity/public/identity-transient-delivery-public.module.ts",
+      "className": "IdentityTransientDeliveryPublicModule",
+      "imports": [
+        "IdentityTransientDeliveryInternalModule"
+      ],
+      "providers": [
+        "{\n      provide: IDENTITY_TRANSIENT_DELIVERY_PORT,\n      useExisting: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION,\n    }"
+      ],
+      "exports": [
+        "IDENTITY_TRANSIENT_DELIVERY_PORT"
       ],
       "global": false
     },
@@ -948,6 +977,21 @@
       "consumers": [
         {
           "source": "backend/src/conversations/conversations.gateway.ts",
+          "kind": "constructor-injection"
+        }
+      ]
+    },
+    {
+      "token": "IDENTITY_TRANSIENT_DELIVERY_PORT",
+      "methods": [
+        "send"
+      ],
+      "implementations": [
+        "IdentityTransientDeliveryAdapter"
+      ],
+      "consumers": [
+        {
+          "source": "backend/src/sharing/invitation-delivery.service.ts",
           "kind": "constructor-injection"
         }
       ]

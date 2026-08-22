@@ -240,6 +240,28 @@ const TASK5_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/sharing/invite-access.service.ts', consumerClass: 'backend/src/sharing/invite-access.service.ts#InviteAccessService', parameter: 'auth', parameterIndex: 1, ...TASK5_CANONICAL_INJECTION_IDENTITIES.auth }),
   Object.freeze({ source: 'backend/src/conversations/conversations.gateway.ts', consumerClass: 'backend/src/conversations/conversations.gateway.ts#ConversationsGateway', parameter: 'jwt', parameterIndex: 0, ...TASK5_CANONICAL_INJECTION_IDENTITIES.verifier }),
 ]);
+const R6_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
+  transientDelivery: Object.freeze({
+    token: 'backend/src/modules/identity/public/identity-transient-delivery.port.ts#IDENTITY_TRANSIENT_DELIVERY_PORT',
+    parameterType: 'backend/src/modules/identity/public/identity-transient-delivery.port.ts#IdentityTransientDeliveryPort',
+  }),
+});
+const R6_PUBLIC_PORT_PATH =
+  'backend/src/modules/identity/public/identity-transient-delivery.port.ts';
+const R6_CONSUMER_IDENTITIES = new Map([
+  ['IDENTITY_TRANSIENT_DELIVERY_PORT', Object.freeze([
+    R6_CANONICAL_INJECTION_IDENTITIES.transientDelivery,
+  ])],
+]);
+const R6_EXACT_CONSTRUCTOR_USES = Object.freeze([
+  Object.freeze({
+    source: 'backend/src/sharing/invitation-delivery.service.ts',
+    consumerClass: 'backend/src/sharing/invitation-delivery.service.ts#InvitationDeliveryService',
+    parameter: 'transientDelivery',
+    parameterIndex: 0,
+    ...R6_CANONICAL_INJECTION_IDENTITIES.transientDelivery,
+  }),
+]);
 const R4_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
   planningBudgetWrite: Object.freeze({
     token: 'backend/src/modules/planning/public/planning-budget-write.port.ts#PLANNING_BUDGET_WRITE_PORT',
@@ -260,37 +282,7 @@ const R4_EXACT_CONSTRUCTOR_USES = Object.freeze([
     ...R4_CANONICAL_INJECTION_IDENTITIES.planningBudgetWrite,
   }),
 ]);
-const R6_TASK2_PROVIDER_CONTRACT = Object.freeze({
-  token: 'IDENTITY_TRANSIENT_DELIVERY_PORT',
-  methods: Object.freeze(['send']),
-  implementations: Object.freeze(['IdentityTransientDeliveryAdapter']),
-});
-const R6_TASK2_PUBLIC_PORT_PATH =
-  'backend/src/modules/identity/public/identity-transient-delivery.port.ts';
-const R6_TASK2_SOURCE_PATHS = Object.freeze([
-  'backend/src/modules/identity/internal/identity-transient-delivery.adapter.ts',
-  'backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts',
-  'backend/src/modules/identity/public/identity-transient-delivery-public.module.ts',
-  R6_TASK2_PUBLIC_PORT_PATH,
-]);
-const R6_TASK2_MODULE_IDENTITIES = Object.freeze([
-  Object.freeze({
-    path: 'backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts',
-    className: 'IdentityTransientDeliveryInternalModule',
-  }),
-  Object.freeze({
-    path: 'backend/src/modules/identity/public/identity-transient-delivery-public.module.ts',
-    className: 'IdentityTransientDeliveryPublicModule',
-  }),
-]);
-const R6_TASK3_COLLABORATION_MODULE = Object.freeze({
-  path: 'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
-  className: 'CollaborationServicesInternalModule',
-  importedModule: 'IdentityTransientDeliveryPublicModule',
-});
-const R6_TASK3_CONSUMER_PATH =
-  'backend/src/sharing/invitation-delivery.service.ts';
-const CONTRACT_SHAPE_HASH = '442b4879213326646cfb479a1f98a6408aebef618b07da3e635db9b5faa3443b';
+const CONTRACT_SHAPE_HASH = '9a6a3d142b6b93e3e9cb4cc10f3585f737d4bc222368101264f3e48f5472609f';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 2048;
@@ -848,80 +840,6 @@ function scanR4PlanningBudgetWriter(options) {
   return scanR4PlanningBudgetWriterProgram(program, repoRoot);
 }
 
-function r6Task2SourcesPresent(repoRoot) {
-  return R6_TASK2_SOURCE_PATHS.every((relativePath) => fs.existsSync(
-    path.join(repoRoot, ...relativePath.split('/')),
-  ));
-}
-
-function r6Task3ConsumerPresent(repoRoot) {
-  const sourcePath = path.join(repoRoot, ...R6_TASK3_CONSUMER_PATH.split('/'));
-  if (!fs.existsSync(sourcePath)) return false;
-  const source = fs.readFileSync(sourcePath, 'utf8');
-  return source.includes("from '../modules/identity/public/identity-transient-delivery.port'")
-    && source.includes('@Inject(IDENTITY_TRANSIENT_DELIVERY_PORT)')
-    && source.includes('private readonly transientDelivery: IdentityTransientDeliveryPort')
-    && source.includes('this.transientDelivery.send')
-    && !source.includes('platform/otp-transport');
-}
-
-function projectPendingR6Task2Modules(repoRoot, manifest, modules) {
-  if (manifest.providerContracts.some(
-    (contract) => contract.token === R6_TASK2_PROVIDER_CONTRACT.token,
-  ) || !r6Task2SourcesPresent(repoRoot)) {
-    return modules;
-  }
-
-  const exactR6Modules = R6_TASK2_MODULE_IDENTITIES.map((expected) =>
-    modules.filter((module) =>
-      module.path === expected.path && module.className === expected.className));
-  const identityModules = modules.filter((module) =>
-    module.path === 'backend/src/modules/identity/identity.module.ts'
-      && module.className === 'IdentityModule');
-  const collaborationModules = modules.filter((module) =>
-    module.path === R6_TASK3_COLLABORATION_MODULE.path
-      && module.className === R6_TASK3_COLLABORATION_MODULE.className);
-  const collaborationImportCount = collaborationModules.length === 1
-    ? collaborationModules[0].imports.filter(
-      (entry) => entry === R6_TASK3_COLLABORATION_MODULE.importedModule,
-    ).length
-    : -1;
-  if (exactR6Modules.some((matches) => matches.length !== 1)
-      || identityModules.length !== 1
-      || identityModules[0].imports.filter(
-        (entry) => entry === 'IdentityTransientDeliveryPublicModule',
-      ).length !== 1
-      || collaborationModules.length !== 1
-      || collaborationImportCount > 1
-      || (collaborationImportCount === 1 && !r6Task3ConsumerPresent(repoRoot))) {
-    return modules;
-  }
-
-  const r6ModuleKeys = new Set(R6_TASK2_MODULE_IDENTITIES.map(
-    (entry) => `${entry.path}#${entry.className}`,
-  ));
-  return modules.filter((module) =>
-    !r6ModuleKeys.has(`${module.path}#${module.className}`)).map((module) => {
-    if (module === identityModules[0]) {
-      return {
-        ...module,
-        imports: module.imports.filter(
-          (entry) => entry !== 'IdentityTransientDeliveryPublicModule',
-        ),
-      };
-    }
-    if (module === collaborationModules[0] && collaborationImportCount === 1) {
-      return {
-        ...module,
-        imports: module.imports.filter(
-          (entry) => entry !== R6_TASK3_COLLABORATION_MODULE.importedModule,
-        ),
-      };
-    }
-    return module;
-  });
-}
-
 function scanR3SourceLaws(options) {
   const repoRoot = path.resolve(options.repoRoot);
   const backendRoot = path.resolve(options.backendRoot);
@@ -936,19 +854,12 @@ function scanR3SourceLaws(options) {
     'backend/src/modules/identity/internal/profile/contexts.service.ts->backend/src/provider-dashboard/provider-access-policy.ts',
     'backend/src/modules/identity/internal/profile/users.service.ts->backend/src/marketplace/provider-review-rating.ts',
   ]);
-  const r6Task2Present = r6Task2SourcesPresent(repoRoot);
   const providerContracts = [...(options.providerContracts || [])];
-  if (r6Task2Present && !providerContracts.some(
-    (contract) => contract.token === R6_TASK2_PROVIDER_CONTRACT.token,
-  )) {
-    providerContracts.push(R6_TASK2_PROVIDER_CONTRACT);
-  }
   const contractsByToken = new Map(providerContracts.map((contract) => [
     contract.token,
     new Set(contract.implementations),
   ]));
-  const enforceManifestImplementations = options.providerContracts !== undefined
-    || r6Task2Present;
+  const enforceManifestImplementations = options.providerContracts !== undefined;
   const classIdentitiesByName = new Map();
   const sourceFiles = program.getSourceFiles().filter((sourceFile) => {
     if (sourceFile.isDeclarationFile) return false;
@@ -970,7 +881,7 @@ function scanR3SourceLaws(options) {
     visit(sourceFile);
     for (const statement of sourceFile.statements) {
       if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
-        if (repositoryPath === R6_TASK2_PUBLIC_PORT_PATH) {
+        if (repositoryPath === R6_PUBLIC_PORT_PATH) {
           addDiagnostic(
             diagnostics,
             'public-imports-concrete',
@@ -1564,6 +1475,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
       || TASK3_CONSUMER_IDENTITIES.get(contract.token)
       || TASK4_CONSUMER_IDENTITIES.get(contract.token)
       || TASK5_CONSUMER_IDENTITIES.get(contract.token)
+      || R6_CONSUMER_IDENTITIES.get(contract.token)
       || R4_CONSUMER_IDENTITIES.get(contract.token);
     const consumers = canonicalConsumerIdentities
       ? []
@@ -1644,6 +1556,14 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const exactTask5ConstructorUses = TASK5_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
   const task5ConstructorInventoryPresent = JSON.stringify(liveTask5ConstructorUses)
     === JSON.stringify(exactTask5ConstructorUses);
+  const r6CanonicalPairs = new Set(Object.values(R6_CANONICAL_INJECTION_IDENTITIES)
+    .map((identity) => `${identity.token}|${identity.parameterType}`));
+  const liveR6ConstructorUses = allConstructorUses.filter((item) => r6CanonicalPairs.has(
+    `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
+  )).map(task2ConstructorUseKey).sort();
+  const exactR6ConstructorUses = R6_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const r6ConstructorInventoryPresent = JSON.stringify(liveR6ConstructorUses)
+    === JSON.stringify(exactR6ConstructorUses);
   const r4CanonicalPairs = new Set(Object.values(R4_CANONICAL_INJECTION_IDENTITIES)
     .map((identity) => `${identity.token}|${identity.parameterType}`));
   const liveR4ConstructorUses = allConstructorUses.filter((item) => r4CanonicalPairs.has(
@@ -1664,6 +1584,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     task3ConstructorInventoryPresent,
     task4ConstructorInventoryPresent,
     task5ConstructorInventoryPresent,
+    r6ConstructorInventoryPresent,
     r4ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
@@ -1700,11 +1621,6 @@ function scanR3Contexts(options) {
     contractDefinitions,
     manifest.initialRetiredLegacyProviderEdges,
   );
-  const manifestComparableModules = projectPendingR6Task2Modules(
-    options.repoRoot,
-    manifest,
-    live.modules,
-  );
   const ports = scanPorts({ repoRoot: options.repoRoot, backendRoot: options.backendRoot });
   const exactRemainingDuplicates = manifest.remainingDuplicateProviders.every((provider) => {
     const registrations = duplicateDiagnostics.filter((item) => (
@@ -1715,7 +1631,7 @@ function scanR3Contexts(options) {
   const livePlatformDebts = live.compositionDependencies.map((item) => (
     item.key === 'app-jwt-module-availability' ? 'runtime-jwt-secret' : item.key
   ));
-  const drift = JSON.stringify(manifestComparableModules) !== JSON.stringify(manifest.legacyModules)
+  const drift = JSON.stringify(live.modules) !== JSON.stringify(manifest.legacyModules)
     || JSON.stringify(live.injections) !== JSON.stringify(manifest.crossContextInjections)
     || JSON.stringify(livePlatformDebts) !== JSON.stringify(manifest.remainingPlatformDebts)
     || JSON.stringify(live.providerContracts) !== JSON.stringify(manifest.providerContracts)
@@ -1726,6 +1642,7 @@ function scanR3Contexts(options) {
       && !live.task4ConstructorInventoryPresent)
     || (['task-5', 'task-6', 'task-7', 'task-8', 'strict'].includes(manifest.stage)
       && !live.task5ConstructorInventoryPresent)
+    || !live.r6ConstructorInventoryPresent
     || (manifest.stage === 'strict' && !live.r4ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
     || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
@@ -1741,7 +1658,7 @@ function scanR3Contexts(options) {
     diagnostics,
     counts: {
       contexts: Object.keys(ROOTS).length,
-      legacyModules: manifestComparableModules.length,
+      legacyModules: live.modules.length,
       crossContextInjections: live.injections.length,
       compositionDependencies: live.compositionDependencies.length,
       initialDuplicateProviders: manifest.initialDuplicateProviders.length,

@@ -159,7 +159,7 @@ test('R6 manifest pins the exact base, boundary, protected files, baselines, and
   assert.equal(r6.R6_BASE, r6Base);
   assert.deepEqual(r6.STAGES, ['inventory', 'task-2', 'task-3', 'strict']);
   assert.equal(manifest.baseRevision, r6Base);
-  assert.equal(manifest.stage, 'task-3');
+  assert.equal(manifest.stage, 'strict');
   assert.deepEqual(manifest.currentConcreteDependency, {
     consumer: 'backend/src/sharing/invitation-delivery.service.ts',
     transport: 'backend/src/platform/otp-transport/openwa-transient-text.ts',
@@ -266,6 +266,18 @@ test('R6 manifest rejects identity, shape, path, boundary, hash, and scope near-
   changedHash.protectedFiles[0].sha256 = '0'.repeat(64);
   rejected.push(changedHash);
 
+  const changedDependencyBaseline = structuredClone(source);
+  changedDependencyBaseline.expectedBaselines.dependencyRecords = 32;
+  rejected.push(changedDependencyBaseline);
+
+  const changedOwnershipBaseline = structuredClone(source);
+  changedOwnershipBaseline.expectedBaselines.ownershipRecords = 384;
+  rejected.push(changedOwnershipBaseline);
+
+  const changedOwnershipOccurrences = structuredClone(source);
+  changedOwnershipOccurrences.expectedBaselines.ownershipOccurrences = 780;
+  rejected.push(changedOwnershipOccurrences);
+
   for (const value of rejected) {
     assert.throws(() => r6.validateR6Manifest(value));
   }
@@ -274,14 +286,14 @@ test('R6 manifest rejects identity, shape, path, boundary, hash, and scope near-
   assert.throws(() => r6.validateR6Manifest(proxy), /plain|data/i);
 });
 
-test('R6 Task 3 scan removes the Collaboration concrete import and keeps protected files', () => {
+test('R6 strict scan removes the Collaboration concrete import and keeps protected files', () => {
   const result = scanner().scanR6SharingOtpTransport({
     repositoryRoot,
     manifest: readManifest(),
   });
   assert.deepEqual(result, {
     ok: true,
-    stage: 'task-3',
+    stage: 'strict',
     concreteImports: 0,
     protectedFiles: 2,
   });
@@ -410,7 +422,7 @@ test('R6 CLI accepts only check mode and reports one bounded result', () => {
   }), 0);
   assert.equal(errors.length, 0);
   assert.deepEqual(output, [
-    'PASS - R6 Sharing OTP transport: stage=task-3, concrete-imports=0, protected=2',
+    'PASS - R6 Sharing OTP transport: stage=strict, concrete-imports=0, protected=2',
   ]);
 
   assert.equal(r6.runCli({

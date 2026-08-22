@@ -95,6 +95,14 @@ const registry = JSON.parse(
 ) as Registry;
 const fixtureRoots: string[] = [];
 
+function ignoredBackendFixture(prefix: string): string {
+  const parent = path.join(backendRoot, 'dist', 'test-fixtures');
+  mkdirSync(parent, { recursive: true });
+  const root = mkdtempSync(path.join(parent, prefix));
+  fixtureRoots.push(root);
+  return root;
+}
+
 function write(root: string, relativePath: string, content: string) {
   const target = path.join(root, relativePath);
   mkdirSync(path.dirname(target), { recursive: true });
@@ -102,8 +110,7 @@ function write(root: string, relativePath: string, content: string) {
 }
 
 function fixtureProject(files: Record<string, string>): ScanOptions {
-  const root = mkdtempSync(path.join(backendRoot, '.ownership-fixture-'));
-  fixtureRoots.push(root);
+  const root = ignoredBackendFixture('ownership-project-');
   const fixtureBackend = path.join(root, 'backend');
   cpSync(
     path.join(backendRoot, 'prisma', 'schema'),
@@ -1528,8 +1535,8 @@ test('ownership output mode rejects invalid paths and write failures atomically 
 
 test('the real ownership output rejects an OS-temp junction escape without writing outside temp', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-ownership-junction-'));
-  const outside = mkdtempSync(path.join(backendRoot, '.ownership-output-outside-'));
-  fixtureRoots.push(root, outside);
+  const outside = ignoredBackendFixture('ownership-output-outside-');
+  fixtureRoots.push(root);
   const junction = path.join(root, 'junction');
   symlinkSync(outside, junction, 'junction');
   const outputPath = path.join(junction, 'candidate.json');

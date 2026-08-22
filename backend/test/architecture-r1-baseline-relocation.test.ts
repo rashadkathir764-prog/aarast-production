@@ -30,6 +30,14 @@ const backendRoot = path.resolve(__dirname, '..');
 const fixtureRoots: string[] = [];
 const approvedMap = require('../architecture/r1-relocation-map.json') as JsonObject;
 
+function ignoredBackendFixture(prefix: string): string {
+  const parent = path.join(backendRoot, 'dist', 'test-fixtures');
+  mkdirSync(parent, { recursive: true });
+  const root = mkdtempSync(path.join(parent, prefix));
+  fixtureRoots.push(root);
+  return root;
+}
+
 function relativeSpecifier(from: string, to: string): string {
   const withoutExtension = to.replace(/\.(?:[cm]?[jt]sx?)$/, '');
   const relative = path.posix.relative(path.posix.dirname(from), withoutExtension);
@@ -470,8 +478,7 @@ test('the exact immutable R1 base revision is required by direct and CLI verific
 
 test('candidate and report paths reject junction escapes and hardlink aliases atomically', () => {
   const fixture = makeFixture();
-  const outside = mkdtempSync(path.join(backendRoot, '.r1-relocation-outside-'));
-  fixtureRoots.push(outside);
+  const outside = ignoredBackendFixture('r1-relocation-outside-');
   const junction = path.join(fixture.root, 'junction');
   symlinkSync(outside, junction, 'junction');
   const escapedCandidate = path.join(junction, 'dependency.json');

@@ -359,6 +359,8 @@ const R6_ARCHITECTURE_SCRIPT =
   R5_ARCHITECTURE_SCRIPT + ' && npm run architecture:r6';
 const R6_STANDALONE_SCRIPT =
   'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check';
+const R5_SECURITY_PACKAGE_JSON_SHA256 =
+  '6db5c9fc4f6b6f7b3088cf351e61917d6dc62dfbeee6f816ffacb957f8d883ef';
 const R6_IDENTITY_MODULE_IMPORT =
   'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";';
 const R6_IDENTITY_MODULE_REGISTRATION =
@@ -423,9 +425,14 @@ function validateR5SecurityCheckpointScope(value) {
       throw new Error('R5 security checkpoint contains an extra implementation path');
     }
   }
-  require('../security/prisma-config-merge-security.cjs').validatePackageGraph(
+  const security = require('../security/prisma-config-merge-security.cjs');
+  security.validatePackageGraph(
     projectR6ArchitectureScriptsForR5Security(input.packageJson),
     input.packageLock,
+    {
+      expectedPackageFingerprint: R5_SECURITY_PACKAGE_JSON_SHA256,
+      expectedLockFingerprint: security.PINNED_PACKAGE_LOCK_SHA256,
+    },
   );
   return Object.freeze({ active: true });
 }

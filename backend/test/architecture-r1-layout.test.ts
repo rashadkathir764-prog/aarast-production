@@ -250,7 +250,7 @@ test('R1 Task 4 delivery uncertainty contract is fixed and secret-safe', () => {
   assert.deepEqual(Object.keys(error), ['name']);
 });
 
-test('R1 Task 4 AuthService owns selection while sharing keeps named pre-R6 transport debt', () => {
+test('R1 OTP ownership remains intact while sharing consumes the R6 Identity transport port', () => {
   const authServiceSource = source('src/modules/identity/internal/auth/auth.service.ts');
   assert.match(authServiceSource, /from\s+['"]\.\/otp-channel['"]/);
   assert.match(
@@ -263,8 +263,15 @@ test('R1 Task 4 AuthService owns selection while sharing keeps named pre-R6 tran
   const sharingSource = source('src/sharing/invitation-delivery.service.ts');
   assert.match(
     sharingSource,
-    /from\s+['"]\.\.\/platform\/otp-transport\/openwa-transient-text['"]/,
+    /from\s+['"]\.\.\/modules\/identity\/public\/identity-transient-delivery\.port['"]/,
   );
+  assert.match(sharingSource, /@Inject\(IDENTITY_TRANSIENT_DELIVERY_PORT\)/);
+  assert.match(
+    sharingSource,
+    /private readonly transientDelivery:\s*IdentityTransientDeliveryPort/,
+  );
+  assert.match(sharingSource, /this\.transientDelivery\.send\s*\(/);
+  assert.doesNotMatch(sharingSource, /platform\/otp-transport\/openwa-transient-text/);
   assert.doesNotMatch(sharingSource, /auth\/openwa-transient-text/);
 });
 

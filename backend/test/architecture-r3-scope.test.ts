@@ -386,7 +386,7 @@ test('R6 delegates only its fixed-base exact cumulative path fence', () => {
   const delegated = scope().validateR6SharingOtpManifest(value);
 
   assert.equal(delegated.baseRevision, 'ce0c0d19824bff79d91417e2fe4617914c6bcd70');
-  assert.equal(delegated.stage, 'inventory');
+  assert.equal(delegated.stage, 'strict');
   assert.deepEqual(delegated.allowedChangedPaths, scope().R6_ALLOWED_PATHS);
   assert.equal(
     delegated.allowedChangedPaths.includes(

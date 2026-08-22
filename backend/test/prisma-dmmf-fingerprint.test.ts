@@ -48,6 +48,14 @@ function temporaryRoot(prefix: string) {
   return root;
 }
 
+function ignoredBackendFixture(prefix: string): string {
+  const parent = path.join(backendRoot, 'dist', 'test-fixtures');
+  mkdirSync(parent, { recursive: true });
+  const root = mkdtempSync(path.join(parent, prefix));
+  temporaryRoots.push(root);
+  return root;
+}
+
 function captureCli(overrides: Partial<Parameters<typeof runCli>[0]> = {}) {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -281,12 +289,9 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
 });
 
 test('rejects a non-temp output and a junction escape without writing outside temp', () => {
-  const outside = path.join(backendRoot, '.r2-dmmf-output-outside');
+  const outside = ignoredBackendFixture('r2-dmmf-output-outside-');
   const root = temporaryRoot('aarast-r2-dmmf-junction-');
   const junction = path.join(root, 'junction');
-  rmSync(outside, { recursive: true, force: true });
-  mkdirSync(outside, { recursive: true });
-  temporaryRoots.push(outside);
   symlinkSync(outside, junction, 'junction');
 
   for (const outputPath of [

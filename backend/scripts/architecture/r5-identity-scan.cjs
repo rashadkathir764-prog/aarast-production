@@ -359,6 +359,10 @@ const R6_ARCHITECTURE_SCRIPT =
   R5_ARCHITECTURE_SCRIPT + ' && npm run architecture:r6';
 const R6_STANDALONE_SCRIPT =
   'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check';
+const R6_IDENTITY_MODULE_IMPORT =
+  'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";';
+const R6_IDENTITY_MODULE_REGISTRATION =
+  '    IdentityTransientDeliveryPublicModule,\n';
 
 function projectR6ArchitectureScriptsForR5Security(value) {
   assertDeepPlainData(value, 'R5 security package');
@@ -378,6 +382,20 @@ function projectR6ArchitectureScriptsForR5Security(value) {
     ...packageJson,
     scripts: projectedScripts,
   };
+}
+
+function projectR6IdentityModuleForR5(source) {
+  if (typeof source !== 'string') throw new Error('R5 auth stage drift detected');
+  const normalized = source.replace(/\r\n/gu, '\n');
+  const importCount = normalized.split(R6_IDENTITY_MODULE_IMPORT).length - 1;
+  const registrationCount = normalized.split(R6_IDENTITY_MODULE_REGISTRATION).length - 1;
+  if (importCount === 0 && registrationCount === 0) return normalized;
+  if (importCount !== 1 || registrationCount !== 1) {
+    throw new Error('R5 auth stage drift detected');
+  }
+  return normalized
+    .replace(`${R6_IDENTITY_MODULE_IMPORT}\n`, '')
+    .replace(R6_IDENTITY_MODULE_REGISTRATION, '');
 }
 
 function validateR5SecurityCheckpointScope(value) {
@@ -489,7 +507,11 @@ function validateR5AuthStage(repositoryRoot) {
     const inspected = inspectExistingPath(repositoryRoot, relative, 'file');
     if (!inspected.exists) throw new Error('R5 auth stage drift detected');
     const absolute = path.join(repositoryRoot, ...relative.split('/'));
-    if (normalizedFileHash(absolute) !== expectedHash) {
+    const source = fs.readFileSync(absolute, 'utf8');
+    const projected = relative === 'backend/src/modules/identity/identity.module.ts'
+      ? projectR6IdentityModuleForR5(source)
+      : source;
+    if (normalizedTextHash(projected) !== expectedHash) {
       throw new Error('R5 auth stage drift detected');
     }
   }

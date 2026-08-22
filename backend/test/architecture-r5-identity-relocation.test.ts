@@ -692,6 +692,30 @@ test('R5 auth parity rejects provider, DTO, and error-body drift', () => {
       path: 'backend/src/modules/identity/internal/auth/auth.service.ts',
       replace: ['قد يستغرق وصول الرمز لحظات', 'قد يتغير وصول الرمز'],
     },
+    {
+      path: 'backend/src/modules/identity/identity.module.ts',
+      replace: [
+        'from "./public/identity-transient-delivery-public.module";',
+        'from "./public/openwa-transient-delivery-public.module";',
+      ],
+    },
+    {
+      path: 'backend/src/modules/identity/identity.module.ts',
+      replace: [
+        '    IdentityTransientDeliveryPublicModule,\n  ],',
+        '    IdentityTransientDeliveryPublicModule,\n    IdentityTransientDeliveryPublicModule,\n  ],',
+      ],
+    },
+    {
+      path: 'backend/src/modules/identity/identity.module.ts',
+      replace: [
+        'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";',
+        [
+          'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";',
+          'import { AttackerModule } from "./internal/attacker.module";',
+        ].join('\n'),
+      ],
+    },
   ];
   for (const mutation of mutations) {
     const target = path.join(fixtureRoot, ...mutation.path.split('/'));

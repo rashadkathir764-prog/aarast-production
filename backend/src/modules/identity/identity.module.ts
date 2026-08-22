@@ -7,12 +7,14 @@ import { UsersController } from "./api/users.controller";
 import { IdentityAuthInternalModule } from "./internal/identity-auth.internal.module";
 import { IdentityProfileInternalModule } from "./internal/identity-profile.internal.module";
 import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";
+import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";
 
 @Module({
   imports: [
     IdentityAuthInternalModule,
     IdentityProfileInternalModule,
     IdentityAuthPublicModule,
+    IdentityTransientDeliveryPublicModule,
   ],
   controllers: [
     AuthController,

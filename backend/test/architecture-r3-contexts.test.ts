@@ -98,6 +98,82 @@ function fullSourceFixture(replacements: Array<{
   };
 }
 
+function r6Task2SourceFixture(replacements: Array<{
+  relativePath: string;
+  before: string;
+  after: string;
+}> = []) {
+  const fixture = fullSourceFixture([]);
+  const identityPath = path.join(
+    fixture.backendRoot,
+    'src/modules/identity/identity.module.ts',
+  );
+  let identitySource = readFileSync(identityPath, 'utf8');
+  if (!identitySource.includes('IdentityTransientDeliveryPublicModule')) {
+    identitySource = identitySource.replace(
+      'import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";',
+      [
+        'import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";',
+        'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";',
+      ].join('\n'),
+    ).replace(
+      '    IdentityAuthPublicModule,\n  ],',
+      '    IdentityAuthPublicModule,\n    IdentityTransientDeliveryPublicModule,\n  ],',
+    );
+    writeFileSync(identityPath, identitySource, 'utf8');
+  }
+
+  const files: Record<string, string> = {
+    'backend/src/modules/identity/public/identity-transient-delivery.port.ts': [
+      'export type IdentityTransientDeliveryInput = { phone: string; text: string };',
+      'export interface IdentityTransientDeliveryPort { send(input: IdentityTransientDeliveryInput): Promise<void>; }',
+      "export const IDENTITY_TRANSIENT_DELIVERY_PORT = Symbol('IDENTITY_TRANSIENT_DELIVERY_PORT');",
+      'export class IdentityTransientDeliveryUncertainError extends Error {}',
+      'export class IdentityTransientDeliveryRejectedError extends Error {}',
+    ].join('\n'),
+    'backend/src/modules/identity/internal/identity-transient-delivery.adapter.ts': [
+      "import { Injectable } from '@nestjs/common';",
+      "import { sendOpenWaTransientText } from '../../../platform/otp-transport/openwa-transient-text';",
+      "import type { IdentityTransientDeliveryInput, IdentityTransientDeliveryPort } from '../public/identity-transient-delivery.port';",
+      '@Injectable()',
+      'export class IdentityTransientDeliveryAdapter implements IdentityTransientDeliveryPort {',
+      '  async send(input: IdentityTransientDeliveryInput): Promise<void> { await sendOpenWaTransientText(input); }',
+      '}',
+    ].join('\n'),
+    'backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { IdentityTransientDeliveryAdapter } from './identity-transient-delivery.adapter';",
+      "export const IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION = Symbol('IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION');",
+      '@Module({',
+      '  providers: [IdentityTransientDeliveryAdapter, { provide: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION, useExisting: IdentityTransientDeliveryAdapter }],',
+      '  exports: [IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION],',
+      '})',
+      'export class IdentityTransientDeliveryInternalModule {}',
+    ].join('\n'),
+    'backend/src/modules/identity/public/identity-transient-delivery-public.module.ts': [
+      "import { Module } from '@nestjs/common';",
+      "import { IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION, IdentityTransientDeliveryInternalModule } from '../internal/identity-transient-delivery.internal.module';",
+      "import { IDENTITY_TRANSIENT_DELIVERY_PORT } from './identity-transient-delivery.port';",
+      '@Module({',
+      '  imports: [IdentityTransientDeliveryInternalModule],',
+      '  providers: [{ provide: IDENTITY_TRANSIENT_DELIVERY_PORT, useExisting: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION }],',
+      '  exports: [IDENTITY_TRANSIENT_DELIVERY_PORT],',
+      '})',
+      'export class IdentityTransientDeliveryPublicModule {}',
+    ].join('\n'),
+  };
+  for (const [relativePath, content] of Object.entries(files)) {
+    write(fixture.repoRoot, relativePath, content);
+  }
+  for (const replacement of replacements) {
+    const target = path.join(fixture.backendRoot, 'src', replacement.relativePath);
+    const current = readFileSync(target, 'utf8');
+    assert.ok(current.includes(replacement.before), `${replacement.relativePath}: R6 fixture source`);
+    writeFileSync(target, current.replace(replacement.before, replacement.after), 'utf8');
+  }
+  return fixture;
+}
+
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -212,6 +288,58 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
     nestModuleCycles: 0,
     illegalEdges: 0,
   });
+});
+
+test('R6 Task 2 projects only the exact pending Identity delivery module delta', () => {
+  const fixture = r6Task2SourceFixture();
+  const result = scanner().scanR3Contexts({
+    ...fixture,
+    manifestPath,
+    stage: 'strict',
+  });
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.counts.legacyModules, 51);
+});
+
+test('R6 Task 2 rejects useClass, duplicate adapter registration, and public transport imports', () => {
+  const useClass = r6Task2SourceFixture([{
+    relativePath: 'modules/identity/public/identity-transient-delivery-public.module.ts',
+    before: 'useExisting: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION',
+    after: 'useClass: IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION',
+  }]);
+  assert.ok(scanner().scanR3Contexts({
+    ...useClass,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics.some((item: any) => item.kind === 'public-binding-not-use-existing'));
+
+  const duplicate = r6Task2SourceFixture();
+  write(duplicate.repoRoot, 'backend/src/modules/identity/internal/duplicate-delivery.internal.module.ts', [
+    "import { Module } from '@nestjs/common';",
+    "import { IdentityTransientDeliveryAdapter } from './identity-transient-delivery.adapter';",
+    '@Module({ providers: [IdentityTransientDeliveryAdapter] })',
+    'export class DuplicateDeliveryInternalModule {}',
+  ].join('\n'));
+  assert.ok(scanner().scanR3Contexts({
+    ...duplicate,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics.some((item: any) => item.kind === 'duplicate-provider'));
+
+  const concretePublicImport = r6Task2SourceFixture([{
+    relativePath: 'modules/identity/public/identity-transient-delivery.port.ts',
+    before: 'export type IdentityTransientDeliveryInput',
+    after: [
+      "import type { OpenWaTransientTextInput } from '../../../platform/otp-transport/openwa-transient-text';",
+      'export type OpenWaLeak = OpenWaTransientTextInput;',
+      'export type IdentityTransientDeliveryInput',
+    ].join('\n'),
+  }]);
+  assert.ok(scanner().scanR3Contexts({
+    ...concretePublicImport,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics.some((item: any) => item.kind === 'public-imports-concrete'));
 });
 
 test('I1 live orchestration executes source laws and permits only exact approved duplicate identities', () => {

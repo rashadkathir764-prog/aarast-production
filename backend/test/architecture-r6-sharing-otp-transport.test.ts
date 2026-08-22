@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -10,6 +11,9 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
+import { MODULE_METADATA } from '@nestjs/common/constants';
+import { NestFactory } from '@nestjs/core';
+import ts from 'typescript';
 
 const backendRoot = path.resolve(__dirname, '..');
 const repositoryRoot = path.resolve(backendRoot, '..');
@@ -127,6 +131,10 @@ function copyProtectedFixture(root: string): void {
     'backend/src/platform/otp-transport/openwa-otp.channel.ts',
     'backend/src/platform/otp-transport/openwa-otp-config.ts',
     'backend/src/platform/otp-transport/openwa-transient-text.ts',
+    'backend/src/modules/identity/internal/identity-transient-delivery.adapter.ts',
+    'backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts',
+    'backend/src/modules/identity/public/identity-transient-delivery-public.module.ts',
+    'backend/src/modules/identity/public/identity-transient-delivery.port.ts',
     'backend/src/sharing/invitation-delivery.service.ts',
   ]) {
     const target = path.join(root, ...relativePath.split('/'));
@@ -148,7 +156,7 @@ test('R6 manifest pins the exact base, boundary, protected files, baselines, and
   assert.equal(r6.R6_BASE, r6Base);
   assert.deepEqual(r6.STAGES, ['inventory', 'task-2', 'task-3', 'strict']);
   assert.equal(manifest.baseRevision, r6Base);
-  assert.equal(manifest.stage, 'inventory');
+  assert.equal(manifest.stage, 'task-2');
   assert.deepEqual(manifest.currentConcreteDependency, {
     consumer: 'backend/src/sharing/invitation-delivery.service.ts',
     transport: 'backend/src/platform/otp-transport/openwa-transient-text.ts',
@@ -263,14 +271,14 @@ test('R6 manifest rejects identity, shape, path, boundary, hash, and scope near-
   assert.throws(() => r6.validateR6Manifest(proxy), /plain|data/i);
 });
 
-test('R6 inventory scan resolves the one current concrete import and protected files', () => {
+test('R6 Task 2 scan keeps the one current concrete import and protected files', () => {
   const result = scanner().scanR6SharingOtpTransport({
     repositoryRoot,
     manifest: readManifest(),
   });
   assert.deepEqual(result, {
     ok: true,
-    stage: 'inventory',
+    stage: 'task-2',
     concreteImports: 1,
     protectedFiles: 2,
   });
@@ -399,7 +407,7 @@ test('R6 CLI accepts only check mode and reports one bounded result', () => {
   }), 0);
   assert.equal(errors.length, 0);
   assert.deepEqual(output, [
-    'PASS - R6 Sharing OTP transport: stage=inventory, concrete-imports=1, protected=2',
+    'PASS - R6 Sharing OTP transport: stage=task-2, concrete-imports=1, protected=2',
   ]);
 
   assert.equal(r6.runCli({
@@ -412,4 +420,278 @@ test('R6 CLI accepts only check mode and reports one bounded result', () => {
     errors[errors.length - 1],
     'ERROR - R6 Sharing OTP transport validation failed',
   );
+});
+
+test('R6 Task 2 exposes the exact provider-neutral public contract', () => {
+  const contractPath = path.join(
+    backendRoot,
+    'src/modules/identity/public/identity-transient-delivery.port.ts',
+  );
+  assert.equal(existsSync(contractPath), true, 'Identity transient delivery port must exist');
+
+  const source = readFileSync(contractPath, 'utf8');
+  const sourceFile = ts.createSourceFile(
+    contractPath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  assert.deepEqual(
+    sourceFile.statements.filter(ts.isImportDeclaration),
+    [],
+    'the public contract must have no concrete or framework imports',
+  );
+
+  const exportedNames = sourceFile.statements.flatMap((statement) => {
+    const modifiers = ts.canHaveModifiers(statement)
+      ? ts.getModifiers(statement)
+      : undefined;
+    const exported = modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+    );
+    if (!exported) return [];
+    if (
+      ts.isTypeAliasDeclaration(statement)
+      || ts.isInterfaceDeclaration(statement)
+      || ts.isClassDeclaration(statement)
+      || ts.isVariableStatement(statement)
+    ) {
+      if (ts.isVariableStatement(statement)) {
+        return statement.declarationList.declarations.flatMap((declaration) =>
+          ts.isIdentifier(declaration.name) ? [declaration.name.text] : []);
+      }
+      return statement.name ? [statement.name.text] : [];
+    }
+    return [];
+  }).sort();
+  assert.deepEqual(exportedNames, [
+    'IDENTITY_TRANSIENT_DELIVERY_PORT',
+    'IdentityTransientDeliveryInput',
+    'IdentityTransientDeliveryPort',
+    'IdentityTransientDeliveryRejectedError',
+    'IdentityTransientDeliveryUncertainError',
+  ]);
+
+  const input = sourceFile.statements.find(
+    (statement): statement is ts.TypeAliasDeclaration =>
+      ts.isTypeAliasDeclaration(statement)
+        && statement.name.text === 'IdentityTransientDeliveryInput',
+  );
+  assert.ok(input && ts.isTypeLiteralNode(input.type));
+  assert.deepEqual(
+    input.type.members.map((member) => member.getText(sourceFile)),
+    ['phone: string;', 'text: string;'],
+  );
+
+  const port = sourceFile.statements.find(
+    (statement): statement is ts.InterfaceDeclaration =>
+      ts.isInterfaceDeclaration(statement)
+        && statement.name.text === 'IdentityTransientDeliveryPort',
+  );
+  assert.ok(port);
+  assert.deepEqual(
+    port.members.map((member) => member.getText(sourceFile)),
+    ['send(input: IdentityTransientDeliveryInput): Promise<void>;'],
+  );
+
+  const contract = require(contractPath);
+  assert.deepEqual(Object.keys(contract).sort(), [
+    'IDENTITY_TRANSIENT_DELIVERY_PORT',
+    'IdentityTransientDeliveryRejectedError',
+    'IdentityTransientDeliveryUncertainError',
+  ]);
+  assert.equal(typeof contract.IDENTITY_TRANSIENT_DELIVERY_PORT, 'symbol');
+  assert.equal(
+    contract.IDENTITY_TRANSIENT_DELIVERY_PORT,
+    require(contractPath).IDENTITY_TRANSIENT_DELIVERY_PORT,
+  );
+});
+
+test('R6 Task 2 adapter sends once, maps only known transport errors, and preserves unknown identity', async () => {
+  const adapterPath = path.join(
+    backendRoot,
+    'src/modules/identity/internal/identity-transient-delivery.adapter',
+  );
+  assert.equal(existsSync(`${adapterPath}.ts`), true, 'Identity delivery adapter must exist');
+
+  const transport = require(path.join(
+    backendRoot,
+    'src/platform/otp-transport/openwa-transient-text',
+  ));
+  const contract = require(path.join(
+    backendRoot,
+    'src/modules/identity/public/identity-transient-delivery.port',
+  ));
+  const { IdentityTransientDeliveryAdapter } = require(adapterPath);
+  const adapter = new IdentityTransientDeliveryAdapter();
+  const originalSender = transport.sendOpenWaTransientText;
+  const input = { phone: '967700000001', text: 'دعوة اختبار' };
+
+  const runWithSender = async (
+    sender: (value: typeof input) => Promise<void>,
+    exercise: () => Promise<void>,
+  ) => {
+    transport.sendOpenWaTransientText = sender;
+    try {
+      await exercise();
+    } finally {
+      transport.sendOpenWaTransientText = originalSender;
+    }
+  };
+
+  let calls = 0;
+  let received: unknown;
+  await runWithSender(async (value) => {
+    calls += 1;
+    received = value;
+  }, async () => adapter.send(input));
+  assert.equal(calls, 1);
+  assert.equal(received, input);
+  assert.deepEqual(input, { phone: '967700000001', text: 'دعوة اختبار' });
+
+  calls = 0;
+  await runWithSender(async () => {
+    calls += 1;
+    throw new transport.OpenWaTransientDeliveryUncertainError();
+  }, async () => {
+    await assert.rejects(
+      adapter.send(input),
+      (error: unknown) =>
+        error instanceof contract.IdentityTransientDeliveryUncertainError,
+    );
+  });
+  assert.equal(calls, 1);
+
+  calls = 0;
+  await runWithSender(async () => {
+    calls += 1;
+    throw new transport.OpenWaTransientDeliveryRejectedError();
+  }, async () => {
+    await assert.rejects(
+      adapter.send(input),
+      (error: unknown) =>
+        error instanceof contract.IdentityTransientDeliveryRejectedError,
+    );
+  });
+  assert.equal(calls, 1);
+
+  calls = 0;
+  const unknown = { exact: 'unknown-error-identity' };
+  await runWithSender(async () => {
+    calls += 1;
+    throw unknown;
+  }, async () => {
+    try {
+      await adapter.send(input);
+      assert.fail('unknown transport errors must be rethrown');
+    } catch (error) {
+      assert.equal(error, unknown);
+    }
+  });
+  assert.equal(calls, 1);
+});
+
+test('R6 Task 2 binds one adapter singleton and exports only the public token', async () => {
+  const requiredPaths = [
+    'src/modules/identity/internal/identity-transient-delivery.internal.module.ts',
+    'src/modules/identity/internal/identity-transient-delivery.adapter.ts',
+    'src/modules/identity/public/identity-transient-delivery-public.module.ts',
+    'src/modules/identity/public/identity-transient-delivery.port.ts',
+  ];
+  assert.equal(
+    requiredPaths.every((relativePath) => existsSync(path.join(backendRoot, relativePath))),
+    true,
+    'Identity transient delivery modules must exist',
+  );
+
+  const internal = require(path.join(
+    backendRoot,
+    'src/modules/identity/internal/identity-transient-delivery.internal.module',
+  ));
+  const adapter = require(path.join(
+    backendRoot,
+    'src/modules/identity/internal/identity-transient-delivery.adapter',
+  ));
+  const publicBoundary = require(path.join(
+    backendRoot,
+    'src/modules/identity/public/identity-transient-delivery-public.module',
+  ));
+  const contract = require(path.join(
+    backendRoot,
+    'src/modules/identity/public/identity-transient-delivery.port',
+  ));
+  const identity = require(path.join(
+    backendRoot,
+    'src/modules/identity/identity.module',
+  ));
+
+  assert.deepEqual(
+    Reflect.getMetadata(
+      MODULE_METADATA.PROVIDERS,
+      internal.IdentityTransientDeliveryInternalModule,
+    ),
+    [
+      adapter.IdentityTransientDeliveryAdapter,
+      {
+        provide: internal.IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION,
+        useExisting: adapter.IdentityTransientDeliveryAdapter,
+      },
+    ],
+  );
+  assert.deepEqual(
+    Reflect.getMetadata(
+      MODULE_METADATA.EXPORTS,
+      internal.IdentityTransientDeliveryInternalModule,
+    ),
+    [internal.IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION],
+  );
+  assert.deepEqual(
+    Reflect.getMetadata(
+      MODULE_METADATA.IMPORTS,
+      publicBoundary.IdentityTransientDeliveryPublicModule,
+    ),
+    [internal.IdentityTransientDeliveryInternalModule],
+  );
+  assert.deepEqual(
+    Reflect.getMetadata(
+      MODULE_METADATA.PROVIDERS,
+      publicBoundary.IdentityTransientDeliveryPublicModule,
+    ),
+    [{
+      provide: contract.IDENTITY_TRANSIENT_DELIVERY_PORT,
+      useExisting: internal.IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION,
+    }],
+  );
+  assert.deepEqual(
+    Reflect.getMetadata(
+      MODULE_METADATA.EXPORTS,
+      publicBoundary.IdentityTransientDeliveryPublicModule,
+    ),
+    [contract.IDENTITY_TRANSIENT_DELIVERY_PORT],
+  );
+
+  const identityImports = Reflect.getMetadata(
+    MODULE_METADATA.IMPORTS,
+    identity.IdentityModule,
+  ) as Function[];
+  assert.equal(
+    identityImports.filter(
+      (entry) => entry === publicBoundary.IdentityTransientDeliveryPublicModule,
+    ).length,
+    1,
+  );
+
+  const context = await NestFactory.createApplicationContext(
+    publicBoundary.IdentityTransientDeliveryPublicModule,
+    { logger: false },
+  );
+  try {
+    assert.equal(
+      context.get(contract.IDENTITY_TRANSIENT_DELIVERY_PORT),
+      context.get(adapter.IdentityTransientDeliveryAdapter),
+    );
+  } finally {
+    await context.close();
+  }
 });

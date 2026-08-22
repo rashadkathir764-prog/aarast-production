@@ -1,6 +1,6 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-08-12
+Snapshot date: 2026-08-22
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R5 Locally Complete
+### P3 — Source Quality And Architecture — R6 Planning Approved
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -417,23 +417,42 @@ Acceptance:
   safe-log, and owner authenticated phone login/read/write/close-reopen gates
   passed. R4 remains preserved for rollback.
 - R5 is locally complete. Remote CI was not run; no push, merge, PR mutation,
-  deployment, or R6 work is claimed.
+  or deployment is claimed.
 
 Current working plan:
-`docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
+`docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md`.
 
-This committed plan is the immutable pre-runtime/application-candidate R5
-execution snapshot. Its in-progress wording records the earlier checkpoint;
-the completed section and active receipts above are the later live state. R5
-is locally complete from base
-`9dab73acdc187a4a18d8a675713d8ded40a16d02` at application candidate
-`8cfee451a76bb17e20d278a1646dde4387bf7b18`. R6 has not started.
+#### R6 — Sharing OTP Transport Port — Planning Approved
+
+- R6 starts from immutable completed-R5 docs base
+  `ce0c0d19824bff79d91417e2fe4617914c6bcd70`.
+- The exact current debt is
+  `src/sharing/invitation-delivery.service.ts` importing the concrete
+  platform OpenWA transient sender and its provider-specific errors.
+- Identity will own one provider-neutral public port. Its private adapter calls
+  the unchanged platform sender exactly once and maps only the known uncertain
+  and rejected errors. Collaboration imports only the Identity public module.
+- The plan separates scope/scanner, port/adapter, consumer cutover, R3 debt
+  reconciliation, exhaustive candidate verification, immutable Docker/phone
+  evidence, and local closeout checkpoints.
+- Dependency evidence stays at 31 records and ownership stays at 385 records /
+  781 occurrences. Routes, messages, statuses, metrics, logs, persistence,
+  timeouts, retries, schema, Mobile, Admin, workflows, Compose, and deployment
+  remain frozen.
+- Application implementation has not started. R7, push, merge, PR mutation,
+  deployment, and remote CI are not authorized.
+
+The completed R5 execution snapshot remains:
+`docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
+Its in-progress wording records the earlier application checkpoint; the active
+R5 receipts record later local completion. Its docs-only closeout commit is the
+immutable base for R6 planning.
 
 The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
-The numbered P3 modernization work below treats locally completed R5 as the
-immutable current base; R6 and later-phase work must not move forward early.
+The numbered P3 modernization work below remains subordinate to the approved
+R6 plan. R7 and later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

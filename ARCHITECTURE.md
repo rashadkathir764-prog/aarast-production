@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-16
+Snapshot date: 2026-08-22
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -243,7 +243,16 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   occurrences. Routes, auth/OTP/session behavior, schema, migrations, model
   ownership semantics, Mobile, Admin, and deployment remain frozen. Full local
   gates, immutable runtime cutover, and the owner phone checkpoint passed. No
-  push, merge, deployment, remote CI, or R6 work is claimed.
+  push, merge, deployment, or remote CI is claimed.
+- R6 planning is owner-approved from immutable completed-R5 base
+  `ce0c0d19824bff79d91417e2fe4617914c6bcd70`. The one named scope is
+  Collaboration's direct import of the concrete OpenWA transient sender in
+  `InvitationDeliveryService`. Identity will own a provider-neutral public
+  transient-delivery port and a private adapter over the unchanged platform
+  sender; Collaboration will consume only that public port. Dependency evidence
+  remains 31 records and ownership remains 385 records / 781 occurrences.
+  Application implementation has not started, R7 is not authorized, and no
+  push, merge, deployment, or remote-CI result is claimed.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

@@ -6,6 +6,38 @@ This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
 
+## Modular Monolith R6 Planning Approved - 2026-08-22
+
+R6 planning is owner-approved on branch `modular-monolith` from immutable
+completed-R5 base `ce0c0d19824bff79d91417e2fe4617914c6bcd70`.
+Application implementation has not started.
+
+The verified scope is one direct dependency:
+`backend/src/sharing/invitation-delivery.service.ts` imports the concrete
+OpenWA transient sender and its uncertain/rejected errors from
+`backend/src/platform/otp-transport/openwa-transient-text.ts`. R6 introduces
+one provider-neutral Identity public port, a private Identity adapter over that
+unchanged sender, and a Collaboration cutover to the public Symbol token.
+Invitation text, condition order, statuses, persistence, metrics, privacy-safe
+logs, error behavior, timeouts, retries, OTP behavior, routes, schema,
+migrations, Mobile, Admin, workflows, Compose, and deployment stay frozen.
+
+The current focused baseline passes 28 tests with one intentional Windows
+permission skip out of 29. Full architecture passes at 344 modules, 1395
+dependencies, 31 known dependency records, ownership 385 records / 781
+occurrences, zero `forwardRef()`, two approved globals, zero illegal edges,
+and zero cycles. R3 remains at 13 contexts with zero duplicate registrations,
+zero platform debts, and zero retired provider edges; R4 and strict R5 gates
+remain green. Backend check passes, and the preserved R5 runtime still reports
+local `/live` and `/ready` HTTP 200 with zero restart and no OOM.
+
+The approved design and task plan require test-first scope gates, singleton
+port binding, exact consumer behavior proof, R3 debt reconciliation, full
+Backend/Prisma/audit/smoke verification, immutable Docker cutover, and a real
+authenticated phone sharing journey before local R6 completion. Real-recipient
+OpenWA delivery is not automatic and requires separate confirmation. R7 has not
+started. No push, merge, PR mutation, deployment, or remote CI is claimed.
+
 ## Modular Monolith R5 Local Completion - 2026-08-22
 
 R5 is locally complete on branch `modular-monolith` from immutable base
@@ -54,8 +86,9 @@ phone number, or business value was retained. One empty OS-temp audit directory
 remains outside the repository because deletion was denied; it contains zero
 files and is not a product artifact.
 
-R5 is a local completion only. No push, merge, PR mutation, deployment, remote
-CI, or R6 work is claimed. R6 has not started.
+R5 is a local completion only. No push, merge, PR mutation, deployment, or
+remote CI is claimed. Its docs-only closeout commit is the immutable base for
+the separately approved R6 planning section above.
 
 ## Modular Monolith R5 Task 5A Local Security Checkpoint - 2026-08-21
 

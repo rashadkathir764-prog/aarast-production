@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-08-21
+Snapshot date: 2026-08-22
 
 Snapshot source: the checked-out branch content. Resolve its immutable revision
 with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
@@ -174,8 +174,45 @@ and deployment artifacts.
   authenticated phone login, Home/context restore, representative reads and
   writes, and full close/reopen. Sanitized logs showed 237 events, 236 success,
   zero HTTP 5xx, and one controlled unauthenticated 401 probe.
-- R5 is locally complete. R4 is stopped and preserved for rollback. R6, push,
+- R5 is locally complete. R4 is stopped and preserved for rollback. R6
+  application work is governed by the separately approved plan below; push,
   merge, PR mutation, deployment, and remote-CI claims remain forbidden.
+
+## Modular Monolith R6 Planned Gates
+
+- Fixed-base R6 scope must allow only the approved manifest/scanner/tests,
+  Identity public/internal delivery boundary, Collaboration injection cutover,
+  exact R3 reconciliation, generated script docs, and final receipts.
+- Permanent R6 tests must fail on another concrete sender, a Collaboration
+  platform transport import, an Identity internal/full-module import,
+  `useClass` duplication, a second token alias, retries, swallowed or remapped
+  unknown errors, changed input, provider-specific public types, protected
+  OpenWA/OTP changes, or unrelated baseline movement.
+- Focused behavior coverage is
+  `invite-delivery.test.ts`, `openwa-otp-channel.test.ts`,
+  `openwa-credential-file.test.ts`, R3 context/scope tests, and the new R6
+  architecture test. Existing invitation assertions, Arabic copy, fixtures,
+  setup, branch order, status, metric, log, persistence, and error behavior
+  remain frozen except exact DI/import wiring.
+- Aggregate architecture must retain dependency evidence at 31 records and
+  ownership at 385 records / 781 occurrences, with zero `forwardRef()`, two
+  approved globals, zero cycles/illegal edges, all 13 R3 contexts, and green R4
+  and strict R5 gates.
+- Full candidate verification requires Backend architecture, check, build,
+  tests, Prisma validate/generate and equivalence, both high-level audits,
+  targeted managed smokes, all `smoke:all` packages, protected surfaces,
+  documentation, whitespace, and residue checks.
+- Immutable Docker proof must bind the exact candidate revision and pass
+  migration discovery, local/LAN `/live` and `/ready`, dependency readiness,
+  zero restart/OOM, and sanitized logs while preserving the R5 rollback.
+- Phone acceptance must use an R6-bound LAN endpoint and cover authenticated
+  login/context restore, sharing invitation create, reissue, related read, and
+  full close/reopen. If OpenWA delivery is disabled, record that truthfully.
+  Real-recipient OpenWA smoke is externally mutating and requires separate
+  owner confirmation and a dedicated recipient; never retain a code, phone,
+  token, raw body, or business value.
+- Passing these gates authorizes only local R6 closeout. It does not authorize
+  R7, push, merge, PR mutation, deployment, or remote CI.
 
 ## Modular Monolith R3 Closeout Gates
 

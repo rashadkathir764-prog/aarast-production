@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-14
+Snapshot date: 2026-08-22
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -93,6 +93,13 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md`
+  - owner-approved local R6 design and task plan from completed-R5 base
+  `ce0c0d19824bff79d91417e2fe4617914c6bcd70`. R6 removes only
+  Collaboration's named concrete OpenWA transient-sender dependency through an
+  Identity-owned public port and private adapter. Application implementation
+  has not started; behavior/schema/Mobile/Admin/deployment stay frozen, R7 is
+  not authorized, and no push, merge, deployment, or remote CI is claimed.
 - `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`
   - immutable R5 execution snapshot from local R4 receipt
   `9dab73acdc187a4a18d8a675713d8ded40a16d02`. Its in-progress wording records
@@ -101,8 +108,9 @@ changing behavior.
   application candidate `8cfee451a76bb17e20d278a1646dde4387bf7b18`.
   All 44 Identity files moved one-to-one, the four old roots are absent, local
   gates/runtime/phone passed, and API, behavior, schema, Mobile, Admin, and
-  deployment stayed frozen. No push, merge, deployment, remote CI, or R6 work
-  is claimed.
+  deployment stayed frozen. No push, merge, deployment, or remote CI is
+  claimed. Its docs-only closeout commit is the immutable base for the approved
+  R6 plan above.
 - `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`
   - immutable pre-runtime/application-candidate execution snapshot. Its
   in-progress status records the stop before authorized Git, runtime, phone, and

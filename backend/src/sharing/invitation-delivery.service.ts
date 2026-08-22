@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
-  OpenWaTransientDeliveryRejectedError,
-  OpenWaTransientDeliveryUncertainError,
-  sendOpenWaTransientText,
-} from '../platform/otp-transport/openwa-transient-text';
+  IDENTITY_TRANSIENT_DELIVERY_PORT,
+  IdentityTransientDeliveryPort,
+  IdentityTransientDeliveryRejectedError,
+  IdentityTransientDeliveryUncertainError,
+} from '../modules/identity/public/identity-transient-delivery.port';
 import { invitationDeliveryOutcomesTotal } from '../platform/observability/metrics';
 
 export type InvitationDeliveryStatus =
@@ -22,6 +23,11 @@ const defaultInviteOrigin = 'https://aarast.shadowgardn.com';
 export class InvitationDeliveryService {
   private readonly logger = new Logger(InvitationDeliveryService.name);
 
+  constructor(
+    @Inject(IDENTITY_TRANSIENT_DELIVERY_PORT)
+    private readonly transientDelivery: IdentityTransientDeliveryPort,
+  ) {}
+
   async deliver(phone: string | null, token: string): Promise<InvitationDeliveryResult> {
     if (!phone || process.env.AUTH_OTP_MODE?.trim().toLowerCase() !== 'openwa') {
       invitationDeliveryOutcomesTotal.inc({ outcome: 'not_attempted' });
@@ -29,19 +35,19 @@ export class InvitationDeliveryService {
     }
 
     try {
-      await sendOpenWaTransientText({
+      await this.transientDelivery.send({
         phone,
         text: buildInvitationMessage(token),
       });
       invitationDeliveryOutcomesTotal.inc({ outcome: 'delivered' });
       return { channel: 'WHATSAPP', status: 'DELIVERED' };
     } catch (error) {
-      if (error instanceof OpenWaTransientDeliveryUncertainError) {
+      if (error instanceof IdentityTransientDeliveryUncertainError) {
         invitationDeliveryOutcomesTotal.inc({ outcome: 'uncertain' });
         this.logFailure('uncertain');
         return { channel: 'WHATSAPP', status: 'UNCERTAIN' };
       }
-      if (error instanceof OpenWaTransientDeliveryRejectedError) {
+      if (error instanceof IdentityTransientDeliveryRejectedError) {
         invitationDeliveryOutcomesTotal.inc({ outcome: 'rejected' });
         this.logFailure('rejected');
         return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };

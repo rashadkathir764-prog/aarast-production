@@ -283,6 +283,13 @@ const R6_TASK2_MODULE_IDENTITIES = Object.freeze([
     className: 'IdentityTransientDeliveryPublicModule',
   }),
 ]);
+const R6_TASK3_COLLABORATION_MODULE = Object.freeze({
+  path: 'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+  className: 'CollaborationServicesInternalModule',
+  importedModule: 'IdentityTransientDeliveryPublicModule',
+});
+const R6_TASK3_CONSUMER_PATH =
+  'backend/src/sharing/invitation-delivery.service.ts';
 const CONTRACT_SHAPE_HASH = '442b4879213326646cfb479a1f98a6408aebef618b07da3e635db9b5faa3443b';
 const INITIAL_RETIRED_LEDGER_HASH = '18fb99438d6b7002ca3f55aac407985fa13252aff3a59073d126fa3dc4c9b3a3';
 const MAX_ARRAY_ITEMS = 1000;
@@ -847,6 +854,17 @@ function r6Task2SourcesPresent(repoRoot) {
   ));
 }
 
+function r6Task3ConsumerPresent(repoRoot) {
+  const sourcePath = path.join(repoRoot, ...R6_TASK3_CONSUMER_PATH.split('/'));
+  if (!fs.existsSync(sourcePath)) return false;
+  const source = fs.readFileSync(sourcePath, 'utf8');
+  return source.includes("from '../modules/identity/public/identity-transient-delivery.port'")
+    && source.includes('@Inject(IDENTITY_TRANSIENT_DELIVERY_PORT)')
+    && source.includes('private readonly transientDelivery: IdentityTransientDeliveryPort')
+    && source.includes('this.transientDelivery.send')
+    && !source.includes('platform/otp-transport');
+}
+
 function projectPendingR6Task2Modules(repoRoot, manifest, modules) {
   if (manifest.providerContracts.some(
     (contract) => contract.token === R6_TASK2_PROVIDER_CONTRACT.token,
@@ -860,11 +878,22 @@ function projectPendingR6Task2Modules(repoRoot, manifest, modules) {
   const identityModules = modules.filter((module) =>
     module.path === 'backend/src/modules/identity/identity.module.ts'
       && module.className === 'IdentityModule');
+  const collaborationModules = modules.filter((module) =>
+    module.path === R6_TASK3_COLLABORATION_MODULE.path
+      && module.className === R6_TASK3_COLLABORATION_MODULE.className);
+  const collaborationImportCount = collaborationModules.length === 1
+    ? collaborationModules[0].imports.filter(
+      (entry) => entry === R6_TASK3_COLLABORATION_MODULE.importedModule,
+    ).length
+    : -1;
   if (exactR6Modules.some((matches) => matches.length !== 1)
       || identityModules.length !== 1
       || identityModules[0].imports.filter(
         (entry) => entry === 'IdentityTransientDeliveryPublicModule',
-      ).length !== 1) {
+      ).length !== 1
+      || collaborationModules.length !== 1
+      || collaborationImportCount > 1
+      || (collaborationImportCount === 1 && !r6Task3ConsumerPresent(repoRoot))) {
     return modules;
   }
 
@@ -873,13 +902,23 @@ function projectPendingR6Task2Modules(repoRoot, manifest, modules) {
   ));
   return modules.filter((module) =>
     !r6ModuleKeys.has(`${module.path}#${module.className}`)).map((module) => {
-    if (module !== identityModules[0]) return module;
-    return {
-      ...module,
-      imports: module.imports.filter(
-        (entry) => entry !== 'IdentityTransientDeliveryPublicModule',
-      ),
-    };
+    if (module === identityModules[0]) {
+      return {
+        ...module,
+        imports: module.imports.filter(
+          (entry) => entry !== 'IdentityTransientDeliveryPublicModule',
+        ),
+      };
+    }
+    if (module === collaborationModules[0] && collaborationImportCount === 1) {
+      return {
+        ...module,
+        imports: module.imports.filter(
+          (entry) => entry !== R6_TASK3_COLLABORATION_MODULE.importedModule,
+        ),
+      };
+    }
+    return module;
   });
 }
 

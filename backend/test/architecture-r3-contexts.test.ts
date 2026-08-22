@@ -165,6 +165,70 @@ function r6Task2SourceFixture(replacements: Array<{
   for (const [relativePath, content] of Object.entries(files)) {
     write(fixture.repoRoot, relativePath, content);
   }
+
+  const collaborationPath = path.join(
+    fixture.backendRoot,
+    'src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+  );
+  let collaborationSource = readFileSync(collaborationPath, 'utf8');
+  const task3ModuleImport =
+    'import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";\n';
+  const task3ModuleEntry = '    IdentityTransientDeliveryPublicModule,\n';
+  if (collaborationSource.includes(task3ModuleImport)) {
+    assert.ok(collaborationSource.includes(task3ModuleEntry));
+    collaborationSource = collaborationSource
+      .replace(task3ModuleImport, '')
+      .replace(task3ModuleEntry, '');
+    writeFileSync(collaborationPath, collaborationSource, 'utf8');
+  }
+
+  const consumerPath = path.join(
+    fixture.backendRoot,
+    'src/sharing/invitation-delivery.service.ts',
+  );
+  let consumerSource = readFileSync(consumerPath, 'utf8');
+  if (consumerSource.includes('this.transientDelivery.send')) {
+    consumerSource = consumerSource
+      .replace("import { Inject, Injectable, Logger } from '@nestjs/common';", "import { Injectable, Logger } from '@nestjs/common';")
+      .replace(
+        [
+          'import {',
+          '  IDENTITY_TRANSIENT_DELIVERY_PORT,',
+          '  IdentityTransientDeliveryPort,',
+          '  IdentityTransientDeliveryRejectedError,',
+          '  IdentityTransientDeliveryUncertainError,',
+          "} from '../modules/identity/public/identity-transient-delivery.port';",
+        ].join('\n'),
+        [
+          'import {',
+          '  OpenWaTransientDeliveryRejectedError,',
+          '  OpenWaTransientDeliveryUncertainError,',
+          '  sendOpenWaTransientText,',
+          "} from '../platform/otp-transport/openwa-transient-text';",
+        ].join('\n'),
+      )
+      .replace(
+        [
+          '  constructor(',
+          '    @Inject(IDENTITY_TRANSIENT_DELIVERY_PORT)',
+          '    private readonly transientDelivery: IdentityTransientDeliveryPort,',
+          '  ) {}',
+          '',
+        ].join('\n'),
+        '',
+      )
+      .replace('this.transientDelivery.send', 'sendOpenWaTransientText')
+      .replace(
+        'IdentityTransientDeliveryUncertainError',
+        'OpenWaTransientDeliveryUncertainError',
+      )
+      .replace(
+        'IdentityTransientDeliveryRejectedError',
+        'OpenWaTransientDeliveryRejectedError',
+      );
+    writeFileSync(consumerPath, consumerSource, 'utf8');
+  }
+
   for (const replacement of replacements) {
     const target = path.join(fixture.backendRoot, 'src', replacement.relativePath);
     const current = readFileSync(target, 'utf8');
@@ -299,6 +363,36 @@ test('R6 Task 2 projects only the exact pending Identity delivery module delta',
   });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.counts.legacyModules, 51);
+});
+
+test('R6 Task 3 projects only the exact pending Collaboration public-module delta', () => {
+  const fixture = fullSourceFixture([]);
+  const result = scanner().scanR3Contexts({
+    ...fixture,
+    manifestPath,
+    stage: 'strict',
+  });
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.counts.legacyModules, 51);
+
+  const duplicate = fullSourceFixture([{
+    relativePath:
+      'modules/collaboration/internal/collaboration-services.internal.module.ts',
+    before: [
+      '    IdentityTransientDeliveryPublicModule,',
+      '    PrismaModule,',
+    ].join('\n'),
+    after: [
+      '    IdentityTransientDeliveryPublicModule,',
+      '    IdentityTransientDeliveryPublicModule,',
+      '    PrismaModule,',
+    ].join('\n'),
+  }]);
+  assert.ok(scanner().scanR3Contexts({
+    ...duplicate,
+    manifestPath,
+    stage: 'strict',
+  }).diagnostics.some((item: any) => item.kind === 'inventory-drift'));
 });
 
 test('R6 Task 2 rejects useClass, duplicate adapter registration, and public transport imports', () => {

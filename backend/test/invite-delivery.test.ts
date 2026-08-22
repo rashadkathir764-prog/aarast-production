@@ -5,7 +5,9 @@ import { createHash } from "node:crypto";
 import { afterEach, test } from "node:test";
 import { HttpException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { IdentityTransientDeliveryAdapter } from "../src/modules/identity/internal/identity-transient-delivery.adapter";
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
+import { IdentityTransientDeliveryPort } from "../src/modules/identity/public/identity-transient-delivery.port";
 import { invitationDeliveryOutcomesTotal } from "../src/platform/observability/metrics";
 import { InviteAccessService } from "../src/sharing/invite-access.service";
 import {
@@ -22,6 +24,16 @@ async function invitationDeliveryMetricValue(outcome: string): Promise<number> {
   return (
     metric.values.find((value) => value.labels.outcome === outcome)?.value ?? 0
   );
+}
+
+function createInvitationDeliveryService(
+  deliveryPort: IdentityTransientDeliveryPort =
+    new IdentityTransientDeliveryAdapter(),
+): InvitationDeliveryService {
+  const Service = InvitationDeliveryService as unknown as new (
+    port: IdentityTransientDeliveryPort,
+  ) => InvitationDeliveryService;
+  return new Service(deliveryPort);
 }
 
 afterEach(() => {
@@ -58,7 +70,7 @@ test("Aarast sends an invite through only the hardened transient OpenWA route", 
 
   const deliveredBefore = await invitationDeliveryMetricValue("delivered");
   const token = TEST_INVITE_TOKEN;
-  const result = await new InvitationDeliveryService().deliver(
+  const result = await createInvitationDeliveryService().deliver(
     "+967777123456",
     token,
   );
@@ -102,7 +114,7 @@ test("invite delivery maps explicit OpenWA outcomes without false success", asyn
         headers: { "content-type": "application/json" },
       })) as typeof fetch;
 
-    const result = await new InvitationDeliveryService().deliver(
+    const result = await createInvitationDeliveryService().deliver(
       "+967777123456",
       token,
     );
@@ -124,7 +136,7 @@ test("invite delivery maps explicit OpenWA outcomes without false success", asyn
         headers: { "content-type": "application/json" },
       },
     )) as typeof fetch;
-  const ambiguousSuccess = await new InvitationDeliveryService().deliver(
+  const ambiguousSuccess = await createInvitationDeliveryService().deliver(
     "+967777123456",
     token,
   );
@@ -149,7 +161,7 @@ test("invite delivery records an unexpected failure without logging private fiel
   process.env.OPENWA_API_KEY = "a-secure-openwa-api-key-for-tests-only";
   const failedBefore = await invitationDeliveryMetricValue("failed");
   const warningEntries: unknown[] = [];
-  const service = new InvitationDeliveryService();
+  const service = createInvitationDeliveryService();
   (service as any).logger = {
     warn: (entry: unknown) => warningEntries.push(entry),
   };
@@ -173,7 +185,7 @@ test("invite delivery records a bounded not-attempted outcome without private la
   process.env.AUTH_OTP_MODE = "openwa";
   const before = await invitationDeliveryMetricValue("not_attempted");
 
-  const result = await new InvitationDeliveryService().deliver(
+  const result = await createInvitationDeliveryService().deliver(
     null,
     TEST_INVITE_TOKEN,
   );
@@ -187,6 +199,55 @@ test("invite delivery records a bounded not-attempted outcome without private la
   for (const value of metric.values) {
     assert.deepEqual(Object.keys(value.labels), ["outcome"]);
   }
+});
+
+test("invite delivery delegates the exact phone and message to the Identity port", async () => {
+  process.env.AUTH_OTP_MODE = "openwa";
+  const calls: Array<{ phone: string; text: string }> = [];
+  const service = createInvitationDeliveryService({
+    send: async (input) => {
+      calls.push(input);
+    },
+  });
+
+  const result = await service.deliver("+967777123456", TEST_INVITE_TOKEN);
+
+  assert.deepEqual(result, { channel: "WHATSAPP", status: "DELIVERED" });
+  assert.deepEqual(calls, [
+    {
+      phone: "+967777123456",
+      text: [
+        "مرحبًا 👋",
+        "لديك دعوة خاصة للمشاركة في خطة عبر أعرست.",
+        "افتح الرابط، ثم تحقق من رقم هاتفك لعرض الدعوة:",
+        `https://aarast.shadowgardn.com/invites/${TEST_INVITE_TOKEN}`,
+        "هذا الرابط خاص بك، لا تشاركه مع الآخرين.",
+      ].join("\n"),
+    },
+  ]);
+});
+
+test("invite delivery returns before token rendering and the port when delivery is unavailable", async () => {
+  let calls = 0;
+  const service = createInvitationDeliveryService({
+    send: async () => {
+      calls += 1;
+      throw new Error("the unavailable branch must not call the port");
+    },
+  });
+
+  process.env.AUTH_OTP_MODE = "disabled";
+  assert.deepEqual(
+    await service.deliver("+967777123456", "invalid-private-token"),
+    { channel: "WHATSAPP", status: "UNAVAILABLE" },
+  );
+
+  process.env.AUTH_OTP_MODE = "openwa";
+  assert.deepEqual(await service.deliver(null, "invalid-private-token"), {
+    channel: "WHATSAPP",
+    status: "UNAVAILABLE",
+  });
+  assert.equal(calls, 0);
 });
 
 test("invite message is generic, private, and rejects an unsafe public origin", () => {

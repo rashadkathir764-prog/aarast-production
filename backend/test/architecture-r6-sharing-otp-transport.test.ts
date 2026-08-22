@@ -11,7 +11,10 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
-import { MODULE_METADATA } from '@nestjs/common/constants';
+import {
+  MODULE_METADATA,
+  SELF_DECLARED_DEPS_METADATA,
+} from '@nestjs/common/constants';
 import { NestFactory } from '@nestjs/core';
 import ts from 'typescript';
 
@@ -156,7 +159,7 @@ test('R6 manifest pins the exact base, boundary, protected files, baselines, and
   assert.equal(r6.R6_BASE, r6Base);
   assert.deepEqual(r6.STAGES, ['inventory', 'task-2', 'task-3', 'strict']);
   assert.equal(manifest.baseRevision, r6Base);
-  assert.equal(manifest.stage, 'task-2');
+  assert.equal(manifest.stage, 'task-3');
   assert.deepEqual(manifest.currentConcreteDependency, {
     consumer: 'backend/src/sharing/invitation-delivery.service.ts',
     transport: 'backend/src/platform/otp-transport/openwa-transient-text.ts',
@@ -271,15 +274,15 @@ test('R6 manifest rejects identity, shape, path, boundary, hash, and scope near-
   assert.throws(() => r6.validateR6Manifest(proxy), /plain|data/i);
 });
 
-test('R6 Task 2 scan keeps the one current concrete import and protected files', () => {
+test('R6 Task 3 scan removes the Collaboration concrete import and keeps protected files', () => {
   const result = scanner().scanR6SharingOtpTransport({
     repositoryRoot,
     manifest: readManifest(),
   });
   assert.deepEqual(result, {
     ok: true,
-    stage: 'task-2',
-    concreteImports: 1,
+    stage: 'task-3',
+    concreteImports: 0,
     protectedFiles: 2,
   });
 });
@@ -407,7 +410,7 @@ test('R6 CLI accepts only check mode and reports one bounded result', () => {
   }), 0);
   assert.equal(errors.length, 0);
   assert.deepEqual(output, [
-    'PASS - R6 Sharing OTP transport: stage=task-2, concrete-imports=1, protected=2',
+    'PASS - R6 Sharing OTP transport: stage=task-3, concrete-imports=0, protected=2',
   ]);
 
   assert.equal(r6.runCli({
@@ -694,4 +697,181 @@ test('R6 Task 2 binds one adapter singleton and exports only the public token', 
   } finally {
     await context.close();
   }
+});
+
+test('R6 Task 3 injects the canonical Identity port and imports only its public module', () => {
+  const consumerPath = path.join(
+    backendRoot,
+    'src/sharing/invitation-delivery.service.ts',
+  );
+  const contractPath = path.join(
+    backendRoot,
+    'src/modules/identity/public/identity-transient-delivery.port.ts',
+  );
+  const service = require(consumerPath);
+  const contract = require(contractPath);
+  const collaboration = require(path.join(
+    backendRoot,
+    'src/modules/collaboration/internal/collaboration-services.internal.module',
+  ));
+  const publicBoundary = require(path.join(
+    backendRoot,
+    'src/modules/identity/public/identity-transient-delivery-public.module',
+  ));
+  const internalBoundary = require(path.join(
+    backendRoot,
+    'src/modules/identity/internal/identity-transient-delivery.internal.module',
+  ));
+  const identity = require(path.join(
+    backendRoot,
+    'src/modules/identity/identity.module',
+  ));
+
+  assert.deepEqual(
+    Reflect.getMetadata(
+      SELF_DECLARED_DEPS_METADATA,
+      service.InvitationDeliveryService,
+    ),
+    [{ index: 0, param: contract.IDENTITY_TRANSIENT_DELIVERY_PORT }],
+  );
+
+  const collaborationImports = Reflect.getMetadata(
+    MODULE_METADATA.IMPORTS,
+    collaboration.CollaborationServicesInternalModule,
+  ) as Function[];
+  assert.equal(
+    collaborationImports.filter(
+      (entry) => entry === publicBoundary.IdentityTransientDeliveryPublicModule,
+    ).length,
+    1,
+  );
+  assert.equal(
+    collaborationImports.includes(
+      internalBoundary.IdentityTransientDeliveryInternalModule,
+    ),
+    false,
+  );
+  assert.equal(collaborationImports.includes(identity.IdentityModule), false);
+
+  const collaborationProviders = Reflect.getMetadata(
+    MODULE_METADATA.PROVIDERS,
+    collaboration.CollaborationServicesInternalModule,
+  ) as Function[];
+  assert.equal(
+    collaborationProviders.filter(
+      (entry) => entry === service.InvitationDeliveryService,
+    ).length,
+    1,
+  );
+  assert.equal(
+    collaborationProviders.includes(
+      internalBoundary.IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION,
+    ),
+    false,
+  );
+  assert.equal(
+    collaborationProviders.includes(contract.IDENTITY_TRANSIENT_DELIVERY_PORT),
+    false,
+  );
+
+  const program = ts.createProgram([consumerPath], {
+    experimentalDecorators: true,
+    module: ts.ModuleKind.CommonJS,
+    moduleResolution: ts.ModuleResolutionKind.Node10,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.ES2022,
+  });
+  const checker = program.getTypeChecker();
+  const consumerSource = program.getSourceFile(consumerPath);
+  const contractSource = program.getSourceFile(contractPath);
+  assert.ok(consumerSource);
+  assert.ok(contractSource);
+
+  const resolvedSymbol = (node: ts.Node): ts.Symbol => {
+    const symbol = checker.getSymbolAtLocation(node);
+    assert.ok(symbol);
+    return symbol.flags & ts.SymbolFlags.Alias
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+  };
+  const contractDeclarations = new Map(
+    contractSource.statements.flatMap((statement) => {
+      if (ts.isVariableStatement(statement)) {
+        const declaration = statement.declarationList.declarations[0];
+        if (declaration && ts.isIdentifier(declaration.name)) {
+          return [[
+            declaration.name.text,
+            resolvedSymbol(declaration.name),
+          ] as const];
+        }
+      }
+      if (
+        (ts.isInterfaceDeclaration(statement) || ts.isClassDeclaration(statement))
+        && statement.name
+      ) {
+        return [[statement.name.text, resolvedSymbol(statement.name)] as const];
+      }
+      return [];
+    }),
+  );
+
+  const identityImport = consumerSource.statements.find(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement)
+      && ts.isStringLiteral(statement.moduleSpecifier)
+      && statement.moduleSpecifier.text.endsWith(
+        'modules/identity/public/identity-transient-delivery.port',
+      ),
+  );
+  assert.ok(identityImport);
+  assert.ok(identityImport.importClause?.namedBindings);
+  assert.ok(ts.isNamedImports(identityImport.importClause.namedBindings));
+  const importedSymbols = identityImport.importClause.namedBindings.elements;
+  assert.deepEqual(
+    importedSymbols.map((element) => element.name.text).sort(),
+    [
+      'IDENTITY_TRANSIENT_DELIVERY_PORT',
+      'IdentityTransientDeliveryPort',
+      'IdentityTransientDeliveryRejectedError',
+      'IdentityTransientDeliveryUncertainError',
+    ],
+  );
+  for (const element of importedSymbols) {
+    assert.equal(
+      resolvedSymbol(element.name),
+      contractDeclarations.get(element.name.text),
+    );
+  }
+
+  const consumerClass = consumerSource.statements.find(
+    (statement): statement is ts.ClassDeclaration =>
+      ts.isClassDeclaration(statement)
+      && statement.name?.text === 'InvitationDeliveryService',
+  );
+  assert.ok(consumerClass);
+  const constructors = consumerClass.members.filter(ts.isConstructorDeclaration);
+  assert.equal(constructors.length, 1);
+  assert.equal(constructors[0].parameters.length, 1);
+  const parameter = constructors[0].parameters[0];
+  assert.ok(ts.isIdentifier(parameter.name));
+  assert.equal(parameter.name.text, 'transientDelivery');
+  assert.ok(parameter.type && ts.isTypeReferenceNode(parameter.type));
+  assert.ok(ts.isIdentifier(parameter.type.typeName));
+  assert.equal(
+    resolvedSymbol(parameter.type.typeName),
+    contractDeclarations.get('IdentityTransientDeliveryPort'),
+  );
+
+  const decorators = ts.getDecorators(parameter) ?? [];
+  assert.equal(decorators.length, 1);
+  assert.ok(ts.isCallExpression(decorators[0].expression));
+  const injectCall = decorators[0].expression;
+  assert.ok(ts.isIdentifier(injectCall.expression));
+  assert.equal(injectCall.expression.text, 'Inject');
+  assert.equal(injectCall.arguments.length, 1);
+  assert.ok(ts.isIdentifier(injectCall.arguments[0]));
+  assert.equal(
+    resolvedSymbol(injectCall.arguments[0]),
+    contractDeclarations.get('IDENTITY_TRANSIENT_DELIVERY_PORT'),
+  );
 });

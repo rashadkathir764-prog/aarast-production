@@ -4,6 +4,7 @@ import { InvitationDeliveryService } from "../../../sharing/invitation-delivery.
 import { InviteAccessService } from "../../../sharing/invite-access.service";
 import { SharingService } from "../../../sharing/sharing.service";
 import { IdentityAuthPublicModule } from "../../identity/public/identity-auth-public.module";
+import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";
 import { MessagingRealtimePublicModule } from "../../messaging/public/messaging-realtime-public.module";
 import { NotificationsPublicModule } from "../../notifications/public/notifications-public.module";
 import { CollaborationHistoryInternalModule } from "./collaboration-history.internal.module";
@@ -12,6 +13,7 @@ import { CollaborationPermissionInternalModule } from "./collaboration-permissio
 @Module({
   imports: [
     IdentityAuthPublicModule,
+    IdentityTransientDeliveryPublicModule,
     PrismaModule,
     MessagingRealtimePublicModule,
     NotificationsPublicModule,

@@ -10,11 +10,16 @@ const {
   R5_BASE,
   validateR5Manifest,
 } = require('./r5-identity-scan.cjs');
+const {
+  R6_BASE,
+  validateR6Manifest,
+} = require('./r6-sharing-otp-transport-scan.cjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const R4_BASE = '502b181a2ce624458fd7eae064f194497ec0151e';
 const R4_MANIFEST_PATH = 'backend/architecture/r4-planning-finance-boundary.json';
 const R5_MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
+const R6_MANIFEST_PATH = 'backend/architecture/r6-sharing-otp-transport.json';
 const R4_ALLOWED_PATHS = Object.freeze([
   'ARCHITECTURE.md',
   'CHANGELOG.md',
@@ -272,6 +277,15 @@ const R5_ALLOWED_PATHS = Object.freeze([
     'r5-identity-relocation.json',
   ), 'utf8'))).allowedChangedPaths,
 ]);
+const R6_ALLOWED_PATHS = Object.freeze([
+  ...validateR6Manifest(JSON.parse(fs.readFileSync(path.join(
+    __dirname,
+    '..',
+    '..',
+    'architecture',
+    'r6-sharing-otp-transport.json',
+  ), 'utf8'))).allowedChangedPaths,
+]);
 
 function assertPlainObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !utilTypes.isProxy(value)) {
@@ -361,6 +375,30 @@ function validateR5IdentityManifest(value) {
   ]) {
     if (!manifest.allowedChangedPaths.includes(requiredPath)) {
       throw new Error('R5 identity manifest is missing a required handoff path');
+    }
+  }
+  return Object.freeze({
+    baseRevision: manifest.baseRevision,
+    stage: manifest.stage,
+    allowedChangedPaths: Object.freeze([...manifest.allowedChangedPaths]),
+  });
+}
+
+function validateR6SharingOtpManifest(value) {
+  const manifest = validateR6Manifest(value);
+  if (manifest.baseRevision !== R6_BASE) {
+    throw new Error('R6 Sharing OTP transport manifest identity is invalid');
+  }
+  assertAllowedPathsMatch(manifest.allowedChangedPaths, R6_ALLOWED_PATHS);
+  for (const requiredPath of [
+    R6_MANIFEST_PATH,
+    'backend/scripts/architecture/r3-scope.cjs',
+    'backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs',
+    'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/architecture-r6-sharing-otp-transport.test.ts',
+  ]) {
+    if (!manifest.allowedChangedPaths.includes(requiredPath)) {
+      throw new Error('R6 Sharing OTP transport manifest is missing a required handoff path');
     }
   }
   return Object.freeze({
@@ -584,10 +622,15 @@ function validateR3Scope(options) {
   const delegatedR5 = fs.existsSync(r5ManifestAbsolutePath)
     ? validateR5IdentityManifest(JSON.parse(fs.readFileSync(r5ManifestAbsolutePath, 'utf8')))
     : null;
+  const r6ManifestAbsolutePath = path.join(input.repositoryRoot, ...R6_MANIFEST_PATH.split('/'));
+  const delegatedR6 = fs.existsSync(r6ManifestAbsolutePath)
+    ? validateR6SharingOtpManifest(JSON.parse(fs.readFileSync(r6ManifestAbsolutePath, 'utf8')))
+    : null;
   const effectiveAllowedPaths = [...new Set([
     ...ALLOWED_PATHS,
     ...(delegatedR4 ? delegatedR4.allowedChangedPaths : []),
     ...(delegatedR5 ? delegatedR5.allowedChangedPaths : []),
+    ...(delegatedR6 ? delegatedR6.allowedChangedPaths : []),
   ])].sort();
   const tracked = gitLines(input.repositoryRoot, ['diff', '--no-renames', '--name-only', R3_BASE, '--']);
   const untracked = gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
@@ -634,9 +677,11 @@ module.exports = {
   ALLOWED_PATHS,
   R4_ALLOWED_PATHS,
   R5_ALLOWED_PATHS,
+  R6_ALLOWED_PATHS,
   assertAllowedPathsMatch,
   validateR4DelegationManifest,
   validateR5IdentityManifest,
+  validateR6SharingOtpManifest,
   writeAtomicJson,
   validateR3Scope,
   validateScopeSnapshot,

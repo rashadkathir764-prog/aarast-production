@@ -21,6 +21,11 @@ const r5ManifestPath = path.join(
   'architecture',
   'r5-identity-relocation.json',
 );
+const r6ManifestPath = path.join(
+  backendRoot,
+  'architecture',
+  'r6-sharing-otp-transport.json',
+);
 const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const temporaryRoots: string[] = [];
 
@@ -29,6 +34,7 @@ type ScopeModule = {
   ALLOWED_PATHS: readonly string[];
   R4_ALLOWED_PATHS: readonly string[];
   R5_ALLOWED_PATHS: readonly string[];
+  R6_ALLOWED_PATHS: readonly string[];
   assertAllowedPathsMatch(manifestPaths: unknown, scopePaths: unknown): void;
   writeAtomicJson(
     reportPath: string,
@@ -37,6 +43,11 @@ type ScopeModule = {
   ): void;
   validateR3Scope(options: Record<string, unknown>): any;
   validateR5IdentityManifest(value: unknown): {
+    baseRevision: string;
+    stage: string;
+    allowedChangedPaths: readonly string[];
+  };
+  validateR6SharingOtpManifest(value: unknown): {
     baseRevision: string;
     stage: string;
     allowedChangedPaths: readonly string[];
@@ -286,12 +297,13 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
     true,
     'the immutable R3 portion must match either exact R3 receipt stage',
   );
-  const delegatedR4Paths = result.changedPaths.filter((entry: string) =>
+  const delegatedPostR3Paths = result.changedPaths.filter((entry: string) =>
     !scope().ALLOWED_PATHS.includes(entry));
   assert.deepEqual(
-    delegatedR4Paths.filter((entry: string) =>
+    delegatedPostR3Paths.filter((entry: string) =>
       !scope().R4_ALLOWED_PATHS.includes(entry)
-      && !scope().R5_ALLOWED_PATHS.includes(entry)),
+      && !scope().R5_ALLOWED_PATHS.includes(entry)
+      && !scope().R6_ALLOWED_PATHS.includes(entry)),
     [],
     'post-R3 paths must be delegated through an exact approved phase fence',
   );
@@ -364,6 +376,53 @@ test('R5 delegates only its fixed-base exact cumulative path fence', () => {
     'docs/attacker.md';
   assert.throws(
     () => scope().validateR5IdentityManifest(substituted),
+    /sorted|allowlist.*drift/i,
+  );
+});
+
+test('R6 delegates only its fixed-base exact cumulative path fence', () => {
+  assert.equal(existsSync(r6ManifestPath), true, 'R6 manifest must exist');
+  const value = JSON.parse(readFileSync(r6ManifestPath, 'utf8'));
+  const delegated = scope().validateR6SharingOtpManifest(value);
+
+  assert.equal(delegated.baseRevision, 'ce0c0d19824bff79d91417e2fe4617914c6bcd70');
+  assert.equal(delegated.stage, 'inventory');
+  assert.deepEqual(delegated.allowedChangedPaths, scope().R6_ALLOWED_PATHS);
+  assert.equal(
+    delegated.allowedChangedPaths.includes(
+      'backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs',
+    ),
+    true,
+  );
+  assert.equal(
+    delegated.allowedChangedPaths.includes(
+      'docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md',
+    ),
+    true,
+  );
+
+  const wrongBase = structuredClone(value);
+  wrongBase.baseRevision = '0'.repeat(40);
+  assert.throws(
+    () => scope().validateR6SharingOtpManifest(wrongBase),
+    /R6.*manifest.*identity/i,
+  );
+
+  const reordered = structuredClone(value);
+  [reordered.allowedChangedPaths[0], reordered.allowedChangedPaths[1]] = [
+    reordered.allowedChangedPaths[1],
+    reordered.allowedChangedPaths[0],
+  ];
+  assert.throws(
+    () => scope().validateR6SharingOtpManifest(reordered),
+    /sorted|allowlist.*drift/i,
+  );
+
+  const substituted = structuredClone(value);
+  substituted.allowedChangedPaths[substituted.allowedChangedPaths.length - 1] =
+    'docs/attacker.md';
+  assert.throws(
+    () => scope().validateR6SharingOtpManifest(substituted),
     /sorted|allowlist.*drift/i,
   );
 });

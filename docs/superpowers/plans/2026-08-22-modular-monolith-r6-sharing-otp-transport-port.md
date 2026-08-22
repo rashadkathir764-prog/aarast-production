@@ -134,7 +134,10 @@ Verify the commit contains exactly those eight Markdown files. Do not push.
 - Create: backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs
 - Create: backend/test/architecture-r6-sharing-otp-transport.test.ts
 - Modify: backend/scripts/architecture/r3-scope.cjs
+- Modify: backend/scripts/architecture/r5-identity-scan.cjs
 - Modify: backend/test/architecture-r3-scope.test.ts
+- Modify: backend/test/architecture-r4-planning-finance-boundary.test.ts
+- Modify: backend/test/architecture-r5-identity-relocation.test.ts
 - Modify: backend/package.json
 - Modify generated: docs/SCRIPTS.md
 - Create ignored: .superpowers/sdd/2026-08-22-modular-monolith-r6-sharing-otp-transport/task-1-report.md
@@ -185,6 +188,13 @@ Extend the existing R3 scope gate with the exact cumulative R6 allowlist. Use
 no-renames diff semantics so a forbidden deletion cannot be hidden by Git
 rename detection. Add tests for same-count substitution, hidden deletion,
 renamed protected files, and an unrelated documentation or application path.
+Update R4's live cumulative fence to consume the same validated R6 delegation;
+do not copy or independently widen the R6 paths inside the R4 test.
+Project only the two exact R6 architecture-script additions back to the pinned
+R5 package shape before R5's security fingerprint check. Every dependency,
+lock, other package field, and other script remains byte/semantic exact; add
+near-miss tests for a changed R6 command, a removed prior gate, and an unrelated
+script edit.
 
 - [ ] **Step 5: Wire scripts without weakening prior gates**
 

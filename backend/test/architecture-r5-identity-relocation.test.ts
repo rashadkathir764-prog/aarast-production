@@ -286,6 +286,32 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
+  const changedR6Gate = structuredClone(packageJson);
+  changedR6Gate.scripts['architecture:r6'] =
+    'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --skip';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: changedR6Gate,
+    packageLock,
+  }));
+
+  const removedPriorGate = structuredClone(packageJson);
+  removedPriorGate.scripts.architecture =
+    'npm run architecture:imports && npm run architecture:r6';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: removedPriorGate,
+    packageLock,
+  }));
+
+  const unrelatedScript = structuredClone(packageJson);
+  unrelatedScript.scripts.start = 'node dist/other-main.js';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: unrelatedScript,
+    packageLock,
+  }));
+
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: ['backend/package-lock.json'],
     packageJson,
@@ -569,9 +595,9 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     packageJson.scripts['architecture:r5'],
     'node scripts/architecture/r5-identity-scan.cjs --check',
   );
-  assert.equal(
-    packageJson.scripts.architecture.endsWith(' && npm run architecture:r5'),
-    true,
+  assert.deepEqual(
+    packageJson.scripts.architecture.split(' && ').slice(-2),
+    ['npm run architecture:r5', 'npm run architecture:r6'],
   );
 
   const result = spawnSync(

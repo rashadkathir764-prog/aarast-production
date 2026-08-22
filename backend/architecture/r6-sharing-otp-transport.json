@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "ce0c0d19824bff79d91417e2fe4617914c6bcd70",
+  "stage": "inventory",
+  "currentConcreteDependency": {
+    "consumer": "backend/src/sharing/invitation-delivery.service.ts",
+    "transport": "backend/src/platform/otp-transport/openwa-transient-text.ts",
+    "declarations": [
+      "OpenWaTransientDeliveryRejectedError",
+      "OpenWaTransientDeliveryUncertainError",
+      "sendOpenWaTransientText"
+    ]
+  },
+  "targetBoundary": {
+    "adapterPath": "backend/src/modules/identity/internal/identity-transient-delivery.adapter.ts",
+    "collaborationModulePath": "backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts",
+    "consumerPath": "backend/src/sharing/invitation-delivery.service.ts",
+    "identityModulePath": "backend/src/modules/identity/identity.module.ts",
+    "implementationToken": "IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION",
+    "inputType": "IdentityTransientDeliveryInput",
+    "internalModulePath": "backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts",
+    "portInterface": "IdentityTransientDeliveryPort",
+    "publicErrors": [
+      "IdentityTransientDeliveryRejectedError",
+      "IdentityTransientDeliveryUncertainError"
+    ],
+    "publicModulePath": "backend/src/modules/identity/public/identity-transient-delivery-public.module.ts",
+    "publicPortPath": "backend/src/modules/identity/public/identity-transient-delivery.port.ts",
+    "token": "IDENTITY_TRANSIENT_DELIVERY_PORT"
+  },
+  "protectedFiles": [
+    {
+      "path": "backend/src/platform/otp-transport/openwa-otp.channel.ts",
+      "sha256": "1f939561064a0d8c8bfe6142d9793c2b670557ff620bec1c0fec95669837fd50"
+    },
+    {
+      "path": "backend/src/platform/otp-transport/openwa-transient-text.ts",
+      "sha256": "9b53d04193876cd0258dc367685fbf6bb8e6d23845bfc8a1e501512a2a68b5ac"
+    }
+  ],
+  "expectedBaselines": {
+    "dependencyRecords": 31,
+    "ownershipRecords": 385,
+    "ownershipOccurrences": 781,
+    "concreteTransportImports": {
+      "inventory": 1,
+      "task-2": 1,
+      "task-3": 0,
+      "strict": 0
+    }
+  },
+  "allowedChangedPaths": [
+    "ARCHITECTURE.md",
+    "backend/architecture/r3-context-boundaries.json",
+    "backend/architecture/r6-sharing-otp-transport.json",
+    "backend/package.json",
+    "backend/scripts/architecture/r3-context-scan.cjs",
+    "backend/scripts/architecture/r3-scope.cjs",
+    "backend/scripts/architecture/r5-identity-scan.cjs",
+    "backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs",
+    "backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts",
+    "backend/src/modules/identity/identity.module.ts",
+    "backend/src/modules/identity/internal/identity-transient-delivery.adapter.ts",
+    "backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts",
+    "backend/src/modules/identity/public/identity-transient-delivery-public.module.ts",
+    "backend/src/modules/identity/public/identity-transient-delivery.port.ts",
+    "backend/src/sharing/invitation-delivery.service.ts",
+    "backend/test/architecture-r3-contexts.test.ts",
+    "backend/test/architecture-r3-scope.test.ts",
+    "backend/test/architecture-r4-planning-finance-boundary.test.ts",
+    "backend/test/architecture-r5-identity-relocation.test.ts",
+    "backend/test/architecture-r6-sharing-otp-transport.test.ts",
+    "backend/test/invite-delivery.test.ts",
+    "docs/README.md",
+    "docs/SCRIPTS.md",
+    "docs/project/DECISIONS.md",
+    "docs/project/EXECUTION_PLAN.md",
+    "docs/project/STATUS.md",
+    "docs/qa/README.md",
+    "docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md",
+    "docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md",
+    "docs/superpowers/specs/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md",
+    "docs/superpowers/specs/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-design.md"
+  ]
+}

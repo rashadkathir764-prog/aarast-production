@@ -353,6 +353,33 @@ function validateR5Manifest(value) {
   });
 }
 
+const R5_ARCHITECTURE_SCRIPT =
+  'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5';
+const R6_ARCHITECTURE_SCRIPT =
+  R5_ARCHITECTURE_SCRIPT + ' && npm run architecture:r6';
+const R6_STANDALONE_SCRIPT =
+  'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check';
+
+function projectR6ArchitectureScriptsForR5Security(value) {
+  assertDeepPlainData(value, 'R5 security package');
+  const packageJson = plainObject(value, 'R5 security package');
+  const scripts = plainObject(packageJson.scripts, 'R5 security package scripts');
+  if (!Object.prototype.hasOwnProperty.call(scripts, 'architecture:r6')) {
+    return packageJson;
+  }
+  if (scripts['architecture:r6'] !== R6_STANDALONE_SCRIPT
+      || scripts.architecture !== R6_ARCHITECTURE_SCRIPT) {
+    throw new Error('R5 security R6 architecture delegation is invalid');
+  }
+  const projectedScripts = { ...scripts };
+  delete projectedScripts['architecture:r6'];
+  projectedScripts.architecture = R5_ARCHITECTURE_SCRIPT;
+  return {
+    ...packageJson,
+    scripts: projectedScripts,
+  };
+}
+
 function validateR5SecurityCheckpointScope(value) {
   const input = exactObject(value, ['changedPaths', 'packageJson', 'packageLock'], 'R5 security scope');
   const changedPaths = validatePathList(input.changedPaths, 'R5 security changed paths');
@@ -379,7 +406,7 @@ function validateR5SecurityCheckpointScope(value) {
     }
   }
   require('../security/prisma-config-merge-security.cjs').validatePackageGraph(
-    input.packageJson,
+    projectR6ArchitectureScriptsForR5Security(input.packageJson),
     input.packageLock,
   );
   return Object.freeze({ active: true });
@@ -956,6 +983,7 @@ module.exports = {
   validateR5ProfileStage,
   validateR5RetiredRoots,
   validateR5SecurityCheckpointScope,
+  projectR6ArchitectureScriptsForR5Security,
   verifyR5QaHarnessCorrections,
   mapOwnershipRecordsForR5,
   expectedR5DependencyRecords,

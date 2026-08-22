@@ -149,7 +149,7 @@ and deployment artifacts.
   checks, then the probe was removed. The existing phone runtime was not cut
   over; no phone QA was required because application behavior did not change.
 
-## Modular Monolith R5 Remaining Gates
+## Modular Monolith R5 Closeout Gates
 
 - Fixed-base R5 manifest proves the exact 44 one-to-one Identity moves and
   rejects missing, extra, converging, overlapping, traversal, stale-root, and
@@ -161,13 +161,21 @@ and deployment artifacts.
 - Existing Auth, OTP, session, profile, context, account-deletion, WebSocket,
   scheduler, and route assertions remain frozen except mechanical import/path
   edits and the exact three hash-pinned Task 6 smoke-harness corrections.
-- Full Backend architecture/check/build/tests, Prisma equivalence, audits,
-  managed Identity/auth/context/account-deletion plus aggregate smokes, residue
-  audits, frozen Mobile/Admin/deployment surfaces, immutable runtime, owner
-  phone exercise, independent review, and truthful receipts are required.
-- Task 5A is locally complete. Final R5 closeout still requires the remaining
-  approved tasks and their own verification. R6, push, merge, PR mutation,
-  deployment, and remote-CI claims remain forbidden.
+- Full Backend architecture/check/build passed. Backend tests passed 1006/1007
+  with one intentional Windows permission skip; Prisma equivalence, both
+  zero-finding audits, nine targeted smokes, all 30 aggregate smoke packages,
+  residue audits, frozen Mobile/Admin/deployment surfaces, and docs passed.
+- The independent Task 6 review found one policy gap in three smoke fixture
+  setup/order corrections. Immutable-base evidence and owner authorization
+  narrowed this to a hash-pinned production-precondition exception; permanent
+  scanner/tests reject any additional fixture or assertion drift.
+- The immutable R5 image passed migration discovery, local/LAN live/ready,
+  restart/OOM, dependency/security, and safe-log checks. The owner passed
+  authenticated phone login, Home/context restore, representative reads and
+  writes, and full close/reopen. Sanitized logs showed 237 events, 236 success,
+  zero HTTP 5xx, and one controlled unauthenticated 401 probe.
+- R5 is locally complete. R4 is stopped and preserved for rollback. R6, push,
+  merge, PR mutation, deployment, and remote-CI claims remain forbidden.
 
 ## Modular Monolith R3 Closeout Gates
 

@@ -1,10 +1,61 @@
 # Current Status
 
-Snapshot date: 2026-08-21
+Snapshot date: 2026-08-22
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R5 Local Completion - 2026-08-22
+
+R5 is locally complete on branch `modular-monolith` from immutable base
+`9dab73acdc187a4a18d8a675713d8ded40a16d02` at application candidate
+`8cfee451a76bb17e20d278a1646dde4387bf7b18`. The tracked docs-only receipt is
+the commit containing this status; its SHA is recorded externally after commit
+because a commit cannot truthfully contain its own final hash.
+
+All 44 Identity files moved one-to-one from `auth`, `users`, `me`, and
+`contexts` into the existing `modules/identity` public/internal/api boundary.
+The four legacy roots are absent with no compatibility facade. The dependency
+baseline contains exactly 31 records after the 58 authorized relocation debts
+were retired; ownership remains 385 records / 781 occurrences. Routes,
+controller/provider identity, Arabic/error behavior, auth/OTP/session/context
+contracts, schema, migrations, model ownership, Mobile, Admin, workflows,
+Compose, and deployment remain frozen.
+
+The independent Task 6 review found that three smoke setup/order corrections
+were not authorized by the original path-only test policy. Immutable-base
+source evidence proved that each restores a production precondition already
+required at R5 base. The owner authorized one narrow, hash-pinned exception;
+permanent tests and the live scanner now reject any other fixture/setup drift.
+No behavioral assertion was deleted, skipped, or weakened.
+
+Final local verification passed: R5 relocation 16/16; architecture at 344
+modules, 1395 dependencies, 31 known records, ownership 385, zero
+`forwardRef()`, two approved globals, zero cycles/illegal edges; check; build;
+1006/1007 Backend tests with one intentional Windows permission skip; Prisma
+6.19.3 validate/generate and exact DMMF/migration equivalence; both npm audits
+with zero findings; nine targeted managed smokes; all 30 `smoke:all` packages;
+docs; protected surfaces; and zero managed residue.
+
+Immutable image `aarast-backend:r5-final-8cfee451`, image ID
+`sha256:36843e956ed236926e7391b3928002e7188cb4617e496fed84b860db94547f8a`,
+is bound to the full application candidate revision. Probe and cutover passed
+76-migration discovery, local/LAN `/live` and `/ready`, DB/Redis/media checks,
+zero restarts, no OOM, and sanitized fatal-marker checks. R4 remains stopped
+and preserved for rollback.
+
+The separately packaged R5Local APK targeted the verified LAN endpoint. The
+owner passed authenticated login, Home/context restore, representative reads
+and writes, and full close/reopen. Sanitized R5 logs contained 237 HTTP events:
+236 successful responses, zero HTTP 5xx, five successful logins, and one
+controlled unauthenticated `/api/v1/auth/me` 401 probe. No credential, token, body,
+phone number, or business value was retained. One empty OS-temp audit directory
+remains outside the repository because deletion was denied; it contains zero
+files and is not a product artifact.
+
+R5 is a local completion only. No push, merge, PR mutation, deployment, remote
+CI, or R6 work is claimed. R6 has not started.
 
 ## Modular Monolith R5 Task 5A Local Security Checkpoint - 2026-08-21
 
@@ -52,7 +103,7 @@ It passed dependency identity, security, migration discovery, `/live`,
 The existing phone runtime was not cut over and remained healthy. No phone QA
 was requested because application behavior did not change.
 
-This is one local security checkpoint inside R5, not final R5 closeout. No
+This was the local security checkpoint inside the now-completed R5 phase. No
 push, merge, PR mutation, deployment, remote CI, or R6 work is claimed.
 
 ## Modular Monolith R5 Planning Approved - 2026-08-20
@@ -70,8 +121,8 @@ routes, auth/OTP/session behavior, schema, migrations, model ownership
 semantics, Mobile, Admin, workflows, deployment, or Compose. Local checkpoint
 commits are allowed; no branch/worktree creation, push, merge, PR mutation,
 deployment, remote-CI claim, or R6 work is authorized. Task 5A has since
-completed locally as recorded above; the remaining approved R5 work still
-requires its own gates and closeout.
+completed locally as recorded above; the remaining R5 work later passed the
+gates and closeout recorded in the current completion section.
 
 ## Repository Baseline
 

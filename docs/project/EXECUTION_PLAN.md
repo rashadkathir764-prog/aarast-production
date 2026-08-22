@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R4 Locally Complete
+### P3 — Source Quality And Architecture — R5 Locally Complete
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -396,24 +396,44 @@ Acceptance:
 - R4 is locally complete. Remote CI was not run; no push, merge, PR mutation, or
   deployment is claimed.
 
+#### R5 — Identity Source Relocation — Locally Complete
+
+- R5 executed from immutable base
+  `9dab73acdc187a4a18d8a675713d8ded40a16d02` and moved all 44 Identity files
+  one-to-one from `auth`, `users`, `me`, and `contexts` into the existing
+  `modules/identity` public/internal/api boundary. All four old roots are gone.
+- Dependency evidence is exactly 31 records after retiring the 58 authorized
+  relocation debts. Ownership remains 385 records / 781 occurrences; routes,
+  provider identity, auth/OTP/session/context behavior, schema, migrations,
+  Mobile, Admin, workflows, Compose, and deployment remain unchanged.
+- Task 5A retained Prisma 6.19.3 while pinning the affected transitive merge
+  implementation to patched `deepmerge-ts` 8.0.1. Permanent semantic,
+  installed-resolution, worker-completion, package/lock, and audit gates pass.
+- Architecture/check/build, 1006/1007 Backend tests with one intentional skip,
+  Prisma equivalence, both audits, nine targeted smokes, all 30 aggregate smoke
+  packages, docs, protected surfaces, and residue audits passed locally.
+- Application candidate `8cfee451a76bb17e20d278a1646dde4387bf7b18`
+  runs as `aarast-backend:r5-final-8cfee451`; local/LAN live/ready, restart/OOM,
+  safe-log, and owner authenticated phone login/read/write/close-reopen gates
+  passed. R4 remains preserved for rollback.
+- R5 is locally complete. Remote CI was not run; no push, merge, PR mutation,
+  deployment, or R6 work is claimed.
+
 Current working plan:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
 
-R5 starts from immutable local R4 receipt
-`9dab73acdc187a4a18d8a675713d8ded40a16d02`. Its approved scope is the exact
-44-file Identity source consolidation from `auth`, `users`, `me`, and
-`contexts` into `modules/identity`, plus deterministic import, manifest,
-dependency-baseline, ownership-baseline, test, smoke, and receipt updates. It
-does not change application behavior, schema, model ownership semantics,
-Mobile, Admin, deployment, or another business context. Implementation remains
-pending the Task 0 planning checkpoint; R6 and later work must not start early.
+This committed plan is the immutable pre-runtime/application-candidate R5
+execution snapshot. Its in-progress wording records the earlier checkpoint;
+the completed section and active receipts above are the later live state. R5
+is locally complete from base
+`9dab73acdc187a4a18d8a675713d8ded40a16d02` at application candidate
+`8cfee451a76bb17e20d278a1646dde4387bf7b18`. R6 has not started.
 
 The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
-The numbered P3 modernization work below treats locally completed R4 as the
-immutable base and the R5 plan above as the current checkpoint; R6 and
-later-phase work must not move forward early.
+The numbered P3 modernization work below treats locally completed R5 as the
+immutable current base; R6 and later-phase work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

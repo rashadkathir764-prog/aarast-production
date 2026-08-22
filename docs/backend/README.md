@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-16
+Snapshot date: 2026-08-22
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -41,6 +41,15 @@ Finance's former direct `WeddingPlan.estimatedBudget` write: Finance now calls
 the singleton Planning public write port with its exact caller-owned transaction,
 and only Planning performs the delegate update. The removed debt is not an
 exception.
+
+R5 moved all 44 Identity source files one-to-one from `auth`, `users`, `me`,
+and `contexts` into `src/modules/identity`; the four old roots are absent and
+there is no compatibility facade. Public/internal/api ownership, route and Nest
+provider identity, auth/OTP/session/context behavior, and all error contracts
+are preserved. The dependency baseline is exactly 31 records after retiring
+the 58 authorized relocation debts, while ownership remains 385 records / 781
+occurrences. Prisma remains 6.19.3 with the separately verified exact
+`deepmerge-ts` 8.0.1 security override.
 
 ## Commands
 

@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-08-22 - Modular Monolith R5 Local Completion
+
+- Moved all 44 Identity source files one-to-one from `auth`, `users`, `me`, and
+  `contexts` into the existing `modules/identity` public/internal/api boundary;
+  all four retired roots are absent and no compatibility facade remains.
+- Reconciled the dependency baseline to exactly 31 records after retiring the
+  58 authorized relocation debts. Ownership remains 385 records / 781
+  occurrences after path-only relocation.
+- Preserved routes, Arabic/error contracts, auth/OTP/session/context behavior,
+  schema, migrations, model ownership, Mobile, Admin, workflow, Compose, and
+  deployment surfaces. The exact three smoke-harness setup corrections are
+  hash-pinned and limited to existing production preconditions.
+- Architecture/check/build, 1006/1007 Backend tests with one intentional
+  Windows skip, Prisma equivalence, both zero-finding audits, nine targeted
+  smokes, all 30 aggregate smoke packages, docs, protected surfaces, and
+  cleanup passed.
+- Immutable application candidate
+  `8cfee451a76bb17e20d278a1646dde4387bf7b18` runs as
+  `aarast-backend:r5-final-8cfee451`; local/LAN live and ready checks passed at
+  zero restarts and no OOM. R4 remains stopped and preserved for rollback.
+- The owner passed authenticated login, Home/context restore, representative
+  reads and writes, and full close/reopen. Sanitized R5 logs contained 237 HTTP
+  events, 236 successful responses, zero HTTP 5xx, and one controlled
+  unauthenticated 401 probe; no secrets or payload values were retained.
+- R5 is locally complete. No push, merge, PR mutation, deployment, remote CI,
+  or R6 work is claimed.
+
 ## 2026-08-21 - R5 Prisma Config Merge Security Checkpoint
 
 - Kept Prisma, Prisma Client, and Prisma Config at 6.19.3 while pinning the
@@ -21,8 +48,8 @@
   migrations, live/ready, restart/OOM, and sanitized startup checks. The probe
   was removed and the existing phone runtime was not cut over. Independent
   review passed with no findings.
-- This is a local R5 Task 5A checkpoint; final R5 closeout remains pending. No
-  push, merge, PR mutation, deployment, remote CI, or R6 is claimed.
+- This was the local R5 Task 5A checkpoint; the later R5 closeout is recorded
+  above. No push, merge, PR mutation, deployment, remote CI, or R6 is claimed.
 
 ## 2026-08-16 - Modular Monolith R4 Local Completion
 

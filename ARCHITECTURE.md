@@ -233,13 +233,17 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   smokes, immutable Docker cutover, independent review, and the owner phone
   money-budget checkpoint passed. API, schema, migrations, Mobile, Admin, and
   deployment behavior remain unchanged.
-- R5 planning is owner-approved from immutable base
-  `9dab73acdc187a4a18d8a675713d8ded40a16d02`. R5 consolidates the 44 current
-  Identity files from `auth`, `users`, `me`, and `contexts` into the existing
-  `modules/identity` public/internal/full boundary. It is a source and
-  path-indexed-evidence relocation only: routes, auth/OTP/session behavior,
-  schema, migrations, model ownership semantics, Mobile, Admin, and deployment
-  remain frozen. Implementation has not started, and R6 is not authorized.
+- R5 is locally complete from immutable base
+  `9dab73acdc187a4a18d8a675713d8ded40a16d02` at application candidate
+  `8cfee451a76bb17e20d278a1646dde4387bf7b18`. All 44 Identity files moved
+  one-to-one from `auth`, `users`, `me`, and `contexts` into the existing
+  `modules/identity` public/internal/full boundary, and the four legacy roots
+  are absent. The dependency baseline is exactly 31 records after retiring the
+  58 authorized relocation debts; ownership remains 385 records / 781
+  occurrences. Routes, auth/OTP/session behavior, schema, migrations, model
+  ownership semantics, Mobile, Admin, and deployment remain frozen. Full local
+  gates, immutable runtime cutover, and the owner phone checkpoint passed. No
+  push, merge, deployment, remote CI, or R6 work is claimed.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

@@ -26,6 +26,11 @@ const r6ManifestPath = path.join(
   'architecture',
   'r6-sharing-otp-transport.json',
 );
+const r7ManifestPath = path.join(
+  backendRoot,
+  'architecture',
+  'r7-collaboration-relocation.json',
+);
 const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const temporaryRoots: string[] = [];
 
@@ -49,6 +54,11 @@ type ScopeModule = {
     allowedChangedPaths: readonly string[];
   };
   validateR6SharingOtpManifest(value: unknown): {
+    baseRevision: string;
+    stage: string;
+    allowedChangedPaths: readonly string[];
+  };
+  validateR7CollaborationManifest(value: unknown): {
     baseRevision: string;
     stage: string;
     allowedChangedPaths: readonly string[];
@@ -426,6 +436,33 @@ test('R6 delegates only its fixed-base exact cumulative path fence', () => {
   assert.throws(
     () => scope().validateR6SharingOtpManifest(substituted),
     /sorted|allowlist.*drift/i,
+  );
+});
+
+test('R7 delegates every exact staged manifest without weakening its parity evidence', () => {
+  assert.equal(existsSync(r7ManifestPath), true, 'R7 manifest must exist');
+  const value = JSON.parse(readFileSync(r7ManifestPath, 'utf8'));
+  for (const stage of ['design', 'snapshot', 'history', 'relocated', 'strict']) {
+    const staged = structuredClone(value);
+    staged.stage = stage;
+    const delegated = scope().validateR7CollaborationManifest(staged);
+    assert.equal(delegated.baseRevision, '31ea5324007fc71fa4b3590fbb98a454ee1deaa7');
+    assert.equal(delegated.stage, stage);
+    assert.deepEqual(delegated.allowedChangedPaths, scope().R7_ALLOWED_PATHS);
+  }
+
+  const changedFingerprint = structuredClone(value);
+  changedFingerprint.sourceParity[0].normalizedSha256 = '0'.repeat(64);
+  assert.throws(
+    () => scope().validateR7CollaborationManifest(changedFingerprint),
+    /parity|fingerprint|manifest.*drift/i,
+  );
+
+  const missingFingerprint = structuredClone(value);
+  missingFingerprint.sourceParity.pop();
+  assert.throws(
+    () => scope().validateR7CollaborationManifest(missingFingerprint),
+    /parity|fingerprint|manifest.*drift/i,
   );
 });
 

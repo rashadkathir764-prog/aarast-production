@@ -76,6 +76,98 @@
       "to": "backend/src/modules/collaboration/internal/sharing.service.ts"
     }
   ],
+  "sourceParity": [
+    {
+      "from": "backend/src/contribution-history/contribution-history.contracts.ts",
+      "to": "backend/src/modules/collaboration/internal/contribution-history.contracts.ts",
+      "normalizedSha256": "aeab7af798e09cb6beae0d7409cf40d25ebd645096bed391f880e5a7a108239c"
+    },
+    {
+      "from": "backend/src/contribution-history/contribution-history.controller.ts",
+      "to": "backend/src/modules/collaboration/api/contribution-history.controller.ts",
+      "normalizedSha256": "1ee407b59727469829bc93f301df0ad61f91535c9b4f181f33e944893249a547"
+    },
+    {
+      "from": "backend/src/contribution-history/contribution-history.service.ts",
+      "to": "backend/src/modules/collaboration/internal/contribution-history.service.ts",
+      "normalizedSha256": "1f34aaf0b9a2b7d8101e3065fba9d40c5128ca6ce7471cd383a6751feb0f68ce"
+    },
+    {
+      "from": "backend/src/contribution-history/contribution-snapshot.builder.ts",
+      "to": "backend/src/modules/collaboration/public/contribution-snapshot.builder.ts",
+      "normalizedSha256": "619abcebff09ea077d15040fd12b380a828fad54ac5a4ed9b43ca6742baddd87"
+    },
+    {
+      "from": "backend/src/contribution-history/contributor-scope.service.ts",
+      "to": "backend/src/modules/collaboration/internal/contributor-scope.service.ts",
+      "normalizedSha256": "ba4573a342450fe44ccc4f72def9931a1121fe4238e0f7892ed2a882dd6b33d2"
+    },
+    {
+      "from": "backend/src/contribution-history/dto/list-contributions.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/list-contributions.dto.ts",
+      "normalizedSha256": "2aa1486c288afe3eebb251ee4007dc32c73912571399d67285dc4c9a7597f02d"
+    },
+    {
+      "from": "backend/src/sharing/dto/create-plan-invite.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/create-plan-invite.dto.ts",
+      "normalizedSha256": "ba4ee89e9a2608cd6f6c759068b532c2be234a30eec6a7079547c5d1b0a4a220"
+    },
+    {
+      "from": "backend/src/sharing/dto/create-shared-member.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/create-shared-member.dto.ts",
+      "normalizedSha256": "53f43fba776d4f117ae56baf5b541fcf470cbdc04c755892bb4834471f83b536"
+    },
+    {
+      "from": "backend/src/sharing/dto/leave-plan.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/leave-plan.dto.ts",
+      "normalizedSha256": "ec5719af9c3b94eb0792c5aee6815d1a835cbd0d1a446b165021f95221ea48f3"
+    },
+    {
+      "from": "backend/src/sharing/dto/request-invite-otp.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/request-invite-otp.dto.ts",
+      "normalizedSha256": "0da6d2dcfdd4adbf81daccaf763441a3f1ac01fd7961425de3318169cb4b63fa"
+    },
+    {
+      "from": "backend/src/sharing/dto/update-shared-member.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/update-shared-member.dto.ts",
+      "normalizedSha256": "03744001cf43aa3f241bf3b319a484b0d418e1a39d0fbb01245f4e825399410c"
+    },
+    {
+      "from": "backend/src/sharing/dto/verify-invite-otp.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/verify-invite-otp.dto.ts",
+      "normalizedSha256": "a3b383c7ff3331870c900a9b01cded90ddd33c597187e406004f838e8b054f0d"
+    },
+    {
+      "from": "backend/src/sharing/invitation-delivery.service.ts",
+      "to": "backend/src/modules/collaboration/internal/invitation-delivery.service.ts",
+      "normalizedSha256": "36c16edbbb8bd647bddae34f1e4d2377fa5b13c708695bce831781f4ad05612c"
+    },
+    {
+      "from": "backend/src/sharing/invite-access.service.ts",
+      "to": "backend/src/modules/collaboration/internal/invite-access.service.ts",
+      "normalizedSha256": "c17110576aba439e6bda13b3b71fa331916b978e433d48b7f6035db0fe23474e"
+    },
+    {
+      "from": "backend/src/sharing/permission.service.ts",
+      "to": "backend/src/modules/collaboration/internal/permission.service.ts",
+      "normalizedSha256": "3fd1670524fc55e4dcdd4b9322ef12724e2dd77e9d95adbcaf3ca09ef4980146"
+    },
+    {
+      "from": "backend/src/sharing/plan-permissions.ts",
+      "to": "backend/src/modules/collaboration/internal/plan-permissions.ts",
+      "normalizedSha256": "c856e84a7716a7efed4b7f4e7303b60f767ea6ddaa7481429645de20969d6161"
+    },
+    {
+      "from": "backend/src/sharing/sharing.controller.ts",
+      "to": "backend/src/modules/collaboration/api/sharing.controller.ts",
+      "normalizedSha256": "c0d93d3c25b41c523462fa3b2f415a5786ab83621ea7b4ece467bb053918dee7"
+    },
+    {
+      "from": "backend/src/sharing/sharing.service.ts",
+      "to": "backend/src/modules/collaboration/internal/sharing.service.ts",
+      "normalizedSha256": "37894e0c52a61de94f2fa8596bc9a1c7dfd35b7bd1702e541f830f2710fc9955"
+    }
+  ],
   "publicSnapshotContract": {
     "path": "backend/src/modules/collaboration/public/contribution-snapshot.builder.ts",
     "exports": [

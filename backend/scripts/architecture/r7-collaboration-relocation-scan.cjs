@@ -8,6 +8,7 @@ const ts = require('typescript');
 
 const R7_BASE = '31ea5324007fc71fa4b3590fbb98a454ee1deaa7';
 const MANIFEST_PATH = 'backend/architecture/r7-collaboration-relocation.json';
+const STAGES = Object.freeze(['design', 'snapshot', 'history', 'relocated', 'strict']);
 
 const EXPECTED_MOVES = Object.freeze([
   ['backend/src/contribution-history/contribution-history.contracts.ts', 'backend/src/modules/collaboration/internal/contribution-history.contracts.ts'],
@@ -29,6 +30,47 @@ const EXPECTED_MOVES = Object.freeze([
   ['backend/src/sharing/sharing.controller.ts', 'backend/src/modules/collaboration/api/sharing.controller.ts'],
   ['backend/src/sharing/sharing.service.ts', 'backend/src/modules/collaboration/internal/sharing.service.ts'],
 ].map(([from, to]) => Object.freeze({ from, to })));
+
+const EXPECTED_SOURCE_PARITY_HASHES = Object.freeze([
+  'aeab7af798e09cb6beae0d7409cf40d25ebd645096bed391f880e5a7a108239c',
+  '1ee407b59727469829bc93f301df0ad61f91535c9b4f181f33e944893249a547',
+  '1f34aaf0b9a2b7d8101e3065fba9d40c5128ca6ce7471cd383a6751feb0f68ce',
+  '619abcebff09ea077d15040fd12b380a828fad54ac5a4ed9b43ca6742baddd87',
+  'ba4573a342450fe44ccc4f72def9931a1121fe4238e0f7892ed2a882dd6b33d2',
+  '2aa1486c288afe3eebb251ee4007dc32c73912571399d67285dc4c9a7597f02d',
+  'ba4ee89e9a2608cd6f6c759068b532c2be234a30eec6a7079547c5d1b0a4a220',
+  '53f43fba776d4f117ae56baf5b541fcf470cbdc04c755892bb4834471f83b536',
+  'ec5719af9c3b94eb0792c5aee6815d1a835cbd0d1a446b165021f95221ea48f3',
+  '0da6d2dcfdd4adbf81daccaf763441a3f1ac01fd7961425de3318169cb4b63fa',
+  '03744001cf43aa3f241bf3b319a484b0d418e1a39d0fbb01245f4e825399410c',
+  'a3b383c7ff3331870c900a9b01cded90ddd33c597187e406004f838e8b054f0d',
+  '36c16edbbb8bd647bddae34f1e4d2377fa5b13c708695bce831781f4ad05612c',
+  'c17110576aba439e6bda13b3b71fa331916b978e433d48b7f6035db0fe23474e',
+  '3fd1670524fc55e4dcdd4b9322ef12724e2dd77e9d95adbcaf3ca09ef4980146',
+  'c856e84a7716a7efed4b7f4e7303b60f767ea6ddaa7481429645de20969d6161',
+  'c0d93d3c25b41c523462fa3b2f415a5786ab83621ea7b4ece467bb053918dee7',
+  '37894e0c52a61de94f2fa8596bc9a1c7dfd35b7bd1702e541f830f2710fc9955',
+]);
+
+const EXPECTED_SOURCE_PARITY = Object.freeze(EXPECTED_MOVES.map((move, index) => Object.freeze({
+  from: move.from,
+  to: move.to,
+  normalizedSha256: EXPECTED_SOURCE_PARITY_HASHES[index],
+})));
+
+const EXPECTED_EXISTING_COLLABORATION_FILES = Object.freeze([
+  'backend/src/modules/collaboration/collaboration.module.ts',
+  'backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts',
+  'backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts',
+  'backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts',
+  'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+  'backend/src/modules/collaboration/public/collaboration-history-public.module.ts',
+  'backend/src/modules/collaboration/public/collaboration-history.port.ts',
+  'backend/src/modules/collaboration/public/collaboration-permission-public.module.ts',
+  'backend/src/modules/collaboration/public/collaboration-permission.port.ts',
+  'backend/src/modules/collaboration/public/collaboration-scope-public.module.ts',
+  'backend/src/modules/collaboration/public/collaboration-scope.port.ts',
+]);
 
 const EXPECTED_PUBLIC_SNAPSHOT_CONTRACT = Object.freeze({
   path: 'backend/src/modules/collaboration/public/contribution-snapshot.builder.ts',
@@ -339,14 +381,16 @@ function validateR7Manifest(value) {
     'moves',
     'publicSnapshotContract',
     'schemaVersion',
+    'sourceParity',
     'stage',
   ];
   assertExact(keys, expectedKeys, 'R7 manifest keys');
   if (value.schemaVersion !== 1 || value.baseRevision !== R7_BASE) {
     throw new Error('R7 manifest identity is invalid');
   }
-  if (value.stage !== 'design') throw new Error('R7 manifest stage is invalid');
+  if (!STAGES.includes(value.stage)) throw new Error('R7 manifest stage is invalid');
   assertExact(value.moves, EXPECTED_MOVES, 'R7 move map');
+  assertExact(value.sourceParity, EXPECTED_SOURCE_PARITY, 'R7 source parity');
   assertExact(value.publicSnapshotContract, EXPECTED_PUBLIC_SNAPSHOT_CONTRACT, 'R7 public snapshot contract');
   assertExact(value.historicalHandoffs, {
     constructorConsumers: EXPECTED_CONSTRUCTOR_CONSUMERS,
@@ -365,19 +409,131 @@ function dependencyKey(record) {
   return [record.rule && record.rule.name, record.from, record.to].join('|');
 }
 
-function verifyDesignBaselines(repositoryRoot, manifest) {
+function stageTargetPaths(manifest) {
+  if (manifest.stage === 'design') return new Set();
+  if (manifest.stage === 'snapshot') return new Set([manifest.publicSnapshotContract.path]);
+  if (manifest.stage === 'history') {
+    return new Set(manifest.moves
+      .filter((move) => move.from.startsWith('backend/src/contribution-history/'))
+      .map((move) => move.to));
+  }
+  return new Set(manifest.moves.map((move) => move.to));
+}
+
+function isInside(parent, candidate) {
+  const relative = path.relative(parent, candidate);
+  return relative === '' || (!path.isAbsolute(relative) && relative !== '..'
+    && !relative.startsWith(`..${path.sep}`));
+}
+
+function inspectExistingPath(repositoryRoot, relativePath, expected) {
+  const repositoryRealPath = (fs.realpathSync.native || fs.realpathSync)(repositoryRoot);
+  let cursor = repositoryRoot;
+  for (const part of relativePath.split('/')) {
+    cursor = path.join(cursor, part);
+    if (!fs.existsSync(cursor)) return Object.freeze({ exists: false });
+    const status = fs.lstatSync(cursor);
+    if (status.isSymbolicLink()) {
+      throw new Error('R7 source contains a symbolic or junction reparse point');
+    }
+  }
+  const status = fs.lstatSync(cursor);
+  const realPath = (fs.realpathSync.native || fs.realpathSync)(cursor);
+  if (!isInside(repositoryRealPath, realPath)) throw new Error('R7 source escapes the repository');
+  if (expected === 'file' && !status.isFile()) throw new Error('R7 source is not a plain file');
+  if (expected === 'directory' && !status.isDirectory()) {
+    throw new Error('R7 source root is not a plain directory');
+  }
+  return Object.freeze({ exists: true });
+}
+
+function listPlainFiles(repositoryRoot, relativeRoot) {
+  const inspected = inspectExistingPath(repositoryRoot, relativeRoot, 'directory');
+  if (!inspected.exists) return [];
+  const files = [];
+  const visit = (relativeDirectory) => {
+    const absoluteDirectory = path.join(repositoryRoot, ...relativeDirectory.split('/'));
+    for (const name of fs.readdirSync(absoluteDirectory).sort()) {
+      const relative = `${relativeDirectory}/${name}`;
+      const absolute = path.join(repositoryRoot, ...relative.split('/'));
+      const status = fs.lstatSync(absolute);
+      if (status.isSymbolicLink()) {
+        throw new Error('R7 source contains a symbolic or junction reparse point');
+      }
+      if (status.isDirectory()) visit(relative);
+      else if (status.isFile()) files.push(relative);
+      else throw new Error('R7 source contains a non-plain filesystem entry');
+    }
+  };
+  visit(relativeRoot);
+  return files.sort();
+}
+
+function validateStagedLayout(repositoryRoot, manifest) {
+  const targetPaths = stageTargetPaths(manifest);
+  let sourceFiles = 0;
+  let targetFiles = 0;
+  for (const move of manifest.moves) {
+    const sourceExists = inspectExistingPath(repositoryRoot, move.from, 'file').exists;
+    const targetExists = inspectExistingPath(repositoryRoot, move.to, 'file').exists;
+    if (sourceExists === targetExists) {
+      throw new Error('R7 move must have exactly one active source path');
+    }
+    if (targetExists !== targetPaths.has(move.to)) {
+      throw new Error('R7 stage does not match the exact move layout');
+    }
+    sourceFiles += sourceExists ? 1 : 0;
+    targetFiles += targetExists ? 1 : 0;
+  }
+
+  const expectedLegacy = manifest.moves
+    .filter((move) => !targetPaths.has(move.to))
+    .map((move) => move.from)
+    .sort();
+  const actualLegacy = [
+    ...listPlainFiles(repositoryRoot, 'backend/src/contribution-history'),
+    ...listPlainFiles(repositoryRoot, 'backend/src/sharing'),
+  ].sort();
+  assertExact(actualLegacy, expectedLegacy, 'R7 legacy source inventory');
+
+  const expectedCollaboration = [
+    ...EXPECTED_EXISTING_COLLABORATION_FILES,
+    ...targetPaths,
+  ].sort();
+  assertExact(
+    listPlainFiles(repositoryRoot, 'backend/src/modules/collaboration'),
+    expectedCollaboration,
+    'R7 final Collaboration inventory',
+  );
+  if (manifest.stage === 'strict') {
+    for (const legacyRoot of ['backend/src/contribution-history', 'backend/src/sharing']) {
+      if (inspectExistingPath(repositoryRoot, legacyRoot, 'directory').exists) {
+        throw new Error('R7 strict stage retains a legacy root');
+      }
+    }
+  }
+  return Object.freeze({ sourceFiles, targetFiles });
+}
+
+function verifyBaselines(repositoryRoot, manifest) {
   const dependency = JSON.parse(fs.readFileSync(path.join(
     repositoryRoot,
     'backend',
     '.dependency-cruiser-known-violations.json',
   ), 'utf8'));
-  if (!Array.isArray(dependency)
-      || dependency.length !== manifest.expectedBaselines.baseDependencyRecords) {
-    throw new Error('R7 design dependency baseline drift detected');
+  const expectedDependencyRecords = manifest.stage === 'design'
+    ? manifest.expectedBaselines.baseDependencyRecords
+    : manifest.expectedBaselines.strictDependencyRecords;
+  if (!Array.isArray(dependency) || dependency.length !== expectedDependencyRecords) {
+    throw new Error('R7 dependency baseline drift detected');
   }
   const debt = dependency.map(dependencyKey)
     .filter((key) => manifest.historicalHandoffs.retiredDependencyKeys.includes(key));
-  assertExact(debt, manifest.historicalHandoffs.retiredDependencyKeys, 'R7 dependency handoff');
+  assertExact(
+    debt,
+    manifest.stage === 'design' ? manifest.historicalHandoffs.retiredDependencyKeys : [],
+    'R7 dependency handoff',
+  );
 
   const ownership = JSON.parse(fs.readFileSync(path.join(
     repositoryRoot,
@@ -387,26 +543,37 @@ function verifyDesignBaselines(repositoryRoot, manifest) {
   ), 'utf8'));
   if (!ownership || !Array.isArray(ownership.violations)
       || ownership.violations.length !== manifest.expectedBaselines.baseOwnershipRecords) {
-    throw new Error('R7 design ownership baseline drift detected');
+    throw new Error('R7 ownership baseline drift detected');
   }
   const total = ownership.violations.reduce((sum, record) => sum + record.count, 0);
   if (total !== manifest.expectedBaselines.baseOwnershipOccurrences) {
-    throw new Error('R7 design ownership occurrence drift detected');
+    throw new Error('R7 ownership occurrence drift detected');
   }
+  const targetPaths = stageTargetPaths(manifest);
   for (const projection of manifest.historicalHandoffs.ownershipProjection) {
-    const records = ownership.violations.filter((record) => record.file === projection.from);
+    const activePath = targetPaths.has(projection.to) ? projection.to : projection.from;
+    const records = ownership.violations.filter((record) => record.file === activePath);
     const occurrences = records.reduce((sum, record) => sum + record.count, 0);
     if (records.length !== projection.records || occurrences !== projection.occurrences) {
       throw new Error('R7 ownership handoff drift detected');
     }
+    const inactivePath = activePath === projection.from ? projection.to : projection.from;
+    if (ownership.violations.some((record) => record.file === inactivePath)) {
+      throw new Error('R7 ownership handoff retains an inactive path');
+    }
   }
+  return Object.freeze({
+    dependencyRecords: dependency.length,
+    ownershipRecords: ownership.violations.length,
+    ownershipOccurrences: total,
+  });
 }
 
 function activeMovePath(repositoryRoot, manifest, targetPath) {
   const move = manifest.moves.find((entry) => entry.to === targetPath);
   if (!move) throw new Error('R7 source contract target is outside the move map');
-  const sourceExists = fs.existsSync(path.join(repositoryRoot, ...move.from.split('/')));
-  const targetExists = fs.existsSync(path.join(repositoryRoot, ...move.to.split('/')));
+  const sourceExists = inspectExistingPath(repositoryRoot, move.from, 'file').exists;
+  const targetExists = inspectExistingPath(repositoryRoot, move.to, 'file').exists;
   if (sourceExists === targetExists) {
     throw new Error('R7 source contract path identity drift detected');
   }
@@ -429,6 +596,66 @@ function parseTypeScriptSource(repositoryRoot, relativePath) {
     throw new Error('R7 TypeScript source could not be parsed');
   }
   return sourceFile;
+}
+
+function normalizeR7Source(relativePath, sourceText, manifest) {
+  if (typeof sourceText !== 'string') throw new Error('R7 source parity input is invalid');
+  let normalized = sourceText.replace(/\r\n/gu, '\n');
+  const sourceFile = ts.createSourceFile(
+    relativePath,
+    normalized,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.parseDiagnostics.length > 0) {
+    throw new Error('R7 TypeScript source could not be parsed');
+  }
+  const aliases = new Map();
+  for (const move of manifest.moves) {
+    aliases.set(move.from.replace(/\.ts$/u, ''), move.to.replace(/\.ts$/u, ''));
+    aliases.set(move.to.replace(/\.ts$/u, ''), move.to.replace(/\.ts$/u, ''));
+  }
+  const replacements = [];
+  for (const statement of sourceFile.statements) {
+    if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement))
+        || !statement.moduleSpecifier
+        || !ts.isStringLiteralLike(statement.moduleSpecifier)
+        || !statement.moduleSpecifier.text.startsWith('.')) continue;
+    const resolved = path.posix.normalize(path.posix.join(
+      path.posix.dirname(relativePath),
+      statement.moduleSpecifier.text,
+    ));
+    const canonical = aliases.get(resolved) || resolved;
+    replacements.push(Object.freeze({
+      start: statement.moduleSpecifier.getStart(sourceFile) + 1,
+      end: statement.moduleSpecifier.getEnd() - 1,
+      value: `#r7/${canonical}`,
+    }));
+  }
+  for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
+    normalized = normalized.slice(0, replacement.start)
+      + replacement.value
+      + normalized.slice(replacement.end);
+  }
+  return normalized;
+}
+
+function verifySourceParity(repositoryRoot, manifest) {
+  for (const parity of manifest.sourceParity) {
+    const activePath = activeMovePath(repositoryRoot, manifest, parity.to);
+    const sourceText = fs.readFileSync(
+      path.join(repositoryRoot, ...activePath.split('/')),
+      'utf8',
+    );
+    const fingerprint = crypto.createHash('sha256')
+      .update(normalizeR7Source(activePath, sourceText, manifest))
+      .digest('hex');
+    if (fingerprint !== parity.normalizedSha256) {
+      throw new Error('R7 normalized source parity drift detected');
+    }
+  }
+  return Object.freeze({ files: manifest.sourceParity.length });
 }
 
 function decoratorsOf(node) {
@@ -614,6 +841,68 @@ function verifyControllerHandoffs(repositoryRoot, manifest) {
   return Object.freeze({ controllers: EXPECTED_CONTROLLER_INVENTORIES.length, operations });
 }
 
+function isCollaborationSource(relativePath) {
+  return relativePath.startsWith('backend/src/contribution-history/')
+    || relativePath.startsWith('backend/src/sharing/')
+    || relativePath.startsWith('backend/src/modules/collaboration/');
+}
+
+function isTypeOnlyImport(statement) {
+  if (!ts.isImportDeclaration(statement) || !statement.importClause) return false;
+  if (statement.importClause.isTypeOnly) return true;
+  if (statement.importClause.name) return false;
+  const bindings = statement.importClause.namedBindings;
+  return Boolean(bindings && ts.isNamedImports(bindings)
+    && bindings.elements.length > 0
+    && bindings.elements.every((element) => element.isTypeOnly));
+}
+
+function resolvedImportPath(importer, specifier) {
+  if (specifier.startsWith('.')) {
+    return path.posix.normalize(path.posix.join(path.posix.dirname(importer), specifier));
+  }
+  if (specifier.startsWith('src/')) return `backend/${specifier}`;
+  return null;
+}
+
+function verifyProtectedCollaborationImports(repositoryRoot) {
+  const protectedPrefixes = [
+    'backend/src/modules/collaboration/api/',
+    'backend/src/modules/collaboration/internal/',
+  ];
+  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
+    if (!relativePath.endsWith('.ts') || isCollaborationSource(relativePath)) continue;
+    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    const inspectSpecifier = (specifier) => {
+      if (typeof specifier !== 'string') return;
+      const resolved = resolvedImportPath(relativePath, specifier);
+      if (resolved && protectedPrefixes.some((prefix) => resolved.startsWith(prefix))) {
+        throw new Error('R7 cross-context runtime import enters Collaboration internal or api');
+      }
+    };
+    for (const statement of sourceFile.statements) {
+      if (ts.isImportDeclaration(statement) && !isTypeOnlyImport(statement)
+          && ts.isStringLiteralLike(statement.moduleSpecifier)) {
+        inspectSpecifier(statement.moduleSpecifier.text);
+      } else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly
+          && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
+        inspectSpecifier(statement.moduleSpecifier.text);
+      }
+    }
+    const visit = (node) => {
+      if (ts.isCallExpression(node)
+          && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
+            || node.expression.kind === ts.SyntaxKind.ImportKeyword)
+          && node.arguments.length === 1
+          && ts.isStringLiteralLike(node.arguments[0])) {
+        inspectSpecifier(node.arguments[0].text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+}
+
 function scanR7CollaborationRelocation(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new Error('R7 scan options are invalid');
@@ -622,20 +911,22 @@ function scanR7CollaborationRelocation(options) {
   if (typeof options.repositoryRoot !== 'string' || !path.isAbsolute(options.repositoryRoot)) {
     throw new Error('R7 repository root must be absolute');
   }
-  let sourceFiles = 0;
-  let targetFiles = 0;
-  for (const move of manifest.moves) {
-    if (fs.existsSync(path.join(options.repositoryRoot, ...move.from.split('/')))) sourceFiles += 1;
-    if (fs.existsSync(path.join(options.repositoryRoot, ...move.to.split('/')))) targetFiles += 1;
-  }
-  if (sourceFiles !== 18 || targetFiles !== 0) {
-    throw new Error('R7 design stage does not match the filesystem');
-  }
-  verifyDesignBaselines(options.repositoryRoot, manifest);
+  const { sourceFiles, targetFiles } = validateStagedLayout(options.repositoryRoot, manifest);
+  const baselines = verifyBaselines(options.repositoryRoot, manifest);
+  verifySourceParity(options.repositoryRoot, manifest);
   verifyPublicSnapshotSource(options.repositoryRoot, manifest);
   verifyConstructorHandoffs(options.repositoryRoot, manifest);
   verifyControllerHandoffs(options.repositoryRoot, manifest);
-  return Object.freeze({ ok: true, stage: manifest.stage, sourceFiles, targetFiles });
+  verifyProtectedCollaborationImports(options.repositoryRoot);
+  return Object.freeze({
+    ok: true,
+    stage: manifest.stage,
+    sourceFiles,
+    targetFiles,
+    dependencyRecords: baselines.dependencyRecords,
+    ownershipRecords: baselines.ownershipRecords,
+    ownershipOccurrences: baselines.ownershipOccurrences,
+  });
 }
 
 function runCli(dependencies = {}) {
@@ -651,7 +942,9 @@ function runCli(dependencies = {}) {
     ), 'utf8'));
     const result = scanR7CollaborationRelocation({ repositoryRoot, manifest });
     stdout('PASS - R7 Collaboration relocation: stage=' + result.stage
-      + ', source=' + result.sourceFiles + ', target=' + result.targetFiles);
+      + ', source=' + result.sourceFiles + ', target=' + result.targetFiles
+      + ', dependency=' + result.dependencyRecords
+      + ', ownership=' + result.ownershipRecords + '/' + result.ownershipOccurrences);
     return 0;
   } catch {
     stderr('ERROR - R7 Collaboration relocation validation failed');
@@ -670,6 +963,7 @@ module.exports = {
   validateR7Manifest,
   verifyConstructorHandoffs,
   verifyControllerHandoffs,
+  verifySourceParity,
   verifyPublicSnapshotSource,
 };
 

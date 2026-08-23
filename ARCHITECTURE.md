@@ -253,15 +253,17 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   imports. Dependency evidence remains 31 records and ownership remains 385
   records / 781 occurrences. Full local gates, immutable runtime cutover, and
   the authenticated phone sharing journey passed with OpenWA truthfully
-  disabled and the stopped R5 runtime preserved for rollback. R7 design is
-  approved; implementation planning is pending and application relocation has
-  not started. No push, merge, deployment, or remote-CI result is claimed.
+  disabled and the stopped R5 runtime preserved for rollback. R7 design and
+  implementation plan are approved; application relocation has not started.
+  No push, merge, deployment, or remote-CI result is claimed.
 - R7 design is approved from immutable R6 closeout
   `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`. Its design-stage manifest and
   scanner freeze the exact 18-file Collaboration move, four builder exports,
   historical R3-R6 handoffs, 31-to-22 dependency projection, 385/781 path-only
   ownership projection, existing optional realtime injection, and exact future
-  R7 path fence. Implementation remains blocked on an approved writing plan.
+  R7 path fence. Its staged implementation plan is approved at
+  `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md`;
+  no application file has moved.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

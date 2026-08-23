@@ -2,7 +2,7 @@
 
 Date: 2026-08-23
 
-Status: Owner-approved design; implementation plan not yet written
+Status: Owner-approved design; staged implementation plan approved separately
 
 Branch: `modular-monolith`
 

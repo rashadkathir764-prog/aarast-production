@@ -71,8 +71,10 @@ debt baselines only to shrink. R1 keeps 52 models and 76 migrations and changes
 no API route or database contract.
 
 The cumulative chain includes the design-stage R7 Collaboration relocation
-contract. Before implementation planning it must report exactly 18 legacy
-sources, zero final targets, and the frozen dependency/ownership handoff.
+contract. Before application implementation it must report exactly 18 legacy
+sources, zero final targets, and the frozen dependency/ownership handoff. The
+approved implementation plan advances only through the exact
+design/snapshot/history/relocated/strict stages.
 
 Database-writing smoke and load commands are managed by
 `scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker

@@ -94,13 +94,15 @@ changing behavior.
 ## Modular Monolith Status And Plans
 
 - `docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md`
+  and
+  `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md`
   - owner-approved R7 design from immutable R6 closeout
   `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`. The exact 18-file fate map,
   public snapshot contract, historical R3-R6 handoffs, 31-minus-9 dependency
   projection, 385/781 path-only ownership projection, optional realtime
   invariant, and exact future R7 scope are machine-checked by the design-stage
-  R7 manifest/scanner. The implementation plan is pending and application
-  relocation has not started.
+  R7 manifest/scanner. The implementation plan is approved with staged
+  snapshot/history/sharing checkpoints; application relocation has not started.
 - `docs/superpowers/specs/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md`
   and
   `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md`
@@ -110,8 +112,8 @@ changing behavior.
   Identity owns the provider-neutral public transient-delivery port and private
   adapter; Collaboration no longer imports the concrete OpenWA transport. Full
   local gates, immutable runtime, and phone sharing/restore passed with OpenWA
-  disabled truthfully and R5 preserved for rollback. R7 design is approved;
-  its implementation plan is pending and implementation has not started. No
+  disabled truthfully and R5 preserved for rollback. R7 design and
+  implementation plan are approved, but implementation has not started. No
   push, merge, deployment, or remote CI is claimed.
 - `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md`
   - immutable approved R6 execution plan. Its unchecked runtime/closeout boxes

@@ -2,6 +2,11 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import {
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionProvenance,
+  ContributionSection,
   PrismaClient,
   ProviderStatus,
   QuoteOfferStatus,
@@ -10,7 +15,9 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
+import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { buildContributionSnapshot } from "../../src/modules/collaboration/public/contribution-snapshot.builder";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -40,6 +47,7 @@ const {
 assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
+const contributionHistory = new ContributionHistoryService(prisma as any);
 const notifications = {
   createNotification: async (input: unknown) => input,
   createNotificationInTransaction: async (
@@ -65,7 +73,39 @@ function marketplaceService(): MarketplaceService {
     prisma as any,
     new PermissionService(prisma as any),
     notifications as any,
+    contributionHistory,
   );
+}
+
+async function recordFixtureContributorQuote(fixture: any): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await contributionHistory.recordForContextInTransaction(
+      tx as any,
+      {
+        plan: fixture.plan,
+        isOwner: false,
+        sharedMember: fixture.sharedMember,
+      },
+      {
+        section: ContributionSection.PROVIDERS,
+        entityType: ContributionEntityType.QUOTE_REQUEST,
+        entityId: fixture.quoteRequest.id,
+        action: ContributionAction.LEGACY_CAPTURED,
+        snapshot: buildContributionSnapshot(
+          ContributionEntityType.QUOTE_REQUEST,
+          {
+            providerDisplayLabel: fixture.provider.businessName,
+            requestStatus: fixture.quoteRequest.status,
+            status: fixture.quoteRequest.status,
+          },
+        ),
+        dedupeKey: `smoke:provider:quote-request:${fixture.quoteRequest.id}:legacy`,
+        provenance: ContributionProvenance.LEGACY_EXPLICIT,
+        requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
+        occurredAt: fixture.quoteRequest.createdAt,
+      },
+    );
+  });
 }
 
 function deferred(): {
@@ -351,6 +391,7 @@ async function assertPermissionRevocationBlocksRejection(): Promise<void> {
   await withFixture(
     (environment) => createPermissionRevocationFixture(prisma, environment),
     async (fixture) => {
+      await recordFixtureContributorQuote(fixture);
       const service = marketplaceService();
       const eventCountBefore = await prisma.conversationEvent.count({
         where: { conversationId: fixture.conversation.id },

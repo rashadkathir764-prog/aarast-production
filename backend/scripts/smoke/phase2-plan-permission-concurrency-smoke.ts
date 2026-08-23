@@ -9,6 +9,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { WeddingPlansService } from "../../src/wedding-plans/wedding-plans.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -33,7 +34,12 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any);
-const weddingPlans = new WeddingPlansService(prisma as any, permissions);
+const contributionHistory = new ContributionHistoryService(prisma as any);
+const weddingPlans = new WeddingPlansService(
+  prisma as any,
+  permissions,
+  contributionHistory,
+);
 
 function authenticatedUser(user: {
   id: string;

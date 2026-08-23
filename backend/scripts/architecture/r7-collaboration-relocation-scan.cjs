@@ -87,6 +87,21 @@ const EXPECTED_PUBLIC_SNAPSHOT_IMPORTS = Object.freeze([
   '@prisma/client',
   'node:crypto',
 ]);
+const EXPECTED_PUBLIC_SNAPSHOT_CONSUMERS = Object.freeze([
+  Object.freeze({ path: 'backend/src/budget-categories/budget-categories.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/contribution-history/contribution-history.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['canonicalJson', 'hashContributionSnapshot', 'validateContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/guests/guests.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/marketplace/quote-offer-acceptance.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/marketplace/quote-offer-rejection.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/marketplace/quote-request-cancellation.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/marketplace/quote-request-creation.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/sharing/sharing.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/tasks/tasks.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/wedding-costs/wedding-costs.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/src/wedding-plans/wedding-plans.service.ts', specifier: '../modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/test/contribution-history-dedupe.test.ts', specifier: '../src/modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['canonicalJson', 'hashContributionSnapshot']) }),
+  Object.freeze({ path: 'backend/test/contribution-history-privacy.test.ts', specifier: '../src/modules/collaboration/public/contribution-snapshot.builder', names: Object.freeze(['buildContributionSnapshot', 'validateContributionSnapshot']) }),
+]);
 
 const EXPECTED_CONTROLLER_INVENTORIES = Object.freeze([
   Object.freeze({
@@ -760,6 +775,60 @@ function verifyPublicSnapshotSource(repositoryRoot, manifest) {
   return Object.freeze({ exports: exports.length, imports: imports.length });
 }
 
+function verifyPublicSnapshotConsumers(repositoryRoot) {
+  const expected = EXPECTED_PUBLIC_SNAPSHOT_CONSUMERS.map((entry) => {
+    if (entry.path === 'backend/src/contribution-history/contribution-history.service.ts'
+        && !fs.existsSync(path.join(repositoryRoot, ...entry.path.split('/')))) {
+      return {
+        ...entry,
+        path: 'backend/src/modules/collaboration/internal/contribution-history.service.ts',
+        specifier: '../public/contribution-snapshot.builder',
+      };
+    }
+    if (entry.path === 'backend/src/sharing/sharing.service.ts'
+        && !fs.existsSync(path.join(repositoryRoot, ...entry.path.split('/')))) {
+      return {
+        ...entry,
+        path: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+        specifier: '../public/contribution-snapshot.builder',
+      };
+    }
+    return entry;
+  }).sort((left, right) => left.path.localeCompare(right.path));
+  const actual = [];
+  for (const root of ['backend/src', 'backend/test']) {
+    for (const relativePath of listPlainFiles(repositoryRoot, root).filter(
+      (entry) => entry.endsWith('.ts'),
+    )) {
+      const sourceText = fs.readFileSync(
+        path.join(repositoryRoot, ...relativePath.split('/')),
+        'utf8',
+      );
+      if (!sourceText.includes('contribution-snapshot.builder')) continue;
+      const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+      for (const statement of sourceFile.statements.filter(ts.isImportDeclaration)) {
+        if (!ts.isStringLiteralLike(statement.moduleSpecifier)
+            || !statement.moduleSpecifier.text.includes('contribution-snapshot.builder')) continue;
+        const bindings = statement.importClause && statement.importClause.namedBindings;
+        if (!bindings || !ts.isNamedImports(bindings) || statement.importClause.name) {
+          throw new Error('R7 public snapshot consumer import shape drift detected');
+        }
+        actual.push({
+          path: relativePath,
+          specifier: statement.moduleSpecifier.text,
+          names: bindings.elements.map((element) => element.name.text).sort(),
+        });
+      }
+    }
+  }
+  actual.sort((left, right) => left.path.localeCompare(right.path));
+  assertExact(actual, expected, 'R7 public snapshot consumers');
+  return Object.freeze({
+    callers: actual.filter((entry) => entry.path.startsWith('backend/src/')).length,
+    testImports: actual.filter((entry) => entry.path.startsWith('backend/test/')).length,
+  });
+}
+
 function verifyConstructorHandoffs(repositoryRoot, manifest) {
   const sourceFiles = new Map();
   let optional = 0;
@@ -962,6 +1031,7 @@ function scanR7CollaborationRelocation(options) {
   const baselines = verifyBaselines(options.repositoryRoot, manifest);
   verifySourceParity(options.repositoryRoot, manifest);
   verifyPublicSnapshotSource(options.repositoryRoot, manifest);
+  verifyPublicSnapshotConsumers(options.repositoryRoot);
   verifyConstructorHandoffs(options.repositoryRoot, manifest);
   verifyControllerHandoffs(options.repositoryRoot, manifest);
   verifyProtectedCollaborationImports(options.repositoryRoot);
@@ -1012,6 +1082,7 @@ module.exports = {
   verifyControllerHandoffs,
   verifySourceParity,
   verifyPublicSnapshotSource,
+  verifyPublicSnapshotConsumers,
 };
 
 if (require.main === module) process.exitCode = runCli();

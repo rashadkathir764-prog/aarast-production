@@ -33,7 +33,7 @@ import {
   COLLABORATION_HISTORY_PORT,
   type CollaborationHistoryPort as ContributionHistoryService,
 } from "../modules/collaboration/public/collaboration-history.port";
-import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto";
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
 import { PrismaService } from "../platform/database/prisma.service";

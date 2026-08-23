@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { afterEach, test } from 'node:test';
 
 const backendRoot = path.resolve(__dirname, '..');
@@ -24,6 +25,14 @@ type Scanner = {
   collectR3DecoratorInventory(options: Record<string, unknown>): any;
   validateR3ContextManifest(value: unknown): any;
   validateR3ScanResult(value: unknown): any;
+  verifyR7DependencyHandoff(options: {
+    historicalDependency: Array<Record<string, unknown>>;
+    liveDependency: Array<Record<string, unknown>>;
+  }): {
+    historicalDependencyRecords: number;
+    liveDependencyRecords: number;
+    retiredDependencyRecords: number;
+  };
   runCli(dependencies: Record<string, unknown>): number;
 };
 
@@ -34,6 +43,56 @@ function scanner(): Scanner {
 function loadManifest() {
   return JSON.parse(readFileSync(manifestPath, 'utf8'));
 }
+
+function r7DependencyFixture() {
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalDependency = JSON.parse(execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/.dependency-cruiser-known-violations.json`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ));
+  const retired = new Set(r7Manifest.historicalHandoffs.retiredDependencyKeys);
+  const liveDependency = historicalDependency.filter((record: any) => !retired.has(
+    `${record.rule.name}|${record.from}|${record.to}`,
+  ));
+  return { historicalDependency, liveDependency };
+}
+
+test('R3 preserves immutable dependency history and accepts only the exact R7 handoff', () => {
+  const verify = scanner().verifyR7DependencyHandoff;
+  const fixture = r7DependencyFixture();
+  assert.deepEqual(verify(fixture), {
+    historicalDependencyRecords: 31,
+    liveDependencyRecords: 22,
+    retiredDependencyRecords: 9,
+  });
+  assert.throws(() => verify({
+    historicalDependency: fixture.liveDependency,
+    liveDependency: fixture.liveDependency,
+  }), /historical dependency/i);
+  assert.throws(() => verify({
+    historicalDependency: fixture.historicalDependency,
+    liveDependency: fixture.historicalDependency,
+  }), /live dependency/i);
+
+  const renamedDebt = structuredClone(fixture.liveDependency);
+  renamedDebt.push({
+    ...fixture.historicalDependency.find((record: any) => record.from === 'src/tasks/tasks.service.ts'),
+    to: 'src/modules/collaboration/public/contribution-snapshot.builder.ts',
+    unresolvedTo: '../modules/collaboration/public/contribution-snapshot.builder',
+  });
+  assert.throws(() => verify({
+    historicalDependency: fixture.historicalDependency,
+    liveDependency: renamedDebt,
+  }), /live dependency/i);
+  assert.throws(() => verify({
+    historicalDependency: fixture.historicalDependency,
+    liveDependency: fixture.liveDependency.slice(1),
+  }), /live dependency/i);
+});
 
 function write(root: string, relativePath: string, content: string) {
   const target = path.join(root, relativePath);
@@ -104,9 +163,20 @@ afterEach(() => {
 
 test('the canonical R3 manifest freezes the exact strict ledgers', () => {
   const manifest = scanner().validateR3ContextManifest(loadManifest());
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.baseRevision, '6b06eb096aca8cc6684d365d16e05d4cd8529898');
   assert.equal(manifest.stage, 'strict');
+  assert.deepEqual(manifest.r7DependencyHandoff, {
+    baseRevision: '31ea5324007fc71fa4b3590fbb98a454ee1deaa7',
+    historicalSha256: '82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42',
+    historicalRecords: 31,
+    liveRecords: 22,
+    retiredDependencyKeys: r7Manifest.historicalHandoffs.retiredDependencyKeys,
+  });
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',

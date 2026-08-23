@@ -33,7 +33,7 @@ import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { canonicalPlanContextKey } from "../modules/identity/public/context-key";
 import { ContributionHistoryService } from "../contribution-history/contribution-history.service";
-import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import {
   MESSAGING_REALTIME_PORT,
   MessagingRealtimePort,

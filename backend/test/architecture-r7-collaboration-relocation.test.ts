@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   cpSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -52,6 +53,10 @@ type R7Scanner = {
   verifyPublicSnapshotSource(repositoryRoot: string, manifest: R7Manifest): {
     exports: number;
     imports: number;
+  };
+  verifyPublicSnapshotConsumers(repositoryRoot: string): {
+    callers: number;
+    testImports: number;
   };
   verifyConstructorHandoffs(repositoryRoot: string, manifest: R7Manifest): {
     consumers: number;
@@ -110,7 +115,11 @@ function sourceContractFixture(): string {
   for (const relativePath of paths) {
     const target = path.join(fixtureRoot, ...relativePath.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
-    copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
+    const move = manifest().moves.find((entry) => entry.from === relativePath)!;
+    const activePath = existsSync(path.join(repositoryRoot, ...move.from.split('/')))
+      ? move.from
+      : move.to;
+    copyFileSync(path.join(repositoryRoot, ...activePath.split('/')), target);
   }
   return fixtureRoot;
 }
@@ -197,9 +206,18 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
   const collaborationSource = path.join(repositoryRoot, 'backend', 'src', 'modules', 'collaboration');
   const collaborationTarget = path.join(root, 'backend', 'src', 'modules', 'collaboration');
   cpSync(collaborationSource, collaborationTarget, { recursive: true });
-  copyFileSync(
-    path.join(repositoryRoot, 'backend', '.dependency-cruiser-known-violations.json'),
+  for (const move of value.moves) {
+    rmSync(path.join(root, ...move.to.split('/')), { force: true });
+  }
+  mkdirSync(path.join(root, 'backend'), { recursive: true });
+  writeFileSync(
     path.join(root, 'backend', '.dependency-cruiser-known-violations.json'),
+    execFileSync(
+      'git',
+      ['show', `${value.baseRevision}:backend/.dependency-cruiser-known-violations.json`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+    'utf8',
   );
   mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
   copyFileSync(
@@ -207,11 +225,34 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     path.join(root, 'backend', 'architecture', 'ownership-baseline.json'),
   );
 
+  for (const relativePath of [
+    'backend/src/budget-categories/budget-categories.service.ts',
+    'backend/src/contribution-history/contribution-history.service.ts',
+    'backend/src/guests/guests.service.ts',
+    'backend/src/marketplace/quote-offer-acceptance.ts',
+    'backend/src/marketplace/quote-offer-rejection.ts',
+    'backend/src/marketplace/quote-request-cancellation.ts',
+    'backend/src/marketplace/quote-request-creation.ts',
+    'backend/src/sharing/sharing.service.ts',
+    'backend/src/tasks/tasks.service.ts',
+    'backend/src/wedding-costs/wedding-costs.service.ts',
+    'backend/src/wedding-plans/wedding-plans.service.ts',
+    'backend/test/contribution-history-dedupe.test.ts',
+    'backend/test/contribution-history-privacy.test.ts',
+  ]) {
+    const target = path.join(root, ...relativePath.split('/'));
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
+  }
+
   const activeTargets = targetPathsForStage(value, stage);
   for (const move of value.moves) {
     const source = path.join(root, ...move.from.split('/'));
     mkdirSync(path.dirname(source), { recursive: true });
-    copyFileSync(path.join(repositoryRoot, ...move.from.split('/')), source);
+    const activePath = existsSync(path.join(repositoryRoot, ...move.from.split('/')))
+      ? move.from
+      : move.to;
+    copyFileSync(path.join(repositoryRoot, ...activePath.split('/')), source);
     if (!activeTargets.has(move.to)) continue;
     const target = path.join(root, ...move.to.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
@@ -333,7 +374,7 @@ test('R7 pins the immutable R6 closeout and exact Collaboration fate map', () =>
   const value = scanner().validateR7Manifest(manifest());
   assert.equal(value.schemaVersion, 1);
   assert.equal(value.baseRevision, '31ea5324007fc71fa4b3590fbb98a454ee1deaa7');
-  assert.equal(value.stage, 'design');
+  assert.equal(value.stage, 'snapshot');
   assert.deepEqual(value.moves, expectedMoves);
   assert.equal(new Set(value.moves.map((move) => move.from)).size, 18);
   assert.equal(new Set(value.moves.map((move) => move.to)).size, 18);
@@ -738,6 +779,10 @@ test('R7 verifies public exports and DI handoffs against the live TypeScript sou
     exports: 4,
     imports: 3,
   });
+  assert.deepEqual(scanner().verifyPublicSnapshotConsumers(repositoryRoot), {
+    callers: 11,
+    testImports: 2,
+  });
   assert.deepEqual(scanner().verifyConstructorHandoffs(repositoryRoot, value), {
     consumers: 4,
     optional: 1,
@@ -882,10 +927,10 @@ test('R7 scope is exact, sorted, delegated, and does not mutate R3', () => {
   const scan = scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value });
   assert.deepEqual(scan, {
     ok: true,
-    stage: 'design',
-    sourceFiles: 18,
-    targetFiles: 0,
-    dependencyRecords: 31,
+    stage: 'snapshot',
+    sourceFiles: 17,
+    targetFiles: 1,
+    dependencyRecords: 22,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });

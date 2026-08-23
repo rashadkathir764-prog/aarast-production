@@ -85,48 +85,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/budget-categories/budget-categories.service.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-costs/wedding-costs.service.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-finance-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/guests/guests.service.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-guests-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/dashboard/dashboard.contracts.ts",
     "to": "src/wedding-plans/wedding-location.ts",
     "unresolvedTo": "../wedding-plans/wedding-location",
@@ -198,20 +156,6 @@
   {
     "type": "dependency",
     "from": "src/marketplace/quote-offer-acceptance.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-offer-acceptance.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
     "dependencyTypes": [
@@ -240,20 +184,6 @@
   {
     "type": "dependency",
     "from": "src/marketplace/quote-offer-rejection.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-offer-rejection.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
     "dependencyTypes": [
@@ -268,36 +198,8 @@
   {
     "type": "dependency",
     "from": "src/marketplace/quote-request-cancellation.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-request-cancellation.ts",
     "to": "src/conversations/conversation-lifecycle.ts",
     "unresolvedTo": "../conversations/conversation-lifecycle",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-marketplace-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/marketplace/quote-request-creation.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
     "dependencyTypes": [
       "local",
       "import"
@@ -403,34 +305,6 @@
     "rule": {
       "severity": "error",
       "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/wedding-plans/wedding-plans.service.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-planning-cross-context"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/tasks/tasks.service.ts",
-    "to": "src/contribution-history/contribution-snapshot.builder.ts",
-    "unresolvedTo": "../contribution-history/contribution-snapshot.builder",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "context-tasks-cross-context"
     }
   }
 ]

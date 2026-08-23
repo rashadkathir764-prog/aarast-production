@@ -31,7 +31,7 @@ import {
   canonicalJson,
   hashContributionSnapshot,
   validateContributionSnapshot,
-} from "./contribution-snapshot.builder";
+} from "../modules/collaboration/public/contribution-snapshot.builder";
 import {
   ContributionHistoryPageResponse,
 } from "./contribution-history.contracts";

@@ -2,6 +2,23 @@
   "schemaVersion": 1,
   "baseRevision": "6b06eb096aca8cc6684d365d16e05d4cd8529898",
   "stage": "strict",
+  "r7DependencyHandoff": {
+    "baseRevision": "31ea5324007fc71fa4b3590fbb98a454ee1deaa7",
+    "historicalSha256": "82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42",
+    "historicalRecords": 31,
+    "liveRecords": 22,
+    "retiredDependencyKeys": [
+      "context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-guests-cross-context|src/guests/guests.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts"
+    ]
+  },
   "contexts": [
     "identity",
     "planning",

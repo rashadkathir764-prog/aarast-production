@@ -240,6 +240,23 @@ const TASK5_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/sharing/invite-access.service.ts', consumerClass: 'backend/src/sharing/invite-access.service.ts#InviteAccessService', parameter: 'auth', parameterIndex: 1, ...TASK5_CANONICAL_INJECTION_IDENTITIES.auth }),
   Object.freeze({ source: 'backend/src/conversations/conversations.gateway.ts', consumerClass: 'backend/src/conversations/conversations.gateway.ts#ConversationsGateway', parameter: 'jwt', parameterIndex: 0, ...TASK5_CANONICAL_INJECTION_IDENTITIES.verifier }),
 ]);
+const R7_DEPENDENCY_HANDOFF = Object.freeze({
+  baseRevision: '31ea5324007fc71fa4b3590fbb98a454ee1deaa7',
+  historicalSha256: '82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42',
+  historicalRecords: 31,
+  liveRecords: 22,
+  retiredDependencyKeys: Object.freeze([
+    'context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-guests-cross-context|src/guests/guests.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+    'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  ]),
+});
 const R6_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
   transientDelivery: Object.freeze({
     token: 'backend/src/modules/identity/public/identity-transient-delivery.port.ts#IDENTITY_TRANSIENT_DELIVERY_PORT',
@@ -401,7 +418,7 @@ function validateR3ContextManifest(value) {
     'initialDuplicateProviders', 'remainingDuplicateProviders',
     'initialPlatformDebts', 'remainingPlatformDebts',
     'initialRetiredLegacyProviderEdges', 'remainingRetiredLegacyProviderEdges',
-    'allowedChangedPaths',
+    'r7DependencyHandoff', 'allowedChangedPaths',
   ];
   if (Object.keys(manifest).sort().join('|') !== [...required].sort().join('|')) {
     throw new Error('R3 context manifest keys are invalid');
@@ -409,6 +426,13 @@ function validateR3ContextManifest(value) {
   const stageMatch = typeof manifest.stage === 'string' && /^(?:inventory|task-[2-8]|strict)$/u.exec(manifest.stage);
   if (manifest.schemaVersion !== 1 || manifest.baseRevision !== R3_BASE || !stageMatch) {
     throw new Error('R3 context manifest identity is invalid');
+  }
+  const r7DependencyHandoff = exactObject(manifest.r7DependencyHandoff, [
+    'baseRevision', 'historicalSha256', 'historicalRecords', 'liveRecords',
+    'retiredDependencyKeys',
+  ], 'R7 dependency handoff');
+  if (JSON.stringify(r7DependencyHandoff) !== JSON.stringify(R7_DEPENDENCY_HANDOFF)) {
+    throw new Error('R7 dependency handoff is not canonical');
   }
   const completedTask = manifest.stage === 'inventory'
     ? 1
@@ -554,6 +578,40 @@ function validateR3ContextManifest(value) {
     throw new Error('retired legacy provider removal is early, late, renamed, or unscheduled for task');
   }
   return manifest;
+}
+
+function dependencyRecordKey(record) {
+  return `${record.rule && record.rule.name}|${record.from}|${record.to}`;
+}
+
+function verifyR7DependencyHandoff(options) {
+  const input = exactObject(options, [
+    'historicalDependency', 'liveDependency',
+  ], 'R7 dependency handoff input');
+  assertDeepPlainData(input.historicalDependency, 'R7 historical dependency');
+  if (!Array.isArray(input.historicalDependency)
+      || input.historicalDependency.length !== R7_DEPENDENCY_HANDOFF.historicalRecords
+      || sha256(input.historicalDependency) !== R7_DEPENDENCY_HANDOFF.historicalSha256) {
+    throw new Error('R7 historical dependency identity is invalid');
+  }
+  assertDeepPlainData(input.liveDependency, 'R7 live dependency');
+  if (!Array.isArray(input.liveDependency)) {
+    throw new Error('R7 live dependency is invalid');
+  }
+  const retired = new Set(R7_DEPENDENCY_HANDOFF.retiredDependencyKeys);
+  const expectedLive = input.historicalDependency.filter(
+    (record) => !retired.has(dependencyRecordKey(record)),
+  );
+  if (expectedLive.length !== R7_DEPENDENCY_HANDOFF.liveRecords
+      || input.liveDependency.length !== R7_DEPENDENCY_HANDOFF.liveRecords
+      || JSON.stringify(input.liveDependency) !== JSON.stringify(expectedLive)) {
+    throw new Error('R7 live dependency projection is invalid');
+  }
+  return Object.freeze({
+    historicalDependencyRecords: input.historicalDependency.length,
+    liveDependencyRecords: input.liveDependency.length,
+    retiredDependencyRecords: input.historicalDependency.length - input.liveDependency.length,
+  });
 }
 
 function createProgram(backendRoot) {
@@ -1726,6 +1784,7 @@ module.exports = {
   scanR3SourceLaws,
   validateR3ContextManifest,
   validateR3ScanResult,
+  verifyR7DependencyHandoff,
   runCli,
 };
 if (require.main === module) process.exitCode = runCli();

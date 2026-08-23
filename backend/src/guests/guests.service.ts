@@ -29,7 +29,7 @@ import {
   COLLABORATION_HISTORY_PORT,
   type CollaborationHistoryPort as ContributionHistoryService,
 } from "../modules/collaboration/public/collaboration-history.port";
-import { buildContributionSnapshot } from "../contribution-history/contribution-snapshot.builder";
+import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import {
   COLLABORATION_SCOPE_PORT,
   type CollaborationScopePort as ContributorScopeService,

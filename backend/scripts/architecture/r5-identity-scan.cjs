@@ -111,6 +111,11 @@ const REMAINING_DEPENDENCY_KEYS = Object.freeze([
   'context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
   'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
 ]);
+const R7_HISTORICAL_DEPENDENCY_HASH =
+  '82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42';
+const R7_RETIRED_DEPENDENCY_KEYS = Object.freeze(REMAINING_DEPENDENCY_KEYS.filter(
+  (key) => key.endsWith('|src/contribution-history/contribution-snapshot.builder.ts'),
+));
 const MAX_ARRAY_ITEMS = 1000;
 const MAX_TEXT_LENGTH = 4096;
 
@@ -637,6 +642,31 @@ function validateDependencyRecords(value, label) {
   return records;
 }
 
+function verifyR7DependencyHandoff(options) {
+  const input = exactObject(options, [
+    'historicalDependency', 'liveDependency',
+  ], 'R7 dependency handoff input');
+  const historical = validateDependencyRecords(
+    input.historicalDependency,
+    'R7 historical dependency',
+  );
+  if (historical.length !== 31 || R7_RETIRED_DEPENDENCY_KEYS.length !== 9
+      || hash(historical) !== R7_HISTORICAL_DEPENDENCY_HASH) {
+    throw new Error('R7 historical dependency identity is invalid');
+  }
+  const live = validateDependencyRecords(input.liveDependency, 'R7 live dependency');
+  const retired = new Set(R7_RETIRED_DEPENDENCY_KEYS);
+  const expectedLive = historical.filter((record) => !retired.has(dependencyRecordKey(record)));
+  if (live.length !== 22 || JSON.stringify(live) !== JSON.stringify(expectedLive)) {
+    throw new Error('R7 live dependency projection is invalid');
+  }
+  return Object.freeze({
+    historicalDependencyRecords: historical.length,
+    liveDependencyRecords: live.length,
+    retiredDependencyRecords: historical.length - live.length,
+  });
+}
+
 function expectedR5DependencyRecords(records, manifestValue) {
   const manifest = validateR5Manifest(manifestValue);
   const base = validateDependencyRecords(records, 'R5 base dependency baseline');
@@ -1029,6 +1059,7 @@ module.exports = {
   mapOwnershipRecordsForR5,
   expectedR5DependencyRecords,
   verifyR5Baselines,
+  verifyR7DependencyHandoff,
   runCli,
 };
 

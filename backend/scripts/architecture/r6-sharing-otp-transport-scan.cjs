@@ -12,6 +12,21 @@ const MANIFEST_PATH = 'backend/architecture/r6-sharing-otp-transport.json';
 const STAGES = Object.freeze(['inventory', 'task-2', 'task-3', 'strict']);
 const MAX_ARRAY_ITEMS = 256;
 const MAX_TEXT_LENGTH = 4096;
+const R7_HISTORICAL_DEPENDENCY_HASH =
+  '82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42';
+const R7_LIVE_DEPENDENCY_HASH =
+  'c0290a046009d7fe81f420323da0792af38cd7bc3adb37a8eb4df7c4986a46cc';
+const R7_RETIRED_DEPENDENCY_KEYS = Object.freeze([
+  'context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-guests-cross-context|src/guests/guests.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+]);
 
 const EXPECTED_CURRENT_DEPENDENCY = Object.freeze({
   consumer: 'backend/src/sharing/invitation-delivery.service.ts',
@@ -226,6 +241,40 @@ function validateCurrentDependency(value) {
   return Object.freeze({
     ...result,
     declarations: Object.freeze(result.declarations),
+  });
+}
+
+function dependencyRecordKey(record) {
+  return `${record.rule && record.rule.name}|${record.from}|${record.to}`;
+}
+
+function verifyR7DependencyHandoff(options) {
+  const input = exactObject(options, [
+    'historicalDependency', 'liveDependency',
+  ], 'R7 dependency handoff input');
+  assertDeepPlainData(input.historicalDependency, 'R7 historical dependency');
+  if (!Array.isArray(input.historicalDependency)
+      || input.historicalDependency.length !== 31
+      || crypto.createHash('sha256').update(JSON.stringify(input.historicalDependency)).digest('hex')
+        !== R7_HISTORICAL_DEPENDENCY_HASH) {
+    throw new Error('R7 historical dependency identity is invalid');
+  }
+  assertDeepPlainData(input.liveDependency, 'R7 live dependency');
+  if (!Array.isArray(input.liveDependency)) {
+    throw new Error('R7 live dependency is invalid');
+  }
+  const retired = new Set(R7_RETIRED_DEPENDENCY_KEYS);
+  const expectedLive = input.historicalDependency.filter(
+    (record) => !retired.has(dependencyRecordKey(record)),
+  );
+  if (expectedLive.length !== 22 || input.liveDependency.length !== 22
+      || JSON.stringify(input.liveDependency) !== JSON.stringify(expectedLive)) {
+    throw new Error('R7 live dependency projection is invalid');
+  }
+  return Object.freeze({
+    historicalDependencyRecords: input.historicalDependency.length,
+    liveDependencyRecords: input.liveDependency.length,
+    retiredDependencyRecords: input.historicalDependency.length - input.liveDependency.length,
   });
 }
 
@@ -475,7 +524,10 @@ function verifyBaselines(repositoryRoot, manifest) {
     'R6 dependency baseline',
   ), 'utf8'));
   if (!Array.isArray(dependency)
-      || dependency.length !== manifest.expectedBaselines.dependencyRecords) {
+      || manifest.expectedBaselines.dependencyRecords !== 31
+      || dependency.length !== 22
+      || crypto.createHash('sha256').update(JSON.stringify(dependency)).digest('hex')
+        !== R7_LIVE_DEPENDENCY_HASH) {
     throw new Error('R6 dependency baseline count drift detected');
   }
   const ownership = JSON.parse(fs.readFileSync(safeFile(
@@ -721,6 +773,7 @@ module.exports = {
   runCli,
   scanR6SharingOtpTransport,
   validateR6Manifest,
+  verifyR7DependencyHandoff,
 };
 
 if (require.main === module) process.exitCode = runCli();

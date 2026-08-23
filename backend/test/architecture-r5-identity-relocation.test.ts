@@ -12,7 +12,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { afterEach, test } from 'node:test';
 
 const backendRoot = path.resolve(__dirname, '..');
@@ -206,7 +206,66 @@ type R5Scanner = {
     manifest: R5Manifest;
     readBaseFile?: (relativePath: string) => string;
   }): { corrections: number };
+  verifyR7DependencyHandoff(options: {
+    historicalDependency: Array<Record<string, unknown>>;
+    liveDependency: Array<Record<string, unknown>>;
+  }): {
+    historicalDependencyRecords: number;
+    liveDependencyRecords: number;
+    retiredDependencyRecords: number;
+  };
 };
+
+function r7DependencyFixture() {
+  const repositoryRoot = path.resolve(backendRoot, '..');
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalDependency = JSON.parse(execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/.dependency-cruiser-known-violations.json`],
+    { cwd: repositoryRoot, encoding: 'utf8' },
+  ));
+  const retired = new Set(r7Manifest.historicalHandoffs.retiredDependencyKeys);
+  const liveDependency = historicalDependency.filter((record: any) => !retired.has(
+    `${record.rule.name}|${record.from}|${record.to}`,
+  ));
+  return { historicalDependency, liveDependency };
+}
+
+test('R5 preserves immutable dependency history and accepts only the exact R7 handoff', () => {
+  const verify = loadScanner().verifyR7DependencyHandoff;
+  const fixture = r7DependencyFixture();
+  assert.deepEqual(verify(fixture), {
+    historicalDependencyRecords: 31,
+    liveDependencyRecords: 22,
+    retiredDependencyRecords: 9,
+  });
+  assert.throws(() => verify({
+    historicalDependency: fixture.liveDependency,
+    liveDependency: fixture.liveDependency,
+  }), /historical dependency/i);
+  assert.throws(() => verify({
+    historicalDependency: fixture.historicalDependency,
+    liveDependency: fixture.historicalDependency,
+  }), /live dependency/i);
+
+  const renamedDebt = structuredClone(fixture.liveDependency);
+  renamedDebt.push({
+    ...fixture.historicalDependency.find((record: any) => record.from === 'src/tasks/tasks.service.ts'),
+    to: 'src/modules/collaboration/public/contribution-snapshot.builder.ts',
+    unresolvedTo: '../modules/collaboration/public/contribution-snapshot.builder',
+  });
+  assert.throws(() => verify({
+    historicalDependency: fixture.historicalDependency,
+    liveDependency: renamedDebt,
+  }), /live dependency/i);
+  assert.throws(() => verify({
+    historicalDependency: fixture.historicalDependency,
+    liveDependency: fixture.liveDependency.slice(1),
+  }), /live dependency/i);
+});
 
 const expectedQaHarnessCorrections: QaHarnessCorrection[] = [
   {

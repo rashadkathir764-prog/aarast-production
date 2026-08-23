@@ -10,7 +10,7 @@ import { ConflictException } from "@nestjs/common";
 import {
   canonicalJson,
   hashContributionSnapshot,
-} from "../src/contribution-history/contribution-snapshot.builder";
+} from "../src/modules/collaboration/public/contribution-snapshot.builder";
 import { ContributionHistoryService } from "../src/contribution-history/contribution-history.service";
 
 test("canonical snapshot JSON and SHA-256 do not depend on object key order", () => {

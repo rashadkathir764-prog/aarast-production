@@ -776,7 +776,26 @@ function verifyPublicSnapshotSource(repositoryRoot, manifest) {
 }
 
 function verifyPublicSnapshotConsumers(repositoryRoot) {
+  const publicSnapshotActive = fs.existsSync(path.join(
+    repositoryRoot,
+    ...EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.path.split('/'),
+  ));
   const expected = EXPECTED_PUBLIC_SNAPSHOT_CONSUMERS.map((entry) => {
+    if (!publicSnapshotActive) {
+      if (entry.path === 'backend/src/contribution-history/contribution-history.service.ts') {
+        return { ...entry, specifier: './contribution-snapshot.builder' };
+      }
+      if (entry.path.startsWith('backend/test/')) {
+        return {
+          ...entry,
+          specifier: '../src/contribution-history/contribution-snapshot.builder',
+        };
+      }
+      return {
+        ...entry,
+        specifier: '../contribution-history/contribution-snapshot.builder',
+      };
+    }
     if (entry.path === 'backend/src/contribution-history/contribution-history.service.ts'
         && !fs.existsSync(path.join(repositoryRoot, ...entry.path.split('/')))) {
       return {
@@ -796,6 +815,10 @@ function verifyPublicSnapshotConsumers(repositoryRoot) {
     return entry;
   }).sort((left, right) => left.path.localeCompare(right.path));
   const actual = [];
+  const builderTargets = new Set([
+    'backend/src/contribution-history/contribution-snapshot.builder',
+    'backend/src/modules/collaboration/public/contribution-snapshot.builder',
+  ]);
   for (const root of ['backend/src', 'backend/test']) {
     for (const relativePath of listPlainFiles(repositoryRoot, root).filter(
       (entry) => entry.endsWith('.ts'),
@@ -806,19 +829,58 @@ function verifyPublicSnapshotConsumers(repositoryRoot) {
       );
       if (!sourceText.includes('contribution-snapshot.builder')) continue;
       const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
-      for (const statement of sourceFile.statements.filter(ts.isImportDeclaration)) {
-        if (!ts.isStringLiteralLike(statement.moduleSpecifier)
-            || !statement.moduleSpecifier.text.includes('contribution-snapshot.builder')) continue;
-        const bindings = statement.importClause && statement.importClause.namedBindings;
-        if (!bindings || !ts.isNamedImports(bindings) || statement.importClause.name) {
-          throw new Error('R7 public snapshot consumer import shape drift detected');
+      const isBuilderSpecifier = (specifier) => {
+        if (typeof specifier !== 'string') return false;
+        const resolved = resolvedImportPath(relativePath, specifier);
+        return resolved !== null && builderTargets.has(resolved);
+      };
+      const rejectNonCanonicalForm = (specifier) => {
+        if (isBuilderSpecifier(specifier)) {
+          throw new Error('R7 public snapshot non-canonical consumer form detected');
         }
-        actual.push({
-          path: relativePath,
-          specifier: statement.moduleSpecifier.text,
-          names: bindings.elements.map((element) => element.name.text).sort(),
-        });
+      };
+      for (const statement of sourceFile.statements) {
+        if (ts.isImportDeclaration(statement)
+            && ts.isStringLiteralLike(statement.moduleSpecifier)
+            && isBuilderSpecifier(statement.moduleSpecifier.text)) {
+          const clause = statement.importClause;
+          const bindings = clause && clause.namedBindings;
+          if (!clause || clause.isTypeOnly || clause.name
+              || !bindings || !ts.isNamedImports(bindings)
+              || bindings.elements.some((element) => element.isTypeOnly)) {
+            throw new Error('R7 public snapshot non-canonical consumer form detected');
+          }
+          actual.push({
+            path: relativePath,
+            specifier: statement.moduleSpecifier.text,
+            names: bindings.elements.map((element) => element.name.text).sort(),
+          });
+        } else if (ts.isExportDeclaration(statement)
+            && statement.moduleSpecifier
+            && ts.isStringLiteralLike(statement.moduleSpecifier)) {
+          rejectNonCanonicalForm(statement.moduleSpecifier.text);
+        } else if (ts.isImportEqualsDeclaration(statement)
+            && ts.isExternalModuleReference(statement.moduleReference)
+            && statement.moduleReference.expression
+            && ts.isStringLiteralLike(statement.moduleReference.expression)) {
+          rejectNonCanonicalForm(statement.moduleReference.expression.text);
+        }
       }
+      const visit = (node) => {
+        if (ts.isCallExpression(node)
+            && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
+              || node.expression.kind === ts.SyntaxKind.ImportKeyword)
+            && node.arguments.length === 1
+            && ts.isStringLiteralLike(node.arguments[0])) {
+          rejectNonCanonicalForm(node.arguments[0].text);
+        } else if (ts.isImportTypeNode(node)
+            && ts.isLiteralTypeNode(node.argument)
+            && ts.isStringLiteralLike(node.argument.literal)) {
+          rejectNonCanonicalForm(node.argument.literal.text);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
     }
   }
   actual.sort((left, right) => left.path.localeCompare(right.path));

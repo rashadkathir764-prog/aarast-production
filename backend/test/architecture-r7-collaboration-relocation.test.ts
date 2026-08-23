@@ -242,17 +242,39 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
   ]) {
     const target = path.join(root, ...relativePath.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
-    copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
+    if (stage === 'design') {
+      writeFileSync(
+        target,
+        execFileSync('git', ['show', `${value.baseRevision}:${relativePath}`], {
+          cwd: repositoryRoot,
+          encoding: 'utf8',
+        }),
+        'utf8',
+      );
+    } else {
+      copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
+    }
   }
 
   const activeTargets = targetPathsForStage(value, stage);
   for (const move of value.moves) {
     const source = path.join(root, ...move.from.split('/'));
     mkdirSync(path.dirname(source), { recursive: true });
-    const activePath = existsSync(path.join(repositoryRoot, ...move.from.split('/')))
-      ? move.from
-      : move.to;
-    copyFileSync(path.join(repositoryRoot, ...activePath.split('/')), source);
+    if (stage === 'design') {
+      writeFileSync(
+        source,
+        execFileSync('git', ['show', `${value.baseRevision}:${move.from}`], {
+          cwd: repositoryRoot,
+          encoding: 'utf8',
+        }),
+        'utf8',
+      );
+    } else {
+      const activePath = existsSync(path.join(repositoryRoot, ...move.from.split('/')))
+        ? move.from
+        : move.to;
+      copyFileSync(path.join(repositoryRoot, ...activePath.split('/')), source);
+    }
     if (!activeTargets.has(move.to)) continue;
     const target = path.join(root, ...move.to.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
@@ -399,6 +421,34 @@ test('R7 accepts only the exact staged source and target layouts', () => {
         ownershipRecords: 385,
         ownershipOccurrences: 781,
       });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('R7 staged fixtures reconstruct legacy snapshot imports only at design', () => {
+  for (const stage of Object.keys(expectedStageCounts) as Array<keyof typeof expectedStageCounts>) {
+    const fixture = stagedFixture(stage);
+    try {
+      const budgetSource = readFileSync(path.join(
+        fixture.root,
+        'backend',
+        'src',
+        'budget-categories',
+        'budget-categories.service.ts',
+      ), 'utf8');
+      const expectedSpecifier = stage === 'design'
+        ? '../contribution-history/contribution-snapshot.builder'
+        : '../modules/collaboration/public/contribution-snapshot.builder';
+      assert.match(budgetSource, new RegExp(expectedSpecifier.replace(/[./]/gu, '\\$&'), 'u'));
+      assert.doesNotMatch(
+        budgetSource,
+        new RegExp((stage === 'design'
+          ? '../modules/collaboration/public/contribution-snapshot.builder'
+          : '../contribution-history/contribution-snapshot.builder').replace(/[./]/gu, '\\$&'), 'u'),
+      );
+      assert.doesNotThrow(() => scanner().verifyPublicSnapshotConsumers(fixture.root));
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });
     }
@@ -791,6 +841,102 @@ test('R7 verifies public exports and DI handoffs against the live TypeScript sou
     controllers: 2,
     operations: 19,
   });
+});
+
+test('R7 rejects every non-canonical static, dynamic, runtime, export, and fallback builder reference', () => {
+  const forms = [
+    {
+      name: 'side-effect import',
+      source: 'import "../modules/collaboration/public/contribution-snapshot.builder";\n',
+    },
+    {
+      name: 'default import',
+      source: 'import builder from "../modules/collaboration/public/contribution-snapshot.builder";\nvoid builder;\n',
+    },
+    {
+      name: 'namespace import',
+      source: 'import * as builder from "../modules/collaboration/public/contribution-snapshot.builder";\nvoid builder;\n',
+    },
+    {
+      name: 'type-only import',
+      source: 'import type { SnapshotSource } from "../modules/collaboration/public/contribution-snapshot.builder";\nvoid 0;\n',
+    },
+    {
+      name: 'named re-export',
+      source: 'export { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";\n',
+    },
+    {
+      name: 'star re-export',
+      source: 'export * from "../modules/collaboration/public/contribution-snapshot.builder";\n',
+    },
+    {
+      name: 'type-only re-export',
+      source: 'export type { SnapshotSource } from "../modules/collaboration/public/contribution-snapshot.builder";\n',
+    },
+    {
+      name: 'import equals',
+      source: 'import builder = require("../modules/collaboration/public/contribution-snapshot.builder");\nvoid builder;\n',
+    },
+    {
+      name: 'require call',
+      source: 'const builder = require("../modules/collaboration/public/contribution-snapshot.builder");\nvoid builder;\n',
+    },
+    {
+      name: 'dynamic import',
+      source: 'void import("../modules/collaboration/public/contribution-snapshot.builder");\n',
+    },
+    {
+      name: 'import type expression',
+      source: 'type Builder = typeof import("../modules/collaboration/public/contribution-snapshot.builder");\nvoid 0;\n',
+    },
+    {
+      name: 'legacy fallback',
+      source: [
+        'export function loadBuilder() {',
+        '  try { return require("../modules/collaboration/public/contribution-snapshot.builder"); }',
+        '  catch { return require("../contribution-history/contribution-snapshot.builder"); }',
+        '}',
+        '',
+      ].join('\n'),
+    },
+  ];
+
+  for (const form of forms) {
+    const fixture = stagedFixture('snapshot');
+    try {
+      const attacker = path.join(fixture.root, 'backend', 'src', 'tasks', 'snapshot-facade.ts');
+      writeFileSync(attacker, form.source, 'utf8');
+      assert.throws(
+        () => scanner().verifyPublicSnapshotConsumers(fixture.root),
+        /public snapshot.*(?:consumer|reference|facade|form)/iu,
+        form.name,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('R7 public snapshot gate ignores near-name modules and inert string literals', () => {
+  const fixture = stagedFixture('snapshot');
+  try {
+    writeFileSync(
+      path.join(fixture.root, 'backend', 'src', 'tasks', 'unrelated-builder.ts'),
+      [
+        'import { helper } from "../modules/collaboration/public/contribution-snapshot.builder-helper";',
+        'export const inert = "../modules/collaboration/public/contribution-snapshot.builder";',
+        'void helper;',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    assert.deepEqual(scanner().verifyPublicSnapshotConsumers(fixture.root), {
+      callers: 11,
+      testImports: 2,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test('R7 source contract rejects export, token, index, and optionality drift', () => {

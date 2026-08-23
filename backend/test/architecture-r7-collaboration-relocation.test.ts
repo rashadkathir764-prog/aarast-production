@@ -548,6 +548,53 @@ const extraProviders = [SharingAlias];
 export class ExternalSharingSpreadModule {}
 `,
   },
+  {
+    name: 'external property-access registration through an object shorthand',
+    source: `
+import { Module } from '@nestjs/common';
+import { SharingService } from './modules/collaboration/internal/sharing.service';
+
+const SECOND_SHARING = Symbol('SECOND_SHARING');
+const Registry = { SharingService };
+
+@Module({
+  providers: [{ provide: SECOND_SHARING, useClass: Registry.SharingService }],
+})
+export class ExternalSharingPropertyAccessModule {}
+`,
+  },
+  {
+    name: 'external destructuring registration through a property alias',
+    source: `
+import { Module } from '@nestjs/common';
+import { InviteAccessService } from './modules/collaboration/internal/invite-access.service';
+
+const SECOND_INVITE_ACCESS = Symbol('SECOND_INVITE_ACCESS');
+const Registry = { inviteAccess: InviteAccessService };
+const { inviteAccess: InviteAccessAlias } = Registry;
+
+@Module({
+  providers: [{ provide: SECOND_INVITE_ACCESS, useClass: InviteAccessAlias }],
+})
+export class ExternalInviteAccessDestructuringModule {}
+`,
+  },
+  {
+    name: 'external frozen provider object and array registration',
+    source: `
+import { Module } from '@nestjs/common';
+import { SharingService } from './modules/collaboration/internal/sharing.service';
+
+const SECOND_SHARING = Symbol('SECOND_SHARING');
+const frozenProvider = Object.freeze({ provide: SECOND_SHARING, useClass: SharingService });
+const frozenProviders = Object.freeze([frozenProvider]);
+
+@Module({
+  providers: [...frozenProviders],
+})
+export class ExternalFrozenSharingModule {}
+`,
+  },
 ]) {
   test(`R7 Sharing topology rejects ${providerCase.name}`, () => {
     const fixture = stagedFixture('relocated');
@@ -598,6 +645,96 @@ export class UnrelatedProviderTopologyModule {}
       exports: 4,
       legacyRuntimeImports: 0,
     });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('R7 Sharing topology permits unrelated frozen module metadata', () => {
+  const fixture = stagedFixture('relocated');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/unrelated-frozen-metadata.module.ts',
+      `
+import { Module } from '@nestjs/common';
+
+const unrelatedMetadata = Object.freeze({ imports: [] });
+
+@Module({
+  ...unrelatedMetadata,
+  providers: [],
+})
+export class UnrelatedFrozenMetadataModule {}
+`,
+    );
+    assert.deepEqual(scanner().verifySharingRelocation(fixture.root, fixture.value), {
+      controllers: 7,
+      operations: 17,
+      providers: 4,
+      aliases: 1,
+      exports: 4,
+      legacyRuntimeImports: 0,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('R7 Sharing topology permits frozen objects and arrays for a same-name local class', () => {
+  const fixture = stagedFixture('relocated');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/unrelated-frozen-provider.module.ts',
+      `
+import { Module } from '@nestjs/common';
+
+class SharingService {}
+const unrelatedDetails = Object.freeze({ useClass: SharingService });
+const unrelatedProvider = Object.freeze({ provide: 'UNRELATED', ...unrelatedDetails });
+const unrelatedProviders = Object.freeze([unrelatedProvider]);
+
+@Module({
+  providers: [...unrelatedProviders],
+})
+export class UnrelatedFrozenProviderModule {}
+`,
+    );
+    assert.deepEqual(scanner().verifySharingRelocation(fixture.root, fixture.value), {
+      controllers: 7,
+      operations: 17,
+      providers: 4,
+      aliases: 1,
+      exports: 4,
+      legacyRuntimeImports: 0,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('R7 Sharing topology fails closed on cyclic provider spread aliases', () => {
+  const fixture = stagedFixture('relocated');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/cyclic-provider-topology.module.ts',
+      `
+import { Module } from '@nestjs/common';
+
+const cyclicProviders: unknown[] = [...cyclicProviders];
+
+@Module({
+  providers: [...cyclicProviders],
+})
+export class CyclicProviderTopologyModule {}
+`,
+    );
+    assert.throws(
+      () => scanner().verifySharingRelocation(fixture.root, fixture.value),
+      /could not resolve providers spread/u,
+    );
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

@@ -1175,139 +1175,300 @@ function sharingProviderTopology(repositoryRoot) {
     }
     return current;
   };
-  const referencedInitializer = (expression) => {
-    const current = unwrapProviderExpression(expression);
-    if (!ts.isIdentifier(current) && !ts.isPropertyAccessExpression(current)) return null;
-    const symbol = dereferenceAlias(checker.getSymbolAtLocation(current));
-    const declaration = symbol?.declarations?.find((entry) => (
-      ts.isVariableDeclaration(entry) && entry.initializer
-    ));
-    return declaration?.initializer || null;
-  };
-  const providerIdentity = (expression, seen = new Set()) => {
-    const current = unwrapProviderExpression(expression);
-    const symbol = dereferenceAlias(checker.getSymbolAtLocation(current));
-    if (symbol && providerBySymbol.has(symbol)) return providerBySymbol.get(symbol);
-    if (!symbol || seen.has(symbol)) return null;
-    seen.add(symbol);
-    for (const declaration of symbol.declarations || []) {
-      if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
-        const identity = providerIdentity(declaration.initializer, seen);
-        if (identity) return identity;
-      }
-    }
-    return null;
-  };
   const propertyName = (name) => (
     ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)
       ? name.text
       : null
   );
+  const frozenArgument = (expression) => {
+    const current = unwrapProviderExpression(expression);
+    if (!ts.isCallExpression(current) || current.arguments.length !== 1) return null;
+    const target = unwrapProviderExpression(current.expression);
+    return ts.isPropertyAccessExpression(target)
+      && ts.isIdentifier(target.expression)
+      && target.expression.text === 'Object'
+      && target.name.text === 'freeze'
+      ? current.arguments[0]
+      : null;
+  };
+  function bindingPatternSources(pattern, seenSymbols, seenNodes) {
+    const owner = pattern.parent;
+    if (ts.isVariableDeclaration(owner) && owner.initializer) return [owner.initializer];
+    if (ts.isBindingElement(owner)) {
+      return bindingElementValues(owner, seenSymbols, seenNodes);
+    }
+    return [];
+  }
+  function objectPropertyValues(expression, key, seenSymbols, seenNodes) {
+    const values = [];
+    for (const target of concreteExpressions(expression, seenSymbols, seenNodes)) {
+      if (!ts.isObjectLiteralExpression(target)) continue;
+      for (const property of target.properties) {
+        if (ts.isPropertyAssignment(property) && propertyName(property.name) === key) {
+          values.push(property.initializer);
+        } else if (ts.isShorthandPropertyAssignment(property)
+            && property.name.text === key) {
+          values.push(property.name);
+        } else if (ts.isSpreadAssignment(property)) {
+          values.push(...objectPropertyValues(
+            property.expression,
+            key,
+            new Set(seenSymbols),
+            new Set(seenNodes),
+          ));
+        }
+      }
+    }
+    return values;
+  }
+  function arrayElementValues(expression, index, seenSymbols, seenNodes) {
+    const values = [];
+    for (const target of concreteExpressions(expression, seenSymbols, seenNodes)) {
+      if (!ts.isArrayLiteralExpression(target)) continue;
+      const element = target.elements[index];
+      if (element && !ts.isOmittedExpression(element) && !ts.isSpreadElement(element)) {
+        values.push(element);
+      }
+    }
+    return values;
+  }
+  function bindingElementValues(declaration, seenSymbols, seenNodes) {
+    const pattern = declaration.parent;
+    const sources = ts.isObjectBindingPattern(pattern) || ts.isArrayBindingPattern(pattern)
+      ? bindingPatternSources(pattern, seenSymbols, seenNodes)
+      : [];
+    const values = declaration.initializer ? [declaration.initializer] : [];
+    if (ts.isObjectBindingPattern(pattern)) {
+      const key = declaration.propertyName
+        ? propertyName(declaration.propertyName)
+        : propertyName(declaration.name);
+      if (key !== null) {
+        for (const source of sources) {
+          values.push(...objectPropertyValues(
+            source,
+            key,
+            new Set(seenSymbols),
+            new Set(seenNodes),
+          ));
+        }
+      }
+    } else if (ts.isArrayBindingPattern(pattern)) {
+      const index = pattern.elements.indexOf(declaration);
+      for (const source of sources) {
+        values.push(...arrayElementValues(
+          source,
+          index,
+          new Set(seenSymbols),
+          new Set(seenNodes),
+        ));
+      }
+    }
+    return values;
+  }
+  function symbolValues(symbol, seenSymbols = new Set(), seenNodes = new Set()) {
+    const current = dereferenceAlias(symbol);
+    if (!current || seenSymbols.has(current)) return [];
+    const nextSymbols = new Set(seenSymbols);
+    nextSymbols.add(current);
+    const values = [];
+    for (const declaration of current.declarations || []) {
+      if ((ts.isVariableDeclaration(declaration) || ts.isPropertyAssignment(declaration))
+          && declaration.initializer) {
+        values.push(declaration.initializer);
+      } else if (ts.isShorthandPropertyAssignment(declaration)) {
+        const valueSymbol = checker.getShorthandAssignmentValueSymbol(declaration);
+        values.push(...symbolValues(valueSymbol, nextSymbols, new Set(seenNodes)));
+      } else if (ts.isBindingElement(declaration)) {
+        values.push(...bindingElementValues(declaration, nextSymbols, new Set(seenNodes)));
+      }
+    }
+    return values;
+  }
+  function concreteExpressions(expression, seenSymbols = new Set(), seenNodes = new Set()) {
+    const current = unwrapProviderExpression(expression);
+    if (seenNodes.has(current)) return [];
+    const nextNodes = new Set(seenNodes);
+    nextNodes.add(current);
+    const frozen = frozenArgument(current);
+    if (frozen) return concreteExpressions(frozen, seenSymbols, nextNodes);
+    if (ts.isIdentifier(current) || ts.isPropertyAccessExpression(current)) {
+      const symbol = dereferenceAlias(checker.getSymbolAtLocation(current));
+      if (symbol && seenSymbols.has(symbol)) return [];
+      const values = symbolValues(symbol, seenSymbols, nextNodes);
+      if (values.length > 0) {
+        const nextSymbols = new Set(seenSymbols);
+        if (symbol) nextSymbols.add(symbol);
+        return values.flatMap((value) => concreteExpressions(
+          value,
+          new Set(nextSymbols),
+          new Set(nextNodes),
+        ));
+      }
+    }
+    return [current];
+  }
+  function providerIdentityFromSymbol(symbol, seenSymbols = new Set(), seenNodes = new Set()) {
+    const current = dereferenceAlias(symbol);
+    if (!current) return null;
+    if (providerBySymbol.has(current)) return providerBySymbol.get(current);
+    if (seenSymbols.has(current)) return null;
+    const nextSymbols = new Set(seenSymbols);
+    nextSymbols.add(current);
+    for (const declaration of current.declarations || []) {
+      if (ts.isShorthandPropertyAssignment(declaration)) {
+        const valueSymbol = checker.getShorthandAssignmentValueSymbol(declaration);
+        const identity = providerIdentityFromSymbol(
+          valueSymbol,
+          nextSymbols,
+          new Set(seenNodes),
+        );
+        if (identity) return identity;
+      }
+    }
+    for (const value of symbolValues(current, seenSymbols, seenNodes)) {
+      const identity = providerIdentity(value, nextSymbols, new Set(seenNodes));
+      if (identity) return identity;
+    }
+    return null;
+  }
+  function providerIdentity(expression, seenSymbols = new Set(), seenNodes = new Set()) {
+    const current = unwrapProviderExpression(expression);
+    if (seenNodes.has(current)) return null;
+    const nextNodes = new Set(seenNodes);
+    nextNodes.add(current);
+    const frozen = frozenArgument(current);
+    if (frozen) return providerIdentity(frozen, seenSymbols, nextNodes);
+    const symbolCandidates = [checker.getSymbolAtLocation(current)];
+    const type = checker.getTypeAtLocation(current);
+    symbolCandidates.push(type?.aliasSymbol, type?.symbol);
+    for (const symbol of symbolCandidates) {
+      const identity = providerIdentityFromSymbol(symbol, seenSymbols, nextNodes);
+      if (identity) return identity;
+    }
+    return null;
+  }
   const references = [];
   const recordReference = (expression, registration, kind) => {
     const provider = providerIdentity(expression);
     if (provider) references.push(Object.freeze({ ...registration, kind, provider }));
     return Boolean(provider);
   };
+  const resolutionTrail = (expression, seen, error) => {
+    const current = unwrapProviderExpression(expression);
+    const symbol = (ts.isIdentifier(current) || ts.isPropertyAccessExpression(current))
+      ? dereferenceAlias(checker.getSymbolAtLocation(current))
+      : null;
+    const key = symbol || current;
+    if (seen.has(key)) throw new Error(error);
+    const next = new Set(seen);
+    next.add(key);
+    return next;
+  };
   let inspectProviderObject;
   const inspectProviderEntry = (expression, registration, seen = new Set()) => {
-    const current = unwrapProviderExpression(expression);
-    if (recordReference(current, registration, 'bare')) return;
-    if (ts.isObjectLiteralExpression(current)) {
-      inspectProviderObject(current, registration, seen);
-      return;
+    const nextSeen = resolutionTrail(
+      expression,
+      seen,
+      'R7 Sharing provider topology could not resolve provider entry',
+    );
+    const targets = concreteExpressions(expression);
+    if (targets.length === 0) {
+      throw new Error('R7 Sharing provider topology could not resolve provider entry');
     }
-    if (ts.isConditionalExpression(current)) {
-      inspectProviderEntry(current.whenTrue, registration, new Set(seen));
-      inspectProviderEntry(current.whenFalse, registration, new Set(seen));
-      return;
-    }
-    const initializer = referencedInitializer(current);
-    if (initializer && !seen.has(initializer)) {
-      seen.add(initializer);
-      inspectProviderEntry(initializer, registration, seen);
+    for (const current of targets) {
+      if (recordReference(current, registration, 'bare')) continue;
+      if (ts.isObjectLiteralExpression(current)) {
+        const objectSeen = current === unwrapProviderExpression(expression) ? seen : nextSeen;
+        inspectProviderObject(current, registration, new Set(objectSeen));
+      } else if (ts.isConditionalExpression(current)) {
+        inspectProviderEntry(current.whenTrue, registration, new Set(nextSeen));
+        inspectProviderEntry(current.whenFalse, registration, new Set(nextSeen));
+      }
     }
   };
   inspectProviderObject = (expression, registration, seen = new Set()) => {
-    for (const property of expression.properties) {
-      if (ts.isSpreadAssignment(property)) {
-        const initializer = referencedInitializer(property.expression);
-        const target = initializer || unwrapProviderExpression(property.expression);
-        if (seen.has(target)) continue;
-        seen.add(target);
-        if (!ts.isObjectLiteralExpression(unwrapProviderExpression(target))) {
-          throw new Error('R7 Sharing provider topology could not resolve object spread');
-        }
-        inspectProviderObject(unwrapProviderExpression(target), registration, seen);
-        continue;
+    const nextSeen = resolutionTrail(
+      expression,
+      seen,
+      'R7 Sharing provider topology could not resolve object spread',
+    );
+    const targets = concreteExpressions(expression);
+    if (targets.length === 0) {
+      throw new Error('R7 Sharing provider topology could not resolve object spread');
+    }
+    for (const target of targets) {
+      if (!ts.isObjectLiteralExpression(target)) {
+        throw new Error('R7 Sharing provider topology could not resolve object spread');
       }
-      if (ts.isPropertyAssignment(property)) {
-        const kind = propertyName(property.name);
-        if (kind === 'provide' || kind === 'useClass' || kind === 'useExisting') {
-          recordReference(property.initializer, registration, kind);
+      for (const property of target.properties) {
+        if (ts.isSpreadAssignment(property)) {
+          inspectProviderObject(property.expression, registration, new Set(nextSeen));
+          continue;
         }
-      } else if (ts.isShorthandPropertyAssignment(property)) {
-        const kind = property.name.text;
-        if (kind === 'provide' || kind === 'useClass' || kind === 'useExisting') {
-          recordReference(property.name, registration, kind);
+        if (ts.isPropertyAssignment(property)) {
+          const kind = propertyName(property.name);
+          if (kind === 'provide' || kind === 'useClass' || kind === 'useExisting') {
+            recordReference(property.initializer, registration, kind);
+          }
+        } else if (ts.isShorthandPropertyAssignment(property)) {
+          const kind = property.name.text;
+          if (kind === 'provide' || kind === 'useClass' || kind === 'useExisting') {
+            recordReference(property.name, registration, kind);
+          }
         }
       }
     }
   };
   const inspectProviderCollection = (expression, registration, seen = new Set()) => {
-    const current = unwrapProviderExpression(expression);
-    if (ts.isArrayLiteralExpression(current)) {
-      for (const element of current.elements) {
-        if (ts.isSpreadElement(element)) {
-          inspectProviderCollection(element.expression, registration, new Set(seen));
-        } else {
-          inspectProviderEntry(element, registration, new Set(seen));
-        }
-      }
-      return;
-    }
-    if (ts.isConditionalExpression(current)) {
-      inspectProviderCollection(current.whenTrue, registration, new Set(seen));
-      inspectProviderCollection(current.whenFalse, registration, new Set(seen));
-      return;
-    }
-    if (ts.isCallExpression(current)
-        && current.expression.getText() === 'Object.freeze'
-        && current.arguments.length === 1) {
-      inspectProviderCollection(current.arguments[0], registration, seen);
-      return;
-    }
-    const initializer = referencedInitializer(current);
-    if (!initializer || seen.has(initializer)) {
+    const nextSeen = resolutionTrail(
+      expression,
+      seen,
+      'R7 Sharing provider topology could not resolve providers spread',
+    );
+    const targets = concreteExpressions(expression);
+    if (targets.length === 0) {
       throw new Error('R7 Sharing provider topology could not resolve providers spread');
     }
-    seen.add(initializer);
-    inspectProviderCollection(initializer, registration, seen);
+    for (const current of targets) {
+      if (ts.isArrayLiteralExpression(current)) {
+        for (const element of current.elements) {
+          if (ts.isSpreadElement(element)) {
+            inspectProviderCollection(element.expression, registration, new Set(nextSeen));
+          } else {
+            inspectProviderEntry(element, registration, new Set(nextSeen));
+          }
+        }
+      } else if (ts.isConditionalExpression(current)) {
+        inspectProviderCollection(current.whenTrue, registration, new Set(nextSeen));
+        inspectProviderCollection(current.whenFalse, registration, new Set(nextSeen));
+      } else {
+        throw new Error('R7 Sharing provider topology could not resolve providers spread');
+      }
+    }
   };
   const inspectModuleMetadata = (expression, registration, seen = new Set()) => {
-    const current = unwrapProviderExpression(expression);
-    if (!ts.isObjectLiteralExpression(current)) {
-      const initializer = referencedInitializer(current);
-      if (!initializer || seen.has(initializer)) {
+    const nextSeen = resolutionTrail(
+      expression,
+      seen,
+      'R7 Sharing provider topology could not resolve module metadata',
+    );
+    const targets = concreteExpressions(expression);
+    if (targets.length === 0) {
+      throw new Error('R7 Sharing provider topology could not resolve module metadata');
+    }
+    for (const current of targets) {
+      if (!ts.isObjectLiteralExpression(current)) {
         throw new Error('R7 Sharing provider topology could not resolve module metadata');
       }
-      seen.add(initializer);
-      inspectModuleMetadata(initializer, registration, seen);
-      return;
-    }
-    for (const property of current.properties) {
-      if (ts.isPropertyAssignment(property) && propertyName(property.name) === 'providers') {
-        inspectProviderCollection(property.initializer, registration);
-      } else if (ts.isShorthandPropertyAssignment(property)
-          && property.name.text === 'providers') {
-        inspectProviderCollection(property.name, registration);
-      } else if (ts.isSpreadAssignment(property)) {
-        const initializer = referencedInitializer(property.expression);
-        if (!initializer || seen.has(initializer)) {
-          throw new Error('R7 Sharing provider topology could not resolve metadata spread');
+      for (const property of current.properties) {
+        if (ts.isPropertyAssignment(property) && propertyName(property.name) === 'providers') {
+          inspectProviderCollection(property.initializer, registration);
+        } else if (ts.isShorthandPropertyAssignment(property)
+            && property.name.text === 'providers') {
+          inspectProviderCollection(property.name, registration);
+        } else if (ts.isSpreadAssignment(property)) {
+          inspectModuleMetadata(property.expression, registration, new Set(nextSeen));
         }
-        seen.add(initializer);
-        inspectModuleMetadata(initializer, registration, seen);
       }
     }
   };

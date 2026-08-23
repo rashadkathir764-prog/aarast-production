@@ -174,8 +174,8 @@ test('Task 8 checkpoint dependency baseline contains only approved R3 removals',
     'src/platform/outbox/outbox.dispatcher.ts|src/push/push-delivery.service.ts',
     'src/platform/outbox/outbox.module.ts|src/conversations/conversation-realtime.module.ts',
     'src/platform/outbox/outbox.module.ts|src/push/push.module.ts',
-    'src/dashboard/dashboard.contracts.ts|src/modules/collaboration/internal/contribution-history.contracts.ts',
-    'src/dashboard/dashboard.service.ts|src/modules/collaboration/internal/contribution-history.contracts.ts',
+    'src/dashboard/dashboard.contracts.ts|src/contribution-history/contribution-history.contracts.ts',
+    'src/dashboard/dashboard.service.ts|src/contribution-history/contribution-history.contracts.ts',
   ]) approved.add(key);
   assert.equal(approved.size, 171);
 

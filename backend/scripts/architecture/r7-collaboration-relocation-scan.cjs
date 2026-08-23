@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
 
@@ -636,11 +637,54 @@ function verifyBaselines(repositoryRoot, manifest) {
       throw new Error('R7 ownership semantic drift detected');
     }
   }
+  const expectedOwnership = expectedOwnershipBaseline(repositoryRoot, manifest, targetPaths);
+  if (JSON.stringify(ownership) !== JSON.stringify(expectedOwnership)) {
+    throw new Error('R7 ownership baseline identity drift detected');
+  }
   return Object.freeze({
     dependencyRecords: dependency.length,
     ownershipRecords: ownership.violations.length,
     ownershipOccurrences: total,
   });
+}
+
+function expectedOwnershipBaseline(repositoryRoot, manifest, targetPaths) {
+  const scannerRepositoryRoot = path.resolve(__dirname, '..', '..', '..');
+  const gitRoot = [repositoryRoot, scannerRepositoryRoot].find((candidate) => (
+    fs.existsSync(path.join(candidate, '.git'))
+  ));
+  if (!gitRoot) throw new Error('R7 immutable ownership baseline is unavailable');
+  let historical;
+  try {
+    historical = JSON.parse(execFileSync(
+      'git',
+      ['show', `${manifest.baseRevision}:backend/architecture/ownership-baseline.json`],
+      {
+        cwd: gitRoot,
+        encoding: 'utf8',
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    ));
+  } catch {
+    throw new Error('R7 immutable ownership baseline is unavailable');
+  }
+  if (!historical || !Array.isArray(historical.violations)) {
+    throw new Error('R7 immutable ownership baseline is invalid');
+  }
+  const expected = structuredClone(historical);
+  for (const projection of manifest.historicalHandoffs.ownershipProjection) {
+    if (!targetPaths.has(projection.to)) continue;
+    for (const record of expected.violations) {
+      if (record.file !== projection.from) continue;
+      record.file = projection.to;
+      record.key = String(record.key).replace(projection.from, projection.to);
+    }
+  }
+  expected.violations.sort((left, right) => (
+    left.key < right.key ? -1 : left.key > right.key ? 1 : 0
+  ));
+  return expected;
 }
 
 function activeMovePath(repositoryRoot, manifest, targetPath) {

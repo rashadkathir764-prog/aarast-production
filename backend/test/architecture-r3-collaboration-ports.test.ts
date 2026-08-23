@@ -9,6 +9,8 @@ import { NestFactory } from '@nestjs/core';
 import ts from 'typescript';
 
 const sourceRoot = join(process.cwd(), 'src');
+const forbiddenCollaborationImplementationImport =
+  /from\s+['"]\.\.\/sharing\/permission\.service['"]|from\s+['"](?:\.\.\/)+(?:modules\/)?collaboration\/internal\/(?:contribution-history|contributor-scope)\.service['"]/;
 
 function source(path: string): string {
   return readFileSync(join(sourceRoot, path), 'utf8');
@@ -185,12 +187,29 @@ test('Task 3 foreign consumers no longer import collaboration implementations', 
     const text = source(path);
     assert.doesNotMatch(
       text,
-      /from\s+['"]\.\.\/sharing\/permission\.service['"]|from\s+['"]\.\.\/contribution-history\/(?:contribution-history|contributor-scope)\.service['"]/,
+      forbiddenCollaborationImplementationImport,
       path,
     );
   }
   assert.match(source('sharing/sharing.service.ts'), /PermissionService/);
   assert.match(source('sharing/sharing.service.ts'), /ContributionHistoryService/);
+});
+
+test('Task 3 foreign-consumer guard catches final contribution implementation imports', () => {
+  assert.throws(
+    () => assert.doesNotMatch(
+      'import { ContributionHistoryService } from "../modules/collaboration/internal/contribution-history.service";',
+      forbiddenCollaborationImplementationImport,
+    ),
+    /expected to not match/u,
+  );
+  assert.throws(
+    () => assert.doesNotMatch(
+      'import { ContributorScopeService } from "../modules/collaboration/internal/contributor-scope.service";',
+      forbiddenCollaborationImplementationImport,
+    ),
+    /expected to not match/u,
+  );
 });
 
 test('Task 3 removes the notifications PermissionService duplicate', () => {

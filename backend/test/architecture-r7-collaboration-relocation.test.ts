@@ -331,6 +331,9 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
       record.key = String(record.key).replace(projection.from, projection.to);
     }
   }
+  ownership.violations.sort((left, right) => (
+    left.key < right.key ? -1 : left.key > right.key ? 1 : 0
+  ));
   writeJson(ownershipPath, ownership);
 
   if (stage === 'strict') {
@@ -353,6 +356,32 @@ function mutateFixtureFile(
   const after = mutate(before);
   assert.notEqual(after, before, `mutation must change ${relativePath}`);
   writeFileSync(absolute, after, 'utf8');
+}
+
+function mutateOwnershipFixture(
+  stage: keyof typeof expectedStageCounts,
+  mutate: (violations: Array<Record<string, any>>, untouchedIndexes: number[]) => void,
+): { root: string; value: R7Manifest } {
+  const fixture = stagedFixture(stage);
+  const ownershipPath = path.join(
+    fixture.root,
+    'backend',
+    'architecture',
+    'ownership-baseline.json',
+  );
+  const baseline = JSON.parse(readFileSync(ownershipPath, 'utf8')) as {
+    violations: Array<Record<string, any>>;
+  };
+  const projectedPaths = new Set(fixture.value.historicalHandoffs.ownershipProjection.flatMap(
+    (projection) => [projection.from, projection.to],
+  ));
+  const untouchedIndexes = baseline.violations.flatMap((record, index) => (
+    projectedPaths.has(String(record.file)) ? [] : [index]
+  ));
+  assert.ok(untouchedIndexes.length >= 2);
+  mutate(baseline.violations, untouchedIndexes);
+  writeJson(ownershipPath, baseline);
+  return fixture;
 }
 
 const expectedMoves = [
@@ -522,6 +551,45 @@ test('R7 history gate rejects controller, provider, and ownership semantic drift
     rmSync(ownership.root, { recursive: true, force: true });
   }
 });
+
+for (const fixtureCase of [
+  {
+    name: 'untouched-record substitution',
+    mutate: (violations: Array<Record<string, any>>, untouched: number[]) => {
+      violations[untouched[0]].reason = 'same-count-unrelated-substitution';
+    },
+  },
+  {
+    name: 'canonical order drift',
+    mutate: (violations: Array<Record<string, any>>, untouched: number[]) => {
+      [violations[untouched[0]], violations[untouched[1]]] = [
+        violations[untouched[1]],
+        violations[untouched[0]],
+      ];
+    },
+  },
+  {
+    name: 'untouched key drift',
+    mutate: (violations: Array<Record<string, any>>, untouched: number[]) => {
+      violations[untouched[0]].key = `${violations[untouched[0]].key}-drift`;
+    },
+  },
+]) {
+  test(`R7 ownership gate rejects ${fixtureCase.name}`, () => {
+    const fixture = mutateOwnershipFixture('history', fixtureCase.mutate);
+    try {
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /ownership baseline identity drift/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
 
 test('R7 accepts only the exact staged source and target layouts', () => {
   for (const [stage, counts] of Object.entries(expectedStageCounts) as Array<[

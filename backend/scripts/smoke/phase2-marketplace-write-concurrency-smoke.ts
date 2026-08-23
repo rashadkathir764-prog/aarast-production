@@ -79,6 +79,15 @@ function marketplaceService(): MarketplaceService {
 
 async function recordFixtureContributorQuote(fixture: any): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const quoteRequest = await tx.quoteRequest.update({
+      where: { id: fixture.quoteRequest.id },
+      data: { userId: fixture.member.id },
+    });
+    assert.equal(
+      quoteRequest.userId,
+      fixture.member.id,
+      "fixture contributor must own the quote request before history capture",
+    );
     await contributionHistory.recordForContextInTransaction(
       tx as any,
       {
@@ -89,20 +98,20 @@ async function recordFixtureContributorQuote(fixture: any): Promise<void> {
       {
         section: ContributionSection.PROVIDERS,
         entityType: ContributionEntityType.QUOTE_REQUEST,
-        entityId: fixture.quoteRequest.id,
+        entityId: quoteRequest.id,
         action: ContributionAction.LEGACY_CAPTURED,
         snapshot: buildContributionSnapshot(
           ContributionEntityType.QUOTE_REQUEST,
           {
             providerDisplayLabel: fixture.provider.businessName,
-            requestStatus: fixture.quoteRequest.status,
-            status: fixture.quoteRequest.status,
+            requestStatus: quoteRequest.status,
+            status: quoteRequest.status,
           },
         ),
-        dedupeKey: `smoke:provider:quote-request:${fixture.quoteRequest.id}:legacy`,
+        dedupeKey: `smoke:provider:quote-request:${quoteRequest.id}:legacy`,
         provenance: ContributionProvenance.LEGACY_EXPLICIT,
         requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
-        occurredAt: fixture.quoteRequest.createdAt,
+        occurredAt: quoteRequest.createdAt,
       },
     );
   });

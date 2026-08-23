@@ -597,6 +597,49 @@ test('R7 rejects runtime imports from another context into Collaboration API or 
   }
 });
 
+test('R7 rejects a same-count substitution in every staged dependency baseline', () => {
+  for (const stage of ['design', 'snapshot', 'history', 'relocated', 'strict'] as const) {
+    const fixture = stagedFixture(stage);
+    try {
+      const dependencyPath = path.join(
+        fixture.root,
+        'backend',
+        '.dependency-cruiser-known-violations.json',
+      );
+      const dependency = JSON.parse(readFileSync(dependencyPath, 'utf8')) as Array<{
+        from: string;
+      }>;
+      dependency[0].from = 'src/attacker/replacement.ts';
+      writeJson(dependencyPath, dependency);
+      assert.throws(() => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }), /dependency.*identity|dependency.*drift/i, stage);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('R7 rejects TypeScript import-equals access to Collaboration internals', () => {
+  const fixture = stagedFixture('design');
+  try {
+    const attacker = path.join(fixture.root, 'backend', 'src', 'tasks', 'attacker.ts');
+    mkdirSync(path.dirname(attacker), { recursive: true });
+    writeFileSync(
+      attacker,
+      'import attacker = require("../modules/collaboration/internal/attacker");\nvoid attacker;\n',
+      'utf8',
+    );
+    assert.throws(() => scanner().scanR7CollaborationRelocation({
+      repositoryRoot: fixture.root,
+      manifest: fixture.value,
+    }), /internal|cross-context|boundary/i);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('R7 freezes the public snapshot contract and every historical handoff', () => {
   const value = scanner().validateR7Manifest(manifest());
   assert.deepEqual(value.publicSnapshotContract, {

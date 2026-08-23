@@ -159,6 +159,40 @@ const EXPECTED_RETIRED_DEPENDENCY_KEYS = Object.freeze([
   'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
 ]);
 
+const EXPECTED_BASE_DEPENDENCY_KEYS = Object.freeze([
+  'context-backoffice-cross-context|src/admin/admin-mutation-executor.ts|src/marketplace/provider-review-rating.ts',
+  'context-catalog-cross-context|src/catalogs/administrative-catalog.service.ts|src/admin/admin-mutation-gate.ts',
+  'context-catalog-cross-context|src/catalogs/catalogs.controller.ts|src/admin/admin-permission.decorator.ts',
+  'context-catalog-cross-context|src/catalogs/catalogs.controller.ts|src/admin/admin-permission.guard.ts',
+  'context-catalog-cross-context|src/catalogs/catalogs.controller.ts|src/admin/admin.guard.ts',
+  'context-catalog-cross-context|src/catalogs/reference-catalog.service.ts|src/admin/admin-mutation-gate.ts',
+  'context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-guests-cross-context|src/guests/guests.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-insights-cross-context|src/dashboard/dashboard.contracts.ts|src/wedding-plans/wedding-location.ts',
+  'context-insights-cross-context|src/dashboard/dashboard.service.ts|src/wedding-plans/wedding-location.ts',
+  'context-marketplace-cross-context|src/marketplace/marketplace.presenter.ts|src/wedding-plans/wedding-location.ts',
+  'context-marketplace-cross-context|src/marketplace/marketplace.service.ts|src/wedding-costs/wedding-cost.presenter.ts',
+  'context-marketplace-cross-context|src/marketplace/marketplace.service.ts|src/wedding-plans/wedding-location.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/wedding-costs/wedding-cost.presenter.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/provider-dashboard/provider-dashboard.service.ts|src/conversations/conversation-lifecycle.ts',
+  'context-marketplace-cross-context|src/provider-dashboard/provider-dashboard.service.ts|src/wedding-plans/wedding-location.ts',
+  'context-messaging-cross-context|src/conversations/conversations.service.ts|src/provider-dashboard/provider-access-policy.ts',
+  'context-notifications-cross-context|src/notifications/notifications.service.ts|src/provider-dashboard/provider-access-policy.ts',
+  'context-planning-cross-context|src/onboarding/dto/import-local-plan.dto.ts|src/guests/dto/create-guest.dto.ts',
+  'context-planning-cross-context|src/onboarding/dto/import-local-plan.dto.ts|src/tasks/dto/create-task.dto.ts',
+  'context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+  'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
+]);
+
 const EXPECTED_OWNERSHIP_PROJECTION = Object.freeze([
   Object.freeze({ from: 'backend/src/contribution-history/contribution-history.service.ts', to: 'backend/src/modules/collaboration/internal/contribution-history.service.ts', records: 5, occurrences: 7 }),
   Object.freeze({ from: 'backend/src/sharing/invite-access.service.ts', to: 'backend/src/modules/collaboration/internal/invite-access.service.ts', records: 1, occurrences: 1 }),
@@ -527,7 +561,14 @@ function verifyBaselines(repositoryRoot, manifest) {
   if (!Array.isArray(dependency) || dependency.length !== expectedDependencyRecords) {
     throw new Error('R7 dependency baseline drift detected');
   }
-  const debt = dependency.map(dependencyKey)
+  const actualDependencyKeys = dependency.map(dependencyKey).sort();
+  const expectedDependencyKeys = manifest.stage === 'design'
+    ? EXPECTED_BASE_DEPENDENCY_KEYS
+    : EXPECTED_BASE_DEPENDENCY_KEYS.filter(
+      (key) => !manifest.historicalHandoffs.retiredDependencyKeys.includes(key),
+    );
+  assertExact(actualDependencyKeys, expectedDependencyKeys, 'R7 dependency identity');
+  const debt = actualDependencyKeys
     .filter((key) => manifest.historicalHandoffs.retiredDependencyKeys.includes(key));
   assertExact(
     debt,
@@ -887,6 +928,11 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
       } else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly
           && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
         inspectSpecifier(statement.moduleSpecifier.text);
+      } else if (ts.isImportEqualsDeclaration(statement)
+          && ts.isExternalModuleReference(statement.moduleReference)
+          && statement.moduleReference.expression
+          && ts.isStringLiteralLike(statement.moduleReference.expression)) {
+        inspectSpecifier(statement.moduleReference.expression.text);
       }
     }
     const visit = (node) => {

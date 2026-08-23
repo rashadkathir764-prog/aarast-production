@@ -12,7 +12,7 @@ import {
 import {
   ContributionHistoryService,
   contributorActorReference,
-} from "../src/contribution-history/contribution-history.service";
+} from "../src/modules/collaboration/internal/contribution-history.service";
 
 test("history page and total are read from one repeatable-read authorization snapshot", async () => {
   const calls: string[] = [];

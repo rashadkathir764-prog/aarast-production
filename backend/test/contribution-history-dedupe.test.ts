@@ -11,7 +11,7 @@ import {
   canonicalJson,
   hashContributionSnapshot,
 } from "../src/modules/collaboration/public/contribution-snapshot.builder";
-import { ContributionHistoryService } from "../src/contribution-history/contribution-history.service";
+import { ContributionHistoryService } from "../src/modules/collaboration/internal/contribution-history.service";
 
 test("canonical snapshot JSON and SHA-256 do not depend on object key order", () => {
   const left = { status: "DONE", title: "Task", priority: "HIGH" };

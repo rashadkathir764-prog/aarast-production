@@ -15,27 +15,27 @@ import {
   Prisma,
   SharedMember,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
+import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import {
   CollaborationHistoryPort,
   ContributionHistorySummaryResponse,
   RecordContributionInput,
-} from "../modules/collaboration/public/collaboration-history.port";
+} from "../public/collaboration-history.port";
 import {
   livePlanAuthorizationWhere,
   PlanAccessContext,
-} from "../modules/collaboration/public/collaboration-permission.port";
-import { runRetryableTransaction } from "../platform/database/serializable-transaction";
-import { PrismaService } from "../platform/database/prisma.service";
+} from "../public/collaboration-permission.port";
+import { runRetryableTransaction } from "../../../platform/database/serializable-transaction";
+import { PrismaService } from "../../../platform/database/prisma.service";
 import {
   canonicalJson,
   hashContributionSnapshot,
   validateContributionSnapshot,
-} from "../modules/collaboration/public/contribution-snapshot.builder";
+} from "../public/contribution-snapshot.builder";
 import {
   ContributionHistoryPageResponse,
 } from "./contribution-history.contracts";
-import { ListContributionsDto } from "./dto/list-contributions.dto";
+import { ListContributionsDto } from "../api/dto/list-contributions.dto";
 
 const PERMISSION_POLICY_VERSION = 1;
 

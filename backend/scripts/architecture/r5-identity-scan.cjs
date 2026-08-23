@@ -113,6 +113,14 @@ const REMAINING_DEPENDENCY_KEYS = Object.freeze([
 ]);
 const R7_HISTORICAL_DEPENDENCY_HASH =
   '82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42';
+const R7_HISTORICAL_OWNERSHIP_HASH =
+  '139b166d5c5b1dad20954a66118188a991704ca6e3911a80fe7d0fc07489af41';
+const R7_HISTORY_OWNERSHIP_PROJECTION = Object.freeze({
+  from: 'backend/src/contribution-history/contribution-history.service.ts',
+  to: 'backend/src/modules/collaboration/internal/contribution-history.service.ts',
+  records: 5,
+  occurrences: 7,
+});
 const R7_RETIRED_DEPENDENCY_KEYS = Object.freeze(REMAINING_DEPENDENCY_KEYS.filter(
   (key) => key.endsWith('|src/contribution-history/contribution-snapshot.builder.ts'),
 ));
@@ -584,7 +592,10 @@ function mapOwnershipRecordsForR5(records, manifestValue) {
         || !item.key.startsWith(`${item.file}|`)) {
       throw new Error('R5 ownership record identity is invalid');
     }
-    const target = completedMoves.get(item.file);
+    const target = completedMoves.get(item.file)
+      || (item.file === R7_HISTORY_OWNERSHIP_PROJECTION.from
+        ? R7_HISTORY_OWNERSHIP_PROJECTION.to
+        : null);
     if (!target) return { ...item };
     return {
       ...item,
@@ -664,6 +675,58 @@ function verifyR7DependencyHandoff(options) {
     historicalDependencyRecords: historical.length,
     liveDependencyRecords: live.length,
     retiredDependencyRecords: historical.length - live.length,
+  });
+}
+
+function verifyR7HistoryOwnershipHandoff(options) {
+  const input = exactObject(options, [
+    'historicalOwnership', 'liveOwnership',
+  ], 'R7 history ownership handoff input');
+  const historical = validateOwnershipBaseline(
+    input.historicalOwnership,
+    'R7 historical ownership',
+  );
+  const historicalOccurrences = historical.violations.reduce(
+    (sum, record) => sum + record.count,
+    0,
+  );
+  if (historical.violations.length !== 385 || historicalOccurrences !== 781
+      || hash(historical) !== R7_HISTORICAL_OWNERSHIP_HASH) {
+    throw new Error('R7 historical ownership identity is invalid');
+  }
+  const live = validateOwnershipBaseline(input.liveOwnership, 'R7 live ownership');
+  const expected = {
+    ...historical,
+    violations: historical.violations.map((record) => {
+      if (record.file !== R7_HISTORY_OWNERSHIP_PROJECTION.from) return { ...record };
+      return {
+        ...record,
+        key: String(record.key).replace(
+          R7_HISTORY_OWNERSHIP_PROJECTION.from,
+          R7_HISTORY_OWNERSHIP_PROJECTION.to,
+        ),
+        file: R7_HISTORY_OWNERSHIP_PROJECTION.to,
+      };
+    }),
+  };
+  const projected = expected.violations.filter(
+    (record) => record.file === R7_HISTORY_OWNERSHIP_PROJECTION.to,
+  );
+  const projectedOccurrences = projected.reduce((sum, record) => sum + record.count, 0);
+  const liveOccurrences = live.violations.reduce((sum, record) => sum + record.count, 0);
+  if (projected.length !== R7_HISTORY_OWNERSHIP_PROJECTION.records
+      || projectedOccurrences !== R7_HISTORY_OWNERSHIP_PROJECTION.occurrences
+      || live.violations.length !== 385 || liveOccurrences !== 781
+      || JSON.stringify(live) !== JSON.stringify(expected)) {
+    throw new Error('R7 live ownership projection is invalid');
+  }
+  return Object.freeze({
+    historicalOwnershipRecords: historical.violations.length,
+    historicalOwnershipOccurrences: historicalOccurrences,
+    liveOwnershipRecords: live.violations.length,
+    liveOwnershipOccurrences: liveOccurrences,
+    projectedRecords: projected.length,
+    projectedOccurrences,
   });
 }
 
@@ -1060,6 +1123,7 @@ module.exports = {
   expectedR5DependencyRecords,
   verifyR5Baselines,
   verifyR7DependencyHandoff,
+  verifyR7HistoryOwnershipHandoff,
   runCli,
 };
 

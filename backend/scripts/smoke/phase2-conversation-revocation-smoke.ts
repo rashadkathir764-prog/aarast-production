@@ -12,7 +12,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
+import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { ConversationsService } from "../../src/conversations/conversations.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";

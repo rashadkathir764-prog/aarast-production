@@ -114,10 +114,10 @@ test('Task 3 leaves alias public tokens to one owner implementation', async () =
   const { PermissionService } = require('../src/sharing/permission.service');
   const {
     ContributionHistoryService,
-  } = require('../src/contribution-history/contribution-history.service');
+  } = require('../src/modules/collaboration/internal/contribution-history.service');
   const {
     ContributorScopeService,
-  } = require('../src/contribution-history/contributor-scope.service');
+  } = require('../src/modules/collaboration/internal/contributor-scope.service');
 
   class CollaborationPortTestModule {}
   Module({

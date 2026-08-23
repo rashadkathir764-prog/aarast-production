@@ -66,6 +66,13 @@ type R7Scanner = {
     controllers: number;
     operations: number;
   };
+  verifyHistoryRelocation(repositoryRoot: string, manifest: R7Manifest): {
+    controllers: number;
+    providers: number;
+    aliases: number;
+    exports: number;
+    legacyRuntimeImports: number;
+  };
   scanR7CollaborationRelocation(options: {
     repositoryRoot: string;
     manifest: unknown;
@@ -151,10 +158,14 @@ function rewriteRelativeImports(
   targetPath: string,
   sourceText: string,
   value: R7Manifest,
+  activeTargets: Set<string>,
 ): string {
   const aliases = new Map<string, string>();
   for (const move of value.moves) {
-    aliases.set(move.from.replace(/\.ts$/u, ''), move.to.replace(/\.ts$/u, ''));
+    aliases.set(
+      move.from.replace(/\.ts$/u, ''),
+      (activeTargets.has(move.to) ? move.to : move.from).replace(/\.ts$/u, ''),
+    );
     aliases.set(move.to.replace(/\.ts$/u, ''), move.to.replace(/\.ts$/u, ''));
   }
   const sourceFile = ts.createSourceFile(
@@ -220,9 +231,14 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     'utf8',
   );
   mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
-  copyFileSync(
-    path.join(repositoryRoot, 'backend', 'architecture', 'ownership-baseline.json'),
+  writeFileSync(
     path.join(root, 'backend', 'architecture', 'ownership-baseline.json'),
+    execFileSync(
+      'git',
+      [`show`, `${value.baseRevision}:backend/architecture/ownership-baseline.json`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+    'utf8',
   );
 
   for (const relativePath of [
@@ -252,7 +268,11 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
         'utf8',
       );
     } else {
-      copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
+      const activePath = relativePath === 'backend/src/contribution-history/contribution-history.service.ts'
+        && !existsSync(path.join(repositoryRoot, ...relativePath.split('/')))
+        ? 'backend/src/modules/collaboration/internal/contribution-history.service.ts'
+        : relativePath;
+      copyFileSync(path.join(repositoryRoot, ...activePath.split('/')), target);
     }
   }
 
@@ -260,21 +280,17 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
   for (const move of value.moves) {
     const source = path.join(root, ...move.from.split('/'));
     mkdirSync(path.dirname(source), { recursive: true });
-    if (stage === 'design') {
-      writeFileSync(
-        source,
-        execFileSync('git', ['show', `${value.baseRevision}:${move.from}`], {
-          cwd: repositoryRoot,
-          encoding: 'utf8',
-        }),
-        'utf8',
-      );
-    } else {
-      const activePath = existsSync(path.join(repositoryRoot, ...move.from.split('/')))
-        ? move.from
-        : move.to;
-      copyFileSync(path.join(repositoryRoot, ...activePath.split('/')), source);
-    }
+    const baseSource = execFileSync('git', ['show', `${value.baseRevision}:${move.from}`], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    });
+    writeFileSync(
+      source,
+      stage === 'design'
+        ? baseSource
+        : rewriteRelativeImports(move.from, move.from, baseSource, value, activeTargets),
+      'utf8',
+    );
     if (!activeTargets.has(move.to)) continue;
     const target = path.join(root, ...move.to.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
@@ -285,6 +301,7 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
         move.to,
         readFileSync(source, 'utf8'),
         value,
+        activeTargets,
       ),
       'utf8',
     );
@@ -396,11 +413,114 @@ test('R7 pins the immutable R6 closeout and exact Collaboration fate map', () =>
   const value = scanner().validateR7Manifest(manifest());
   assert.equal(value.schemaVersion, 1);
   assert.equal(value.baseRevision, '31ea5324007fc71fa4b3590fbb98a454ee1deaa7');
-  assert.equal(value.stage, 'snapshot');
+  assert.equal(value.stage, 'history');
   assert.deepEqual(value.moves, expectedMoves);
   assert.equal(new Set(value.moves.map((move) => move.from)).size, 18);
   assert.equal(new Set(value.moves.map((move) => move.to)).size, 18);
   assert.deepEqual(value.sourceParity, expectedSourceParity);
+});
+
+test('R7 history stage pins final API, internal providers, aliases, exports, and imports', () => {
+  const value = scanner().validateR7Manifest(manifest());
+  assert.deepEqual(scanner().verifyHistoryRelocation(repositoryRoot, value), {
+    controllers: 1,
+    providers: 2,
+    aliases: 2,
+    exports: 4,
+    legacyRuntimeImports: 0,
+  });
+  assert.deepEqual(scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value }), {
+    ok: true,
+    stage: 'history',
+    sourceFiles: 12,
+    targetFiles: 6,
+    dependencyRecords: 22,
+    ownershipRecords: 385,
+    ownershipOccurrences: 781,
+  });
+});
+
+test('R7 history gate rejects controller, provider, and ownership semantic drift', () => {
+  const controllerCases = [
+    {
+      name: 'controller route',
+      mutate: (source: string) => source.replace('@Get("summary")', '@Get("changed")'),
+    },
+    {
+      name: 'CurrentUser decorator',
+      mutate: (source: string) => source.replace('@CurrentUser()', '@Param("currentUser")'),
+    },
+    {
+      name: 'query parameter',
+      mutate: (source: string) => source.replace(
+        '@Query("contributorUserId")',
+        '@Query("changedContributorUserId")',
+      ),
+    },
+  ];
+  for (const fixtureCase of controllerCases) {
+    const fixture = stagedFixture('history');
+    try {
+      mutateFixtureFile(
+        fixture.root,
+        'backend/src/modules/collaboration/api/contribution-history.controller.ts',
+        fixtureCase.mutate,
+      );
+      assert.throws(
+        () => scanner().verifyControllerHandoffs(fixture.root, fixture.value),
+        /controller inventory drift/u,
+        fixtureCase.name,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+
+  const provider = stagedFixture('history');
+  try {
+    mutateFixtureFile(
+      provider.root,
+      'backend/src/modules/collaboration/internal/contribution-history.service.ts',
+      (source) => source.replace(
+        'export class ContributionHistoryService',
+        'export class ChangedContributionHistoryService',
+      ),
+    );
+    assert.throws(
+      () => scanner().verifyHistoryRelocation(provider.root, provider.value),
+      /history provider identity drift/u,
+    );
+  } finally {
+    rmSync(provider.root, { recursive: true, force: true });
+  }
+
+  const ownership = stagedFixture('history');
+  try {
+    const ownershipPath = path.join(
+      ownership.root,
+      'backend',
+      'architecture',
+      'ownership-baseline.json',
+    );
+    const baseline = JSON.parse(readFileSync(ownershipPath, 'utf8')) as {
+      violations: Array<Record<string, unknown>>;
+    };
+    const record = baseline.violations.find((entry) => (
+      entry.file === 'backend/src/modules/collaboration/internal/contribution-history.service.ts'
+    ));
+    assert.ok(record);
+    record.reason = 'changed-semantic-reason';
+    writeJson(ownershipPath, baseline);
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: ownership.root,
+        manifest: ownership.value,
+      }),
+      /ownership semantic drift/u,
+    );
+  } finally {
+    rmSync(ownership.root, { recursive: true, force: true });
+  }
 });
 
 test('R7 accepts only the exact staged source and target layouts', () => {
@@ -1073,9 +1193,9 @@ test('R7 scope is exact, sorted, delegated, and does not mutate R3', () => {
   const scan = scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value });
   assert.deepEqual(scan, {
     ok: true,
-    stage: 'snapshot',
-    sourceFiles: 17,
-    targetFiles: 1,
+    stage: 'history',
+    sourceFiles: 12,
+    targetFiles: 6,
     dependencyRecords: 22,
     ownershipRecords: 385,
     ownershipOccurrences: 781,

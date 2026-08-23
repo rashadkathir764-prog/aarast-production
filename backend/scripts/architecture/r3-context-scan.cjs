@@ -257,6 +257,21 @@ const R7_DEPENDENCY_HANDOFF = Object.freeze({
     'context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
   ]),
 });
+const R7_CONTRIBUTION_HISTORY_HANDOFF = Object.freeze({
+  baseRevision: '31ea5324007fc71fa4b3590fbb98a454ee1deaa7',
+  from: 'backend/src/contribution-history/contribution-history.controller.ts',
+  to: 'backend/src/modules/collaboration/api/contribution-history.controller.ts',
+  historicalDecoratorRuntimeReferencesSha256:
+    '756164378747cbf0c8a1a2981432d5d18803e046a4552a585dd4db2f90ed01d2',
+  historicalRuntimeDecoratorValueReferencesSha256:
+    '1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda',
+});
+const R7_CONTRIBUTION_HISTORY_RELOCATED_IMPORTS = new Set([
+  'backend/src/modules/collaboration/api/contribution-history.controller.ts->backend/src/modules/identity/public/identity-session.types.ts',
+  'backend/src/modules/collaboration/api/contribution-history.controller.ts->backend/src/modules/identity/public/current-user.decorator.ts',
+  'backend/src/modules/collaboration/api/contribution-history.controller.ts->backend/src/modules/identity/public/jwt-auth.guard.ts',
+  'backend/src/modules/collaboration/internal/contribution-history.service.ts->backend/src/modules/identity/public/identity-session.types.ts',
+]);
 const R6_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
   transientDelivery: Object.freeze({
     token: 'backend/src/modules/identity/public/identity-transient-delivery.port.ts#IDENTITY_TRANSIENT_DELIVERY_PORT',
@@ -418,7 +433,7 @@ function validateR3ContextManifest(value) {
     'initialDuplicateProviders', 'remainingDuplicateProviders',
     'initialPlatformDebts', 'remainingPlatformDebts',
     'initialRetiredLegacyProviderEdges', 'remainingRetiredLegacyProviderEdges',
-    'r7DependencyHandoff', 'allowedChangedPaths',
+    'r7DependencyHandoff', 'r7ContributionHistoryHandoff', 'allowedChangedPaths',
   ];
   if (Object.keys(manifest).sort().join('|') !== [...required].sort().join('|')) {
     throw new Error('R3 context manifest keys are invalid');
@@ -433,6 +448,19 @@ function validateR3ContextManifest(value) {
   ], 'R7 dependency handoff');
   if (JSON.stringify(r7DependencyHandoff) !== JSON.stringify(R7_DEPENDENCY_HANDOFF)) {
     throw new Error('R7 dependency handoff is not canonical');
+  }
+  const r7ContributionHistoryHandoff = exactObject(
+    manifest.r7ContributionHistoryHandoff,
+    [
+      'baseRevision', 'from', 'to',
+      'historicalDecoratorRuntimeReferencesSha256',
+      'historicalRuntimeDecoratorValueReferencesSha256',
+    ],
+    'R7 Contribution History handoff',
+  );
+  if (JSON.stringify(r7ContributionHistoryHandoff)
+      !== JSON.stringify(R7_CONTRIBUTION_HISTORY_HANDOFF)) {
+    throw new Error('R7 Contribution History handoff is not canonical');
   }
   const completedTask = manifest.stage === 'inventory'
     ? 1
@@ -611,6 +639,68 @@ function verifyR7DependencyHandoff(options) {
     historicalDependencyRecords: input.historicalDependency.length,
     liveDependencyRecords: input.liveDependency.length,
     retiredDependencyRecords: input.historicalDependency.length - input.liveDependency.length,
+  });
+}
+
+function projectR7HistoryDecoratorSources(records) {
+  return records.map((record) => (
+    record.source === R7_CONTRIBUTION_HISTORY_HANDOFF.from
+      ? { ...record, source: R7_CONTRIBUTION_HISTORY_HANDOFF.to }
+      : { ...record }
+  )).sort((left, right) => {
+    const leftKey = `${left.source}|${left.symbol}`;
+    const rightKey = `${right.source}|${right.symbol}`;
+    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+  });
+}
+
+function verifyR7HistoryDecoratorHandoff(options) {
+  const input = exactObject(options, [
+    'historicalDecoratorRuntimeReferences',
+    'historicalRuntimeDecoratorValueReferences',
+    'liveDecoratorRuntimeReferences',
+    'liveRuntimeDecoratorValueReferences',
+  ], 'R7 history decorator handoff input');
+  assertDeepPlainData(
+    input.historicalDecoratorRuntimeReferences,
+    'R7 historical decorator references',
+  );
+  assertDeepPlainData(
+    input.historicalRuntimeDecoratorValueReferences,
+    'R7 historical runtime decorator references',
+  );
+  if (!Array.isArray(input.historicalDecoratorRuntimeReferences)
+      || input.historicalDecoratorRuntimeReferences.length !== 23
+      || sha256(input.historicalDecoratorRuntimeReferences)
+        !== R7_CONTRIBUTION_HISTORY_HANDOFF.historicalDecoratorRuntimeReferencesSha256
+      || !Array.isArray(input.historicalRuntimeDecoratorValueReferences)
+      || input.historicalRuntimeDecoratorValueReferences.length !== 26
+      || sha256(input.historicalRuntimeDecoratorValueReferences)
+        !== R7_CONTRIBUTION_HISTORY_HANDOFF.historicalRuntimeDecoratorValueReferencesSha256) {
+    throw new Error('R7 historical decorator identity is invalid');
+  }
+  assertDeepPlainData(input.liveDecoratorRuntimeReferences, 'R7 live decorator references');
+  assertDeepPlainData(
+    input.liveRuntimeDecoratorValueReferences,
+    'R7 live runtime decorator references',
+  );
+  const expectedDecorator = projectR7HistoryDecoratorSources(
+    input.historicalDecoratorRuntimeReferences,
+  );
+  const expectedRuntime = projectR7HistoryDecoratorSources(
+    input.historicalRuntimeDecoratorValueReferences,
+  );
+  if (JSON.stringify(input.liveDecoratorRuntimeReferences) !== JSON.stringify(expectedDecorator)
+      || JSON.stringify(input.liveRuntimeDecoratorValueReferences) !== JSON.stringify(expectedRuntime)) {
+    throw new Error('R7 live decorator projection is invalid');
+  }
+  return Object.freeze({
+    historicalDecoratorReferences: input.historicalDecoratorRuntimeReferences.length,
+    historicalRuntimeDecoratorReferences:
+      input.historicalRuntimeDecoratorValueReferences.length,
+    liveDecoratorReferences: input.liveDecoratorRuntimeReferences.length,
+    liveRuntimeDecoratorReferences: input.liveRuntimeDecoratorValueReferences.length,
+    movedSources: 2,
   });
 }
 
@@ -989,8 +1079,13 @@ function scanR3SourceLaws(options) {
           const legalRelocatedIdentityPureHelper = relocatedIdentityPureHelpers.has(
             `${repositoryPath}->${targetPath}`,
           );
+          const legalR7ContributionHistoryRelocatedImport =
+            R7_CONTRIBUTION_HISTORY_RELOCATED_IMPORTS.has(
+              `${repositoryPath}->${targetPath}`,
+            );
           if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
-              && !legalRelocatedPermissionContract && !legalRelocatedIdentityPureHelper) {
+              && !legalRelocatedPermissionContract && !legalRelocatedIdentityPureHelper
+              && !legalR7ContributionHistoryRelocatedImport) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
         }
@@ -1702,8 +1797,10 @@ function scanR3Contexts(options) {
       && !live.task5ConstructorInventoryPresent)
     || !live.r6ConstructorInventoryPresent
     || (manifest.stage === 'strict' && !live.r4ConstructorInventoryPresent)
-    || JSON.stringify(live.decoratorRuntimeReferences) !== JSON.stringify(manifest.decoratorRuntimeReferences)
-    || JSON.stringify(live.runtimeDecoratorValueReferences) !== JSON.stringify(manifest.runtimeDecoratorValueReferences)
+    || JSON.stringify(live.decoratorRuntimeReferences)
+      !== JSON.stringify(projectR7HistoryDecoratorSources(manifest.decoratorRuntimeReferences))
+    || JSON.stringify(live.runtimeDecoratorValueReferences)
+      !== JSON.stringify(projectR7HistoryDecoratorSources(manifest.runtimeDecoratorValueReferences))
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)
     || JSON.stringify(live.retiredEdges.map((item) => item.key)) !== JSON.stringify(manifest.remainingRetiredLegacyProviderEdges)
     || JSON.stringify(live.adminGuardMetadata) !== JSON.stringify(manifest.adminGuardMetadata)
@@ -1785,6 +1882,7 @@ module.exports = {
   validateR3ContextManifest,
   validateR3ScanResult,
   verifyR7DependencyHandoff,
+  verifyR7HistoryDecoratorHandoff,
   runCli,
 };
 if (require.main === module) process.exitCode = runCli();

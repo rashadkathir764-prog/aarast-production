@@ -19,8 +19,8 @@ import {
 } from "@prisma/client";
 import ts from "typescript";
 import { BudgetCategoriesService } from "../../src/budget-categories/budget-categories.service";
-import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
-import { ContributorScopeService } from "../../src/contribution-history/contributor-scope.service";
+import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
+import { ContributorScopeService } from "../../src/modules/collaboration/internal/contributor-scope.service";
 import { MoneyBudgetService } from "../../src/money/money-budget.service";
 import { WeddingPlanBudgetWriter } from "../../src/modules/planning/internal/wedding-plan-budget-writer";
 import { PermissionService } from "../../src/sharing/permission.service";

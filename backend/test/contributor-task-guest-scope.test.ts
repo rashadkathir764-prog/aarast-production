@@ -17,8 +17,8 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { GuestsService } from "../src/guests/guests.service";
-import { ContributionHistoryService } from "../src/contribution-history/contribution-history.service";
-import { ContributorScopeService } from "../src/contribution-history/contributor-scope.service";
+import { ContributionHistoryService } from "../src/modules/collaboration/internal/contribution-history.service";
+import { ContributorScopeService } from "../src/modules/collaboration/internal/contributor-scope.service";
 import { TasksService } from "../src/tasks/tasks.service";
 import { TimelineService } from "../src/timeline/timeline.service";
 

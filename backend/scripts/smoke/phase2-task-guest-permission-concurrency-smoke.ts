@@ -13,8 +13,8 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { ContributionHistoryService } from "../../src/contribution-history/contribution-history.service";
-import { ContributorScopeService } from "../../src/contribution-history/contributor-scope.service";
+import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
+import { ContributorScopeService } from "../../src/modules/collaboration/internal/contributor-scope.service";
 import { GuestsService } from "../../src/guests/guests.service";
 import {
   TASK_PERMISSION_REVOKED,

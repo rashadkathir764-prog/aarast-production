@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ContributorScopeService } from '../../../contribution-history/contributor-scope.service';
+import { ContributorScopeService } from './contributor-scope.service';
 import { CollaborationHistoryInternalModule } from './collaboration-history.internal.module';
 
 export const COLLABORATION_SCOPE_IMPLEMENTATION = Symbol(

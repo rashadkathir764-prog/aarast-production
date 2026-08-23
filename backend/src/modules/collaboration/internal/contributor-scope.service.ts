@@ -4,7 +4,7 @@ import {
   ContributionEntityType,
   Prisma,
 } from "@prisma/client";
-import { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
+import { CollaborationScopePort } from "../public/collaboration-scope.port";
 import {
   ContributionHistoryService,
   contributorActorReference,

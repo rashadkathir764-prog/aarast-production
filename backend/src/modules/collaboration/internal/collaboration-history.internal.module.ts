@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ContributionHistoryService } from '../../../contribution-history/contribution-history.service';
+import { ContributionHistoryService } from './contribution-history.service';
 import { PrismaModule } from '../../../platform/database/prisma.module';
 
 export const COLLABORATION_HISTORY_IMPLEMENTATION = Symbol(

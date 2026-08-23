@@ -214,6 +214,12 @@ const EXPECTED_OWNERSHIP_PROJECTION = Object.freeze([
   Object.freeze({ from: 'backend/src/sharing/permission.service.ts', to: 'backend/src/modules/collaboration/internal/permission.service.ts', records: 2, occurrences: 6 }),
   Object.freeze({ from: 'backend/src/sharing/sharing.service.ts', to: 'backend/src/modules/collaboration/internal/sharing.service.ts', records: 20, occurrences: 66 }),
 ]);
+const EXPECTED_OWNERSHIP_SEMANTIC_HASHES = Object.freeze([
+  'de87d345463515447da89666d43b82f04f8d7843b1c6f244e74bf65592b63108',
+  '1e583f56c329d98a56a75d6ddbcb9184338fb6d146807ae4a2f761a05d988517',
+  'b9b2c79112659cace11469e13180769de683576c47448c5f3a034434031e1b4f',
+  'e3f1bd58cb00c86d0942be0b1e6af83c8c950d01a7f30bbad1f4ad0b195392fb',
+]);
 
 const EXPECTED_OPTIONAL_DEPENDENCIES = Object.freeze([
   Object.freeze({
@@ -606,7 +612,8 @@ function verifyBaselines(repositoryRoot, manifest) {
     throw new Error('R7 ownership occurrence drift detected');
   }
   const targetPaths = stageTargetPaths(manifest);
-  for (const projection of manifest.historicalHandoffs.ownershipProjection) {
+  for (const [projectionIndex, projection]
+    of manifest.historicalHandoffs.ownershipProjection.entries()) {
     const activePath = targetPaths.has(projection.to) ? projection.to : projection.from;
     const records = ownership.violations.filter((record) => record.file === activePath);
     const occurrences = records.reduce((sum, record) => sum + record.count, 0);
@@ -616,6 +623,17 @@ function verifyBaselines(repositoryRoot, manifest) {
     const inactivePath = activePath === projection.from ? projection.to : projection.from;
     if (ownership.violations.some((record) => record.file === inactivePath)) {
       throw new Error('R7 ownership handoff retains an inactive path');
+    }
+    const semanticRecords = records.map((record) => ({
+      ...record,
+      key: String(record.key).replace(activePath, '#source'),
+      file: '#source',
+    }));
+    const semanticHash = crypto.createHash('sha256')
+      .update(JSON.stringify(semanticRecords))
+      .digest('hex');
+    if (semanticHash !== EXPECTED_OWNERSHIP_SEMANTIC_HASHES[projectionIndex]) {
+      throw new Error('R7 ownership semantic drift detected');
     }
   }
   return Object.freeze({
@@ -1013,6 +1031,167 @@ function verifyControllerHandoffs(repositoryRoot, manifest) {
   return Object.freeze({ controllers: EXPECTED_CONTROLLER_INVENTORIES.length, operations });
 }
 
+function importedSpecifier(sourceFile, importedName) {
+  for (const statement of sourceFile.statements.filter(ts.isImportDeclaration)) {
+    if (!ts.isStringLiteralLike(statement.moduleSpecifier) || !statement.importClause) continue;
+    if (statement.importClause.name?.text === importedName) return statement.moduleSpecifier.text;
+    const bindings = statement.importClause.namedBindings;
+    if (bindings && ts.isNamedImports(bindings)
+        && bindings.elements.some((element) => element.name.text === importedName)) {
+      return statement.moduleSpecifier.text;
+    }
+  }
+  return null;
+}
+
+function classModuleMetadata(sourceFile, className) {
+  const classNode = sourceFile.statements.find((statement) => (
+    ts.isClassDeclaration(statement) && statement.name?.text === className
+  ));
+  if (!classNode) throw new Error('R7 history provider identity drift detected');
+  const moduleDecorator = decoratorsOf(classNode).find(
+    (decorator) => decoratorName(decorator, sourceFile) === 'Module',
+  );
+  const expression = moduleDecorator?.expression;
+  if (!expression || !ts.isCallExpression(expression)
+      || expression.arguments.length !== 1
+      || !ts.isObjectLiteralExpression(expression.arguments[0])) {
+    throw new Error('R7 history module wiring drift detected');
+  }
+  const metadata = new Map();
+  for (const property of expression.arguments[0].properties) {
+    if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)
+        || !ts.isArrayLiteralExpression(property.initializer)) continue;
+    metadata.set(
+      property.name.text,
+      property.initializer.elements.map((element) => element.getText(sourceFile)
+        .replace(/\s+/gu, '')),
+    );
+  }
+  return metadata;
+}
+
+function verifyHistoryRelocation(repositoryRoot, manifest) {
+  const sharingServicePath = activeMovePath(
+    repositoryRoot,
+    manifest,
+    'backend/src/modules/collaboration/internal/sharing.service.ts',
+  );
+  const sharingHistorySpecifier = sharingServicePath
+    === 'backend/src/modules/collaboration/internal/sharing.service.ts'
+    ? './contribution-history.service'
+    : '../modules/collaboration/internal/contribution-history.service';
+  const requiredImports = [
+    ['backend/src/modules/collaboration/api/contribution-history.controller.ts', 'AuthenticatedUser', '../../identity/public/identity-session.types'],
+    ['backend/src/modules/collaboration/api/contribution-history.controller.ts', 'CurrentUser', '../../identity/public/current-user.decorator'],
+    ['backend/src/modules/collaboration/api/contribution-history.controller.ts', 'JwtAuthGuard', '../../identity/public/jwt-auth.guard'],
+    ['backend/src/modules/collaboration/api/contribution-history.controller.ts', 'ContributionHistoryService', '../internal/contribution-history.service'],
+    ['backend/src/modules/collaboration/api/contribution-history.controller.ts', 'ListContributionsDto', './dto/list-contributions.dto'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'AuthenticatedUser', '../../identity/public/identity-session.types'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'CollaborationHistoryPort', '../public/collaboration-history.port'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'livePlanAuthorizationWhere', '../public/collaboration-permission.port'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'runRetryableTransaction', '../../../platform/database/serializable-transaction'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'PrismaService', '../../../platform/database/prisma.service'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'canonicalJson', '../public/contribution-snapshot.builder'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'ContributionHistoryPageResponse', './contribution-history.contracts'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'ListContributionsDto', '../api/dto/list-contributions.dto'],
+    ['backend/src/modules/collaboration/internal/contributor-scope.service.ts', 'CollaborationScopePort', '../public/collaboration-scope.port'],
+    ['backend/src/modules/collaboration/internal/contributor-scope.service.ts', 'ContributionHistoryService', './contribution-history.service'],
+    ['backend/src/modules/collaboration/collaboration.module.ts', 'ContributionHistoryController', './api/contribution-history.controller'],
+    ['backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts', 'ContributionHistoryService', './contribution-history.service'],
+    ['backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts', 'ContributorScopeService', './contributor-scope.service'],
+    [sharingServicePath, 'ContributionHistoryService', sharingHistorySpecifier],
+  ];
+  const parsed = new Map();
+  for (const [relativePath, importedName, specifier] of requiredImports) {
+    if (!parsed.has(relativePath)) {
+      parsed.set(relativePath, parseTypeScriptSource(repositoryRoot, relativePath));
+    }
+    if (importedSpecifier(parsed.get(relativePath), importedName) !== specifier) {
+      throw new Error('R7 history internal import drift detected');
+    }
+  }
+  for (const [relativePath, className] of [
+    ['backend/src/modules/collaboration/api/contribution-history.controller.ts', 'ContributionHistoryController'],
+    ['backend/src/modules/collaboration/internal/contribution-history.service.ts', 'ContributionHistoryService'],
+    ['backend/src/modules/collaboration/internal/contributor-scope.service.ts', 'ContributorScopeService'],
+  ]) {
+    const sourceFile = parsed.get(relativePath) || parseTypeScriptSource(repositoryRoot, relativePath);
+    if (!sourceFile.statements.some((statement) => (
+      ts.isClassDeclaration(statement) && statement.name?.text === className && isExported(statement)
+    ))) {
+      throw new Error('R7 history provider identity drift detected');
+    }
+  }
+  const historyMetadata = classModuleMetadata(
+    parsed.get('backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts'),
+    'CollaborationHistoryInternalModule',
+  );
+  const scopeMetadata = classModuleMetadata(
+    parsed.get('backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts'),
+    'CollaborationScopeInternalModule',
+  );
+  assertExact(historyMetadata.get('imports'), ['PrismaModule'], 'R7 history module imports');
+  assertExact(historyMetadata.get('providers'), [
+    'ContributionHistoryService',
+    '{provide:COLLABORATION_HISTORY_IMPLEMENTATION,useExisting:ContributionHistoryService,}',
+  ], 'R7 history module providers');
+  assertExact(historyMetadata.get('exports'), [
+    'ContributionHistoryService', 'COLLABORATION_HISTORY_IMPLEMENTATION',
+  ], 'R7 history module exports');
+  assertExact(scopeMetadata.get('imports'), [
+    'CollaborationHistoryInternalModule',
+  ], 'R7 scope module imports');
+  assertExact(scopeMetadata.get('providers'), [
+    'ContributorScopeService',
+    '{provide:COLLABORATION_SCOPE_IMPLEMENTATION,useExisting:ContributorScopeService,}',
+  ], 'R7 scope module providers');
+  assertExact(scopeMetadata.get('exports'), [
+    'ContributorScopeService', 'COLLABORATION_SCOPE_IMPLEMENTATION',
+  ], 'R7 scope module exports');
+  const collaborationMetadata = classModuleMetadata(
+    parsed.get('backend/src/modules/collaboration/collaboration.module.ts'),
+    'CollaborationModule',
+  );
+  if ((collaborationMetadata.get('controllers') || [])
+    .filter((entry) => entry === 'ContributionHistoryController').length !== 1) {
+    throw new Error('R7 history controller registration drift detected');
+  }
+  let legacyRuntimeImports = 0;
+  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')
+    .filter((entry) => entry.endsWith('.ts'))) {
+    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    const inspectSpecifier = (specifier) => {
+      const resolved = resolvedImportPath(relativePath, specifier);
+      if (resolved?.startsWith('backend/src/contribution-history/')) legacyRuntimeImports += 1;
+    };
+    for (const statement of sourceFile.statements) {
+      if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
+          && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
+        inspectSpecifier(statement.moduleSpecifier.text);
+      }
+    }
+    const visit = (node) => {
+      if (ts.isCallExpression(node)
+          && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
+            || node.expression.kind === ts.SyntaxKind.ImportKeyword)
+          && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
+        inspectSpecifier(node.arguments[0].text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+  if (legacyRuntimeImports !== 0) throw new Error('R7 history legacy runtime import drift detected');
+  return Object.freeze({
+    controllers: 1,
+    providers: 2,
+    aliases: 2,
+    exports: 4,
+    legacyRuntimeImports,
+  });
+}
+
 function isCollaborationSource(relativePath) {
   return relativePath.startsWith('backend/src/contribution-history/')
     || relativePath.startsWith('backend/src/sharing/')
@@ -1096,6 +1275,9 @@ function scanR7CollaborationRelocation(options) {
   verifyPublicSnapshotConsumers(options.repositoryRoot);
   verifyConstructorHandoffs(options.repositoryRoot, manifest);
   verifyControllerHandoffs(options.repositoryRoot, manifest);
+  if (manifest.stage === 'history' || manifest.stage === 'relocated' || manifest.stage === 'strict') {
+    verifyHistoryRelocation(options.repositoryRoot, manifest);
+  }
   verifyProtectedCollaborationImports(options.repositoryRoot);
   return Object.freeze({
     ok: true,
@@ -1142,6 +1324,7 @@ module.exports = {
   validateR7Manifest,
   verifyConstructorHandoffs,
   verifyControllerHandoffs,
+  verifyHistoryRelocation,
   verifySourceParity,
   verifyPublicSnapshotSource,
   verifyPublicSnapshotConsumers,

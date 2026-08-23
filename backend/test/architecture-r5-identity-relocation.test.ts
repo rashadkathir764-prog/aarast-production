@@ -214,6 +214,17 @@ type R5Scanner = {
     liveDependencyRecords: number;
     retiredDependencyRecords: number;
   };
+  verifyR7HistoryOwnershipHandoff(options: {
+    historicalOwnership: Record<string, unknown>;
+    liveOwnership: Record<string, unknown>;
+  }): {
+    historicalOwnershipRecords: number;
+    historicalOwnershipOccurrences: number;
+    liveOwnershipRecords: number;
+    liveOwnershipOccurrences: number;
+    projectedRecords: number;
+    projectedOccurrences: number;
+  };
 };
 
 function r7DependencyFixture() {
@@ -265,6 +276,58 @@ test('R5 preserves immutable dependency history and accepts only the exact R7 ha
     historicalDependency: fixture.historicalDependency,
     liveDependency: fixture.liveDependency.slice(1),
   }), /live dependency/i);
+});
+
+function r7HistoryOwnershipFixture() {
+  const repositoryRoot = path.resolve(backendRoot, '..');
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalOwnership = JSON.parse(execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/architecture/ownership-baseline.json`],
+    { cwd: repositoryRoot, encoding: 'utf8' },
+  ));
+  const projection = r7Manifest.historicalHandoffs.ownershipProjection[0];
+  const liveOwnership = structuredClone(historicalOwnership);
+  for (const record of liveOwnership.violations) {
+    if (record.file !== projection.from) continue;
+    record.file = projection.to;
+    record.key = record.key.replace(projection.from, projection.to);
+  }
+  return { historicalOwnership, liveOwnership };
+}
+
+test('R5 preserves immutable ownership history and accepts only the exact R7 history projection', () => {
+  const verify = loadScanner().verifyR7HistoryOwnershipHandoff;
+  const fixture = r7HistoryOwnershipFixture();
+  assert.deepEqual(verify(fixture), {
+    historicalOwnershipRecords: 385,
+    historicalOwnershipOccurrences: 781,
+    liveOwnershipRecords: 385,
+    liveOwnershipOccurrences: 781,
+    projectedRecords: 5,
+    projectedOccurrences: 7,
+  });
+  assert.throws(() => verify({
+    historicalOwnership: fixture.liveOwnership,
+    liveOwnership: fixture.liveOwnership,
+  }), /historical ownership/i);
+  assert.throws(() => verify({
+    historicalOwnership: fixture.historicalOwnership,
+    liveOwnership: fixture.historicalOwnership,
+  }), /live ownership/i);
+  const semanticDrift = structuredClone(fixture.liveOwnership);
+  const moved = semanticDrift.violations.find((record: Record<string, unknown>) => (
+    record.file === 'backend/src/modules/collaboration/internal/contribution-history.service.ts'
+  ));
+  assert.ok(moved);
+  moved.reason = 'changed-semantic-reason';
+  assert.throws(() => verify({
+    historicalOwnership: fixture.historicalOwnership,
+    liveOwnership: semanticDrift,
+  }), /live ownership/i);
 });
 
 const expectedQaHarnessCorrections: QaHarnessCorrection[] = [

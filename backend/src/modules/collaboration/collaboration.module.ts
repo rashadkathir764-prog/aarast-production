@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { ContributionHistoryController } from "../../contribution-history/contribution-history.controller";
+import { ContributionHistoryController } from "./api/contribution-history.controller";
 import {
   ApiV1InviteAcceptController,
   ApiV1InviteAccessController,

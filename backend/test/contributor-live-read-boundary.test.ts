@@ -98,7 +98,7 @@ test("task, plan quote, and contribution-history final queries carry live DB aut
       "/**",
     ],
     [
-      "contribution-history/contribution-history.service.ts",
+      "modules/collaboration/internal/contribution-history.service.ts",
       "async list",
       "async summary",
     ],

@@ -1,8 +1,8 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../modules/identity/public/current-user.decorator";
-import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
-import { ContributionHistoryService } from "./contribution-history.service";
+import { AuthenticatedUser } from "../../identity/public/identity-session.types";
+import { CurrentUser } from "../../identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../../identity/public/jwt-auth.guard";
+import { ContributionHistoryService } from "../internal/contribution-history.service";
 import { ListContributionsDto } from "./dto/list-contributions.dto";
 
 @Controller("api/v1/wedding-plans/:weddingPlanId/contributions")

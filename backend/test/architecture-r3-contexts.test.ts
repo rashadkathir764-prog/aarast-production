@@ -33,6 +33,18 @@ type Scanner = {
     liveDependencyRecords: number;
     retiredDependencyRecords: number;
   };
+  verifyR7HistoryDecoratorHandoff(options: {
+    historicalDecoratorRuntimeReferences: Array<Record<string, unknown>>;
+    historicalRuntimeDecoratorValueReferences: Array<Record<string, unknown>>;
+    liveDecoratorRuntimeReferences: Array<Record<string, unknown>>;
+    liveRuntimeDecoratorValueReferences: Array<Record<string, unknown>>;
+  }): {
+    historicalDecoratorReferences: number;
+    historicalRuntimeDecoratorReferences: number;
+    liveDecoratorReferences: number;
+    liveRuntimeDecoratorReferences: number;
+    movedSources: number;
+  };
   runCli(dependencies: Record<string, unknown>): number;
 };
 
@@ -92,6 +104,64 @@ test('R3 preserves immutable dependency history and accepts only the exact R7 ha
     historicalDependency: fixture.historicalDependency,
     liveDependency: fixture.liveDependency.slice(1),
   }), /live dependency/i);
+});
+
+function r7HistoryDecoratorFixture() {
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalManifest = JSON.parse(execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/architecture/r3-context-boundaries.json`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ));
+  const controller = r7Manifest.historicalHandoffs.controllerSources[0];
+  const project = (records: Array<Record<string, unknown>>) => (records.map((record) => (
+    record.source === controller.from ? { ...record, source: controller.to } : { ...record }
+  )) as Array<Record<string, unknown>>).sort((left, right) => {
+    const leftKey = `${left.source}|${left.symbol}`;
+    const rightKey = `${right.source}|${right.symbol}`;
+    return leftKey.localeCompare(rightKey);
+  });
+  return {
+    historicalDecoratorRuntimeReferences: historicalManifest.decoratorRuntimeReferences,
+    historicalRuntimeDecoratorValueReferences: historicalManifest.runtimeDecoratorValueReferences,
+    liveDecoratorRuntimeReferences: project(historicalManifest.decoratorRuntimeReferences),
+    liveRuntimeDecoratorValueReferences: project(
+      historicalManifest.runtimeDecoratorValueReferences,
+    ),
+  };
+}
+
+test('R3 preserves immutable decorator history and accepts only the exact R7 history handoff', () => {
+  const verify = scanner().verifyR7HistoryDecoratorHandoff;
+  const fixture = r7HistoryDecoratorFixture();
+  assert.deepEqual(verify(fixture), {
+    historicalDecoratorReferences: 23,
+    historicalRuntimeDecoratorReferences: 26,
+    liveDecoratorReferences: 23,
+    liveRuntimeDecoratorReferences: 26,
+    movedSources: 2,
+  });
+  assert.throws(() => verify({
+    ...fixture,
+    historicalDecoratorRuntimeReferences: fixture.liveDecoratorRuntimeReferences,
+  }), /historical decorator/i);
+  assert.throws(() => verify({
+    ...fixture,
+    liveRuntimeDecoratorValueReferences: fixture.historicalRuntimeDecoratorValueReferences,
+  }), /live decorator/i);
+  const wrongPath = structuredClone(fixture.liveDecoratorRuntimeReferences);
+  const moved = wrongPath.find((record) => (
+    record.source === 'backend/src/modules/collaboration/api/contribution-history.controller.ts'
+  ));
+  assert.ok(moved);
+  moved.source = 'backend/src/modules/collaboration/internal/contribution-history.controller.ts';
+  assert.throws(() => verify({
+    ...fixture,
+    liveDecoratorRuntimeReferences: wrongPath,
+  }), /live decorator/i);
 });
 
 function write(root: string, relativePath: string, content: string) {
@@ -176,6 +246,15 @@ test('the canonical R3 manifest freezes the exact strict ledgers', () => {
     historicalRecords: 31,
     liveRecords: 22,
     retiredDependencyKeys: r7Manifest.historicalHandoffs.retiredDependencyKeys,
+  });
+  assert.deepEqual(manifest.r7ContributionHistoryHandoff, {
+    baseRevision: '31ea5324007fc71fa4b3590fbb98a454ee1deaa7',
+    from: 'backend/src/contribution-history/contribution-history.controller.ts',
+    to: 'backend/src/modules/collaboration/api/contribution-history.controller.ts',
+    historicalDecoratorRuntimeReferencesSha256:
+      '756164378747cbf0c8a1a2981432d5d18803e046a4552a585dd4db2f90ed01d2',
+    historicalRuntimeDecoratorValueReferencesSha256:
+      '1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda',
   });
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',

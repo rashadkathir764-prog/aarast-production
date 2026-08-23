@@ -14,7 +14,7 @@ import {
   buildContributionSnapshot,
   validateContributionSnapshot,
 } from "../src/modules/collaboration/public/contribution-snapshot.builder";
-import { ContributionHistoryService } from "../src/contribution-history/contribution-history.service";
+import { ContributionHistoryService } from "../src/modules/collaboration/internal/contribution-history.service";
 import { TasksService } from "../src/tasks/tasks.service";
 
 test("each contribution snapshot type emits only its explicit privacy allowlist", () => {

@@ -1115,6 +1115,266 @@ function classModuleMetadata(sourceFile, className) {
   return metadata;
 }
 
+function unwrapProviderExpression(expression) {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)
+      || ts.isAsExpression(current)
+      || ts.isTypeAssertionExpression(current)
+      || ts.isNonNullExpression(current)
+      || (ts.isSatisfiesExpression && ts.isSatisfiesExpression(current))) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function sharingProviderTopology(repositoryRoot) {
+  const sourcePaths = listPlainFiles(repositoryRoot, 'backend/src')
+    .filter((entry) => entry.endsWith('.ts'));
+  const absolutePaths = sourcePaths.map((relativePath) => (
+    path.join(repositoryRoot, ...relativePath.split('/'))
+  ));
+  const program = ts.createProgram(absolutePaths, {
+    experimentalDecorators: true,
+    module: ts.ModuleKind.CommonJS,
+    moduleResolution: ts.ModuleResolutionKind.Node10,
+    noEmit: true,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.Latest,
+  });
+  const checker = program.getTypeChecker();
+  const sourceByPath = new Map(sourcePaths.map((relativePath, index) => [
+    relativePath,
+    program.getSourceFile(absolutePaths[index]),
+  ]));
+  const providerDeclarations = [
+    ['backend/src/modules/collaboration/internal/sharing.service.ts', 'SharingService'],
+    ['backend/src/modules/collaboration/internal/invitation-delivery.service.ts', 'InvitationDeliveryService'],
+    ['backend/src/modules/collaboration/internal/invite-access.service.ts', 'InviteAccessService'],
+    ['backend/src/modules/collaboration/internal/permission.service.ts', 'PermissionService'],
+  ];
+  const providerBySymbol = new Map();
+  for (const [relativePath, provider] of providerDeclarations) {
+    const sourceFile = sourceByPath.get(relativePath);
+    const classNode = sourceFile?.statements.find((statement) => (
+      ts.isClassDeclaration(statement) && statement.name?.text === provider
+    ));
+    const symbol = classNode?.name && checker.getSymbolAtLocation(classNode.name);
+    if (!symbol) throw new Error('R7 Sharing provider identity drift detected');
+    providerBySymbol.set(symbol, provider);
+  }
+
+  const dereferenceAlias = (symbol) => {
+    const seen = new Set();
+    let current = symbol;
+    while (current && (current.flags & ts.SymbolFlags.Alias) !== 0) {
+      if (seen.has(current)) return current;
+      seen.add(current);
+      const target = checker.getAliasedSymbol(current);
+      if (!target || target === current) return current;
+      current = target;
+    }
+    return current;
+  };
+  const referencedInitializer = (expression) => {
+    const current = unwrapProviderExpression(expression);
+    if (!ts.isIdentifier(current) && !ts.isPropertyAccessExpression(current)) return null;
+    const symbol = dereferenceAlias(checker.getSymbolAtLocation(current));
+    const declaration = symbol?.declarations?.find((entry) => (
+      ts.isVariableDeclaration(entry) && entry.initializer
+    ));
+    return declaration?.initializer || null;
+  };
+  const providerIdentity = (expression, seen = new Set()) => {
+    const current = unwrapProviderExpression(expression);
+    const symbol = dereferenceAlias(checker.getSymbolAtLocation(current));
+    if (symbol && providerBySymbol.has(symbol)) return providerBySymbol.get(symbol);
+    if (!symbol || seen.has(symbol)) return null;
+    seen.add(symbol);
+    for (const declaration of symbol.declarations || []) {
+      if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+        const identity = providerIdentity(declaration.initializer, seen);
+        if (identity) return identity;
+      }
+    }
+    return null;
+  };
+  const propertyName = (name) => (
+    ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)
+      ? name.text
+      : null
+  );
+  const references = [];
+  const recordReference = (expression, registration, kind) => {
+    const provider = providerIdentity(expression);
+    if (provider) references.push(Object.freeze({ ...registration, kind, provider }));
+    return Boolean(provider);
+  };
+  let inspectProviderObject;
+  const inspectProviderEntry = (expression, registration, seen = new Set()) => {
+    const current = unwrapProviderExpression(expression);
+    if (recordReference(current, registration, 'bare')) return;
+    if (ts.isObjectLiteralExpression(current)) {
+      inspectProviderObject(current, registration, seen);
+      return;
+    }
+    if (ts.isConditionalExpression(current)) {
+      inspectProviderEntry(current.whenTrue, registration, new Set(seen));
+      inspectProviderEntry(current.whenFalse, registration, new Set(seen));
+      return;
+    }
+    const initializer = referencedInitializer(current);
+    if (initializer && !seen.has(initializer)) {
+      seen.add(initializer);
+      inspectProviderEntry(initializer, registration, seen);
+    }
+  };
+  inspectProviderObject = (expression, registration, seen = new Set()) => {
+    for (const property of expression.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        const initializer = referencedInitializer(property.expression);
+        const target = initializer || unwrapProviderExpression(property.expression);
+        if (seen.has(target)) continue;
+        seen.add(target);
+        if (!ts.isObjectLiteralExpression(unwrapProviderExpression(target))) {
+          throw new Error('R7 Sharing provider topology could not resolve object spread');
+        }
+        inspectProviderObject(unwrapProviderExpression(target), registration, seen);
+        continue;
+      }
+      if (ts.isPropertyAssignment(property)) {
+        const kind = propertyName(property.name);
+        if (kind === 'provide' || kind === 'useClass' || kind === 'useExisting') {
+          recordReference(property.initializer, registration, kind);
+        }
+      } else if (ts.isShorthandPropertyAssignment(property)) {
+        const kind = property.name.text;
+        if (kind === 'provide' || kind === 'useClass' || kind === 'useExisting') {
+          recordReference(property.name, registration, kind);
+        }
+      }
+    }
+  };
+  const inspectProviderCollection = (expression, registration, seen = new Set()) => {
+    const current = unwrapProviderExpression(expression);
+    if (ts.isArrayLiteralExpression(current)) {
+      for (const element of current.elements) {
+        if (ts.isSpreadElement(element)) {
+          inspectProviderCollection(element.expression, registration, new Set(seen));
+        } else {
+          inspectProviderEntry(element, registration, new Set(seen));
+        }
+      }
+      return;
+    }
+    if (ts.isConditionalExpression(current)) {
+      inspectProviderCollection(current.whenTrue, registration, new Set(seen));
+      inspectProviderCollection(current.whenFalse, registration, new Set(seen));
+      return;
+    }
+    if (ts.isCallExpression(current)
+        && current.expression.getText() === 'Object.freeze'
+        && current.arguments.length === 1) {
+      inspectProviderCollection(current.arguments[0], registration, seen);
+      return;
+    }
+    const initializer = referencedInitializer(current);
+    if (!initializer || seen.has(initializer)) {
+      throw new Error('R7 Sharing provider topology could not resolve providers spread');
+    }
+    seen.add(initializer);
+    inspectProviderCollection(initializer, registration, seen);
+  };
+  const inspectModuleMetadata = (expression, registration, seen = new Set()) => {
+    const current = unwrapProviderExpression(expression);
+    if (!ts.isObjectLiteralExpression(current)) {
+      const initializer = referencedInitializer(current);
+      if (!initializer || seen.has(initializer)) {
+        throw new Error('R7 Sharing provider topology could not resolve module metadata');
+      }
+      seen.add(initializer);
+      inspectModuleMetadata(initializer, registration, seen);
+      return;
+    }
+    for (const property of current.properties) {
+      if (ts.isPropertyAssignment(property) && propertyName(property.name) === 'providers') {
+        inspectProviderCollection(property.initializer, registration);
+      } else if (ts.isShorthandPropertyAssignment(property)
+          && property.name.text === 'providers') {
+        inspectProviderCollection(property.name, registration);
+      } else if (ts.isSpreadAssignment(property)) {
+        const initializer = referencedInitializer(property.expression);
+        if (!initializer || seen.has(initializer)) {
+          throw new Error('R7 Sharing provider topology could not resolve metadata spread');
+        }
+        seen.add(initializer);
+        inspectModuleMetadata(initializer, registration, seen);
+      }
+    }
+  };
+
+  for (const [relativePath, sourceFile] of sourceByPath) {
+    if (!sourceFile) throw new Error('R7 TypeScript source could not be parsed');
+    for (const classNode of sourceFile.statements.filter(ts.isClassDeclaration)) {
+      const moduleDecorator = decoratorsOf(classNode).find(
+        (decorator) => decoratorName(decorator, sourceFile) === 'Module',
+      );
+      const expression = moduleDecorator?.expression;
+      if (!expression || !ts.isCallExpression(expression)) continue;
+      if (expression.arguments.length !== 1) {
+        throw new Error('R7 Sharing provider topology could not resolve module metadata');
+      }
+      inspectModuleMetadata(expression.arguments[0], {
+        file: relativePath,
+        module: classNode.name?.text || '<anonymous>',
+      });
+    }
+  }
+
+  const expected = [
+    {
+      file: 'backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts',
+      module: 'CollaborationPermissionInternalModule',
+      kind: 'bare',
+      provider: 'PermissionService',
+    },
+    {
+      file: 'backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts',
+      module: 'CollaborationPermissionInternalModule',
+      kind: 'useExisting',
+      provider: 'PermissionService',
+    },
+    {
+      file: 'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+      module: 'CollaborationServicesInternalModule',
+      kind: 'bare',
+      provider: 'InvitationDeliveryService',
+    },
+    {
+      file: 'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+      module: 'CollaborationServicesInternalModule',
+      kind: 'bare',
+      provider: 'InviteAccessService',
+    },
+    {
+      file: 'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+      module: 'CollaborationServicesInternalModule',
+      kind: 'bare',
+      provider: 'SharingService',
+    },
+  ];
+  const sortReferences = (entries) => [...entries].sort((left, right) => (
+    JSON.stringify(left).localeCompare(JSON.stringify(right))
+  ));
+  if (JSON.stringify(sortReferences(references)) !== JSON.stringify(sortReferences(expected))) {
+    throw new Error('R7 Sharing provider singleton drift detected');
+  }
+  return Object.freeze({
+    providers: new Set(references.filter((entry) => entry.kind === 'bare')
+      .map((entry) => entry.provider)).size,
+    aliases: references.filter((entry) => entry.kind === 'useExisting').length,
+  });
+}
+
 function verifyHistoryRelocation(repositoryRoot, manifest) {
   const sharingServicePath = activeMovePath(
     repositoryRoot,
@@ -1344,34 +1604,7 @@ function verifySharingRelocation(repositoryRoot, manifest) {
   if (sharingControllerClasses.length !== 7 || sharingControllerInventory.operations !== 17) {
     throw new Error('R7 Sharing controller inventory drift detected');
   }
-  const providerNames = new Set([
-    'SharingService', 'InvitationDeliveryService', 'InviteAccessService', 'PermissionService',
-  ]);
-  const providerCounts = new Map([...providerNames].map((name) => [name, 0]));
-  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')
-    .filter((entry) => entry.endsWith('.ts'))) {
-    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
-    for (const classNode of sourceFile.statements.filter(ts.isClassDeclaration)) {
-      const moduleDecorator = decoratorsOf(classNode).find(
-        (decorator) => decoratorName(decorator, sourceFile) === 'Module',
-      );
-      const expression = moduleDecorator?.expression;
-      if (!expression || !ts.isCallExpression(expression)
-          || expression.arguments.length !== 1
-          || !ts.isObjectLiteralExpression(expression.arguments[0])) continue;
-      for (const property of expression.arguments[0].properties) {
-        if (!ts.isPropertyAssignment(property) || property.name.getText(sourceFile) !== 'providers'
-            || !ts.isArrayLiteralExpression(property.initializer)) continue;
-        for (const element of property.initializer.elements) {
-          const name = element.getText(sourceFile).replace(/\s+/gu, '');
-          if (providerNames.has(name)) providerCounts.set(name, providerCounts.get(name) + 1);
-        }
-      }
-    }
-  }
-  if ([...providerCounts.values()].some((count) => count !== 1)) {
-    throw new Error('R7 Sharing provider singleton drift detected');
-  }
+  const providerTopology = sharingProviderTopology(repositoryRoot);
   let legacyRuntimeImports = 0;
   for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')
     .filter((entry) => entry.endsWith('.ts'))) {
@@ -1403,8 +1636,8 @@ function verifySharingRelocation(repositoryRoot, manifest) {
   return Object.freeze({
     controllers: sharingControllerClasses.length,
     operations: sharingControllerInventory.operations,
-    providers: providerCounts.size,
-    aliases: 1,
+    providers: providerTopology.providers,
+    aliases: providerTopology.aliases,
     exports: 4,
     legacyRuntimeImports,
   });

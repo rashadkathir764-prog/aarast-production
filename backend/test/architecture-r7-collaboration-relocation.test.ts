@@ -365,6 +365,12 @@ function mutateFixtureFile(
   writeFileSync(absolute, after, 'utf8');
 }
 
+function writeFixtureFile(root: string, relativePath: string, source: string): void {
+  const absolute = path.join(root, ...relativePath.split('/'));
+  mkdirSync(path.dirname(absolute), { recursive: true });
+  writeFileSync(absolute, source, 'utf8');
+}
+
 function mutateOwnershipFixture(
   stage: keyof typeof expectedStageCounts,
   mutate: (violations: Array<Record<string, any>>, untouchedIndexes: number[]) => void,
@@ -495,6 +501,106 @@ test('R7 relocated stage pins Sharing API, DTOs, providers, DI, and final counts
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });
+});
+
+for (const providerCase of [
+  {
+    name: 'external useClass registration through an imported alias',
+    source: `
+import { Module } from '@nestjs/common';
+import { SharingService as RenamedSharingService } from './modules/collaboration/internal/sharing.service';
+
+const SECOND_SHARING = Symbol('SECOND_SHARING');
+
+@Module({
+  providers: [{ provide: SECOND_SHARING, useClass: RenamedSharingService }],
+})
+export class ExternalSharingUseClassModule {}
+`,
+  },
+  {
+    name: 'external useExisting registration through a local alias',
+    source: `
+import { Module } from '@nestjs/common';
+import { SharingService } from './modules/collaboration/internal/sharing.service';
+
+const SECOND_SHARING = Symbol('SECOND_SHARING');
+const SharingAlias = SharingService;
+
+@Module({
+  providers: [{ provide: SECOND_SHARING, useExisting: SharingAlias }],
+})
+export class ExternalSharingUseExistingModule {}
+`,
+  },
+  {
+    name: 'external spread registration through a provider alias',
+    source: `
+import { Module } from '@nestjs/common';
+import { SharingService } from './modules/collaboration/internal/sharing.service';
+
+const SharingAlias = SharingService;
+const extraProviders = [SharingAlias];
+
+@Module({
+  providers: [...extraProviders],
+})
+export class ExternalSharingSpreadModule {}
+`,
+  },
+]) {
+  test(`R7 Sharing topology rejects ${providerCase.name}`, () => {
+    const fixture = stagedFixture('relocated');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/external-sharing-topology.module.ts',
+        providerCase.source,
+      );
+      assert.throws(
+        () => scanner().verifySharingRelocation(fixture.root, fixture.value),
+        /provider singleton drift/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+test('R7 Sharing topology permits same-name unrelated provider objects and spreads', () => {
+  const fixture = stagedFixture('relocated');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/unrelated-provider-topology.module.ts',
+      `
+import { Module } from '@nestjs/common';
+
+class SharingService {}
+const UnrelatedAlias = SharingService;
+const UNRELATED_ALIAS = Symbol('UNRELATED_ALIAS');
+const unrelatedProviders = [
+  { provide: UNRELATED_ALIAS, useClass: UnrelatedAlias },
+  { provide: 'UNRELATED_EXISTING', useExisting: SharingService },
+];
+
+@Module({
+  providers: [...unrelatedProviders],
+})
+export class UnrelatedProviderTopologyModule {}
+`,
+    );
+    assert.deepEqual(scanner().verifySharingRelocation(fixture.root, fixture.value), {
+      controllers: 7,
+      operations: 17,
+      providers: 4,
+      aliases: 1,
+      exports: 4,
+      legacyRuntimeImports: 0,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 for (const fixtureCase of [

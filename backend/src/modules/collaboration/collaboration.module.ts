@@ -8,7 +8,7 @@ import {
   ApiV1WeddingPlanMembersController,
   ApiV1WeddingPlanPermissionsController,
   SharedWeddingPlansController,
-} from "../../sharing/sharing.controller";
+} from "./api/sharing.controller";
 import { CollaborationHistoryInternalModule } from "./internal/collaboration-history.internal.module";
 import { CollaborationScopeInternalModule } from "./internal/collaboration-scope.internal.module";
 import { CollaborationServicesInternalModule } from "./internal/collaboration-services.internal.module";

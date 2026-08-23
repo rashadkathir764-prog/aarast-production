@@ -129,6 +129,13 @@ type R6Scanner = {
     liveDependencyRecords: number;
     retiredDependencyRecords: number;
   };
+  verifyR7InvitationDeliveryHandoff(options: {
+    historicalSource: string;
+    liveSource: string;
+  }): {
+    historicalSha256: string;
+    normalizedSha256: string;
+  };
 };
 
 function r7DependencyFixture() {
@@ -181,6 +188,41 @@ test('R6 preserves immutable dependency history and accepts only the exact R7 ha
   }), /live dependency/i);
 });
 
+test('R6 preserves immutable invitation delivery and accepts only the exact R7 source handoff', () => {
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalSource = execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/src/sharing/invitation-delivery.service.ts`],
+    { cwd: repositoryRoot, encoding: 'utf8' },
+  );
+  const finalPath = path.join(
+    backendRoot,
+    'src/modules/collaboration/internal/invitation-delivery.service.ts',
+  );
+  const liveSource = readFileSync(
+    existsSync(finalPath)
+      ? finalPath
+      : path.join(backendRoot, 'src/sharing/invitation-delivery.service.ts'),
+    'utf8',
+  );
+  const verify = scanner().verifyR7InvitationDeliveryHandoff;
+  assert.deepEqual(verify({ historicalSource, liveSource }), {
+    historicalSha256: 'ed781aba1ee34ae413ac86951a5c962465af581fe96848c0e5343996de8e32e1',
+    normalizedSha256: '36c16edbbb8bd647bddae34f1e4d2377fa5b13c708695bce831781f4ad05612c',
+  });
+  assert.throws(() => verify({
+    historicalSource: historicalSource.replace('not_attempted', 'changed'),
+    liveSource,
+  }), /historical invitation delivery/i);
+  assert.throws(() => verify({
+    historicalSource,
+    liveSource: liveSource.replace("return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };", "throw new Error('changed');"),
+  }), /live invitation delivery/i);
+});
+
 const temporaryRoots: string[] = [];
 
 function scanner(): R6Scanner {
@@ -202,7 +244,7 @@ function copyProtectedFixture(root: string): void {
     'backend/src/modules/identity/internal/identity-transient-delivery.internal.module.ts',
     'backend/src/modules/identity/public/identity-transient-delivery-public.module.ts',
     'backend/src/modules/identity/public/identity-transient-delivery.port.ts',
-    'backend/src/sharing/invitation-delivery.service.ts',
+    'backend/src/modules/collaboration/internal/invitation-delivery.service.ts',
   ]) {
     const target = path.join(root, ...relativePath.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
@@ -778,7 +820,7 @@ test('R6 Task 2 binds one adapter singleton and exports only the public token', 
 test('R6 Task 3 injects the canonical Identity port and imports only its public module', () => {
   const consumerPath = path.join(
     backendRoot,
-    'src/sharing/invitation-delivery.service.ts',
+    'src/modules/collaboration/internal/invitation-delivery.service.ts',
   );
   const contractPath = path.join(
     backendRoot,
@@ -896,7 +938,7 @@ test('R6 Task 3 injects the canonical Identity port and imports only its public 
       ts.isImportDeclaration(statement)
       && ts.isStringLiteral(statement.moduleSpecifier)
       && statement.moduleSpecifier.text.endsWith(
-        'modules/identity/public/identity-transient-delivery.port',
+        'identity/public/identity-transient-delivery.port',
       ),
   );
   assert.ok(identityImport);

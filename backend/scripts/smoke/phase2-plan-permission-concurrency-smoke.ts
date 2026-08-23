@@ -8,7 +8,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { PermissionService } from "../../src/sharing/permission.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { WeddingPlansService } from "../../src/wedding-plans/wedding-plans.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {

@@ -12,7 +12,7 @@ import {
 } from "@prisma/client";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
-import { PermissionService } from "../../src/sharing/permission.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (

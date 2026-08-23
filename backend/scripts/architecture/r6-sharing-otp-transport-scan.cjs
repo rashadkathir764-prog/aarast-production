@@ -16,6 +16,14 @@ const R7_HISTORICAL_DEPENDENCY_HASH =
   '82f08c01aa76b18e1d64b725358ebac335750ffee7fe7b0898ea9c34b7c25a42';
 const R7_LIVE_DEPENDENCY_HASH =
   'c0290a046009d7fe81f420323da0792af38cd7bc3adb37a8eb4df7c4986a46cc';
+const R7_HISTORICAL_INVITATION_DELIVERY_HASH =
+  'ed781aba1ee34ae413ac86951a5c962465af581fe96848c0e5343996de8e32e1';
+const R7_NORMALIZED_INVITATION_DELIVERY_HASH =
+  '36c16edbbb8bd647bddae34f1e4d2377fa5b13c708695bce831781f4ad05612c';
+const R7_INVITATION_DELIVERY_FROM =
+  'backend/src/sharing/invitation-delivery.service.ts';
+const R7_INVITATION_DELIVERY_TO =
+  'backend/src/modules/collaboration/internal/invitation-delivery.service.ts';
 const R7_RETIRED_DEPENDENCY_KEYS = Object.freeze([
   'context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
   'context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts',
@@ -489,6 +497,70 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+function normalizeR7InvitationDelivery(relativePath, sourceText) {
+  if (typeof sourceText !== 'string') {
+    throw new Error('R7 invitation delivery source is invalid');
+  }
+  let normalized = sourceText.replace(/\r\n/gu, '\n');
+  const sourceFile = ts.createSourceFile(
+    relativePath,
+    normalized,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.parseDiagnostics.length > 0) {
+    throw new Error('R7 invitation delivery TypeScript source could not be parsed');
+  }
+  const replacements = [];
+  for (const statement of sourceFile.statements) {
+    if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement))
+        || !statement.moduleSpecifier
+        || !ts.isStringLiteralLike(statement.moduleSpecifier)
+        || !statement.moduleSpecifier.text.startsWith('.')) continue;
+    replacements.push({
+      start: statement.moduleSpecifier.getStart(sourceFile) + 1,
+      end: statement.moduleSpecifier.getEnd() - 1,
+      value: '#r7/' + path.posix.normalize(path.posix.join(
+        path.posix.dirname(relativePath),
+        statement.moduleSpecifier.text,
+      )),
+    });
+  }
+  for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
+    normalized = normalized.slice(0, replacement.start)
+      + replacement.value
+      + normalized.slice(replacement.end);
+  }
+  return normalized;
+}
+
+function verifyR7InvitationDeliveryHandoff(options) {
+  const input = exactObject(options, [
+    'historicalSource', 'liveSource',
+  ], 'R7 invitation delivery handoff input');
+  if (typeof input.historicalSource !== 'string'
+      || sha256(input.historicalSource) !== R7_HISTORICAL_INVITATION_DELIVERY_HASH) {
+    throw new Error('R7 historical invitation delivery identity is invalid');
+  }
+  const historicalNormalized = sha256(normalizeR7InvitationDelivery(
+    R7_INVITATION_DELIVERY_FROM,
+    input.historicalSource,
+  ));
+  const liveNormalized = sha256(normalizeR7InvitationDelivery(
+    R7_INVITATION_DELIVERY_TO,
+    input.liveSource,
+  ));
+  if (historicalNormalized !== R7_NORMALIZED_INVITATION_DELIVERY_HASH
+      || liveNormalized !== R7_NORMALIZED_INVITATION_DELIVERY_HASH) {
+    throw new Error('R7 live invitation delivery identity is invalid');
+  }
+  return Object.freeze({
+    historicalSha256: R7_HISTORICAL_INVITATION_DELIVERY_HASH,
+    normalizedSha256: R7_NORMALIZED_INVITATION_DELIVERY_HASH,
+  });
+}
+
 function verifyProtectedFiles(options) {
   const repositoryRoot = options.repositoryRoot;
   const manifest = options.manifest;
@@ -774,6 +846,7 @@ module.exports = {
   scanR6SharingOtpTransport,
   validateR6Manifest,
   verifyR7DependencyHandoff,
+  verifyR7InvitationDeliveryHandoff,
 };
 
 if (require.main === module) process.exitCode = runCli();

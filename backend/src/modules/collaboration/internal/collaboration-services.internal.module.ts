@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../../platform/database/prisma.module";
-import { InvitationDeliveryService } from "../../../sharing/invitation-delivery.service";
-import { InviteAccessService } from "../../../sharing/invite-access.service";
-import { SharingService } from "../../../sharing/sharing.service";
+import { InvitationDeliveryService } from "./invitation-delivery.service";
+import { InviteAccessService } from "./invite-access.service";
+import { SharingService } from "./sharing.service";
 import { IdentityAuthPublicModule } from "../../identity/public/identity-auth-public.module";
 import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";
 import { MessagingRealtimePublicModule } from "../../messaging/public/messaging-realtime-public.module";

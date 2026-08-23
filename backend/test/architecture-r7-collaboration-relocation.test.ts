@@ -73,6 +73,14 @@ type R7Scanner = {
     exports: number;
     legacyRuntimeImports: number;
   };
+  verifySharingRelocation(repositoryRoot: string, manifest: R7Manifest): {
+    controllers: number;
+    operations: number;
+    providers: number;
+    aliases: number;
+    exports: number;
+    legacyRuntimeImports: number;
+  };
   scanR7CollaborationRelocation(options: {
     repositoryRoot: string;
     manifest: unknown;
@@ -249,7 +257,6 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     'backend/src/marketplace/quote-offer-rejection.ts',
     'backend/src/marketplace/quote-request-cancellation.ts',
     'backend/src/marketplace/quote-request-creation.ts',
-    'backend/src/sharing/sharing.service.ts',
     'backend/src/tasks/tasks.service.ts',
     'backend/src/wedding-costs/wedding-costs.service.ts',
     'backend/src/wedding-plans/wedding-plans.service.ts',
@@ -442,14 +449,14 @@ test('R7 pins the immutable R6 closeout and exact Collaboration fate map', () =>
   const value = scanner().validateR7Manifest(manifest());
   assert.equal(value.schemaVersion, 1);
   assert.equal(value.baseRevision, '31ea5324007fc71fa4b3590fbb98a454ee1deaa7');
-  assert.equal(value.stage, 'history');
+  assert.equal(value.stage, 'relocated');
   assert.deepEqual(value.moves, expectedMoves);
   assert.equal(new Set(value.moves.map((move) => move.from)).size, 18);
   assert.equal(new Set(value.moves.map((move) => move.to)).size, 18);
   assert.deepEqual(value.sourceParity, expectedSourceParity);
 });
 
-test('R7 history stage pins final API, internal providers, aliases, exports, and imports', () => {
+test('R7 relocated stage preserves the history API, providers, aliases, exports, and imports', () => {
   const value = scanner().validateR7Manifest(manifest());
   assert.deepEqual(scanner().verifyHistoryRelocation(repositoryRoot, value), {
     controllers: 1,
@@ -458,16 +465,160 @@ test('R7 history stage pins final API, internal providers, aliases, exports, and
     exports: 4,
     legacyRuntimeImports: 0,
   });
+});
+
+test('R7 relocated stage pins Sharing API, DTOs, providers, DI, and final counts', () => {
+  const value = scanner().validateR7Manifest(manifest());
+  assert.equal(value.stage, 'relocated');
+  assert.deepEqual(scanner().verifyConstructorHandoffs(repositoryRoot, value), {
+    consumers: 4,
+    optional: 1,
+  });
+  assert.deepEqual(scanner().verifyControllerHandoffs(repositoryRoot, value), {
+    controllers: 2,
+    operations: 19,
+  });
+  assert.deepEqual(scanner().verifySharingRelocation(repositoryRoot, value), {
+    controllers: 7,
+    operations: 17,
+    providers: 4,
+    aliases: 1,
+    exports: 4,
+    legacyRuntimeImports: 0,
+  });
   assert.deepEqual(scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value }), {
     ok: true,
-    stage: 'history',
-    sourceFiles: 12,
-    targetFiles: 6,
+    stage: 'relocated',
+    sourceFiles: 0,
+    targetFiles: 18,
     dependencyRecords: 22,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });
 });
+
+for (const fixtureCase of [
+  {
+    name: 'SharingService constructor index drift',
+    file: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    mutate: (source: string) => source.replace(
+      'private readonly notifications: NotificationsPort,',
+      'private readonly __r7_swap__: NotificationsPort,',
+    ).replace(
+      'private readonly history: ContributionHistoryService,',
+      'private readonly notifications: NotificationsPort,',
+    ).replace(
+      'private readonly __r7_swap__: NotificationsPort,',
+      'private readonly history: ContributionHistoryService,',
+    ),
+    verify: (root: string, value: R7Manifest) => scanner().verifyConstructorHandoffs(root, value),
+    error: /constructor parameter drift/u,
+  },
+  {
+    name: 'SharingService notification token drift',
+    file: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    mutate: (source: string) => source.replace(
+      '@Inject(NOTIFICATIONS_PORT)',
+      '@Inject(MESSAGING_REALTIME_PORT)',
+    ),
+    verify: (root: string, value: R7Manifest) => scanner().verifyConstructorHandoffs(root, value),
+    error: /constructor injection drift/u,
+  },
+  {
+    name: 'SharingService class drift',
+    file: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    mutate: (source: string) => source.replace(
+      'export class SharingService',
+      'export class ChangedSharingService',
+    ),
+    verify: (root: string, value: R7Manifest) => scanner().verifyConstructorHandoffs(root, value),
+    error: /constructor class drift/u,
+  },
+  {
+    name: 'SharingService @Optional drift',
+    file: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    mutate: (source: string) => source.replace('@Optional()\n', ''),
+    verify: (root: string, value: R7Manifest) => scanner().verifyConstructorHandoffs(root, value),
+    error: /constructor optionality drift/u,
+  },
+  {
+    name: 'SharingService question-token drift',
+    file: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    mutate: (source: string) => source.replace(
+      'private readonly realtime?: MessagingRealtimePort,',
+      'private readonly realtime: MessagingRealtimePort,',
+    ),
+    verify: (root: string, value: R7Manifest) => scanner().verifyConstructorHandoffs(root, value),
+    error: /constructor optionality drift/u,
+  },
+  {
+    name: 'SharingService default initializer drift',
+    file: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    mutate: (source: string) => source.replace(
+      'private readonly prisma: PrismaService,',
+      'private readonly prisma: PrismaService = undefined as never,',
+    ),
+    verify: (root: string, value: R7Manifest) => scanner().verifyConstructorHandoffs(root, value),
+    error: /constructor default drift/u,
+  },
+  {
+    name: 'duplicate SharingService provider',
+    file: 'backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts',
+    mutate: (source: string) => source.replace(
+      'providers: [SharingService, InvitationDeliveryService, InviteAccessService]',
+      'providers: [SharingService, SharingService, InvitationDeliveryService, InviteAccessService]',
+    ),
+    verify: (root: string, value: R7Manifest) => scanner().verifySharingRelocation(root, value),
+    error: /sharing module providers/u,
+  },
+  {
+    name: 'Sharing controller route drift',
+    file: 'backend/src/modules/collaboration/api/sharing.controller.ts',
+    mutate: (source: string) => source.replace('@Post(":token/accept")', '@Post(":token/changed")'),
+    verify: (root: string, value: R7Manifest) => scanner().verifyControllerHandoffs(root, value),
+    error: /controller inventory drift/u,
+  },
+  {
+    name: 'Sharing controller guard drift',
+    file: 'backend/src/modules/collaboration/api/sharing.controller.ts',
+    mutate: (source: string) => source.replace('@UseGuards(JwtAuthGuard)', '@UseGuards()'),
+    verify: (root: string, value: R7Manifest) => scanner().verifyControllerHandoffs(root, value),
+    error: /controller inventory drift/u,
+  },
+  {
+    name: 'Sharing DTO decorator drift',
+    file: 'backend/src/modules/collaboration/api/dto/leave-plan.dto.ts',
+    mutate: (source: string) => source.replace('  @IsNotEmpty()\n', ''),
+    verify: (root: string, value: R7Manifest) => scanner().scanR7CollaborationRelocation({
+      repositoryRoot: root,
+      manifest: value,
+    }),
+    error: /normalized source parity drift/u,
+  },
+  {
+    name: 'InviteAccessService unknown error identity drift',
+    file: 'backend/src/modules/collaboration/internal/invite-access.service.ts',
+    mutate: (source: string) => source.replace('      throw error;', '      throw new Error("changed");'),
+    verify: (root: string, value: R7Manifest) => scanner().scanR7CollaborationRelocation({
+      repositoryRoot: root,
+      manifest: value,
+    }),
+    error: /normalized source parity drift/u,
+  },
+]) {
+  test(`R7 Sharing gate rejects ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('relocated');
+    try {
+      mutateFixtureFile(fixture.root, fixtureCase.file, fixtureCase.mutate);
+      assert.throws(
+        () => fixtureCase.verify(fixture.root, fixture.value),
+        fixtureCase.error,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
 
 test('R7 history gate rejects controller, provider, and ownership semantic drift', () => {
   const controllerCases = [
@@ -1261,9 +1412,9 @@ test('R7 scope is exact, sorted, delegated, and does not mutate R3', () => {
   const scan = scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value });
   assert.deepEqual(scan, {
     ok: true,
-    stage: 'history',
-    sourceFiles: 12,
-    targetFiles: 6,
+    stage: 'relocated',
+    sourceFiles: 0,
+    targetFiles: 18,
     dependencyRecords: 22,
     ownershipRecords: 385,
     ownershipOccurrences: 781,

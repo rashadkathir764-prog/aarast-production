@@ -9,8 +9,8 @@ import {
   ContributionSection,
   SharedMemberRole,
 } from "@prisma/client";
-import { PermissionService } from "../src/sharing/permission.service";
-import { SharingService } from "../src/sharing/sharing.service";
+import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 function memberLockWithoutPendingInvites(query: unknown, memberId: string) {
   const sql = (query as { strings?: readonly string[] }).strings?.join(" ") ?? "";

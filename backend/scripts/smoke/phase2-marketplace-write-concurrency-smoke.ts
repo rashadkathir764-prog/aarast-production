@@ -10,7 +10,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
-import { PermissionService } from "../../src/sharing/permission.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (

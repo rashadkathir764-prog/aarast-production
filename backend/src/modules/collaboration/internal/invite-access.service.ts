@@ -1,16 +1,16 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
 import { createHash } from "node:crypto";
-import { AuthErrorCode, authError } from "../modules/identity/public/auth-error";
+import { AuthErrorCode, authError } from "../../identity/public/auth-error";
 import {
   IDENTITY_AUTH_PORT,
   IdentityAuthPort,
   OtpDispatchContext,
-} from "../modules/identity/public/identity-auth.port";
-import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
-import { PrismaService } from "../platform/database/prisma.service";
-import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";
-import { VerifyInviteOtpDto } from "./dto/verify-invite-otp.dto";
+} from "../../identity/public/identity-auth.port";
+import { PhoneNormalizer } from "../../../shared-kernel/phone/phone-normalizer";
+import { PrismaService } from "../../../platform/database/prisma.service";
+import { RequestInviteOtpDto } from "../api/dto/request-invite-otp.dto";
+import { VerifyInviteOtpDto } from "../api/dto/verify-invite-otp.dto";
 
 @Injectable()
 export class InviteAccessService {

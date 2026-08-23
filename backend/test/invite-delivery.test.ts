@@ -9,11 +9,11 @@ import { IdentityTransientDeliveryAdapter } from "../src/modules/identity/intern
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
 import { IdentityTransientDeliveryPort } from "../src/modules/identity/public/identity-transient-delivery.port";
 import { invitationDeliveryOutcomesTotal } from "../src/platform/observability/metrics";
-import { InviteAccessService } from "../src/sharing/invite-access.service";
+import { InviteAccessService } from "../src/modules/collaboration/internal/invite-access.service";
 import {
   buildInvitationMessage,
   InvitationDeliveryService,
-} from "../src/sharing/invitation-delivery.service";
+} from "../src/modules/collaboration/internal/invitation-delivery.service";
 
 const originalEnvironment = { ...process.env };
 const originalFetch = globalThis.fetch;

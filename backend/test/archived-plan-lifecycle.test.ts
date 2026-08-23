@@ -17,7 +17,7 @@ import {
 import { ConversationsService } from '../src/conversations/conversations.service';
 import { MarketplaceService } from '../src/marketplace/marketplace.service';
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
-import { SharingService } from '../src/sharing/sharing.service';
+import { SharingService } from '../src/modules/collaboration/internal/sharing.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
 
 const now = new Date('2026-07-26T00:00:00.000Z');

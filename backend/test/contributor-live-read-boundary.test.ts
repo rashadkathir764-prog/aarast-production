@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { SharedMemberRole } from "@prisma/client";
 import { NotFoundException } from "@nestjs/common";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
-import { PermissionService } from "../src/sharing/permission.service";
+import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 
 const backendRoot = join(__dirname, "..");
 
@@ -50,7 +50,7 @@ test("the final live read predicate revalidates current stored membership and pe
 
 test("transactional money reads use the lock-based plan boundary", () => {
   const source = readFileSync(
-    join(backendRoot, "src", "sharing", "permission.service.ts"),
+    join(backendRoot, "src", "modules", "collaboration", "internal", "permission.service.ts"),
     "utf8",
   );
   const method = source.slice(
@@ -215,7 +215,7 @@ test("quote detail rejects a stale authorized seed when the final live predicate
 
 test("member and invite list final queries carry current membership and stored member permission", () => {
   const source = readFileSync(
-    join(backendRoot, "src", "sharing", "sharing.service.ts"),
+    join(backendRoot, "src", "modules", "collaboration", "internal", "sharing.service.ts"),
     "utf8",
   );
   const membersStart = source.indexOf("async findMembersForPlan");

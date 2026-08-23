@@ -21,7 +21,7 @@ import {
   ContextsService,
 } from "../src/modules/identity/internal/profile/contexts.service";
 import { ValidateContextDto } from "../src/modules/identity/api/context-dto/validate-context.dto";
-import { PermissionService } from "../src/sharing/permission.service";
+import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-profile.dto";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
 

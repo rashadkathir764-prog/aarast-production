@@ -26,6 +26,13 @@
     "historicalDecoratorRuntimeReferencesSha256": "756164378747cbf0c8a1a2981432d5d18803e046a4552a585dd4db2f90ed01d2",
     "historicalRuntimeDecoratorValueReferencesSha256": "1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda"
   },
+  "r7SharingHandoff": {
+    "baseRevision": "31ea5324007fc71fa4b3590fbb98a454ee1deaa7",
+    "from": "backend/src/sharing/sharing.controller.ts",
+    "to": "backend/src/modules/collaboration/api/sharing.controller.ts",
+    "historicalDecoratorRuntimeReferencesSha256": "756164378747cbf0c8a1a2981432d5d18803e046a4552a585dd4db2f90ed01d2",
+    "historicalRuntimeDecoratorValueReferencesSha256": "1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda"
+  },
   "contexts": [
     "identity",
     "planning",
@@ -985,7 +992,7 @@
       ],
       "consumers": [
         {
-          "source": "backend/src/sharing/invite-access.service.ts",
+          "source": "backend/src/modules/collaboration/internal/invite-access.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -1015,7 +1022,7 @@
       ],
       "consumers": [
         {
-          "source": "backend/src/sharing/invitation-delivery.service.ts",
+          "source": "backend/src/modules/collaboration/internal/invitation-delivery.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -1210,15 +1217,15 @@
           "kind": "constructor-injection"
         },
         {
+          "source": "backend/src/modules/collaboration/internal/sharing.service.ts",
+          "kind": "constructor-injection"
+        },
+        {
           "source": "backend/src/modules/identity/internal/auth/auth.service.ts",
           "kind": "constructor-injection"
         },
         {
           "source": "backend/src/modules/identity/internal/profile/users.service.ts",
-          "kind": "constructor-injection"
-        },
-        {
-          "source": "backend/src/sharing/sharing.service.ts",
           "kind": "constructor-injection"
         }
       ]
@@ -1253,11 +1260,11 @@
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+          "source": "backend/src/modules/collaboration/internal/sharing.service.ts",
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/sharing/sharing.service.ts",
+          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
           "kind": "constructor-injection"
         },
         {
@@ -1358,11 +1365,11 @@
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+          "source": "backend/src/modules/collaboration/internal/sharing.service.ts",
           "kind": "constructor-injection"
         },
         {
-          "source": "backend/src/sharing/sharing.service.ts",
+          "source": "backend/src/provider-dashboard/provider-dashboard.service.ts",
           "kind": "constructor-injection"
         },
         {
@@ -1659,6 +1666,61 @@
       ]
     },
     {
+      "source": "backend/src/modules/collaboration/api/sharing.controller.ts",
+      "symbol": "JwtAuthGuard",
+      "kind": "decorator-runtime",
+      "uses": [
+        {
+          "controllerClass": "ApiV1InviteAcceptController",
+          "method": null,
+          "routePrefix": "api/v1/invites",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1InvitesController",
+          "method": null,
+          "routePrefix": "api/v1/invites",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanPermissionsController",
+          "method": null,
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/permissions",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        },
+        {
+          "controllerClass": "SharedWeddingPlansController",
+          "method": null,
+          "routePrefix": "api/v1/shared",
+          "routeMethod": null,
+          "routePath": null,
+          "parameterIndex": null
+        }
+      ]
+    },
+    {
       "source": "backend/src/modules/identity/api/contexts.controller.ts",
       "symbol": "JwtAuthGuard",
       "kind": "decorator-runtime",
@@ -1780,61 +1842,6 @@
           "controllerClass": "PushController",
           "method": null,
           "routePrefix": "api/v1/push/installations",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        }
-      ]
-    },
-    {
-      "source": "backend/src/sharing/sharing.controller.ts",
-      "symbol": "JwtAuthGuard",
-      "kind": "decorator-runtime",
-      "uses": [
-        {
-          "controllerClass": "ApiV1InviteAcceptController",
-          "method": null,
-          "routePrefix": "api/v1/invites",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        },
-        {
-          "controllerClass": "ApiV1InvitesController",
-          "method": null,
-          "routePrefix": "api/v1/invites",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanInvitesController",
-          "method": null,
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanMembersController",
-          "method": null,
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanPermissionsController",
-          "method": null,
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/permissions",
-          "routeMethod": null,
-          "routePath": null,
-          "parameterIndex": null
-        },
-        {
-          "controllerClass": "SharedWeddingPlansController",
-          "method": null,
-          "routePrefix": "api/v1/shared",
           "routeMethod": null,
           "routePath": null,
           "parameterIndex": null
@@ -3213,6 +3220,133 @@
       ]
     },
     {
+      "source": "backend/src/modules/collaboration/api/sharing.controller.ts",
+      "symbol": "CurrentUser",
+      "kind": "runtime-decorator",
+      "uses": [
+        {
+          "controllerClass": "ApiV1InviteAcceptController",
+          "method": "acceptInvite",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "POST",
+          "routePath": ":token/accept",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1InviteAcceptController",
+          "method": "declineInvite",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "POST",
+          "routePath": ":token/decline",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1InvitesController",
+          "method": "findMyInvites",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "GET",
+          "routePath": "mine",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1InvitesController",
+          "method": "getInvite",
+          "routePrefix": "api/v1/invites",
+          "routeMethod": "GET",
+          "routePath": ":token",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "cancelInvite",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "DELETE",
+          "routePath": ":inviteId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "createInvite",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "findInvites",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanInvitesController",
+          "method": "reissueInvite",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
+          "routeMethod": "POST",
+          "routePath": ":inviteId/reissue",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "createMember",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "POST",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "findMembers",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "GET",
+          "routePath": "",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "leavePlan",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "DELETE",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "removeMember",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "DELETE",
+          "routePath": ":memberId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanMembersController",
+          "method": "updateMember",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
+          "routeMethod": "PATCH",
+          "routePath": ":memberId",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "ApiV1WeddingPlanPermissionsController",
+          "method": "permissionsForMe",
+          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/permissions",
+          "routeMethod": "GET",
+          "routePath": "me",
+          "parameterIndex": 0
+        },
+        {
+          "controllerClass": "SharedWeddingPlansController",
+          "method": "findSharedPlans",
+          "routePrefix": "api/v1/shared",
+          "routeMethod": "GET",
+          "routePath": "wedding-plans",
+          "parameterIndex": 0
+        }
+      ]
+    },
+    {
       "source": "backend/src/modules/identity/api/contexts.controller.ts",
       "symbol": "CurrentUser",
       "kind": "runtime-decorator",
@@ -3608,133 +3742,6 @@
           "routePrefix": "api/v1/push/installations",
           "routeMethod": "DELETE",
           "routePath": "current",
-          "parameterIndex": 0
-        }
-      ]
-    },
-    {
-      "source": "backend/src/sharing/sharing.controller.ts",
-      "symbol": "CurrentUser",
-      "kind": "runtime-decorator",
-      "uses": [
-        {
-          "controllerClass": "ApiV1InviteAcceptController",
-          "method": "acceptInvite",
-          "routePrefix": "api/v1/invites",
-          "routeMethod": "POST",
-          "routePath": ":token/accept",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1InviteAcceptController",
-          "method": "declineInvite",
-          "routePrefix": "api/v1/invites",
-          "routeMethod": "POST",
-          "routePath": ":token/decline",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1InvitesController",
-          "method": "findMyInvites",
-          "routePrefix": "api/v1/invites",
-          "routeMethod": "GET",
-          "routePath": "mine",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1InvitesController",
-          "method": "getInvite",
-          "routePrefix": "api/v1/invites",
-          "routeMethod": "GET",
-          "routePath": ":token",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanInvitesController",
-          "method": "cancelInvite",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
-          "routeMethod": "DELETE",
-          "routePath": ":inviteId",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanInvitesController",
-          "method": "createInvite",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
-          "routeMethod": "POST",
-          "routePath": "",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanInvitesController",
-          "method": "findInvites",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
-          "routeMethod": "GET",
-          "routePath": "",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanInvitesController",
-          "method": "reissueInvite",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/invites",
-          "routeMethod": "POST",
-          "routePath": ":inviteId/reissue",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanMembersController",
-          "method": "createMember",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
-          "routeMethod": "POST",
-          "routePath": "",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanMembersController",
-          "method": "findMembers",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
-          "routeMethod": "GET",
-          "routePath": "",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanMembersController",
-          "method": "leavePlan",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
-          "routeMethod": "DELETE",
-          "routePath": "me",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanMembersController",
-          "method": "removeMember",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
-          "routeMethod": "DELETE",
-          "routePath": ":memberId",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanMembersController",
-          "method": "updateMember",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/members",
-          "routeMethod": "PATCH",
-          "routePath": ":memberId",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "ApiV1WeddingPlanPermissionsController",
-          "method": "permissionsForMe",
-          "routePrefix": "api/v1/wedding-plans/:weddingPlanId/permissions",
-          "routeMethod": "GET",
-          "routePath": "me",
-          "parameterIndex": 0
-        },
-        {
-          "controllerClass": "SharedWeddingPlansController",
-          "method": "findSharedPlans",
-          "routePrefix": "api/v1/shared",
-          "routeMethod": "GET",
-          "routePath": "wedding-plans",
           "parameterIndex": 0
         }
       ]

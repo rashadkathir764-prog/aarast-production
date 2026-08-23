@@ -7,7 +7,7 @@ import {
   SharedMemberRole,
   UserRole,
 } from "@prisma/client";
-import { SharingService } from "../src/sharing/sharing.service";
+import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 function member(id: string, userId: string, phone: string) {
   return {

@@ -225,6 +225,17 @@ type R5Scanner = {
     projectedRecords: number;
     projectedOccurrences: number;
   };
+  verifyR7SharingOwnershipHandoff(options: {
+    historicalOwnership: Record<string, unknown>;
+    liveOwnership: Record<string, unknown>;
+  }): {
+    historicalOwnershipRecords: number;
+    historicalOwnershipOccurrences: number;
+    liveOwnershipRecords: number;
+    liveOwnershipOccurrences: number;
+    projectedRecords: number;
+    projectedOccurrences: number;
+  };
 };
 
 function r7DependencyFixture() {
@@ -321,6 +332,62 @@ test('R5 preserves immutable ownership history and accepts only the exact R7 his
   const semanticDrift = structuredClone(fixture.liveOwnership);
   const moved = semanticDrift.violations.find((record: Record<string, unknown>) => (
     record.file === 'backend/src/modules/collaboration/internal/contribution-history.service.ts'
+  ));
+  assert.ok(moved);
+  moved.reason = 'changed-semantic-reason';
+  assert.throws(() => verify({
+    historicalOwnership: fixture.historicalOwnership,
+    liveOwnership: semanticDrift,
+  }), /live ownership/i);
+});
+
+function r7SharingOwnershipFixture() {
+  const repositoryRoot = path.resolve(backendRoot, '..');
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalOwnership = JSON.parse(execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/architecture/ownership-baseline.json`],
+    { cwd: repositoryRoot, encoding: 'utf8' },
+  ));
+  const liveOwnership = structuredClone(historicalOwnership);
+  for (const projection of r7Manifest.historicalHandoffs.ownershipProjection) {
+    for (const record of liveOwnership.violations) {
+      if (record.file !== projection.from) continue;
+      record.file = projection.to;
+      record.key = record.key.replace(projection.from, projection.to);
+    }
+  }
+  liveOwnership.violations.sort((left: Record<string, string>, right: Record<string, string>) => (
+    left.key.localeCompare(right.key)
+  ));
+  return { historicalOwnership, liveOwnership };
+}
+
+test('R5 preserves immutable ownership history and accepts only the exact R7 Sharing projection', () => {
+  const verify = loadScanner().verifyR7SharingOwnershipHandoff;
+  const fixture = r7SharingOwnershipFixture();
+  assert.deepEqual(verify(fixture), {
+    historicalOwnershipRecords: 385,
+    historicalOwnershipOccurrences: 781,
+    liveOwnershipRecords: 385,
+    liveOwnershipOccurrences: 781,
+    projectedRecords: 23,
+    projectedOccurrences: 73,
+  });
+  assert.throws(() => verify({
+    historicalOwnership: fixture.liveOwnership,
+    liveOwnership: fixture.liveOwnership,
+  }), /historical ownership/i);
+  assert.throws(() => verify({
+    historicalOwnership: fixture.historicalOwnership,
+    liveOwnership: fixture.historicalOwnership,
+  }), /live ownership/i);
+  const semanticDrift = structuredClone(fixture.liveOwnership);
+  const moved = semanticDrift.violations.find((record: Record<string, unknown>) => (
+    record.file === 'backend/src/modules/collaboration/internal/sharing.service.ts'
   ));
   assert.ok(moved);
   moved.reason = 'changed-semantic-reason';

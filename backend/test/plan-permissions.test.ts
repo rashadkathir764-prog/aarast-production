@@ -8,8 +8,8 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { rolePermissionDefaults } from "../src/sharing/plan-permissions";
-import { PermissionService } from "../src/sharing/permission.service";
+import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
+import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 
 const archivedPlan = {
   id: "archived-plan",

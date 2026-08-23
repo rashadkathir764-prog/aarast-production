@@ -5,8 +5,8 @@ import { test } from "node:test";
 import { HttpException, RequestMethod } from "@nestjs/common";
 import { METHOD_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { SharedMemberRole } from "@prisma/client";
-import { ApiV1WeddingPlanMembersController } from "../src/sharing/sharing.controller";
-import { SharingService } from "../src/sharing/sharing.service";
+import { ApiV1WeddingPlanMembersController } from "../src/modules/collaboration/api/sharing.controller";
+import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 test("the members controller exposes DELETE me and forwards the authenticated membership precondition", async () => {
   const prototype = ApiV1WeddingPlanMembersController.prototype;

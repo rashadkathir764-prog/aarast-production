@@ -10,17 +10,17 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Request } from "express";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { CurrentUser } from "../modules/identity/public/current-user.decorator";
-import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
+import { AuthenticatedUser } from "../../identity/public/identity-session.types";
+import { CurrentUser } from "../../identity/public/current-user.decorator";
+import { JwtAuthGuard } from "../../identity/public/jwt-auth.guard";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { LeavePlanDto } from "./dto/leave-plan.dto";
 import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";
 import { VerifyInviteOtpDto } from "./dto/verify-invite-otp.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
-import { InviteAccessService } from "./invite-access.service";
-import { SharingService } from "./sharing.service";
+import { InviteAccessService } from "../internal/invite-access.service";
+import { SharingService } from "../internal/sharing.service";
 
 @Controller("api/v1/invites")
 export class ApiV1InviteAccessController {

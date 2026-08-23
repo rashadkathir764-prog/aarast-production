@@ -113,7 +113,7 @@ test('Task 3 leaves alias public tokens to one owner implementation', async () =
   const {
     COLLABORATION_SCOPE_PORT,
   } = require('../src/modules/collaboration/public/collaboration-scope.port');
-  const { PermissionService } = require('../src/sharing/permission.service');
+  const { PermissionService } = require('../src/modules/collaboration/internal/permission.service');
   const {
     ContributionHistoryService,
   } = require('../src/modules/collaboration/internal/contribution-history.service');
@@ -191,8 +191,8 @@ test('Task 3 foreign consumers no longer import collaboration implementations', 
       path,
     );
   }
-  assert.match(source('sharing/sharing.service.ts'), /PermissionService/);
-  assert.match(source('sharing/sharing.service.ts'), /ContributionHistoryService/);
+  assert.match(source('modules/collaboration/internal/sharing.service.ts'), /PermissionService/);
+  assert.match(source('modules/collaboration/internal/sharing.service.ts'), /ContributionHistoryService/);
 });
 
 test('Task 3 foreign-consumer guard catches final contribution implementation imports', () => {

@@ -16,7 +16,7 @@ import {
   createRefreshTokenValue,
   hashRefreshToken,
 } from "../../src/modules/identity/internal/auth/refresh-token-policy";
-import { InviteAccessService } from "../../src/sharing/invite-access.service";
+import { InviteAccessService } from "../../src/modules/collaboration/internal/invite-access.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => {

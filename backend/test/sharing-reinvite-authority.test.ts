@@ -10,7 +10,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { SharingService } from "../src/sharing/sharing.service";
+import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 const plan = {
   id: "plan-1",

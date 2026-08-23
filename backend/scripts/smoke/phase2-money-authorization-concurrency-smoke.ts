@@ -23,7 +23,7 @@ import { ContributionHistoryService } from "../../src/modules/collaboration/inte
 import { ContributorScopeService } from "../../src/modules/collaboration/internal/contributor-scope.service";
 import { MoneyBudgetService } from "../../src/money/money-budget.service";
 import { WeddingPlanBudgetWriter } from "../../src/modules/planning/internal/wedding-plan-budget-writer";
-import { PermissionService } from "../../src/sharing/permission.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { WeddingCostsService } from "../../src/wedding-costs/wedding-costs.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {

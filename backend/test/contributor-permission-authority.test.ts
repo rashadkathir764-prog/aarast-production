@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { ForbiddenException } from "@nestjs/common";
 import { SharedMemberRole, WeddingPlanStatus } from "@prisma/client";
-import { PermissionService } from "../src/sharing/permission.service";
-import { SharingService } from "../src/sharing/sharing.service";
+import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 const taskRevokedMessage = "لم تعد لديك صلاحية لتنفيذ هذه المهمة";
 
@@ -80,7 +80,7 @@ test("direct member creation is fail-closed and never derives omitted permission
   assert.equal(explicit.receiveNotifications, false);
 
   const source = readFileSync(
-    join(process.cwd(), "src/sharing/sharing.service.ts"),
+    join(process.cwd(), "src/modules/collaboration/internal/sharing.service.ts"),
     "utf8",
   );
   const directCreate = source.slice(

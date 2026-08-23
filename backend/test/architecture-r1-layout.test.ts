@@ -260,10 +260,10 @@ test('R1 OTP ownership remains intact while sharing consumes the R6 Identity tra
   assert.match(authServiceSource, /generateProductionOtpCode/);
   assert.match(authServiceSource, /resolveOtpChannel\s*\(/);
 
-  const sharingSource = source('src/sharing/invitation-delivery.service.ts');
+  const sharingSource = source('src/modules/collaboration/internal/invitation-delivery.service.ts');
   assert.match(
     sharingSource,
-    /from\s+['"]\.\.\/modules\/identity\/public\/identity-transient-delivery\.port['"]/,
+    /from\s+['"]\.\.\/\.\.\/identity\/public\/identity-transient-delivery\.port['"]/,
   );
   assert.match(sharingSource, /@Inject\(IDENTITY_TRANSIENT_DELIVERY_PORT\)/);
   assert.match(

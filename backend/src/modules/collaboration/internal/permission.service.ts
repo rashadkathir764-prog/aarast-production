@@ -7,7 +7,7 @@ import {
   Prisma,
   UserStatus,
 } from "@prisma/client";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
+import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import {
   assertWeddingPlanWritable,
   CollaborationPermissionPort,
@@ -16,12 +16,12 @@ import {
   PlanAccessContext,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
-} from "../modules/collaboration/public/collaboration-permission.port";
-import { PrismaService } from "../platform/database/prisma.service";
+} from "../public/collaboration-permission.port";
+import { PrismaService } from "../../../platform/database/prisma.service";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
-} from "../modules/identity/public/user-lifecycle-lock";
+} from "../../identity/public/user-lifecycle-lock";
 
 @Injectable()
 export class PermissionService implements CollaborationPermissionPort {

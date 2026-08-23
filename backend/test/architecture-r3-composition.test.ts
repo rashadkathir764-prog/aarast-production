@@ -302,7 +302,7 @@ test('Task 2 migrates only the eight frozen foreign provider consumers', () => {
       [['MESSAGING_REALTIME_PORT'], ['ConversationRealtimePublisher']],
     ],
     [
-      'sharing/sharing.service.ts',
+      'modules/collaboration/internal/sharing.service.ts',
       [['MESSAGING_REALTIME_PORT'], ['ConversationRealtimePublisher']],
     ],
     [

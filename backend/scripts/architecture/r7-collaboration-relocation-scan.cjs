@@ -1236,6 +1236,180 @@ function verifyHistoryRelocation(repositoryRoot, manifest) {
   });
 }
 
+function verifySharingRelocation(repositoryRoot, manifest) {
+  const requiredImports = [
+    ['backend/src/modules/collaboration/api/sharing.controller.ts', 'AuthenticatedUser', '../../identity/public/identity-session.types'],
+    ['backend/src/modules/collaboration/api/sharing.controller.ts', 'CurrentUser', '../../identity/public/current-user.decorator'],
+    ['backend/src/modules/collaboration/api/sharing.controller.ts', 'JwtAuthGuard', '../../identity/public/jwt-auth.guard'],
+    ['backend/src/modules/collaboration/api/sharing.controller.ts', 'InviteAccessService', '../internal/invite-access.service'],
+    ['backend/src/modules/collaboration/api/sharing.controller.ts', 'SharingService', '../internal/sharing.service'],
+    ['backend/src/modules/collaboration/internal/invitation-delivery.service.ts', 'IDENTITY_TRANSIENT_DELIVERY_PORT', '../../identity/public/identity-transient-delivery.port'],
+    ['backend/src/modules/collaboration/internal/invite-access.service.ts', 'IDENTITY_AUTH_PORT', '../../identity/public/identity-auth.port'],
+    ['backend/src/modules/collaboration/internal/invite-access.service.ts', 'authError', '../../identity/public/auth-error'],
+    ['backend/src/modules/collaboration/internal/permission.service.ts', 'AuthenticatedUser', '../../identity/public/identity-session.types'],
+    ['backend/src/modules/collaboration/internal/permission.service.ts', 'CollaborationPermissionPort', '../public/collaboration-permission.port'],
+    ['backend/src/modules/collaboration/internal/sharing.service.ts', 'AuthenticatedUser', '../../identity/public/identity-session.types'],
+    ['backend/src/modules/collaboration/internal/sharing.service.ts', 'ContributionHistoryService', './contribution-history.service'],
+    ['backend/src/modules/collaboration/internal/sharing.service.ts', 'buildContributionSnapshot', '../public/contribution-snapshot.builder'],
+    ['backend/src/modules/collaboration/collaboration.module.ts', 'ApiV1InviteAccessController', './api/sharing.controller'],
+    ['backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts', 'PermissionService', './permission.service'],
+    ['backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts', 'InvitationDeliveryService', './invitation-delivery.service'],
+    ['backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts', 'InviteAccessService', './invite-access.service'],
+    ['backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts', 'SharingService', './sharing.service'],
+  ];
+  const parsed = new Map();
+  for (const [relativePath, importedName, specifier] of requiredImports) {
+    if (!parsed.has(relativePath)) {
+      parsed.set(relativePath, parseTypeScriptSource(repositoryRoot, relativePath));
+    }
+    if (importedSpecifier(parsed.get(relativePath), importedName) !== specifier) {
+      throw new Error('R7 Sharing internal import drift detected');
+    }
+  }
+  for (const [relativePath, className] of [
+    ['backend/src/modules/collaboration/internal/invitation-delivery.service.ts', 'InvitationDeliveryService'],
+    ['backend/src/modules/collaboration/internal/invite-access.service.ts', 'InviteAccessService'],
+    ['backend/src/modules/collaboration/internal/permission.service.ts', 'PermissionService'],
+    ['backend/src/modules/collaboration/internal/sharing.service.ts', 'SharingService'],
+  ]) {
+    const sourceFile = parsed.get(relativePath) || parseTypeScriptSource(repositoryRoot, relativePath);
+    if (!sourceFile.statements.some((statement) => (
+      ts.isClassDeclaration(statement) && statement.name?.text === className && isExported(statement)
+    ))) {
+      throw new Error('R7 Sharing provider identity drift detected');
+    }
+  }
+  const permissionMetadata = classModuleMetadata(
+    parsed.get('backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts'),
+    'CollaborationPermissionInternalModule',
+  );
+  const servicesMetadata = classModuleMetadata(
+    parsed.get('backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts'),
+    'CollaborationServicesInternalModule',
+  );
+  assertExact(permissionMetadata.get('imports'), [
+    'PrismaModule',
+  ], 'R7 Sharing permission module imports');
+  assertExact(permissionMetadata.get('providers'), [
+    'PermissionService',
+    '{provide:COLLABORATION_PERMISSION_IMPLEMENTATION,useExisting:PermissionService,}',
+  ], 'R7 Sharing permission module providers');
+  assertExact(permissionMetadata.get('exports'), [
+    'PermissionService', 'COLLABORATION_PERMISSION_IMPLEMENTATION',
+  ], 'R7 Sharing permission module exports');
+  assertExact(servicesMetadata.get('imports'), [
+    'IdentityAuthPublicModule',
+    'IdentityTransientDeliveryPublicModule',
+    'PrismaModule',
+    'MessagingRealtimePublicModule',
+    'NotificationsPublicModule',
+    'CollaborationPermissionInternalModule',
+    'CollaborationHistoryInternalModule',
+  ], 'R7 Sharing module imports');
+  assertExact(servicesMetadata.get('providers'), [
+    'SharingService', 'InvitationDeliveryService', 'InviteAccessService',
+  ], 'R7 sharing module providers');
+  assertExact(servicesMetadata.get('exports'), [
+    'SharingService', 'InvitationDeliveryService', 'InviteAccessService',
+  ], 'R7 Sharing module exports');
+  const collaborationMetadata = classModuleMetadata(
+    parsed.get('backend/src/modules/collaboration/collaboration.module.ts'),
+    'CollaborationModule',
+  );
+  const sharingControllers = [
+    'ApiV1InviteAccessController',
+    'SharedWeddingPlansController',
+    'ApiV1WeddingPlanMembersController',
+    'ApiV1WeddingPlanInvitesController',
+    'ApiV1InvitesController',
+    'ApiV1InviteAcceptController',
+    'ApiV1WeddingPlanPermissionsController',
+  ];
+  assertExact(collaborationMetadata.get('controllers'), [
+    ...sharingControllers,
+    'ContributionHistoryController',
+  ], 'R7 Sharing controller registration');
+  const sharingControllerSource = parsed.get(
+    'backend/src/modules/collaboration/api/sharing.controller.ts',
+  );
+  const sharingControllerClasses = sharingControllerSource.statements.filter((statement) => (
+    ts.isClassDeclaration(statement)
+    && statement.name
+    && sharingControllers.includes(statement.name.text)
+    && decoratorsOf(statement).some(
+      (decorator) => decoratorName(decorator, sharingControllerSource) === 'Controller',
+    )
+  ));
+  const sharingControllerInventory = controllerInventory(sharingControllerSource);
+  if (sharingControllerClasses.length !== 7 || sharingControllerInventory.operations !== 17) {
+    throw new Error('R7 Sharing controller inventory drift detected');
+  }
+  const providerNames = new Set([
+    'SharingService', 'InvitationDeliveryService', 'InviteAccessService', 'PermissionService',
+  ]);
+  const providerCounts = new Map([...providerNames].map((name) => [name, 0]));
+  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')
+    .filter((entry) => entry.endsWith('.ts'))) {
+    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    for (const classNode of sourceFile.statements.filter(ts.isClassDeclaration)) {
+      const moduleDecorator = decoratorsOf(classNode).find(
+        (decorator) => decoratorName(decorator, sourceFile) === 'Module',
+      );
+      const expression = moduleDecorator?.expression;
+      if (!expression || !ts.isCallExpression(expression)
+          || expression.arguments.length !== 1
+          || !ts.isObjectLiteralExpression(expression.arguments[0])) continue;
+      for (const property of expression.arguments[0].properties) {
+        if (!ts.isPropertyAssignment(property) || property.name.getText(sourceFile) !== 'providers'
+            || !ts.isArrayLiteralExpression(property.initializer)) continue;
+        for (const element of property.initializer.elements) {
+          const name = element.getText(sourceFile).replace(/\s+/gu, '');
+          if (providerNames.has(name)) providerCounts.set(name, providerCounts.get(name) + 1);
+        }
+      }
+    }
+  }
+  if ([...providerCounts.values()].some((count) => count !== 1)) {
+    throw new Error('R7 Sharing provider singleton drift detected');
+  }
+  let legacyRuntimeImports = 0;
+  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')
+    .filter((entry) => entry.endsWith('.ts'))) {
+    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    const inspectSpecifier = (specifier) => {
+      const resolved = resolvedImportPath(relativePath, specifier);
+      if (resolved?.startsWith('backend/src/sharing/')) legacyRuntimeImports += 1;
+    };
+    for (const statement of sourceFile.statements) {
+      if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
+          && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
+        inspectSpecifier(statement.moduleSpecifier.text);
+      }
+    }
+    const visit = (node) => {
+      if (ts.isCallExpression(node)
+          && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
+            || node.expression.kind === ts.SyntaxKind.ImportKeyword)
+          && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
+        inspectSpecifier(node.arguments[0].text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+  if (legacyRuntimeImports !== 0) {
+    throw new Error('R7 Sharing legacy runtime import drift detected');
+  }
+  return Object.freeze({
+    controllers: sharingControllerClasses.length,
+    operations: sharingControllerInventory.operations,
+    providers: providerCounts.size,
+    aliases: 1,
+    exports: 4,
+    legacyRuntimeImports,
+  });
+}
+
 function isCollaborationSource(relativePath) {
   return relativePath.startsWith('backend/src/contribution-history/')
     || relativePath.startsWith('backend/src/sharing/')
@@ -1322,6 +1496,9 @@ function scanR7CollaborationRelocation(options) {
   if (manifest.stage === 'history' || manifest.stage === 'relocated' || manifest.stage === 'strict') {
     verifyHistoryRelocation(options.repositoryRoot, manifest);
   }
+  if (manifest.stage === 'relocated' || manifest.stage === 'strict') {
+    verifySharingRelocation(options.repositoryRoot, manifest);
+  }
   verifyProtectedCollaborationImports(options.repositoryRoot);
   return Object.freeze({
     ok: true,
@@ -1369,6 +1546,7 @@ module.exports = {
   verifyConstructorHandoffs,
   verifyControllerHandoffs,
   verifyHistoryRelocation,
+  verifySharingRelocation,
   verifySourceParity,
   verifyPublicSnapshotSource,
   verifyPublicSnapshotConsumers,

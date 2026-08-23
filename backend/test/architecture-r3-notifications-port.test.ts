@@ -123,7 +123,7 @@ test('Task 4 migrates the exact foreign service and type consumers', () => {
     'marketplace/quote-offer-rejection.ts',
     'marketplace/quote-request-creation.ts',
     'provider-dashboard/provider-dashboard.service.ts',
-    'sharing/sharing.service.ts',
+    'modules/collaboration/internal/sharing.service.ts',
     'tasks/tasks.service.ts',
   ];
   for (const path of consumers) {
@@ -133,7 +133,7 @@ test('Task 4 migrates the exact foreign service and type consumers', () => {
       /from\s+['"]\.\.\/notifications\/notifications\.service['"]|from\s+['"]\.\.\/\.\.\/notifications\/notifications\.service['"]/,
       path,
     );
-    assert.match(text, /modules\/notifications\/public\/notifications\.port/);
+    assert.match(text, /notifications\/public\/notifications\.port/);
   }
 });
 

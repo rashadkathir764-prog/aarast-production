@@ -16,9 +16,9 @@ import { NotificationsService } from "../src/notifications/notifications.service
 import {
   PlanAccessContext,
 } from "../src/modules/collaboration/public/collaboration-permission.port";
-import { PermissionService } from "../src/sharing/permission.service";
-import { rolePermissionDefaults } from "../src/sharing/plan-permissions";
-import { SharingService } from "../src/sharing/sharing.service";
+import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
+import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 const permissions = new PermissionService({} as any);
 const noOpContributionHistory = {
@@ -1708,11 +1708,11 @@ test("reissue cannot raise a pending invite above a delegated inviter ceiling", 
 
 test("invite create and reissue source contract stays transactional and authenticated", () => {
   const serviceSource = readFileSync(
-    join(process.cwd(), "src/sharing/sharing.service.ts"),
+    join(process.cwd(), "src/modules/collaboration/internal/sharing.service.ts"),
     "utf8",
   );
   const controllerSource = readFileSync(
-    join(process.cwd(), "src/sharing/sharing.controller.ts"),
+    join(process.cwd(), "src/modules/collaboration/api/sharing.controller.ts"),
     "utf8",
   );
   const createBlock = serviceSource.slice(
@@ -1751,7 +1751,7 @@ test("invite create and reissue source contract stays transactional and authenti
 
 test("direct member creation persists its notification in the same transaction", () => {
   const serviceSource = readFileSync(
-    join(process.cwd(), "src/sharing/sharing.service.ts"),
+    join(process.cwd(), "src/modules/collaboration/internal/sharing.service.ts"),
     "utf8",
   );
   const createBlock = serviceSource.slice(

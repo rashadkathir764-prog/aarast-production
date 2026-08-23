@@ -20,7 +20,7 @@ import {
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
 } from "../../src/modules/collaboration/public/collaboration-permission.port";
-import { PermissionService } from "../../src/sharing/permission.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { TasksService } from "../../src/tasks/tasks.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {

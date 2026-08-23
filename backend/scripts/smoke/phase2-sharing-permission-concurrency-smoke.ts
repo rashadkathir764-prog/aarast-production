@@ -11,8 +11,8 @@ import {
 import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
-import { PermissionService } from "../../src/sharing/permission.service";
-import { SharingService } from "../../src/sharing/sharing.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { SharingService } from "../../src/modules/collaboration/internal/sharing.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (

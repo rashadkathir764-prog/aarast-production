@@ -4,8 +4,8 @@ import {
   IdentityTransientDeliveryPort,
   IdentityTransientDeliveryRejectedError,
   IdentityTransientDeliveryUncertainError,
-} from '../modules/identity/public/identity-transient-delivery.port';
-import { invitationDeliveryOutcomesTotal } from '../platform/observability/metrics';
+} from '../../identity/public/identity-transient-delivery.port';
+import { invitationDeliveryOutcomesTotal } from '../../../platform/observability/metrics';
 
 export type InvitationDeliveryStatus =
   | 'DELIVERED'

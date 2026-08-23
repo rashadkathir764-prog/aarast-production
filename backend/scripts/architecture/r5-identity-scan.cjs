@@ -121,6 +121,26 @@ const R7_HISTORY_OWNERSHIP_PROJECTION = Object.freeze({
   records: 5,
   occurrences: 7,
 });
+const R7_SHARING_OWNERSHIP_PROJECTIONS = Object.freeze([
+  Object.freeze({
+    from: 'backend/src/sharing/invite-access.service.ts',
+    to: 'backend/src/modules/collaboration/internal/invite-access.service.ts',
+    records: 1,
+    occurrences: 1,
+  }),
+  Object.freeze({
+    from: 'backend/src/sharing/permission.service.ts',
+    to: 'backend/src/modules/collaboration/internal/permission.service.ts',
+    records: 2,
+    occurrences: 6,
+  }),
+  Object.freeze({
+    from: 'backend/src/sharing/sharing.service.ts',
+    to: 'backend/src/modules/collaboration/internal/sharing.service.ts',
+    records: 20,
+    occurrences: 66,
+  }),
+]);
 const R7_RETIRED_DEPENDENCY_KEYS = Object.freeze(REMAINING_DEPENDENCY_KEYS.filter(
   (key) => key.endsWith('|src/contribution-history/contribution-snapshot.builder.ts'),
 ));
@@ -498,6 +518,27 @@ function normalizedTextHash(text) {
   return crypto.createHash('sha256').update(text.replace(/\r\n/gu, '\n')).digest('hex');
 }
 
+function projectR7QaHarnessForR5(relativePath, text) {
+  const pathHandoffs = new Map([
+    [
+      'backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts',
+      [
+        '../../src/modules/collaboration/internal/invite-access.service',
+        '../../src/sharing/invite-access.service',
+      ],
+    ],
+    [
+      'backend/scripts/smoke/phase3-context-transition-smoke.ts',
+      [
+        '../../src/modules/collaboration/internal/permission.service',
+        '../../src/sharing/permission.service',
+      ],
+    ],
+  ]);
+  const handoff = pathHandoffs.get(relativePath);
+  return handoff ? text.replace(handoff[0], handoff[1]) : text;
+}
+
 function verifyR5QaHarnessCorrections(options) {
   const input = plainObject(options, 'R5 QA harness verifier options');
   const keys = Object.keys(input).sort();
@@ -525,8 +566,12 @@ function verifyR5QaHarnessCorrections(options) {
     }
     const inspected = inspectExistingPath(input.repositoryRoot, correction.path, 'file');
     if (!inspected.exists) throw new Error('R5 QA harness correction is missing');
+    const liveSource = fs.readFileSync(
+      path.join(input.repositoryRoot, ...correction.path.split('/')),
+      'utf8',
+    );
     if (normalizedTextHash(readBaseFile(correction.path)) !== correction.baseSha256
-        || normalizedFileHash(path.join(input.repositoryRoot, ...correction.path.split('/')))
+        || normalizedTextHash(projectR7QaHarnessForR5(correction.path, liveSource))
           !== correction.approvedSha256) {
       throw new Error('R5 QA harness correction drift detected');
     }
@@ -592,10 +637,11 @@ function mapOwnershipRecordsForR5(records, manifestValue) {
         || !item.key.startsWith(`${item.file}|`)) {
       throw new Error('R5 ownership record identity is invalid');
     }
-    const target = completedMoves.get(item.file)
-      || (item.file === R7_HISTORY_OWNERSHIP_PROJECTION.from
-        ? R7_HISTORY_OWNERSHIP_PROJECTION.to
-        : null);
+    const r7Projection = [
+      R7_HISTORY_OWNERSHIP_PROJECTION,
+      ...R7_SHARING_OWNERSHIP_PROJECTIONS,
+    ].find((projection) => projection.from === item.file);
+    const target = completedMoves.get(item.file) || r7Projection?.to || null;
     if (!target) return { ...item };
     return {
       ...item,
@@ -716,6 +762,58 @@ function verifyR7HistoryOwnershipHandoff(options) {
   const liveOccurrences = live.violations.reduce((sum, record) => sum + record.count, 0);
   if (projected.length !== R7_HISTORY_OWNERSHIP_PROJECTION.records
       || projectedOccurrences !== R7_HISTORY_OWNERSHIP_PROJECTION.occurrences
+      || live.violations.length !== 385 || liveOccurrences !== 781
+      || JSON.stringify(live) !== JSON.stringify(expected)) {
+    throw new Error('R7 live ownership projection is invalid');
+  }
+  return Object.freeze({
+    historicalOwnershipRecords: historical.violations.length,
+    historicalOwnershipOccurrences: historicalOccurrences,
+    liveOwnershipRecords: live.violations.length,
+    liveOwnershipOccurrences: liveOccurrences,
+    projectedRecords: projected.length,
+    projectedOccurrences,
+  });
+}
+
+function verifyR7SharingOwnershipHandoff(options) {
+  const input = exactObject(options, [
+    'historicalOwnership', 'liveOwnership',
+  ], 'R7 Sharing ownership handoff input');
+  const historical = validateOwnershipBaseline(
+    input.historicalOwnership,
+    'R7 historical ownership',
+  );
+  const historicalOccurrences = historical.violations.reduce(
+    (sum, record) => sum + record.count,
+    0,
+  );
+  if (historical.violations.length !== 385 || historicalOccurrences !== 781
+      || hash(historical) !== R7_HISTORICAL_OWNERSHIP_HASH) {
+    throw new Error('R7 historical ownership identity is invalid');
+  }
+  const live = validateOwnershipBaseline(input.liveOwnership, 'R7 live ownership');
+  const projections = [
+    R7_HISTORY_OWNERSHIP_PROJECTION,
+    ...R7_SHARING_OWNERSHIP_PROJECTIONS,
+  ];
+  const expected = {
+    ...historical,
+    violations: historical.violations.map((record) => {
+      const projection = projections.find((item) => item.from === record.file);
+      if (!projection) return { ...record };
+      return {
+        ...record,
+        key: String(record.key).replace(projection.from, projection.to),
+        file: projection.to,
+      };
+    }).sort((left, right) => left.key.localeCompare(right.key)),
+  };
+  const sharingTargets = new Set(R7_SHARING_OWNERSHIP_PROJECTIONS.map((item) => item.to));
+  const projected = expected.violations.filter((record) => sharingTargets.has(record.file));
+  const projectedOccurrences = projected.reduce((sum, record) => sum + record.count, 0);
+  const liveOccurrences = live.violations.reduce((sum, record) => sum + record.count, 0);
+  if (projected.length !== 23 || projectedOccurrences !== 73
       || live.violations.length !== 385 || liveOccurrences !== 781
       || JSON.stringify(live) !== JSON.stringify(expected)) {
     throw new Error('R7 live ownership projection is invalid');
@@ -1124,6 +1222,7 @@ module.exports = {
   verifyR5Baselines,
   verifyR7DependencyHandoff,
   verifyR7HistoryOwnershipHandoff,
+  verifyR7SharingOwnershipHandoff,
   runCli,
 };
 

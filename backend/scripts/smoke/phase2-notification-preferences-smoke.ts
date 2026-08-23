@@ -13,7 +13,7 @@ import {
   type OutboxEventType,
 } from "../../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
-import { PermissionService } from "../../src/sharing/permission.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (

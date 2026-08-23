@@ -122,11 +122,11 @@ test('Task 5 public tokens resolve to the exact AuthService and JwtService insta
 });
 
 test('Task 5 migrates the exact InviteAccess and WebSocket DI consumers', () => {
-  const invite = source('sharing/invite-access.service.ts');
+  const invite = source('modules/collaboration/internal/invite-access.service.ts');
   assert.doesNotMatch(invite, /AuthService|auth\/auth\.service/);
   assert.match(invite, /@Inject\(IDENTITY_AUTH_PORT\)/);
   assert.match(invite, /IdentityAuthPort/);
-  assert.match(invite, /modules\/identity\/public\/identity-auth\.port/);
+  assert.match(invite, /identity\/public\/identity-auth\.port/);
 
   const gateway = source('conversations/conversations.gateway.ts');
   assert.doesNotMatch(gateway, /\bJwtService\b|from ['"]@nestjs\/jwt['"]/);

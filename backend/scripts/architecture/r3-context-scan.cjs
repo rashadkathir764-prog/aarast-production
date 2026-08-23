@@ -139,7 +139,7 @@ const TASK2_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', consumerClass: 'backend/src/platform/outbox/outbox.dispatcher.ts#OutboxDispatcher', parameter: 'pushDelivery', parameterIndex: 1, ...TASK2_CANONICAL_INJECTION_IDENTITIES.outboxPush }),
   Object.freeze({ source: 'backend/src/platform/outbox/outbox.dispatcher.ts', consumerClass: 'backend/src/platform/outbox/outbox.dispatcher.ts#OutboxDispatcher', parameter: 'realtime', parameterIndex: 0, ...TASK2_CANONICAL_INJECTION_IDENTITIES.outboxRealtime }),
   Object.freeze({ source: 'backend/src/provider-dashboard/provider-dashboard.service.ts', consumerClass: 'backend/src/provider-dashboard/provider-dashboard.service.ts#ProviderDashboardService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
-  Object.freeze({ source: 'backend/src/sharing/sharing.service.ts', consumerClass: 'backend/src/sharing/sharing.service.ts#SharingService', parameter: 'realtime', parameterIndex: 5, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
+  Object.freeze({ source: 'backend/src/modules/collaboration/internal/sharing.service.ts', consumerClass: 'backend/src/modules/collaboration/internal/sharing.service.ts#SharingService', parameter: 'realtime', parameterIndex: 5, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
   Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'mediaStorage', parameterIndex: 2, ...TASK2_CANONICAL_INJECTION_IDENTITIES.mediaStorage }),
   Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'realtime', parameterIndex: 3, ...TASK2_CANONICAL_INJECTION_IDENTITIES.messagingRealtime }),
   Object.freeze({ source: 'backend/src/modules/identity/internal/profile/users.service.ts', consumerClass: 'backend/src/modules/identity/internal/profile/users.service.ts#UsersService', parameter: 'firebasePush', parameterIndex: 4, ...TASK2_CANONICAL_INJECTION_IDENTITIES.pushCapability }),
@@ -215,7 +215,7 @@ const TASK4_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({ source: 'backend/src/dashboard/dashboard.service.ts', consumerClass: 'backend/src/dashboard/dashboard.service.ts#DashboardService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
   Object.freeze({ source: 'backend/src/marketplace/marketplace.service.ts', consumerClass: 'backend/src/marketplace/marketplace.service.ts#MarketplaceService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
   Object.freeze({ source: 'backend/src/provider-dashboard/provider-dashboard.service.ts', consumerClass: 'backend/src/provider-dashboard/provider-dashboard.service.ts#ProviderDashboardService', parameter: 'notifications', parameterIndex: 1, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
-  Object.freeze({ source: 'backend/src/sharing/sharing.service.ts', consumerClass: 'backend/src/sharing/sharing.service.ts#SharingService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
+  Object.freeze({ source: 'backend/src/modules/collaboration/internal/sharing.service.ts', consumerClass: 'backend/src/modules/collaboration/internal/sharing.service.ts#SharingService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
   Object.freeze({ source: 'backend/src/tasks/tasks.service.ts', consumerClass: 'backend/src/tasks/tasks.service.ts#TasksService', parameter: 'notifications', parameterIndex: 2, ...TASK4_CANONICAL_INJECTION_IDENTITIES.notifications }),
 ]);
 const TASK5_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
@@ -237,7 +237,7 @@ const TASK5_CONSUMER_IDENTITIES = new Map([
   ])],
 ]);
 const TASK5_EXACT_CONSTRUCTOR_USES = Object.freeze([
-  Object.freeze({ source: 'backend/src/sharing/invite-access.service.ts', consumerClass: 'backend/src/sharing/invite-access.service.ts#InviteAccessService', parameter: 'auth', parameterIndex: 1, ...TASK5_CANONICAL_INJECTION_IDENTITIES.auth }),
+  Object.freeze({ source: 'backend/src/modules/collaboration/internal/invite-access.service.ts', consumerClass: 'backend/src/modules/collaboration/internal/invite-access.service.ts#InviteAccessService', parameter: 'auth', parameterIndex: 1, ...TASK5_CANONICAL_INJECTION_IDENTITIES.auth }),
   Object.freeze({ source: 'backend/src/conversations/conversations.gateway.ts', consumerClass: 'backend/src/conversations/conversations.gateway.ts#ConversationsGateway', parameter: 'jwt', parameterIndex: 0, ...TASK5_CANONICAL_INJECTION_IDENTITIES.verifier }),
 ]);
 const R7_DEPENDENCY_HANDOFF = Object.freeze({
@@ -266,11 +266,32 @@ const R7_CONTRIBUTION_HISTORY_HANDOFF = Object.freeze({
   historicalRuntimeDecoratorValueReferencesSha256:
     '1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda',
 });
-const R7_CONTRIBUTION_HISTORY_RELOCATED_IMPORTS = new Set([
+const R7_SHARING_HANDOFF = Object.freeze({
+  baseRevision: '31ea5324007fc71fa4b3590fbb98a454ee1deaa7',
+  from: 'backend/src/sharing/sharing.controller.ts',
+  to: 'backend/src/modules/collaboration/api/sharing.controller.ts',
+  historicalDecoratorRuntimeReferencesSha256:
+    '756164378747cbf0c8a1a2981432d5d18803e046a4552a585dd4db2f90ed01d2',
+  historicalRuntimeDecoratorValueReferencesSha256:
+    '1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda',
+});
+const R7_COLLABORATION_RELOCATED_IMPORTS = new Set([
   'backend/src/modules/collaboration/api/contribution-history.controller.ts->backend/src/modules/identity/public/identity-session.types.ts',
   'backend/src/modules/collaboration/api/contribution-history.controller.ts->backend/src/modules/identity/public/current-user.decorator.ts',
   'backend/src/modules/collaboration/api/contribution-history.controller.ts->backend/src/modules/identity/public/jwt-auth.guard.ts',
   'backend/src/modules/collaboration/internal/contribution-history.service.ts->backend/src/modules/identity/public/identity-session.types.ts',
+  'backend/src/modules/collaboration/api/sharing.controller.ts->backend/src/modules/identity/public/identity-session.types.ts',
+  'backend/src/modules/collaboration/api/sharing.controller.ts->backend/src/modules/identity/public/current-user.decorator.ts',
+  'backend/src/modules/collaboration/api/sharing.controller.ts->backend/src/modules/identity/public/jwt-auth.guard.ts',
+  'backend/src/modules/collaboration/api/dto/verify-invite-otp.dto.ts->backend/src/modules/identity/public/max-utf8-bytes.decorator.ts',
+  'backend/src/modules/collaboration/internal/invitation-delivery.service.ts->backend/src/modules/identity/public/identity-transient-delivery.port.ts',
+  'backend/src/modules/collaboration/internal/invite-access.service.ts->backend/src/modules/identity/public/auth-error.ts',
+  'backend/src/modules/collaboration/internal/invite-access.service.ts->backend/src/modules/identity/public/identity-auth.port.ts',
+  'backend/src/modules/collaboration/internal/permission.service.ts->backend/src/modules/identity/public/identity-session.types.ts',
+  'backend/src/modules/collaboration/internal/permission.service.ts->backend/src/modules/identity/public/user-lifecycle-lock.ts',
+  'backend/src/modules/collaboration/internal/sharing.service.ts->backend/src/modules/identity/public/identity-session.types.ts',
+  'backend/src/modules/collaboration/internal/sharing.service.ts->backend/src/modules/identity/public/context-key.ts',
+  'backend/src/modules/collaboration/internal/sharing.service.ts->backend/src/modules/identity/public/user-lifecycle-lock.ts',
 ]);
 const R6_CANONICAL_INJECTION_IDENTITIES = Object.freeze({
   transientDelivery: Object.freeze({
@@ -287,8 +308,8 @@ const R6_CONSUMER_IDENTITIES = new Map([
 ]);
 const R6_EXACT_CONSTRUCTOR_USES = Object.freeze([
   Object.freeze({
-    source: 'backend/src/sharing/invitation-delivery.service.ts',
-    consumerClass: 'backend/src/sharing/invitation-delivery.service.ts#InvitationDeliveryService',
+    source: 'backend/src/modules/collaboration/internal/invitation-delivery.service.ts',
+    consumerClass: 'backend/src/modules/collaboration/internal/invitation-delivery.service.ts#InvitationDeliveryService',
     parameter: 'transientDelivery',
     parameterIndex: 0,
     ...R6_CANONICAL_INJECTION_IDENTITIES.transientDelivery,
@@ -433,7 +454,8 @@ function validateR3ContextManifest(value) {
     'initialDuplicateProviders', 'remainingDuplicateProviders',
     'initialPlatformDebts', 'remainingPlatformDebts',
     'initialRetiredLegacyProviderEdges', 'remainingRetiredLegacyProviderEdges',
-    'r7DependencyHandoff', 'r7ContributionHistoryHandoff', 'allowedChangedPaths',
+    'r7DependencyHandoff', 'r7ContributionHistoryHandoff', 'r7SharingHandoff',
+    'allowedChangedPaths',
   ];
   if (Object.keys(manifest).sort().join('|') !== [...required].sort().join('|')) {
     throw new Error('R3 context manifest keys are invalid');
@@ -461,6 +483,18 @@ function validateR3ContextManifest(value) {
   if (JSON.stringify(r7ContributionHistoryHandoff)
       !== JSON.stringify(R7_CONTRIBUTION_HISTORY_HANDOFF)) {
     throw new Error('R7 Contribution History handoff is not canonical');
+  }
+  const r7SharingHandoff = exactObject(
+    manifest.r7SharingHandoff,
+    [
+      'baseRevision', 'from', 'to',
+      'historicalDecoratorRuntimeReferencesSha256',
+      'historicalRuntimeDecoratorValueReferencesSha256',
+    ],
+    'R7 Sharing handoff',
+  );
+  if (JSON.stringify(r7SharingHandoff) !== JSON.stringify(R7_SHARING_HANDOFF)) {
+    throw new Error('R7 Sharing handoff is not canonical');
   }
   const completedTask = manifest.stage === 'inventory'
     ? 1
@@ -654,6 +688,18 @@ function projectR7HistoryDecoratorSources(records) {
   });
 }
 
+function projectR7SharingDecoratorSources(records) {
+  return projectR7HistoryDecoratorSources(records).map((record) => (
+    record.source === R7_SHARING_HANDOFF.from
+      ? { ...record, source: R7_SHARING_HANDOFF.to }
+      : { ...record }
+  )).sort((left, right) => {
+    const leftKey = `${left.source}|${left.symbol}`;
+    const rightKey = `${right.source}|${right.symbol}`;
+    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+  });
+}
+
 function verifyR7HistoryDecoratorHandoff(options) {
   const input = exactObject(options, [
     'historicalDecoratorRuntimeReferences',
@@ -688,6 +734,56 @@ function verifyR7HistoryDecoratorHandoff(options) {
     input.historicalDecoratorRuntimeReferences,
   );
   const expectedRuntime = projectR7HistoryDecoratorSources(
+    input.historicalRuntimeDecoratorValueReferences,
+  );
+  if (JSON.stringify(input.liveDecoratorRuntimeReferences) !== JSON.stringify(expectedDecorator)
+      || JSON.stringify(input.liveRuntimeDecoratorValueReferences) !== JSON.stringify(expectedRuntime)) {
+    throw new Error('R7 live decorator projection is invalid');
+  }
+  return Object.freeze({
+    historicalDecoratorReferences: input.historicalDecoratorRuntimeReferences.length,
+    historicalRuntimeDecoratorReferences:
+      input.historicalRuntimeDecoratorValueReferences.length,
+    liveDecoratorReferences: input.liveDecoratorRuntimeReferences.length,
+    liveRuntimeDecoratorReferences: input.liveRuntimeDecoratorValueReferences.length,
+    movedSources: 2,
+  });
+}
+
+function verifyR7SharingDecoratorHandoff(options) {
+  const input = exactObject(options, [
+    'historicalDecoratorRuntimeReferences',
+    'historicalRuntimeDecoratorValueReferences',
+    'liveDecoratorRuntimeReferences',
+    'liveRuntimeDecoratorValueReferences',
+  ], 'R7 Sharing decorator handoff input');
+  assertDeepPlainData(
+    input.historicalDecoratorRuntimeReferences,
+    'R7 historical decorator references',
+  );
+  assertDeepPlainData(
+    input.historicalRuntimeDecoratorValueReferences,
+    'R7 historical runtime decorator references',
+  );
+  if (!Array.isArray(input.historicalDecoratorRuntimeReferences)
+      || input.historicalDecoratorRuntimeReferences.length !== 23
+      || sha256(input.historicalDecoratorRuntimeReferences)
+        !== R7_SHARING_HANDOFF.historicalDecoratorRuntimeReferencesSha256
+      || !Array.isArray(input.historicalRuntimeDecoratorValueReferences)
+      || input.historicalRuntimeDecoratorValueReferences.length !== 26
+      || sha256(input.historicalRuntimeDecoratorValueReferences)
+        !== R7_SHARING_HANDOFF.historicalRuntimeDecoratorValueReferencesSha256) {
+    throw new Error('R7 historical decorator identity is invalid');
+  }
+  assertDeepPlainData(input.liveDecoratorRuntimeReferences, 'R7 live decorator references');
+  assertDeepPlainData(
+    input.liveRuntimeDecoratorValueReferences,
+    'R7 live runtime decorator references',
+  );
+  const expectedDecorator = projectR7SharingDecoratorSources(
+    input.historicalDecoratorRuntimeReferences,
+  );
+  const expectedRuntime = projectR7SharingDecoratorSources(
     input.historicalRuntimeDecoratorValueReferences,
   );
   if (JSON.stringify(input.liveDecoratorRuntimeReferences) !== JSON.stringify(expectedDecorator)
@@ -1079,13 +1175,13 @@ function scanR3SourceLaws(options) {
           const legalRelocatedIdentityPureHelper = relocatedIdentityPureHelpers.has(
             `${repositoryPath}->${targetPath}`,
           );
-          const legalR7ContributionHistoryRelocatedImport =
-            R7_CONTRIBUTION_HISTORY_RELOCATED_IMPORTS.has(
+          const legalR7CollaborationRelocatedImport =
+            R7_COLLABORATION_RELOCATED_IMPORTS.has(
               `${repositoryPath}->${targetPath}`,
             );
           if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
               && !legalRelocatedPermissionContract && !legalRelocatedIdentityPureHelper
-              && !legalR7ContributionHistoryRelocatedImport) {
+              && !legalR7CollaborationRelocatedImport) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
         }
@@ -1798,9 +1894,9 @@ function scanR3Contexts(options) {
     || !live.r6ConstructorInventoryPresent
     || (manifest.stage === 'strict' && !live.r4ConstructorInventoryPresent)
     || JSON.stringify(live.decoratorRuntimeReferences)
-      !== JSON.stringify(projectR7HistoryDecoratorSources(manifest.decoratorRuntimeReferences))
+      !== JSON.stringify(projectR7SharingDecoratorSources(manifest.decoratorRuntimeReferences))
     || JSON.stringify(live.runtimeDecoratorValueReferences)
-      !== JSON.stringify(projectR7HistoryDecoratorSources(manifest.runtimeDecoratorValueReferences))
+      !== JSON.stringify(projectR7SharingDecoratorSources(manifest.runtimeDecoratorValueReferences))
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)
     || JSON.stringify(live.retiredEdges.map((item) => item.key)) !== JSON.stringify(manifest.remainingRetiredLegacyProviderEdges)
     || JSON.stringify(live.adminGuardMetadata) !== JSON.stringify(manifest.adminGuardMetadata)
@@ -1883,6 +1979,7 @@ module.exports = {
   validateR3ScanResult,
   verifyR7DependencyHandoff,
   verifyR7HistoryDecoratorHandoff,
+  verifyR7SharingDecoratorHandoff,
   runCli,
 };
 if (require.main === module) process.exitCode = runCli();

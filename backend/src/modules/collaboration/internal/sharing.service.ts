@@ -27,37 +27,37 @@ import {
   WeddingPlan,
 } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
-import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { invitationDeliveryPersistenceFailuresTotal } from "../platform/observability/metrics";
-import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
-import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { canonicalPlanContextKey } from "../modules/identity/public/context-key";
-import { ContributionHistoryService } from "../modules/collaboration/internal/contribution-history.service";
-import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
+import { AuthenticatedUser } from "../../identity/public/identity-session.types";
+import { invitationDeliveryPersistenceFailuresTotal } from "../../../platform/observability/metrics";
+import { PhoneNormalizer } from "../../../shared-kernel/phone/phone-normalizer";
+import { runSerializableTransaction } from "../../../platform/database/serializable-transaction";
+import { canonicalPlanContextKey } from "../../identity/public/context-key";
+import { ContributionHistoryService } from "./contribution-history.service";
+import { buildContributionSnapshot } from "../public/contribution-snapshot.builder";
 import {
   MESSAGING_REALTIME_PORT,
   MessagingRealtimePort,
-} from "../modules/messaging/public/messaging-realtime.port";
+} from "../../messaging/public/messaging-realtime.port";
 import {
   NOTIFICATIONS_PORT,
   type NotificationsPort,
-} from "../modules/notifications/public/notifications.port";
-import { enqueueConversationAccessRevoked } from "../platform/outbox/realtime-revocation";
-import { PrismaService } from "../platform/database/prisma.service";
+} from "../../notifications/public/notifications.port";
+import { enqueueConversationAccessRevoked } from "../../../platform/outbox/realtime-revocation";
+import { PrismaService } from "../../../platform/database/prisma.service";
 import {
   ApplicationNameSource,
   applicationDisplayName,
   applicationNameFields,
   toApplicationUserContact,
-} from "../shared-kernel/privacy/application-user-identity";
+} from "../../../shared-kernel/privacy/application-user-identity";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
-} from "../modules/identity/public/user-lifecycle-lock";
-import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
-import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
-import { LeavePlanDto } from "./dto/leave-plan.dto";
-import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
+} from "../../identity/public/user-lifecycle-lock";
+import { CreatePlanInviteDto } from "../api/dto/create-plan-invite.dto";
+import { CreateSharedMemberDto } from "../api/dto/create-shared-member.dto";
+import { LeavePlanDto } from "../api/dto/leave-plan.dto";
+import { UpdateSharedMemberDto } from "../api/dto/update-shared-member.dto";
 import {
   InvitationDeliveryResult,
   InvitationDeliveryService,
@@ -66,7 +66,7 @@ import {
   assertWeddingPlanWritable,
   livePlanAuthorizationWhere,
   PlanAccessContext,
-} from "../modules/collaboration/public/collaboration-permission.port";
+} from "../public/collaboration-permission.port";
 import { PermissionService } from "./permission.service";
 import {
   PlanPermissionFlags,

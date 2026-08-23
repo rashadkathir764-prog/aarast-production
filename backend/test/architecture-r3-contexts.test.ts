@@ -45,6 +45,18 @@ type Scanner = {
     liveRuntimeDecoratorReferences: number;
     movedSources: number;
   };
+  verifyR7SharingDecoratorHandoff(options: {
+    historicalDecoratorRuntimeReferences: Array<Record<string, unknown>>;
+    historicalRuntimeDecoratorValueReferences: Array<Record<string, unknown>>;
+    liveDecoratorRuntimeReferences: Array<Record<string, unknown>>;
+    liveRuntimeDecoratorValueReferences: Array<Record<string, unknown>>;
+  }): {
+    historicalDecoratorReferences: number;
+    historicalRuntimeDecoratorReferences: number;
+    liveDecoratorReferences: number;
+    liveRuntimeDecoratorReferences: number;
+    movedSources: number;
+  };
   runCli(dependencies: Record<string, unknown>): number;
 };
 
@@ -164,6 +176,67 @@ test('R3 preserves immutable decorator history and accepts only the exact R7 his
   }), /live decorator/i);
 });
 
+function r7SharingDecoratorFixture() {
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const historicalManifest = JSON.parse(execFileSync(
+    'git',
+    ['show', `${r7Manifest.baseRevision}:backend/architecture/r3-context-boundaries.json`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ));
+  const controllers = new Map(r7Manifest.historicalHandoffs.controllerSources.map(
+    (entry: { from: string; to: string }) => [entry.from, entry.to],
+  ));
+  const project = (records: Array<Record<string, unknown>>) => (records.map((record) => ({
+    ...record,
+    source: controllers.get(String(record.source)) ?? record.source,
+  })) as Array<Record<string, unknown>>).sort((left, right) => {
+    const leftKey = `${left.source}|${left.symbol}`;
+    const rightKey = `${right.source}|${right.symbol}`;
+    return leftKey.localeCompare(rightKey);
+  });
+  return {
+    historicalDecoratorRuntimeReferences: historicalManifest.decoratorRuntimeReferences,
+    historicalRuntimeDecoratorValueReferences: historicalManifest.runtimeDecoratorValueReferences,
+    liveDecoratorRuntimeReferences: project(historicalManifest.decoratorRuntimeReferences),
+    liveRuntimeDecoratorValueReferences: project(
+      historicalManifest.runtimeDecoratorValueReferences,
+    ),
+  };
+}
+
+test('R3 preserves immutable decorator history and accepts only the exact R7 Sharing handoff', () => {
+  const verify = scanner().verifyR7SharingDecoratorHandoff;
+  const fixture = r7SharingDecoratorFixture();
+  assert.deepEqual(verify(fixture), {
+    historicalDecoratorReferences: 23,
+    historicalRuntimeDecoratorReferences: 26,
+    liveDecoratorReferences: 23,
+    liveRuntimeDecoratorReferences: 26,
+    movedSources: 2,
+  });
+  assert.throws(() => verify({
+    ...fixture,
+    historicalDecoratorRuntimeReferences: fixture.liveDecoratorRuntimeReferences,
+  }), /historical decorator/i);
+  assert.throws(() => verify({
+    ...fixture,
+    liveRuntimeDecoratorValueReferences: fixture.historicalRuntimeDecoratorValueReferences,
+  }), /live decorator/i);
+  const wrongPath = structuredClone(fixture.liveDecoratorRuntimeReferences);
+  const moved = wrongPath.find((record) => (
+    record.source === 'backend/src/modules/collaboration/api/sharing.controller.ts'
+  ));
+  assert.ok(moved);
+  moved.source = 'backend/src/modules/collaboration/internal/sharing.controller.ts';
+  assert.throws(() => verify({
+    ...fixture,
+    liveDecoratorRuntimeReferences: wrongPath,
+  }), /live decorator/i);
+});
+
 function write(root: string, relativePath: string, content: string) {
   const target = path.join(root, relativePath);
   mkdirSync(path.dirname(target), { recursive: true });
@@ -256,6 +329,15 @@ test('the canonical R3 manifest freezes the exact strict ledgers', () => {
     historicalRuntimeDecoratorValueReferencesSha256:
       '1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda',
   });
+  assert.deepEqual(manifest.r7SharingHandoff, {
+    baseRevision: '31ea5324007fc71fa4b3590fbb98a454ee1deaa7',
+    from: 'backend/src/sharing/sharing.controller.ts',
+    to: 'backend/src/modules/collaboration/api/sharing.controller.ts',
+    historicalDecoratorRuntimeReferencesSha256:
+      '756164378747cbf0c8a1a2981432d5d18803e046a4552a585dd4db2f90ed01d2',
+    historicalRuntimeDecoratorValueReferencesSha256:
+      '1a2fe14b1237342c8d339f5a4b6f964a5067838f2db9b944d0004274b2cd3eda',
+  });
   assert.deepEqual(manifest.contexts, [
     'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
     'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
@@ -274,7 +356,7 @@ test('the canonical R3 manifest freezes the exact strict ledgers', () => {
       methods: ['send'],
       implementations: ['IdentityTransientDeliveryAdapter'],
       consumers: [{
-        source: 'backend/src/sharing/invitation-delivery.service.ts',
+        source: 'backend/src/modules/collaboration/internal/invitation-delivery.service.ts',
         kind: 'constructor-injection',
       }],
     },
@@ -465,18 +547,18 @@ test('R6 Task 4 rejects boundary bypasses, concrete injection, and token lookali
   }).diagnostics, []);
 
   const concreteAdapter = fullSourceFixture([{
-    relativePath: 'sharing/invitation-delivery.service.ts',
+    relativePath: 'modules/collaboration/internal/invitation-delivery.service.ts',
     before: [
-      "} from '../modules/identity/public/identity-transient-delivery.port';",
+      "} from '../../identity/public/identity-transient-delivery.port';",
       "import { invitationDeliveryOutcomesTotal }",
     ].join('\n'),
     after: [
-      "} from '../modules/identity/public/identity-transient-delivery.port';",
-      "import { IdentityTransientDeliveryAdapter } from '../modules/identity/internal/identity-transient-delivery.adapter';",
+      "} from '../../identity/public/identity-transient-delivery.port';",
+      "import { IdentityTransientDeliveryAdapter } from '../../identity/internal/identity-transient-delivery.adapter';",
       "import { invitationDeliveryOutcomesTotal }",
     ].join('\n'),
   }, {
-    relativePath: 'sharing/invitation-delivery.service.ts',
+    relativePath: 'modules/collaboration/internal/invitation-delivery.service.ts',
     before: 'private readonly transientDelivery: IdentityTransientDeliveryPort,',
     after: 'private readonly transientDelivery: IdentityTransientDeliveryAdapter,',
   }]);
@@ -487,14 +569,14 @@ test('R6 Task 4 rejects boundary bypasses, concrete injection, and token lookali
   }).diagnostics, []);
 
   const lookalike = fullSourceFixture([{
-    relativePath: 'sharing/invitation-delivery.service.ts',
+    relativePath: 'modules/collaboration/internal/invitation-delivery.service.ts',
     before: [
       'import {',
       '  IDENTITY_TRANSIENT_DELIVERY_PORT,',
       '  IdentityTransientDeliveryPort,',
       '  IdentityTransientDeliveryRejectedError,',
       '  IdentityTransientDeliveryUncertainError,',
-      "} from '../modules/identity/public/identity-transient-delivery.port';",
+      "} from '../../identity/public/identity-transient-delivery.port';",
     ].join('\n'),
     after: [
       "const IDENTITY_TRANSIENT_DELIVERY_PORT = Symbol('IDENTITY_TRANSIENT_DELIVERY_PORT');",

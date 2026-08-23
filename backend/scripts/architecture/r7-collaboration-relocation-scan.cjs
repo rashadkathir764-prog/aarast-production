@@ -1193,7 +1193,13 @@ function sharingProviderTopology(repositoryRoot) {
   };
   function bindingPatternSources(pattern, seenSymbols, seenNodes) {
     const owner = pattern.parent;
-    if (ts.isVariableDeclaration(owner) && owner.initializer) return [owner.initializer];
+    if (ts.isVariableDeclaration(owner) && owner.initializer) {
+      return [{
+        expression: owner.initializer,
+        seenSymbols: new Set(seenSymbols),
+        seenNodes: new Set(seenNodes),
+      }];
+    }
     if (ts.isBindingElement(owner)) {
       return bindingElementValues(owner, seenSymbols, seenNodes);
     }
@@ -1201,20 +1207,35 @@ function sharingProviderTopology(repositoryRoot) {
   }
   function objectPropertyValues(expression, key, seenSymbols, seenNodes) {
     const values = [];
-    for (const target of concreteExpressions(expression, seenSymbols, seenNodes)) {
-      if (!ts.isObjectLiteralExpression(target)) continue;
+    const resolvedExpressions = concreteExpressions(expression, seenSymbols, seenNodes);
+    if (resolvedExpressions.length === 0) {
+      throw new Error('R7 Sharing provider topology could not resolve provider identity');
+    }
+    for (const resolved of resolvedExpressions) {
+      const target = resolved.expression;
+      if (!ts.isObjectLiteralExpression(target)) {
+        throw new Error('R7 Sharing provider topology could not resolve provider identity');
+      }
       for (const property of target.properties) {
         if (ts.isPropertyAssignment(property) && propertyName(property.name) === key) {
-          values.push(property.initializer);
+          values.push({
+            expression: property.initializer,
+            seenSymbols: new Set(resolved.seenSymbols),
+            seenNodes: new Set(resolved.seenNodes),
+          });
         } else if (ts.isShorthandPropertyAssignment(property)
             && property.name.text === key) {
-          values.push(property.name);
+          values.push({
+            expression: property.name,
+            seenSymbols: new Set(resolved.seenSymbols),
+            seenNodes: new Set(resolved.seenNodes),
+          });
         } else if (ts.isSpreadAssignment(property)) {
           values.push(...objectPropertyValues(
             property.expression,
             key,
-            new Set(seenSymbols),
-            new Set(seenNodes),
+            new Set(resolved.seenSymbols),
+            new Set(resolved.seenNodes),
           ));
         }
       }
@@ -1223,11 +1244,22 @@ function sharingProviderTopology(repositoryRoot) {
   }
   function arrayElementValues(expression, index, seenSymbols, seenNodes) {
     const values = [];
-    for (const target of concreteExpressions(expression, seenSymbols, seenNodes)) {
-      if (!ts.isArrayLiteralExpression(target)) continue;
+    const resolvedExpressions = concreteExpressions(expression, seenSymbols, seenNodes);
+    if (resolvedExpressions.length === 0) {
+      throw new Error('R7 Sharing provider topology could not resolve provider identity');
+    }
+    for (const resolved of resolvedExpressions) {
+      const target = resolved.expression;
+      if (!ts.isArrayLiteralExpression(target)) {
+        throw new Error('R7 Sharing provider topology could not resolve provider identity');
+      }
       const element = target.elements[index];
       if (element && !ts.isOmittedExpression(element) && !ts.isSpreadElement(element)) {
-        values.push(element);
+        values.push({
+          expression: element,
+          seenSymbols: new Set(resolved.seenSymbols),
+          seenNodes: new Set(resolved.seenNodes),
+        });
       }
     }
     return values;
@@ -1237,7 +1269,13 @@ function sharingProviderTopology(repositoryRoot) {
     const sources = ts.isObjectBindingPattern(pattern) || ts.isArrayBindingPattern(pattern)
       ? bindingPatternSources(pattern, seenSymbols, seenNodes)
       : [];
-    const values = declaration.initializer ? [declaration.initializer] : [];
+    const values = declaration.initializer
+      ? [{
+        expression: declaration.initializer,
+        seenSymbols: new Set(seenSymbols),
+        seenNodes: new Set(seenNodes),
+      }]
+      : [];
     if (ts.isObjectBindingPattern(pattern)) {
       const key = declaration.propertyName
         ? propertyName(declaration.propertyName)
@@ -1245,10 +1283,10 @@ function sharingProviderTopology(repositoryRoot) {
       if (key !== null) {
         for (const source of sources) {
           values.push(...objectPropertyValues(
-            source,
+            source.expression,
             key,
-            new Set(seenSymbols),
-            new Set(seenNodes),
+            new Set(source.seenSymbols),
+            new Set(source.seenNodes),
           ));
         }
       }
@@ -1256,10 +1294,10 @@ function sharingProviderTopology(repositoryRoot) {
       const index = pattern.elements.indexOf(declaration);
       for (const source of sources) {
         values.push(...arrayElementValues(
-          source,
+          source.expression,
           index,
-          new Set(seenSymbols),
-          new Set(seenNodes),
+          new Set(source.seenSymbols),
+          new Set(source.seenNodes),
         ));
       }
     }
@@ -1274,7 +1312,11 @@ function sharingProviderTopology(repositoryRoot) {
     for (const declaration of current.declarations || []) {
       if ((ts.isVariableDeclaration(declaration) || ts.isPropertyAssignment(declaration))
           && declaration.initializer) {
-        values.push(declaration.initializer);
+        values.push({
+          expression: declaration.initializer,
+          seenSymbols: new Set(nextSymbols),
+          seenNodes: new Set(seenNodes),
+        });
       } else if (ts.isShorthandPropertyAssignment(declaration)) {
         const valueSymbol = checker.getShorthandAssignmentValueSymbol(declaration);
         values.push(...symbolValues(valueSymbol, nextSymbols, new Set(seenNodes)));
@@ -1296,16 +1338,18 @@ function sharingProviderTopology(repositoryRoot) {
       if (symbol && seenSymbols.has(symbol)) return [];
       const values = symbolValues(symbol, seenSymbols, nextNodes);
       if (values.length > 0) {
-        const nextSymbols = new Set(seenSymbols);
-        if (symbol) nextSymbols.add(symbol);
         return values.flatMap((value) => concreteExpressions(
-          value,
-          new Set(nextSymbols),
-          new Set(nextNodes),
+          value.expression,
+          new Set(value.seenSymbols),
+          new Set(value.seenNodes),
         ));
       }
     }
-    return [current];
+    return [{
+      expression: current,
+      seenSymbols: new Set(seenSymbols),
+      seenNodes: nextNodes,
+    }];
   }
   function providerIdentityFromSymbol(symbol, seenSymbols = new Set(), seenNodes = new Set()) {
     const current = dereferenceAlias(symbol);
@@ -1326,7 +1370,11 @@ function sharingProviderTopology(repositoryRoot) {
       }
     }
     for (const value of symbolValues(current, seenSymbols, seenNodes)) {
-      const identity = providerIdentity(value, nextSymbols, new Set(seenNodes));
+      const identity = providerIdentity(
+        value.expression,
+        new Set(value.seenSymbols),
+        new Set(value.seenNodes),
+      );
       if (identity) return identity;
     }
     return null;
@@ -1375,7 +1423,8 @@ function sharingProviderTopology(repositoryRoot) {
     if (targets.length === 0) {
       throw new Error('R7 Sharing provider topology could not resolve provider entry');
     }
-    for (const current of targets) {
+    for (const resolved of targets) {
+      const current = resolved.expression;
       if (recordReference(current, registration, 'bare')) continue;
       if (ts.isObjectLiteralExpression(current)) {
         const objectSeen = current === unwrapProviderExpression(expression) ? seen : nextSeen;
@@ -1396,7 +1445,8 @@ function sharingProviderTopology(repositoryRoot) {
     if (targets.length === 0) {
       throw new Error('R7 Sharing provider topology could not resolve object spread');
     }
-    for (const target of targets) {
+    for (const resolved of targets) {
+      const target = resolved.expression;
       if (!ts.isObjectLiteralExpression(target)) {
         throw new Error('R7 Sharing provider topology could not resolve object spread');
       }
@@ -1429,7 +1479,8 @@ function sharingProviderTopology(repositoryRoot) {
     if (targets.length === 0) {
       throw new Error('R7 Sharing provider topology could not resolve providers spread');
     }
-    for (const current of targets) {
+    for (const resolved of targets) {
+      const current = resolved.expression;
       if (ts.isArrayLiteralExpression(current)) {
         for (const element of current.elements) {
           if (ts.isSpreadElement(element)) {
@@ -1456,7 +1507,8 @@ function sharingProviderTopology(repositoryRoot) {
     if (targets.length === 0) {
       throw new Error('R7 Sharing provider topology could not resolve module metadata');
     }
-    for (const current of targets) {
+    for (const resolved of targets) {
+      const current = resolved.expression;
       if (!ts.isObjectLiteralExpression(current)) {
         throw new Error('R7 Sharing provider topology could not resolve module metadata');
       }

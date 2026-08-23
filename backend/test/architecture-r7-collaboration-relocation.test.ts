@@ -740,6 +740,43 @@ export class CyclicProviderTopologyModule {}
   }
 });
 
+test('R7 Sharing topology fails closed on cyclic object spread during provider destructuring', () => {
+  const fixture = stagedFixture('relocated');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/cyclic-provider-object.module.ts',
+      `
+import { Module } from '@nestjs/common';
+import { SharingService } from './modules/collaboration/internal/sharing.service';
+
+const SECOND_SHARING = Symbol('SECOND_SHARING');
+const Registry = { SharingService, ...Registry };
+const { SharingService: SharingAlias } = Registry;
+
+@Module({
+  providers: [{ provide: SECOND_SHARING, useClass: SharingAlias }],
+})
+export class CyclicProviderObjectModule {}
+`,
+    );
+    assert.throws(
+      () => scanner().verifySharingRelocation(fixture.root, fixture.value),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.ok(!(error instanceof RangeError));
+        assert.equal(
+          error.message,
+          'R7 Sharing provider topology could not resolve provider identity',
+        );
+        return true;
+      },
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 for (const fixtureCase of [
   {
     name: 'SharingService constructor index drift',

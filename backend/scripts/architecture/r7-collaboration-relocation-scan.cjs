@@ -10,6 +10,7 @@ const ts = require('typescript');
 const R7_BASE = '31ea5324007fc71fa4b3590fbb98a454ee1deaa7';
 const MANIFEST_PATH = 'backend/architecture/r7-collaboration-relocation.json';
 const STAGES = Object.freeze(['design', 'snapshot', 'history', 'relocated', 'strict']);
+const backendTypeScriptConfigCache = new Map();
 
 const EXPECTED_MOVES = Object.freeze([
   ['backend/src/contribution-history/contribution-history.contracts.ts', 'backend/src/modules/collaboration/internal/contribution-history.contracts.ts'],
@@ -1885,17 +1886,46 @@ function isTypeOnlyExport(statement) {
     && clause.elements.every((element) => element.isTypeOnly));
 }
 
+function backendTypeScriptConfig(repositoryRoot) {
+  const key = path.resolve(repositoryRoot);
+  const cached = backendTypeScriptConfigCache.get(key);
+  if (cached) return cached;
+  const backendRoot = path.join(key, 'backend');
+  const configPath = path.join(backendRoot, 'tsconfig.json');
+  let options = {
+    baseUrl: backendRoot,
+    module: ts.ModuleKind.CommonJS,
+    moduleResolution: ts.ModuleResolutionKind.Node10,
+    target: ts.ScriptTarget.ES2021,
+  };
+  if (fs.existsSync(configPath)) {
+    const config = ts.readConfigFile(configPath, ts.sys.readFile);
+    if (config.error) throw new Error('R7 backend tsconfig could not be read');
+    const parsed = ts.parseJsonConfigFileContent(
+      config.config,
+      ts.sys,
+      backendRoot,
+      undefined,
+      configPath,
+    );
+    if (parsed.errors.length > 0) throw new Error('R7 backend tsconfig could not be parsed');
+    options = parsed.options;
+  }
+  const result = Object.freeze({ backendRoot, options: Object.freeze({ ...options }) });
+  backendTypeScriptConfigCache.set(key, result);
+  return result;
+}
+
 function resolvedImportPath(repositoryRoot, importer, specifier) {
   if (!specifier.startsWith('.') && !specifier.startsWith('src/')) return null;
   const importerPath = path.join(repositoryRoot, ...importer.split('/'));
+  const { options } = backendTypeScriptConfig(repositoryRoot);
   const resolved = ts.resolveModuleName(
     specifier,
     importerPath,
     {
+      ...options,
       allowJs: true,
-      module: ts.ModuleKind.CommonJS,
-      moduleResolution: ts.ModuleResolutionKind.Node10,
-      target: ts.ScriptTarget.Latest,
     },
     ts.sys,
   ).resolvedModule;
@@ -2058,6 +2088,62 @@ function symbolForIdentifier(identifier, checker) {
   return checker.getSymbolAtLocation(identifier) || null;
 }
 
+function resolveAlias(symbol, checker) {
+  let current = symbol || null;
+  const seen = new Set();
+  while (current && (current.flags & ts.SymbolFlags.Alias) && !seen.has(current)) {
+    seen.add(current);
+    const resolved = checker.getAliasedSymbol(current);
+    if (!resolved || resolved === current) break;
+    current = resolved;
+  }
+  return current;
+}
+
+function symbolAtExpression(expression, checker) {
+  if (ts.isPropertyAccessExpression(expression)) {
+    return resolveAlias(checker.getSymbolAtLocation(expression.name), checker);
+  }
+  if (ts.isElementAccessExpression(expression) && expression.argumentExpression) {
+    return resolveAlias(checker.getSymbolAtLocation(expression.argumentExpression), checker);
+  }
+  return resolveAlias(checker.getSymbolAtLocation(expression), checker);
+}
+
+function declarationComesFromPackage(declaration, packageName) {
+  const file = path.resolve(declaration.getSourceFile().fileName)
+    .split(path.sep)
+    .join('/')
+    .toLowerCase();
+  return file.includes(`/node_modules/${packageName.toLowerCase()}/`);
+}
+
+function isResolvedNestCommonSymbol(expression, expectedName, checker, seenSymbols) {
+  const current = unwrapExpression(expression);
+  const symbol = symbolAtExpression(current, checker);
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  if (symbol.getName() === expectedName
+      && (symbol.declarations || []).some((declaration) => (
+        declarationComesFromPackage(declaration, '@nestjs/common')
+      ))) {
+    return true;
+  }
+  seenSymbols.add(symbol);
+  for (const declaration of symbol.declarations || []) {
+    if (isConstVariableDeclaration(declaration)
+        && declaration.initializer
+        && isResolvedNestCommonSymbol(
+          declaration.initializer,
+          expectedName,
+          checker,
+          seenSymbols,
+        )) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isNestCommonNamespace(expression, checker, seenSymbols = new Set()) {
   const current = unwrapExpression(expression);
   if (isUnshadowedRequireCall(current, checker)) return true;
@@ -2091,6 +2177,12 @@ function accessedPropertyName(expression) {
 
 function isNestCommonMember(expression, expectedName, checker, seenSymbols = new Set()) {
   const current = unwrapExpression(expression);
+  if (isResolvedNestCommonSymbol(
+    current,
+    expectedName,
+    checker,
+    new Set(seenSymbols),
+  )) return true;
   if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
     return accessedPropertyName(current) === expectedName
       && isNestCommonNamespace(current.expression, checker, seenSymbols);
@@ -2111,6 +2203,17 @@ function isNestCommonMember(expression, expectedName, checker, seenSymbols = new
     if (isConstVariableDeclaration(declaration)
         && declaration.initializer
         && isNestCommonMember(declaration.initializer, expectedName, checker, seenSymbols)) {
+      return true;
+    }
+    if (ts.isImportEqualsDeclaration(declaration)
+        && ts.isQualifiedName(declaration.moduleReference)
+        && declaration.moduleReference.right.text === expectedName
+        && ts.isIdentifier(declaration.moduleReference.left)
+        && isNestCommonNamespace(
+          declaration.moduleReference.left,
+          checker,
+          seenSymbols,
+        )) {
       return true;
     }
     if (ts.isBindingElement(declaration)
@@ -2140,14 +2243,13 @@ function verifyStrictNestState(repositoryRoot) {
   const rootNames = relativePaths.map(
     (relativePath) => path.join(repositoryRoot, ...relativePath.split('/')),
   );
+  const { options } = backendTypeScriptConfig(repositoryRoot);
   const program = ts.createProgram({
     rootNames,
     options: {
-      experimentalDecorators: true,
-      module: ts.ModuleKind.CommonJS,
-      noLib: true,
-      noResolve: true,
-      target: ts.ScriptTarget.Latest,
+      ...options,
+      incremental: false,
+      noEmit: true,
     },
   });
   const checker = program.getTypeChecker();

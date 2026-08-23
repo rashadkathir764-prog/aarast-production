@@ -240,6 +240,19 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     rmSync(path.join(root, ...move.to.split('/')), { force: true });
   }
   mkdirSync(path.join(root, 'backend'), { recursive: true });
+  copyFileSync(
+    path.join(repositoryRoot, 'backend', 'tsconfig.json'),
+    path.join(root, 'backend', 'tsconfig.json'),
+  );
+  writeFixtureFile(
+    root,
+    'backend/node_modules/@nestjs/common/index.d.ts',
+    [
+      'export declare function forwardRef(callback: () => unknown): unknown;',
+      'export declare function Global(): ClassDecorator;',
+      '',
+    ].join('\n'),
+  );
   writeFileSync(
     path.join(root, 'backend', '.dependency-cruiser-known-violations.json'),
     execFileSync(
@@ -847,6 +860,202 @@ for (const fixtureCase of [
         'backend/src/tasks/ordinary-global-call.ts',
         fixtureCase.source,
       );
+      assert.deepEqual(scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }), {
+        ok: true,
+        stage: 'strict',
+        sourceFiles: 0,
+        targetFiles: 18,
+        dependencyRecords: 22,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const fixtureCase of [
+  {
+    name: 'qualified import-equals forwardRef alias',
+    files: {
+      'backend/src/tasks/qualified-forward-ref.ts': [
+        "import NestCommon = require('@nestjs/common');",
+        'import HiddenForwardRef = NestCommon.forwardRef;',
+        'class Dependency {}',
+        'void HiddenForwardRef(() => Dependency);',
+        '',
+      ].join('\n'),
+    },
+    error: /R7 strict stage contains forwardRef\(\)/u,
+  },
+  {
+    name: 'qualified import-equals Global alias',
+    files: {
+      'backend/src/tasks/qualified-global.module.ts': [
+        "import NestCommon = require('@nestjs/common');",
+        'import HiddenGlobal = NestCommon.Global;',
+        '@HiddenGlobal()',
+        'export class QualifiedGlobalModule {}',
+        '',
+      ].join('\n'),
+    },
+    error: /R7 strict globals drift detected/u,
+  },
+  {
+    name: 'cross-file const forwardRef alias',
+    files: {
+      'backend/src/tasks/nest-forward-ref-alias.ts': [
+        "import { forwardRef } from '@nestjs/common';",
+        'export const hiddenForwardRef = forwardRef;',
+        '',
+      ].join('\n'),
+      'backend/src/tasks/cross-file-forward-ref.ts': [
+        "import { hiddenForwardRef } from './nest-forward-ref-alias';",
+        'class Dependency {}',
+        'void hiddenForwardRef(() => Dependency);',
+        '',
+      ].join('\n'),
+    },
+    error: /R7 strict stage contains forwardRef\(\)/u,
+  },
+  {
+    name: 'cross-file const Global alias',
+    files: {
+      'backend/src/tasks/nest-global-alias.ts': [
+        "import { Global } from '@nestjs/common';",
+        'export const hiddenGlobal = Global;',
+        '',
+      ].join('\n'),
+      'backend/src/tasks/cross-file-global.module.ts': [
+        "import { hiddenGlobal } from './nest-global-alias';",
+        '@hiddenGlobal()',
+        'export class CrossFileGlobalModule {}',
+        '',
+      ].join('\n'),
+    },
+    error: /R7 strict globals drift detected/u,
+  },
+  {
+    name: 'cross-file forwardRef re-export alias',
+    files: {
+      'backend/src/tasks/nest-forward-ref-reexport.ts': [
+        "export { forwardRef as hiddenForwardRef } from '@nestjs/common';",
+        '',
+      ].join('\n'),
+      'backend/src/tasks/reexported-forward-ref.ts': [
+        "import { hiddenForwardRef } from './nest-forward-ref-reexport';",
+        'class Dependency {}',
+        'void hiddenForwardRef(() => Dependency);',
+        '',
+      ].join('\n'),
+    },
+    error: /R7 strict stage contains forwardRef\(\)/u,
+  },
+  {
+    name: 'cross-file Global re-export alias',
+    files: {
+      'backend/src/tasks/nest-global-reexport.ts': [
+        "export { Global as hiddenGlobal } from '@nestjs/common';",
+        '',
+      ].join('\n'),
+      'backend/src/tasks/reexported-global.module.ts': [
+        "import { hiddenGlobal } from './nest-global-reexport';",
+        '@hiddenGlobal()',
+        'export class ReexportedGlobalModule {}',
+        '',
+      ].join('\n'),
+    },
+    error: /R7 strict globals drift detected/u,
+  },
+]) {
+  test(`R7 strict Nest rejects ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      for (const [relativePath, source] of Object.entries(fixtureCase.files)) {
+        writeFixtureFile(fixture.root, relativePath, source);
+      }
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        fixtureCase.error,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const fixtureCase of [
+  {
+    name: 'a qualified import-equals local Global homonym',
+    files: {
+      'backend/src/tasks/qualified-local-global.module.ts': [
+        'namespace LocalNest {',
+        '  export function Global() { return (_target: unknown) => undefined; }',
+        '}',
+        'import LocalGlobal = LocalNest.Global;',
+        '@LocalGlobal()',
+        'export class QualifiedLocalGlobalModule {}',
+        '',
+      ].join('\n'),
+    },
+  },
+  {
+    name: 'a cross-file local Global alias and re-export',
+    files: {
+      'backend/src/tasks/local-global.ts': [
+        'export function Global() { return (_target: unknown) => undefined; }',
+        '',
+      ].join('\n'),
+      'backend/src/tasks/local-global-alias.ts': [
+        "import { Global } from './local-global';",
+        'export const hiddenGlobal = Global;',
+        '',
+      ].join('\n'),
+      'backend/src/tasks/local-global-reexport.ts': [
+        "export { hiddenGlobal as ordinaryGlobal } from './local-global-alias';",
+        '',
+      ].join('\n'),
+      'backend/src/tasks/local-global-consumer.module.ts': [
+        "import { ordinaryGlobal } from './local-global-reexport';",
+        '@ordinaryGlobal()',
+        'export class LocalGlobalConsumerModule {}',
+        '',
+      ].join('\n'),
+    },
+  },
+  {
+    name: 'a cross-file local forwardRef alias and re-export',
+    files: {
+      'backend/src/tasks/local-forward-ref.ts': [
+        'export function forwardRef(callback: () => unknown) { return callback; }',
+        '',
+      ].join('\n'),
+      'backend/src/tasks/local-forward-ref-reexport.ts': [
+        "export { forwardRef as ordinaryForwardRef } from './local-forward-ref';",
+        '',
+      ].join('\n'),
+      'backend/src/tasks/local-forward-ref-consumer.ts': [
+        "import { ordinaryForwardRef } from './local-forward-ref-reexport';",
+        'class Dependency {}',
+        'void ordinaryForwardRef(() => Dependency);',
+        '',
+      ].join('\n'),
+    },
+  },
+]) {
+  test(`R7 strict Nest permits ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      for (const [relativePath, source] of Object.entries(fixtureCase.files)) {
+        writeFixtureFile(fixture.root, relativePath, source);
+      }
       assert.deepEqual(scanner().scanR7CollaborationRelocation({
         repositoryRoot: fixture.root,
         manifest: fixture.value,
@@ -1972,6 +2181,137 @@ test('R7 preserves a real .js source identity instead of stripping its extension
       fixture.root,
       'backend/src/tasks/real-js-consumer.ts',
       'import { helper } from "./contribution-snapshot.builder.js";\nvoid helper;\n',
+    );
+    assert.deepEqual(scanner().verifyPublicSnapshotConsumers(fixture.root), {
+      callers: 11,
+      testImports: 2,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+const srcModuleReferenceForms = [
+  {
+    name: 'static import',
+    source(specifier: string, symbol: string): string {
+      return `import { ${symbol} } from "${specifier}";\nvoid ${symbol};\n`;
+    },
+  },
+  {
+    name: 'named re-export',
+    source(specifier: string, symbol: string): string {
+      return `export { ${symbol} } from "${specifier}";\n`;
+    },
+  },
+  {
+    name: 'star re-export',
+    source(specifier: string): string {
+      return `export * from "${specifier}";\n`;
+    },
+  },
+  {
+    name: 'dynamic import',
+    source(specifier: string): string {
+      return `void import("${specifier}");\n`;
+    },
+  },
+  {
+    name: 'require call',
+    source(specifier: string): string {
+      return `void require("${specifier}");\n`;
+    },
+  },
+  {
+    name: 'import equals',
+    source(specifier: string): string {
+      return `import target = require("${specifier}");\nvoid target;\n`;
+    },
+  },
+];
+
+for (const suffix of ['', '.js']) {
+  for (const form of srcModuleReferenceForms) {
+    test(`R7 rejects src/ public builder ${form.name}${suffix || ' extensionless'} by compiler source identity`, () => {
+      const fixture = stagedFixture('strict');
+      try {
+        const specifier = `src/modules/collaboration/public/contribution-snapshot.builder${suffix}`;
+        writeFixtureFile(
+          fixture.root,
+          'backend/src/tasks/src-builder-facade.ts',
+          form.source(specifier, 'buildContributionSnapshot'),
+        );
+        assert.throws(
+          () => scanner().verifyPublicSnapshotConsumers(fixture.root),
+          /R7 public snapshot.*(?:consumer|reference|facade|form)/iu,
+        );
+      } finally {
+        rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
+}
+
+for (const target of [
+  {
+    name: 'internal',
+    path: 'src/modules/collaboration/internal/sharing.service',
+    symbol: 'SharingService',
+  },
+  {
+    name: 'api',
+    path: 'src/modules/collaboration/api/sharing.controller',
+    symbol: 'ApiV1InviteAccessController',
+  },
+]) {
+  for (const suffix of ['', '.js']) {
+    for (const form of srcModuleReferenceForms) {
+      test(`R7 rejects src/ protected ${target.name} ${form.name}${suffix || ' extensionless'} by compiler source identity`, () => {
+        const fixture = stagedFixture('strict');
+        try {
+          writeFixtureFile(
+            fixture.root,
+            'backend/src/tasks/src-protected-bypass.ts',
+            form.source(`${target.path}${suffix}`, target.symbol),
+          );
+          assert.throws(
+            () => scanner().scanR7CollaborationRelocation({
+              repositoryRoot: fixture.root,
+              manifest: fixture.value,
+            }),
+            /R7 cross-context runtime import enters Collaboration internal or api/u,
+          );
+        } finally {
+          rmSync(fixture.root, { recursive: true, force: true });
+        }
+      });
+    }
+  }
+}
+
+test('R7 preserves real nonmatching src/ .js and near-name source identities', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/src-contribution-snapshot.builder.js',
+      'exports.helper = () => true;\n',
+    );
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/contribution-snapshot.builder-near.ts',
+      'export const near = true;\n',
+    );
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/src-builder-controls.ts',
+      [
+        'import { helper } from "src/tasks/src-contribution-snapshot.builder.js";',
+        'import { near } from "src/tasks/contribution-snapshot.builder-near";',
+        'void helper;',
+        'void near;',
+        '',
+      ].join('\n'),
     );
     assert.deepEqual(scanner().verifyPublicSnapshotConsumers(fixture.root), {
       callers: 11,

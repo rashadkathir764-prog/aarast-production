@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "31ea5324007fc71fa4b3590fbb98a454ee1deaa7",
-  "stage": "relocated",
+  "stage": "strict",
   "moves": [
     {
       "from": "backend/src/contribution-history/contribution-history.contracts.ts",

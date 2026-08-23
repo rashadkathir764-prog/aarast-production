@@ -81,6 +81,17 @@ type R7Scanner = {
     exports: number;
     legacyRuntimeImports: number;
   };
+  verifyStrictRelocationState(repositoryRoot: string, manifest: R7Manifest): {
+    legacyRoots: number;
+    legacyImportLiterals: number;
+    retiredDependencyKeys: number;
+    protectedRuntimeImports: number;
+    duplicatePublicExports: number;
+    unregisteredTargetFiles: number;
+    reparsePoints: number;
+    forwardRef: number;
+    globals: number;
+  };
   scanR7CollaborationRelocation(options: {
     repositoryRoot: string;
     manifest: unknown;
@@ -250,6 +261,8 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
   );
 
   for (const relativePath of [
+    'backend/src/conversations/conversation-realtime.module.ts',
+    'backend/src/platform/database/prisma.module.ts',
     'backend/src/budget-categories/budget-categories.service.ts',
     'backend/src/contribution-history/contribution-history.service.ts',
     'backend/src/guests/guests.service.ts',
@@ -455,14 +468,14 @@ test('R7 pins the immutable R6 closeout and exact Collaboration fate map', () =>
   const value = scanner().validateR7Manifest(manifest());
   assert.equal(value.schemaVersion, 1);
   assert.equal(value.baseRevision, '31ea5324007fc71fa4b3590fbb98a454ee1deaa7');
-  assert.equal(value.stage, 'relocated');
+  assert.equal(value.stage, 'strict');
   assert.deepEqual(value.moves, expectedMoves);
   assert.equal(new Set(value.moves.map((move) => move.from)).size, 18);
   assert.equal(new Set(value.moves.map((move) => move.to)).size, 18);
   assert.deepEqual(value.sourceParity, expectedSourceParity);
 });
 
-test('R7 relocated stage preserves the history API, providers, aliases, exports, and imports', () => {
+test('R7 strict stage preserves the history API, providers, aliases, exports, and imports', () => {
   const value = scanner().validateR7Manifest(manifest());
   assert.deepEqual(scanner().verifyHistoryRelocation(repositoryRoot, value), {
     controllers: 1,
@@ -473,9 +486,28 @@ test('R7 relocated stage preserves the history API, providers, aliases, exports,
   });
 });
 
-test('R7 relocated stage pins Sharing API, DTOs, providers, DI, and final counts', () => {
+test('R7 strict stage pins final layout, API, providers, DI, builder, and baselines', () => {
   const value = scanner().validateR7Manifest(manifest());
-  assert.equal(value.stage, 'relocated');
+  assert.equal(value.stage, 'strict');
+  assert.deepEqual(scanner().verifyStrictRelocationState(repositoryRoot, value), {
+    legacyRoots: 0,
+    legacyImportLiterals: 0,
+    retiredDependencyKeys: 0,
+    protectedRuntimeImports: 0,
+    duplicatePublicExports: 0,
+    unregisteredTargetFiles: 0,
+    reparsePoints: 0,
+    forwardRef: 0,
+    globals: 2,
+  });
+  assert.deepEqual(scanner().verifyPublicSnapshotSource(repositoryRoot, value), {
+    exports: 4,
+    imports: 3,
+  });
+  assert.deepEqual(scanner().verifyPublicSnapshotConsumers(repositoryRoot), {
+    callers: 11,
+    testImports: 2,
+  });
   assert.deepEqual(scanner().verifyConstructorHandoffs(repositoryRoot, value), {
     consumers: 4,
     optional: 1,
@@ -494,13 +526,155 @@ test('R7 relocated stage pins Sharing API, DTOs, providers, DI, and final counts
   });
   assert.deepEqual(scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value }), {
     ok: true,
-    stage: 'relocated',
+    stage: 'strict',
     sourceFiles: 0,
     targetFiles: 18,
     dependencyRecords: 22,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });
+});
+
+test('R7 strict stage rejects every compatibility, boundary, topology, and Nest regression', () => {
+  const cases: Array<{
+    name: string;
+    mutate(root: string, value: R7Manifest): void;
+  }> = [
+    {
+      name: 'retained legacy root',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/sharing/compatibility.ts',
+          'export const compatibility = true;\n',
+        );
+      },
+    },
+    {
+      name: 'legacy import literal',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/tasks/legacy-sharing-import.ts',
+          'import "../sharing/sharing.service";\n',
+        );
+      },
+    },
+    {
+      name: 'retired dependency key',
+      mutate(root, value) {
+        const dependencyPath = path.join(
+          root,
+          'backend',
+          '.dependency-cruiser-known-violations.json',
+        );
+        const dependency = JSON.parse(readFileSync(dependencyPath, 'utf8')) as Array<{
+          rule: { name: string };
+          from: string;
+          to: string;
+        }>;
+        const historical = JSON.parse(execFileSync(
+          'git',
+          ['show', `${value.baseRevision}:backend/.dependency-cruiser-known-violations.json`],
+          { cwd: repositoryRoot, encoding: 'utf8' },
+        )) as typeof dependency;
+        const retired = historical.find((record) => (
+          [record.rule.name, record.from, record.to].join('|') === expectedDependencyKeys[0]
+        ));
+        assert.ok(retired);
+        dependency.push(retired);
+        writeJson(dependencyPath, dependency);
+      },
+    },
+    {
+      name: 'cross-context internal import',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/tasks/collaboration-internal-import.ts',
+          'import "../modules/collaboration/internal/sharing.service";\n',
+        );
+      },
+    },
+    {
+      name: 'duplicate public export',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/tasks/duplicate-contribution-snapshot.ts',
+          'export const buildContributionSnapshot = () => undefined;\n',
+        );
+      },
+    },
+    {
+      name: 'unregistered target file',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/modules/collaboration/internal/unregistered.ts',
+          'export const unregistered = true;\n',
+        );
+      },
+    },
+    {
+      name: 'directory junction',
+      mutate(root) {
+        const dto = path.join(root, 'backend', 'src', 'modules', 'collaboration', 'api', 'dto');
+        const outside = path.join(root, 'strict-junction-target');
+        cpSync(dto, outside, { recursive: true });
+        rmSync(dto, { recursive: true, force: true });
+        symlinkSync(outside, dto, process.platform === 'win32' ? 'junction' : 'dir');
+      },
+    },
+    {
+      name: 'forwardRef call',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/tasks/forward-ref.module.ts',
+          [
+            "import { forwardRef } from '@nestjs/common';",
+            'class Dependency {}',
+            'void forwardRef(() => Dependency);',
+            '',
+          ].join('\n'),
+        );
+      },
+    },
+    {
+      name: 'new global module',
+      mutate(root) {
+        writeFixtureFile(
+          root,
+          'backend/src/tasks/global.module.ts',
+          [
+            "import { Global, Module } from '@nestjs/common';",
+            '@Global()',
+            '@Module({})',
+            'export class TaskGlobalModule {}',
+            '',
+          ].join('\n'),
+        );
+      },
+    },
+  ];
+
+  for (const fixtureCase of cases) {
+    const fixture = stagedFixture('strict');
+    try {
+      fixtureCase.mutate(fixture.root, fixture.value);
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7/u,
+        fixtureCase.name,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
 });
 
 for (const providerCase of [
@@ -1692,7 +1866,7 @@ test('R7 scope is exact, sorted, delegated, and does not mutate R3', () => {
   const scan = scanner().scanR7CollaborationRelocation({ repositoryRoot, manifest: value });
   assert.deepEqual(scan, {
     ok: true,
-    stage: 'relocated',
+    stage: 'strict',
     sourceFiles: 0,
     targetFiles: 18,
     dependencyRecords: 22,

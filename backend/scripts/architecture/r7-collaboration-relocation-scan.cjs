@@ -235,6 +235,11 @@ const EXPECTED_OPTIONAL_DEPENDENCIES = Object.freeze([
   }),
 ]);
 
+const EXPECTED_APPROVED_GLOBAL_MODULES = Object.freeze([
+  'backend/src/conversations/conversation-realtime.module.ts',
+  'backend/src/platform/database/prisma.module.ts',
+]);
+
 const EXPECTED_BASELINES = Object.freeze({
   baseDependencyRecords: 31,
   retiredDependencyRecords: 9,
@@ -1880,6 +1885,123 @@ function resolvedImportPath(importer, specifier) {
   return null;
 }
 
+function moduleReferenceSpecifiers(sourceFile) {
+  const specifiers = [];
+  for (const statement of sourceFile.statements) {
+    if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
+        && statement.moduleSpecifier
+        && ts.isStringLiteralLike(statement.moduleSpecifier)) {
+      specifiers.push(statement.moduleSpecifier.text);
+    } else if (ts.isImportEqualsDeclaration(statement)
+        && ts.isExternalModuleReference(statement.moduleReference)
+        && statement.moduleReference.expression
+        && ts.isStringLiteralLike(statement.moduleReference.expression)) {
+      specifiers.push(statement.moduleReference.expression.text);
+    }
+  }
+  const visit = (node) => {
+    if (ts.isCallExpression(node)
+        && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
+          || node.expression.kind === ts.SyntaxKind.ImportKeyword)
+        && node.arguments.length === 1
+        && ts.isStringLiteralLike(node.arguments[0])) {
+      specifiers.push(node.arguments[0].text);
+    } else if (ts.isImportTypeNode(node)
+        && ts.isLiteralTypeNode(node.argument)
+        && ts.isStringLiteralLike(node.argument.literal)) {
+      specifiers.push(node.argument.literal.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return specifiers;
+}
+
+function isLegacyCollaborationSpecifier(importer, specifier) {
+  const resolved = resolvedImportPath(importer, specifier);
+  if (!resolved) return false;
+  return [
+    'backend/src/contribution-history',
+    'backend/src/sharing',
+  ].some((legacyRoot) => resolved === legacyRoot || resolved.startsWith(`${legacyRoot}/`));
+}
+
+function verifyStrictSourceReferences(repositoryRoot) {
+  let legacyImportLiterals = 0;
+  let duplicatePublicExports = 0;
+  const publicExports = new Set(EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.exports);
+  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
+    if (!relativePath.endsWith('.ts')) continue;
+    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    legacyImportLiterals += moduleReferenceSpecifiers(sourceFile)
+      .filter((specifier) => isLegacyCollaborationSpecifier(relativePath, specifier))
+      .length;
+    if (relativePath === EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.path) continue;
+    for (const statement of sourceFile.statements) {
+      const names = exportedNames(statement, sourceFile);
+      if (ts.isExportDeclaration(statement)
+          && statement.exportClause
+          && ts.isNamedExports(statement.exportClause)) {
+        names.push(...statement.exportClause.elements.map((element) => element.name.text));
+      }
+      duplicatePublicExports += names.filter((name) => publicExports.has(name)).length;
+    }
+  }
+  if (legacyImportLiterals !== 0) {
+    throw new Error('R7 strict stage retains a legacy import literal');
+  }
+  if (duplicatePublicExports !== 0) {
+    throw new Error('R7 strict stage contains a duplicate public snapshot export');
+  }
+  return Object.freeze({ legacyImportLiterals, duplicatePublicExports });
+}
+
+function verifyStrictNestState(repositoryRoot) {
+  let forwardRef = 0;
+  const globalModules = [];
+  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
+    if (!relativePath.endsWith('.ts')) continue;
+    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    const forwardRefBindings = new Set();
+    const globalBindings = new Set();
+    const nestNamespaces = new Set();
+    for (const statement of sourceFile.statements.filter(ts.isImportDeclaration)) {
+      if (!ts.isStringLiteralLike(statement.moduleSpecifier)
+          || statement.moduleSpecifier.text !== '@nestjs/common'
+          || !statement.importClause
+          || !statement.importClause.namedBindings) continue;
+      const bindings = statement.importClause.namedBindings;
+      if (ts.isNamespaceImport(bindings)) {
+        nestNamespaces.add(bindings.name.text);
+        continue;
+      }
+      for (const element of bindings.elements) {
+        const imported = element.propertyName ? element.propertyName.text : element.name.text;
+        if (imported === 'forwardRef') forwardRefBindings.add(element.name.text);
+        if (imported === 'Global') globalBindings.add(element.name.text);
+      }
+    }
+    const nestCall = (expression, namedBindings, property) => (
+      (ts.isIdentifier(expression) && namedBindings.has(expression.text))
+      || (ts.isPropertyAccessExpression(expression)
+        && ts.isIdentifier(expression.expression)
+        && nestNamespaces.has(expression.expression.text)
+        && expression.name.text === property)
+    );
+    const visit = (node) => {
+      if (ts.isCallExpression(node)) {
+        if (nestCall(node.expression, forwardRefBindings, 'forwardRef')) forwardRef += 1;
+        if (nestCall(node.expression, globalBindings, 'Global')) globalModules.push(relativePath);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+  if (forwardRef !== 0) throw new Error('R7 strict stage contains forwardRef()');
+  assertExact(globalModules.sort(), EXPECTED_APPROVED_GLOBAL_MODULES, 'R7 strict globals');
+  return Object.freeze({ forwardRef, globals: globalModules.length });
+}
+
 function verifyProtectedCollaborationImports(repositoryRoot) {
   const protectedPrefixes = [
     'backend/src/modules/collaboration/api/',
@@ -1922,6 +2044,35 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
     };
     visit(sourceFile);
   }
+  return Object.freeze({ protectedRuntimeImports: 0 });
+}
+
+function verifyStrictRelocationState(repositoryRoot, manifest) {
+  if (manifest.stage !== 'strict') {
+    throw new Error('R7 strict relocation verification requires stage=strict');
+  }
+  const layout = validateStagedLayout(repositoryRoot, manifest);
+  const baselines = verifyBaselines(repositoryRoot, manifest);
+  const sourceReferences = verifyStrictSourceReferences(repositoryRoot);
+  const protectedImports = verifyProtectedCollaborationImports(repositoryRoot);
+  const nest = verifyStrictNestState(repositoryRoot);
+  if (layout.sourceFiles !== 0 || layout.targetFiles !== manifest.moves.length) {
+    throw new Error('R7 strict final inventory drift detected');
+  }
+  if (baselines.dependencyRecords !== manifest.expectedBaselines.strictDependencyRecords) {
+    throw new Error('R7 strict dependency inventory drift detected');
+  }
+  return Object.freeze({
+    legacyRoots: 0,
+    legacyImportLiterals: sourceReferences.legacyImportLiterals,
+    retiredDependencyKeys: 0,
+    protectedRuntimeImports: protectedImports.protectedRuntimeImports,
+    duplicatePublicExports: sourceReferences.duplicatePublicExports,
+    unregisteredTargetFiles: 0,
+    reparsePoints: 0,
+    forwardRef: nest.forwardRef,
+    globals: nest.globals,
+  });
 }
 
 function scanR7CollaborationRelocation(options) {
@@ -1946,6 +2097,9 @@ function scanR7CollaborationRelocation(options) {
     verifySharingRelocation(options.repositoryRoot, manifest);
   }
   verifyProtectedCollaborationImports(options.repositoryRoot);
+  if (manifest.stage === 'strict') {
+    verifyStrictRelocationState(options.repositoryRoot, manifest);
+  }
   return Object.freeze({
     ok: true,
     stage: manifest.stage,
@@ -1993,6 +2147,7 @@ module.exports = {
   verifyControllerHandoffs,
   verifyHistoryRelocation,
   verifySharingRelocation,
+  verifyStrictRelocationState,
   verifySourceParity,
   verifyPublicSnapshotSource,
   verifyPublicSnapshotConsumers,

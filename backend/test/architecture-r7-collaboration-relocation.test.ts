@@ -538,20 +538,19 @@ test('R7 strict stage pins final layout, API, providers, DI, builder, and baseli
 test('R7 strict stage rejects every compatibility, boundary, topology, and Nest regression', () => {
   const cases: Array<{
     name: string;
+    error: RegExp;
     mutate(root: string, value: R7Manifest): void;
   }> = [
     {
       name: 'retained legacy root',
+      error: /R7 strict stage retains a legacy root/u,
       mutate(root) {
-        writeFixtureFile(
-          root,
-          'backend/src/sharing/compatibility.ts',
-          'export const compatibility = true;\n',
-        );
+        mkdirSync(path.join(root, 'backend', 'src', 'sharing'), { recursive: true });
       },
     },
     {
       name: 'legacy import literal',
+      error: /R7 Sharing legacy runtime import drift detected/u,
       mutate(root) {
         writeFixtureFile(
           root,
@@ -562,6 +561,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     },
     {
       name: 'retired dependency key',
+      error: /R7 dependency identity drift detected/u,
       mutate(root, value) {
         const dependencyPath = path.join(
           root,
@@ -582,12 +582,21 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
           [record.rule.name, record.from, record.to].join('|') === expectedDependencyKeys[0]
         ));
         assert.ok(retired);
-        dependency.push(retired);
+        const originalLength = dependency.length;
+        const originalUniqueCount = new Set(dependency.map((record) => (
+          [record.rule.name, record.from, record.to].join('|')
+        ))).size;
+        dependency[0] = retired;
+        assert.equal(dependency.length, originalLength);
+        assert.equal(new Set(dependency.map((record) => (
+          [record.rule.name, record.from, record.to].join('|')
+        ))).size, originalUniqueCount);
         writeJson(dependencyPath, dependency);
       },
     },
     {
       name: 'cross-context internal import',
+      error: /R7 cross-context runtime import enters Collaboration internal or api/u,
       mutate(root) {
         writeFixtureFile(
           root,
@@ -598,6 +607,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     },
     {
       name: 'duplicate public export',
+      error: /R7 strict stage contains a duplicate public snapshot export/u,
       mutate(root) {
         writeFixtureFile(
           root,
@@ -608,6 +618,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     },
     {
       name: 'unregistered target file',
+      error: /R7 final Collaboration inventory drift detected/u,
       mutate(root) {
         writeFixtureFile(
           root,
@@ -618,6 +629,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     },
     {
       name: 'directory junction',
+      error: /R7 source contains a symbolic or junction reparse point/u,
       mutate(root) {
         const dto = path.join(root, 'backend', 'src', 'modules', 'collaboration', 'api', 'dto');
         const outside = path.join(root, 'strict-junction-target');
@@ -628,6 +640,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     },
     {
       name: 'forwardRef call',
+      error: /R7 strict stage contains forwardRef\(\)/u,
       mutate(root) {
         writeFixtureFile(
           root,
@@ -643,6 +656,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     },
     {
       name: 'new global module',
+      error: /R7 strict globals drift detected/u,
       mutate(root) {
         writeFixtureFile(
           root,
@@ -668,7 +682,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
           repositoryRoot: fixture.root,
           manifest: fixture.value,
         }),
-        /R7/u,
+        fixtureCase.error,
         fixtureCase.name,
       );
     } finally {
@@ -676,6 +690,180 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
     }
   }
 });
+
+for (const form of [
+  {
+    name: 'const alias',
+    source: [
+      "import { forwardRef as NestForwardRef } from '@nestjs/common';",
+      'class Dependency {}',
+      'const hiddenForwardRef = NestForwardRef;',
+      'void hiddenForwardRef(() => Dependency);',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'import equals namespace',
+    source: [
+      "import NestCommon = require('@nestjs/common');",
+      'class Dependency {}',
+      'void NestCommon.forwardRef(() => Dependency);',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'require namespace',
+    source: [
+      "const NestCommon = require('@nestjs/common');",
+      'class Dependency {}',
+      'void NestCommon.forwardRef(() => Dependency);',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'ES namespace',
+    source: [
+      "import * as NestCommon from '@nestjs/common';",
+      'class Dependency {}',
+      'void NestCommon.forwardRef(() => Dependency);',
+      '',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 strict Nest rejects real forwardRef through ${form.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/nest-forward-ref-bypass.ts',
+        form.source,
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 strict stage contains forwardRef\(\)/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const form of [
+  {
+    name: 'const alias',
+    source: [
+      "import { Global as NestGlobal } from '@nestjs/common';",
+      'const hiddenGlobal = NestGlobal;',
+      '@hiddenGlobal()',
+      'export class HiddenGlobalModule {}',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'import equals namespace',
+    source: [
+      "import NestCommon = require('@nestjs/common');",
+      '@NestCommon.Global()',
+      'export class ImportEqualsGlobalModule {}',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'require namespace',
+    source: [
+      "const NestCommon = require('@nestjs/common');",
+      '@NestCommon.Global()',
+      'export class RequireGlobalModule {}',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'ES namespace',
+    source: [
+      "import * as NestCommon from '@nestjs/common';",
+      '@NestCommon.Global()',
+      'export class NamespaceGlobalModule {}',
+      '',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 strict Nest rejects real Global decorator through ${form.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/nest-global-bypass.module.ts',
+        form.source,
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 strict globals drift detected/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const fixtureCase of [
+  {
+    name: 'a shadowed imported Global binding',
+    source: [
+      "import { Global } from '@nestjs/common';",
+      'function invoke(Global: () => unknown) { return Global(); }',
+      'void Global;',
+      'void invoke(() => undefined);',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'a real Nest Global call outside decorator context',
+    source: [
+      "import { Global } from '@nestjs/common';",
+      'void Global();',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'an ordinary local Global call',
+    source: [
+      'function Global() { return undefined; }',
+      'void Global();',
+      '',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 strict Nest permits ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/ordinary-global-call.ts',
+        fixtureCase.source,
+      );
+      assert.deepEqual(scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }), {
+        ok: true,
+        stage: 'strict',
+        sourceFiles: 0,
+        targetFiles: 18,
+        dependencyRecords: 22,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
 
 for (const providerCase of [
   {
@@ -1551,6 +1739,51 @@ test('R7 permits type-only TypeScript import-equals access without opening runti
   }
 });
 
+test('R7 permits element-level type-only named re-exports from Collaboration internals', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/collaboration-contract-facade.ts',
+      'export { type ContributionHistoryItemResponse } from "../modules/collaboration/internal/contribution-history.contracts";\n',
+    );
+    assert.deepEqual(scanner().scanR7CollaborationRelocation({
+      repositoryRoot: fixture.root,
+      manifest: fixture.value,
+    }), {
+      ok: true,
+      stage: 'strict',
+      sourceFiles: 0,
+      targetFiles: 18,
+      dependencyRecords: 22,
+      ownershipRecords: 385,
+      ownershipOccurrences: 781,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('R7 rejects mixed type-only and runtime named re-exports from Collaboration internals', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/collaboration-mixed-facade.ts',
+      'export { type SharedMemberResponse, SharingService } from "../modules/collaboration/internal/sharing.service";\n',
+    );
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }),
+      /R7 cross-context runtime import enters Collaboration internal or api/u,
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('R7 freezes the public snapshot contract and every historical handoff', () => {
   const value = scanner().validateR7Manifest(manifest());
   assert.deepEqual(value.publicSnapshotContract, {
@@ -1634,6 +1867,119 @@ test('R7 verifies public exports and DI handoffs against the live TypeScript sou
     controllers: 2,
     operations: 19,
   });
+});
+
+for (const form of [
+  {
+    name: 'static import',
+    source: 'import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder.js";\nvoid buildContributionSnapshot;\n',
+  },
+  {
+    name: 'named re-export',
+    source: 'export { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder.js";\n',
+  },
+  {
+    name: 'star re-export',
+    source: 'export * from "../modules/collaboration/public/contribution-snapshot.builder.js";\n',
+  },
+  {
+    name: 'dynamic import',
+    source: 'void import("../modules/collaboration/public/contribution-snapshot.builder.js");\n',
+  },
+  {
+    name: 'require call',
+    source: 'void require("../modules/collaboration/public/contribution-snapshot.builder.js");\n',
+  },
+  {
+    name: 'import equals',
+    source: 'import builder = require("../modules/collaboration/public/contribution-snapshot.builder.js");\nvoid builder;\n',
+  },
+]) {
+  test(`R7 rejects .js public builder ${form.name} by canonical source identity`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/js-builder-facade.ts',
+        form.source,
+      );
+      assert.throws(
+        () => scanner().verifyPublicSnapshotConsumers(fixture.root),
+        /R7 public snapshot.*(?:consumer|reference|facade|form)/iu,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const form of [
+  {
+    name: 'static import',
+    source: 'import { SharingService } from "../modules/collaboration/internal/sharing.service.js";\nvoid SharingService;\n',
+  },
+  {
+    name: 'named re-export',
+    source: 'export { SharingService } from "../modules/collaboration/internal/sharing.service.js";\n',
+  },
+  {
+    name: 'star re-export',
+    source: 'export * from "../modules/collaboration/internal/sharing.service.js";\n',
+  },
+  {
+    name: 'dynamic import',
+    source: 'void import("../modules/collaboration/internal/sharing.service.js");\n',
+  },
+  {
+    name: 'require call',
+    source: 'void require("../modules/collaboration/internal/sharing.service.js");\n',
+  },
+  {
+    name: 'import equals',
+    source: 'import sharing = require("../modules/collaboration/internal/sharing.service.js");\nvoid sharing;\n',
+  },
+]) {
+  test(`R7 rejects .js protected Collaboration ${form.name} by canonical source identity`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/js-protected-bypass.ts',
+        form.source,
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 cross-context runtime import enters Collaboration internal or api/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+test('R7 preserves a real .js source identity instead of stripping its extension', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/contribution-snapshot.builder.js',
+      'exports.helper = () => true;\n',
+    );
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/real-js-consumer.ts',
+      'import { helper } from "./contribution-snapshot.builder.js";\nvoid helper;\n',
+    );
+    assert.deepEqual(scanner().verifyPublicSnapshotConsumers(fixture.root), {
+      callers: 11,
+      testImports: 2,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test('R7 rejects every non-canonical static, dynamic, runtime, export, and fallback builder reference', () => {

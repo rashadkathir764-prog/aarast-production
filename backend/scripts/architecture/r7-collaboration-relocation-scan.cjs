@@ -883,8 +883,8 @@ function verifyPublicSnapshotConsumers(repositoryRoot) {
   }).sort((left, right) => left.path.localeCompare(right.path));
   const actual = [];
   const builderTargets = new Set([
-    'backend/src/contribution-history/contribution-snapshot.builder',
-    'backend/src/modules/collaboration/public/contribution-snapshot.builder',
+    'backend/src/contribution-history/contribution-snapshot.builder.ts',
+    'backend/src/modules/collaboration/public/contribution-snapshot.builder.ts',
   ]);
   for (const root of ['backend/src', 'backend/test']) {
     for (const relativePath of listPlainFiles(repositoryRoot, root).filter(
@@ -898,7 +898,7 @@ function verifyPublicSnapshotConsumers(repositoryRoot) {
       const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
       const isBuilderSpecifier = (specifier) => {
         if (typeof specifier !== 'string') return false;
-        const resolved = resolvedImportPath(relativePath, specifier);
+        const resolved = resolvedImportPath(repositoryRoot, relativePath, specifier);
         return resolved !== null && builderTargets.has(resolved);
       };
       const rejectNonCanonicalForm = (specifier) => {
@@ -1684,7 +1684,7 @@ function verifyHistoryRelocation(repositoryRoot, manifest) {
     .filter((entry) => entry.endsWith('.ts'))) {
     const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
     const inspectSpecifier = (specifier) => {
-      const resolved = resolvedImportPath(relativePath, specifier);
+      const resolved = resolvedImportPath(repositoryRoot, relativePath, specifier);
       if (resolved?.startsWith('backend/src/contribution-history/')) legacyRuntimeImports += 1;
     };
     for (const statement of sourceFile.statements) {
@@ -1828,7 +1828,7 @@ function verifySharingRelocation(repositoryRoot, manifest) {
     .filter((entry) => entry.endsWith('.ts'))) {
     const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
     const inspectSpecifier = (specifier) => {
-      const resolved = resolvedImportPath(relativePath, specifier);
+      const resolved = resolvedImportPath(repositoryRoot, relativePath, specifier);
       if (resolved?.startsWith('backend/src/sharing/')) legacyRuntimeImports += 1;
     };
     for (const statement of sourceFile.statements) {
@@ -1877,7 +1877,34 @@ function isTypeOnlyImport(statement) {
     && bindings.elements.every((element) => element.isTypeOnly));
 }
 
-function resolvedImportPath(importer, specifier) {
+function isTypeOnlyExport(statement) {
+  if (statement.isTypeOnly) return true;
+  const clause = statement.exportClause;
+  return Boolean(clause && ts.isNamedExports(clause)
+    && clause.elements.length > 0
+    && clause.elements.every((element) => element.isTypeOnly));
+}
+
+function resolvedImportPath(repositoryRoot, importer, specifier) {
+  if (!specifier.startsWith('.') && !specifier.startsWith('src/')) return null;
+  const importerPath = path.join(repositoryRoot, ...importer.split('/'));
+  const resolved = ts.resolveModuleName(
+    specifier,
+    importerPath,
+    {
+      allowJs: true,
+      module: ts.ModuleKind.CommonJS,
+      moduleResolution: ts.ModuleResolutionKind.Node10,
+      target: ts.ScriptTarget.Latest,
+    },
+    ts.sys,
+  ).resolvedModule;
+  if (resolved) {
+    const absolute = path.resolve(resolved.resolvedFileName);
+    if (isInside(path.resolve(repositoryRoot), absolute)) {
+      return path.relative(repositoryRoot, absolute).split(path.sep).join('/');
+    }
+  }
   if (specifier.startsWith('.')) {
     return path.posix.normalize(path.posix.join(path.posix.dirname(importer), specifier));
   }
@@ -1917,8 +1944,8 @@ function moduleReferenceSpecifiers(sourceFile) {
   return specifiers;
 }
 
-function isLegacyCollaborationSpecifier(importer, specifier) {
-  const resolved = resolvedImportPath(importer, specifier);
+function isLegacyCollaborationSpecifier(repositoryRoot, importer, specifier) {
+  const resolved = resolvedImportPath(repositoryRoot, importer, specifier);
   if (!resolved) return false;
   return [
     'backend/src/contribution-history',
@@ -1934,10 +1961,25 @@ function verifyStrictSourceReferences(repositoryRoot) {
     if (!relativePath.endsWith('.ts')) continue;
     const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
     legacyImportLiterals += moduleReferenceSpecifiers(sourceFile)
-      .filter((specifier) => isLegacyCollaborationSpecifier(relativePath, specifier))
+      .filter((specifier) => isLegacyCollaborationSpecifier(
+        repositoryRoot,
+        relativePath,
+        specifier,
+      ))
       .length;
     if (relativePath === EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.path) continue;
     for (const statement of sourceFile.statements) {
+      if (ts.isExportDeclaration(statement)
+          && statement.moduleSpecifier
+          && ts.isStringLiteralLike(statement.moduleSpecifier)
+          && resolvedImportPath(
+            repositoryRoot,
+            relativePath,
+            statement.moduleSpecifier.text,
+          ) === EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.path) {
+        duplicatePublicExports += 1;
+        continue;
+      }
       const names = exportedNames(statement, sourceFile);
       if (ts.isExportDeclaration(statement)
           && statement.exportClause
@@ -1956,42 +1998,171 @@ function verifyStrictSourceReferences(repositoryRoot) {
   return Object.freeze({ legacyImportLiterals, duplicatePublicExports });
 }
 
+function unwrapExpression(expression) {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)
+      || ts.isAsExpression(current)
+      || ts.isTypeAssertionExpression(current)
+      || ts.isNonNullExpression(current)
+      || (ts.isSatisfiesExpression && ts.isSatisfiesExpression(current))) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function isConstVariableDeclaration(declaration) {
+  return ts.isVariableDeclaration(declaration)
+    && ts.isVariableDeclarationList(declaration.parent)
+    && Boolean(declaration.parent.flags & ts.NodeFlags.Const);
+}
+
+function importDeclarationOf(declaration) {
+  let current = declaration;
+  while (current && !ts.isSourceFile(current)) {
+    if (ts.isImportDeclaration(current)) return current;
+    current = current.parent;
+  }
+  return null;
+}
+
+function isNestCommonImportDeclaration(declaration) {
+  const importedBy = importDeclarationOf(declaration);
+  return Boolean(importedBy
+    && ts.isStringLiteralLike(importedBy.moduleSpecifier)
+    && importedBy.moduleSpecifier.text === '@nestjs/common');
+}
+
+function isNestCommonExternalReference(declaration) {
+  return ts.isImportEqualsDeclaration(declaration)
+    && ts.isExternalModuleReference(declaration.moduleReference)
+    && declaration.moduleReference.expression
+    && ts.isStringLiteralLike(declaration.moduleReference.expression)
+    && declaration.moduleReference.expression.text === '@nestjs/common';
+}
+
+function isUnshadowedRequireCall(expression, checker) {
+  const current = unwrapExpression(expression);
+  if (!ts.isCallExpression(current)
+      || !ts.isIdentifier(current.expression)
+      || current.expression.text !== 'require'
+      || current.arguments.length !== 1
+      || !ts.isStringLiteralLike(current.arguments[0])
+      || current.arguments[0].text !== '@nestjs/common') return false;
+  const symbol = checker.getSymbolAtLocation(current.expression);
+  return !symbol || (symbol.declarations || []).every(
+    (declaration) => declaration.getSourceFile().isDeclarationFile,
+  );
+}
+
+function symbolForIdentifier(identifier, checker) {
+  return checker.getSymbolAtLocation(identifier) || null;
+}
+
+function isNestCommonNamespace(expression, checker, seenSymbols = new Set()) {
+  const current = unwrapExpression(expression);
+  if (isUnshadowedRequireCall(current, checker)) return true;
+  if (!ts.isIdentifier(current)) return false;
+  const symbol = symbolForIdentifier(current, checker);
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  seenSymbols.add(symbol);
+  for (const declaration of symbol.declarations || []) {
+    if (ts.isNamespaceImport(declaration) && isNestCommonImportDeclaration(declaration)) {
+      return true;
+    }
+    if (isNestCommonExternalReference(declaration)) return true;
+    if (isConstVariableDeclaration(declaration)
+        && declaration.initializer
+        && isNestCommonNamespace(declaration.initializer, checker, seenSymbols)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function accessedPropertyName(expression) {
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+  if (ts.isElementAccessExpression(expression)
+      && expression.argumentExpression
+      && ts.isStringLiteralLike(expression.argumentExpression)) {
+    return expression.argumentExpression.text;
+  }
+  return null;
+}
+
+function isNestCommonMember(expression, expectedName, checker, seenSymbols = new Set()) {
+  const current = unwrapExpression(expression);
+  if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+    return accessedPropertyName(current) === expectedName
+      && isNestCommonNamespace(current.expression, checker, seenSymbols);
+  }
+  if (!ts.isIdentifier(current)) return false;
+  const symbol = symbolForIdentifier(current, checker);
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  seenSymbols.add(symbol);
+  for (const declaration of symbol.declarations || []) {
+    if (ts.isImportSpecifier(declaration)) {
+      const importedName = declaration.propertyName
+        ? declaration.propertyName.text
+        : declaration.name.text;
+      if (importedName === expectedName && isNestCommonImportDeclaration(declaration)) {
+        return true;
+      }
+    }
+    if (isConstVariableDeclaration(declaration)
+        && declaration.initializer
+        && isNestCommonMember(declaration.initializer, expectedName, checker, seenSymbols)) {
+      return true;
+    }
+    if (ts.isBindingElement(declaration)
+        && ts.isObjectBindingPattern(declaration.parent)
+        && declaration.parent.parent.initializer) {
+      const propertyName = declaration.propertyName
+        ? declaration.propertyName.getText()
+        : declaration.name.getText();
+      if (propertyName === expectedName
+          && isNestCommonNamespace(
+            declaration.parent.parent.initializer,
+            checker,
+            seenSymbols,
+          )) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function verifyStrictNestState(repositoryRoot) {
   let forwardRef = 0;
   const globalModules = [];
-  for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
-    if (!relativePath.endsWith('.ts')) continue;
-    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
-    const forwardRefBindings = new Set();
-    const globalBindings = new Set();
-    const nestNamespaces = new Set();
-    for (const statement of sourceFile.statements.filter(ts.isImportDeclaration)) {
-      if (!ts.isStringLiteralLike(statement.moduleSpecifier)
-          || statement.moduleSpecifier.text !== '@nestjs/common'
-          || !statement.importClause
-          || !statement.importClause.namedBindings) continue;
-      const bindings = statement.importClause.namedBindings;
-      if (ts.isNamespaceImport(bindings)) {
-        nestNamespaces.add(bindings.name.text);
-        continue;
-      }
-      for (const element of bindings.elements) {
-        const imported = element.propertyName ? element.propertyName.text : element.name.text;
-        if (imported === 'forwardRef') forwardRefBindings.add(element.name.text);
-        if (imported === 'Global') globalBindings.add(element.name.text);
-      }
-    }
-    const nestCall = (expression, namedBindings, property) => (
-      (ts.isIdentifier(expression) && namedBindings.has(expression.text))
-      || (ts.isPropertyAccessExpression(expression)
-        && ts.isIdentifier(expression.expression)
-        && nestNamespaces.has(expression.expression.text)
-        && expression.name.text === property)
-    );
+  const relativePaths = listPlainFiles(repositoryRoot, 'backend/src')
+    .filter((relativePath) => relativePath.endsWith('.ts'));
+  const rootNames = relativePaths.map(
+    (relativePath) => path.join(repositoryRoot, ...relativePath.split('/')),
+  );
+  const program = ts.createProgram({
+    rootNames,
+    options: {
+      experimentalDecorators: true,
+      module: ts.ModuleKind.CommonJS,
+      noLib: true,
+      noResolve: true,
+      target: ts.ScriptTarget.Latest,
+    },
+  });
+  const checker = program.getTypeChecker();
+  for (const [index, relativePath] of relativePaths.entries()) {
+    const sourceFile = program.getSourceFile(rootNames[index]);
+    if (!sourceFile) throw new Error('R7 strict Nest source program drift detected');
     const visit = (node) => {
-      if (ts.isCallExpression(node)) {
-        if (nestCall(node.expression, forwardRefBindings, 'forwardRef')) forwardRef += 1;
-        if (nestCall(node.expression, globalBindings, 'Global')) globalModules.push(relativePath);
+      if (ts.isCallExpression(node)
+          && isNestCommonMember(node.expression, 'forwardRef', checker)) {
+        forwardRef += 1;
+      }
+      if (ts.isDecorator(node)
+          && ts.isCallExpression(node.expression)
+          && isNestCommonMember(node.expression.expression, 'Global', checker)) {
+        globalModules.push(relativePath);
       }
       ts.forEachChild(node, visit);
     };
@@ -2012,7 +2183,7 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
     const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
     const inspectSpecifier = (specifier) => {
       if (typeof specifier !== 'string') return;
-      const resolved = resolvedImportPath(relativePath, specifier);
+      const resolved = resolvedImportPath(repositoryRoot, relativePath, specifier);
       if (resolved && protectedPrefixes.some((prefix) => resolved.startsWith(prefix))) {
         throw new Error('R7 cross-context runtime import enters Collaboration internal or api');
       }
@@ -2021,7 +2192,7 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
       if (ts.isImportDeclaration(statement) && !isTypeOnlyImport(statement)
           && ts.isStringLiteralLike(statement.moduleSpecifier)) {
         inspectSpecifier(statement.moduleSpecifier.text);
-      } else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly
+      } else if (ts.isExportDeclaration(statement) && !isTypeOnlyExport(statement)
           && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
         inspectSpecifier(statement.moduleSpecifier.text);
       } else if (ts.isImportEqualsDeclaration(statement)

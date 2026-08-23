@@ -640,6 +640,33 @@ test('R7 rejects TypeScript import-equals access to Collaboration internals', ()
   }
 });
 
+test('R7 permits type-only TypeScript import-equals access without opening runtime access', () => {
+  const fixture = stagedFixture('design');
+  try {
+    const consumer = path.join(fixture.root, 'backend', 'src', 'tasks', 'type-consumer.ts');
+    mkdirSync(path.dirname(consumer), { recursive: true });
+    writeFileSync(
+      consumer,
+      'import type contract = require("../modules/collaboration/internal/contract");\ntype Contract = contract.Value;\n',
+      'utf8',
+    );
+    assert.deepEqual(scanner().scanR7CollaborationRelocation({
+      repositoryRoot: fixture.root,
+      manifest: fixture.value,
+    }), {
+      ok: true,
+      stage: 'design',
+      sourceFiles: 18,
+      targetFiles: 0,
+      dependencyRecords: 31,
+      ownershipRecords: 385,
+      ownershipOccurrences: 781,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('R7 freezes the public snapshot contract and every historical handoff', () => {
   const value = scanner().validateR7Manifest(manifest());
   assert.deepEqual(value.publicSnapshotContract, {

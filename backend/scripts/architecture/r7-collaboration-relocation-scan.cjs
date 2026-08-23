@@ -929,6 +929,7 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
           && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
         inspectSpecifier(statement.moduleSpecifier.text);
       } else if (ts.isImportEqualsDeclaration(statement)
+          && !statement.isTypeOnly
           && ts.isExternalModuleReference(statement.moduleReference)
           && statement.moduleReference.expression
           && ts.isStringLiteralLike(statement.moduleReference.expression)) {

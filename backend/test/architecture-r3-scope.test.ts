@@ -35,6 +35,7 @@ type ScopeModule = {
   R4_ALLOWED_PATHS: readonly string[];
   R5_ALLOWED_PATHS: readonly string[];
   R6_ALLOWED_PATHS: readonly string[];
+  R7_ALLOWED_PATHS: readonly string[];
   assertAllowedPathsMatch(manifestPaths: unknown, scopePaths: unknown): void;
   writeAtomicJson(
     reportPath: string,
@@ -303,7 +304,8 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
     delegatedPostR3Paths.filter((entry: string) =>
       !scope().R4_ALLOWED_PATHS.includes(entry)
       && !scope().R5_ALLOWED_PATHS.includes(entry)
-      && !scope().R6_ALLOWED_PATHS.includes(entry)),
+      && !scope().R6_ALLOWED_PATHS.includes(entry)
+      && !scope().R7_ALLOWED_PATHS.includes(entry)),
     [],
     'post-R3 paths must be delegated through an exact approved phase fence',
   );

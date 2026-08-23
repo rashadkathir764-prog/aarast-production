@@ -6,6 +6,29 @@ This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
 
+## Modular Monolith R7 Design Approved - 2026-08-23
+
+R7 design is owner-approved on branch `modular-monolith` from immutable R6
+closeout `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`. The approved design is
+`docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md`.
+Implementation planning is next; no Collaboration application source has moved.
+
+The design-stage R7 manifest and scanner freeze the exhaustive 18-file move,
+the four final public snapshot exports, four constructor-consumer handoffs, two
+controller/decorator source handoffs, exact nine retired dependency keys,
+31-to-22 dependency arithmetic, and path-only ownership projection for 28
+records / 80 occurrences inside the unchanged 385 / 781 total. The existing
+optional `SharingService` realtime dependency remains optional at constructor
+index 5 with unchanged undefined behavior. R3 delegates only the separately
+validated exact R7 fence; completed R3-R6 allowlists remain immutable.
+
+Independent design review findings were corrected before planning: the live
+architecture gate is green, historical evidence is separated from the future
+live R7 baseline, scanner reconciliation is atomic with each move, all four
+builder exports are named, and phone invitation cleanup is mandatory. No push,
+merge, PR mutation, deployment, remote CI, real-recipient delivery, or R8 work
+is authorized or claimed.
+
 ## Modular Monolith R6 Local Completion - 2026-08-23
 
 R6 is locally complete on branch `modular-monolith` from immutable completed-R5
@@ -53,8 +76,8 @@ number, OTP, invitation token, raw body, or business value was retained.
 
 R6 is a local completion only. No push, merge, PR mutation, deployment, or
 remote CI is claimed. External Meta/OpenWA production activation is outside
-this architecture phase. R7 has not started and requires a separate design and
-owner approval.
+this architecture phase. R7 design is approved; implementation planning is
+pending and implementation has not started.
 
 ## Modular Monolith R5 Local Completion - 2026-08-22
 

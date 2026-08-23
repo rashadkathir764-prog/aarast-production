@@ -212,8 +212,14 @@ and deployment artifacts.
   delivery, credential, token, phone, OTP, raw body, or business value is
   claimed or retained.
 - R6 is locally complete only. External Meta/OpenWA activation remains outside
-  scope. R7 has not started; push, merge, PR mutation, deployment, and remote CI
-  are not claimed.
+  scope. R7 design is approved; implementation planning is pending and no
+  Collaboration source has moved. Push, merge, PR mutation, deployment, and
+  remote CI are not claimed.
+- R7 design governance is executable: `npm run architecture:r7` must report
+  design stage with 18 legacy sources and zero final targets, exact 31/385/781
+  baseline evidence, nine dependency handoffs, and 28/80 ownership projection.
+  The cumulative `npm run architecture` gate must also pass before the writing
+  plan may be approved.
 
 ## Modular Monolith R3 Closeout Gates
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -32,6 +32,7 @@ type Checker = {
   assertMergeBehavior: (deepmerge: (left: JsonRecord, right: JsonRecord) => JsonRecord) => void;
   checkPrismaConfigMergeSecurity: (options?: { backendRoot?: string }) => Promise<unknown>;
   fingerprintPlainJson: (value: unknown) => string;
+  projectR7ArchitectureScripts: (value: unknown) => JsonRecord;
   runCli: (options: {
     argv: string[];
     backendRoot?: string;
@@ -119,6 +120,37 @@ test('accepts only the exact patched Prisma config merge graph', () => {
     patchedLock(),
     fixtureGraphOptions(checker),
   ));
+});
+
+test('R7 architecture delegation projects exactly to the pinned R6 package graph', () => {
+  const checker = loadChecker();
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const projected = checker.projectR7ArchitectureScripts(packageJson);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected.scripts as JsonRecord, 'architecture:r7'),
+    false,
+  );
+  assert.equal(
+    (projected.scripts as JsonRecord).architecture,
+    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6',
+  );
+  assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
+
+  const mutations = [structuredClone(packageJson), structuredClone(packageJson), structuredClone(packageJson)];
+  (mutations[0].scripts as JsonRecord)['architecture:r7'] = 'node scripts/attacker.cjs';
+  delete (mutations[1].scripts as JsonRecord)['architecture:r7'];
+  (mutations[2].scripts as JsonRecord).architecture =
+    'npm run architecture:imports && npm run architecture:r7';
+  for (const mutation of mutations) {
+    assert.throws(
+      () => checker.validatePackageGraph(
+        checker.projectR7ArchitectureScripts(mutation),
+        packageLock,
+      ),
+      new RegExp(checker.SECURITY_FAILURE, 'u'),
+    );
+  }
 });
 
 test('rejects missing, ranged, downgraded, duplicated, and non-registry resolutions', () => {

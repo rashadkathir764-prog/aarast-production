@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R6 Locally Complete
+### P3 — Source Quality And Architecture — R6 Locally Complete; R7 Design Approved
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -442,8 +442,25 @@ Completed R6 execution plan:
   protected surfaces, immutable runtime, and the authenticated phone
   sharing/restore journey passed. OpenWA remained disabled; no real-recipient
   delivery is claimed. R5 remains stopped and preserved for rollback.
-- R6 is locally complete. R7 has not started; push, merge, PR mutation,
+- R6 is locally complete. R7 design is approved; implementation planning is
+  pending and application relocation has not started. Push, merge, PR mutation,
   deployment, and remote CI are not claimed.
+
+#### R7 — Collaboration Physical Relocation — Design Approved
+
+- Immutable base: `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`.
+- Approved design:
+  `docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md`.
+- The design-stage R7 governance contract freezes the exact 18 source/target
+  pairs, 114-path maximum change fence, four public builder exports, four DI
+  handoffs, two controller/decorator handoffs, exact nine dependency debts, and
+  28-record/80-occurrence ownership path projection.
+- Historical R3-R6 scanners remain phase evidence. Scanner/path reconciliation
+  must occur atomically with each corresponding R7 move; R7 alone certifies the
+  live final paths and 22 dependency records.
+- Implementation plan writing is next. Application relocation, runtime cutover,
+  phone QA, closeout, R8, push, merge, PR mutation, deployment, and remote CI
+  have not started and are not implied by design approval.
 
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
@@ -454,8 +471,9 @@ immutable base for R6 planning.
 The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
-The numbered P3 modernization work below remains subordinate to the approved
-R6 completion receipts. R7 and later-phase work must not move forward early.
+The numbered P3 modernization work below remains subordinate to the completed
+R6 receipts and the approved R7 design. R7 implementation must not start before
+its owner-approved writing plan; R8 and later work must not move forward early.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "31ea5324007fc71fa4b3590fbb98a454ee1deaa7",
+  "stage": "design",
+  "moves": [
+    {
+      "from": "backend/src/contribution-history/contribution-history.contracts.ts",
+      "to": "backend/src/modules/collaboration/internal/contribution-history.contracts.ts"
+    },
+    {
+      "from": "backend/src/contribution-history/contribution-history.controller.ts",
+      "to": "backend/src/modules/collaboration/api/contribution-history.controller.ts"
+    },
+    {
+      "from": "backend/src/contribution-history/contribution-history.service.ts",
+      "to": "backend/src/modules/collaboration/internal/contribution-history.service.ts"
+    },
+    {
+      "from": "backend/src/contribution-history/contribution-snapshot.builder.ts",
+      "to": "backend/src/modules/collaboration/public/contribution-snapshot.builder.ts"
+    },
+    {
+      "from": "backend/src/contribution-history/contributor-scope.service.ts",
+      "to": "backend/src/modules/collaboration/internal/contributor-scope.service.ts"
+    },
+    {
+      "from": "backend/src/contribution-history/dto/list-contributions.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/list-contributions.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/dto/create-plan-invite.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/create-plan-invite.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/dto/create-shared-member.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/create-shared-member.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/dto/leave-plan.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/leave-plan.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/dto/request-invite-otp.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/request-invite-otp.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/dto/update-shared-member.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/update-shared-member.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/dto/verify-invite-otp.dto.ts",
+      "to": "backend/src/modules/collaboration/api/dto/verify-invite-otp.dto.ts"
+    },
+    {
+      "from": "backend/src/sharing/invitation-delivery.service.ts",
+      "to": "backend/src/modules/collaboration/internal/invitation-delivery.service.ts"
+    },
+    {
+      "from": "backend/src/sharing/invite-access.service.ts",
+      "to": "backend/src/modules/collaboration/internal/invite-access.service.ts"
+    },
+    {
+      "from": "backend/src/sharing/permission.service.ts",
+      "to": "backend/src/modules/collaboration/internal/permission.service.ts"
+    },
+    {
+      "from": "backend/src/sharing/plan-permissions.ts",
+      "to": "backend/src/modules/collaboration/internal/plan-permissions.ts"
+    },
+    {
+      "from": "backend/src/sharing/sharing.controller.ts",
+      "to": "backend/src/modules/collaboration/api/sharing.controller.ts"
+    },
+    {
+      "from": "backend/src/sharing/sharing.service.ts",
+      "to": "backend/src/modules/collaboration/internal/sharing.service.ts"
+    }
+  ],
+  "publicSnapshotContract": {
+    "path": "backend/src/modules/collaboration/public/contribution-snapshot.builder.ts",
+    "exports": [
+      "buildContributionSnapshot",
+      "canonicalJson",
+      "hashContributionSnapshot",
+      "validateContributionSnapshot"
+    ]
+  },
+  "historicalHandoffs": {
+    "constructorConsumers": [
+      {
+        "from": "backend/src/sharing/invitation-delivery.service.ts",
+        "to": "backend/src/modules/collaboration/internal/invitation-delivery.service.ts",
+        "consumerClass": "InvitationDeliveryService",
+        "parameter": "transientDelivery",
+        "parameterIndex": 0,
+        "token": "IDENTITY_TRANSIENT_DELIVERY_PORT"
+      },
+      {
+        "from": "backend/src/sharing/invite-access.service.ts",
+        "to": "backend/src/modules/collaboration/internal/invite-access.service.ts",
+        "consumerClass": "InviteAccessService",
+        "parameter": "auth",
+        "parameterIndex": 1,
+        "token": "IDENTITY_AUTH_PORT"
+      },
+      {
+        "from": "backend/src/sharing/sharing.service.ts",
+        "to": "backend/src/modules/collaboration/internal/sharing.service.ts",
+        "consumerClass": "SharingService",
+        "parameter": "notifications",
+        "parameterIndex": 2,
+        "token": "NOTIFICATIONS_PORT"
+      },
+      {
+        "from": "backend/src/sharing/sharing.service.ts",
+        "to": "backend/src/modules/collaboration/internal/sharing.service.ts",
+        "consumerClass": "SharingService",
+        "parameter": "realtime",
+        "parameterIndex": 5,
+        "token": "MESSAGING_REALTIME_PORT"
+      }
+    ],
+    "controllerSources": [
+      {
+        "from": "backend/src/contribution-history/contribution-history.controller.ts",
+        "to": "backend/src/modules/collaboration/api/contribution-history.controller.ts"
+      },
+      {
+        "from": "backend/src/sharing/sharing.controller.ts",
+        "to": "backend/src/modules/collaboration/api/sharing.controller.ts"
+      }
+    ],
+    "retiredDependencyKeys": [
+      "context-finance-cross-context|src/budget-categories/budget-categories.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-finance-cross-context|src/wedding-costs/wedding-costs.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-guests-cross-context|src/guests/guests.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-offer-acceptance.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-offer-rejection.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-request-cancellation.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-marketplace-cross-context|src/marketplace/quote-request-creation.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-planning-cross-context|src/wedding-plans/wedding-plans.service.ts|src/contribution-history/contribution-snapshot.builder.ts",
+      "context-tasks-cross-context|src/tasks/tasks.service.ts|src/contribution-history/contribution-snapshot.builder.ts"
+    ],
+    "ownershipProjection": [
+      {
+        "from": "backend/src/contribution-history/contribution-history.service.ts",
+        "to": "backend/src/modules/collaboration/internal/contribution-history.service.ts",
+        "records": 5,
+        "occurrences": 7
+      },
+      {
+        "from": "backend/src/sharing/invite-access.service.ts",
+        "to": "backend/src/modules/collaboration/internal/invite-access.service.ts",
+        "records": 1,
+        "occurrences": 1
+      },
+      {
+        "from": "backend/src/sharing/permission.service.ts",
+        "to": "backend/src/modules/collaboration/internal/permission.service.ts",
+        "records": 2,
+        "occurrences": 6
+      },
+      {
+        "from": "backend/src/sharing/sharing.service.ts",
+        "to": "backend/src/modules/collaboration/internal/sharing.service.ts",
+        "records": 20,
+        "occurrences": 66
+      }
+    ]
+  },
+  "frozenOptionalDependencies": [
+    {
+      "from": "backend/src/sharing/sharing.service.ts",
+      "to": "backend/src/modules/collaboration/internal/sharing.service.ts",
+      "consumerClass": "SharingService",
+      "parameter": "realtime",
+      "parameterIndex": 5,
+      "token": "MESSAGING_REALTIME_PORT",
+      "optional": true,
+      "undefinedBehavior": "unchanged"
+    }
+  ],
+  "expectedBaselines": {
+    "baseDependencyRecords": 31,
+    "retiredDependencyRecords": 9,
+    "strictDependencyRecords": 22,
+    "baseOwnershipRecords": 385,
+    "baseOwnershipOccurrences": 781,
+    "projectedOwnershipRecords": 28,
+    "projectedOwnershipOccurrences": 80,
+    "strictOwnershipRecords": 385,
+    "strictOwnershipOccurrences": 781
+  },
+  "allowedChangedPaths": [
+    "ARCHITECTURE.md",
+    "CHANGELOG.md",
+    "backend/.dependency-cruiser-known-violations.json",
+    "backend/architecture/ownership-baseline.json",
+    "backend/architecture/r3-context-boundaries.json",
+    "backend/architecture/r7-collaboration-relocation.json",
+    "backend/package.json",
+    "backend/scripts/architecture/r3-context-scan.cjs",
+    "backend/scripts/architecture/r3-scope.cjs",
+    "backend/scripts/architecture/r5-identity-scan.cjs",
+    "backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs",
+    "backend/scripts/architecture/r7-collaboration-relocation-scan.cjs",
+    "backend/scripts/security/prisma-config-merge-security.cjs",
+    "backend/scripts/smoke/phase2-auth-lifecycle-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-conversation-revocation-smoke.ts",
+    "backend/scripts/smoke/phase2-marketplace-write-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-money-authorization-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-notification-authorization-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-notification-preferences-smoke.ts",
+    "backend/scripts/smoke/phase2-plan-permission-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-quote-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-sharing-permission-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase2-task-guest-permission-concurrency-smoke.ts",
+    "backend/scripts/smoke/phase3-context-transition-smoke.ts",
+    "backend/src/budget-categories/budget-categories.service.ts",
+    "backend/src/contribution-history/contribution-history.contracts.ts",
+    "backend/src/contribution-history/contribution-history.controller.ts",
+    "backend/src/contribution-history/contribution-history.service.ts",
+    "backend/src/contribution-history/contribution-snapshot.builder.ts",
+    "backend/src/contribution-history/contributor-scope.service.ts",
+    "backend/src/contribution-history/dto/list-contributions.dto.ts",
+    "backend/src/guests/guests.service.ts",
+    "backend/src/marketplace/quote-offer-acceptance.ts",
+    "backend/src/marketplace/quote-offer-rejection.ts",
+    "backend/src/marketplace/quote-request-cancellation.ts",
+    "backend/src/marketplace/quote-request-creation.ts",
+    "backend/src/modules/collaboration/api/contribution-history.controller.ts",
+    "backend/src/modules/collaboration/api/dto/create-plan-invite.dto.ts",
+    "backend/src/modules/collaboration/api/dto/create-shared-member.dto.ts",
+    "backend/src/modules/collaboration/api/dto/leave-plan.dto.ts",
+    "backend/src/modules/collaboration/api/dto/list-contributions.dto.ts",
+    "backend/src/modules/collaboration/api/dto/request-invite-otp.dto.ts",
+    "backend/src/modules/collaboration/api/dto/update-shared-member.dto.ts",
+    "backend/src/modules/collaboration/api/dto/verify-invite-otp.dto.ts",
+    "backend/src/modules/collaboration/api/sharing.controller.ts",
+    "backend/src/modules/collaboration/collaboration.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-history.internal.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-permission.internal.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-scope.internal.module.ts",
+    "backend/src/modules/collaboration/internal/collaboration-services.internal.module.ts",
+    "backend/src/modules/collaboration/internal/contribution-history.contracts.ts",
+    "backend/src/modules/collaboration/internal/contribution-history.service.ts",
+    "backend/src/modules/collaboration/internal/contributor-scope.service.ts",
+    "backend/src/modules/collaboration/internal/invitation-delivery.service.ts",
+    "backend/src/modules/collaboration/internal/invite-access.service.ts",
+    "backend/src/modules/collaboration/internal/permission.service.ts",
+    "backend/src/modules/collaboration/internal/plan-permissions.ts",
+    "backend/src/modules/collaboration/internal/sharing.service.ts",
+    "backend/src/modules/collaboration/public/contribution-snapshot.builder.ts",
+    "backend/src/sharing/dto/create-plan-invite.dto.ts",
+    "backend/src/sharing/dto/create-shared-member.dto.ts",
+    "backend/src/sharing/dto/leave-plan.dto.ts",
+    "backend/src/sharing/dto/request-invite-otp.dto.ts",
+    "backend/src/sharing/dto/update-shared-member.dto.ts",
+    "backend/src/sharing/dto/verify-invite-otp.dto.ts",
+    "backend/src/sharing/invitation-delivery.service.ts",
+    "backend/src/sharing/invite-access.service.ts",
+    "backend/src/sharing/permission.service.ts",
+    "backend/src/sharing/plan-permissions.ts",
+    "backend/src/sharing/sharing.controller.ts",
+    "backend/src/sharing/sharing.service.ts",
+    "backend/src/tasks/tasks.service.ts",
+    "backend/src/wedding-costs/wedding-costs.service.ts",
+    "backend/src/wedding-plans/wedding-plans.service.ts",
+    "backend/test/architecture-r1-layout.test.ts",
+    "backend/test/architecture-r3-closure.test.ts",
+    "backend/test/architecture-r3-collaboration-ports.test.ts",
+    "backend/test/architecture-r3-composition.test.ts",
+    "backend/test/architecture-r3-contexts.test.ts",
+    "backend/test/architecture-r3-identity-port.test.ts",
+    "backend/test/architecture-r3-notifications-port.test.ts",
+    "backend/test/architecture-r3-scope.test.ts",
+    "backend/test/architecture-r4-planning-finance-boundary.test.ts",
+    "backend/test/architecture-r5-identity-relocation.test.ts",
+    "backend/test/architecture-r6-sharing-otp-transport.test.ts",
+    "backend/test/architecture-r7-collaboration-relocation.test.ts",
+    "backend/test/archived-plan-lifecycle.test.ts",
+    "backend/test/contexts.test.ts",
+    "backend/test/contribution-history-dedupe.test.ts",
+    "backend/test/contribution-history-freeze.test.ts",
+    "backend/test/contribution-history-list-consistency.test.ts",
+    "backend/test/contribution-history-privacy.test.ts",
+    "backend/test/contributor-live-read-boundary.test.ts",
+    "backend/test/contributor-permission-authority.test.ts",
+    "backend/test/contributor-task-guest-scope.test.ts",
+    "backend/test/invite-delivery.test.ts",
+    "backend/test/notification-logic.test.ts",
+    "backend/test/plan-permissions.test.ts",
+    "backend/test/prisma-config-merge-security.test.ts",
+    "backend/test/sharing-member-scope.test.ts",
+    "backend/test/sharing-permission-ceiling.test.ts",
+    "backend/test/sharing-reinvite-authority.test.ts",
+    "backend/test/sharing-self-leave.test.ts",
+    "docs/README.md",
+    "docs/SCRIPTS.md",
+    "docs/backend/README.md",
+    "docs/project/DECISIONS.md",
+    "docs/project/EXECUTION_PLAN.md",
+    "docs/project/STATUS.md",
+    "docs/qa/README.md",
+    "docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation-completion.md",
+    "docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md",
+    "docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-completion.md",
+    "docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md"
+  ]
+}

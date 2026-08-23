@@ -62,8 +62,8 @@ R7 forbids:
 
 - old-path re-exports, barrels, facades, symlinks, junctions, or build shims;
 - parallel old/new implementations;
-- fallback imports, optional/default constructor dependencies, or local token
-  lookalikes;
+- new relocation-related fallback imports, new optional/default constructor
+  dependencies, or new local token lookalikes;
 - wrappers whose only purpose is temporary compatibility;
 - blind baseline regeneration;
 - a new baseline exception for any edge that R7 moves;
@@ -73,6 +73,12 @@ R7 forbids:
 Test fixtures and staged manifests are verification infrastructure, not runtime
 compatibility. They may not be imported by product source or packaged into the
 runtime image.
+
+The existing `SharingService` realtime dependency is deliberately frozen, not
+forbidden: `MESSAGING_REALTIME_PORT`, constructor parameter `realtime`, index
+5, remains decorated with `@Optional()` and keeps the exact current behavior
+when the dependency is `undefined`. R7 may neither remove that optionality nor
+introduce another optional/default dependency.
 
 ## Chosen Architecture
 
@@ -86,8 +92,10 @@ slices:
 
 The public contribution-snapshot builder is a final boundary, not a bridge.
 Nine real callers across five contexts need its canonical privacy/sanitization
-behavior. It remains one stateless implementation with the same four exports,
-validation, limits, hashes, exception types, and messages. It may depend only
+behavior. It remains one stateless implementation with the exact exports
+`buildContributionSnapshot`, `canonicalJson`, `hashContributionSnapshot`, and
+`validateContributionSnapshot`, plus the same validation, limits, hashes,
+exception types, and messages. It may depend only
 on its current runtime primitives (`node:crypto`, the Nest bad-request
 exception, and Prisma enums/JSON types). It must not depend on a Collaboration
 internal/API path, a Nest provider, `PrismaService`, or database access.
@@ -159,6 +167,43 @@ base, or let an arbitrary future path pass. The R7 strict scanner becomes the
 authority for the current physical layout while the earlier scanners continue
 to prove their own phase contracts.
 
+The handoff is machine-readable in
+`backend/architecture/r7-collaboration-relocation.json`. R3 delegates the exact
+R7 path fence through that separately validated manifest; immutable R3-R6
+allowlists are not widened or rewritten. The design-stage fence contains the
+approved design and the exact future R7 change surface only.
+
+The four moved constructor-consumer identities are exact:
+
+| Current consumer | Final consumer | Parameter | Index | Token |
+| --- | --- | --- | ---: | --- |
+| `sharing/invitation-delivery.service.ts#InvitationDeliveryService` | `modules/collaboration/internal/invitation-delivery.service.ts#InvitationDeliveryService` | `transientDelivery` | 0 | `IDENTITY_TRANSIENT_DELIVERY_PORT` |
+| `sharing/invite-access.service.ts#InviteAccessService` | `modules/collaboration/internal/invite-access.service.ts#InviteAccessService` | `auth` | 1 | `IDENTITY_AUTH_PORT` |
+| `sharing/sharing.service.ts#SharingService` | `modules/collaboration/internal/sharing.service.ts#SharingService` | `notifications` | 2 | `NOTIFICATIONS_PORT` |
+| `sharing/sharing.service.ts#SharingService` | `modules/collaboration/internal/sharing.service.ts#SharingService` | `realtime` | 5 | `MESSAGING_REALTIME_PORT` |
+
+The two decorator/controller source identities move exactly from
+`contribution-history/contribution-history.controller.ts` to
+`modules/collaboration/api/contribution-history.controller.ts` and from
+`sharing/sharing.controller.ts` to
+`modules/collaboration/api/sharing.controller.ts`. Their class, method, route,
+guard, and `CurrentUser` inventories remain otherwise identical.
+
+The same manifest pins all nine retired dependency keys and this ownership
+projection:
+
+| Current source | Final source | Records | Occurrences |
+| --- | --- | ---: | ---: |
+| `contribution-history/contribution-history.service.ts` | `modules/collaboration/internal/contribution-history.service.ts` | 5 | 7 |
+| `sharing/invite-access.service.ts` | `modules/collaboration/internal/invite-access.service.ts` | 1 | 1 |
+| `sharing/permission.service.ts` | `modules/collaboration/internal/permission.service.ts` | 2 | 6 |
+| `sharing/sharing.service.ts` | `modules/collaboration/internal/sharing.service.ts` | 20 | 66 |
+
+That is exactly 28 records / 80 occurrences inside the unchanged 385 / 781
+ownership total. The nine dependency keys are evidence at the immutable R5/R6
+revision and must be absent from the live R7 baseline; only R7 may certify the
+live 22-record result.
+
 ## Runtime And Data-Flow Invariants
 
 The runtime flow remains:
@@ -202,16 +247,22 @@ phase and is not implied by R7.
 
 Implementation uses clean local checkpoints on the same branch:
 
-1. freeze R7 base, exact fate map, protected surfaces, route/provider identity,
-   behavior hashes, dependency/ownership projections, and adversarial cases;
+1. freeze R7 base, exact fate map, exact scope delegation, protected surfaces,
+   route/provider identity, behavior hashes, dependency/ownership projections,
+   and adversarial cases;
 2. relocate the final public contribution-snapshot contract and update its nine
-   cross-context consumers;
+   cross-context consumers in the same checkpoint that removes the exact nine
+   live dependency records, freezes R5/R6 evidence to their immutable
+   revision/hash, and makes R7 alone certify the live 22-record baseline;
 3. relocate Contribution History API/internal source and rewire its existing
-   modules;
-4. relocate Sharing API/internal source and rewire its existing modules;
-5. delete the now-empty legacy roots and reconcile R3-R6 historical handoffs,
-   the dependency baseline, ownership paths, generated script docs, and R7
-   strict stage;
+   modules in the same checkpoint as its exact R3 decorator-source and
+   ownership projections;
+4. relocate Sharing API/internal source and rewire its existing modules in the
+   same checkpoint as the four exact R3/R6 constructor handoffs, the second
+   decorator-source handoff, and the remaining ownership projections;
+5. delete the now-empty legacy roots, confirm every historical scanner proves
+   its frozen phase revision while R7 proves the live final paths, reconcile
+   generated script docs, and promote R7 to strict;
 6. run exhaustive candidate verification and an independent diff/architecture
    review, correcting only proved root causes within the approved scope;
 7. build an immutable image, probe, cut over locally, preserve the stopped R6
@@ -246,6 +297,14 @@ New R7 tests must prove at minimum:
 - protected schema, migration, seed, package-lock, Mobile, Admin, workflow,
   Compose, Docker, and deployment surfaces unchanged;
 - historical R3-R6 gates remain strict rather than silently reset.
+
+The design-stage scanner parses the live TypeScript sources with the compiler
+AST. It rejects drift in the four public exports, their three allowed package
+imports, constructor class/parameter/index/token/optionality contracts, and the
+two controller class/method/route/guard/parameter-decorator inventories. The
+114-path fence includes the three live R3 tests whose path literals must move
+mechanically, and excludes generic dependency-cruiser and ownership-scanner
+implementations because their existing rules already cover Collaboration.
 
 ## Verification And Acceptance
 
@@ -293,7 +352,8 @@ R7 LAN endpoint, then exercise:
 3. creation of a local synthetic invitation;
 4. invitation reissue after the existing cooldown;
 5. related member/invitation/permission reads;
-6. safe local invitation cleanup where the current UI/API permits it;
+6. cancel the synthetic invitation through the existing API route and verify a
+   post-cleanup read no longer returns it; cleanup failure fails the phone gate;
 7. full force-close and reopen;
 8. restored dashboard/session and sharing state.
 

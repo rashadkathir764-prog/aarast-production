@@ -411,7 +411,7 @@ test('R6 package scripts expose the standalone gate and keep every prior gate', 
   );
   assert.equal(
     packageJson.scripts.architecture,
-    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6',
+    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7',
   );
 });
 

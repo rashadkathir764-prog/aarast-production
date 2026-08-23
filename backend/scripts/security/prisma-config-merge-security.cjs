@@ -51,6 +51,11 @@ const PINNED_PACKAGE_JSON_SHA256 =
   'd9503a604c4ffb3e63a6faa3b25478a2a4fd766883bcfa2927fccb31fbd2dad7';
 const PINNED_PACKAGE_LOCK_SHA256 =
   '46ba2e49c063229aa498112f735f09f7538d6b1e01a0986fec57643d02b586bf';
+const R6_ARCHITECTURE_SCRIPT =
+  'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6';
+const R7_ARCHITECTURE_SCRIPT = R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
+const R7_STANDALONE_SCRIPT =
+  'node scripts/architecture/r7-collaboration-relocation-scan.cjs --check';
 const SECURITY_FAILURE = 'invalid Prisma config merge security state';
 const MAX_DEPTH = 32;
 const MAX_PROPERTIES = 100_000;
@@ -147,6 +152,19 @@ function canonicalJson(value) {
 function fingerprintPlainJson(value) {
   assertDeepPlainData(value);
   return crypto.createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
+
+function projectR7ArchitectureScripts(value) {
+  assertDeepPlainData(value);
+  const packageJson = plainRecord(value);
+  const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  if (!hasOwn(scripts, 'architecture:r7')) return packageJson;
+  if (ownValue(scripts, 'architecture:r7') !== R7_STANDALONE_SCRIPT
+      || ownValue(scripts, 'architecture') !== R7_ARCHITECTURE_SCRIPT) fail();
+  const projectedScripts = { ...scripts };
+  delete projectedScripts['architecture:r7'];
+  projectedScripts.architecture = R6_ARCHITECTURE_SCRIPT;
+  return { ...packageJson, scripts: projectedScripts };
 }
 
 function validatePackageGraph(
@@ -666,7 +684,7 @@ async function checkPrismaConfigMergeSecurity({ backendRoot = path.resolve(__dir
   try {
     const canonicalBackendRoot = fs.realpathSync(path.resolve(backendRoot));
     const packageProof = validatePackageGraph(
-      readJson(path.join(canonicalBackendRoot, 'package.json')),
+      projectR7ArchitectureScripts(readJson(path.join(canonicalBackendRoot, 'package.json'))),
       readJson(path.join(canonicalBackendRoot, 'package-lock.json')),
     );
     const installed = resolveLiveInstalledGraph(canonicalBackendRoot);
@@ -710,6 +728,7 @@ module.exports = {
   assertInstalledMergeBehavior,
   assertMergeBehavior,
   checkPrismaConfigMergeSecurity,
+  projectR7ArchitectureScripts,
   fingerprintPlainJson,
   loadRealPrismaConfig,
   runCli,

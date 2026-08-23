@@ -596,8 +596,8 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     'node scripts/architecture/r5-identity-scan.cjs --check',
   );
   assert.deepEqual(
-    packageJson.scripts.architecture.split(' && ').slice(-2),
-    ['npm run architecture:r5', 'npm run architecture:r6'],
+    packageJson.scripts.architecture.split(' && ').slice(-3),
+    ['npm run architecture:r5', 'npm run architecture:r6', 'npm run architecture:r7'],
   );
 
   const result = spawnSync(

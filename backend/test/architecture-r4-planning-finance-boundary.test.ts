@@ -77,6 +77,7 @@ type R3ScopeModule = {
   ALLOWED_PATHS: readonly string[];
   R5_ALLOWED_PATHS: readonly string[];
   R6_ALLOWED_PATHS: readonly string[];
+  R7_ALLOWED_PATHS: readonly string[];
   validateR3Scope(options: Record<string, unknown>): {
     changedPaths: readonly string[];
     reportPath: string;
@@ -255,6 +256,7 @@ test('live R4 paths stay inside the exact manifest fence with rename detection d
     ...manifest().allowedChangedPaths,
     ...r3Scope().R5_ALLOWED_PATHS,
     ...r3Scope().R6_ALLOWED_PATHS,
+    ...r3Scope().R7_ALLOWED_PATHS,
   ]);
   assert.deepEqual(changedPaths.filter((entry) => !allowed.has(entry)), []);
 });

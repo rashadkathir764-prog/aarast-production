@@ -357,8 +357,12 @@ const R5_ARCHITECTURE_SCRIPT =
   'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5';
 const R6_ARCHITECTURE_SCRIPT =
   R5_ARCHITECTURE_SCRIPT + ' && npm run architecture:r6';
+const R7_ARCHITECTURE_SCRIPT =
+  R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
 const R6_STANDALONE_SCRIPT =
   'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check';
+const R7_STANDALONE_SCRIPT =
+  'node scripts/architecture/r7-collaboration-relocation-scan.cjs --check';
 const R5_SECURITY_PACKAGE_JSON_SHA256 =
   '6db5c9fc4f6b6f7b3088cf351e61917d6dc62dfbeee6f816ffacb957f8d883ef';
 const R6_IDENTITY_MODULE_IMPORT =
@@ -370,14 +374,22 @@ function projectR6ArchitectureScriptsForR5Security(value) {
   assertDeepPlainData(value, 'R5 security package');
   const packageJson = plainObject(value, 'R5 security package');
   const scripts = plainObject(packageJson.scripts, 'R5 security package scripts');
-  if (!Object.prototype.hasOwnProperty.call(scripts, 'architecture:r6')) {
+  let projectedScripts = { ...scripts };
+  if (Object.prototype.hasOwnProperty.call(projectedScripts, 'architecture:r7')) {
+    if (projectedScripts['architecture:r7'] !== R7_STANDALONE_SCRIPT
+        || projectedScripts.architecture !== R7_ARCHITECTURE_SCRIPT) {
+      throw new Error('R5 security R7 architecture delegation is invalid');
+    }
+    delete projectedScripts['architecture:r7'];
+    projectedScripts.architecture = R6_ARCHITECTURE_SCRIPT;
+  }
+  if (!Object.prototype.hasOwnProperty.call(projectedScripts, 'architecture:r6')) {
     return packageJson;
   }
-  if (scripts['architecture:r6'] !== R6_STANDALONE_SCRIPT
-      || scripts.architecture !== R6_ARCHITECTURE_SCRIPT) {
+  if (projectedScripts['architecture:r6'] !== R6_STANDALONE_SCRIPT
+      || projectedScripts.architecture !== R6_ARCHITECTURE_SCRIPT) {
     throw new Error('R5 security R6 architecture delegation is invalid');
   }
-  const projectedScripts = { ...scripts };
   delete projectedScripts['architecture:r6'];
   projectedScripts.architecture = R5_ARCHITECTURE_SCRIPT;
   return {

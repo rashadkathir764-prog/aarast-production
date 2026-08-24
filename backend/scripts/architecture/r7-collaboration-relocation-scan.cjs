@@ -2072,12 +2072,15 @@ function isUnshadowedRuntimeGlobal(expression, expectedName, checker) {
   const symbol = checker.getSymbolAtLocation(current);
   return !symbol || (symbol.declarations || []).every(
     (declaration) => declaration.getSourceFile().isDeclarationFile
-      || declaration.getSourceFile() !== current.getSourceFile(),
+      || declaration.getSourceFile() !== current.getSourceFile()
+      || isAmbientDeclaration(declaration),
   );
 }
 
 function createSemanticValueResolver(checker) {
   const writeIndexes = new WeakMap();
+  const symbolIds = new WeakMap();
+  let nextSymbolId = 1;
 
   const nodePosition = (node) => node.getStart(node.getSourceFile());
   const expressionSymbol = (expression) => {
@@ -2087,6 +2090,38 @@ function createSemanticValueResolver(checker) {
         && !ts.isElementAccessExpression(current)) return null;
     return symbolAtExpression(current, checker);
   };
+  const symbolId = (symbol) => {
+    if (!symbolIds.has(symbol)) {
+      symbolIds.set(symbol, nextSymbolId);
+      nextSymbolId += 1;
+    }
+    return symbolIds.get(symbol);
+  };
+  const valuePath = (expression) => {
+    const current = unwrapExpression(expression);
+    if (ts.isIdentifier(current)) {
+      const symbol = expressionSymbol(current);
+      return symbol ? `symbol:${symbolId(symbol)}` : null;
+    }
+    if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+      const propertyName = accessedPropertyName(current);
+      if (propertyName === null) return null;
+      const receiver = valuePath(current.expression);
+      return receiver === null
+        ? null
+        : `${receiver}/property:${JSON.stringify(propertyName)}`;
+    }
+    return null;
+  };
+  const propertyValuePath = (receiver, propertyName) => {
+    const receiverPath = valuePath(receiver);
+    return receiverPath === null
+      ? null
+      : `${receiverPath}/property:${JSON.stringify(propertyName)}`;
+  };
+  const candidateKey = (expression) => (
+    valuePath(expression) || expressionSymbol(expression) || unwrapExpression(expression)
+  );
   const enclosingFunction = (node) => {
     let current = node.parent;
     while (current && !ts.isSourceFile(current)) {
@@ -2124,11 +2159,11 @@ function createSemanticValueResolver(checker) {
     const visit = (node) => {
       if (ts.isBinaryExpression(node)
           && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-        const symbol = expressionSymbol(node.left);
-        if (symbol) {
-          const writes = index.get(symbol) || [];
+        const key = valuePath(node.left);
+        if (key !== null) {
+          const writes = index.get(key) || [];
           writes.push(Object.freeze({ node, value: node.right }));
-          index.set(symbol, writes);
+          index.set(key, writes);
         }
       }
       ts.forEachChild(node, visit);
@@ -2140,18 +2175,19 @@ function createSemanticValueResolver(checker) {
     writeIndexes.set(sourceFile, index);
     return index;
   };
-  const relevantWrites = (symbol, useSite) => {
+  const relevantWrites = (key, useSite) => {
+    if (key === null) return [];
     const sourceFile = useSite.getSourceFile();
     const usePosition = nodePosition(useSite);
     const useFunction = enclosingFunction(useSite);
-    return (writeIndex(sourceFile).get(symbol) || []).filter((write) => (
+    return (writeIndex(sourceFile).get(key) || []).filter((write) => (
       nodePosition(write.node) < usePosition
       && enclosingFunction(write.node) === useFunction
     ));
   };
-  const applyWrites = (candidates, symbol, useSite) => {
+  const applyWrites = (candidates, key, useSite) => {
     let current = [...candidates];
-    for (const write of relevantWrites(symbol, useSite)) {
+    for (const write of relevantWrites(key, useSite)) {
       const candidate = Object.freeze({ expression: write.value, useSite: write.node });
       if (isSequentialOverwrite(write, useSite)) current = [candidate];
       else current.push(candidate);
@@ -2185,6 +2221,24 @@ function createSemanticValueResolver(checker) {
             seen,
           ));
         }
+        if (declaration.initializer) {
+          candidates.push(Object.freeze({
+            expression: declaration.initializer,
+            useSite: declaration,
+          }));
+        }
+      } else if (ts.isBindingElement(declaration)
+          && ts.isArrayBindingPattern(declaration.parent)
+          && ts.isVariableDeclaration(declaration.parent.parent)
+          && declaration.parent.parent.initializer
+          && !declaration.dotDotDotToken) {
+        const elementIndex = declaration.parent.elements.indexOf(declaration);
+        candidates.push(...arrayElementCandidates(
+          declaration.parent.parent.initializer,
+          elementIndex,
+          declaration,
+          seen,
+        ));
         if (declaration.initializer) {
           candidates.push(Object.freeze({
             expression: declaration.initializer,
@@ -2229,9 +2283,21 @@ function createSemanticValueResolver(checker) {
     }
     return candidates;
   };
+  const arrayElementCandidates = (expression, elementIndex, useSite, seen) => (
+    resolvedValues(expression, useSite, new Set(seen)).flatMap((candidate) => {
+      const current = unwrapExpression(candidate.expression);
+      if (!ts.isArrayLiteralExpression(current)) return [];
+      const element = current.elements[elementIndex];
+      if (!element || ts.isOmittedExpression(element)) return [];
+      return [Object.freeze({
+        expression: ts.isSpreadElement(element) ? element.expression : element,
+        useSite: element,
+      })];
+    })
+  );
   const resolvedValues = (expression, useSite, seen) => {
     const current = unwrapExpression(expression);
-    const key = expressionSymbol(current) || current;
+    const key = candidateKey(current);
     if (seen.has(key)) return [Object.freeze({ expression: current, useSite })];
     const nextSeen = new Set(seen);
     nextSeen.add(key);
@@ -2250,12 +2316,7 @@ function createSemanticValueResolver(checker) {
     propertyName,
     useSite,
     seen,
-    knownSymbol = null,
   ) => {
-    const propertySymbol = knownSymbol || resolveAlias(
-      checker.getTypeAtLocation(expression).getProperty(propertyName),
-      checker,
-    );
     const candidates = resolvedValues(expression, useSite, new Set(seen))
       .flatMap((candidate) => (
         ts.isObjectLiteralExpression(unwrapExpression(candidate.expression))
@@ -2266,26 +2327,47 @@ function createSemanticValueResolver(checker) {
           )
           : []
       ));
-    if (!propertySymbol) return candidates;
-    return applyWrites(candidates, propertySymbol, useSite);
+    return applyWrites(
+      candidates,
+      propertyValuePath(expression, propertyName),
+      useSite,
+    );
   };
   const immediateCandidates = (expression, useSite, seen) => {
     const current = unwrapExpression(expression);
+    if (ts.isConditionalExpression(current)) {
+      return [current.whenTrue, current.whenFalse].map((candidate) => Object.freeze({
+        expression: candidate,
+        useSite: current,
+      }));
+    }
+    if (ts.isBinaryExpression(current) && [
+      ts.SyntaxKind.AmpersandAmpersandToken,
+      ts.SyntaxKind.BarBarToken,
+      ts.SyntaxKind.QuestionQuestionToken,
+    ].includes(current.operatorToken.kind)) {
+      return [current.left, current.right].map((candidate) => Object.freeze({
+        expression: candidate,
+        useSite: current,
+      }));
+    }
     if (ts.isIdentifier(current)) {
       const symbol = expressionSymbol(current);
       if (!symbol) return [];
-      return applyWrites(declaredCandidates(symbol, useSite, seen), symbol, useSite);
+      return applyWrites(
+        declaredCandidates(symbol, useSite, seen),
+        valuePath(current),
+        useSite,
+      );
     }
     if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
       const propertyName = accessedPropertyName(current);
       if (propertyName === null) return [];
-      const symbol = expressionSymbol(current);
       return propertyCandidates(
         current.expression,
         propertyName,
         useSite,
         seen,
-        symbol,
       );
     }
     return [];
@@ -2294,7 +2376,7 @@ function createSemanticValueResolver(checker) {
     const visit = (candidate, seen) => {
       const current = unwrapExpression(candidate.expression);
       if (isOrigin(current)) return true;
-      const key = expressionSymbol(current) || current;
+      const key = candidateKey(current);
       if (seen.has(key)) return false;
       const nextSeen = new Set(seen);
       nextSeen.add(key);
@@ -2323,7 +2405,7 @@ function isRuntimeModuleLoader(expression, analysis) {
 
 function moduleReferenceSpecifierFromCall(node, analysis) {
   if (!ts.isCallExpression(node)
-      || node.arguments.length !== 1
+      || node.arguments.length < 1
       || !ts.isStringLiteralLike(node.arguments[0])) return null;
   if (node.expression.kind === ts.SyntaxKind.ImportKeyword
       || isRuntimeModuleLoader(node.expression, analysis)) {
@@ -2636,6 +2718,35 @@ function isNestGlobalDecoratorResult(expression, analysis) {
   ));
 }
 
+function inspectSemanticSource(sourceFile, checker) {
+  const analysis = Object.freeze({
+    checker,
+    sourceFiles: new Map(),
+    values: createSemanticValueResolver(checker),
+  });
+  const moduleReferences = [];
+  let globalApplications = 0;
+  const visit = (node) => {
+    const specifier = moduleReferenceSpecifierFromCall(node, analysis);
+    if (specifier !== null) moduleReferences.push(specifier);
+    if (ts.isDecorator(node)
+        && isNestGlobalDecoratorResult(node.expression, analysis)) {
+      globalApplications += 1;
+    } else if (ts.isCallExpression(node)
+        && node.arguments.length > 0
+        && isNestGlobalDecoratorResult(node.expression, analysis)) {
+      globalApplications += 1;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return Object.freeze({
+    moduleReferences,
+    commonJsExports: [...commonJsRuntimeExportNames(sourceFile, analysis)].sort(),
+    globalApplications,
+  });
+}
+
 function verifyStrictNestState(
   repositoryRoot,
   analysis = createTypeScriptAnalysis(repositoryRoot),
@@ -2810,6 +2921,7 @@ module.exports = {
   EXPECTED_MOVES,
   MANIFEST_PATH,
   R7_BASE,
+  inspectSemanticSource,
   runCli,
   scanR7CollaborationRelocation,
   validateR7Manifest,

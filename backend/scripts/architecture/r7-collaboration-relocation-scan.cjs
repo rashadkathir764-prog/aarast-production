@@ -811,7 +811,7 @@ function verifyPublicSnapshotSource(
   let dynamicDependencies = 0;
   const visit = (node) => {
     if (ts.isImportEqualsDeclaration(node)
-        || moduleReferenceSpecifierFromCall(node, analysis.checker) !== null) {
+        || moduleReferenceSpecifierFromCall(node, analysis) !== null) {
       dynamicDependencies += 1;
     }
     ts.forEachChild(node, visit);
@@ -825,7 +825,7 @@ function verifyPublicSnapshotSource(
     .map((statement) => statement.moduleSpecifier.text)
     .sort();
   assertExact(imports, EXPECTED_PUBLIC_SNAPSHOT_IMPORTS, 'R7 public snapshot imports');
-  const exports = runtimeExportNames(sourceFile, analysis.checker);
+  const exports = runtimeExportNames(sourceFile, analysis);
   assertExact(exports, [...manifest.publicSnapshotContract.exports].sort(), 'R7 public snapshot exports');
   return Object.freeze({ exports: exports.length, imports: imports.length });
 }
@@ -925,7 +925,7 @@ function verifyPublicSnapshotConsumers(
         }
       }
       const visit = (node) => {
-        const specifier = moduleReferenceSpecifierFromCall(node, analysis.checker);
+        const specifier = moduleReferenceSpecifierFromCall(node, analysis);
         if (specifier !== null) {
           rejectNonCanonicalForm(specifier);
         } else if (ts.isImportTypeNode(node)
@@ -1927,9 +1927,11 @@ function createTypeScriptAnalysis(repositoryRoot) {
     }
     sourceFiles.set(relativePath, sourceFile);
   }
+  const checker = program.getTypeChecker();
   return Object.freeze({
-    checker: program.getTypeChecker(),
+    checker,
     sourceFiles,
+    values: createSemanticValueResolver(checker),
   });
 }
 
@@ -1965,7 +1967,7 @@ function resolvedImportPath(repositoryRoot, importer, specifier) {
   return null;
 }
 
-function moduleReferenceSpecifiers(sourceFile, checker) {
+function moduleReferenceSpecifiers(sourceFile, analysis) {
   const specifiers = [];
   for (const statement of sourceFile.statements) {
     if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
@@ -1980,7 +1982,7 @@ function moduleReferenceSpecifiers(sourceFile, checker) {
     }
   }
   const visit = (node) => {
-    const specifier = moduleReferenceSpecifierFromCall(node, checker);
+    const specifier = moduleReferenceSpecifierFromCall(node, analysis);
     if (specifier !== null) {
       specifiers.push(specifier);
     } else if (ts.isImportTypeNode(node)
@@ -2013,7 +2015,7 @@ function verifyStrictSourceReferences(
   for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
     if (!relativePath.endsWith('.ts')) continue;
     const sourceFile = sourceFromAnalysis(analysis, relativePath);
-    legacyImportLiterals += moduleReferenceSpecifiers(sourceFile, analysis.checker)
+    legacyImportLiterals += moduleReferenceSpecifiers(sourceFile, analysis)
       .filter((specifier) => isLegacyCollaborationSpecifier(
         repositoryRoot,
         relativePath,
@@ -2033,7 +2035,7 @@ function verifyStrictSourceReferences(
         duplicatePublicExports += 1;
       }
     }
-    duplicatePublicExports += runtimeExportNames(sourceFile, analysis.checker)
+    duplicatePublicExports += runtimeExportNames(sourceFile, analysis)
       .filter((name) => publicExports.has(name))
       .length;
   }
@@ -2074,45 +2076,257 @@ function isUnshadowedRuntimeGlobal(expression, expectedName, checker) {
   );
 }
 
-function isRuntimeModuleLoader(expression, checker, seenSymbols = new Set()) {
-  const current = unwrapExpression(expression);
-  if (isUnshadowedRuntimeGlobal(current, 'require', checker)) return true;
-  if ((ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
-      && accessedPropertyName(current) === 'require'
-      && isUnshadowedRuntimeGlobal(current.expression, 'module', checker)) {
-    return true;
-  }
-  if (!ts.isIdentifier(current)) return false;
-  const symbol = checker.getSymbolAtLocation(current);
-  if (!symbol || seenSymbols.has(symbol)) return false;
-  seenSymbols.add(symbol);
-  for (const declaration of symbol.declarations || []) {
-    if (isConstVariableDeclaration(declaration)
-        && declaration.initializer
-        && isRuntimeModuleLoader(declaration.initializer, checker, seenSymbols)) {
-      return true;
+function createSemanticValueResolver(checker) {
+  const writeIndexes = new WeakMap();
+
+  const nodePosition = (node) => node.getStart(node.getSourceFile());
+  const expressionSymbol = (expression) => {
+    const current = unwrapExpression(expression);
+    if (!ts.isIdentifier(current)
+        && !ts.isPropertyAccessExpression(current)
+        && !ts.isElementAccessExpression(current)) return null;
+    return symbolAtExpression(current, checker);
+  };
+  const enclosingFunction = (node) => {
+    let current = node.parent;
+    while (current && !ts.isSourceFile(current)) {
+      if (ts.isFunctionDeclaration(current)
+          || ts.isFunctionExpression(current)
+          || ts.isArrowFunction(current)
+          || ts.isMethodDeclaration(current)
+          || ts.isGetAccessorDeclaration(current)
+          || ts.isSetAccessorDeclaration(current)
+          || ts.isConstructorDeclaration(current)) return current;
+      current = current.parent;
     }
-    if (ts.isBindingElement(declaration)
-        && ts.isObjectBindingPattern(declaration.parent)
-        && declaration.parent.parent.initializer
-        && (declaration.propertyName || declaration.name).getText() === 'require'
-        && isUnshadowedRuntimeGlobal(
-          declaration.parent.parent.initializer,
-          'module',
-          checker,
-        )) {
-      return true;
+    return null;
+  };
+  const statementAtContainer = (node) => {
+    let current = node;
+    while (current.parent
+        && !ts.isSourceFile(current.parent)
+        && !ts.isBlock(current.parent)) {
+      current = current.parent;
     }
-  }
-  return false;
+    return current;
+  };
+  const isSequentialOverwrite = (write, useSite) => {
+    const statement = write.node.parent;
+    if (!ts.isExpressionStatement(statement)) return false;
+    const useStatement = statementAtContainer(useSite);
+    return statement.parent === useStatement.parent
+      && nodePosition(statement) < nodePosition(useStatement);
+  };
+  const writeIndex = (sourceFile) => {
+    const cached = writeIndexes.get(sourceFile);
+    if (cached) return cached;
+    const index = new Map();
+    const visit = (node) => {
+      if (ts.isBinaryExpression(node)
+          && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        const symbol = expressionSymbol(node.left);
+        if (symbol) {
+          const writes = index.get(symbol) || [];
+          writes.push(Object.freeze({ node, value: node.right }));
+          index.set(symbol, writes);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    for (const writes of index.values()) {
+      writes.sort((left, right) => nodePosition(left.node) - nodePosition(right.node));
+    }
+    writeIndexes.set(sourceFile, index);
+    return index;
+  };
+  const relevantWrites = (symbol, useSite) => {
+    const sourceFile = useSite.getSourceFile();
+    const usePosition = nodePosition(useSite);
+    const useFunction = enclosingFunction(useSite);
+    return (writeIndex(sourceFile).get(symbol) || []).filter((write) => (
+      nodePosition(write.node) < usePosition
+      && enclosingFunction(write.node) === useFunction
+    ));
+  };
+  const applyWrites = (candidates, symbol, useSite) => {
+    let current = [...candidates];
+    for (const write of relevantWrites(symbol, useSite)) {
+      const candidate = Object.freeze({ expression: write.value, useSite: write.node });
+      if (isSequentialOverwrite(write, useSite)) current = [candidate];
+      else current.push(candidate);
+    }
+    return current;
+  };
+  const declaredCandidates = (symbol, useSite, seen) => {
+    const candidates = [];
+    const useSource = useSite.getSourceFile();
+    const usePosition = nodePosition(useSite);
+    for (const declaration of symbol.declarations || []) {
+      if (declaration.getSourceFile() === useSource
+          && nodePosition(declaration) > usePosition) continue;
+      if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+        candidates.push(Object.freeze({
+          expression: declaration.initializer,
+          useSite: declaration,
+        }));
+      } else if (ts.isBindingElement(declaration)
+          && ts.isObjectBindingPattern(declaration.parent)
+          && ts.isVariableDeclaration(declaration.parent.parent)
+          && declaration.parent.parent.initializer) {
+        const propertyName = runtimePropertyName(
+          declaration.propertyName || declaration.name,
+        );
+        if (propertyName !== null) {
+          candidates.push(...propertyCandidates(
+            declaration.parent.parent.initializer,
+            propertyName,
+            declaration,
+            seen,
+          ));
+        }
+        if (declaration.initializer) {
+          candidates.push(Object.freeze({
+            expression: declaration.initializer,
+            useSite: declaration,
+          }));
+        }
+      } else if (ts.isPropertyAssignment(declaration)) {
+        candidates.push(Object.freeze({
+          expression: declaration.initializer,
+          useSite: declaration,
+        }));
+      }
+    }
+    return candidates;
+  };
+  const objectPropertyCandidates = (objectLiteral, propertyName, seen) => {
+    let candidates = [];
+    for (const property of objectLiteral.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        candidates.push(...propertyCandidates(
+          property.expression,
+          propertyName,
+          property,
+          seen,
+        ));
+        continue;
+      }
+      if (runtimePropertyName(property.name) !== propertyName) continue;
+      if (ts.isPropertyAssignment(property)) {
+        candidates = [Object.freeze({
+          expression: property.initializer,
+          useSite: property,
+        })];
+      } else if (ts.isShorthandPropertyAssignment(property)) {
+        const valueSymbol = checker.getShorthandAssignmentValueSymbol(property);
+        candidates = valueSymbol
+          ? declaredCandidates(resolveAlias(valueSymbol, checker), property, seen)
+          : [];
+      } else {
+        candidates = [];
+      }
+    }
+    return candidates;
+  };
+  const resolvedValues = (expression, useSite, seen) => {
+    const current = unwrapExpression(expression);
+    const key = expressionSymbol(current) || current;
+    if (seen.has(key)) return [Object.freeze({ expression: current, useSite })];
+    const nextSeen = new Set(seen);
+    nextSeen.add(key);
+    const candidates = immediateCandidates(current, useSite, nextSeen);
+    if (candidates.length === 0) {
+      return [Object.freeze({ expression: current, useSite })];
+    }
+    return candidates.flatMap((candidate) => resolvedValues(
+      candidate.expression,
+      candidate.useSite,
+      new Set(nextSeen),
+    ));
+  };
+  const propertyCandidates = (
+    expression,
+    propertyName,
+    useSite,
+    seen,
+    knownSymbol = null,
+  ) => {
+    const propertySymbol = knownSymbol || resolveAlias(
+      checker.getTypeAtLocation(expression).getProperty(propertyName),
+      checker,
+    );
+    const candidates = resolvedValues(expression, useSite, new Set(seen))
+      .flatMap((candidate) => (
+        ts.isObjectLiteralExpression(unwrapExpression(candidate.expression))
+          ? objectPropertyCandidates(
+            unwrapExpression(candidate.expression),
+            propertyName,
+            new Set(seen),
+          )
+          : []
+      ));
+    if (!propertySymbol) return candidates;
+    return applyWrites(candidates, propertySymbol, useSite);
+  };
+  const immediateCandidates = (expression, useSite, seen) => {
+    const current = unwrapExpression(expression);
+    if (ts.isIdentifier(current)) {
+      const symbol = expressionSymbol(current);
+      if (!symbol) return [];
+      return applyWrites(declaredCandidates(symbol, useSite, seen), symbol, useSite);
+    }
+    if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+      const propertyName = accessedPropertyName(current);
+      if (propertyName === null) return [];
+      const symbol = expressionSymbol(current);
+      return propertyCandidates(
+        current.expression,
+        propertyName,
+        useSite,
+        seen,
+        symbol,
+      );
+    }
+    return [];
+  };
+  const matchesOrigin = (expression, isOrigin) => {
+    const visit = (candidate, seen) => {
+      const current = unwrapExpression(candidate.expression);
+      if (isOrigin(current)) return true;
+      const key = expressionSymbol(current) || current;
+      if (seen.has(key)) return false;
+      const nextSeen = new Set(seen);
+      nextSeen.add(key);
+      return immediateCandidates(current, candidate.useSite, nextSeen).some((next) => (
+        visit(next, new Set(nextSeen))
+      ));
+    };
+    return visit(Object.freeze({ expression, useSite: expression }), new Set());
+  };
+  return Object.freeze({ matchesOrigin });
 }
 
-function moduleReferenceSpecifierFromCall(node, checker) {
+function isDirectRuntimeModuleLoader(expression, checker) {
+  const current = unwrapExpression(expression);
+  if (isUnshadowedRuntimeGlobal(current, 'require', checker)) return true;
+  return (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
+    && accessedPropertyName(current) === 'require'
+    && isUnshadowedRuntimeGlobal(current.expression, 'module', checker);
+}
+
+function isRuntimeModuleLoader(expression, analysis) {
+  return analysis.values.matchesOrigin(expression, (candidate) => (
+    isDirectRuntimeModuleLoader(candidate, analysis.checker)
+  ));
+}
+
+function moduleReferenceSpecifierFromCall(node, analysis) {
   if (!ts.isCallExpression(node)
       || node.arguments.length !== 1
       || !ts.isStringLiteralLike(node.arguments[0])) return null;
   if (node.expression.kind === ts.SyntaxKind.ImportKeyword
-      || isRuntimeModuleLoader(node.expression, checker)) {
+      || isRuntimeModuleLoader(node.expression, analysis)) {
     return node.arguments[0].text;
   }
   return null;
@@ -2127,21 +2341,44 @@ function isTypeOnlyExportAliasDeclaration(declaration) {
   return false;
 }
 
+function isAmbientDeclaration(declaration) {
+  if (declaration.getSourceFile().isDeclarationFile) return true;
+  let current = declaration;
+  while (current && !ts.isSourceFile(current)) {
+    if (current.flags & ts.NodeFlags.Ambient) return true;
+    if (ts.canHaveModifiers(current)
+        && (ts.getModifiers(current) || []).some(
+          (modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword,
+        )) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
 function symbolHasRuntimeValue(symbol, checker) {
   const declarations = symbol.declarations || [];
-  if (declarations.length > 0 && declarations.every(isTypeOnlyExportAliasDeclaration)) {
+  if (declarations.length > 0 && declarations.every(
+    (declaration) => isTypeOnlyExportAliasDeclaration(declaration)
+      || isAmbientDeclaration(declaration),
+  )) {
     return false;
   }
   const resolved = resolveAlias(symbol, checker);
   return Boolean(resolved && (resolved.flags & ts.SymbolFlags.Value));
 }
 
-function commonJsExportsObject(expression, checker) {
+function isDirectCommonJsExportsObject(expression, checker) {
   const current = unwrapExpression(expression);
   if (isUnshadowedRuntimeGlobal(current, 'exports', checker)) return true;
   return (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
     && accessedPropertyName(current) === 'exports'
     && isUnshadowedRuntimeGlobal(current.expression, 'module', checker);
+}
+
+function commonJsExportsObject(expression, analysis) {
+  return analysis.values.matchesOrigin(expression, (candidate) => (
+    isDirectCommonJsExportsObject(candidate, analysis.checker)
+  ));
 }
 
 function runtimePropertyName(node) {
@@ -2169,17 +2406,18 @@ function runtimePropertiesOfExpression(expression, checker) {
   return names;
 }
 
-function commonJsRuntimeExportNames(sourceFile, checker) {
+function commonJsRuntimeExportNames(sourceFile, analysis) {
   const names = new Set();
+  const { checker } = analysis;
   const visit = (node) => {
     if (ts.isBinaryExpression(node)
         && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
       const left = unwrapExpression(node.left);
       if ((ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left))
-          && commonJsExportsObject(left.expression, checker)) {
+          && commonJsExportsObject(left.expression, analysis)) {
         const name = accessedPropertyName(left);
         if (name !== null) names.add(name);
-      } else if (commonJsExportsObject(left, checker)
+      } else if (commonJsExportsObject(left, analysis)
           && !isUnshadowedRuntimeGlobal(left, 'exports', checker)) {
         for (const name of runtimePropertiesOfExpression(node.right, checker)) names.add(name);
       }
@@ -2190,8 +2428,9 @@ function commonJsRuntimeExportNames(sourceFile, checker) {
   return names;
 }
 
-function runtimeExportNames(sourceFile, checker) {
-  const names = commonJsRuntimeExportNames(sourceFile, checker);
+function runtimeExportNames(sourceFile, analysis) {
+  const { checker } = analysis;
+  const names = commonJsRuntimeExportNames(sourceFile, analysis);
   const moduleSymbol = checker.getSymbolAtLocation(sourceFile) || sourceFile.symbol;
   if (moduleSymbol) {
     for (const symbol of checker.getExportsOfModule(moduleSymbol)) {
@@ -2390,28 +2629,11 @@ function isNestCommonMember(expression, expectedName, checker, seenSymbols = new
   return false;
 }
 
-function isNestGlobalDecoratorResult(expression, checker, seenSymbols = new Set()) {
-  const current = unwrapExpression(expression);
-  if (ts.isCallExpression(current)
-      && isNestCommonMember(current.expression, 'Global', checker)) {
-    return true;
-  }
-  if (!ts.isIdentifier(current)) return false;
-  const symbol = symbolAtExpression(current, checker);
-  if (!symbol || seenSymbols.has(symbol)) return false;
-  seenSymbols.add(symbol);
-  for (const declaration of symbol.declarations || []) {
-    if (isConstVariableDeclaration(declaration)
-        && declaration.initializer
-        && isNestGlobalDecoratorResult(
-          declaration.initializer,
-          checker,
-          seenSymbols,
-        )) {
-      return true;
-    }
-  }
-  return false;
+function isNestGlobalDecoratorResult(expression, analysis) {
+  return analysis.values.matchesOrigin(expression, (candidate) => (
+    ts.isCallExpression(candidate)
+      && isNestCommonMember(candidate.expression, 'Global', analysis.checker)
+  ));
 }
 
 function verifyStrictNestState(
@@ -2431,11 +2653,11 @@ function verifyStrictNestState(
         forwardRef += 1;
       }
       if (ts.isDecorator(node)
-          && isNestGlobalDecoratorResult(node.expression, checker)) {
+          && isNestGlobalDecoratorResult(node.expression, analysis)) {
         globalModules.push(relativePath);
       } else if (ts.isCallExpression(node)
           && node.arguments.length > 0
-          && isNestGlobalDecoratorResult(node.expression, checker)) {
+          && isNestGlobalDecoratorResult(node.expression, analysis)) {
         globalModules.push(relativePath);
       }
       ts.forEachChild(node, visit);
@@ -2481,7 +2703,7 @@ function verifyProtectedCollaborationImports(
       }
     }
     const visit = (node) => {
-      const specifier = moduleReferenceSpecifierFromCall(node, analysis.checker);
+      const specifier = moduleReferenceSpecifierFromCall(node, analysis);
       if (specifier !== null) inspectSpecifier(specifier);
       ts.forEachChild(node, visit);
     };

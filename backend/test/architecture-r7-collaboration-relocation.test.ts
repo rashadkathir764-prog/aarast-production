@@ -1158,6 +1158,131 @@ test('R7 strict Global application permits a detached unused Nest Global decorat
   }
 });
 
+for (const fixtureCase of [
+  {
+    name: 'object property decorator',
+    setup: [
+      'const decorators = { global: Global() };',
+      '@decorators.global',
+    ].join('\n'),
+  },
+  {
+    name: 'destructured object property decorator',
+    setup: [
+      'const decorators = { global: Global() };',
+      'const { global: hiddenGlobal } = decorators;',
+      '@hiddenGlobal',
+    ].join('\n'),
+  },
+  {
+    name: 'later-assigned decorator',
+    setup: [
+      'const ordinaryDecorator: ClassDecorator = () => undefined;',
+      'let hiddenGlobal = ordinaryDecorator;',
+      'hiddenGlobal = Global();',
+      '@hiddenGlobal',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 semantic Global result rejects ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      mutateFixtureFile(
+        fixture.root,
+        'backend/src/modules/collaboration/collaboration.module.ts',
+        (source) => source
+          .replace(
+            'import { Module } from "@nestjs/common";',
+            'import { Global, Module } from "@nestjs/common";',
+          )
+          .replace('@Module({', `${fixtureCase.setup}\n@Module({`),
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 strict globals drift detected/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const fixtureCase of [
+  {
+    name: 'detached object property',
+    importGlobal: true,
+    setup: [
+      'const decorators = { global: Global() };',
+      'void decorators.global;',
+    ].join('\n'),
+  },
+  {
+    name: 'reassigned-away decorator variable',
+    importGlobal: true,
+    setup: [
+      'const ordinaryDecorator: ClassDecorator = () => undefined;',
+      'let hiddenGlobal = Global();',
+      'hiddenGlobal = ordinaryDecorator;',
+      '@hiddenGlobal',
+    ].join('\n'),
+  },
+  {
+    name: 'reassigned-away object property',
+    importGlobal: true,
+    setup: [
+      'const ordinaryDecorator: ClassDecorator = () => undefined;',
+      'const decorators = { global: Global() };',
+      'decorators.global = ordinaryDecorator;',
+      '@decorators.global',
+    ].join('\n'),
+  },
+  {
+    name: 'local Global homonym object property',
+    importGlobal: false,
+    setup: [
+      'function Global(): ClassDecorator { return () => undefined; }',
+      'const decorators = { global: Global() };',
+      '@decorators.global',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 semantic Global result permits ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      mutateFixtureFile(
+        fixture.root,
+        'backend/src/modules/collaboration/collaboration.module.ts',
+        (source) => {
+          const imported = fixtureCase.importGlobal
+            ? source.replace(
+              'import { Module } from "@nestjs/common";',
+              'import { Global, Module } from "@nestjs/common";',
+            )
+            : source;
+          return imported.replace('@Module({', `${fixtureCase.setup}\n@Module({`);
+        },
+      );
+      assert.deepEqual(scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }), {
+        ok: true,
+        stage: 'strict',
+        sourceFiles: 0,
+        targetFiles: 18,
+        dependencyRecords: 22,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
 for (const providerCase of [
   {
     name: 'external useClass registration through an imported alias',
@@ -2202,6 +2327,55 @@ test('R7 runtime export inventory ignores a type-only public-name homonym', () =
   }
 });
 
+for (const fixtureCase of [
+  {
+    name: 'ambient const',
+    source: 'export declare const buildContributionSnapshot: unknown;\n',
+  },
+  {
+    name: 'ambient function',
+    source: 'export declare function buildContributionSnapshot(): unknown;\n',
+  },
+  {
+    name: 'ambient class',
+    source: 'export declare class buildContributionSnapshot {}\n',
+  },
+  {
+    name: 'ambient namespace',
+    source: [
+      'export declare namespace buildContributionSnapshot {',
+      '  const contract: true;',
+      '}',
+      '',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 runtime export inventory permits non-emitting ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/ambient-export-control.ts',
+        fixtureCase.source,
+      );
+      assert.deepEqual(scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }), {
+        ok: true,
+        stage: 'strict',
+        sourceFiles: 0,
+        targetFiles: 18,
+        dependencyRecords: 22,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
 test('R7 runtime export inventory ignores local CommonJS export homonyms', () => {
   const fixture = stagedFixture('strict');
   try {
@@ -2253,6 +2427,153 @@ test('R7 runtime export inventory is not masked by CommonJS homonyms in another 
       fixture.root,
       'backend/src/tasks/commonjs-export-duplicate.ts',
       'exports.buildContributionSnapshot = () => undefined;\n',
+    );
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }),
+      /R7 strict stage contains a duplicate public snapshot export/u,
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+for (const fixtureCase of [
+  {
+    name: 'const module.exports alias',
+    source: [
+      'const api = module.exports;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'let exports alias',
+    source: [
+      'let api = exports;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'var module.exports alias',
+    source: [
+      'var api = module.exports;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'object-property module.exports alias',
+    source: [
+      'const holder = { api: module.exports };',
+      'holder.api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'destructured module.exports alias',
+    source: [
+      'const holder = { api: module.exports };',
+      'const { api } = holder;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  },
+  {
+    name: 'later module.exports assignment',
+    source: [
+      'let api = { local: true };',
+      'api = module.exports;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  },
+]) {
+  test(`R7 semantic CommonJS exports reject ${fixtureCase.name}`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/semantic-commonjs-export.ts',
+        fixtureCase.source,
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 strict stage contains a duplicate public snapshot export/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+test('R7 semantic CommonJS exports permit local and reassigned-away aliases', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/semantic-commonjs-controls.ts',
+      [
+        '{',
+        '  let api = module.exports;',
+        '  api = { local: true };',
+        '  api.buildContributionSnapshot = () => undefined;',
+        '  const holder = { api: module.exports };',
+        '  holder.api = { local: true };',
+        '  holder.api.buildContributionSnapshot = () => undefined;',
+        '}',
+        '{',
+        '  const module = { exports: { local: true } };',
+        '  const api = module.exports;',
+        '  api.buildContributionSnapshot = () => undefined;',
+        '}',
+        '{',
+        '  const exports = { local: true };',
+        '  const api = exports;',
+        '  api.buildContributionSnapshot = () => undefined;',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    assert.deepEqual(scanner().scanR7CollaborationRelocation({
+      repositoryRoot: fixture.root,
+      manifest: fixture.value,
+    }), {
+      ok: true,
+      stage: 'strict',
+      sourceFiles: 0,
+      targetFiles: 18,
+      dependencyRecords: 22,
+      ownershipRecords: 385,
+      ownershipOccurrences: 781,
+    });
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('R7 semantic CommonJS exports are not masked by another-file module homonyms', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/foreign-commonjs-module.ts',
+      'const module = { exports: { local: true } };\nvoid module;\n',
+    );
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/semantic-cross-file-commonjs-export.ts',
+      [
+        'const api = module.exports;',
+        'api.buildContributionSnapshot = () => undefined;',
+        '',
+      ].join('\n'),
     );
     assert.throws(
       () => scanner().scanR7CollaborationRelocation({
@@ -2759,6 +3080,150 @@ test('R7 module loader is not masked by require homonyms in another CommonJS fil
       }),
       /R7 strict stage retains a legacy import literal/u,
     );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+const semanticModuleLoaderForms = [
+  {
+    name: 'let initializer',
+    source(specifier: string): string {
+      return `let load = require;\nvoid load("${specifier}");\n`;
+    },
+  },
+  {
+    name: 'var module.require initializer',
+    source(specifier: string): string {
+      return `var load = module.require;\nvoid load("${specifier}");\n`;
+    },
+  },
+  {
+    name: 'object property',
+    source(specifier: string): string {
+      return `const holder = { load: require };\nvoid holder.load("${specifier}");\n`;
+    },
+  },
+  {
+    name: 'destructured object property',
+    source(specifier: string): string {
+      return [
+        'const holder = { load: module.require };',
+        'const { load } = holder;',
+        `void load("${specifier}");`,
+        '',
+      ].join('\n');
+    },
+  },
+  {
+    name: 'later assignment',
+    source(specifier: string): string {
+      return [
+        'const ordinaryLoad = (_specifier: string) => undefined;',
+        'let load = ordinaryLoad;',
+        'load = require;',
+        `void load("${specifier}");`,
+        '',
+      ].join('\n');
+    },
+  },
+];
+
+for (const form of semanticModuleLoaderForms) {
+  test(`R7 semantic module loader rejects ${form.name} to a legacy root`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/semantic-legacy-loader.ts',
+        form.source('../sharing/sharing.service'),
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 strict stage retains a legacy import literal/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  test(`R7 semantic module loader rejects ${form.name} to protected internals`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/semantic-protected-loader.ts',
+        form.source('../modules/collaboration/internal/sharing.service'),
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+        }),
+        /R7 cross-context runtime import enters Collaboration internal or api/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  test(`R7 semantic module loader rejects ${form.name} to the public builder`, () => {
+    const fixture = stagedFixture('strict');
+    try {
+      writeFixtureFile(
+        fixture.root,
+        'backend/src/tasks/semantic-builder-loader.ts',
+        form.source('../modules/collaboration/public/contribution-snapshot.builder'),
+      );
+      assert.throws(
+        () => scanner().verifyPublicSnapshotConsumers(fixture.root),
+        /R7 public snapshot non-canonical consumer form detected/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+test('R7 semantic module loader permits shadowed and reassigned-away values', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/semantic-loader-controls.ts',
+      [
+        'const ordinaryLoad = (_specifier: string) => undefined;',
+        '{',
+        '  let load = require;',
+        '  load = ordinaryLoad;',
+        '  void load("../sharing/sharing.service");',
+        '  const holder = { load: module.require };',
+        '  holder.load = ordinaryLoad;',
+        '  void holder.load("../modules/collaboration/internal/sharing.service");',
+        '}',
+        '{',
+        '  const require = ordinaryLoad;',
+        '  const localHolder = { load: require };',
+        '  void localHolder.load("../modules/collaboration/public/contribution-snapshot.builder");',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    assert.deepEqual(scanner().scanR7CollaborationRelocation({
+      repositoryRoot: fixture.root,
+      manifest: fixture.value,
+    }), {
+      ok: true,
+      stage: 'strict',
+      sourceFiles: 0,
+      targetFiles: 18,
+      dependencyRecords: 22,
+      ownershipRecords: 385,
+      ownershipOccurrences: 781,
+    });
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

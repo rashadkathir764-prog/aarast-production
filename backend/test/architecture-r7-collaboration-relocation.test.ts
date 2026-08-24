@@ -2835,6 +2835,79 @@ test('R7 semantic CommonJS inspector follows objects assigned into module.export
   assert.deepEqual(inspections.reassigned.commonJsExports, []);
 });
 
+test('R7 semantic CommonJS inspector versions whole module.exports assignments', () => {
+  const inspections = inspectSemanticFixtureSources({
+    overwrittenBeforeMutation: [
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'module.exports = {};',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    mutationBeforeAssignment: [
+      'const api: Record<string, unknown> = {};',
+      'api.buildContributionSnapshot = () => undefined;',
+      'module.exports = api;',
+      '',
+    ].join('\n'),
+    capturedOldVersion: [
+      'const oldApi = module.exports;',
+      'module.exports = {};',
+      'oldApi.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    capturedCurrentVersion: [
+      'module.exports = {};',
+      'const currentApi = module.exports;',
+      'currentApi.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    overwrittenAfterMutation: [
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'api.buildContributionSnapshot = () => undefined;',
+      'module.exports = {};',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(inspections.overwrittenBeforeMutation.commonJsExports, []);
+  assert.deepEqual(
+    inspections.mutationBeforeAssignment.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(inspections.capturedOldVersion.commonJsExports, []);
+  assert.deepEqual(
+    inspections.capturedCurrentVersion.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(inspections.overwrittenAfterMutation.commonJsExports, []);
+});
+
+test('R7 pre-assignment CommonJS mutation reaches the duplicate-export gate', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/preassignment-commonjs-export.ts',
+      [
+        'const api: Record<string, unknown> = {};',
+        'api.buildContributionSnapshot = () => undefined;',
+        'module.exports = api;',
+        '',
+      ].join('\n'),
+    );
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }),
+      /R7 strict stage contains a duplicate public snapshot export/u,
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('R7 reverse CommonJS alias reaches the duplicate-export gate', () => {
   const fixture = stagedFixture('strict');
   try {

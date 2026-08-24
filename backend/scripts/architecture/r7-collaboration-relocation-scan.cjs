@@ -2410,27 +2410,35 @@ function createSemanticValueResolver(checker) {
     }
     return [];
   };
-  const matchesOrigin = (expression, isOrigin) => {
+  const matchingOrigins = (expression, isOrigin) => {
+    const origins = [];
     const visit = (candidate, seen) => {
       const current = unwrapExpression(candidate.expression);
-      if (isOrigin(current)) return true;
+      if (isOrigin(current)) {
+        origins.push(Object.freeze({ expression: current, useSite: candidate.useSite }));
+        return;
+      }
       const key = candidateKey(current);
-      if (seen.has(key)) return false;
+      if (seen.has(key)) return;
       const nextSeen = new Set(seen);
       nextSeen.add(key);
-      return immediateCandidates(current, candidate.useSite, nextSeen).some((next) => (
-        visit(next, new Set(nextSeen))
-      ));
+      for (const next of immediateCandidates(current, candidate.useSite, nextSeen)) {
+        visit(next, new Set(nextSeen));
+      }
     };
-    return visit(Object.freeze({ expression, useSite: expression }), new Set());
+    visit(Object.freeze({ expression, useSite: expression }), new Set());
+    return origins;
   };
+  const matchesOrigin = (expression, isOrigin) => (
+    matchingOrigins(expression, isOrigin).length > 0
+  );
   const sharesValue = (left, leftUseSite, right, rightUseSite) => {
     const leftIdentities = new Set(resolvedValueIdentities(left, leftUseSite));
     return resolvedValueIdentities(right, rightUseSite).some(
       (identity) => leftIdentities.has(identity),
     );
   };
-  return Object.freeze({ matchesOrigin, sharesValue });
+  return Object.freeze({ matchingOrigins, matchesOrigin, sharesValue });
 }
 
 function isDirectRuntimeModuleLoader(expression, checker) {
@@ -2501,12 +2509,6 @@ function isDirectCommonJsExportsObject(expression, checker) {
     && isUnshadowedRuntimeGlobal(current.expression, 'module', checker);
 }
 
-function commonJsExportsObject(expression, analysis) {
-  return analysis.values.matchesOrigin(expression, (candidate) => (
-    isDirectCommonJsExportsObject(candidate, analysis.checker)
-  ));
-}
-
 function isDirectModuleExportsObject(expression, checker) {
   const current = unwrapExpression(expression);
   return (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
@@ -2540,7 +2542,6 @@ function runtimePropertiesOfExpression(expression, checker) {
 }
 
 function commonJsRuntimeExportNames(sourceFile, analysis) {
-  const names = new Set();
   const { checker } = analysis;
   const enclosingFunction = (node) => {
     let current = node.parent;
@@ -2556,49 +2557,101 @@ function commonJsRuntimeExportNames(sourceFile, analysis) {
     }
     return null;
   };
-  const wholeExportAssignments = [];
-  const collectWholeAssignments = (node) => {
-    if (ts.isBinaryExpression(node)
-        && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
-        && isDirectModuleExportsObject(node.left, checker)) {
-      wholeExportAssignments.push(Object.freeze({
-        node,
-        value: node.right,
-        enclosingFunction: enclosingFunction(node),
-      }));
-    }
-    ts.forEachChild(node, collectWholeAssignments);
-  };
-  collectWholeAssignments(sourceFile);
-  const receiverWasAssignedToModuleExports = (receiver, useSite) => (
-    wholeExportAssignments.some((assignment) => (
-      assignment.node.getStart(sourceFile) < useSite.getStart(sourceFile)
-      && assignment.enclosingFunction === enclosingFunction(useSite)
-      && analysis.values.sharesValue(
-        receiver,
-        useSite,
-        assignment.value,
-        assignment.node,
-      )
-    ))
-  );
-  const visit = (node) => {
+  const assignments = [];
+  const collectAssignments = (node) => {
     if (ts.isBinaryExpression(node)
         && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-      const left = unwrapExpression(node.left);
-      if ((ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left))
-          && (commonJsExportsObject(left.expression, analysis)
-            || receiverWasAssignedToModuleExports(left.expression, node))) {
-        const name = accessedPropertyName(left);
-        if (name !== null) names.add(name);
-      } else if (commonJsExportsObject(left, analysis)
-          && !isUnshadowedRuntimeGlobal(left, 'exports', checker)) {
-        for (const name of runtimePropertiesOfExpression(node.right, checker)) names.add(name);
-      }
+      assignments.push(node);
     }
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, collectAssignments);
   };
-  visit(sourceFile);
+  collectAssignments(sourceFile);
+  assignments.sort((left, right) => left.getStart(sourceFile) - right.getStart(sourceFile));
+  const wholeAssignmentsByFunction = new Map();
+  for (const node of assignments) {
+    if (!isDirectModuleExportsObject(node.left, checker)) continue;
+    const owner = enclosingFunction(node);
+    const entries = wholeAssignmentsByFunction.get(owner) || [];
+    entries.push(node);
+    wholeAssignmentsByFunction.set(owner, entries);
+  }
+  const latestWholeAssignmentBefore = (owner, useSite) => {
+    const usePosition = useSite.getStart(sourceFile);
+    let latest = null;
+    for (const assignment of wholeAssignmentsByFunction.get(owner) || []) {
+      if (assignment.getStart(sourceFile) >= usePosition) break;
+      latest = assignment;
+    }
+    return latest;
+  };
+  const states = new Map();
+  const stateFor = (owner) => {
+    if (!states.has(owner)) {
+      states.set(owner, {
+        currentWholeAssignment: null,
+        names: new Set(),
+        propertyWrites: [],
+      });
+    }
+    return states.get(owner);
+  };
+  const receiverTargetsCurrentExports = (receiver, useSite, state, owner) => {
+    const origins = analysis.values.matchingOrigins(
+      receiver,
+      (candidate) => isDirectCommonJsExportsObject(candidate, checker),
+    );
+    const originMatchesCurrentVersion = origins.some((origin) => {
+      if (isUnshadowedRuntimeGlobal(origin.expression, 'exports', checker)) {
+        return state.currentWholeAssignment === null;
+      }
+      const originOwner = enclosingFunction(origin.useSite);
+      if (originOwner !== owner) return true;
+      return latestWholeAssignmentBefore(owner, origin.useSite)
+        === state.currentWholeAssignment;
+    });
+    if (originMatchesCurrentVersion) return true;
+    return Boolean(state.currentWholeAssignment && analysis.values.sharesValue(
+      receiver,
+      useSite,
+      state.currentWholeAssignment.right,
+      state.currentWholeAssignment,
+    ));
+  };
+  for (const node of assignments) {
+    const owner = enclosingFunction(node);
+    const state = stateFor(owner);
+    const left = unwrapExpression(node.left);
+    if (isDirectModuleExportsObject(left, checker)) {
+      state.currentWholeAssignment = node;
+      state.names = new Set(runtimePropertiesOfExpression(node.right, checker));
+      for (const write of state.propertyWrites) {
+        if (analysis.values.sharesValue(
+          write.receiver,
+          write.node,
+          node.right,
+          node,
+        )) state.names.add(write.name);
+      }
+      continue;
+    }
+    if (!ts.isPropertyAccessExpression(left) && !ts.isElementAccessExpression(left)) {
+      continue;
+    }
+    const name = accessedPropertyName(left);
+    if (name === null) continue;
+    if (receiverTargetsCurrentExports(left.expression, node, state, owner)) {
+      state.names.add(name);
+    }
+    state.propertyWrites.push(Object.freeze({
+      name,
+      node,
+      receiver: left.expression,
+    }));
+  }
+  const names = new Set();
+  for (const state of states.values()) {
+    for (const name of state.names) names.add(name);
+  }
   return names;
 }
 

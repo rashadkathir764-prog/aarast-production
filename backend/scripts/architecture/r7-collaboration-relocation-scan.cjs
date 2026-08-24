@@ -2575,46 +2575,69 @@ function commonJsRuntimeExportNames(sourceFile, analysis) {
     entries.push(node);
     wholeAssignmentsByFunction.set(owner, entries);
   }
-  const latestWholeAssignmentBefore = (owner, useSite) => {
+  const hasConditionalExecutionAncestor = (node, owner) => {
+    let current = node.parent;
+    while (current && current !== owner && !ts.isSourceFile(current)) {
+      if (ts.isIfStatement(current)
+          || ts.isForStatement(current)
+          || ts.isForInStatement(current)
+          || ts.isForOfStatement(current)
+          || ts.isWhileStatement(current)
+          || ts.isDoStatement(current)
+          || ts.isSwitchStatement(current)
+          || ts.isCaseClause(current)
+          || ts.isDefaultClause(current)
+          || ts.isTryStatement(current)
+          || ts.isCatchClause(current)
+          || ts.isConditionalExpression(current)
+          || (ts.isBinaryExpression(current) && [
+            ts.SyntaxKind.AmpersandAmpersandToken,
+            ts.SyntaxKind.BarBarToken,
+            ts.SyntaxKind.QuestionQuestionToken,
+          ].includes(current.operatorToken.kind))) return true;
+      current = current.parent;
+    }
+    return false;
+  };
+  const possibleWholeAssignmentsBefore = (owner, useSite) => {
     const usePosition = useSite.getStart(sourceFile);
-    let latest = null;
+    let possible = new Set([null]);
     for (const assignment of wholeAssignmentsByFunction.get(owner) || []) {
       if (assignment.getStart(sourceFile) >= usePosition) break;
-      latest = assignment;
+      if (hasConditionalExecutionAncestor(assignment, owner)) possible.add(assignment);
+      else possible = new Set([assignment]);
     }
-    return latest;
+    return possible;
   };
   const states = new Map();
   const stateFor = (owner) => {
     if (!states.has(owner)) {
       states.set(owner, {
-        currentWholeAssignment: null,
-        names: new Set(),
+        versions: new Map([[null, new Set()]]),
         propertyWrites: [],
       });
     }
     return states.get(owner);
   };
-  const receiverTargetsCurrentExports = (receiver, useSite, state, owner) => {
+  const receiverTargetsExportVersion = (receiver, useSite, version, owner) => {
     const origins = analysis.values.matchingOrigins(
       receiver,
       (candidate) => isDirectCommonJsExportsObject(candidate, checker),
     );
-    const originMatchesCurrentVersion = origins.some((origin) => {
+    const originMatchesVersion = origins.some((origin) => {
       if (isUnshadowedRuntimeGlobal(origin.expression, 'exports', checker)) {
-        return state.currentWholeAssignment === null;
+        return version === null;
       }
       const originOwner = enclosingFunction(origin.useSite);
       if (originOwner !== owner) return true;
-      return latestWholeAssignmentBefore(owner, origin.useSite)
-        === state.currentWholeAssignment;
+      return possibleWholeAssignmentsBefore(owner, origin.useSite).has(version);
     });
-    if (originMatchesCurrentVersion) return true;
-    return Boolean(state.currentWholeAssignment && analysis.values.sharesValue(
+    if (originMatchesVersion) return true;
+    return Boolean(version && analysis.values.sharesValue(
       receiver,
       useSite,
-      state.currentWholeAssignment.right,
-      state.currentWholeAssignment,
+      version.right,
+      version,
     ));
   };
   for (const node of assignments) {
@@ -2622,16 +2645,17 @@ function commonJsRuntimeExportNames(sourceFile, analysis) {
     const state = stateFor(owner);
     const left = unwrapExpression(node.left);
     if (isDirectModuleExportsObject(left, checker)) {
-      state.currentWholeAssignment = node;
-      state.names = new Set(runtimePropertiesOfExpression(node.right, checker));
+      const versionNames = new Set(runtimePropertiesOfExpression(node.right, checker));
       for (const write of state.propertyWrites) {
         if (analysis.values.sharesValue(
           write.receiver,
           write.node,
           node.right,
           node,
-        )) state.names.add(write.name);
+        )) versionNames.add(write.name);
       }
+      if (hasConditionalExecutionAncestor(node, owner)) state.versions.set(node, versionNames);
+      else state.versions = new Map([[node, versionNames]]);
       continue;
     }
     if (!ts.isPropertyAccessExpression(left) && !ts.isElementAccessExpression(left)) {
@@ -2639,8 +2663,10 @@ function commonJsRuntimeExportNames(sourceFile, analysis) {
     }
     const name = accessedPropertyName(left);
     if (name === null) continue;
-    if (receiverTargetsCurrentExports(left.expression, node, state, owner)) {
-      state.names.add(name);
+    for (const [version, versionNames] of state.versions) {
+      if (receiverTargetsExportVersion(left.expression, node, version, owner)) {
+        versionNames.add(name);
+      }
     }
     state.propertyWrites.push(Object.freeze({
       name,
@@ -2650,7 +2676,9 @@ function commonJsRuntimeExportNames(sourceFile, analysis) {
   }
   const names = new Set();
   for (const state of states.values()) {
-    for (const name of state.names) names.add(name);
+    for (const versionNames of state.versions.values()) {
+      for (const name of versionNames) names.add(name);
+    }
   }
   return names;
 }

@@ -2883,6 +2883,108 @@ test('R7 semantic CommonJS inspector versions whole module.exports assignments',
   assert.deepEqual(inspections.overwrittenAfterMutation.commonJsExports, []);
 });
 
+test('R7 semantic CommonJS inspector preserves conditional export versions', () => {
+  const inspections = inspectSemanticFixtureSources({
+    conditionalOverwrite: [
+      'declare const flag: boolean;',
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'if (flag) module.exports = {};',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    conditionalNewTarget: [
+      'declare const flag: boolean;',
+      'const nextApi: Record<string, unknown> = {};',
+      'if (flag) module.exports = nextApi;',
+      'nextApi.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    logicalOverwrite: [
+      'declare const flag: boolean;',
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'flag && (module.exports = {});',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    loopOverwrite: [
+      'declare const flag: boolean;',
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'while (flag) { module.exports = {}; break; }',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    tryOverwrite: [
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'try { module.exports = {}; } catch {}',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    expressionOverwrite: [
+      'declare const flag: boolean;',
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'flag ? (module.exports = {}) : undefined;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(
+    inspections.conditionalOverwrite.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(
+    inspections.conditionalNewTarget.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(
+    inspections.logicalOverwrite.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(
+    inspections.loopOverwrite.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(
+    inspections.tryOverwrite.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(
+    inspections.expressionOverwrite.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+});
+
+test('R7 conditional CommonJS overwrite reaches the duplicate-export gate', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/conditional-commonjs-export.ts',
+      [
+        'declare const flag: boolean;',
+        'const api: Record<string, unknown> = {};',
+        'module.exports = api;',
+        'if (flag) module.exports = {};',
+        'api.buildContributionSnapshot = () => undefined;',
+        '',
+      ].join('\n'),
+    );
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }),
+      /R7 strict stage contains a duplicate public snapshot export/u,
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('R7 pre-assignment CommonJS mutation reaches the duplicate-export gate', () => {
   const fixture = stagedFixture('strict');
   try {

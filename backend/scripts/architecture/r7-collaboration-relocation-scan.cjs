@@ -2080,7 +2080,9 @@ function isUnshadowedRuntimeGlobal(expression, expectedName, checker) {
 function createSemanticValueResolver(checker) {
   const writeIndexes = new WeakMap();
   const symbolIds = new WeakMap();
+  const valueIds = new WeakMap();
   let nextSymbolId = 1;
+  let nextValueId = 1;
 
   const nodePosition = (node) => node.getStart(node.getSourceFile());
   const expressionSymbol = (expression) => {
@@ -2113,15 +2115,18 @@ function createSemanticValueResolver(checker) {
     }
     return null;
   };
-  const propertyValuePath = (receiver, propertyName) => {
-    const receiverPath = valuePath(receiver);
-    return receiverPath === null
-      ? null
-      : `${receiverPath}/property:${JSON.stringify(propertyName)}`;
-  };
   const candidateKey = (expression) => (
     valuePath(expression) || expressionSymbol(expression) || unwrapExpression(expression)
   );
+  const stableValueIdentity = (expression) => {
+    const key = candidateKey(expression);
+    if (typeof key === 'string') return `path:${key}`;
+    if (!valueIds.has(key)) {
+      valueIds.set(key, nextValueId);
+      nextValueId += 1;
+    }
+    return `value:${valueIds.get(key)}`;
+  };
   const enclosingFunction = (node) => {
     let current = node.parent;
     while (current && !ts.isSourceFile(current)) {
@@ -2156,38 +2161,61 @@ function createSemanticValueResolver(checker) {
     const cached = writeIndexes.get(sourceFile);
     if (cached) return cached;
     const index = new Map();
+    const assignments = [];
     const visit = (node) => {
       if (ts.isBinaryExpression(node)
           && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-        const key = valuePath(node.left);
+        assignments.push(node);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    assignments.sort((left, right) => nodePosition(left) - nodePosition(right));
+    writeIndexes.set(sourceFile, index);
+    for (const node of assignments) {
+      const left = unwrapExpression(node.left);
+      let keys = [];
+      if (ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left)) {
+        const propertyName = accessedPropertyName(left);
+        if (propertyName !== null) {
+          keys = propertyWriteKeys(left.expression, propertyName, node);
+        }
+      } else {
+        const key = valuePath(left);
+        if (key !== null) keys = [key];
+      }
+      for (const key of keys) {
         if (key !== null) {
           const writes = index.get(key) || [];
           writes.push(Object.freeze({ node, value: node.right }));
           index.set(key, writes);
         }
       }
-      ts.forEachChild(node, visit);
-    };
-    visit(sourceFile);
+    }
     for (const writes of index.values()) {
       writes.sort((left, right) => nodePosition(left.node) - nodePosition(right.node));
     }
-    writeIndexes.set(sourceFile, index);
     return index;
   };
-  const relevantWrites = (key, useSite) => {
-    if (key === null) return [];
+  const relevantWrites = (keys, useSite) => {
+    const normalizedKeys = Array.isArray(keys) ? keys : [keys];
     const sourceFile = useSite.getSourceFile();
     const usePosition = nodePosition(useSite);
     const useFunction = enclosingFunction(useSite);
-    return (writeIndex(sourceFile).get(key) || []).filter((write) => (
-      nodePosition(write.node) < usePosition
-      && enclosingFunction(write.node) === useFunction
-    ));
+    const seenWrites = new Set();
+    return normalizedKeys.flatMap((key) => (
+      key === null ? [] : (writeIndex(sourceFile).get(key) || [])
+    )).filter((write) => {
+      if (seenWrites.has(write.node)
+          || nodePosition(write.node) >= usePosition
+          || enclosingFunction(write.node) !== useFunction) return false;
+      seenWrites.add(write.node);
+      return true;
+    }).sort((left, right) => nodePosition(left.node) - nodePosition(right.node));
   };
-  const applyWrites = (candidates, key, useSite) => {
+  const applyWrites = (candidates, keys, useSite) => {
     let current = [...candidates];
-    for (const write of relevantWrites(key, useSite)) {
+    for (const write of relevantWrites(keys, useSite)) {
       const candidate = Object.freeze({ expression: write.value, useSite: write.node });
       if (isSequentialOverwrite(write, useSite)) current = [candidate];
       else current.push(candidate);
@@ -2311,6 +2339,16 @@ function createSemanticValueResolver(checker) {
       new Set(nextSeen),
     ));
   };
+  const resolvedValueIdentities = (expression, useSite) => (
+    [...new Set(resolvedValues(expression, useSite, new Set()).map(
+      (candidate) => stableValueIdentity(candidate.expression),
+    ))]
+  );
+  const propertyWriteKeys = (receiver, propertyName, useSite) => (
+    resolvedValueIdentities(receiver, useSite).map(
+      (identity) => `${identity}/property:${JSON.stringify(propertyName)}`,
+    )
+  );
   const propertyCandidates = (
     expression,
     propertyName,
@@ -2329,7 +2367,7 @@ function createSemanticValueResolver(checker) {
       ));
     return applyWrites(
       candidates,
-      propertyValuePath(expression, propertyName),
+      propertyWriteKeys(expression, propertyName, useSite),
       useSite,
     );
   };
@@ -2356,7 +2394,7 @@ function createSemanticValueResolver(checker) {
       if (!symbol) return [];
       return applyWrites(
         declaredCandidates(symbol, useSite, seen),
-        valuePath(current),
+        [valuePath(current)],
         useSite,
       );
     }
@@ -2386,7 +2424,13 @@ function createSemanticValueResolver(checker) {
     };
     return visit(Object.freeze({ expression, useSite: expression }), new Set());
   };
-  return Object.freeze({ matchesOrigin });
+  const sharesValue = (left, leftUseSite, right, rightUseSite) => {
+    const leftIdentities = new Set(resolvedValueIdentities(left, leftUseSite));
+    return resolvedValueIdentities(right, rightUseSite).some(
+      (identity) => leftIdentities.has(identity),
+    );
+  };
+  return Object.freeze({ matchesOrigin, sharesValue });
 }
 
 function isDirectRuntimeModuleLoader(expression, checker) {
@@ -2463,6 +2507,13 @@ function commonJsExportsObject(expression, analysis) {
   ));
 }
 
+function isDirectModuleExportsObject(expression, checker) {
+  const current = unwrapExpression(expression);
+  return (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
+    && accessedPropertyName(current) === 'exports'
+    && isUnshadowedRuntimeGlobal(current.expression, 'module', checker);
+}
+
 function runtimePropertyName(node) {
   if (!node) return null;
   if (ts.isIdentifier(node) || ts.isStringLiteralLike(node)
@@ -2491,12 +2542,53 @@ function runtimePropertiesOfExpression(expression, checker) {
 function commonJsRuntimeExportNames(sourceFile, analysis) {
   const names = new Set();
   const { checker } = analysis;
+  const enclosingFunction = (node) => {
+    let current = node.parent;
+    while (current && !ts.isSourceFile(current)) {
+      if (ts.isFunctionDeclaration(current)
+          || ts.isFunctionExpression(current)
+          || ts.isArrowFunction(current)
+          || ts.isMethodDeclaration(current)
+          || ts.isGetAccessorDeclaration(current)
+          || ts.isSetAccessorDeclaration(current)
+          || ts.isConstructorDeclaration(current)) return current;
+      current = current.parent;
+    }
+    return null;
+  };
+  const wholeExportAssignments = [];
+  const collectWholeAssignments = (node) => {
+    if (ts.isBinaryExpression(node)
+        && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        && isDirectModuleExportsObject(node.left, checker)) {
+      wholeExportAssignments.push(Object.freeze({
+        node,
+        value: node.right,
+        enclosingFunction: enclosingFunction(node),
+      }));
+    }
+    ts.forEachChild(node, collectWholeAssignments);
+  };
+  collectWholeAssignments(sourceFile);
+  const receiverWasAssignedToModuleExports = (receiver, useSite) => (
+    wholeExportAssignments.some((assignment) => (
+      assignment.node.getStart(sourceFile) < useSite.getStart(sourceFile)
+      && assignment.enclosingFunction === enclosingFunction(useSite)
+      && analysis.values.sharesValue(
+        receiver,
+        useSite,
+        assignment.value,
+        assignment.node,
+      )
+    ))
+  );
   const visit = (node) => {
     if (ts.isBinaryExpression(node)
         && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
       const left = unwrapExpression(node.left);
       if ((ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left))
-          && commonJsExportsObject(left.expression, analysis)) {
+          && (commonJsExportsObject(left.expression, analysis)
+            || receiverWasAssignedToModuleExports(left.expression, node))) {
         const name = accessedPropertyName(left);
         if (name !== null) names.add(name);
       } else if (commonJsExportsObject(left, analysis)

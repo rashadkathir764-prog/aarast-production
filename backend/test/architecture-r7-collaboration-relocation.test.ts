@@ -2812,6 +2812,54 @@ test('R7 semantic CommonJS inspector rejects every dangerous finite candidate an
   assert.deepEqual(inspections.local.commonJsExports, []);
 });
 
+test('R7 semantic CommonJS inspector follows objects assigned into module.exports', () => {
+  const inspections = inspectSemanticFixtureSources({
+    dangerous: [
+      'const api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+    reassigned: [
+      'let api: Record<string, unknown> = {};',
+      'module.exports = api;',
+      'api = {};',
+      'api.buildContributionSnapshot = () => undefined;',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(
+    inspections.dangerous.commonJsExports,
+    ['buildContributionSnapshot'],
+  );
+  assert.deepEqual(inspections.reassigned.commonJsExports, []);
+});
+
+test('R7 reverse CommonJS alias reaches the duplicate-export gate', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/reverse-commonjs-export.ts',
+      [
+        'const api: Record<string, unknown> = {};',
+        'module.exports = api;',
+        'api.buildContributionSnapshot = () => undefined;',
+        '',
+      ].join('\n'),
+    );
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }),
+      /R7 strict stage contains a duplicate public snapshot export/u,
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('R7 finite candidate CommonJS array binding reaches the duplicate-export gate', () => {
   const fixture = stagedFixture('strict');
   try {
@@ -3764,6 +3812,66 @@ test('R7 semantic module inspector keeps property writes receiver-sensitive in b
       fixtureCase.name,
     );
   });
+});
+
+test('R7 semantic module inspector canonicalizes aliases of the same receiver', () => {
+  const inspections = inspectSemanticFixtureSources({
+    dangerous: [
+      'type Loader = (...args: unknown[]) => unknown;',
+      'const ordinaryLoad: Loader = () => undefined;',
+      'interface Holder { load: Loader; }',
+      'const dangerous: Holder = { load: ordinaryLoad };',
+      'const alias = dangerous;',
+      'alias.load = require;',
+      'void dangerous.load("../sharing/sharing.service");',
+      '',
+    ].join('\n'),
+    safe: [
+      'type Loader = (...args: unknown[]) => unknown;',
+      'const ordinaryLoad: Loader = () => undefined;',
+      'interface Holder { load: Loader; }',
+      'const dangerous: Holder = { load: ordinaryLoad };',
+      'dangerous.load = require;',
+      'const alias = dangerous;',
+      'alias.load = ordinaryLoad;',
+      'void dangerous.load("../sharing/sharing.service");',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(
+    inspections.dangerous.moduleReferences,
+    ['../sharing/sharing.service'],
+  );
+  assert.deepEqual(inspections.safe.moduleReferences, []);
+});
+
+test('R7 receiver alias property write reaches the strict legacy gate', () => {
+  const fixture = stagedFixture('strict');
+  try {
+    writeFixtureFile(
+      fixture.root,
+      'backend/src/tasks/receiver-alias-loader.ts',
+      [
+        'type Loader = (...args: unknown[]) => unknown;',
+        'const ordinaryLoad: Loader = () => undefined;',
+        'interface Holder { load: Loader; }',
+        'const dangerous: Holder = { load: ordinaryLoad };',
+        'const alias = dangerous;',
+        'alias.load = require;',
+        'void dangerous.load("../sharing/sharing.service");',
+        '',
+      ].join('\n'),
+    );
+    assert.throws(
+      () => scanner().scanR7CollaborationRelocation({
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+      }),
+      /R7 strict stage retains a legacy import literal/u,
+    );
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test('R7 receiver-sensitive dangerous property write reaches the strict legacy gate', () => {

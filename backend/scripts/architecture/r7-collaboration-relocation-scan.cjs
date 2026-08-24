@@ -797,32 +797,21 @@ function isExported(node) {
     && (ts.getModifiers(node) || []).some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
 }
 
-function exportedNames(statement, sourceFile) {
-  if (!isExported(statement)) return [];
-  if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)
-      || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)
-      || ts.isEnumDeclaration(statement)) && statement.name) {
-    return [statement.name.text];
-  }
-  if (ts.isVariableStatement(statement)) {
-    return statement.declarationList.declarations.map((declaration) => declaration.name.getText(sourceFile));
-  }
-  return ['<unsupported-export>'];
-}
-
-function verifyPublicSnapshotSource(repositoryRoot, manifest) {
+function verifyPublicSnapshotSource(
+  repositoryRoot,
+  manifest,
+  analysis = createTypeScriptAnalysis(repositoryRoot),
+) {
   const activePath = activeMovePath(
     repositoryRoot,
     manifest,
     manifest.publicSnapshotContract.path,
   );
-  const sourceFile = parseTypeScriptSource(repositoryRoot, activePath);
+  const sourceFile = sourceFromAnalysis(analysis, activePath);
   let dynamicDependencies = 0;
   const visit = (node) => {
     if (ts.isImportEqualsDeclaration(node)
-        || (ts.isCallExpression(node)
-          && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
-            || node.expression.kind === ts.SyntaxKind.ImportKeyword))) {
+        || moduleReferenceSpecifierFromCall(node, analysis.checker) !== null) {
       dynamicDependencies += 1;
     }
     ts.forEachChild(node, visit);
@@ -836,14 +825,15 @@ function verifyPublicSnapshotSource(repositoryRoot, manifest) {
     .map((statement) => statement.moduleSpecifier.text)
     .sort();
   assertExact(imports, EXPECTED_PUBLIC_SNAPSHOT_IMPORTS, 'R7 public snapshot imports');
-  const exports = sourceFile.statements
-    .flatMap((statement) => exportedNames(statement, sourceFile))
-    .sort();
+  const exports = runtimeExportNames(sourceFile, analysis.checker);
   assertExact(exports, [...manifest.publicSnapshotContract.exports].sort(), 'R7 public snapshot exports');
   return Object.freeze({ exports: exports.length, imports: imports.length });
 }
 
-function verifyPublicSnapshotConsumers(repositoryRoot) {
+function verifyPublicSnapshotConsumers(
+  repositoryRoot,
+  analysis = createTypeScriptAnalysis(repositoryRoot),
+) {
   const publicSnapshotActive = fs.existsSync(path.join(
     repositoryRoot,
     ...EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.path.split('/'),
@@ -896,7 +886,7 @@ function verifyPublicSnapshotConsumers(repositoryRoot) {
         'utf8',
       );
       if (!sourceText.includes('contribution-snapshot.builder')) continue;
-      const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+      const sourceFile = sourceFromAnalysis(analysis, relativePath);
       const isBuilderSpecifier = (specifier) => {
         if (typeof specifier !== 'string') return false;
         const resolved = resolvedImportPath(repositoryRoot, relativePath, specifier);
@@ -935,12 +925,9 @@ function verifyPublicSnapshotConsumers(repositoryRoot) {
         }
       }
       const visit = (node) => {
-        if (ts.isCallExpression(node)
-            && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
-              || node.expression.kind === ts.SyntaxKind.ImportKeyword)
-            && node.arguments.length === 1
-            && ts.isStringLiteralLike(node.arguments[0])) {
-          rejectNonCanonicalForm(node.arguments[0].text);
+        const specifier = moduleReferenceSpecifierFromCall(node, analysis.checker);
+        if (specifier !== null) {
+          rejectNonCanonicalForm(specifier);
         } else if (ts.isImportTypeNode(node)
             && ts.isLiteralTypeNode(node.argument)
             && ts.isStringLiteralLike(node.argument.literal)) {
@@ -1916,6 +1903,42 @@ function backendTypeScriptConfig(repositoryRoot) {
   return result;
 }
 
+function createTypeScriptAnalysis(repositoryRoot) {
+  const relativePaths = ['backend/src', 'backend/test']
+    .flatMap((root) => listPlainFiles(repositoryRoot, root))
+    .filter((relativePath) => relativePath.endsWith('.ts'));
+  const rootNames = relativePaths.map(
+    (relativePath) => path.join(repositoryRoot, ...relativePath.split('/')),
+  );
+  const { options } = backendTypeScriptConfig(repositoryRoot);
+  const program = ts.createProgram({
+    rootNames,
+    options: {
+      ...options,
+      incremental: false,
+      noEmit: true,
+    },
+  });
+  const sourceFiles = new Map();
+  for (const [index, relativePath] of relativePaths.entries()) {
+    const sourceFile = program.getSourceFile(rootNames[index]);
+    if (!sourceFile || sourceFile.parseDiagnostics.length > 0) {
+      throw new Error('R7 TypeScript source program drift detected');
+    }
+    sourceFiles.set(relativePath, sourceFile);
+  }
+  return Object.freeze({
+    checker: program.getTypeChecker(),
+    sourceFiles,
+  });
+}
+
+function sourceFromAnalysis(analysis, relativePath) {
+  const sourceFile = analysis.sourceFiles.get(relativePath);
+  if (!sourceFile) throw new Error('R7 TypeScript source program drift detected');
+  return sourceFile;
+}
+
 function resolvedImportPath(repositoryRoot, importer, specifier) {
   if (!specifier.startsWith('.') && !specifier.startsWith('src/')) return null;
   const importerPath = path.join(repositoryRoot, ...importer.split('/'));
@@ -1942,7 +1965,7 @@ function resolvedImportPath(repositoryRoot, importer, specifier) {
   return null;
 }
 
-function moduleReferenceSpecifiers(sourceFile) {
+function moduleReferenceSpecifiers(sourceFile, checker) {
   const specifiers = [];
   for (const statement of sourceFile.statements) {
     if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
@@ -1957,12 +1980,9 @@ function moduleReferenceSpecifiers(sourceFile) {
     }
   }
   const visit = (node) => {
-    if (ts.isCallExpression(node)
-        && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
-          || node.expression.kind === ts.SyntaxKind.ImportKeyword)
-        && node.arguments.length === 1
-        && ts.isStringLiteralLike(node.arguments[0])) {
-      specifiers.push(node.arguments[0].text);
+    const specifier = moduleReferenceSpecifierFromCall(node, checker);
+    if (specifier !== null) {
+      specifiers.push(specifier);
     } else if (ts.isImportTypeNode(node)
         && ts.isLiteralTypeNode(node.argument)
         && ts.isStringLiteralLike(node.argument.literal)) {
@@ -1983,14 +2003,17 @@ function isLegacyCollaborationSpecifier(repositoryRoot, importer, specifier) {
   ].some((legacyRoot) => resolved === legacyRoot || resolved.startsWith(`${legacyRoot}/`));
 }
 
-function verifyStrictSourceReferences(repositoryRoot) {
+function verifyStrictSourceReferences(
+  repositoryRoot,
+  analysis = createTypeScriptAnalysis(repositoryRoot),
+) {
   let legacyImportLiterals = 0;
   let duplicatePublicExports = 0;
   const publicExports = new Set(EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.exports);
   for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
     if (!relativePath.endsWith('.ts')) continue;
-    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
-    legacyImportLiterals += moduleReferenceSpecifiers(sourceFile)
+    const sourceFile = sourceFromAnalysis(analysis, relativePath);
+    legacyImportLiterals += moduleReferenceSpecifiers(sourceFile, analysis.checker)
       .filter((specifier) => isLegacyCollaborationSpecifier(
         repositoryRoot,
         relativePath,
@@ -2008,16 +2031,11 @@ function verifyStrictSourceReferences(repositoryRoot) {
             statement.moduleSpecifier.text,
           ) === EXPECTED_PUBLIC_SNAPSHOT_CONTRACT.path) {
         duplicatePublicExports += 1;
-        continue;
       }
-      const names = exportedNames(statement, sourceFile);
-      if (ts.isExportDeclaration(statement)
-          && statement.exportClause
-          && ts.isNamedExports(statement.exportClause)) {
-        names.push(...statement.exportClause.elements.map((element) => element.name.text));
-      }
-      duplicatePublicExports += names.filter((name) => publicExports.has(name)).length;
     }
+    duplicatePublicExports += runtimeExportNames(sourceFile, analysis.checker)
+      .filter((name) => publicExports.has(name))
+      .length;
   }
   if (legacyImportLiterals !== 0) {
     throw new Error('R7 strict stage retains a legacy import literal');
@@ -2044,6 +2062,143 @@ function isConstVariableDeclaration(declaration) {
   return ts.isVariableDeclaration(declaration)
     && ts.isVariableDeclarationList(declaration.parent)
     && Boolean(declaration.parent.flags & ts.NodeFlags.Const);
+}
+
+function isUnshadowedRuntimeGlobal(expression, expectedName, checker) {
+  const current = unwrapExpression(expression);
+  if (!ts.isIdentifier(current) || current.text !== expectedName) return false;
+  const symbol = checker.getSymbolAtLocation(current);
+  return !symbol || (symbol.declarations || []).every(
+    (declaration) => declaration.getSourceFile().isDeclarationFile
+      || declaration.getSourceFile() !== current.getSourceFile(),
+  );
+}
+
+function isRuntimeModuleLoader(expression, checker, seenSymbols = new Set()) {
+  const current = unwrapExpression(expression);
+  if (isUnshadowedRuntimeGlobal(current, 'require', checker)) return true;
+  if ((ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
+      && accessedPropertyName(current) === 'require'
+      && isUnshadowedRuntimeGlobal(current.expression, 'module', checker)) {
+    return true;
+  }
+  if (!ts.isIdentifier(current)) return false;
+  const symbol = checker.getSymbolAtLocation(current);
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  seenSymbols.add(symbol);
+  for (const declaration of symbol.declarations || []) {
+    if (isConstVariableDeclaration(declaration)
+        && declaration.initializer
+        && isRuntimeModuleLoader(declaration.initializer, checker, seenSymbols)) {
+      return true;
+    }
+    if (ts.isBindingElement(declaration)
+        && ts.isObjectBindingPattern(declaration.parent)
+        && declaration.parent.parent.initializer
+        && (declaration.propertyName || declaration.name).getText() === 'require'
+        && isUnshadowedRuntimeGlobal(
+          declaration.parent.parent.initializer,
+          'module',
+          checker,
+        )) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function moduleReferenceSpecifierFromCall(node, checker) {
+  if (!ts.isCallExpression(node)
+      || node.arguments.length !== 1
+      || !ts.isStringLiteralLike(node.arguments[0])) return null;
+  if (node.expression.kind === ts.SyntaxKind.ImportKeyword
+      || isRuntimeModuleLoader(node.expression, checker)) {
+    return node.arguments[0].text;
+  }
+  return null;
+}
+
+function isTypeOnlyExportAliasDeclaration(declaration) {
+  if (ts.isExportSpecifier(declaration)) {
+    return declaration.isTypeOnly
+      || (ts.isExportDeclaration(declaration.parent.parent)
+        && declaration.parent.parent.isTypeOnly);
+  }
+  return false;
+}
+
+function symbolHasRuntimeValue(symbol, checker) {
+  const declarations = symbol.declarations || [];
+  if (declarations.length > 0 && declarations.every(isTypeOnlyExportAliasDeclaration)) {
+    return false;
+  }
+  const resolved = resolveAlias(symbol, checker);
+  return Boolean(resolved && (resolved.flags & ts.SymbolFlags.Value));
+}
+
+function commonJsExportsObject(expression, checker) {
+  const current = unwrapExpression(expression);
+  if (isUnshadowedRuntimeGlobal(current, 'exports', checker)) return true;
+  return (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current))
+    && accessedPropertyName(current) === 'exports'
+    && isUnshadowedRuntimeGlobal(current.expression, 'module', checker);
+}
+
+function runtimePropertyName(node) {
+  if (!node) return null;
+  if (ts.isIdentifier(node) || ts.isStringLiteralLike(node)
+      || ts.isNumericLiteral(node)) return node.text;
+  if (ts.isComputedPropertyName(node)
+      && ts.isStringLiteralLike(node.expression)) return node.expression.text;
+  return null;
+}
+
+function runtimePropertiesOfExpression(expression, checker) {
+  const names = new Set();
+  if (ts.isObjectLiteralExpression(unwrapExpression(expression))) {
+    for (const property of unwrapExpression(expression).properties) {
+      if (ts.isSpreadAssignment(property)) continue;
+      const name = runtimePropertyName(property.name);
+      if (name !== null) names.add(name);
+    }
+  }
+  const type = checker.getTypeAtLocation(expression);
+  for (const property of type.getProperties()) {
+    if (symbolHasRuntimeValue(property, checker)) names.add(property.getName());
+  }
+  return names;
+}
+
+function commonJsRuntimeExportNames(sourceFile, checker) {
+  const names = new Set();
+  const visit = (node) => {
+    if (ts.isBinaryExpression(node)
+        && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const left = unwrapExpression(node.left);
+      if ((ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left))
+          && commonJsExportsObject(left.expression, checker)) {
+        const name = accessedPropertyName(left);
+        if (name !== null) names.add(name);
+      } else if (commonJsExportsObject(left, checker)
+          && !isUnshadowedRuntimeGlobal(left, 'exports', checker)) {
+        for (const name of runtimePropertiesOfExpression(node.right, checker)) names.add(name);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return names;
+}
+
+function runtimeExportNames(sourceFile, checker) {
+  const names = commonJsRuntimeExportNames(sourceFile, checker);
+  const moduleSymbol = checker.getSymbolAtLocation(sourceFile) || sourceFile.symbol;
+  if (moduleSymbol) {
+    for (const symbol of checker.getExportsOfModule(moduleSymbol)) {
+      if (symbolHasRuntimeValue(symbol, checker)) names.add(symbol.getName());
+    }
+  }
+  return [...names].sort();
 }
 
 function importDeclarationOf(declaration) {
@@ -2235,35 +2390,52 @@ function isNestCommonMember(expression, expectedName, checker, seenSymbols = new
   return false;
 }
 
-function verifyStrictNestState(repositoryRoot) {
+function isNestGlobalDecoratorResult(expression, checker, seenSymbols = new Set()) {
+  const current = unwrapExpression(expression);
+  if (ts.isCallExpression(current)
+      && isNestCommonMember(current.expression, 'Global', checker)) {
+    return true;
+  }
+  if (!ts.isIdentifier(current)) return false;
+  const symbol = symbolAtExpression(current, checker);
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  seenSymbols.add(symbol);
+  for (const declaration of symbol.declarations || []) {
+    if (isConstVariableDeclaration(declaration)
+        && declaration.initializer
+        && isNestGlobalDecoratorResult(
+          declaration.initializer,
+          checker,
+          seenSymbols,
+        )) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function verifyStrictNestState(
+  repositoryRoot,
+  analysis = createTypeScriptAnalysis(repositoryRoot),
+) {
   let forwardRef = 0;
   const globalModules = [];
   const relativePaths = listPlainFiles(repositoryRoot, 'backend/src')
     .filter((relativePath) => relativePath.endsWith('.ts'));
-  const rootNames = relativePaths.map(
-    (relativePath) => path.join(repositoryRoot, ...relativePath.split('/')),
-  );
-  const { options } = backendTypeScriptConfig(repositoryRoot);
-  const program = ts.createProgram({
-    rootNames,
-    options: {
-      ...options,
-      incremental: false,
-      noEmit: true,
-    },
-  });
-  const checker = program.getTypeChecker();
-  for (const [index, relativePath] of relativePaths.entries()) {
-    const sourceFile = program.getSourceFile(rootNames[index]);
-    if (!sourceFile) throw new Error('R7 strict Nest source program drift detected');
+  const checker = analysis.checker;
+  for (const relativePath of relativePaths) {
+    const sourceFile = sourceFromAnalysis(analysis, relativePath);
     const visit = (node) => {
       if (ts.isCallExpression(node)
           && isNestCommonMember(node.expression, 'forwardRef', checker)) {
         forwardRef += 1;
       }
       if (ts.isDecorator(node)
-          && ts.isCallExpression(node.expression)
-          && isNestCommonMember(node.expression.expression, 'Global', checker)) {
+          && isNestGlobalDecoratorResult(node.expression, checker)) {
+        globalModules.push(relativePath);
+      } else if (ts.isCallExpression(node)
+          && node.arguments.length > 0
+          && isNestGlobalDecoratorResult(node.expression, checker)) {
         globalModules.push(relativePath);
       }
       ts.forEachChild(node, visit);
@@ -2275,14 +2447,17 @@ function verifyStrictNestState(repositoryRoot) {
   return Object.freeze({ forwardRef, globals: globalModules.length });
 }
 
-function verifyProtectedCollaborationImports(repositoryRoot) {
+function verifyProtectedCollaborationImports(
+  repositoryRoot,
+  analysis = createTypeScriptAnalysis(repositoryRoot),
+) {
   const protectedPrefixes = [
     'backend/src/modules/collaboration/api/',
     'backend/src/modules/collaboration/internal/',
   ];
   for (const relativePath of listPlainFiles(repositoryRoot, 'backend/src')) {
     if (!relativePath.endsWith('.ts') || isCollaborationSource(relativePath)) continue;
-    const sourceFile = parseTypeScriptSource(repositoryRoot, relativePath);
+    const sourceFile = sourceFromAnalysis(analysis, relativePath);
     const inspectSpecifier = (specifier) => {
       if (typeof specifier !== 'string') return;
       const resolved = resolvedImportPath(repositoryRoot, relativePath, specifier);
@@ -2306,13 +2481,8 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
       }
     }
     const visit = (node) => {
-      if (ts.isCallExpression(node)
-          && ((ts.isIdentifier(node.expression) && node.expression.text === 'require')
-            || node.expression.kind === ts.SyntaxKind.ImportKeyword)
-          && node.arguments.length === 1
-          && ts.isStringLiteralLike(node.arguments[0])) {
-        inspectSpecifier(node.arguments[0].text);
-      }
+      const specifier = moduleReferenceSpecifierFromCall(node, analysis.checker);
+      if (specifier !== null) inspectSpecifier(specifier);
       ts.forEachChild(node, visit);
     };
     visit(sourceFile);
@@ -2320,15 +2490,19 @@ function verifyProtectedCollaborationImports(repositoryRoot) {
   return Object.freeze({ protectedRuntimeImports: 0 });
 }
 
-function verifyStrictRelocationState(repositoryRoot, manifest) {
+function verifyStrictRelocationState(
+  repositoryRoot,
+  manifest,
+  analysis = createTypeScriptAnalysis(repositoryRoot),
+) {
   if (manifest.stage !== 'strict') {
     throw new Error('R7 strict relocation verification requires stage=strict');
   }
   const layout = validateStagedLayout(repositoryRoot, manifest);
   const baselines = verifyBaselines(repositoryRoot, manifest);
-  const sourceReferences = verifyStrictSourceReferences(repositoryRoot);
-  const protectedImports = verifyProtectedCollaborationImports(repositoryRoot);
-  const nest = verifyStrictNestState(repositoryRoot);
+  const sourceReferences = verifyStrictSourceReferences(repositoryRoot, analysis);
+  const protectedImports = verifyProtectedCollaborationImports(repositoryRoot, analysis);
+  const nest = verifyStrictNestState(repositoryRoot, analysis);
   if (layout.sourceFiles !== 0 || layout.targetFiles !== manifest.moves.length) {
     throw new Error('R7 strict final inventory drift detected');
   }
@@ -2358,9 +2532,10 @@ function scanR7CollaborationRelocation(options) {
   }
   const { sourceFiles, targetFiles } = validateStagedLayout(options.repositoryRoot, manifest);
   const baselines = verifyBaselines(options.repositoryRoot, manifest);
+  const analysis = createTypeScriptAnalysis(options.repositoryRoot);
   verifySourceParity(options.repositoryRoot, manifest);
-  verifyPublicSnapshotSource(options.repositoryRoot, manifest);
-  verifyPublicSnapshotConsumers(options.repositoryRoot);
+  verifyPublicSnapshotSource(options.repositoryRoot, manifest, analysis);
+  verifyPublicSnapshotConsumers(options.repositoryRoot, analysis);
   verifyConstructorHandoffs(options.repositoryRoot, manifest);
   verifyControllerHandoffs(options.repositoryRoot, manifest);
   if (manifest.stage === 'history' || manifest.stage === 'relocated' || manifest.stage === 'strict') {
@@ -2369,9 +2544,9 @@ function scanR7CollaborationRelocation(options) {
   if (manifest.stage === 'relocated' || manifest.stage === 'strict') {
     verifySharingRelocation(options.repositoryRoot, manifest);
   }
-  verifyProtectedCollaborationImports(options.repositoryRoot);
+  verifyProtectedCollaborationImports(options.repositoryRoot, analysis);
   if (manifest.stage === 'strict') {
-    verifyStrictRelocationState(options.repositoryRoot, manifest);
+    verifyStrictRelocationState(options.repositoryRoot, manifest, analysis);
   }
   return Object.freeze({
     ok: true,

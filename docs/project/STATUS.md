@@ -1,37 +1,50 @@
 # Current Status
 
-Snapshot date: 2026-08-23
+Snapshot date: 2026-08-24
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
 
-## Modular Monolith R7 Plan Approved - 2026-08-23
+## Modular Monolith R7 Local Completion - 2026-08-24
 
-R7 design is owner-approved on branch `modular-monolith` from immutable R6
-closeout `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`. The approved design is
-`docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md`.
-The staged implementation plan is approved at
-`docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md`;
-no Collaboration application source has moved.
+R7 is locally complete on branch `modular-monolith` from immutable R6 closeout
+`31ea5324007fc71fa4b3590fbb98a454ee1deaa7` at application candidate
+`aafb47ea1742c278f6a5ed24799ada7bc23721b0`. The exact completion receipts are
+the R7 completion specification and plan under `docs/superpowers/`.
 
-The design-stage R7 manifest and scanner freeze the exhaustive 18-file move,
-the four final public snapshot exports, four constructor-consumer handoffs, two
-controller/decorator source handoffs, exact nine retired dependency keys,
-31-to-22 dependency arithmetic, and path-only ownership projection for 28
-records / 80 occurrences inside the unchanged 385 / 781 total. The existing
-optional `SharingService` realtime dependency remains optional at constructor
-index 5 with unchanged undefined behavior. R3 delegates only the separately
-validated exact R7 fence; completed R3-R6 allowlists remain immutable.
+All 18 approved files moved one-to-one into the existing Collaboration
+API/internal/public boundary. The old `sharing` and `contribution-history`
+roots are absent without facades. The public snapshot builder keeps its four
+runtime exports, optional realtime injection remains unchanged, dependency
+evidence is 22 records after retiring the nine approved debts, and physical
+ownership remains 385 records / 781 occurrences.
 
-Independent design review findings were corrected before plan approval: the live
-architecture gate is green, historical evidence is separated from the future
-live R7 baseline, scanner reconciliation is atomic with each move, all four
-builder exports are named, the 114-path fence is exact, live TypeScript AST
-contracts reject export/DI/controller drift, and phone invitation cleanup is
-mandatory. No push,
-merge, PR mutation, deployment, remote CI, real-recipient delivery, or R8 work
-is authorized or claimed.
+Final local verification passed: architecture at 348 modules / 1405
+dependencies, strict R7 source 0/target 18/dependency 22/ownership 385/781,
+zero `forwardRef()`, two approved globals, zero cycles or illegal edges; check;
+build; R7 210/210; 1242/1243 Backend tests with zero failures and one
+intentional Windows skip; Prisma 6.19.3 validate/generate, 52-model/41-enum
+fingerprint, and no-difference equivalence; both audits at zero vulnerabilities;
+11 focused smokes; all 30 aggregate smokes; docs; protected surfaces; and
+cleanliness. The cumulative independent review approved the exact candidate
+with no Critical, Important, or Minor finding.
+
+Immutable image `aarast-backend:r7-candidate-aafb47ea`, image ID
+`sha256:55a5311048d57ffded953f18dedcf3e8fdcb4da8b3171e8c56ecededa0d3e0ae`,
+passed in-image audit, isolated probe, protected local/LAN cutover, database/
+Redis/media readiness, restart 0, OOM false, and sanitized logs. OpenWA is
+disabled. R6 remains stopped and preserved for rollback.
+
+The authenticated phone journey reached R7 and passed session/context/dashboard
+restore, sharing reads, one synthetic invitation create 201, cooldown/reissue
+201, members/invitations/permissions reads 200, cancellation 200, post-cancel
+absence, and force-close/reopen restore. No real delivery occurred or was
+claimed. No device identifier, phone, token, OTP, credential, raw body,
+screenshot, or business value was retained.
+
+R7 is a local completion only. No push, merge, PR mutation, deployment, remote
+CI, or R8 work is claimed. R8 requires a separate owner instruction and plan.
 
 ## Modular Monolith R6 Local Completion - 2026-08-23
 
@@ -80,8 +93,8 @@ number, OTP, invitation token, raw body, or business value was retained.
 
 R6 is a local completion only. No push, merge, PR mutation, deployment, or
 remote CI is claimed. External Meta/OpenWA production activation is outside
-this architecture phase. R7 design and staged implementation plan are approved;
-application implementation has not started.
+this architecture phase. At R6 closeout, R7 was approved but not started; the
+R7 section above records its later local completion.
 
 ## Modular Monolith R5 Local Completion - 2026-08-22
 

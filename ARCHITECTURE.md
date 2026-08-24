@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-22
+Snapshot date: 2026-08-24
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -256,14 +256,17 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   disabled and the stopped R5 runtime preserved for rollback. R7 design and
   implementation plan are approved; application relocation has not started.
   No push, merge, deployment, or remote-CI result is claimed.
-- R7 design is approved from immutable R6 closeout
-  `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`. Its design-stage manifest and
-  scanner freeze the exact 18-file Collaboration move, four builder exports,
-  historical R3-R6 handoffs, 31-to-22 dependency projection, 385/781 path-only
-  ownership projection, existing optional realtime injection, and exact future
-  R7 path fence. Its staged implementation plan is approved at
-  `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md`;
-  no application file has moved.
+- R7 is locally complete from immutable R6 closeout
+  `31ea5324007fc71fa4b3590fbb98a454ee1deaa7` at application candidate
+  `aafb47ea1742c278f6a5ed24799ada7bc23721b0`. All 18 Collaboration files moved
+  one-to-one into the existing API/internal/public boundary; the two legacy
+  roots are absent and no compatibility facade remains. The public snapshot
+  builder keeps four runtime exports, the exact dependency debt is 22 records,
+  and ownership remains 385 records / 781 occurrences. Full local gates,
+  immutable runtime cutover, independent cumulative review, and the
+  authenticated phone create/reissue/read/cancel/restore journey passed.
+  OpenWA remained disabled; R6 is stopped and preserved for rollback. R8 has
+  not started. No push, merge, deployment, or remote-CI result is claimed.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.

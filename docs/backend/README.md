@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-22
+Snapshot date: 2026-08-24
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -70,11 +70,13 @@ new ports/global/Nest-graph violations while allowing the committed counted
 debt baselines only to shrink. R1 keeps 52 models and 76 migrations and changes
 no API route or database contract.
 
-The cumulative chain includes the design-stage R7 Collaboration relocation
-contract. Before application implementation it must report exactly 18 legacy
-sources, zero final targets, and the frozen dependency/ownership handoff. The
-approved implementation plan advances only through the exact
-design/snapshot/history/relocated/strict stages.
+R7 physically owns Collaboration under `src/modules/collaboration`: all 18
+approved API/DTO/internal/public files are at their final paths, while the old
+`sharing` and `contribution-history` roots are absent. Cross-context consumers
+use the Collaboration boundary; strict reports zero legacy sources, 18 final
+targets, 22 known dependency records, and unchanged ownership at 385/781. The
+public contribution-snapshot builder keeps exactly four runtime exports. R8
+still owns the later two-global cleanup and has not started.
 
 Database-writing smoke and load commands are managed by
 `scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker

@@ -212,14 +212,47 @@ and deployment artifacts.
   delivery, credential, token, phone, OTP, raw body, or business value is
   claimed or retained.
 - R6 is locally complete only. External Meta/OpenWA activation remains outside
-  scope. R7 design and staged implementation plan are approved, but no
-  Collaboration source has moved. Push, merge, PR mutation, deployment, and
-  remote CI are not claimed.
+  scope. At R6 closeout, R7 was approved but not started; the R7 closeout
+  section below records its later local result. Push, merge, PR mutation,
+  deployment, and remote CI are not claimed by R6.
 - R7 design governance is executable: `npm run architecture:r7` must report
   design stage with 18 legacy sources and zero final targets, exact 31/385/781
   baseline evidence, nine dependency handoffs, and 28/80 ownership projection.
   The cumulative `npm run architecture` gate must pass before Task 1 and every
   later R7 checkpoint.
+
+## Modular Monolith R7 Closeout Gates
+
+- Fixed-base R7 scope passed for the exact 18 moves, 114-path fence, four
+  public snapshot exports, constructor/controller/decorator handoffs, nine
+  dependency retirements, ownership path projection, permanent scanner/tests,
+  application checkpoints, and final receipts.
+- Strict R7 reports source 0, target 18, dependency 22, and ownership 385/781.
+  Both retired roots are absent and no compatibility facade or duplicate
+  runtime export remains.
+- Permanent adversarial coverage rejects loader/re-export aliases, protected
+  internal access, builder facades, duplicate runtime/CommonJS exports,
+  indirect Nest globals, receiver/value-origin bypasses, ambient false
+  positives, and straight-line or branch-ambiguous CommonJS export versions.
+- Architecture/check/build passed. R7 tests passed 210/210; full Backend tests
+  passed 1242/1243 with zero failures and one intentional Windows skip.
+  Prisma 6.19.3 validate/generate, 52/41 DMMF, no-difference migrate proof,
+  both zero-finding audits, 11 focused managed smokes, all 30 aggregate smokes,
+  docs, protected surfaces, and cleanup passed.
+- Independent cumulative review approved candidate
+  `aafb47ea1742c278f6a5ed24799ada7bc23721b0` with no Critical, Important, or
+  Minor finding.
+- Immutable image `aarast-backend:r7-candidate-aafb47ea` passed in-image audit,
+  isolated probe, local/LAN `/live` and `/ready` 200, database/Redis/media up,
+  restart 0, OOM false, sanitized logs, and probe cleanup. R6 remains stopped
+  and preserved for rollback.
+- The authenticated phone gate passed session/context/dashboard restore,
+  synthetic invitation create 201, cooldown/reissue 201, sharing reads 200,
+  cancellation 200 with post-cancel absence, and force-close/reopen restore.
+  OpenWA remained disabled; no real recipient, credential, token, OTP, phone,
+  raw body, screenshot, or business value was retained.
+- R7 is locally complete only. R8, push, merge, PR mutation, deployment, and
+  remote CI have not started.
 
 ## Modular Monolith R3 Closeout Gates
 

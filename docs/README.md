@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-22
+Snapshot date: 2026-08-24
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -93,6 +93,17 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-completion.md`
+  and
+  `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation-completion.md`
+  - exact local R7 completion receipts from immutable R6 closeout
+  `31ea5324007fc71fa4b3590fbb98a454ee1deaa7` at application candidate
+  `aafb47ea1742c278f6a5ed24799ada7bc23721b0`. All 18 files are in the final
+  Collaboration boundary; strict reports source 0/target 18, dependency 22,
+  ownership 385/781. Full local gates, immutable runtime, independent review,
+  and the authenticated phone sharing/cleanup/restore journey passed. R6 is
+  stopped and preserved for rollback. R8, push, merge, deployment, and remote
+  CI have not started.
 - `docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md`
   and
   `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md`
@@ -101,8 +112,9 @@ changing behavior.
   public snapshot contract, historical R3-R6 handoffs, 31-minus-9 dependency
   projection, 385/781 path-only ownership projection, optional realtime
   invariant, and exact future R7 scope are machine-checked by the design-stage
-  R7 manifest/scanner. The implementation plan is approved with staged
-  snapshot/history/sharing checkpoints; application relocation has not started.
+  R7 manifest/scanner. The immutable design and implementation plan are the
+  historical execution contract; the completion receipts above record the
+  later locally completed result.
 - `docs/superpowers/specs/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md`
   and
   `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port-completion.md`
@@ -112,9 +124,9 @@ changing behavior.
   Identity owns the provider-neutral public transient-delivery port and private
   adapter; Collaboration no longer imports the concrete OpenWA transport. Full
   local gates, immutable runtime, and phone sharing/restore passed with OpenWA
-  disabled truthfully and R5 preserved for rollback. R7 design and
-  implementation plan are approved, but implementation has not started. No
-  push, merge, deployment, or remote CI is claimed.
+  disabled truthfully and R5 preserved for rollback. It is the immutable base
+  for the locally completed R7 phase above. No push, merge, deployment, or
+  remote CI is claimed.
 - `docs/superpowers/plans/2026-08-22-modular-monolith-r6-sharing-otp-transport-port.md`
   - immutable approved R6 execution plan. Its unchecked runtime/closeout boxes
   preserve the pre-execution snapshot; the active completion receipts above

@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-24 - Modular Monolith R7 Local Completion
+
+- Moved all 18 Collaboration files one-to-one from the retired `sharing` and
+  `contribution-history` roots into the existing
+  `modules/collaboration` API/internal/public boundary. No compatibility facade
+  or duplicate implementation remains.
+- Preserved routes, DTO/controller decorators, DI/provider identity, optional
+  realtime behavior, public snapshot exports, permissions, history,
+  transactions, Arabic/errors, schema, migrations, Mobile, Admin, workflows,
+  Compose, and deployment contracts.
+- Retired exactly nine dependency debts: the known set is 22. Physical
+  ownership remains 385 records / 781 occurrences with path-only relocation.
+- Architecture/check/build, R7 210/210, Backend 1242/1243 with zero failures
+  and one intentional Windows skip, both zero-finding audits, Prisma 52/41
+  equivalence, 11 focused smokes, all 30 aggregate smokes, docs, and protected
+  surfaces passed. Independent cumulative review approved the exact candidate
+  with no Critical, Important, or Minor finding.
+- Built immutable image `aarast-backend:r7-candidate-aafb47ea`, image ID
+  `sha256:55a5311048d57ffded953f18dedcf3e8fdcb4da8b3171e8c56ecededa0d3e0ae`.
+  Isolated probe and local/LAN cutover passed at `/live`/`/ready` 200,
+  database/Redis/media up, restart 0, OOM false, and clean sanitized logs.
+- The authenticated phone journey passed session/context/dashboard restore,
+  synthetic invite create/reissue/read/cancel cleanup, and force-close/reopen.
+  OpenWA was disabled and no real delivery was claimed or attempted. R6 is
+  stopped and preserved for rollback.
+- R7 is locally complete at application candidate
+  `aafb47ea1742c278f6a5ed24799ada7bc23721b0`. No push, merge, PR mutation,
+  deployment, remote CI, real-recipient delivery, or R8 work occurred.
+
 ## 2026-08-22 - Modular Monolith R5 Local Completion
 
 - Moved all 44 Identity source files one-to-one from `auth`, `users`, `me`, and

@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R6 Locally Complete; R7 Plan Approved
+### P3 — Source Quality And Architecture — R7 Locally Complete; Stop Before R8
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -442,27 +442,35 @@ Completed R6 execution plan:
   protected surfaces, immutable runtime, and the authenticated phone
   sharing/restore journey passed. OpenWA remained disabled; no real-recipient
   delivery is claimed. R5 remains stopped and preserved for rollback.
-- R6 is locally complete. R7 design and implementation plan are approved;
-  application relocation has not started. Push, merge, PR mutation,
-  deployment, and remote CI are not claimed.
+- At R6 closeout, R7 design and implementation were approved but not started;
+  the R7 section below records the later local completion. Push, merge, PR
+  mutation, deployment, and remote CI are not claimed by R6.
 
-#### R7 — Collaboration Physical Relocation — Plan Approved
+#### R7 — Collaboration Physical Relocation — Locally Complete
 
-- Immutable base: `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`.
-- Approved design:
+- R7 executed from immutable R6 closeout
+  `31ea5324007fc71fa4b3590fbb98a454ee1deaa7` at application candidate
+  `aafb47ea1742c278f6a5ed24799ada7bc23721b0`.
+- Immutable design:
   `docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-design.md`.
-- Approved staged implementation plan:
+- Immutable staged implementation plan:
   `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation.md`.
-- The design-stage R7 governance contract freezes the exact 18 source/target
-  pairs, 114-path maximum change fence, four public builder exports, four DI
-  handoffs, two controller/decorator handoffs, exact nine dependency debts, and
-  28-record/80-occurrence ownership path projection.
-- Historical R3-R6 scanners remain phase evidence. Scanner/path reconciliation
-  must occur atomically with each corresponding R7 move; R7 alone certifies the
-  live final paths and 22 dependency records.
-- Task 1 staged scanner/parity work is next. Application relocation, runtime
-  cutover, phone QA, closeout, R8, push, merge, PR mutation, deployment, and
-  remote CI have not started and are not implied by plan approval.
+- All 18 source/target pairs moved one-to-one through the staged scanner,
+  snapshot, history, sharing, and strict checkpoints. The final graph has zero
+  legacy sources, 18 targets, four public builder exports, dependency 22, and
+  ownership 385 records / 781 occurrences.
+- Architecture/check/build, 1242/1243 Backend tests with zero failures and one
+  intentional Windows skip, Prisma 52/41 equivalence, both zero-finding audits,
+  11 focused smokes, all 30 aggregate smokes, docs, protected surfaces, and
+  independent cumulative review passed.
+- Immutable image `aarast-backend:r7-candidate-aafb47ea` passed audit, probe,
+  local/LAN cutover, dependency readiness, restart/OOM, and sanitized-log gates.
+  R6 remains stopped and preserved for rollback.
+- The authenticated phone checkpoint passed session/context/dashboard restore,
+  synthetic invitation create/reissue/read/cancel cleanup, and full
+  force-close/reopen. OpenWA remained disabled and no real delivery is claimed.
+- R7 is locally complete. R8 has not started. Push, merge, PR mutation,
+  deployment, and remote CI are not claimed.
 
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
@@ -474,8 +482,8 @@ The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
 The numbered P3 modernization work below remains subordinate to the completed
-R6 receipts and the approved R7 design/plan. R7 must follow the exact staged
-plan checkpoints; R8 and later work must not move forward early.
+R7 receipts. R8 and later work must not move forward without a separate owner
+instruction and approved plan.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

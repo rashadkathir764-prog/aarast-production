@@ -2,7 +2,7 @@
 
 Date: 2026-08-27
 
-Status: Owner-approved design sections; pending document review and implementation plan
+Status: Owner-approved design; implementation plan pending owner review
 
 Branch: `modular-monolith`
 
@@ -301,10 +301,11 @@ is accepted only when all of these match:
 
 The R8 scope fence includes only the approved design/plan, new R8
 manifest/scanner/test, the exact two former-global module sources, the Outbox
-runtime module, package scripts/generated script reference, the exact R1/R3/R7
-live gate and scope-handoff files, and active R8 receipt documents. The
-manifest contains the concrete path list; generic directories, globs, arbitrary
-future tests, archived documents, Mobile, Admin, schema, migrations,
+runtime module, package scripts/generated script reference, the exact Prisma
+config merge-security package-script projection and focused test, the exact
+R1/R3/R7 live gate and scope-handoff files, and active R8 receipt documents.
+The manifest contains the concrete path list; generic directories, globs,
+arbitrary future tests, archived documents, Mobile, Admin, schema, migrations,
 dependency/ownership baselines, workflows, Docker, Compose, and deployment
 paths are forbidden.
 
@@ -350,6 +351,8 @@ inventory projections. Exact expected changes are limited to:
 - R3 live global-count and Realtime module source-shape assertions;
 - R7 strict live global-count assertions;
 - R3 scope delegation and focused delegation/projection tests;
+- Prisma config merge-security projection of the exact R8 architecture script
+  back to the already pinned R7 package graph, plus its near-miss tests;
 - scope hashes or exact protected-path lists mechanically affected by those
   files;
 - the new R8 scanner, manifest, tests, and package script.
@@ -406,6 +409,8 @@ Implementation uses reviewed local checkpoints on the same branch:
 2. add the exact R3 scope delegation plus the R8 manifest/scanner/tests in
    design stage, prove adversarial RED cases without changing production
    source, and require the complete focused R3 scope suite to return green;
+   add the exact R8-to-R7 package-script security projection in the same
+   design-governance stage without changing dependencies or `package-lock.json`;
 3. atomically remove both global decorators, add the one missing Outbox runtime
    Prisma import, apply the exact three-field R3 live-inventory projection,
    move the live cumulative gates to zero, and promote R8 to strict;

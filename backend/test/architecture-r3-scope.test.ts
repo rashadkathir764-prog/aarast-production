@@ -31,6 +31,11 @@ const r7ManifestPath = path.join(
   'architecture',
   'r7-collaboration-relocation.json',
 );
+const r8ManifestPath = path.join(
+  backendRoot,
+  'architecture',
+  'r8-global-module-removal.json',
+);
 const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const temporaryRoots: string[] = [];
 
@@ -41,6 +46,7 @@ type ScopeModule = {
   R5_ALLOWED_PATHS: readonly string[];
   R6_ALLOWED_PATHS: readonly string[];
   R7_ALLOWED_PATHS: readonly string[];
+  R8_ALLOWED_PATHS: readonly string[];
   assertAllowedPathsMatch(manifestPaths: unknown, scopePaths: unknown): void;
   writeAtomicJson(
     reportPath: string,
@@ -61,6 +67,11 @@ type ScopeModule = {
   validateR7CollaborationManifest(value: unknown): {
     baseRevision: string;
     stage: string;
+    allowedChangedPaths: readonly string[];
+  };
+  validateR8GlobalRemovalManifest(value: unknown): {
+    baseRevision: string;
+    stage: 'design' | 'strict';
     allowedChangedPaths: readonly string[];
   };
   validateScopeSnapshot(value: unknown): any;
@@ -315,7 +326,8 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
       !scope().R4_ALLOWED_PATHS.includes(entry)
       && !scope().R5_ALLOWED_PATHS.includes(entry)
       && !scope().R6_ALLOWED_PATHS.includes(entry)
-      && !scope().R7_ALLOWED_PATHS.includes(entry)),
+      && !scope().R7_ALLOWED_PATHS.includes(entry)
+      && !scope().R8_ALLOWED_PATHS.includes(entry)),
     [],
     'post-R3 paths must be delegated through an exact approved phase fence',
   );
@@ -463,6 +475,90 @@ test('R7 delegates every exact staged manifest without weakening its parity evid
   assert.throws(
     () => scope().validateR7CollaborationManifest(missingFingerprint),
     /parity|fingerprint|manifest.*drift/i,
+  );
+});
+
+test('R8 delegates only its fixed-base hash-bound path fence', () => {
+  assert.equal(existsSync(r8ManifestPath), true, 'R8 manifest must exist');
+  const value = JSON.parse(readFileSync(r8ManifestPath, 'utf8'));
+  const delegated = scope().validateR8GlobalRemovalManifest(value);
+
+  assert.equal(delegated.baseRevision, 'c2b728bfe54304562923facfb6094e0de04c0b27');
+  assert.equal(delegated.stage, 'design');
+  assert.deepEqual(value.documents, {
+    design: {
+      path: 'docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md',
+      sha256: 'eb6d585694c7f2b571ec6922db9765ef0426c94898d9f88fa22a14c7763768a5',
+    },
+    plan: {
+      path: 'docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md',
+      sha256: '9afe10c044426df84ae818d5603762f97e39b5fd4d5a81802128ac262ea069ca',
+    },
+  });
+  assert.deepEqual(delegated.allowedChangedPaths, scope().R8_ALLOWED_PATHS);
+
+  const invalidMutations = [
+    ['wrong base', (candidate: any) => { candidate.baseRevision = '0'.repeat(40); }],
+    ['wrong stage', (candidate: any) => { candidate.stage = 'relocated'; }],
+    ['extra path', (candidate: any) => { candidate.allowedChangedPaths.push('docs/attacker.md'); }],
+    ['traversal', (candidate: any) => { candidate.allowedChangedPaths[0] = '../escape.md'; }],
+    ['absolute path', (candidate: any) => { candidate.allowedChangedPaths[0] = 'C:/escape.md'; }],
+    ['wrong design hash', (candidate: any) => { candidate.documents.design.sha256 = '0'.repeat(64); }],
+    ['wrong plan hash', (candidate: any) => { candidate.documents.plan.sha256 = '0'.repeat(64); }],
+  ] as const;
+  for (const [name, mutate] of invalidMutations) {
+    const candidate = structuredClone(value);
+    mutate(candidate);
+    assert.throws(
+      () => scope().validateR8GlobalRemovalManifest(candidate),
+      name,
+    );
+  }
+});
+
+test('R8 rejects a reordered delegated path fence', () => {
+  const value = JSON.parse(readFileSync(r8ManifestPath, 'utf8'));
+  [value.allowedChangedPaths[0], value.allowedChangedPaths[1]] = [
+    value.allowedChangedPaths[1],
+    value.allowedChangedPaths[0],
+  ];
+  assert.throws(
+    () => scope().validateR8GlobalRemovalManifest(value),
+    /sorted|allowlist.*drift/i,
+  );
+});
+
+test('R8 rejects a duplicate delegated path', () => {
+  const value = JSON.parse(readFileSync(r8ManifestPath, 'utf8'));
+  value.allowedChangedPaths[1] = value.allowedChangedPaths[0];
+  assert.throws(
+    () => scope().validateR8GlobalRemovalManifest(value),
+    /duplicate|allowlist.*drift/i,
+  );
+});
+
+test('R8 rejects a canonical manifest-path near-miss', () => {
+  const value = JSON.parse(readFileSync(r8ManifestPath, 'utf8'));
+  const manifestIndex = value.allowedChangedPaths.indexOf(
+    'backend/architecture/r8-global-module-removal.json',
+  );
+  assert.notEqual(manifestIndex, -1);
+  value.allowedChangedPaths[manifestIndex] =
+    'backend/architecture/r8-global-module-removal.json.bak';
+  assert.throws(
+    () => scope().validateR8GlobalRemovalManifest(value),
+    /path|allowlist.*drift|required/i,
+  );
+});
+
+test('R8 rejects a missing required delegated path', () => {
+  const value = JSON.parse(readFileSync(r8ManifestPath, 'utf8'));
+  value.allowedChangedPaths = value.allowedChangedPaths.filter(
+    (entry: string) => entry !== 'backend/test/architecture-r8-global-module-removal.test.ts',
+  );
+  assert.throws(
+    () => scope().validateR8GlobalRemovalManifest(value),
+    /path|allowlist.*drift|required/i,
   );
 });
 

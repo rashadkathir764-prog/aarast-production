@@ -19,6 +19,11 @@ const {
   R7_BASE,
   validateR7Manifest,
 } = require('./r7-collaboration-relocation-scan.cjs');
+const {
+  EXPECTED_ALLOWED_PATHS: R8_EXPECTED_ALLOWED_PATHS,
+  R8_BASE,
+  validateR8Manifest,
+} = require('./r8-global-module-removal-scan.cjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const R4_BASE = '502b181a2ce624458fd7eae064f194497ec0151e';
@@ -26,7 +31,9 @@ const R4_MANIFEST_PATH = 'backend/architecture/r4-planning-finance-boundary.json
 const R5_MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
 const R6_MANIFEST_PATH = 'backend/architecture/r6-sharing-otp-transport.json';
 const R7_MANIFEST_PATH = 'backend/architecture/r7-collaboration-relocation.json';
+const R8_MANIFEST_PATH = 'backend/architecture/r8-global-module-removal.json';
 const R7_ALLOWED_PATHS = Object.freeze([...R7_EXPECTED_ALLOWED_PATHS]);
+const R8_ALLOWED_PATHS = Object.freeze([...R8_EXPECTED_ALLOWED_PATHS]);
 const R4_ALLOWED_PATHS = Object.freeze([
   'ARCHITECTURE.md',
   'CHANGELOG.md',
@@ -440,6 +447,22 @@ function validateR7CollaborationManifest(value) {
   });
 }
 
+function validateR8GlobalRemovalManifest(value) {
+  const manifest = validateR8Manifest(value);
+  if (manifest.baseRevision !== R8_BASE) {
+    throw new Error('R8 global removal manifest identity is invalid');
+  }
+  assertAllowedPathsMatch(
+    manifest.allowedChangedPaths,
+    R8_ALLOWED_PATHS,
+  );
+  return Object.freeze({
+    baseRevision: manifest.baseRevision,
+    stage: manifest.stage,
+    allowedChangedPaths: Object.freeze(Array.from(manifest.allowedChangedPaths)),
+  });
+}
+
 function validateScopeSnapshot(value) {
   const snapshot = assertPlainObject(value, 'scope snapshot');
   if (snapshot.baseRef !== R3_BASE) throw new Error('scope base does not equal immutable R3 base');
@@ -662,12 +685,17 @@ function validateR3Scope(options) {
   const delegatedR7 = fs.existsSync(r7ManifestAbsolutePath)
     ? validateR7CollaborationManifest(JSON.parse(fs.readFileSync(r7ManifestAbsolutePath, 'utf8')))
     : null;
+  const r8ManifestAbsolutePath = path.join(input.repositoryRoot, ...R8_MANIFEST_PATH.split('/'));
+  const delegatedR8 = fs.existsSync(r8ManifestAbsolutePath)
+    ? validateR8GlobalRemovalManifest(JSON.parse(fs.readFileSync(r8ManifestAbsolutePath, 'utf8')))
+    : null;
   const effectiveAllowedPaths = [...new Set([
     ...ALLOWED_PATHS,
     ...(delegatedR4 ? delegatedR4.allowedChangedPaths : []),
     ...(delegatedR5 ? delegatedR5.allowedChangedPaths : []),
     ...(delegatedR6 ? delegatedR6.allowedChangedPaths : []),
     ...(delegatedR7 ? delegatedR7.allowedChangedPaths : []),
+    ...(delegatedR8 ? delegatedR8.allowedChangedPaths : []),
   ])].sort();
   const tracked = gitLines(input.repositoryRoot, ['diff', '--no-renames', '--name-only', R3_BASE, '--']);
   const untracked = gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
@@ -716,11 +744,13 @@ module.exports = {
   R5_ALLOWED_PATHS,
   R6_ALLOWED_PATHS,
   R7_ALLOWED_PATHS,
+  R8_ALLOWED_PATHS,
   assertAllowedPathsMatch,
   validateR4DelegationManifest,
   validateR5IdentityManifest,
   validateR6SharingOtpManifest,
   validateR7CollaborationManifest,
+  validateR8GlobalRemovalManifest,
   writeAtomicJson,
   validateR3Scope,
   validateScopeSnapshot,

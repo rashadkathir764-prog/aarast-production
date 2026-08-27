@@ -42,10 +42,11 @@ Messaging, Notifications, Planning, and Tasks provider owners.
 
 One verified direct DI consumer still relies on Prisma's global visibility:
 `ApplicationOutboxRuntimeModule` registers `OutboxWorker`, whose constructor
-injects `PrismaService`, but imports only `OutboxCoreModule` rather than
-`PrismaModule`. `OutboxCoreModule` imports Prisma for its own providers and
-exports only `OutboxService`; it is not an approved database-provider proxy.
-R8 must add the missing direct import at the real owning module.
+injects `PrismaService`. Its only database-related import is
+`OutboxCoreModule`; it does not directly import `PrismaModule`.
+`OutboxCoreModule` imports Prisma for its own providers and exports only
+`OutboxService`; it is not an approved database-provider proxy. R8 must add the
+missing direct import at the real owning module.
 
 Realtime composition is already structurally explicit:
 
@@ -201,14 +202,21 @@ R8 adds:
 
 The manifest binds the immutable base, stage, exact former-global modules,
 provider identities, strict Prisma and Realtime importer inventories, exact
-`useExisting` chain, allowed R8 change surface, protected surfaces, and frozen
-R7 dependency/ownership counts.
+`useExisting` chain, allowed R8 change surface, protected surfaces, frozen R7
+dependency/ownership counts, and the exact R3 scope and inventory projections.
 
 The scanner uses the TypeScript compiler AST and module resolution. It must
 reject at minimum:
 
 - direct, aliased, namespace, re-exported, computed, or cross-file Nest
   `Global` decorator bindings;
+- Nest `DynamicModule` metadata whose `global` property resolves to `true`,
+  including local aliases, object spreads, computed property names, and
+  cross-file re-exports;
+- module-factory option objects whose `isGlobal` property resolves to `true`;
+- unresolved spread/computed metadata in a `DynamicModule` return or a module
+  import factory when the scanner cannot prove that global activation is
+  absent;
 - a missing explicit provider-module import for a registered direct consumer;
 - a transitive-only, unresolved, non-relative, wrong-package, shadowed, or
   same-name decoy import;
@@ -221,22 +229,90 @@ reject at minimum:
   manifest paths;
 - new cycles, `forwardRef()`, baseline increases, or protected-surface drift.
 
+The semantic global check resolves the Nest `DynamicModule` type from the real
+`@nestjs/common` package rather than trusting a same-name local interface. Its
+finite evaluator accepts only statically provable local/cross-file constants,
+aliases, spreads, and computed keys. An unresolved candidate fails closed; it
+does not become an implicit allowlist.
+
 The scanner has a design stage that proves the approved future change surface
 while the immutable base still has two globals, and a strict stage that accepts
 only zero globals and the final explicit closure. The design stage is removed
 from live acceptance when implementation reaches strict; it is not a runtime
 compatibility mode.
 
+## R3 Scope Delegation
+
+The design-document commit is a pre-governance documentation checkpoint and
+does not claim the complete Backend test gate. At that commit, the existing R3
+scope test truthfully rejects the new R8 path. The first R8 governance
+checkpoint must restore the focused R3 scope suite to green before any
+production-source edit.
+
+`backend/scripts/architecture/r3-scope.cjs` must load and validate the R8
+manifest exactly as the later-phase R5-R7 delegations are validated. Delegation
+is accepted only when all of these match:
+
+- fixed base `c2b728bfe54304562923facfb6094e0de04c0b27`;
+- the canonical repository-relative R8 manifest path;
+- a sorted, unique, traversal-safe `allowedChangedPaths` array;
+- exact SHA-256 evidence for the approved design and plan documents;
+- exact design-stage governance paths;
+- exact strict-stage production, active-gate, package-script, active-receipt,
+  and generated-document paths;
+- a stage value whose permitted paths are a subset of the final R8 fence.
+
+The R8 scope fence includes only the approved design/plan, new R8
+manifest/scanner/test, the exact two former-global module sources, the Outbox
+runtime module, package scripts/generated script reference, the exact R1/R3/R7
+live gate and scope-handoff files, and active R8 receipt documents. The
+manifest contains the concrete path list; generic directories, globs, arbitrary
+future tests, archived documents, Mobile, Admin, schema, migrations,
+dependency/ownership baselines, workflows, Docker, Compose, and deployment
+paths are forbidden.
+
+Focused R3 scope tests must prove the exact R8 delegation passes and reject an
+incorrect base, manifest path, document hash, stage, missing path, extra path,
+duplicate, traversal, absolute path, reparse escape, and high-similarity
+near-miss. Only after those tests pass may R8 change production source.
+
+## R3 Live-Inventory Projection
+
+`backend/architecture/r3-context-boundaries.json` remains the immutable R3
+inventory and is not rewritten to pretend R3 originally had zero globals. At
+strict R8 only, `r3-context-scan.cjs` validates the R8 manifest and applies one
+finite projection to a copy of the historical inventory before comparing it
+with live source:
+
+1. set `PrismaModule.global` from `true` to `false`;
+2. set `ConversationRealtimeModule.global` from `true` to `false`;
+3. add `PrismaModule` to the sorted import inventory of
+   `ApplicationOutboxRuntimeModule`.
+
+No other module path, class, import, controller, provider, export, lifecycle,
+token, or metadata field may change through this projection. R3 continues to
+own and compare the full live inventory after those exact three transforms.
+R8 does not replace R3 with a count-only check.
+
+The R3 scanner rejects a projection unless the historical before-values match
+exactly, the R8 base/stage/hashes are valid, and the resulting three fields
+match strict live source. Focused fixtures must prove both global-flag
+transitions and the Outbox import, plus reject a wrong module, wrong prior
+value, extra import, missing import, unsorted imports, changed provider/export,
+or any fourth projection.
+
 ## Historical Gate Handoff And Test-Change Law
 
-Historical R0-R7 documents remain unchanged. Live architecture code and tests
-that assert the active source must move from two globals to zero through the
-R8 manifest. Exact expected changes are limited to:
+Historical R0-R7 documents remain unchanged. The R3 inventory manifest also
+remains immutable. Live architecture code and tests that assert the active
+source must move from two globals to zero through the validated R8 scope and
+inventory projections. Exact expected changes are limited to:
 
 - ports scanner global policy and focused tests;
 - R1 Prisma module source-shape/lifecycle assertion;
 - R3 live global-count and Realtime module source-shape assertions;
 - R7 strict live global-count assertions;
+- R3 scope delegation and focused delegation/projection tests;
 - scope hashes or exact protected-path lists mechanically affected by those
   files;
 - the new R8 scanner, manifest, tests, and package script.
@@ -288,12 +364,14 @@ provider.
 Implementation uses reviewed local checkpoints on the same branch:
 
 1. commit the approved design and implementation plan from the immutable R7
-   closeout;
-2. add the R8 manifest/scanner/tests in design stage and prove adversarial RED
-   cases without changing production source;
+   closeout; these pre-governance documentation commits run documentation
+   guards and do not claim the complete Backend test gate;
+2. add the exact R3 scope delegation plus the R8 manifest/scanner/tests in
+   design stage, prove adversarial RED cases without changing production
+   source, and require the complete focused R3 scope suite to return green;
 3. atomically remove both global decorators, add the one missing Outbox runtime
-   Prisma import, move the live cumulative gates to zero, and promote R8 to
-   strict;
+   Prisma import, apply the exact three-field R3 live-inventory projection,
+   move the live cumulative gates to zero, and promote R8 to strict;
 4. prove provider singleton identity, exact Realtime `useExisting` identity,
    explicit-import closure, zero globals, zero cycles, and zero `forwardRef()`;
 5. run focused and exhaustive candidate verification plus independent review,

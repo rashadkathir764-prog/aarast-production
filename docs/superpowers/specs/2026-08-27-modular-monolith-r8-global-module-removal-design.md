@@ -491,7 +491,8 @@ R8 does not:
 ## Rejected Alternatives
 
 - **Keep Prisma global and remove only Realtime:** rejected because R8's fixed
-  architectural objective is zero implicit global visibility.
+  architectural objective is zero project-owned implicit global visibility for
+  these provider modules.
 - **Central database/realtime aggregation module:** rejected because it hides
   the same transitive dependency behind another composition proxy.
 - **Re-export Prisma from every internal module:** rejected because consumers

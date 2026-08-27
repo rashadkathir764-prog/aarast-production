@@ -10,12 +10,12 @@ Immutable R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
 
 ## Objective
 
-Remove the final two Nest `@Global()` declarations from the Backend and make
-every affected provider dependency explicit without changing product behavior.
-The final application has zero global modules, one `PrismaService` instance,
-one `ConversationRealtimePublisher` instance, the existing Messaging public
-port identity, and the same routes, data, errors, transactions, events, and
-runtime behavior.
+Remove the final two project-owned Nest `@Global()` declarations from the
+Backend and make every affected provider dependency explicit without changing
+product behavior. The final application has zero project-owned global modules,
+one `PrismaService` instance, one `ConversationRealtimePublisher` instance,
+the existing Messaging public port identity, and the same routes, data,
+errors, transactions, events, and runtime behavior.
 
 R8 is an explicit Nest-composition phase. It is not a service decomposition,
 source relocation, new public-port, database, client, or deployment phase.
@@ -28,12 +28,26 @@ candidate is `aafb47ea1742c278f6a5ed24799ada7bc23721b0`; its stopped R6 predeces
 remains the older rollback artifact. R8 does not inherit any unrerun pass from
 either candidate.
 
-The live Backend has exactly two global modules:
+The existing architecture scanner counts exactly two project-owned global
+modules under `backend/src`:
 
 | Module | Provider | Current global path |
 | --- | --- | --- |
 | `PrismaModule` | `PrismaService` | `backend/src/platform/database/prisma.module.ts` |
 | `ConversationRealtimeModule` | `ConversationRealtimePublisher` | `backend/src/conversations/conversation-realtime.module.ts` |
+
+Two existing pinned dependencies also provide global Nest behavior outside
+project-owned source and are frozen external runtime contracts:
+
+| Package | Locked version | Current application call | Dependency-owned global mechanism |
+| --- | --- | --- | --- |
+| `@nestjs/schedule` | `6.1.3` | `ScheduleModule.forRoot()` | returned `DynamicModule.global: true` |
+| `@nestjs/throttler` | `6.5.0` | `ThrottlerModule.forRootAsync(...)` | package module decorated with Nest `Global` |
+
+Their exact `package.json` declarations and `package-lock.json` package entries
+are unchanged by R8. The lock entries pin version, resolved tarball, and SHA-512
+integrity. R8 removes project-owned implicit visibility; it does not fork,
+replace, or alter Scheduler or request-throttling behavior.
 
 `PrismaModule` already has 20 direct module importers. They cover the App
 composition root, Platform Outbox core, and the current Backoffice, Catalog,
@@ -72,6 +86,9 @@ R8 fixes implicit container visibility at the module boundary where each
 consumer is registered. Completion requires:
 
 - zero Nest `Global` decorator applications anywhere under `backend/src`;
+- zero project-owned `DynamicModule` returns that activate `global: true`;
+- zero source-supplied external module-factory options that activate
+  `global: true` or `isGlobal: true`;
 - no import or alias of Nest `Global` in either former global module;
 - every module registering a direct `PrismaService` consumer imports
   `PrismaModule` itself;
@@ -203,20 +220,30 @@ R8 adds:
 The manifest binds the immutable base, stage, exact former-global modules,
 provider identities, strict Prisma and Realtime importer inventories, exact
 `useExisting` chain, allowed R8 change surface, protected surfaces, frozen R7
-dependency/ownership counts, and the exact R3 scope and inventory projections.
+dependency/ownership counts, the exact R3 scope/inventory projections, and the
+two frozen external-global dependency identities. Each external identity pins
+the package name, declared range, locked version, resolved tarball, integrity,
+imported class, factory call, application source path, and dependency-owned
+global mechanism.
 
 The scanner uses the TypeScript compiler AST and module resolution. It must
 reject at minimum:
 
 - direct, aliased, namespace, re-exported, computed, or cross-file Nest
   `Global` decorator bindings;
-- Nest `DynamicModule` metadata whose `global` property resolves to `true`,
-  including local aliases, object spreads, computed property names, and
-  cross-file re-exports;
-- module-factory option objects whose `isGlobal` property resolves to `true`;
-- unresolved spread/computed metadata in a `DynamicModule` return or a module
-  import factory when the scanner cannot prove that global activation is
-  absent;
+- project-owned Nest `DynamicModule` metadata whose `global` property resolves
+  to `true`, including local aliases, object spreads, computed property names,
+  and cross-file re-exports;
+- project source that supplies `global: true` or `isGlobal: true` to an
+  external module-factory call, including aliases, spreads, computed keys, and
+  calls such as `JwtModule.registerAsync({ global: true })`;
+- unresolved spread/computed metadata in a project-owned `DynamicModule`
+  return or a source-supplied external module-factory option object when the
+  scanner cannot prove that global activation is absent;
+- drift in either exact frozen Schedule/Throttler package-lock identity or its
+  exact current application import/factory-call identity;
+- a new dependency-owned global exception or a generic `node_modules`
+  exemption;
 - a missing explicit provider-module import for a registered direct consumer;
 - a transitive-only, unresolved, non-relative, wrong-package, shadowed, or
   same-name decoy import;
@@ -229,17 +256,27 @@ reject at minimum:
   manifest paths;
 - new cycles, `forwardRef()`, baseline increases, or protected-surface drift.
 
-The semantic global check resolves the Nest `DynamicModule` type from the real
-`@nestjs/common` package rather than trusting a same-name local interface. Its
-finite evaluator accepts only statically provable local/cross-file constants,
-aliases, spreads, and computed keys. An unresolved candidate fails closed; it
+The semantic global check resolves a project-owned Nest `DynamicModule` type
+from the real `@nestjs/common` package rather than trusting a same-name local
+interface. Its finite evaluator accepts only statically provable
+local/cross-file constants, aliases, spreads, and computed keys. An unresolved
+project-owned candidate or source-supplied external option fails closed; it
 does not become an implicit allowlist.
 
+Dependency internals are not treated as project-owned source. The two existing
+external behaviors pass only through exact manifest and lock evidence:
+`@nestjs/schedule@6.1.3` at `ScheduleModule.forRoot()` and
+`@nestjs/throttler@6.5.0` at `ThrottlerModule.forRootAsync(...)`. Tests must
+prove these two current calls pass, a changed package/lock/call fails, a new
+explicit external `global: true` or `isGlobal: true` fails, and an unresolved
+project-owned DynamicModule or explicit external option fails closed. This is
+not permission for an arbitrary dependency global.
+
 The scanner has a design stage that proves the approved future change surface
-while the immutable base still has two globals, and a strict stage that accepts
-only zero globals and the final explicit closure. The design stage is removed
-from live acceptance when implementation reaches strict; it is not a runtime
-compatibility mode.
+while the immutable base still has two project-owned globals, and a strict
+stage that accepts only zero project-owned globals and the final explicit
+closure. The design stage is removed from live acceptance when implementation
+reaches strict; it is not a runtime compatibility mode.
 
 ## R3 Scope Delegation
 
@@ -373,7 +410,8 @@ Implementation uses reviewed local checkpoints on the same branch:
    Prisma import, apply the exact three-field R3 live-inventory projection,
    move the live cumulative gates to zero, and promote R8 to strict;
 4. prove provider singleton identity, exact Realtime `useExisting` identity,
-   explicit-import closure, zero globals, zero cycles, and zero `forwardRef()`;
+   explicit-import closure, zero project-owned globals, exact frozen external
+   identities, zero cycles, and zero `forwardRef()`;
 5. run focused and exhaustive candidate verification plus independent review,
    correcting only proved root causes inside the approved scope;
 6. build and probe one immutable local image, cut over locally while preserving
@@ -475,11 +513,13 @@ R8 does not:
 
 ## Completion Boundary
 
-R8 is locally complete only when the Backend has zero `@Global()` declarations,
-all direct consumers have explicit owner-module imports, both provider
-singletons and the Realtime `useExisting` chain are proved, every focused/full/
-smoke/runtime/phone gate passes on one immutable candidate, independent review
-is approved, exact receipts are committed locally, and the worktree is clean.
+R8 is locally complete only when `backend/src` has zero project-owned
+`@Global()` declarations or global DynamicModule activation, all direct
+consumers have explicit owner-module imports, both frozen external identities
+are unchanged, both provider singletons and the Realtime `useExisting` chain
+are proved, every focused/full/smoke/runtime/phone gate passes on one immutable
+candidate, independent review is approved, exact receipts are committed
+locally, and the worktree is clean.
 
 No push, merge, PR mutation, deployment, remote CI, store release, or R9 start
 is implied by local R8 completion.

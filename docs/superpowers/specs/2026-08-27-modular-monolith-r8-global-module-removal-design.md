@@ -2,7 +2,7 @@
 
 Date: 2026-08-27
 
-Status: Owner-approved design; implementation plan pending owner review
+Status: Owner-approved design; implementation plan approved separately
 
 Branch: `modular-monolith`
 
@@ -529,3 +529,10 @@ locally, and the worktree is clean.
 
 No push, merge, PR mutation, deployment, remote CI, store release, or R9 start
 is implied by local R8 completion.
+
+## R8 Execution Contract — Task 0
+
+R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
+Objective: zero project-owned globals with explicit Prisma/Realtime imports
+State: design and plan approved; application source unchanged
+Stop: no push, merge, deployment, remote CI, or R9

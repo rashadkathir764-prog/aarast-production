@@ -238,3 +238,10 @@ remaining generated-table drift. `docs-verify` checks route, migration,
 snapshot, and link references. `git diff --check` catches whitespace errors.
 Only the first command updates generated Markdown; the remaining commands are
 read-only.
+
+## R8 Execution Contract — Task 0
+
+R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
+Objective: zero project-owned globals with explicit Prisma/Realtime imports
+State: design and plan approved; application source unchanged
+Stop: no push, merge, deployment, remote CI, or R9

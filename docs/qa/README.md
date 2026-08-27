@@ -958,3 +958,10 @@ Admin runtime smoke requires a running backend.
 
 Report every verification as PASS, FAIL, or BLOCKED. Do not claim a check
 passed unless it was actually run.
+
+## R8 Execution Contract — Task 0
+
+R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
+Objective: zero project-owned globals with explicit Prisma/Realtime imports
+State: design and plan approved; application source unchanged
+Stop: no push, merge, deployment, remote CI, or R9

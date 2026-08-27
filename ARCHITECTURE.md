@@ -280,3 +280,10 @@ Its in-progress status records the application candidate before authorized
 runtime, phone, and receipt closeout; the active receipts above record the
 later completed local state. It is not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.
+
+## R8 Execution Contract — Task 0
+
+R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
+Objective: zero project-owned globals with explicit Prisma/Realtime imports
+State: design and plan approved; application source unchanged
+Stop: no push, merge, deployment, remote CI, or R9

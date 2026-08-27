@@ -1444,3 +1444,10 @@ store assets/approval, and the Apple association identity.
 
 The active priority and acceptance order is defined in
 `docs/project/EXECUTION_PLAN.md`.
+
+## R8 Execution Contract — Task 0
+
+R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
+Objective: zero project-owned globals with explicit Prisma/Realtime imports
+State: design and plan approved; application source unchanged
+Stop: no push, merge, deployment, remote CI, or R9

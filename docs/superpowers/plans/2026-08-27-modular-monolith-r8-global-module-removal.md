@@ -22,7 +22,7 @@ applying exactly three validated R8 projections.
 **Spec:**
 `docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md`
 
-**Status:** Owner review pending; no execution task has started
+**Status:** Owner-approved execution plan; Task 0 documentation checkpoint in progress
 
 ## Global Constraints
 
@@ -1028,3 +1028,10 @@ docker inspect aarast-backend-r7-phone `
 Expected: clean worktree, HEAD is the R8 docs-only closeout, R8 healthy with
 the exact application candidate/restart 0/OOM false, R7 stopped and preserved.
 Stop. Do not push, merge, deploy, run remote CI, or begin R9.
+
+## R8 Execution Contract — Task 0
+
+R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
+Objective: zero project-owned globals with explicit Prisma/Realtime imports
+State: design and plan approved; application source unchanged
+Stop: no push, merge, deployment, remote CI, or R9

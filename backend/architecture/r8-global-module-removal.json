@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseRevision": "c2b728bfe54304562923facfb6094e0de04c0b27",
-  "stage": "design",
+  "stage": "strict",
   "documents": {
     "design": {
       "path": "docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md",
@@ -9,7 +9,7 @@
     },
     "plan": {
       "path": "docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md",
-      "sha256": "0eeabbe5c33a48f310e40c2ed2283704180362ff31e97030b948578624ba1220"
+      "sha256": "a0076773aea25769a9bb2a1ce9d558d46cce60cbb83b07ca70a94ec92ab17ebe"
     }
   },
   "allowedChangedPaths": [
@@ -29,6 +29,7 @@
     "backend/src/platform/database/prisma.module.ts",
     "backend/test/architecture-ports.test.ts",
     "backend/test/architecture-r1-layout.test.ts",
+    "backend/test/architecture-r3-closure.test.ts",
     "backend/test/architecture-r3-composition.test.ts",
     "backend/test/architecture-r3-contexts.test.ts",
     "backend/test/architecture-r3-scope.test.ts",
@@ -38,6 +39,7 @@
     "backend/test/architecture-r7-collaboration-relocation.test.ts",
     "backend/test/architecture-r8-global-module-removal.test.ts",
     "backend/test/prisma-config-merge-security.test.ts",
+    "backend/test/provider-status-access.test.ts",
     "docs/README.md",
     "docs/SCRIPTS.md",
     "docs/backend/README.md",

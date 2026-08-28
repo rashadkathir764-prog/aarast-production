@@ -579,7 +579,7 @@ test('R7 strict stage pins final layout, API, providers, DI, builder, and baseli
     unregisteredTargetFiles: 0,
     reparsePoints: 0,
     forwardRef: 0,
-    globals: 2,
+    globals: 0,
   });
   assert.deepEqual(scanner().verifyPublicSnapshotSource(repositoryRoot, value), {
     exports: 4,

@@ -6,6 +6,11 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
+const {
+  collectProjectGlobalActivations,
+  createProgram: createR8Program,
+  validateR8Manifest,
+} = require('./r8-global-module-removal-scan.cjs');
 
 const R7_BASE = '31ea5324007fc71fa4b3590fbb98a454ee1deaa7';
 const MANIFEST_PATH = 'backend/architecture/r7-collaboration-relocation.json';
@@ -236,10 +241,10 @@ const EXPECTED_OPTIONAL_DEPENDENCIES = Object.freeze([
   }),
 ]);
 
-const EXPECTED_APPROVED_GLOBAL_MODULES = Object.freeze([
-  'backend/src/conversations/conversation-realtime.module.ts',
-  'backend/src/platform/database/prisma.module.ts',
-]);
+const R8_MANIFEST_PATH = path.resolve(
+  __dirname,
+  '../../architecture/r8-global-module-removal.json',
+);
 
 const EXPECTED_BASELINES = Object.freeze({
   baseDependencyRecords: 31,
@@ -2925,7 +2930,7 @@ function verifyStrictNestState(
   analysis = createTypeScriptAnalysis(repositoryRoot),
 ) {
   let forwardRef = 0;
-  const globalModules = [];
+  const globalApplications = [];
   const relativePaths = listPlainFiles(repositoryRoot, 'backend/src')
     .filter((relativePath) => relativePath.endsWith('.ts'));
   const checker = analysis.checker;
@@ -2938,19 +2943,39 @@ function verifyStrictNestState(
       }
       if (ts.isDecorator(node)
           && isNestGlobalDecoratorResult(node.expression, analysis)) {
-        globalModules.push(relativePath);
+        globalApplications.push(relativePath);
       } else if (ts.isCallExpression(node)
           && node.arguments.length > 0
           && isNestGlobalDecoratorResult(node.expression, analysis)) {
-        globalModules.push(relativePath);
+        globalApplications.push(relativePath);
       }
       ts.forEachChild(node, visit);
     };
     visit(sourceFile);
   }
   if (forwardRef !== 0) throw new Error('R7 strict stage contains forwardRef()');
-  assertExact(globalModules.sort(), EXPECTED_APPROVED_GLOBAL_MODULES, 'R7 strict globals');
-  return Object.freeze({ forwardRef, globals: globalModules.length });
+  let globals;
+  try {
+    const r8Manifest = validateR8Manifest(JSON.parse(fs.readFileSync(
+      R8_MANIFEST_PATH,
+      'utf8',
+    )));
+    if (r8Manifest.stage !== 'strict') throw new Error('R8 stage drift');
+    const r8Analysis = createR8Program(repositoryRoot);
+    globals = collectProjectGlobalActivations(
+      r8Analysis.program,
+      r8Analysis.checker,
+      repositoryRoot,
+    );
+    if (globals.projectOwnedGlobals !== r8Manifest.expectedCounts.strictProjectOwnedGlobals
+        || globals.globalPaths.length !== r8Manifest.expectedCounts.strictProjectOwnedGlobals
+        || globalApplications.length !== r8Manifest.expectedCounts.strictProjectOwnedGlobals) {
+      throw new Error('R8 global state drift');
+    }
+  } catch {
+    throw new Error('R7 strict globals drift detected');
+  }
+  return Object.freeze({ forwardRef, globals: globals.projectOwnedGlobals });
 }
 
 function verifyProtectedCollaborationImports(

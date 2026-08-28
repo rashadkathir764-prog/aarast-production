@@ -6,8 +6,16 @@ const crypto = require('node:crypto');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
 const { scanPorts } = require('./ports-scan.cjs');
+const {
+  projectR3InventoryForR8,
+  validateR8Manifest,
+} = require('./r8-global-module-removal-scan.cjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
+const R8_MANIFEST_PATH = path.resolve(
+  __dirname,
+  '../../architecture/r8-global-module-removal.json',
+);
 const CONTEXTS = Object.freeze([
   'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
   'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
@@ -1841,7 +1849,22 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
 }
 
 function scanR3Contexts(options) {
-  const manifest = validateR3ContextManifest(JSON.parse(fs.readFileSync(options.manifestPath, 'utf8')));
+  const historicalManifest = validateR3ContextManifest(
+    JSON.parse(fs.readFileSync(options.manifestPath, 'utf8')),
+  );
+  const r8Manifest = validateR8Manifest(JSON.parse(fs.readFileSync(
+    options.r8ManifestPath || R8_MANIFEST_PATH,
+    'utf8',
+  )));
+  if (r8Manifest.stage !== 'strict') throw new Error('R8 strict projection is required');
+  let projectionValid = true;
+  let manifest;
+  try {
+    manifest = projectR3InventoryForR8(historicalManifest, r8Manifest);
+  } catch {
+    projectionValid = false;
+    manifest = historicalManifest;
+  }
   if (options.stage !== manifest.stage) throw new Error('R3 stage does not match manifest');
   const contractDefinitions = manifest.providerContracts.map(({ token, methods, implementations }) => ({
     token, methods, implementations,
@@ -1880,7 +1903,8 @@ function scanR3Contexts(options) {
   const livePlatformDebts = live.compositionDependencies.map((item) => (
     item.key === 'app-jwt-module-availability' ? 'runtime-jwt-secret' : item.key
   ));
-  const drift = JSON.stringify(live.modules) !== JSON.stringify(manifest.legacyModules)
+  const drift = !projectionValid
+    || JSON.stringify(live.modules) !== JSON.stringify(manifest.legacyModules)
     || JSON.stringify(live.injections) !== JSON.stringify(manifest.crossContextInjections)
     || JSON.stringify(livePlatformDebts) !== JSON.stringify(manifest.remainingPlatformDebts)
     || JSON.stringify(live.providerContracts) !== JSON.stringify(manifest.providerContracts)
@@ -1900,7 +1924,7 @@ function scanR3Contexts(options) {
     || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)
     || JSON.stringify(live.retiredEdges.map((item) => item.key)) !== JSON.stringify(manifest.remainingRetiredLegacyProviderEdges)
     || JSON.stringify(live.adminGuardMetadata) !== JSON.stringify(manifest.adminGuardMetadata)
-    || live.globals !== 2
+    || live.globals !== 0
     || !exactRemainingDuplicates;
   const diagnostics = [...sourceDiagnostics];
   if (drift) diagnostics.push({ kind: 'inventory-drift', path: 'backend/src/app.module.ts', line: 1 });

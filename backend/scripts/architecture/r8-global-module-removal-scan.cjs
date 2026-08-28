@@ -25,7 +25,7 @@ const EXPECTED_DOCUMENTS = Object.freeze({
   }),
   plan: Object.freeze({
     path: 'docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md',
-    sha256: '0eeabbe5c33a48f310e40c2ed2283704180362ff31e97030b948578624ba1220',
+    sha256: 'a0076773aea25769a9bb2a1ce9d558d46cce60cbb83b07ca70a94ec92ab17ebe',
   }),
 });
 const EXPECTED_ALLOWED_PATHS = Object.freeze([
@@ -45,6 +45,7 @@ const EXPECTED_ALLOWED_PATHS = Object.freeze([
   'backend/src/platform/database/prisma.module.ts',
   'backend/test/architecture-ports.test.ts',
   'backend/test/architecture-r1-layout.test.ts',
+  'backend/test/architecture-r3-closure.test.ts',
   'backend/test/architecture-r3-composition.test.ts',
   'backend/test/architecture-r3-contexts.test.ts',
   'backend/test/architecture-r3-scope.test.ts',
@@ -54,6 +55,7 @@ const EXPECTED_ALLOWED_PATHS = Object.freeze([
   'backend/test/architecture-r7-collaboration-relocation.test.ts',
   'backend/test/architecture-r8-global-module-removal.test.ts',
   'backend/test/prisma-config-merge-security.test.ts',
+  'backend/test/provider-status-access.test.ts',
   'docs/README.md',
   'docs/SCRIPTS.md',
   'docs/backend/README.md',
@@ -1460,6 +1462,13 @@ function projectR3InventoryForR8(inventory, manifestValue) {
   if (!inventory || typeof inventory !== 'object' || Array.isArray(inventory)
       || !Array.isArray(inventory.legacyModules)) {
     throw new Error('R8 R3 projection inventory is invalid');
+  }
+  const canonicalInventory = readJsonFile(
+    path.join(REPOSITORY_ROOT, ...manifest.r3Projection.inventoryPath.split('/')),
+    'R8 canonical R3 inventory',
+  );
+  if (canonicalJson(inventory) !== canonicalJson(canonicalInventory)) {
+    throw new Error('R8 R3 projection inventory identity is invalid');
   }
   const projected = JSON.parse(JSON.stringify(inventory));
   for (const transition of manifest.r3Projection.globalTransitions) {

@@ -201,10 +201,9 @@ test('Task 2 leaves bind public Symbols to one owner implementation with useExis
       'utf8',
     ),
     [
-      "import { Global, Module } from '@nestjs/common';",
+      "import { Module } from '@nestjs/common';",
       "import { ConversationRealtimePublisher } from './conversation-realtime.publisher';",
       '',
-      '@Global()',
       '@Module({',
       '  providers: [ConversationRealtimePublisher],',
       '  exports: [ConversationRealtimePublisher],',
@@ -222,6 +221,9 @@ test('Task 2 public tokens resolve to the exact single legacy instances', async 
   const {
     MESSAGING_REALTIME_PORT,
   } = require('../src/modules/messaging/public/messaging-realtime.port');
+  const {
+    MESSAGING_REALTIME_IMPLEMENTATION,
+  } = require('../src/modules/messaging/internal/messaging-realtime.implementation-token');
   const {
     ConversationRealtimePublisher,
   } = require('../src/conversations/conversation-realtime.publisher');
@@ -270,6 +272,10 @@ test('Task 2 public tokens resolve to the exact single legacy instances', async 
     );
     assert.equal(
       context.get(MESSAGING_REALTIME_PORT, { strict: false }),
+      context.get(ConversationRealtimePublisher, { strict: false }),
+    );
+    assert.equal(
+      context.get(MESSAGING_REALTIME_IMPLEMENTATION, { strict: false }),
       context.get(ConversationRealtimePublisher, { strict: false }),
     );
     assert.equal(

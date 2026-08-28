@@ -5,10 +5,7 @@ const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
 
-const APPROVED_GLOBAL_MODULES = new Set([
-  'backend/src/platform/database/prisma.module.ts',
-  'backend/src/conversations/conversation-realtime.module.ts',
-]);
+const APPROVED_GLOBAL_MODULES = new Set();
 
 const BUSINESS_CONTEXTS = new Map([
   ['identity', ['auth', 'users', 'me', 'contexts']],
@@ -59,7 +56,6 @@ const ILLEGAL_IMPORT_KINDS = new Set([
 const DIAGNOSTIC_MESSAGES = Object.freeze({
   'forward-ref': 'forwardRef resolved to @nestjs/common is forbidden',
   'unapproved-global': 'Global resolved to @nestjs/common is not in the approved global set',
-  'missing-approved-global': 'required approved Global decorator is missing',
   'non-public-cross-module-import': 'cross-module import must target an allowed public slice',
   'domain-runtime-import': 'domain code cannot import Nest runtime or a foreign business context',
   'platform-business-import': 'platform cannot import business module code',
@@ -783,17 +779,6 @@ function scanPorts(options) {
       ts.forEachChild(node, visit);
     }
     visit(sourceFile);
-  }
-
-  for (const required of [...APPROVED_GLOBAL_MODULES].sort()) {
-    if (!resolvedGlobals.has(required)) {
-      diagnostics.push({
-        kind: 'missing-approved-global',
-        path: required,
-        line: 1,
-        message: DIAGNOSTIC_MESSAGES['missing-approved-global'],
-      });
-    }
   }
 
   diagnostics.push(...collectImportDiagnostics(files, program, checker, repoRoot));

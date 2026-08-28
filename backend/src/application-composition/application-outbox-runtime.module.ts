@@ -3,6 +3,7 @@ import { MessagingRealtimePublicModule } from '../modules/messaging/public/messa
 import { MESSAGING_REALTIME_PORT } from '../modules/messaging/public/messaging-realtime.port';
 import { PushDeliveryPublicModule } from '../modules/notifications/public/push-delivery-public.module';
 import { PUSH_DELIVERY_PORT } from '../modules/notifications/public/push-delivery.port';
+import { PrismaModule } from '../platform/database/prisma.module';
 import { OutboxCoreModule } from '../platform/outbox/outbox-core.module';
 import { OutboxDispatcher } from '../platform/outbox/outbox.dispatcher';
 import {
@@ -14,6 +15,7 @@ import { OutboxWorker } from '../platform/outbox/outbox.worker';
 @Module({
   imports: [
     OutboxCoreModule,
+    PrismaModule,
     MessagingRealtimePublicModule,
     PushDeliveryPublicModule,
   ],

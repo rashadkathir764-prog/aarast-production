@@ -624,10 +624,27 @@ git commit -m "test: govern project-owned Nest globals"
 - Modify: `backend/scripts/architecture/r8-global-module-removal-scan.cjs`
 - Modify: `backend/test/architecture-ports.test.ts`
 - Modify: `backend/test/architecture-r1-layout.test.ts`
+- Modify: `backend/test/architecture-r3-closure.test.ts`
 - Modify: `backend/test/architecture-r3-composition.test.ts`
 - Modify: `backend/test/architecture-r3-contexts.test.ts`
+- Modify: `backend/test/architecture-r3-scope.test.ts`
 - Modify: `backend/test/architecture-r7-collaboration-relocation.test.ts`
 - Modify: `backend/test/architecture-r8-global-module-removal.test.ts`
+- Modify: `docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md`
+- Separate test-only prerequisite: `backend/test/provider-status-access.test.ts`
+
+Corrective scope note (2026-08-28): Step 6 requires
+`backend/test/architecture-r3-scope.test.ts`, but the original Task 3 Files
+list omitted it. Strict promotion requires that test's R8 stage assertion to
+change from `design` to `strict`; these two paths are now part of the exact
+Task 3 fence. Full-suite verification then reproduced three stale R3 closure
+assertions for the old Realtime source hash, one `@Global()` decorator, and
+two strict globals; `architecture-r3-closure.test.ts` is the seventeenth Task
+3 application path and now hands off those exact R8 values. The separate
+provider-status fixture is a test-only prerequisite checkpoint: its
+provider-lifecycle case uses `validUntil: null` so it remains non-expiring and
+does not depend on the wall clock. The overall R8 allowed-path fence therefore
+contains 38 paths; the application checkpoint remains exactly 17 paths.
 
 **Interfaces:**
 
@@ -665,6 +682,10 @@ import, changed provider/export/controller, or design-stage projection.
 
 ```powershell
 Set-Location D:\projects\aarast-modular-monolith\backend
+node --test -r ts-node/register `
+  test/provider-status-access.test.ts
+node --test -r ts-node/register `
+  test/architecture-r3-closure.test.ts
 node --test -r ts-node/register `
   test/architecture-r8-global-module-removal.test.ts `
   test/architecture-ports.test.ts `
@@ -762,6 +783,7 @@ node --test -r ts-node/register `
   test/architecture-r1-layout.test.ts `
   test/architecture-r3-composition.test.ts `
   test/architecture-r3-contexts.test.ts `
+  test/architecture-r3-closure.test.ts `
   test/architecture-r3-scope.test.ts `
   test/architecture-r7-collaboration-relocation.test.ts
 npm run architecture

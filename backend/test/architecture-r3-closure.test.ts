@@ -47,7 +47,7 @@ test('Task 8 creates Messaging and Notifications full modules and retires final 
     require('node:crypto').createHash('sha256')
       .update(readFileSync(join(sourceRoot, 'conversations/conversation-realtime.module.ts')))
       .digest('hex'),
-    'ed448193983c06def85097b34444853d9f6c8db8fd5f71d6ff94a74517d913a5',
+    '7b53f761629bb24e99c1f9b6cc2fd147c274132120c856645b9b755b73a1bfc5',
   );
 });
 
@@ -105,14 +105,14 @@ test('Task 8 Notifications metadata owns both controllers and private lifecycle 
   );
 });
 
-test('Task 8 preserves one realtime global and removes legacy PushModule reachability', () => {
+test('Task 8 preserves the ordinary Realtime module and removes legacy PushModule reachability', () => {
   const notifications = source('modules/notifications/notifications.module.ts');
   const app = source('app.module.ts');
   assert.doesNotMatch(notifications, /PushModule/);
   assert.doesNotMatch(app, /PushModule/);
   const realtime = source('conversations/conversation-realtime.module.ts');
-  assert.match(realtime, /@Global\(\)/);
-  assert.equal((realtime.match(/@Global\(\)/g) ?? []).length, 1);
+  assert.doesNotMatch(realtime, /@Global\(\)/);
+  assert.equal((realtime.match(/@Global\(\)/g) ?? []).length, 0);
 });
 
 test('Task 8 activates the strict manifest while retaining immutable initial ledgers', () => {
@@ -146,7 +146,7 @@ test('Task 8 strict scanner reports no duplicate, platform, retired, cycle, or i
   assert.equal(result.counts.remainingPlatformDebts, 0);
   assert.equal(result.counts.remainingRetiredLegacyProviderEdges, 0);
   assert.equal(result.counts.forwardRef, 0);
-  assert.equal(result.counts.globals, 2);
+  assert.equal(result.counts.globals, 0);
   assert.equal(result.counts.nestModuleCycles, 0);
   assert.equal(result.counts.illegalEdges, 0);
 });

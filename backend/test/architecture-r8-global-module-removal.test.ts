@@ -11,7 +11,15 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
+import { Injectable, Module } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import type { Program, TypeChecker } from 'typescript';
+import { ConversationRealtimePublisher } from '../src/conversations/conversation-realtime.publisher';
+import { MessagingRealtimePublicModule } from '../src/modules/messaging/public/messaging-realtime-public.module';
+import { MESSAGING_REALTIME_IMPLEMENTATION } from '../src/modules/messaging/internal/messaging-realtime.implementation-token';
+import { MESSAGING_REALTIME_PORT } from '../src/modules/messaging/public/messaging-realtime.port';
+import { PrismaModule } from '../src/platform/database/prisma.module';
+import { PrismaService } from '../src/platform/database/prisma.service';
 
 const backendRoot = path.resolve(__dirname, '..');
 const manifestPath = path.join(
@@ -44,6 +52,7 @@ const expectedAllowedChangedPaths = [
   'backend/src/platform/database/prisma.module.ts',
   'backend/test/architecture-ports.test.ts',
   'backend/test/architecture-r1-layout.test.ts',
+  'backend/test/architecture-r3-closure.test.ts',
   'backend/test/architecture-r3-composition.test.ts',
   'backend/test/architecture-r3-contexts.test.ts',
   'backend/test/architecture-r3-scope.test.ts',
@@ -53,6 +62,7 @@ const expectedAllowedChangedPaths = [
   'backend/test/architecture-r7-collaboration-relocation.test.ts',
   'backend/test/architecture-r8-global-module-removal.test.ts',
   'backend/test/prisma-config-merge-security.test.ts',
+  'backend/test/provider-status-access.test.ts',
   'docs/README.md',
   'docs/SCRIPTS.md',
   'docs/backend/README.md',
@@ -204,6 +214,42 @@ function scanner(modulePath = scannerPath): R8Scanner {
 function manifest(): R8Manifest {
   return JSON.parse(readFileSync(manifestPath, 'utf8')) as R8Manifest;
 }
+
+function strictManifest(): R8Manifest {
+  const value = manifest();
+  value.stage = 'strict';
+  return value;
+}
+
+@Injectable()
+class R8PrismaConsumerOne {
+  constructor(readonly prisma: PrismaService) {}
+}
+
+@Injectable()
+class R8PrismaConsumerTwo {
+  constructor(readonly prisma: PrismaService) {}
+}
+
+@Module({
+  imports: [PrismaModule],
+  providers: [R8PrismaConsumerOne],
+  exports: [R8PrismaConsumerOne],
+})
+class R8PrismaConsumerOneModule {}
+
+@Module({
+  imports: [PrismaModule],
+  providers: [R8PrismaConsumerTwo],
+  exports: [R8PrismaConsumerTwo],
+})
+class R8PrismaConsumerTwoModule {}
+
+@Module({ imports: [R8PrismaConsumerOneModule, R8PrismaConsumerTwoModule] })
+class R8PrismaSingletonTestModule {}
+
+@Module({ imports: [MessagingRealtimePublicModule] })
+class R8RealtimeSingletonTestModule {}
 
 const repositoryRoot = path.resolve(backendRoot, '..');
 const strictPrismaImporters = [
@@ -492,7 +538,7 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('R8 design-stage manifest is exact, hash-bound, and deeply immutable', () => {
+test('R8 strict manifest is exact, hash-bound, and deeply immutable', () => {
   const r8 = scanner();
   const value = manifest();
   const validated = r8.validateR8Manifest(value);
@@ -513,7 +559,7 @@ test('R8 design-stage manifest is exact, hash-bound, and deeply immutable', () =
   ]);
   assert.equal(validated.schemaVersion, 1);
   assert.equal(validated.baseRevision, 'c2b728bfe54304562923facfb6094e0de04c0b27');
-  assert.equal(validated.stage, 'design');
+  assert.equal(validated.stage, 'strict');
   assert.deepEqual(validated.documents, {
     design: {
       path: 'docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md',
@@ -521,7 +567,7 @@ test('R8 design-stage manifest is exact, hash-bound, and deeply immutable', () =
     },
     plan: {
       path: 'docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md',
-      sha256: '0eeabbe5c33a48f310e40c2ed2283704180362ff31e97030b948578624ba1220',
+      sha256: 'a0076773aea25769a9bb2a1ce9d558d46cce60cbb83b07ca70a94ec92ab17ebe',
     },
   });
   assert.deepEqual(validated.allowedChangedPaths, expectedAllowedChangedPaths);
@@ -626,18 +672,16 @@ test('R8 validator rejects a junction in an allowed-path ancestry', () => {
   );
 });
 
-test('R8 design scan reports the exact live global and DI closure', () => {
+test('R8 strict scan reports zero project globals and the complete live DI closure', () => {
   const r8 = scanner();
   assert.deepEqual(
-    r8.scanR8GlobalRemoval({ repositoryRoot, manifest: manifest() }),
+    r8.scanR8GlobalRemoval({ repositoryRoot, manifest: strictManifest() }),
     {
       ok: true,
-      stage: 'design',
-      projectOwnedGlobals: 2,
-      prismaImporters: 20,
-      missingPrismaImporters: [
-        'backend/src/application-composition/application-outbox-runtime.module.ts',
-      ],
+      stage: 'strict',
+      projectOwnedGlobals: 0,
+      prismaImporters: 21,
+      missingPrismaImporters: [],
       realtimeImporters: 2,
       duplicateProviders: 0,
       forwardRef: 0,
@@ -662,12 +706,8 @@ test('R8 live provider owners, importer projection, and Messaging aliases are ex
     'backend/src/platform/database/prisma.module.ts#PrismaModule',
   ]);
   assert.deepEqual(prisma.strictImporters, strictPrismaImporters);
-  assert.deepEqual(prisma.importers, strictPrismaImporters.filter(
-    (entry) => entry !== 'backend/src/application-composition/application-outbox-runtime.module.ts',
-  ));
-  assert.deepEqual(prisma.missingImporters, [
-    'backend/src/application-composition/application-outbox-runtime.module.ts',
-  ]);
+  assert.deepEqual(prisma.importers, strictPrismaImporters);
+  assert.deepEqual(prisma.missingImporters, []);
   assert.equal(prisma.duplicateProviders, 0);
 
   assert.deepEqual(realtime.providerOwners, [
@@ -690,8 +730,7 @@ test('R8 projects only the exact strict R3 global and Outbox import transitions'
     path.join(backendRoot, 'architecture', 'r3-context-boundaries.json'),
     'utf8',
   ));
-  const strict = manifest();
-  strict.stage = 'strict';
+  const strict = strictManifest();
   const projected = r8.projectR3InventoryForR8(historical, strict) as {
     legacyModules: Array<Record<string, unknown>>;
   };
@@ -707,10 +746,108 @@ test('R8 projects only the exact strict R3 global and Outbox import transitions'
       'PushDeliveryPublicModule',
     ],
   );
+  const design = manifest();
+  design.stage = 'design';
   assert.throws(
-    () => r8.projectR3InventoryForR8(historical, manifest()),
+    () => r8.projectR3InventoryForR8(historical, design),
     /strict|projection/i,
   );
+
+  const invalidInventories = [
+    ['wrong before-value', (value: any) => {
+      value.legacyModules.find(
+        (entry: any) => entry.path === 'backend/src/platform/database/prisma.module.ts',
+      ).global = false;
+    }],
+    ['wrong path', (value: any) => {
+      value.legacyModules.find(
+        (entry: any) => entry.path === 'backend/src/platform/database/prisma.module.ts',
+      ).path = 'backend/src/platform/database/renamed-prisma.module.ts';
+    }],
+    ['duplicate import', (value: any) => {
+      value.legacyModules.find(
+        (entry: any) => entry.path === 'backend/src/application-composition/application-outbox-runtime.module.ts',
+      ).imports.push('OutboxCoreModule');
+    }],
+    ['unsorted import', (value: any) => {
+      value.legacyModules.find(
+        (entry: any) => entry.path === 'backend/src/application-composition/application-outbox-runtime.module.ts',
+      ).imports.reverse();
+    }],
+    ['changed provider', (value: any) => {
+      value.legacyModules.find(
+        (entry: any) => entry.path === 'backend/src/platform/database/prisma.module.ts',
+      ).providers.push('AttackerProvider');
+    }],
+    ['changed export', (value: any) => {
+      value.legacyModules.find(
+        (entry: any) => entry.path === 'backend/src/conversations/conversation-realtime.module.ts',
+      ).exports.push('AttackerExport');
+    }],
+    ['changed controller', (value: any) => {
+      value.decoratorRuntimeReferences[0].source = 'backend/src/attacker.controller.ts';
+    }],
+  ] as const;
+  for (const [name, mutate] of invalidInventories) {
+    const value = structuredClone(historical);
+    mutate(value);
+    assert.throws(
+      () => r8.projectR3InventoryForR8(value, strict),
+      /R8|R3|projection|inventory/i,
+      name,
+    );
+  }
+
+  const fourthProjection = strictManifest();
+  fourthProjection.r3Projection.globalTransitions.push({
+    path: 'backend/src/attacker.module.ts',
+    className: 'AttackerModule',
+    before: true,
+    after: false,
+  });
+  assert.throws(
+    () => r8.projectR3InventoryForR8(historical, fourthProjection),
+    /R8|projection|contract|identity/i,
+  );
+});
+
+test('R8 repeated ordinary Prisma imports resolve one service instance per Nest context', async () => {
+  const originalInit = PrismaService.prototype.onModuleInit;
+  const originalDestroy = PrismaService.prototype.onModuleDestroy;
+  PrismaService.prototype.onModuleInit = async () => undefined;
+  PrismaService.prototype.onModuleDestroy = async () => undefined;
+  let context: Awaited<ReturnType<typeof NestFactory.createApplicationContext>> | undefined;
+  try {
+    context = await NestFactory.createApplicationContext(
+      R8PrismaSingletonTestModule,
+      { logger: false },
+    );
+    const one = context.get(R8PrismaConsumerOne, { strict: false });
+    const two = context.get(R8PrismaConsumerTwo, { strict: false });
+    assert.equal(one.prisma, two.prisma);
+    assert.equal(one.prisma, context.get(PrismaService, { strict: false }));
+  } finally {
+    await context?.close();
+    PrismaService.prototype.onModuleInit = originalInit;
+    PrismaService.prototype.onModuleDestroy = originalDestroy;
+  }
+});
+
+test('R8 Messaging implementation and public port resolve the exact publisher instance', async () => {
+  const context = await NestFactory.createApplicationContext(
+    R8RealtimeSingletonTestModule,
+    { logger: false },
+  );
+  try {
+    const publisher = context.get(ConversationRealtimePublisher, { strict: false });
+    assert.equal(
+      context.get(MESSAGING_REALTIME_IMPLEMENTATION, { strict: false }),
+      publisher,
+    );
+    assert.equal(context.get(MESSAGING_REALTIME_PORT, { strict: false }), publisher);
+  } finally {
+    await context.close();
+  }
 });
 
 test('R8 live external global identities prove the exact calls and installed locks', () => {
@@ -735,7 +872,7 @@ test('R8 CLI and result validator are fixed, bounded, and sanitized', () => {
     stderr: (message) => stderr.push(message),
   }), 0);
   assert.equal(stdout.length, 1);
-  assert.match(stdout[0], /^PASS - R8 global removal: stage=design, globals=2, Prisma=20\/21, missing=1, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=22, ownership=385\/781$/u);
+  assert.match(stdout[0], /^PASS - R8 global removal: stage=strict, globals=0, Prisma=21\/21, missing=0, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=22, ownership=385\/781$/u);
   assert.deepEqual(stderr, []);
 
   const invalidOut: string[] = [];

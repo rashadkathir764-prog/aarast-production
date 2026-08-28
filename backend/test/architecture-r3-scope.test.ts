@@ -484,7 +484,7 @@ test('R8 delegates only its fixed-base hash-bound path fence', () => {
   const delegated = scope().validateR8GlobalRemovalManifest(value);
 
   assert.equal(delegated.baseRevision, 'c2b728bfe54304562923facfb6094e0de04c0b27');
-  assert.equal(delegated.stage, 'design');
+  assert.equal(delegated.stage, 'strict');
   assert.deepEqual(value.documents, {
     design: {
       path: 'docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md',
@@ -492,7 +492,7 @@ test('R8 delegates only its fixed-base hash-bound path fence', () => {
     },
     plan: {
       path: 'docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md',
-      sha256: '0eeabbe5c33a48f310e40c2ed2283704180362ff31e97030b948578624ba1220',
+      sha256: 'a0076773aea25769a9bb2a1ce9d558d46cce60cbb83b07ca70a94ec92ab17ebe',
     },
   });
   assert.deepEqual(delegated.allowedChangedPaths, scope().R8_ALLOWED_PATHS);

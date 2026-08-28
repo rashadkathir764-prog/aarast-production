@@ -16,6 +16,11 @@ import { afterEach, test } from 'node:test';
 const backendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(backendRoot, '..');
 const manifestPath = path.join(backendRoot, 'architecture', 'r3-context-boundaries.json');
+const r8ManifestPath = path.join(
+  backendRoot,
+  'architecture',
+  'r8-global-module-removal.json',
+);
 const scannerPath = path.join(backendRoot, 'scripts', 'architecture', 'r3-context-scan.cjs');
 const temporaryRoots: string[] = [];
 
@@ -344,6 +349,28 @@ test('the canonical R3 manifest freezes the exact strict ledgers', () => {
     'backoffice',
   ]);
   assert.equal(manifest.legacyModules.length, 53);
+  assert.equal(
+    manifest.legacyModules.find(
+      (entry: any) => entry.path === 'backend/src/platform/database/prisma.module.ts',
+    ).global,
+    true,
+  );
+  assert.equal(
+    manifest.legacyModules.find(
+      (entry: any) => entry.path === 'backend/src/conversations/conversation-realtime.module.ts',
+    ).global,
+    true,
+  );
+  assert.deepEqual(
+    manifest.legacyModules.find(
+      (entry: any) => entry.path === 'backend/src/application-composition/application-outbox-runtime.module.ts',
+    ).imports,
+    [
+      'MessagingRealtimePublicModule',
+      'OutboxCoreModule',
+      'PushDeliveryPublicModule',
+    ],
+  );
   assert.equal(manifest.crossContextInjections.length, 0);
   assert.equal(manifest.compositionDependencies.length, 6);
   assert.equal(manifest.providerContracts.length, 13);
@@ -453,10 +480,27 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
     initialRetiredLegacyProviderEdges: 163,
     remainingRetiredLegacyProviderEdges: 0,
     forwardRef: 0,
-    globals: 2,
+    globals: 0,
     nestModuleCycles: 0,
     illegalEdges: 0,
   });
+});
+
+test('the live R3 scan requires the strict R8 projection and never rewrites history', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-r8-stage-'));
+  temporaryRoots.push(root);
+  const designManifest = JSON.parse(readFileSync(r8ManifestPath, 'utf8'));
+  designManifest.stage = 'design';
+  const designManifestPath = path.join(root, 'r8-design.json');
+  writeFileSync(designManifestPath, `${JSON.stringify(designManifest)}\n`, 'utf8');
+
+  assert.throws(() => scanner().scanR3Contexts({
+    repoRoot,
+    backendRoot,
+    manifestPath,
+    r8ManifestPath: designManifestPath,
+    stage: 'strict',
+  }), /R8|strict|projection/i);
 });
 
 test('R6 Task 4 records the final Identity delivery modules and Collaboration public import', () => {

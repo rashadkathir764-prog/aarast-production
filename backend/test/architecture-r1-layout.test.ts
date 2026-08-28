@@ -57,16 +57,22 @@ test('R1 Task 2 platform foundation exists only at canonical paths', () => {
   }
 });
 
-test('R1 Task 2 preserves Prisma lifecycle and approved global provenance', () => {
+test('R1 Task 2 preserves Prisma lifecycle in the ordinary owner module', () => {
   const moduleSource = source('src/platform/database/prisma.module.ts');
   const serviceSource = source('src/platform/database/prisma.service.ts');
-  assert.match(moduleSource, /import\s*\{[^}]*\bGlobal\b[^}]*\}\s*from\s*['"]@nestjs\/common['"]/);
-  assert.match(moduleSource, /@Global\(\)/);
+  assert.equal(moduleSource, [
+    "import { Module } from '@nestjs/common';",
+    "import { PrismaService } from './prisma.service';",
+    '',
+    '@Module({',
+    '  providers: [PrismaService],',
+    '  exports: [PrismaService],',
+    '})',
+    'export class PrismaModule {}',
+    '',
+  ].join('\n'));
   assert.match(serviceSource, /onModuleInit\s*\(\)[\s\S]*this\.\$connect\(\)/);
   assert.match(serviceSource, /onModuleDestroy\s*\(\)[\s\S]*this\.\$disconnect\(\)/);
-  const scanner = source('scripts/architecture/ports-scan.cjs');
-  assert.match(scanner, /backend\/src\/platform\/database\/prisma\.module\.ts/);
-  assert.doesNotMatch(scanner, /backend\/src\/prisma\/prisma\.module\.ts/);
 });
 
 test('R1 Task 2 source and tests have no imports of moved legacy paths', () => {

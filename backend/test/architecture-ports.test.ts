@@ -13,7 +13,6 @@ import { afterEach, test } from 'node:test';
 type DiagnosticKind =
   | 'forward-ref'
   | 'unapproved-global'
-  | 'missing-approved-global'
   | 'non-public-cross-module-import'
   | 'domain-runtime-import'
   | 'platform-business-import'
@@ -129,7 +128,7 @@ function fixtureProject(
     '  static registerAsync(options: unknown): unknown;',
     '}',
   ].join('\n'));
-  if (options.includeGlobals !== false) {
+  if (options.includeGlobals === true) {
     const style = options.globalStyle || 'direct';
     const prismaPath = 'backend/src/platform/database/prisma.module.ts';
     const realtimePath = 'backend/src/conversations/conversation-realtime.module.ts';
@@ -217,33 +216,31 @@ test('forwardRef const initializer alias chains are forbidden without homonym fa
   assert.equal(diagnosticsOfKind(local, 'forward-ref').length, 0);
 });
 
-test('the approved global set is exact for direct, aliased, and namespace decorators', () => {
-  const allowed = [
-    'backend/src/platform/database/prisma.module.ts',
+test('project-owned globals are forbidden for direct, aliased, and namespace decorators', () => {
+  const formerGlobals = [
     'backend/src/conversations/conversation-realtime.module.ts',
+    'backend/src/platform/database/prisma.module.ts',
   ];
   for (const style of ['direct', 'alias', 'namespace'] as const) {
-    const passing = scanPorts(fixtureProject({}, { globalStyle: style }));
-    assert.deepEqual(passing.diagnostics, []);
-    assert.equal(passing.counts.globals, 2);
+    const former = scanPorts(fixtureProject({}, {
+      globalStyle: style,
+      includeGlobals: true,
+    }));
+    assert.deepEqual(
+      diagnosticsOfKind(former, 'unapproved-global').map((item) => item.path),
+      formerGlobals,
+    );
+    assert.equal(former.counts.globals, 2);
 
     const names = nestImports(style);
     const rogue = scanPorts(fixtureProject({
       'backend/src/auth/rogue-global.module.ts': `${names.importLine}\n@${names.global}()\n@${names.module}({})\nexport class RogueGlobalModule {}\n`,
-    }, { globalStyle: style }));
+    }));
     assert.deepEqual(diagnosticsOfKind(rogue, 'unapproved-global').map((item) => item.path), [
       'backend/src/auth/rogue-global.module.ts',
     ]);
     assert.match(diagnosticsOfKind(rogue, 'unapproved-global')[0].message, /approved global set/);
     assert.doesNotMatch(diagnosticsOfKind(rogue, 'unapproved-global')[0].message, /R0/);
-
-    for (const missing of allowed) {
-      const result = scanPorts(fixtureProject({}, {
-        globalStyle: style,
-        omitGlobalDecoratorFrom: missing,
-      }));
-      assert.deepEqual(diagnosticsOfKind(result, 'missing-approved-global').map((item) => item.path), [missing]);
-    }
   }
 });
 
@@ -277,7 +274,7 @@ test('runCli validates retired-root diagnostics through the fixed non-reflective
         line: 1,
         message: 'TOKEN=untrusted-message',
       }],
-      counts: { forwardRef: 0, globals: 2, illegalFutureImports: 1, nestModuleCycles: 0 },
+      counts: { forwardRef: 0, globals: 0, illegalFutureImports: 1, nestModuleCycles: 0 },
     }),
     stdout: (message) => output.push(message),
     stderr: (message) => output.push(message),
@@ -288,7 +285,7 @@ test('runCli validates retired-root diagnostics through the fixed non-reflective
   ]);
 });
 
-test('Global const initializer alias chains preserve the exact approved allowlist', () => {
+test('Global const initializer alias chains preserve the zero-global policy', () => {
   const result = scanPorts(fixtureProject({
     'backend/src/platform/database/prisma.module.ts': [
       "import * as Nest from '@nestjs/common';",
@@ -307,7 +304,13 @@ test('Global const initializer alias chains preserve the exact approved allowlis
       'export class ConversationRealtimeModule {}',
     ].join('\n'),
   }, { includeGlobals: false }));
-  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(
+    diagnosticsOfKind(result, 'unapproved-global').map((item) => item.path),
+    [
+      'backend/src/conversations/conversation-realtime.module.ts',
+      'backend/src/platform/database/prisma.module.ts',
+    ],
+  );
   assert.equal(result.counts.globals, 2);
 
   const rogue = scanPorts(fixtureProject({
@@ -898,7 +901,7 @@ test('other exit-one diagnostics expose only fixed reasons and safe repository p
         line: 7,
         message: 'TOKEN=exit1-injected-secret file:///srv/private/exit1-injected.ts',
       }],
-      counts: { forwardRef: 1, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+      counts: { forwardRef: 1, globals: 0, illegalFutureImports: 0, nestModuleCycles: 0 },
     }),
     stdout: (message: string) => injectedOutput.push(message),
     stderr: (message: string) => injectedOutput.push(message),
@@ -911,7 +914,7 @@ test('other exit-one diagnostics expose only fixed reasons and safe repository p
 test('runCli validates the exact count schema before rendering success', () => {
   const validCounts = {
     forwardRef: 0,
-    globals: 2,
+    globals: 0,
     illegalFutureImports: 0,
     nestModuleCycles: 0,
   };
@@ -920,7 +923,7 @@ test('runCli validates the exact count schema before rendering success', () => {
       name: 'attacker-controlled string',
       counts: { ...validCounts, forwardRef: 'TOKEN=exit0-secret file:///srv/private/counts.ts' },
     },
-    { name: 'missing key', counts: { forwardRef: 0, globals: 2, illegalFutureImports: 0 } },
+    { name: 'missing key', counts: { forwardRef: 0, globals: 0, illegalFutureImports: 0 } },
     { name: 'extra key', counts: { ...validCounts, cycles: 0 } },
     { name: 'negative integer', counts: { ...validCounts, globals: -1 } },
     { name: 'fraction', counts: { ...validCounts, globals: 1.5 } },
@@ -977,7 +980,7 @@ test('runCli validates and renders a diagnostic batch atomically', () => {
           message: 'TOKEN=late-invalid file:///srv/private/late.ts',
         },
       ],
-      counts: { forwardRef: 2, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+      counts: { forwardRef: 2, globals: 0, illegalFutureImports: 0, nestModuleCycles: 0 },
     }),
     stdout: (message: string) => output.push(message),
     stderr: (message: string) => output.push(message),
@@ -1013,7 +1016,7 @@ test('runCli accepts only canonical diagnostic kinds, paths, and safe integer li
       argv: ['--check'],
       scan: () => ({
         diagnostics: [fixture.diagnostic],
-        counts: { forwardRef: 1, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+        counts: { forwardRef: 1, globals: 0, illegalFutureImports: 0, nestModuleCycles: 0 },
       }) as unknown as ScanResult,
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
@@ -1025,7 +1028,7 @@ test('runCli accepts only canonical diagnostic kinds, paths, and safe integer li
 test('runCli rejects non-plain scan data and accessors without reflecting traps', () => {
   const validCounts = {
     forwardRef: 0,
-    globals: 2,
+    globals: 0,
     illegalFutureImports: 0,
     nestModuleCycles: 0,
   };
@@ -1114,7 +1117,7 @@ test('runCli returns deterministic exits 0, 1, and 2', () => {
   const stderr: string[] = [];
   const passing: ScanResult = {
     diagnostics: [],
-    counts: { forwardRef: 0, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+    counts: { forwardRef: 0, globals: 0, illegalFutureImports: 0, nestModuleCycles: 0 },
   };
   const dependencies: CliDependencies = {
     argv: ['--check'],
@@ -1124,7 +1127,7 @@ test('runCli returns deterministic exits 0, 1, and 2', () => {
   };
   assert.equal(runCli(dependencies), 0);
   assert.deepEqual(stdout, [
-    'PASS - architecture ports: forwardRef=0, globals=2, illegal future imports=0, Nest module cycles=0',
+    'PASS - architecture ports: forwardRef=0, globals=0, illegal future imports=0, Nest module cycles=0',
   ]);
 
   assert.equal(runCli({
@@ -1150,7 +1153,7 @@ test('runCli returns deterministic exits 0, 1, and 2', () => {
 test('ports CLI never reflects scanner exceptions containing absolute paths', () => {
   const passing: ScanResult = {
     diagnostics: [],
-    counts: { forwardRef: 0, globals: 2, illegalFutureImports: 0, nestModuleCycles: 0 },
+    counts: { forwardRef: 0, globals: 0, illegalFutureImports: 0, nestModuleCycles: 0 },
   };
   const failures = [
     'scan failed [/srv/private/ports-posix.ts',
@@ -1284,7 +1287,7 @@ test('the real CLI never reflects TypeChecker alias resolution failures', () => 
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 2);
   assert.equal(result.stderr.trim(), 'ERROR - architecture ports scan failed');
-  assert.doesNotMatch(output, /PASS - architecture ports|\[missing-approved-global\]/);
+  assert.doesNotMatch(output, /PASS - architecture ports/);
   assert.doesNotMatch(output, /ports-attacker-message|example\.test|ports-real|file:|malformed|attacker-sentinel|ports-real-secret|stack detail|\n\s*at\s+/i);
 });
 

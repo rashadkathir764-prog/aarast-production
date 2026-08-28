@@ -762,7 +762,7 @@ test('a customer cannot accept an offer after the provider becomes inactive', as
     message: 'Offer',
     amount: new Prisma.Decimal('1000'),
     currency: 'YER',
-    validUntil: new Date('2026-08-26T00:00:00.000Z'),
+    validUntil: null,
     status: QuoteOfferStatus.PENDING,
     createdAt: now,
     updatedAt: now,

@@ -488,6 +488,11 @@ function staticString(input, checker, seen = new Set()) {
   if (ts.isStringLiteralLike(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
     return expression.text;
   }
+  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = staticString(expression.left, checker, seen);
+    const right = staticString(expression.right, checker, seen);
+    return left === null || right === null ? null : left + right;
+  }
   if (ts.isIdentifier(expression) || ts.isPropertyAccessExpression(expression)
       || ts.isElementAccessExpression(expression)) {
     const resolved = constInitializer(expression, checker, seen);
@@ -738,6 +743,21 @@ function returnTypeIsNestDynamicModule(node, checker) {
   ));
 }
 
+function expressionIsNestModuleClass(input, checker) {
+  const declaration = classDeclarationForSymbol(symbolAtExpression(input, checker));
+  return Boolean(declaration && decoratorCall(declaration, 'Module', checker));
+}
+
+function returnExpressionHasNestDynamicModuleShape(input, checker) {
+  let metadata;
+  try {
+    metadata = resolveStaticObject(input, checker, 'inferred project DynamicModule');
+  } catch {
+    return false;
+  }
+  return metadata.has('module') && expressionIsNestModuleClass(metadata.get('module'), checker);
+}
+
 function collectReturnExpressions(node) {
   const result = [];
   function visit(current) {
@@ -857,11 +877,16 @@ function collectProjectGlobalActivations(program, checker, repositoryRoot) {
         globals.push(entry.path);
       }
       if ((ts.isMethodDeclaration(node) || ts.isFunctionDeclaration(node)
-          || ts.isFunctionExpression(node) || ts.isArrowFunction(node))
-          && node.body && returnTypeIsNestDynamicModule(node, checker)) {
+          || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) && node.body) {
+        const declaredDynamicModule = returnTypeIsNestDynamicModule(node, checker);
         const returns = collectReturnExpressions(node);
-        if (!returns.length) throw new Error('project DynamicModule metadata cannot be resolved');
+        if (declaredDynamicModule && !returns.length) {
+          throw new Error('project DynamicModule metadata cannot be resolved');
+        }
         for (const expression of returns) {
+          if (!declaredDynamicModule && !returnExpressionHasNestDynamicModuleShape(expression, checker)) {
+            continue;
+          }
           const object = resolveStaticObject(expression, checker, 'project DynamicModule');
           if (object.has('global')
               && resolveStaticBoolean(object.get('global'), checker, 'project DynamicModule global')) {
@@ -889,6 +914,36 @@ function collectProjectGlobalActivations(program, checker, repositoryRoot) {
 function stringLiteralValue(input) {
   const expression = unwrapExpression(input);
   return expression && ts.isStringLiteralLike(expression) ? expression.text : null;
+}
+
+function isGlobalSymbolFactory(input, checker) {
+  const symbol = symbolAtExpression(input, checker);
+  return Boolean(symbol && symbol.getName() === 'Symbol' && (symbol.declarations || []).some(
+    (declaration) => /\/typescript\/lib\/lib\.es\d+(?:\.\w+)*\.d\.ts$/u.test(
+      normalizeFsPath(declaration.getSourceFile().fileName),
+    ),
+  ));
+}
+
+function stableSymbolDescription(input, checker, seen = new Set()) {
+  const expression = unwrapExpression(input);
+  if (!expression) return null;
+  const resolved = constInitializer(expression, checker, seen);
+  if (resolved) {
+    const next = new Set(seen);
+    next.add(resolved.symbol);
+    return stableSymbolDescription(resolved.initializer, checker, next);
+  }
+  if (!ts.isCallExpression(expression) || expression.arguments.length !== 1
+      || !isGlobalSymbolFactory(expression.expression, checker)) {
+    return null;
+  }
+  return staticString(expression.arguments[0], checker);
+}
+
+function protectedTokenLookalike(input, protectedName, checker) {
+  return stringLiteralValue(input) === protectedName
+    || stableSymbolDescription(input, checker) === protectedName;
 }
 
 function classConsumesProtectedProvider(symbol, protectedSymbol, checker) {
@@ -971,7 +1026,7 @@ function verifyNoProtectedBypasses({
       const provide = object.get('provide');
       const useClass = object.get('useClass');
       if ((provide && expressionHasSymbol(provide, protectedSymbol, checker))
-          || (provide && stringLiteralValue(provide) === protectedName)
+          || (provide && protectedTokenLookalike(provide, protectedName, checker))
           || (useClass && expressionHasSymbol(useClass, protectedSymbol, checker))) {
         throw new Error(`${label} protected provider identity replacement is forbidden`);
       }
@@ -1085,24 +1140,24 @@ function collectRealtimeComposition(program, checker, repositoryRoot) {
     label: 'Realtime publisher',
   });
 
-  const allowedConcreteImports = new Set([
+  const allowedConcreteReferences = new Set([
+    'backend/src/conversations/conversation-realtime.publisher.ts',
     'backend/src/conversations/conversation-realtime.module.ts',
     'backend/src/conversations/conversations.gateway.ts',
     'backend/src/conversations/conversations.service.ts',
     'backend/src/modules/messaging/internal/messaging-realtime.internal.module.ts',
   ]);
   for (const entry of projectSourceFiles(program, repositoryRoot)) {
-    for (const statement of entry.sourceFile.statements) {
-      if (!ts.isImportDeclaration(statement) || !statement.importClause) continue;
-      const bindings = statement.importClause.namedBindings;
-      if (!bindings || !ts.isNamedImports(bindings)) continue;
-      for (const element of bindings.elements) {
-        if (expressionHasSymbol(element.name, publisher, checker)
-            && !allowedConcreteImports.has(entry.path)) {
-          throw new Error('Realtime publisher cross-context concrete import is forbidden');
-        }
+    if (allowedConcreteReferences.has(entry.path)) continue;
+    function visit(node) {
+      if ((ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)
+          || ts.isElementAccessExpression(node))
+          && expressionHasSymbol(node, publisher, checker)) {
+        throw new Error('Realtime publisher cross-context concrete reference is forbidden');
       }
+      ts.forEachChild(node, visit);
     }
+    visit(entry.sourceFile);
   }
 
   const expectedBindings = [
@@ -1205,14 +1260,32 @@ function verifyInstalledExternalIdentity(backendRoot, identity) {
   const rootStatus = fs.lstatSync(installed.root);
   const entrypoint = path.join(installed.root, ...identity.installedEntrypoint.split('/'));
   const entryStatus = fs.lstatSync(entrypoint);
+  const resolvedStatus = fs.lstatSync(resolved);
+  const canonicalEntrypoint = fs.realpathSync(entrypoint);
+  let lockedResolution;
+  try {
+    lockedResolution = localRequire.resolve(
+      `${identity.packageName}/${identity.installedEntrypoint}`,
+    );
+  } catch {
+    throw new Error('R8 external locked entrypoint cannot be resolved');
+  }
+  const canonicalLockedEntrypoint = fs.realpathSync(lockedResolution);
   if (rootStatus.isSymbolicLink() || !rootStatus.isDirectory()
       || entryStatus.isSymbolicLink() || !entryStatus.isFile()
+      || resolvedStatus.isSymbolicLink() || !resolvedStatus.isFile()
       || installed.packageJson.version !== identity.lockedVersion
-      || !isInside(installed.root, resolved) || !isInside(installed.root, entrypoint)) {
+      || !isInside(installed.root, resolved) || !isInside(installed.root, entrypoint)
+      || !isInside(installed.root, lockedResolution)
+      || canonicalLockedEntrypoint !== canonicalEntrypoint) {
     throw new Error('R8 external installed package identity is invalid');
   }
   const exported = localRequire(identity.packageName);
-  if (!exported || typeof exported[identity.importedClass] !== 'function') {
+  const lockedExported = localRequire(
+    `${identity.packageName}/${identity.installedEntrypoint}`,
+  );
+  if (!exported || !lockedExported || typeof exported[identity.importedClass] !== 'function'
+      || exported[identity.importedClass] !== lockedExported[identity.importedClass]) {
     throw new Error('R8 external installed class identity is invalid');
   }
   if (identity.globalMechanism === 'dynamic-module-global') {

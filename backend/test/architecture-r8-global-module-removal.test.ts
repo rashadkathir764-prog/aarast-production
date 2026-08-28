@@ -870,6 +870,47 @@ test('R8 detects finite project DynamicModule global metadata and fails closed w
         }
       `,
     }],
+    ['inferred direct return', {
+      'backend/src/inferred-direct.ts': `
+        import { Module } from '@nestjs/common';
+        @Module({})
+        export class InferredDirectModule {
+          static register() { return { module: InferredDirectModule, global: true }; }
+        }
+      `,
+    }],
+    ['inferred local alias return', {
+      'backend/src/inferred-local-alias.ts': `
+        import { Module } from '@nestjs/common';
+        @Module({})
+        export class InferredLocalAliasModule {
+          static register() {
+            const metadata = { module: InferredLocalAliasModule, global: true } as const;
+            return metadata;
+          }
+        }
+      `,
+    }],
+    ['inferred object spread return', {
+      'backend/src/inferred-spread.ts': `
+        import { Module } from '@nestjs/common';
+        const activation = { global: true } as const;
+        @Module({})
+        export class InferredSpreadModule {
+          static register() { return { module: InferredSpreadModule, ...activation }; }
+        }
+      `,
+    }],
+    ['inferred computed return', {
+      'backend/src/inferred-computed.ts': `
+        import { Module } from '@nestjs/common';
+        const activation = 'global' as const;
+        @Module({})
+        export class InferredComputedModule {
+          static register() { return { module: InferredComputedModule, [activation]: true }; }
+        }
+      `,
+    }],
   ];
   for (const [name, files] of variants) {
     await t.test(name, () => {
@@ -895,6 +936,17 @@ test('R8 detects finite project DynamicModule global metadata and fails closed w
       'backend/src/decoy.ts': `
         interface DynamicModule { global: boolean }
         export function decoy(): DynamicModule { return { global: true }; }
+      `,
+    }).projectOwnedGlobals, 0);
+  });
+
+  await t.test('ordinary object-returning helper is not a Nest module factory', () => {
+    assert.equal(inspectFixtureGlobals({
+      'backend/src/ordinary-helper.ts': `
+        export class OrdinaryClass {}
+        export function ordinaryHelper() {
+          return { module: OrdinaryClass, global: true };
+        }
       `,
     }).projectOwnedGlobals, 0);
   });
@@ -1108,12 +1160,37 @@ test('R8 rejects protected Prisma provider replacement and construction bypasses
         export class LookalikeModule {}
       `,
     }],
+    ['Symbol token lookalike', {
+      'backend/src/symbol-lookalike.module.ts': `
+        import { Module } from '@nestjs/common';
+        @Module({ providers: [{ provide: Symbol('PrismaService'), useValue: {} }] })
+        export class SymbolLookalikeModule {}
+      `,
+    }],
+    ['finite Symbol token lookalike', {
+      'backend/src/finite-symbol-lookalike.module.ts': `
+        import { Module } from '@nestjs/common';
+        const prefix = 'Prisma';
+        const description = prefix + 'Service';
+        const token = Symbol(description);
+        @Module({ providers: [{ provide: token, useValue: {} }] })
+        export class FiniteSymbolLookalikeModule {}
+      `,
+    }],
   ];
   for (const [name, files] of variants) {
     await t.test(name, () => {
       assert.throws(() => inspectPrismaFixture(files), /Prisma|provider|construction|identity/i);
     });
   }
+
+  assert.doesNotThrow(() => inspectPrismaFixture({
+    'backend/src/unrelated-symbol.module.ts': `
+      import { Module } from '@nestjs/common';
+      @Module({ providers: [{ provide: Symbol('UnrelatedToken'), useValue: {} }] })
+      export class UnrelatedSymbolModule {}
+    `,
+  }));
 });
 
 test('R8 Realtime composition keeps exactly two direct importers and two useExisting bindings', () => {
@@ -1171,6 +1248,28 @@ test('R8 rejects changed or duplicated Messaging bindings and concrete cross-con
         export class ForeignConsumer { constructor(readonly realtime: ConversationRealtimePublisher) {} }
       `,
     }],
+    ['cross-context namespace publisher reference', {
+      'backend/src/modules/tasks/internal/namespace-foreign.ts': `
+        import * as Conversations from '../../../conversations/conversation-realtime.publisher';
+        export const realtime = Conversations.ConversationRealtimePublisher;
+      `,
+    }],
+    ['cross-context default publisher reference', {
+      'backend/src/conversations/conversation-realtime.publisher.ts': `
+        export class ConversationRealtimePublisher {}
+        export default ConversationRealtimePublisher;
+      `,
+      'backend/src/modules/tasks/internal/default-foreign.ts': `
+        import Publisher from '../../../conversations/conversation-realtime.publisher';
+        export const realtime = Publisher;
+      `,
+    }],
+    ['cross-context import-equals publisher reference', {
+      'backend/src/modules/tasks/internal/import-equals-foreign.ts': `
+        import Conversations = require('../../../conversations/conversation-realtime.publisher');
+        export const realtime = Conversations.ConversationRealtimePublisher;
+      `,
+    }],
   ];
   for (const [name, files] of variants) {
     await t.test(name, () => {
@@ -1226,12 +1325,37 @@ test('R8 rejects publisher duplication, manual construction, replacement, subcla
         export class LookalikeModule {}
       `,
     }],
+    ['Symbol token lookalike', {
+      'backend/src/modules/messaging/internal/symbol-lookalike.module.ts': `
+        import { Module } from '@nestjs/common';
+        @Module({ providers: [{ provide: Symbol('ConversationRealtimePublisher'), useValue: {} }] })
+        export class SymbolLookalikeModule {}
+      `,
+    }],
+    ['finite Symbol token lookalike', {
+      'backend/src/modules/messaging/internal/finite-symbol-lookalike.module.ts': `
+        import { Module } from '@nestjs/common';
+        const prefix = 'ConversationRealtime';
+        const description = prefix + 'Publisher';
+        const token = Symbol(description);
+        @Module({ providers: [{ provide: token, useValue: {} }] })
+        export class FiniteSymbolLookalikeModule {}
+      `,
+    }],
   ];
   for (const [name, files] of variants) {
     await t.test(name, () => {
       assert.throws(() => inspectRealtimeFixture(files), /Realtime|publisher|provider|construction|identity/i);
     });
   }
+
+  assert.doesNotThrow(() => inspectRealtimeFixture({
+    'backend/src/modules/messaging/internal/unrelated-symbol.module.ts': `
+      import { Module } from '@nestjs/common';
+      @Module({ providers: [{ provide: Symbol('UnrelatedToken'), useValue: {} }] })
+      export class UnrelatedSymbolModule {}
+    `,
+  }));
 });
 
 test('R8 manifest rejects every external identity drift and any broad dependency exception', () => {
@@ -1307,6 +1431,42 @@ test('R8 external verifier rejects package declaration and complete lock identit
       assertR8Failure(
         () => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()),
         /external|package|lock|identity/i,
+      );
+    });
+  }
+});
+
+test('R8 external verifier requires the exact locked installed entrypoint', async (t) => {
+  const variants: Array<[string, Record<string, unknown>]> = [
+    ['main', { main: './dist/alternate.js' }],
+    ['exports', { main: './dist/index.js', exports: { '.': './dist/alternate.js' } }],
+  ];
+  for (const [name, entrypointFields] of variants) {
+    await t.test(name, () => {
+      const root = externalFixture();
+      const packageRoot = 'backend/node_modules/@nestjs/schedule';
+      const runtime = `
+        class ScheduleModule {
+          static forRoot() { return { global: true }; }
+        }
+        module.exports = { ScheduleModule };
+      `;
+      writeFixtureFile(root, `${packageRoot}/package.json`, JSON.stringify({
+        name: '@nestjs/schedule',
+        version: '6.1.3',
+        types: './index.d.ts',
+        ...entrypointFields,
+      }));
+      writeFixtureFile(root, `${packageRoot}/index.d.ts`, `
+        export declare class ScheduleModule {
+          static forRoot(): { global: true };
+        }
+      `);
+      writeFixtureFile(root, `${packageRoot}/dist/index.js`, runtime);
+      writeFixtureFile(root, `${packageRoot}/dist/alternate.js`, runtime);
+      assertR8Failure(
+        () => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()),
+        /external|installed|entrypoint|identity/i,
       );
     });
   }

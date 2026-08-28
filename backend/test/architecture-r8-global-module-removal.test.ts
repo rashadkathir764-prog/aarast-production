@@ -950,6 +950,63 @@ test('R8 detects finite project DynamicModule global metadata and fails closed w
       `,
     }).projectOwnedGlobals, 0);
   });
+
+  const unresolvedFactoryNames = [
+    'forFeature', 'forFeatureAsync', 'forRoot', 'forRootAsync', 'register', 'registerAsync',
+  ];
+  for (const factoryName of unresolvedFactoryNames) {
+    await t.test(`unresolved inferred ${factoryName} factory fails closed`, () => {
+      assert.throws(() => inspectFixtureGlobals({
+        'backend/src/unresolved-inferred.module.ts': `
+          import { Module } from '@nestjs/common';
+          declare function buildMetadata(): unknown;
+          @Module({})
+          export class UnresolvedInferredModule {
+            static ${factoryName}() { return buildMetadata(); }
+          }
+        `,
+      }), /DynamicModule|metadata|global/i);
+    });
+  }
+
+  assert.doesNotThrow(() => inspectFixtureGlobals({
+    'backend/src/unrelated-static.module.ts': `
+      import { Module } from '@nestjs/common';
+      declare function buildMetadata(): unknown;
+      @Module({})
+      export class UnrelatedStaticModule {
+        static healthProbe() { return buildMetadata(); }
+      }
+    `,
+    'backend/src/unrelated-class.ts': `
+      declare function buildMetadata(): unknown;
+      export class UnrelatedClass {
+        static register() { return buildMetadata(); }
+      }
+    `,
+  }));
+
+  assert.throws(() => inspectFixtureGlobals({
+    'backend/src/computed-factory.module.ts': `
+      import { Module } from '@nestjs/common';
+      const factoryName = 'register';
+      declare function buildMetadata(): unknown;
+      @Module({})
+      export class ComputedFactoryModule {
+        static [factoryName] = () => buildMetadata();
+      }
+    `,
+  }), /DynamicModule|metadata|global/i);
+
+  assert.doesNotThrow(() => inspectFixtureGlobals({
+    'backend/src/finite-utility.module.ts': `
+      import { Module } from '@nestjs/common';
+      @Module({})
+      export class FiniteUtilityModule {
+        static register() { return { enabled: true }; }
+      }
+    `,
+  }));
 });
 
 test('R8 rejects external DynamicModule factory global options and unresolved source options', async (t) => {
@@ -1439,7 +1496,10 @@ test('R8 external verifier rejects package declaration and complete lock identit
 test('R8 external verifier requires the exact locked installed entrypoint', async (t) => {
   const variants: Array<[string, Record<string, unknown>]> = [
     ['main', { main: './dist/alternate.js' }],
-    ['exports', { main: './dist/index.js', exports: { '.': './dist/alternate.js' } }],
+    ['exports', {
+      main: './dist/index.js',
+      exports: { '.': './dist/alternate.js', './dist/index.js': './dist/index.js' },
+    }],
   ];
   for (const [name, entrypointFields] of variants) {
     await t.test(name, () => {
@@ -1463,13 +1523,75 @@ test('R8 external verifier requires the exact locked installed entrypoint', asyn
         }
       `);
       writeFixtureFile(root, `${packageRoot}/dist/index.js`, runtime);
-      writeFixtureFile(root, `${packageRoot}/dist/alternate.js`, runtime);
+      writeFixtureFile(root, `${packageRoot}/dist/alternate.js`, `
+        module.exports = require('./index.js');
+      `);
       assertR8Failure(
         () => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()),
-        /external|installed|entrypoint|identity/i,
+        /external|installed|entrypoint|identity|Schedule/i,
       );
     });
   }
+});
+
+test('R8 external verifier accepts only the locked Schedule root forwarding shim', () => {
+  const root = externalFixture();
+  const packageRoot = 'backend/node_modules/@nestjs/schedule';
+  const runtime = `
+    class ScheduleModule {
+      static forRoot() { return { global: true }; }
+    }
+    module.exports = { ScheduleModule };
+  `;
+  writeFixtureFile(root, `${packageRoot}/package.json`, JSON.stringify({
+    name: '@nestjs/schedule',
+    version: '6.1.3',
+    types: './index.d.ts',
+  }));
+  writeFixtureFile(root, `${packageRoot}/index.d.ts`, `
+    export declare class ScheduleModule {
+      static forRoot(): { global: true };
+    }
+  `);
+  writeFixtureFile(root, `${packageRoot}/index.js`, readFileSync(
+    path.join(backendRoot, 'node_modules', '@nestjs', 'schedule', 'index.js'),
+    'utf8',
+  ));
+  writeFixtureFile(root, `${packageRoot}/dist/index.js`, runtime);
+  assert.doesNotThrow(() => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()));
+});
+
+test('R8 external verifier rejects a forwarding Throttler root entrypoint', () => {
+  const root = externalFixture();
+  const packageRoot = 'backend/node_modules/@nestjs/throttler';
+  const runtime = `
+    require('reflect-metadata');
+    const { GLOBAL_MODULE_METADATA } = require('@nestjs/common/constants');
+    class ThrottlerModule {
+      static forRootAsync() { return {}; }
+    }
+    Reflect.defineMetadata(GLOBAL_MODULE_METADATA, true, ThrottlerModule);
+    module.exports = { ThrottlerModule };
+  `;
+  writeFixtureFile(root, `${packageRoot}/package.json`, JSON.stringify({
+    name: '@nestjs/throttler',
+    version: expectedExternalIdentities[1].lockedVersion,
+    main: './dist/alternate.js',
+    types: './index.d.ts',
+  }));
+  writeFixtureFile(root, `${packageRoot}/index.d.ts`, `
+    export declare class ThrottlerModule {
+      static forRootAsync(): unknown;
+    }
+  `);
+  writeFixtureFile(root, `${packageRoot}/dist/index.js`, runtime);
+  writeFixtureFile(root, `${packageRoot}/dist/alternate.js`, `
+    module.exports = require('./index.js');
+  `);
+  assertR8Failure(
+    () => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()),
+    /external|installed|entrypoint|identity/i,
+  );
 });
 
 test('R8 external verifier rejects imported class, method, source path, and call-count drift', async (t) => {

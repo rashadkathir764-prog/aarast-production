@@ -9,6 +9,15 @@ const ts = require('typescript');
 
 const R8_BASE = 'c2b728bfe54304562923facfb6094e0de04c0b27';
 const REPOSITORY_ROOT = path.resolve(__dirname, '../../..');
+const INFERRED_NEST_DYNAMIC_MODULE_FACTORY_NAMES = Object.freeze([
+  'forFeature',
+  'forFeatureAsync',
+  'forRoot',
+  'forRootAsync',
+  'register',
+  'registerAsync',
+]);
+const SCHEDULE_6_1_3_ROOT_SHIM_SHA256 = 'f654b5aa2ae694e9cb10a3eef9b249331bc95e63bf9590cbb62a9f8e40c585c9';
 const EXPECTED_DOCUMENTS = Object.freeze({
   design: Object.freeze({
     path: 'docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md',
@@ -743,6 +752,32 @@ function returnTypeIsNestDynamicModule(node, checker) {
   ));
 }
 
+function staticMemberName(node, checker) {
+  if (ts.isIdentifier(node.name) || ts.isStringLiteralLike(node.name)) return node.name.text;
+  return ts.isComputedPropertyName(node.name) ? staticString(node.name.expression, checker) : null;
+}
+
+function hasStaticModifier(node) {
+  return Boolean(node.modifiers && node.modifiers.some(
+    (modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword,
+  ));
+}
+
+function inferredNestDynamicModuleFactory(node, checker) {
+  const member = ts.isMethodDeclaration(node)
+    ? node
+    : ts.isArrowFunction(node) && ts.isPropertyDeclaration(node.parent)
+      && node.parent.initializer === node
+      ? node.parent
+      : null;
+  if (!member || !hasStaticModifier(member) || !ts.isClassDeclaration(member.parent)
+      || !decoratorCall(member.parent, 'Module', checker)) {
+    return false;
+  }
+  const name = staticMemberName(member, checker);
+  return name !== null && INFERRED_NEST_DYNAMIC_MODULE_FACTORY_NAMES.includes(name);
+}
+
 function expressionIsNestModuleClass(input, checker) {
   const declaration = classDeclarationForSymbol(symbolAtExpression(input, checker));
   return Boolean(declaration && decoratorCall(declaration, 'Module', checker));
@@ -753,12 +788,13 @@ function returnExpressionHasNestDynamicModuleShape(input, checker) {
   try {
     metadata = resolveStaticObject(input, checker, 'inferred project DynamicModule');
   } catch {
-    return false;
+    return null;
   }
   return metadata.has('module') && expressionIsNestModuleClass(metadata.get('module'), checker);
 }
 
 function collectReturnExpressions(node) {
+  if (ts.isArrowFunction(node) && !ts.isBlock(node.body)) return [node.body];
   const result = [];
   function visit(current) {
     if (current !== node && (ts.isFunctionLike(current) || ts.isClassLike(current))) return;
@@ -879,13 +915,21 @@ function collectProjectGlobalActivations(program, checker, repositoryRoot) {
       if ((ts.isMethodDeclaration(node) || ts.isFunctionDeclaration(node)
           || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) && node.body) {
         const declaredDynamicModule = returnTypeIsNestDynamicModule(node, checker);
+        const inferredDynamicModuleFactory = !declaredDynamicModule
+          && inferredNestDynamicModuleFactory(node, checker);
         const returns = collectReturnExpressions(node);
         if (declaredDynamicModule && !returns.length) {
           throw new Error('project DynamicModule metadata cannot be resolved');
         }
         for (const expression of returns) {
-          if (!declaredDynamicModule && !returnExpressionHasNestDynamicModuleShape(expression, checker)) {
-            continue;
+          if (!declaredDynamicModule) {
+            const inferredShape = returnExpressionHasNestDynamicModuleShape(expression, checker);
+            if (!inferredShape) {
+              if (inferredDynamicModuleFactory && inferredShape === null) {
+                throw new Error('project DynamicModule metadata cannot be resolved');
+              }
+              continue;
+            }
           }
           const object = resolveStaticObject(expression, checker, 'project DynamicModule');
           if (object.has('global')
@@ -1248,6 +1292,26 @@ function findInstalledPackageRoot(entrypoint, packageName) {
   throw new Error('R8 external installed package identity cannot be resolved');
 }
 
+function verifyScheduleRootShim(installed, resolved, canonicalEntrypoint) {
+  const shimPath = path.join(installed.root, 'index.js');
+  let shimStatus;
+  let shimTarget;
+  try {
+    shimStatus = fs.lstatSync(shimPath);
+    shimTarget = createRequire(shimPath).resolve('./dist');
+  } catch {
+    throw new Error('R8 Schedule root forwarding shim is invalid');
+  }
+  const hasOwn = (name) => Object.prototype.hasOwnProperty.call(installed.packageJson, name);
+  if (hasOwn('main') || hasOwn('exports') || shimStatus.isSymbolicLink() || !shimStatus.isFile()
+      || fs.realpathSync(resolved) !== fs.realpathSync(shimPath)
+      || crypto.createHash('sha256').update(fs.readFileSync(shimPath)).digest('hex')
+        !== SCHEDULE_6_1_3_ROOT_SHIM_SHA256
+      || fs.realpathSync(shimTarget) !== canonicalEntrypoint) {
+    throw new Error('R8 Schedule root forwarding shim is invalid');
+  }
+}
+
 function verifyInstalledExternalIdentity(backendRoot, identity) {
   const localRequire = createRequire(path.join(backendRoot, 'package.json'));
   let resolved;
@@ -1261,6 +1325,7 @@ function verifyInstalledExternalIdentity(backendRoot, identity) {
   const entrypoint = path.join(installed.root, ...identity.installedEntrypoint.split('/'));
   const entryStatus = fs.lstatSync(entrypoint);
   const resolvedStatus = fs.lstatSync(resolved);
+  const canonicalResolved = fs.realpathSync(resolved);
   const canonicalEntrypoint = fs.realpathSync(entrypoint);
   let lockedResolution;
   try {
@@ -1271,13 +1336,19 @@ function verifyInstalledExternalIdentity(backendRoot, identity) {
     throw new Error('R8 external locked entrypoint cannot be resolved');
   }
   const canonicalLockedEntrypoint = fs.realpathSync(lockedResolution);
+  const isLockedSchedule = identity.packageName === '@nestjs/schedule'
+    && identity.lockedVersion === '6.1.3';
+  if (isLockedSchedule) {
+    verifyScheduleRootShim(installed, resolved, canonicalEntrypoint);
+  }
   if (rootStatus.isSymbolicLink() || !rootStatus.isDirectory()
       || entryStatus.isSymbolicLink() || !entryStatus.isFile()
       || resolvedStatus.isSymbolicLink() || !resolvedStatus.isFile()
       || installed.packageJson.version !== identity.lockedVersion
       || !isInside(installed.root, resolved) || !isInside(installed.root, entrypoint)
       || !isInside(installed.root, lockedResolution)
-      || canonicalLockedEntrypoint !== canonicalEntrypoint) {
+      || canonicalLockedEntrypoint !== canonicalEntrypoint
+      || (!isLockedSchedule && canonicalResolved !== canonicalEntrypoint)) {
     throw new Error('R8 external installed package identity is invalid');
   }
   const exported = localRequire(identity.packageName);

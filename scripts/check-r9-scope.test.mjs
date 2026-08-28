@@ -93,6 +93,13 @@ function runCheck(task = 'task-1', overrides = {}) {
   );
 }
 
+function scanWithLegalCount(count) {
+  return {
+    ...validDependencies().scan,
+    legalRecords: Array.from({ length: count }, (_, index) => ({ index })),
+  };
+}
+
 test('tracked R9 manifest freezes exact identities inventories milestones and sorted fence', () => {
   const raw = manifestValue();
   const manifest = validateR9Manifest(raw);
@@ -189,7 +196,9 @@ test('scope rejects a changed historical baseline and document hash mismatch', (
 
 test('scope rejects every wrong milestone and accepts every exact milestone', () => {
   for (const [task, debt] of Object.entries(expectedDebt)) {
+    const finalMilestone = debt.legacy === 0 && debt.root === 0;
     const exact = runCheck(task, {
+      scan: scanWithLegalCount(finalMilestone ? 159 : 0),
       comparison: {
         ok: true,
         additions: [],
@@ -209,6 +218,42 @@ test('scope rejects every wrong milestone and accepts every exact milestone', ()
     assert.equal(wrong.ok, false, task);
     assert.ok(wrong.errors.some(({ kind }) => kind === 'milestone-mismatch'));
   }
+});
+
+test('final zero-debt milestones require the exact frozen legal projection', () => {
+  const finalComparison = {
+    ok: true,
+    additions: [],
+    legacyViolationCount: 0,
+    rootViolationCount: 0,
+  };
+  for (const task of ['task-8', 'task-9', 'task-10', 'task-11']) {
+    for (const legalCount of [0, 158, 160]) {
+      const result = runCheck(task, {
+        scan: scanWithLegalCount(legalCount),
+        comparison: finalComparison,
+      });
+      assert.equal(result.ok, false, `${task} legal=${legalCount}`);
+      assert.ok(
+        result.errors.some(({ kind }) => kind === 'legal-record-count-mismatch'),
+        `${task} legal=${legalCount}`,
+      );
+    }
+
+    assert.equal(runCheck(task, {
+      scan: scanWithLegalCount(159),
+      comparison: finalComparison,
+    }).ok, true, task);
+  }
+
+  assert.equal(runCheck('task-7', {
+    scan: scanWithLegalCount(0),
+    comparison: {
+      ...finalComparison,
+      legacyViolationCount: 59,
+      rootViolationCount: 34,
+    },
+  }).ok, true);
 });
 
 test('scope rejects a symlink or junction escape without disclosing its absolute target', () => {

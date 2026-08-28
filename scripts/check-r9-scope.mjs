@@ -209,6 +209,14 @@ export function checkR9Scope({ repoRoot, task }, injected = {}) {
       || comparison.rootViolationCount !== expected.root
     )
   ) errors.push({ kind: 'milestone-mismatch' });
+  if (
+    expected?.legacy === 0
+    && expected.root === 0
+    && (
+      !Array.isArray(scan.legalRecords)
+      || scan.legalRecords.length !== contract.finalLegalRecordCount
+    )
+  ) errors.push({ kind: 'legal-record-count-mismatch' });
 
   const uniqueErrors = [];
   const errorKeys = new Set();

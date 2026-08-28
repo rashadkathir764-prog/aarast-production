@@ -1,0 +1,678 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "833a4f1d31781b45cd0a68ecee1b969ac85f237f",
+  "historicalBaseline": {
+    "path": "scripts/architecture/mobile-boundaries-baseline.json",
+    "sourceRevision": "feafe3db0053d6c66d5f46b56ff9a512861dfbad",
+    "sha256": "f9939fa25b7e3e3b7e3563c4dce30aa9a2cb0781cdf2ed8bbf9448477644cf1f",
+    "recordCount": 269
+  },
+  "rootInventory": {
+    "recordCount": 34,
+    "canonicalSha256": "1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b",
+    "records": [
+      {
+        "source": "mobile/lib/app.dart",
+        "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+        "sourceArea": "app.dart",
+        "targetArea": "features/account_contexts",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/app.dart",
+        "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+        "sourceArea": "app.dart",
+        "targetArea": "features/auth",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/account_contexts/data/account_contexts_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/account_contexts",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/account_contexts/providers/account_context_controller.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/account_contexts",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/auth/data/auth_repository.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/auth",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/auth/providers/auth_controller.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/auth",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/catalogs/data/reference_catalog_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/catalogs",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/catalogs/providers/reference_catalog_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/catalogs",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/chat/data/chat_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/chat",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/chat/data/chat_realtime_client.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/chat",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/chat/providers/chat_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/chat",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/finance/data/finance_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/finance",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/finance/providers/finance_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/finance",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/guests/data/guests_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/guests",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/guests/providers/guests_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/guests",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/home/providers/home_dashboard_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/home",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/marketplace/data/marketplace_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/marketplace",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/marketplace/providers/marketplace_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/marketplace",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/notifications/data/notifications_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/notifications",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/notifications/providers/notifications_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/notifications",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/onboarding/data/guest_onboarding_storage.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/onboarding",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/onboarding/data/yemen_administrative_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/onboarding",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/onboarding/providers/yemen_administrative_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/onboarding",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/settings/data/settings_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/settings",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/settings/providers/settings_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/settings",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/sharing/data/sharing_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/sharing",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/sharing/providers/contribution_history_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/sharing",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/sharing/providers/sharing_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/sharing",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/sharing/services/plan_leave_coordinator.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/sharing",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/tasks/data/task_timeline_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/tasks",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/tasks/providers/task_timeline_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/tasks",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/wedding_plans/data/wedding_plans_api.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/wedding_plans",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/wedding_plans",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      },
+      {
+        "source": "mobile/lib/main.dart",
+        "target": "mobile/lib/features/wedding_plans/providers/wedding_plans_provider.dart",
+        "sourceArea": "main.dart",
+        "targetArea": "features/wedding_plans",
+        "directiveKind": "import",
+        "show": [],
+        "hide": [],
+        "conditional": false,
+        "count": 1
+      }
+    ]
+  },
+  "featureApis": [
+    {
+      "area": "features/account_contexts",
+      "path": "mobile/lib/features/account_contexts/account_contexts_api.dart"
+    },
+    {
+      "area": "features/auth",
+      "path": "mobile/lib/features/auth/auth_api.dart"
+    },
+    {
+      "area": "features/catalogs",
+      "path": "mobile/lib/features/catalogs/catalogs_api.dart"
+    },
+    {
+      "area": "features/chat",
+      "path": "mobile/lib/features/chat/chat_api.dart"
+    },
+    {
+      "area": "features/finance",
+      "path": "mobile/lib/features/finance/finance_api.dart"
+    },
+    {
+      "area": "features/guests",
+      "path": "mobile/lib/features/guests/guests_api.dart"
+    },
+    {
+      "area": "features/home",
+      "path": "mobile/lib/features/home/home_api.dart"
+    },
+    {
+      "area": "features/marketplace",
+      "path": "mobile/lib/features/marketplace/marketplace_api.dart"
+    },
+    {
+      "area": "features/more",
+      "path": "mobile/lib/features/more/more_api.dart"
+    },
+    {
+      "area": "features/notifications",
+      "path": "mobile/lib/features/notifications/notifications_api.dart"
+    },
+    {
+      "area": "features/onboarding",
+      "path": "mobile/lib/features/onboarding/onboarding_api.dart"
+    },
+    {
+      "area": "features/settings",
+      "path": "mobile/lib/features/settings/settings_api.dart"
+    },
+    {
+      "area": "features/sharing",
+      "path": "mobile/lib/features/sharing/sharing_api.dart"
+    },
+    {
+      "area": "features/shell",
+      "path": "mobile/lib/features/shell/shell_api.dart"
+    },
+    {
+      "area": "features/support",
+      "path": "mobile/lib/features/support/support_api.dart"
+    },
+    {
+      "area": "features/tasks",
+      "path": "mobile/lib/features/tasks/tasks_api.dart"
+    },
+    {
+      "area": "features/wedding_day",
+      "path": "mobile/lib/features/wedding_day/wedding_day_api.dart"
+    },
+    {
+      "area": "features/wedding_plans",
+      "path": "mobile/lib/features/wedding_plans/wedding_plans_api.dart"
+    },
+    {
+      "area": "features/welcome_gateway",
+      "path": "mobile/lib/features/welcome_gateway/welcome_gateway_api.dart"
+    }
+  ],
+  "expectedDebt": {
+    "task-1": {
+      "legacy": 269,
+      "root": 34
+    },
+    "task-2": {
+      "legacy": 265,
+      "root": 34
+    },
+    "task-3": {
+      "legacy": 265,
+      "root": 34
+    },
+    "task-4": {
+      "legacy": 255,
+      "root": 34
+    },
+    "task-5": {
+      "legacy": 198,
+      "root": 34
+    },
+    "task-6": {
+      "legacy": 119,
+      "root": 34
+    },
+    "task-7": {
+      "legacy": 59,
+      "root": 34
+    },
+    "task-8": {
+      "legacy": 0,
+      "root": 0
+    },
+    "task-9": {
+      "legacy": 0,
+      "root": 0
+    },
+    "task-10": {
+      "legacy": 0,
+      "root": 0
+    },
+    "task-11": {
+      "legacy": 0,
+      "root": 0
+    }
+  },
+  "finalLegalRecordCount": 159,
+  "compositionSources": [
+    "mobile/lib/app.dart",
+    "mobile/lib/core/routing/app_router.dart",
+    "mobile/lib/main.dart"
+  ],
+  "documents": [
+    {
+      "path": "docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md",
+      "sha256": "45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md",
+      "sha256": "09c6513ad6fe1b84c96f04f6c03b3419756eaa84fe3b39b246730c970bb925b9"
+    }
+  ],
+  "allowedChangedPaths": [
+    ".github/workflows/ci.yml",
+    "ARCHITECTURE.md",
+    "CHANGELOG.md",
+    "docs/README.md",
+    "docs/mobile/README.md",
+    "docs/project/DECISIONS.md",
+    "docs/project/EXECUTION_PLAN.md",
+    "docs/project/STATUS.md",
+    "docs/qa/README.md",
+    "docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-completion.md",
+    "docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md",
+    "docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-completion.md",
+    "docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md",
+    "mobile/integration_test/account_context_runtime_smoke_test.dart",
+    "mobile/lib/app.dart",
+    "mobile/lib/core/offline/offline_sync_service.dart",
+    "mobile/lib/core/push/push_lifecycle_bridge.dart",
+    "mobile/lib/core/routing/app_router.dart",
+    "mobile/lib/core/session/safe_user.dart",
+    "mobile/lib/core/storage/auth_storage.dart",
+    "mobile/lib/features/account_contexts/account_contexts_api.dart",
+    "mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart",
+    "mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart",
+    "mobile/lib/features/auth/auth_api.dart",
+    "mobile/lib/features/auth/data/auth_repository.dart",
+    "mobile/lib/features/auth/models/auth_otp.dart",
+    "mobile/lib/features/auth/models/auth_response.dart",
+    "mobile/lib/features/auth/models/safe_user.dart",
+    "mobile/lib/features/auth/providers/auth_controller.dart",
+    "mobile/lib/features/auth/screens/otp_screen.dart",
+    "mobile/lib/features/auth/screens/register_screen.dart",
+    "mobile/lib/features/auth/screens/splash_screen.dart",
+    "mobile/lib/features/catalogs/catalogs_api.dart",
+    "mobile/lib/features/chat/chat_api.dart",
+    "mobile/lib/features/finance/finance_api.dart",
+    "mobile/lib/features/finance/models/money_starter_catalog.dart",
+    "mobile/lib/features/finance/providers/finance_provider.dart",
+    "mobile/lib/features/finance/screens/cost_form_screen.dart",
+    "mobile/lib/features/finance/screens/money_overview_screen.dart",
+    "mobile/lib/features/finance/widgets/finance_write_access_block.dart",
+    "mobile/lib/features/guests/guests_api.dart",
+    "mobile/lib/features/guests/screens/guest_list_screen.dart",
+    "mobile/lib/features/home/data/dashboard_summary_sources.dart",
+    "mobile/lib/features/home/home_api.dart",
+    "mobile/lib/features/home/providers/home_dashboard_provider.dart",
+    "mobile/lib/features/home/screens/dashboard_entry_screen.dart",
+    "mobile/lib/features/home/screens/home_screen.dart",
+    "mobile/lib/features/home/screens/local_guest_dashboard_screen.dart",
+    "mobile/lib/features/marketplace/marketplace_api.dart",
+    "mobile/lib/features/marketplace/models/marketplace_models.dart",
+    "mobile/lib/features/marketplace/screens/edit_provider_profile_screen.dart",
+    "mobile/lib/features/marketplace/screens/favorite_providers_screen.dart",
+    "mobile/lib/features/marketplace/screens/provider_apply_screen.dart",
+    "mobile/lib/features/marketplace/screens/provider_details_screen.dart",
+    "mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart",
+    "mobile/lib/features/marketplace/screens/provider_portal_screen.dart",
+    "mobile/lib/features/marketplace/screens/provider_profile_tab.dart",
+    "mobile/lib/features/marketplace/screens/quote_request_screen.dart",
+    "mobile/lib/features/marketplace/widgets/provider_account_actions.dart",
+    "mobile/lib/features/marketplace/widgets/provider_auth_gate.dart",
+    "mobile/lib/features/marketplace/widgets/provider_portal_bottom_nav.dart",
+    "mobile/lib/features/more/more_api.dart",
+    "mobile/lib/features/more/screens/more_screen.dart",
+    "mobile/lib/features/more/widgets/more_screen_components.dart",
+    "mobile/lib/features/notifications/notifications_api.dart",
+    "mobile/lib/features/notifications/screens/notifications_screen.dart",
+    "mobile/lib/features/onboarding/data/local_plan_migration.dart",
+    "mobile/lib/features/onboarding/onboarding_api.dart",
+    "mobile/lib/features/settings/screens/settings_screen.dart",
+    "mobile/lib/features/settings/settings_api.dart",
+    "mobile/lib/features/sharing/screens/add_shared_member_screen.dart",
+    "mobile/lib/features/sharing/screens/edit_shared_member_screen.dart",
+    "mobile/lib/features/sharing/screens/invite_decision_screen.dart",
+    "mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart",
+    "mobile/lib/features/sharing/screens/sharing_screen.dart",
+    "mobile/lib/features/sharing/sharing_api.dart",
+    "mobile/lib/features/shell/main_shell.dart",
+    "mobile/lib/features/shell/screens/wedding_plan_shell.dart",
+    "mobile/lib/features/shell/shell_api.dart",
+    "mobile/lib/features/shell/widgets/plan_shell_chrome.dart",
+    "mobile/lib/features/support/support_api.dart",
+    "mobile/lib/features/tasks/screens/create_task_screen.dart",
+    "mobile/lib/features/tasks/screens/task_timeline_screen.dart",
+    "mobile/lib/features/tasks/tasks_api.dart",
+    "mobile/lib/features/tasks/widgets/create_task_components.dart",
+    "mobile/lib/features/wedding_day/models/wedding_day_mode.dart",
+    "mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart",
+    "mobile/lib/features/wedding_day/wedding_day_api.dart",
+    "mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart",
+    "mobile/lib/features/wedding_plans/models/active_wedding_plan.dart",
+    "mobile/lib/features/wedding_plans/models/onboarding_complete.dart",
+    "mobile/lib/features/wedding_plans/models/wedding_plan.dart",
+    "mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart",
+    "mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart",
+    "mobile/lib/features/wedding_plans/screens/my_wedding_plans_screen.dart",
+    "mobile/lib/features/wedding_plans/screens/plan_management_screen.dart",
+    "mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart",
+    "mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart",
+    "mobile/lib/features/wedding_plans/wedding_plans_api.dart",
+    "mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart",
+    "mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart",
+    "mobile/lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart",
+    "mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart",
+    "mobile/lib/features/welcome_gateway/welcome_gateway_api.dart",
+    "mobile/lib/main.dart",
+    "mobile/test/core/forms/aarast_form_draft_store_test.dart",
+    "mobile/test/core/push/push_lifecycle_bridge_test.dart",
+    "mobile/test/core/session/safe_user_persistence_contract_test.dart",
+    "mobile/test/core/session/session_teardown_push_authorization_test.dart",
+    "mobile/test/core/storage/account_context_storage_test.dart",
+    "mobile/test/core/storage/auth_session_privacy_test.dart",
+    "mobile/test/favorite_providers_preview_test.dart",
+    "mobile/test/features/auth/auth_controller_session_guard_test.dart",
+    "mobile/test/features/auth/legacy_unverified_login_flow_test.dart",
+    "mobile/test/features/auth/otp_account_recovery_actions_test.dart",
+    "mobile/test/features/auth/profile_avatar_upload_test.dart",
+    "mobile/test/features/auth/provider_to_groom_session_flow_test.dart",
+    "mobile/test/features/auth/session_transition_gate_test.dart",
+    "mobile/test/features/chat/chat_provider_reliability_test.dart",
+    "mobile/test/features/chat/chat_realtime_client_test.dart",
+    "mobile/test/features/marketplace/city_filter_picker_test.dart",
+    "mobile/test/features/marketplace/marketplace_context_isolation_test.dart",
+    "mobile/test/features/marketplace/offers_inbox_card_test.dart",
+    "mobile/test/features/marketplace/phase_b_provider_screens_test.dart",
+    "mobile/test/features/marketplace/provider_auth_gate_test.dart",
+    "mobile/test/features/marketplace/provider_marketplace_shell_navigation_regression_test.dart",
+    "mobile/test/features/marketplace/provider_portal_chat_test.dart",
+    "mobile/test/features/marketplace/super5_providers_contract_test.dart",
+    "mobile/test/features/more/profile_menu_destinations_test.dart",
+    "mobile/test/features/notifications/notification_context_isolation_test.dart",
+    "mobile/test/features/settings/settings_account_gate_test.dart",
+    "mobile/test/features/sharing/invite_access_screen_test.dart",
+    "mobile/test/features/sharing/invite_share_success_test.dart",
+    "mobile/test/features/sharing/phase_c_sharing_screens_test.dart",
+    "mobile/test/features/sharing/sharing_auth_gate_test.dart",
+    "mobile/test/features/tasks/super3_tasks_contract_test.dart",
+    "mobile/test/features/wedding_plans/contributor_account_actions_test.dart",
+    "mobile/test/features/wedding_plans/owner_dashboard_sharing_refresh_test.dart",
+    "mobile/test/more_preview_test.dart",
+    "mobile/test/notifications_preview_test.dart",
+    "mobile/test/sharing_preview_test.dart",
+    "scripts/architecture/r9-mobile-strict-manifest.json",
+    "scripts/check-mobile-boundaries.mjs",
+    "scripts/check-mobile-boundaries.test.mjs",
+    "scripts/check-r9-scope.mjs",
+    "scripts/check-r9-scope.test.mjs"
+  ]
+}

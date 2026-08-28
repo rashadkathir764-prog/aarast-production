@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { types as utilTypes } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -291,12 +292,14 @@ function tokenizeDart(sourceText) {
       && parenthesisDepth === 0;
     const rawString = character === 'r' && (next === "'" || next === '"');
     if (character === "'" || character === '"' || rawString) {
+      const tokenOffset = index;
       const parsed = readDartString(sourceText, index, rawString);
       tokens.push({
         type: 'string',
         value: parsed.value,
         interpolated: parsed.interpolated,
         topLevel,
+        offset: tokenOffset,
       });
       index = parsed.end;
       continue;
@@ -310,11 +313,12 @@ function tokenizeDart(sourceText) {
         value: sourceText.slice(start, index),
         identifierKind: dartIdentifierKind(sourceText.slice(start, index)),
         topLevel,
+        offset: start,
       });
       continue;
     }
 
-    tokens.push({ type: 'punctuation', value: character, topLevel });
+    tokens.push({ type: 'punctuation', value: character, topLevel, offset: index });
     if (character === '{') braceDepth += 1;
     else if (character === '}') braceDepth = Math.max(0, braceDepth - 1);
     else if (character === '[') bracketDepth += 1;
@@ -463,6 +467,126 @@ export function parseDartDirectives(sourceText) {
   }
 
   return directives;
+}
+
+function r9Combinators(tokens, start) {
+  let end = start;
+  const show = [];
+  const hide = [];
+  while (
+    tokens[end]?.type === 'identifier'
+    && (tokens[end].value === 'show' || tokens[end].value === 'hide')
+  ) {
+    const target = tokens[end].value === 'show' ? show : hide;
+    end += 1;
+    if (!isDartIdentifierToken(tokens[end])) invalidDartSource();
+    target.push(tokens[end].value);
+    end += 1;
+    while (tokens[end]?.value === ',') {
+      if (!isDartIdentifierToken(tokens[end + 1])) invalidDartSource();
+      target.push(tokens[end + 1].value);
+      end += 2;
+    }
+  }
+  return {
+    end,
+    show: [...new Set(show)].sort(),
+    hide: [...new Set(hide)].sort(),
+  };
+}
+
+function directiveLine(sourceText, token) {
+  return (sourceText.slice(0, token.offset).match(/\r\n|\r|\n/g) || []).length + 1;
+}
+
+export function parseR9DartDirectives(sourceText) {
+  const text = String(sourceText);
+  const tokens = tokenizeDart(text);
+  const directives = [];
+  const consumed = new Set();
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (
+      !token.topLevel
+      || token.type !== 'identifier'
+      || !['import', 'export', 'part'].includes(token.value)
+    ) continue;
+
+    let end = index + 1;
+    while (end < tokens.length && !(tokens[end].topLevel && tokens[end].value === ';')) {
+      end += 1;
+    }
+    if (end >= tokens.length) invalidDartSource();
+    for (let cursor = index; cursor <= end; cursor += 1) consumed.add(cursor);
+    const body = tokens.slice(index + 1, end);
+    const line = directiveLine(text, token);
+
+    if (token.value === 'part') {
+      const parsed = parsePart(body);
+      if (parsed.uris.length === 0) {
+        directives.push({
+          directiveKind: 'part-of',
+          uri: null,
+          show: [],
+          hide: [],
+          conditional: false,
+          line,
+        });
+      } else {
+        directives.push({
+          directiveKind: parsed.kind,
+          uri: parsed.uris[0],
+          show: [],
+          hide: [],
+          conditional: false,
+          line,
+        });
+      }
+      index = end;
+      continue;
+    }
+
+    const configurable = readConfigurableUri(body);
+    let combinatorStart = configurable.end;
+    if (token.value === 'import') {
+      if (body[combinatorStart]?.value === 'deferred') combinatorStart += 1;
+      if (body[combinatorStart]?.value === 'as') combinatorStart += 2;
+    }
+    const combinators = r9Combinators(body, combinatorStart);
+    // The historical parser remains the grammar authority and fails closed.
+    parseImportOrExport(token.value, body);
+    for (const uri of configurable.uris) {
+      directives.push({
+        directiveKind: token.value,
+        uri,
+        show: combinators.show,
+        hide: combinators.hide,
+        conditional: configurable.uris.length > 1,
+        line,
+      });
+    }
+    index = end;
+  }
+
+  const declaration = tokens.find((token, index) => (
+    token.topLevel && !consumed.has(index) && token.value !== ';'
+  ));
+  if (declaration) {
+    directives.push({
+      directiveKind: 'declaration',
+      uri: null,
+      show: [],
+      hide: [],
+      conditional: false,
+      line: directiveLine(text, declaration),
+    });
+  }
+  return directives.sort((left, right) => (
+    left.line - right.line
+    || left.directiveKind.localeCompare(right.directiveKind, 'en')
+    || String(left.uri).localeCompare(String(right.uri), 'en')
+  ));
 }
 
 function normalizeSlashes(value) {
@@ -750,6 +874,455 @@ export function compareMobileBaseline(current, baseline) {
   return { ok: additions.length === 0, additions };
 }
 
+const R9_BASE_REVISION = '833a4f1d31781b45cd0a68ecee1b969ac85f237f';
+const R9_BASELINE_SHA256 = 'f9939fa25b7e3e3b7e3563c4dce30aa9a2cb0781cdf2ed8bbf9448477644cf1f';
+const R9_ROOT_SHA256 = '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b';
+const R9_ALLOWED_PATHS_SHA256 = '6e19521300eb851e30524d4e46b6f1a1737b04934636176fc7f129713f979d7e';
+const R9_FEATURES = [
+  'account_contexts', 'auth', 'catalogs', 'chat', 'finance', 'guests', 'home',
+  'marketplace', 'more', 'notifications', 'onboarding', 'settings', 'sharing',
+  'shell', 'support', 'tasks', 'wedding_day', 'wedding_plans', 'welcome_gateway',
+];
+const R9_COMPOSITION_SOURCES = [
+  'mobile/lib/app.dart',
+  'mobile/lib/core/routing/app_router.dart',
+  'mobile/lib/main.dart',
+];
+const R9_DEBT = {
+  'task-1': { legacy: 269, root: 34 },
+  'task-2': { legacy: 265, root: 34 },
+  'task-3': { legacy: 265, root: 34 },
+  'task-4': { legacy: 255, root: 34 },
+  'task-5': { legacy: 198, root: 34 },
+  'task-6': { legacy: 119, root: 34 },
+  'task-7': { legacy: 59, root: 34 },
+  'task-8': { legacy: 0, root: 0 },
+  'task-9': { legacy: 0, root: 0 },
+  'task-10': { legacy: 0, root: 0 },
+  'task-11': { legacy: 0, root: 0 },
+};
+const R9_DOCUMENTS = [
+  {
+    path: 'docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md',
+    sha256: '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5',
+  },
+  {
+    path: 'docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md',
+    sha256: '09c6513ad6fe1b84c96f04f6c03b3419756eaa84fe3b39b246730c970bb925b9',
+  },
+];
+const R9_ROOT_PAIRS = [
+  'mobile/lib/app.dart -> mobile/lib/features/account_contexts/providers/account_context_controller.dart',
+  'mobile/lib/app.dart -> mobile/lib/features/auth/providers/auth_controller.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/account_contexts/data/account_contexts_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/account_contexts/providers/account_context_controller.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/auth/data/auth_repository.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/auth/providers/auth_controller.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/catalogs/data/reference_catalog_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/catalogs/providers/reference_catalog_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/chat/data/chat_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/chat/data/chat_realtime_client.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/chat/providers/chat_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/finance/data/finance_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/finance/providers/finance_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/guests/data/guests_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/guests/providers/guests_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/home/providers/home_dashboard_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/marketplace/data/marketplace_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/marketplace/providers/marketplace_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/notifications/data/notifications_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/notifications/providers/notifications_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/onboarding/data/guest_onboarding_storage.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/onboarding/data/yemen_administrative_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/onboarding/providers/yemen_administrative_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/settings/data/settings_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/settings/providers/settings_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/sharing/data/sharing_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/sharing/providers/contribution_history_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/sharing/providers/sharing_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/sharing/services/plan_leave_coordinator.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/tasks/data/task_timeline_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/tasks/providers/task_timeline_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/wedding_plans/data/wedding_plans_api.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart',
+  'mobile/lib/main.dart -> mobile/lib/features/wedding_plans/providers/wedding_plans_provider.dart',
+];
+const R9_MANIFEST_FIELDS = [
+  'allowedChangedPaths', 'baseRevision', 'compositionSources', 'documents',
+  'expectedDebt', 'featureApis', 'finalLegalRecordCount', 'historicalBaseline',
+  'rootInventory', 'schemaVersion',
+];
+const R9_RECORD_FIELDS = [
+  'conditional', 'count', 'directiveKind', 'hide', 'show', 'source',
+  'sourceArea', 'target', 'targetArea',
+];
+
+function canonicalRepositoryFile(value) {
+  if (
+    typeof value !== 'string'
+    || value.length === 0
+    || value.length > MAX_PATH_LENGTH
+    || value.includes('\\')
+    || /[\u0000-\u001F\u007F-\u009F:=?*"<>|%]/.test(value)
+    || path.posix.isAbsolute(value)
+    || path.win32.isAbsolute(value)
+    || path.posix.normalize(value) !== value
+  ) return false;
+  return value.split('/').every((segment) => (
+    segment !== ''
+    && segment !== '.'
+    && segment !== '..'
+    && /^[A-Za-z0-9_.@+$'{}-]+$/.test(segment)
+  ));
+}
+
+function validateStringArray(value, { nonEmpty = false } = {}) {
+  const result = readDenseArray(value);
+  if (
+    (nonEmpty && result.length === 0)
+    || result.some((item) => typeof item !== 'string' || item.length === 0)
+    || new Set(result).size !== result.length
+    || !sameArray(result, [...result].sort())
+  ) throw new Error('invalid string array');
+  return result;
+}
+
+function validateR9Record(value) {
+  const item = readPlainObject(value, R9_RECORD_FIELDS);
+  if (!canonicalMobileFile(item.source) || !canonicalMobileFile(item.target)) {
+    throw new Error('invalid R9 record path');
+  }
+  if (
+    item.sourceArea !== areaForPath(item.source)
+    || item.targetArea !== areaForPath(item.target)
+    || !['import', 'export', 'part', 'part-of'].includes(item.directiveKind)
+    || typeof item.conditional !== 'boolean'
+    || !Number.isSafeInteger(item.count)
+    || item.count <= 0
+  ) throw new Error('invalid R9 record');
+  return {
+    ...item,
+    show: validateStringArray(item.show),
+    hide: validateStringArray(item.hide),
+  };
+}
+
+function r9RecordKey(item) {
+  return [
+    item.source,
+    item.target,
+    item.sourceArea,
+    item.targetArea,
+    item.directiveKind,
+    item.show.join(','),
+    item.hide.join(','),
+    item.conditional ? '1' : '0',
+  ].join('|');
+}
+
+function validateExactObject(value, expected, fields) {
+  const item = readPlainObject(value, fields);
+  for (const field of fields) {
+    if (item[field] !== expected[field]) throw new Error('invalid manifest identity');
+  }
+  return item;
+}
+
+export function validateR9Manifest(value) {
+  const manifest = readPlainObject(value, R9_MANIFEST_FIELDS);
+  if (manifest.schemaVersion !== 1 || manifest.baseRevision !== R9_BASE_REVISION) {
+    throw new Error('invalid R9 manifest identity');
+  }
+  const historicalBaseline = validateExactObject(
+    manifest.historicalBaseline,
+    {
+      path: 'scripts/architecture/mobile-boundaries-baseline.json',
+      sourceRevision: SOURCE_REVISION,
+      sha256: R9_BASELINE_SHA256,
+      recordCount: 269,
+    },
+    ['path', 'recordCount', 'sha256', 'sourceRevision'],
+  );
+  const rootInventory = readPlainObject(
+    manifest.rootInventory,
+    ['canonicalSha256', 'recordCount', 'records'],
+  );
+  if (rootInventory.recordCount !== 34 || rootInventory.canonicalSha256 !== R9_ROOT_SHA256) {
+    throw new Error('invalid root inventory identity');
+  }
+  const rootRecords = readDenseArray(rootInventory.records).map(validateR9Record);
+  const rootKeys = rootRecords.map(r9RecordKey);
+  if (
+    rootRecords.length !== 34
+    || new Set(rootKeys).size !== rootKeys.length
+    || !sameArray(rootKeys, [...rootKeys].sort())
+    || rootRecords.some((item, index) => (
+      !['mobile/lib/app.dart', 'mobile/lib/main.dart'].includes(item.source)
+      || item.directiveKind !== 'import'
+      || item.count !== 1
+      || item.show.length !== 0
+      || item.hide.length !== 0
+      || item.conditional
+      || `${item.source} -> ${item.target}` !== R9_ROOT_PAIRS[index]
+    ))
+  ) throw new Error('invalid root inventory');
+
+  const featureApis = readDenseArray(manifest.featureApis).map((value, index) => {
+    const item = readPlainObject(value, ['area', 'path']);
+    const feature = R9_FEATURES[index];
+    if (
+      item.area !== `features/${feature}`
+      || item.path !== `mobile/lib/features/${feature}/${feature}_api.dart`
+    ) throw new Error('invalid feature API inventory');
+    return item;
+  });
+  if (featureApis.length !== R9_FEATURES.length) throw new Error('invalid feature API count');
+
+  const debt = readPlainObject(manifest.expectedDebt, Object.keys(R9_DEBT).sort());
+  const expectedDebt = {};
+  for (const [task, expected] of Object.entries(R9_DEBT)) {
+    expectedDebt[task] = validateExactObject(debt[task], expected, ['legacy', 'root']);
+  }
+  const compositionSources = validateStringArray(manifest.compositionSources);
+  if (!sameArray(compositionSources, R9_COMPOSITION_SOURCES)) {
+    throw new Error('invalid composition sources');
+  }
+  if (manifest.finalLegalRecordCount !== 159) throw new Error('invalid final legal count');
+
+  const documents = readDenseArray(manifest.documents).map((value, index) => (
+    validateExactObject(value, R9_DOCUMENTS[index] || {}, ['path', 'sha256'])
+  ));
+  if (documents.length !== R9_DOCUMENTS.length) throw new Error('invalid document inventory');
+
+  const allowedChangedPaths = readDenseArray(manifest.allowedChangedPaths);
+  if (
+    allowedChangedPaths.length !== 146
+    || allowedChangedPaths.some((item) => !canonicalRepositoryFile(item))
+    || new Set(allowedChangedPaths).size !== allowedChangedPaths.length
+    || !sameArray(allowedChangedPaths, [...allowedChangedPaths].sort())
+    || createHash('sha256').update(JSON.stringify(allowedChangedPaths)).digest('hex')
+      !== R9_ALLOWED_PATHS_SHA256
+  ) throw new Error('invalid allowed changed path fence');
+
+  return {
+    schemaVersion: 1,
+    baseRevision: R9_BASE_REVISION,
+    historicalBaseline,
+    rootInventory: {
+      recordCount: 34,
+      canonicalSha256: R9_ROOT_SHA256,
+      records: rootRecords,
+    },
+    featureApis,
+    expectedDebt,
+    finalLegalRecordCount: 159,
+    compositionSources,
+    documents,
+    allowedChangedPaths,
+  };
+}
+
+function stableR9Record({ source, target, directive, count = 1 }) {
+  return {
+    source,
+    target,
+    sourceArea: areaForPath(source),
+    targetArea: areaForPath(target),
+    directiveKind: directive.directiveKind,
+    show: [...directive.show],
+    hide: [...directive.hide],
+    conditional: directive.conditional,
+    count,
+  };
+}
+
+function exactOwnerApiPathForArea(area) {
+  if (!area.startsWith('features/')) return null;
+  const feature = area.slice('features/'.length);
+  return `mobile/lib/features/${feature}/${feature}_api.dart`;
+}
+
+function r9HistoricalKey(item) {
+  const kind = recordKind(item.sourceArea, item.targetArea);
+  return [item.source, item.target, item.sourceArea, item.targetArea, kind].join('|');
+}
+
+export function scanR9MobileBoundaries({ mobileLib, manifest }) {
+  const contract = validateR9Manifest(manifest);
+  const resolvedMobileLib = path.resolve(mobileLib);
+  const realMobileLib = fs.realpathSync.native(resolvedMobileLib);
+  const repoRoot = path.resolve(resolvedMobileLib, '..', '..');
+  const historical = scanMobileBoundaries({ mobileLib: resolvedMobileLib });
+  const errors = new Map(historical.errors.map((item) => [errorKey(item), item]));
+  const legacy = new Map();
+  const roots = new Map();
+  const legal = new Map();
+  const malformed = new Map();
+  const exactCompositionSources = new Set(contract.compositionSources);
+  const sourceOwnerState = new Map();
+
+  function addError(kind, source, target = source) {
+    const item = { kind, source, target };
+    errors.set(`${source}|${target}|${kind}`, item);
+  }
+  function addRecord(collection, item) {
+    const key = r9RecordKey(item);
+    const current = collection.get(key);
+    if (current) current.count += item.count;
+    else collection.set(key, { ...item });
+  }
+
+  for (const sourceFile of listDartFiles(resolvedMobileLib)) {
+    const source = repositoryPath(sourceFile, repoRoot);
+    const sourceArea = areaForPath(source);
+    const isOwnerApi = source === exactOwnerApiPathForArea(sourceArea);
+    const directives = parseR9DartDirectives(fs.readFileSync(sourceFile, 'utf8'));
+    const pairState = new Map();
+
+    for (const directive of directives) {
+      if (isOwnerApi && directive.directiveKind === 'declaration') {
+        addError('owner-api-declaration', source);
+        continue;
+      }
+      if (directive.uri === null) {
+        if (isOwnerApi) addError('owner-api-forbidden-directive', source);
+        continue;
+      }
+      const targetFile = resolveDartTarget(sourceFile, directive.uri, resolvedMobileLib);
+      if (targetFile === null) {
+        if (isOwnerApi) addError('owner-api-forbidden-directive', source);
+        continue;
+      }
+      const target = repositoryPath(targetFile, repoRoot);
+      const realTargetFile = resolveCanonicalMobileFile(targetFile, resolvedMobileLib, realMobileLib);
+      if (realTargetFile === null) continue;
+      const record = stableR9Record({ source, target, directive });
+      const targetArea = record.targetArea;
+      const targetIsOwnerApi = target === exactOwnerApiPathForArea(targetArea);
+
+      if (isOwnerApi) {
+        if (directive.directiveKind !== 'export') {
+          addError('owner-api-forbidden-directive', source, target);
+        } else {
+          if (directive.show.length === 0) addError('owner-export-empty-show', source, target);
+          if (directive.hide.length > 0) addError('owner-export-hide', source, target);
+          if (directive.conditional) addError('owner-export-conditional', source, target);
+          if (targetArea !== sourceArea) addError('owner-export-cross-owner', source, target);
+          if (targetIsOwnerApi) addError('owner-export-api-target', source, target);
+        }
+      }
+
+      if (!targetArea.startsWith('features/') || sourceArea === targetArea) continue;
+      const state = pairState.get(targetArea) || { api: 0, internal: 0 };
+      if (targetIsOwnerApi && directive.directiveKind === 'import') state.api += 1;
+      else state.internal += 1;
+      pairState.set(targetArea, state);
+
+      if (directive.directiveKind === 'export') {
+        addError('cross-area-export', source, target);
+      }
+      if (targetIsOwnerApi && directive.directiveKind === 'import') {
+        const importerAllowed = (
+          sourceArea.startsWith('features/') || exactCompositionSources.has(source)
+        );
+        let structurallyLegal = importerAllowed;
+        if (!importerAllowed) addError('invalid-feature-importer', source, target);
+        if (directive.show.length === 0) {
+          addError('owner-import-empty-show', source, target);
+          structurallyLegal = false;
+        }
+        if (directive.hide.length > 0) {
+          addError('owner-import-hide', source, target);
+          structurallyLegal = false;
+        }
+        if (directive.conditional) {
+          addError('owner-import-conditional', source, target);
+          structurallyLegal = false;
+        }
+        if (structurallyLegal) addRecord(legal, record);
+        else addRecord(malformed, record);
+      } else if (sourceArea.startsWith('features/') || sourceArea === 'core') {
+        addRecord(legacy, record);
+      } else {
+        addRecord(roots, record);
+        if (!['mobile/lib/app.dart', 'mobile/lib/main.dart'].includes(source)) {
+          addError('invalid-feature-importer', source, target);
+        }
+      }
+    }
+
+    sourceOwnerState.set(source, pairState);
+  }
+
+  for (const [source, pairState] of sourceOwnerState) {
+    for (const [targetArea, state] of pairState) {
+      const safeTarget = `mobile/lib/${targetArea}/${targetArea.slice('features/'.length)}_api.dart`;
+      if (state.api > 0 && state.internal > 0) addError('mixed-owner-imports', source, safeTarget);
+      if (state.api > 1) addError('duplicate-owner-api-import', source, safeTarget);
+    }
+  }
+
+  const sorted = (collection) => [...collection.values()].sort((left, right) => (
+    r9RecordKey(left).localeCompare(r9RecordKey(right), 'en')
+  ));
+  const legacyRecords = sorted(legacy);
+  const rootRecords = sorted(roots);
+  const legalRecords = sorted(legal);
+  const strictMap = new Map();
+  for (const item of [...legacyRecords, ...rootRecords, ...sorted(malformed)]) {
+    strictMap.set(r9RecordKey(item), item);
+  }
+  return {
+    errors: [...errors.values()].sort((left, right) => (
+      `${left.source}|${left.target}|${left.kind}`.localeCompare(
+        `${right.source}|${right.target}|${right.kind}`,
+        'en',
+      )
+    )),
+    legacyRecords,
+    rootRecords,
+    legalRecords,
+    strictViolations: sorted(strictMap),
+  };
+}
+
+export function compareR9MobileDebt({ scan, baseline, manifest }) {
+  const contract = validateR9Manifest(manifest);
+  const saved = validateBaseline(baseline);
+  const allowedLegacy = new Map(saved.records.map((item) => [recordKey(item), item.count]));
+  const currentLegacy = new Map();
+  for (const item of scan.legacyRecords) {
+    const key = r9HistoricalKey(item);
+    currentLegacy.set(key, (currentLegacy.get(key) || 0) + item.count);
+  }
+  const additions = [];
+  for (const item of scan.legacyRecords) {
+    const key = r9HistoricalKey(item);
+    if ((currentLegacy.get(key) || 0) > (allowedLegacy.get(key) || 0)) addRecordOnce(additions, item);
+  }
+  const allowedRoots = new Map(contract.rootInventory.records.map((item) => [
+    r9RecordKey(item),
+    item.count,
+  ]));
+  for (const item of scan.rootRecords) {
+    const key = r9RecordKey(item);
+    if (item.count > (allowedRoots.get(key) || 0)) addRecordOnce(additions, item);
+  }
+  additions.sort((left, right) => r9RecordKey(left).localeCompare(r9RecordKey(right), 'en'));
+  return {
+    ok: additions.length === 0 && scan.errors.length === 0,
+    additions,
+    legacyViolationCount: scan.legacyRecords.length,
+    rootViolationCount: scan.rootRecords.length,
+  };
+}
+
+function addRecordOnce(records, item) {
+  if (!records.some((candidate) => r9RecordKey(candidate) === r9RecordKey(item))) {
+    records.push(item);
+  }
+}
+
 function sameArray(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -986,6 +1559,84 @@ export function runCli(dependencies) {
       return 0;
     }
 
+    if (
+      typeof dependencies.scanR9 === 'function'
+      && typeof dependencies.readManifest === 'function'
+      && typeof dependencies.readBaselineText === 'function'
+    ) {
+      const manifest = validateR9Manifest(dependencies.readManifest());
+      const baselineText = dependencies.readBaselineText();
+      if (
+        typeof baselineText !== 'string'
+        || createHash('sha256').update(baselineText).digest('hex')
+          !== manifest.historicalBaseline.sha256
+      ) throw new Error('invalid historical baseline hash');
+      const saved = validateBaseline(JSON.parse(baselineText));
+      const r9 = dependencies.scanR9(manifest);
+      if (
+        !r9
+        || !Array.isArray(r9.errors)
+        || !Array.isArray(r9.legacyRecords)
+        || !Array.isArray(r9.rootRecords)
+        || !Array.isArray(r9.legalRecords)
+        || !Array.isArray(r9.strictViolations)
+      ) throw new Error('invalid R9 scan');
+      if (r9.errors.length > 0) {
+        writeLine(
+          dependencies.stderr,
+          `R9 mobile boundary structural errors (${r9.errors.length} records)`,
+        );
+        for (const item of r9.errors) {
+          const source = canonicalMobileFile(item?.source)
+            ? item.source
+            : 'mobile/lib/__invalid_r9_source__.dart';
+          writeLine(dependencies.stderr, `R9-structural-violation: ${source}`);
+        }
+        return 1;
+      }
+      if (argv[0] === '--strict') {
+        if (r9.strictViolations.length > 0) {
+          writeLine(
+            dependencies.stderr,
+            `strict R9 mobile boundary violations (${r9.strictViolations.length} records)`,
+          );
+          for (const item of r9.strictViolations) {
+            const source = canonicalMobileFile(item?.source)
+              ? item.source
+              : 'mobile/lib/__invalid_r9_source__.dart';
+            writeLine(dependencies.stderr, `strict-r9-boundary: ${source}`);
+          }
+          return 1;
+        }
+        writeLine(
+          dependencies.stdout,
+          `strict R9 mobile boundary check passed (legal=${r9.legalRecords.length})`,
+        );
+        return 0;
+      }
+      const comparison = compareR9MobileDebt({ scan: r9, baseline: saved, manifest });
+      if (!comparison.ok) {
+        writeLine(
+          dependencies.stderr,
+          `R9 mobile boundary debt additions (${comparison.additions.length} records)`,
+        );
+        for (const item of comparison.additions) {
+          const source = canonicalMobileFile(item?.source)
+            ? item.source
+            : 'mobile/lib/__invalid_r9_source__.dart';
+          writeLine(dependencies.stderr, `R9-debt-addition: ${source}`);
+        }
+        return 1;
+      }
+      writeLine(
+        dependencies.stdout,
+        'R9 mobile boundary baseline check passed '
+          + `(legacy=${comparison.legacyViolationCount}, `
+          + `root=${comparison.rootViolationCount}, legal=${r9.legalRecords.length})`,
+      );
+      return 0;
+    }
+
     if (argv[0] === '--strict') {
       const violations = current.records.filter(strictViolation);
       if (violations.length > 0) {
@@ -1035,10 +1686,19 @@ function defaultDependencies(argv) {
     'architecture',
     'mobile-boundaries-baseline.json',
   );
+  const manifestPath = path.join(
+    repoRoot,
+    'scripts',
+    'architecture',
+    'r9-mobile-strict-manifest.json',
+  );
   return {
     argv,
     scan: () => scanMobileBoundaries({ mobileLib }),
     readBaseline: () => JSON.parse(fs.readFileSync(baselinePath, 'utf8')),
+    readBaselineText: () => fs.readFileSync(baselinePath, 'utf8'),
+    readManifest: () => JSON.parse(fs.readFileSync(manifestPath, 'utf8')),
+    scanR9: (manifest) => scanR9MobileBoundaries({ mobileLib, manifest }),
     writeBaseline: (value) => fs.writeFileSync(
       baselinePath,
       `${JSON.stringify(value, null, 2)}\n`,

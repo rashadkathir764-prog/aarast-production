@@ -13,12 +13,14 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import {
+import * as mobileBoundaries from './check-mobile-boundaries.mjs';
+
+const {
   compareMobileBaseline,
   parseDartDirectives,
   runCli,
   scanMobileBoundaries,
-} from './check-mobile-boundaries.mjs';
+} = mobileBoundaries;
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
@@ -27,6 +29,11 @@ const baselinePath = path.join(
   scriptDir,
   'architecture',
   'mobile-boundaries-baseline.json',
+);
+const r9ManifestPath = path.join(
+  scriptDir,
+  'architecture',
+  'r9-mobile-strict-manifest.json',
 );
 const sourceRevision = 'feafe3db0053d6c66d5f46b56ff9a512861dfbad';
 const unresolvedTargetPlaceholder = 'mobile/lib/__unresolved_local_target__.dart';
@@ -1599,4 +1606,324 @@ test('real wrapper rejects invalid arguments without absolute paths or stack tra
   const diagnostic = `${result.stdout}\n${result.stderr}`;
   assert.match(diagnostic, /usage:/);
   assert.doesNotMatch(diagnostic, /[A-Za-z]:[\\/]|aarast-modular-monolith|Error:|\bat\s+file:/i);
+});
+
+function loadR9Manifest() {
+  assert.equal(typeof mobileBoundaries.validateR9Manifest, 'function');
+  return mobileBoundaries.validateR9Manifest(
+    JSON.parse(readFileSync(r9ManifestPath, 'utf8')),
+  );
+}
+
+function scanR9Fixture(files) {
+  assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
+  return withMobileFixture(files, ({ mobileLib }) => (
+    mobileBoundaries.scanR9MobileBoundaries({
+      mobileLib,
+      manifest: loadR9Manifest(),
+    })
+  ));
+}
+
+function r9Record(overrides = {}) {
+  return {
+    source: 'mobile/lib/features/alpha/source.dart',
+    target: 'mobile/lib/features/beta/internal.dart',
+    sourceArea: 'features/alpha',
+    targetArea: 'features/beta',
+    directiveKind: 'import',
+    show: [],
+    hide: [],
+    conditional: false,
+    count: 1,
+    ...overrides,
+  };
+}
+
+test('R9 parser preserves directive metadata and scan ownership metadata', () => {
+  assert.equal(typeof mobileBoundaries.parseR9DartDirectives, 'function');
+  const parsed = mobileBoundaries.parseR9DartDirectives([
+    '// ignored',
+    "import 'first.dart' if (dart.library.io) 'second.dart' show Beta, Alpha hide Hidden;",
+    "export 'third.dart' show Public;",
+    "part 'child.dart';",
+    "part of 'library.dart';",
+  ].join('\n'));
+  assert.deepEqual(parsed, [
+    {
+      directiveKind: 'import',
+      uri: 'first.dart',
+      show: ['Alpha', 'Beta'],
+      hide: ['Hidden'],
+      conditional: true,
+      line: 2,
+    },
+    {
+      directiveKind: 'import',
+      uri: 'second.dart',
+      show: ['Alpha', 'Beta'],
+      hide: ['Hidden'],
+      conditional: true,
+      line: 2,
+    },
+    {
+      directiveKind: 'export',
+      uri: 'third.dart',
+      show: ['Public'],
+      hide: [],
+      conditional: false,
+      line: 3,
+    },
+    {
+      directiveKind: 'part',
+      uri: 'child.dart',
+      show: [],
+      hide: [],
+      conditional: false,
+      line: 4,
+    },
+    {
+      directiveKind: 'part-of',
+      uri: 'library.dart',
+      show: [],
+      hide: [],
+      conditional: false,
+      line: 5,
+    },
+  ]);
+
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': "import '../beta/internal.dart';\n",
+    'features/beta/internal.dart': '',
+  });
+  assert.deepEqual(scan.legacyRecords, [r9Record()]);
+});
+
+test('accepts internal import redirected to exact owner API as debt reduction', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': "import '../beta/beta_api.dart' show Beta;\n",
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  const oldDebt = r9Record();
+  const comparison = mobileBoundaries.compareR9MobileDebt({
+    scan,
+    baseline: baseline([{
+      source: oldDebt.source,
+      target: oldDebt.target,
+      sourceArea: oldDebt.sourceArea,
+      targetArea: oldDebt.targetArea,
+      kind: 'direct-cross-feature',
+      count: 1,
+    }]),
+    manifest: loadR9Manifest(),
+  });
+  assert.equal(comparison.ok, true);
+  assert.deepEqual(comparison.additions, []);
+  assert.equal(comparison.legacyViolationCount, 0);
+  assert.equal(scan.legalRecords.length, 1);
+  assert.deepEqual(scan.strictViolations, []);
+});
+
+test('rejects a new or increased internal cross-feature edge', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': [
+      "import '../beta/internal.dart';",
+      "export '../beta/internal.dart';",
+    ].join('\n'),
+    'features/beta/internal.dart': '',
+  });
+  const comparison = mobileBoundaries.compareR9MobileDebt({
+    scan,
+    baseline: baseline([{
+      source: 'mobile/lib/features/alpha/source.dart',
+      target: 'mobile/lib/features/beta/internal.dart',
+      sourceArea: 'features/alpha',
+      targetArea: 'features/beta',
+      kind: 'direct-cross-feature',
+      count: 1,
+    }]),
+    manifest: loadR9Manifest(),
+  });
+  assert.equal(comparison.ok, false);
+  assert.equal(comparison.additions.length > 0, true);
+});
+
+test('rejects a non-routing Core import of a feature API', () => {
+  const scan = scanR9Fixture({
+    'core/push/bridge.dart': "import '../../features/beta/beta_api.dart' show Beta;\n",
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.equal(scan.legalRecords.length, 0);
+  assert.equal(scan.strictViolations.length, 1);
+  assert.ok(scan.errors.some(({ kind }) => kind === 'invalid-feature-importer'));
+});
+
+test('rejects owner export without a non-empty show list', () => {
+  const scan = scanR9Fixture({
+    'features/beta/beta_api.dart': "export 'internal.dart';\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.ok(scan.errors.some(({ kind }) => kind === 'owner-export-empty-show'));
+});
+
+test('rejects owner API import declaration part part-of conditional hide cross-owner and API-to-API export', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/alpha_api.dart': [
+      "import 'internal.dart';",
+      'const forbidden = 1;',
+      "part 'child.dart';",
+      "export 'internal.dart' if (dart.library.io) 'other.dart' show Alpha;",
+      "export 'other.dart' show Alpha hide Hidden;",
+      "export '../beta/internal.dart' show Beta;",
+      "export '../beta/beta_api.dart' show Beta;",
+    ].join('\n'),
+    'features/alpha/internal.dart': 'class Alpha {}\n',
+    'features/alpha/other.dart': 'class Hidden {}\n',
+    'features/alpha/child.dart': "part of 'alpha_api.dart';\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+  });
+  const kinds = new Set(scan.errors.map(({ kind }) => kind));
+  for (const kind of [
+    'owner-api-forbidden-directive',
+    'owner-api-declaration',
+    'owner-export-conditional',
+    'owner-export-hide',
+    'owner-export-cross-owner',
+    'owner-export-api-target',
+  ]) assert.equal(kinds.has(kind), true, kind);
+});
+
+test('rejects cross-area owner import without a non-empty show list', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': "import '../beta/beta_api.dart';\n",
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.ok(scan.errors.some(({ kind }) => kind === 'owner-import-empty-show'));
+  assert.equal(scan.strictViolations.length, 1);
+});
+
+test('rejects mixed internal and API imports for one target owner', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': [
+      "import '../beta/beta_api.dart' show Beta;",
+      "import '../beta/internal.dart';",
+    ].join('\n'),
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.ok(scan.errors.some(({ kind }) => kind === 'mixed-owner-imports'));
+});
+
+test('rejects multiple owner API directives for one source-target owner pair', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': [
+      "import '../beta/beta_api.dart' show Beta;",
+      "import '../beta/beta_api.dart' show OtherBeta;",
+    ].join('\n'),
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta, OtherBeta;\n",
+    'features/beta/internal.dart': 'class Beta {} class OtherBeta {}\n',
+  });
+  assert.ok(scan.errors.some(({ kind }) => kind === 'duplicate-owner-api-import'));
+});
+
+test('accepts exact main app and app_router owner API imports', () => {
+  const scan = scanR9Fixture({
+    'main.dart': "import 'features/beta/beta_api.dart' show Beta;\n",
+    'app.dart': "import 'features/beta/beta_api.dart' show Beta;\n",
+    'core/routing/app_router.dart': "import '../../features/beta/beta_api.dart' show Beta;\n",
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.deepEqual(scan.errors, []);
+  assert.equal(scan.legalRecords.length, 3);
+  assert.deepEqual(scan.strictViolations, []);
+});
+
+test('rejects any other root or core-routing feature importer', () => {
+  const scan = scanR9Fixture({
+    'bootstrap.dart': "import 'features/beta/beta_api.dart' show Beta;\n",
+    'core/routing/helper.dart': "import '../../features/beta/beta_api.dart' show Beta;\n",
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.equal(
+    scan.errors.filter(({ kind }) => kind === 'invalid-feature-importer').length,
+    2,
+  );
+});
+
+test('permits legal records when final strict violations are zero', () => {
+  const scan = scanR9Fixture({
+    'features/alpha/source.dart': "import '../beta/beta_api.dart' show Beta;\n",
+    'features/beta/beta_api.dart': "export 'internal.dart' show Beta;\n",
+    'features/beta/internal.dart': 'class Beta {}\n',
+  });
+  assert.equal(scan.legalRecords.length, 1);
+  assert.deepEqual(scan.strictViolations, []);
+  assert.deepEqual(scan.errors, []);
+});
+
+test('R9 CLI checks manifest baseline hash debt counts and legal strict records', () => {
+  const manifest = loadR9Manifest();
+  const savedText = readFileSync(baselinePath, 'utf8');
+  const legalRecord = r9Record({
+    target: 'mobile/lib/features/beta/beta_api.dart',
+    show: ['Beta'],
+  });
+  const r9Scan = {
+    errors: [],
+    legacyRecords: [],
+    rootRecords: [],
+    legalRecords: [legalRecord],
+    strictViolations: [],
+  };
+  const dependencies = {
+    scanR9: () => r9Scan,
+    readManifest: () => manifest,
+    readBaselineText: () => savedText,
+  };
+  const baselineResult = captureCli(dependencies);
+  assert.equal(baselineResult.exitCode, 0);
+  assert.deepEqual(baselineResult.stdout, [
+    'R9 mobile boundary baseline check passed (legacy=0, root=0, legal=1)',
+  ]);
+
+  const strictResult = captureCli({
+    ...dependencies,
+    argv: ['--strict'],
+  });
+  assert.equal(strictResult.exitCode, 0);
+  assert.deepEqual(strictResult.stdout, [
+    'strict R9 mobile boundary check passed (legal=1)',
+  ]);
+
+  assertConfigurationFailure(captureCli({
+    ...dependencies,
+    readBaselineText: () => '{}\n',
+  }));
+});
+
+test('root debt comparison preserves the exact frozen directive metadata', () => {
+  const manifest = loadR9Manifest();
+  const changed = {
+    ...manifest.rootInventory.records[0],
+    show: ['Unexpected'],
+  };
+  const comparison = mobileBoundaries.compareR9MobileDebt({
+    scan: {
+      errors: [],
+      legacyRecords: [],
+      rootRecords: [changed],
+      legalRecords: [],
+      strictViolations: [changed],
+    },
+    baseline: JSON.parse(readFileSync(baselinePath, 'utf8')),
+    manifest,
+  });
+  assert.equal(comparison.ok, false);
+  assert.deepEqual(comparison.additions, [changed]);
 });

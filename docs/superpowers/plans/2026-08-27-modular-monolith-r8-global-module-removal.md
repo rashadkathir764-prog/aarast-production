@@ -82,13 +82,14 @@ applying exactly three validated R8 projections.
 | `backend/test/architecture-r3-scope.test.ts` | R8 scope identity, stage, hash, path, traversal, and near-miss rejection |
 | `backend/scripts/architecture/ports-scan.cjs` | Empty project-owned Global allowlist and zero-global live count |
 | `backend/scripts/architecture/r3-context-scan.cjs` | Apply exactly the validated three-field R8 projection before live comparison |
+| `backend/test/architecture-r4-planning-finance-boundary.test.ts` | Preserve R4 while admitting the exact delegated R8 path set through the historical two-line cumulative live-path handoff |
 | `backend/scripts/architecture/r7-collaboration-relocation-scan.cjs` | Preserve R7 relocation while delegating only its live global count to strict R8 |
 | `backend/scripts/security/prisma-config-merge-security.cjs` | Project only the exact R8 architecture scripts back to the already pinned R7/R6 package graph |
 | `backend/test/prisma-config-merge-security.test.ts` | Reject missing, altered, reordered, or attacker R8 package-script projections |
 | `backend/src/platform/database/prisma.module.ts` | Ordinary Prisma provider/export module without `Global` |
 | `backend/src/conversations/conversation-realtime.module.ts` | Ordinary Realtime publisher/export module without `Global` |
 | `backend/src/application-composition/application-outbox-runtime.module.ts` | Explicitly import `PrismaModule` for `OutboxWorker` |
-| R1/R3/R7 architecture tests | Mechanical active-source handoff from two project globals to zero |
+| R1/R3/R4/R7 architecture tests | Mechanical active-source and cumulative-scope handoff into R8 |
 | `backend/package.json` and `docs/SCRIPTS.md` | Add `architecture:r8` and include it in aggregate architecture |
 | Active project/architecture/QA docs | Record approved scope, exact candidate, verification, runtime, phone, and stop boundary |
 
@@ -255,7 +256,7 @@ Get-FileHash -Algorithm SHA256 `
 Set `allowedChangedPaths` to the exact sorted paths from the design: the R8
 manifest/scanner/test, R3 scope/scanner tests, ports and R7 live gates, the
 three production modules, package scripts/generated script reference, the R1/
-R3/R7 active tests, the Prisma config merge-security checker/test,
+R3/R4/R7 active tests, the Prisma config merge-security checker/test,
 `ARCHITECTURE.md`, `CHANGELOG.md`, the six active project/backend/QA documents,
 design/plan, and both completion receipts. Use this exact sorted fence:
 
@@ -268,6 +269,7 @@ const expectedAllowedChangedPaths = [
   'backend/scripts/architecture/ports-scan.cjs',
   'backend/scripts/architecture/r3-context-scan.cjs',
   'backend/scripts/architecture/r3-scope.cjs',
+  'backend/scripts/architecture/r5-identity-scan.cjs',
   'backend/scripts/architecture/r7-collaboration-relocation-scan.cjs',
   'backend/scripts/architecture/r8-global-module-removal-scan.cjs',
   'backend/scripts/security/prisma-config-merge-security.cjs',
@@ -279,6 +281,9 @@ const expectedAllowedChangedPaths = [
   'backend/test/architecture-r3-composition.test.ts',
   'backend/test/architecture-r3-contexts.test.ts',
   'backend/test/architecture-r3-scope.test.ts',
+  'backend/test/architecture-r4-planning-finance-boundary.test.ts',
+  'backend/test/architecture-r5-identity-relocation.test.ts',
+  'backend/test/architecture-r6-sharing-otp-transport.test.ts',
   'backend/test/architecture-r7-collaboration-relocation.test.ts',
   'backend/test/architecture-r8-global-module-removal.test.ts',
   'backend/test/prisma-config-merge-security.test.ts',
@@ -376,13 +381,65 @@ git commit -m "test: govern modular monolith R8 scope"
 - Modify: `backend/scripts/security/prisma-config-merge-security.cjs`
 - Modify: `backend/test/prisma-config-merge-security.test.ts`
 - Modify generated: `docs/SCRIPTS.md`
+- Modify: `backend/test/architecture-r3-scope.test.ts`
+- Modify: `backend/test/architecture-r4-planning-finance-boundary.test.ts`
+- Modify: `backend/scripts/architecture/r5-identity-scan.cjs`
+- Modify: `backend/test/architecture-r5-identity-relocation.test.ts`
+- Modify: `backend/test/architecture-r6-sharing-otp-transport.test.ts`
+- Modify: `docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md`
+- Modify: `docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md`
+
+This corrective Task 2 checkpoint owns exactly these fourteen tracked paths.
+The R4 test and both documents close the first reproduced live-path and
+document-hash contradiction. The R5 scanner plus R5/R6 focused tests close the
+second reproduced package-script projection contradiction. Neither correction
+broadens product scope or authorizes a future-task change.
 
 **Interfaces:**
 
 - Consumes: Task 1 manifest validation and fixed path fence.
 - Produces: `scanR8GlobalRemoval(options)`,
   `projectR3InventoryForR8(inventory, manifest)`, `runCli`, design-stage live
-  evidence, and `architecture:r8`.
+  evidence, `architecture:r8`, the exact R4 cumulative R8 path handoff, and
+  the exact R8-to-R7-to-R6-to-R5 package-script projection handoff.
+
+- [ ] **Step 0: Correct the reproduced R4 cumulative handoff**
+
+Preserve this RED evidence before editing:
+
+```powershell
+Set-Location D:\projects\aarast-modular-monolith\backend
+npm run architecture:r4
+```
+
+Expected reproduced result: `12` tests, `11` pass, `1` fail. Only
+`live R4 paths stay inside the exact manifest fence with rename detection
+disabled` fails, listing the five committed Task 1 R8 governance paths.
+
+Apply only the historical two-line handoff used for R5-R7: add
+`R8_ALLOWED_PATHS: readonly string[]` to the local `R3ScopeModule` type and
+spread `...r3Scope().R8_ALLOWED_PATHS` into the cumulative allowed set. Add the
+R4 test path to every exact R8 fence copy. Do not rewrite the R4 manifest,
+skip the test, weaken its assertion, or introduce an exception.
+
+Amend this design and plan with the reproduced correction and the exact
+fourteen-path Task 2 responsibility. After both documents stabilize, recompute
+their SHA-256 values and update every bound manifest/scanner/test literal.
+
+- [ ] **Step 0B: Correct the reproduced R5/R6/R7 package-script handoff**
+
+Preserve the second cumulative evidence before editing: direct R5/R6 focused
+coverage fails `29/33`, and the focused R7 package-fingerprint handoff fails
+`0/1`, because the historical consumers freeze the aggregate at R7. Add only
+the existing historical projection pattern to
+`backend/scripts/architecture/r5-identity-scan.cjs`: require the exact R8
+standalone script and aggregate, reject every other `architecture:r8*` key or
+aggregate shape, remove only `architecture:r8`, restore exact R7, and then
+continue through the existing R7-to-R6-to-R5 projection. Add adversarial R8
+projection coverage to the R5 focused test and the exact aggregate expectation
+to the R6 focused test. Add these three files to every exact R8 fence copy.
+Do not modify `package-lock.json`, package dependencies, R7's scanner, or any
+historical manifest/inventory.
 
 - [ ] **Step 1: Write design-stage RED assertions**
 
@@ -523,6 +580,9 @@ extra R8-like key, changed R7 projection, or any `package-lock.json` mutation.
 
 ```powershell
 Set-Location D:\projects\aarast-modular-monolith\backend
+node --test -r ts-node/register test/architecture-r4-planning-finance-boundary.test.ts
+node --test -r ts-node/register test/architecture-r5-identity-relocation.test.ts test/architecture-r6-sharing-otp-transport.test.ts
+node --test -r ts-node/register test/architecture-r7-collaboration-relocation.test.ts --test-name-pattern "package"
 node --test -r ts-node/register test/architecture-r8-global-module-removal.test.ts test/architecture-r3-scope.test.ts
 node --test -r ts-node/register test/prisma-config-merge-security.test.ts
 npm run architecture:r8
@@ -541,8 +601,8 @@ identities, and all cumulative architecture gates green.
 
 - [ ] **Step 7: Review and checkpoint the permanent gate**
 
-Confirm no production source, historical inventory, package dependency, or
-lock file changed. Commit:
+Confirm the diff is exactly the fourteen Task 2 paths, with no production source,
+historical inventory, package dependency, or lock file changed. Commit:
 
 ```powershell
 git commit -m "test: govern project-owned Nest globals"

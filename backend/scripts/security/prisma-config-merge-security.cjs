@@ -56,6 +56,9 @@ const R6_ARCHITECTURE_SCRIPT =
 const R7_ARCHITECTURE_SCRIPT = R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
 const R7_STANDALONE_SCRIPT =
   'node scripts/architecture/r7-collaboration-relocation-scan.cjs --check';
+const R8_ARCHITECTURE_SCRIPT = R7_ARCHITECTURE_SCRIPT + ' && npm run architecture:r8';
+const R8_STANDALONE_SCRIPT =
+  'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
 const SECURITY_FAILURE = 'invalid Prisma config merge security state';
 const MAX_DEPTH = 32;
 const MAX_PROPERTIES = 100_000;
@@ -158,6 +161,7 @@ function projectR7ArchitectureScripts(value) {
   assertDeepPlainData(value);
   const packageJson = plainRecord(value);
   const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  if (hasOwn(scripts, 'architecture:r8')) return projectR8ArchitectureScripts(packageJson);
   if (!hasOwn(scripts, 'architecture:r7')) return packageJson;
   if (ownValue(scripts, 'architecture:r7') !== R7_STANDALONE_SCRIPT
       || ownValue(scripts, 'architecture') !== R7_ARCHITECTURE_SCRIPT) fail();
@@ -165,6 +169,20 @@ function projectR7ArchitectureScripts(value) {
   delete projectedScripts['architecture:r7'];
   projectedScripts.architecture = R6_ARCHITECTURE_SCRIPT;
   return { ...packageJson, scripts: projectedScripts };
+}
+
+function projectR8ArchitectureScripts(value) {
+  assertDeepPlainData(value);
+  const packageJson = plainRecord(value);
+  const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  const r8Keys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r8'));
+  if (r8Keys.length !== 1 || r8Keys[0] !== 'architecture:r8'
+      || ownValue(scripts, 'architecture:r8') !== R8_STANDALONE_SCRIPT
+      || ownValue(scripts, 'architecture') !== R8_ARCHITECTURE_SCRIPT) fail();
+  const projectedScripts = { ...scripts };
+  delete projectedScripts['architecture:r8'];
+  projectedScripts.architecture = R7_ARCHITECTURE_SCRIPT;
+  return projectR7ArchitectureScripts({ ...packageJson, scripts: projectedScripts });
 }
 
 function validatePackageGraph(
@@ -684,7 +702,7 @@ async function checkPrismaConfigMergeSecurity({ backendRoot = path.resolve(__dir
   try {
     const canonicalBackendRoot = fs.realpathSync(path.resolve(backendRoot));
     const packageProof = validatePackageGraph(
-      projectR7ArchitectureScripts(readJson(path.join(canonicalBackendRoot, 'package.json'))),
+      projectR8ArchitectureScripts(readJson(path.join(canonicalBackendRoot, 'package.json'))),
       readJson(path.join(canonicalBackendRoot, 'package-lock.json')),
     );
     const installed = resolveLiveInstalledGraph(canonicalBackendRoot);
@@ -724,11 +742,14 @@ module.exports = {
   PINNED_DEEPMERGE_VERSION,
   PINNED_PACKAGE_JSON_SHA256,
   PINNED_PACKAGE_LOCK_SHA256,
+  R8_ARCHITECTURE_SCRIPT,
+  R8_STANDALONE_SCRIPT,
   SECURITY_FAILURE,
   assertInstalledMergeBehavior,
   assertMergeBehavior,
   checkPrismaConfigMergeSecurity,
   projectR7ArchitectureScripts,
+  projectR8ArchitectureScripts,
   fingerprintPlainJson,
   loadRealPrismaConfig,
   runCli,

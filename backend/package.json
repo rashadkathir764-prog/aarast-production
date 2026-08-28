@@ -83,7 +83,8 @@
     "architecture:r5": "node scripts/architecture/r5-identity-scan.cjs --check",
     "architecture:r6": "node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check",
     "architecture:r7": "node scripts/architecture/r7-collaboration-relocation-scan.cjs --check",
-    "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7"
+    "architecture:r8": "node scripts/architecture/r8-global-module-removal-scan.cjs --check",
+    "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

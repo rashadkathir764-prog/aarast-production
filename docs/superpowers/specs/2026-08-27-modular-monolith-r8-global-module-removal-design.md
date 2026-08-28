@@ -80,6 +80,29 @@ source shapes. Those live assertions must move to the R8 zero-global contract
 through an exact, reviewed handoff; historical completion documents remain
 immutable.
 
+Corrective governance note (2026-08-28): after the Task 1 R8 governance
+checkpoint, the Task 2 aggregate architecture run reproduced one R4 live-path
+failure. The R4 cumulative test admitted the exact R5, R6, and R7 delegated
+path sets but had no corresponding R8 handoff, so it rejected the five
+already-committed Task 1 R8 governance paths before the R8 gate ran. The
+root-cause correction is limited to adding `R8_ALLOWED_PATHS` to that test's
+scope-module interface and cumulative allowed set, plus admitting the R4 test
+itself to the exact R8 fence. The R4 manifest, R4 behavioral assertions, and
+all historical inventories remain unchanged.
+
+Corrective package-script note (2026-08-28): after the R4 handoff turned
+green, the same aggregate reached R5 and exposed the omitted R8 package-script
+handoff. The R5 security projection and its R5/R6 focused package assertions
+froze the aggregate at R7, so they rejected the otherwise exact R8 aggregate
+before the R8-to-R7 projection could run. The root-cause correction admits
+only `backend/scripts/architecture/r5-identity-scan.cjs`,
+`backend/test/architecture-r5-identity-relocation.test.ts`, and
+`backend/test/architecture-r6-sharing-otp-transport.test.ts` to the R8 fence.
+It applies the existing R7-to-R6-to-R5 projection pattern one step earlier:
+an exact R8 standalone/aggregate identity projects to exact R7, and the
+existing R7 chain remains authoritative. No package dependency, lockfile,
+historical manifest, or product source changes.
+
 ## Root-Cause Standard
 
 R8 fixes implicit container visibility at the module boundary where each
@@ -303,7 +326,11 @@ The R8 scope fence includes only the approved design/plan, new R8
 manifest/scanner/test, the exact two former-global module sources, the Outbox
 runtime module, package scripts/generated script reference, the exact Prisma
 config merge-security package-script projection and focused test, the exact
-R1/R3/R7 live gate and scope-handoff files, and active R8 receipt documents.
+R1/R3/R4/R5/R6/R7 live gate and scope-handoff files, and active R8 receipt
+documents.
+The R4 responsibility is exactly
+`backend/test/architecture-r4-planning-finance-boundary.test.ts` and only its
+mechanical cumulative `R8_ALLOWED_PATHS` handoff may change.
 The manifest contains the concrete path list; generic directories, globs,
 arbitrary future tests, archived documents, Mobile, Admin, schema, migrations,
 dependency/ownership baselines, workflows, Docker, Compose, and deployment
@@ -351,6 +378,11 @@ inventory projections. Exact expected changes are limited to:
 - R3 live global-count and Realtime module source-shape assertions;
 - R7 strict live global-count assertions;
 - R3 scope delegation and focused delegation/projection tests;
+- R4 cumulative live-path handoff typing and the single `R8_ALLOWED_PATHS`
+  spread, without changing its manifest or assertions;
+- R5's exact R8-to-R7 package-script projection and its focused adversarial
+  coverage, plus the R6 aggregate expectation handoff; these preserve the
+  existing R7-to-R6-to-R5 security projection rather than weakening it;
 - Prisma config merge-security projection of the exact R8 architecture script
   back to the already pinned R7 package graph, plus its near-miss tests;
 - scope hashes or exact protected-path lists mechanically affected by those
@@ -411,6 +443,10 @@ Implementation uses reviewed local checkpoints on the same branch:
    source, and require the complete focused R3 scope suite to return green;
    add the exact R8-to-R7 package-script security projection in the same
    design-governance stage without changing dependencies or `package-lock.json`;
+   carry the delegated R8 path set through the existing R4 cumulative live-path
+   test using only its historical two-line handoff pattern; then carry the
+   exact R8 aggregate through the existing R5/R6/R7 package-script projection
+   chain with the same fail-closed identities and focused regression coverage;
 3. atomically remove both global decorators, add the one missing Outbox runtime
    Prisma import, apply the exact three-field R3 live-inventory projection,
    move the live cumulative gates to zero, and promote R8 to strict;

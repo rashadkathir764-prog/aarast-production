@@ -392,10 +392,14 @@ const R6_ARCHITECTURE_SCRIPT =
   R5_ARCHITECTURE_SCRIPT + ' && npm run architecture:r6';
 const R7_ARCHITECTURE_SCRIPT =
   R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
+const R8_ARCHITECTURE_SCRIPT =
+  R7_ARCHITECTURE_SCRIPT + ' && npm run architecture:r8';
 const R6_STANDALONE_SCRIPT =
   'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check';
 const R7_STANDALONE_SCRIPT =
   'node scripts/architecture/r7-collaboration-relocation-scan.cjs --check';
+const R8_STANDALONE_SCRIPT =
+  'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
 const R5_SECURITY_PACKAGE_JSON_SHA256 =
   '6db5c9fc4f6b6f7b3088cf351e61917d6dc62dfbeee6f816ffacb957f8d883ef';
 const R6_IDENTITY_MODULE_IMPORT =
@@ -408,6 +412,20 @@ function projectR6ArchitectureScriptsForR5Security(value) {
   const packageJson = plainObject(value, 'R5 security package');
   const scripts = plainObject(packageJson.scripts, 'R5 security package scripts');
   let projectedScripts = { ...scripts };
+  const r8ScriptKeys = Object.keys(projectedScripts)
+    .filter((scriptName) => scriptName.startsWith('architecture:r8'));
+  const hasR8AggregateIdentity = typeof projectedScripts.architecture === 'string'
+    && projectedScripts.architecture.includes('architecture:r8');
+  if (r8ScriptKeys.length > 0 || hasR8AggregateIdentity) {
+    if (r8ScriptKeys.length !== 1
+        || r8ScriptKeys[0] !== 'architecture:r8'
+        || projectedScripts['architecture:r8'] !== R8_STANDALONE_SCRIPT
+        || projectedScripts.architecture !== R8_ARCHITECTURE_SCRIPT) {
+      throw new Error('R5 security R8 architecture delegation is invalid');
+    }
+    delete projectedScripts['architecture:r8'];
+    projectedScripts.architecture = R7_ARCHITECTURE_SCRIPT;
+  }
   if (Object.prototype.hasOwnProperty.call(projectedScripts, 'architecture:r7')) {
     if (projectedScripts['architecture:r7'] !== R7_STANDALONE_SCRIPT
         || projectedScripts.architecture !== R7_ARCHITECTURE_SCRIPT) {

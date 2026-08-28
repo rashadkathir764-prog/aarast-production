@@ -488,11 +488,11 @@ test('R8 delegates only its fixed-base hash-bound path fence', () => {
   assert.deepEqual(value.documents, {
     design: {
       path: 'docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md',
-      sha256: 'eb6d585694c7f2b571ec6922db9765ef0426c94898d9f88fa22a14c7763768a5',
+      sha256: 'ad6f3bb46aca7b24d240fcfa011489756aa08e6ef9f000a002ea350c5625cb64',
     },
     plan: {
       path: 'docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md',
-      sha256: '9afe10c044426df84ae818d5603762f97e39b5fd4d5a81802128ac262ea069ca',
+      sha256: '0eeabbe5c33a48f310e40c2ed2283704180362ff31e97030b948578624ba1220',
     },
   });
   assert.deepEqual(delegated.allowedChangedPaths, scope().R8_ALLOWED_PATHS);

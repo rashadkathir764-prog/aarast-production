@@ -475,6 +475,41 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
+  const changedR8Gate = structuredClone(packageJson);
+  changedR8Gate.scripts['architecture:r8'] =
+    'node scripts/architecture/r8-global-module-removal-scan.cjs --skip';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: changedR8Gate,
+    packageLock,
+  }), /R8 architecture delegation is invalid/u);
+
+  const missingR8Gate = structuredClone(packageJson);
+  delete missingR8Gate.scripts['architecture:r8'];
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: missingR8Gate,
+    packageLock,
+  }), /R8 architecture delegation is invalid/u);
+
+  const reorderedR8Gate = structuredClone(packageJson);
+  reorderedR8Gate.scripts.architecture =
+    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r8 && npm run architecture:r7';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: reorderedR8Gate,
+    packageLock,
+  }), /R8 architecture delegation is invalid/u);
+
+  const attackerR8Gate = structuredClone(packageJson);
+  attackerR8Gate.scripts['architecture:r8:attacker'] =
+    'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: attackerR8Gate,
+    packageLock,
+  }), /R8 architecture delegation is invalid/u);
+
   const changedR6Gate = structuredClone(packageJson);
   changedR6Gate.scripts['architecture:r6'] =
     'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --skip';
@@ -785,8 +820,13 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     'node scripts/architecture/r5-identity-scan.cjs --check',
   );
   assert.deepEqual(
-    packageJson.scripts.architecture.split(' && ').slice(-3),
-    ['npm run architecture:r5', 'npm run architecture:r6', 'npm run architecture:r7'],
+    packageJson.scripts.architecture.split(' && ').slice(-4),
+    [
+      'npm run architecture:r5',
+      'npm run architecture:r6',
+      'npm run architecture:r7',
+      'npm run architecture:r8',
+    ],
   );
 
   const result = spawnSync(

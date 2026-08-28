@@ -27,12 +27,15 @@ type InstalledResolution = {
 type Checker = {
   PINNED_DEEPMERGE_VERSION: string;
   PINNED_DEEPMERGE_INTEGRITY: string;
+  R8_ARCHITECTURE_SCRIPT: string;
+  R8_STANDALONE_SCRIPT: string;
   SECURITY_FAILURE: string;
   assertInstalledMergeBehavior: (mergeEntry: string) => void;
   assertMergeBehavior: (deepmerge: (left: JsonRecord, right: JsonRecord) => JsonRecord) => void;
   checkPrismaConfigMergeSecurity: (options?: { backendRoot?: string }) => Promise<unknown>;
   fingerprintPlainJson: (value: unknown) => string;
   projectR7ArchitectureScripts: (value: unknown) => JsonRecord;
+  projectR8ArchitectureScripts: (value: unknown) => JsonRecord;
   runCli: (options: {
     argv: string[];
     backendRoot?: string;
@@ -50,6 +53,13 @@ type Checker = {
     },
   ) => unknown;
 };
+
+const r6ArchitectureScript =
+  'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6';
+const r7ArchitectureScript = r6ArchitectureScript + ' && npm run architecture:r7';
+const r8ArchitectureScript = r7ArchitectureScript + ' && npm run architecture:r8';
+const r8StandaloneScript =
+  'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
 
 function loadChecker(): Checker {
   return require(checkerPath) as Checker;
@@ -151,6 +161,54 @@ test('R7 architecture delegation projects exactly to the pinned R6 package graph
       new RegExp(checker.SECURITY_FAILURE, 'u'),
     );
   }
+});
+
+test('R8 architecture delegation projects exactly through R7 to the pinned package graph', () => {
+  const checker = loadChecker();
+  assert.equal(checker.R8_ARCHITECTURE_SCRIPT, r8ArchitectureScript);
+  assert.equal(checker.R8_STANDALONE_SCRIPT, r8StandaloneScript);
+  const livePackage = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const validR8 = structuredClone(livePackage);
+  (validR8.scripts as JsonRecord)['architecture:r8'] = r8StandaloneScript;
+  (validR8.scripts as JsonRecord).architecture = r8ArchitectureScript;
+
+  const projected = checker.projectR8ArchitectureScripts(validR8);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected.scripts as JsonRecord, 'architecture:r8'),
+    false,
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(projected.scripts as JsonRecord, 'architecture:r7'),
+    false,
+  );
+  assert.equal((projected.scripts as JsonRecord).architecture, r6ArchitectureScript);
+  assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
+
+  const mutations = Array.from({ length: 5 }, () => structuredClone(validR8));
+  delete (mutations[0].scripts as JsonRecord)['architecture:r8'];
+  (mutations[1].scripts as JsonRecord)['architecture:r8'] = 'node scripts/attacker.cjs';
+  (mutations[2].scripts as JsonRecord).architecture =
+    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r7 && npm run architecture:r6 && npm run architecture:r8';
+  (mutations[3].scripts as JsonRecord)['architecture:r8:attacker'] = r8StandaloneScript;
+  (mutations[4].scripts as JsonRecord)['architecture:r7'] = 'node scripts/attacker.cjs';
+
+  for (const mutation of mutations) {
+    assert.throws(
+      () => checker.projectR8ArchitectureScripts(mutation),
+      new RegExp(checker.SECURITY_FAILURE, 'u'),
+    );
+  }
+
+  const changedLock = structuredClone(packageLock);
+  changedLock.packages['node_modules/@nestjs/schedule'].integrity = 'sha512-attacker';
+  assert.throws(
+    () => checker.validatePackageGraph(
+      checker.projectR8ArchitectureScripts(validR8),
+      changedLock,
+    ),
+    new RegExp(checker.SECURITY_FAILURE, 'u'),
+  );
 });
 
 test('rejects missing, ranged, downgraded, duplicated, and non-registry resolutions', () => {

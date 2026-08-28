@@ -12,7 +12,7 @@
 | `admin-web` | `npm run test:container-config` | `node --test scripts/runtime-config-guard.contract.mjs` |
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |
-| `backend` | `npm run architecture` | `npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7` |
+| `backend` | `npm run architecture` | `npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8` |
 | `backend` | `npm run architecture:imports` | `depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src` |
 | `backend` | `npm run architecture:imports:baseline` | `depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src` |
 | `backend` | `npm run architecture:ownership` | `node scripts/architecture/ownership-scan.cjs --check` |
@@ -22,6 +22,7 @@
 | `backend` | `npm run architecture:r5` | `node scripts/architecture/r5-identity-scan.cjs --check` |
 | `backend` | `npm run architecture:r6` | `node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check` |
 | `backend` | `npm run architecture:r7` | `node scripts/architecture/r7-collaboration-relocation-scan.cjs --check` |
+| `backend` | `npm run architecture:r8` | `node scripts/architecture/r8-global-module-removal-scan.cjs --check` |
 | `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json --noEmit` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |

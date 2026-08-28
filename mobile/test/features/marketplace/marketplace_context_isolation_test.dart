@@ -4,7 +4,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';

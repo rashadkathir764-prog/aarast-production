@@ -10,7 +10,7 @@ library;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/notifications/data/notifications_api.dart';
 import 'package:aarast_mobile/features/notifications/models/aarast_notification.dart';
 import 'package:aarast_mobile/features/notifications/providers/notifications_provider.dart';

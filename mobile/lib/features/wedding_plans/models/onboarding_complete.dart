@@ -1,4 +1,4 @@
-﻿import '../../auth/models/safe_user.dart';
+﻿import '../../../core/session/safe_user.dart';
 import '../../finance/models/budget_category.dart';
 import 'active_wedding_plan.dart';
 

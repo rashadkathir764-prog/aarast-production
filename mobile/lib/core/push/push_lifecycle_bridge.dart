@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../features/auth/providers/auth_controller.dart';
 import '../routing/app_router.dart';
 import '../widgets/aarast_toast.dart';
 import 'push_messaging_gateway.dart';
@@ -13,11 +12,13 @@ import 'push_notifications_controller.dart';
 class AarastPushLifecycleBridge extends StatefulWidget {
   const AarastPushLifecycleBridge({
     required this.router,
+    required this.authenticatedUserId,
     required this.child,
     super.key,
   });
 
   final GoRouter router;
+  final String? authenticatedUserId;
   final Widget child;
 
   @override
@@ -69,14 +70,7 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
 
   @override
   Widget build(BuildContext context) {
-    final authenticatedUserId = context
-        .select<AuthController, ({AuthStatus status, String? userId})>(
-          (auth) => (status: auth.status, userId: auth.user?.id),
-        );
-    final effectiveUserId =
-        authenticatedUserId.status == AuthStatus.authenticated
-        ? authenticatedUserId.userId
-        : null;
+    final effectiveUserId = widget.authenticatedUserId;
     final pendingOpen = context.select<PushNotificationsController, bool>(
       (push) => push.hasPendingNotificationsOpen,
     );

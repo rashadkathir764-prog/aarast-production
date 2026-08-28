@@ -2,7 +2,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';

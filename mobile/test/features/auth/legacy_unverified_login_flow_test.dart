@@ -6,7 +6,7 @@ import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';

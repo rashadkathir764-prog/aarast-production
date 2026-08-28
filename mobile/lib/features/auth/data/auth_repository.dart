@@ -10,7 +10,7 @@ import '../../../core/session/session_teardown_coordinator.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../models/auth_otp.dart';
 import '../models/auth_response.dart';
-import '../models/safe_user.dart';
+import '../../../core/session/safe_user.dart';
 
 enum AccountDeletionServerStatus { deleted, pending, notStarted }
 

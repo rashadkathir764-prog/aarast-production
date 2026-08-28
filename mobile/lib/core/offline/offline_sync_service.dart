@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../features/auth/models/safe_user.dart';
+import '../session/safe_user.dart';
 import '../diagnostics/app_logger.dart';
 import '../network/api_client.dart';
 import 'cache_policy.dart';

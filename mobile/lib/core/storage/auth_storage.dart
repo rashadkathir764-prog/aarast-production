@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../features/auth/models/safe_user.dart';
+import '../session/safe_user.dart';
 import 'token_vault.dart';
 import 'sensitive_value_vault.dart';
 

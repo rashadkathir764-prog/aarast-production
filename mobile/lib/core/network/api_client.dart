@@ -50,7 +50,8 @@ class ApiClient {
           final requestSessionGeneration =
               options.extra[_requestSessionGenerationKey] as int? ??
               _sessionGeneration;
-          options.extra[_requestSessionGenerationKey] = requestSessionGeneration;
+          options.extra[_requestSessionGenerationKey] =
+              requestSessionGeneration;
           options.extra[_requestContextGenerationKey] =
               options.extra[_requestContextGenerationKey] as int? ??
               _contextGeneration;

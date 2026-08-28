@@ -78,10 +78,15 @@ class _AarastAppState extends State<AarastApp> {
         routerDelegate: _router.routerDelegate,
         backButtonDispatcher: _backButtonDispatcher,
         builder: (context, child) {
+          final auth = context.watch<AuthController>();
+          final authenticatedUserId = auth.status == AuthStatus.authenticated
+              ? auth.user?.id
+              : null;
           return Directionality(
             textDirection: TextDirection.rtl,
             child: AarastPushLifecycleBridge(
               router: _router,
+              authenticatedUserId: authenticatedUserId,
               child: AarastV3AdaptiveExperienceShell(
                 routeListenable: _router.routeInformationProvider,
                 readLocation: () =>

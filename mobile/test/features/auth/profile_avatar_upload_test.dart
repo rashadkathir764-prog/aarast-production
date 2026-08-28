@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

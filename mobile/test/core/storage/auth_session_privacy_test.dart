@@ -14,7 +14,7 @@ import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/storage/token_vault.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 
 class _FakeTokenVault implements TokenVault {

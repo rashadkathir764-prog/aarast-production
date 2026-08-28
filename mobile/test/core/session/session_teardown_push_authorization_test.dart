@@ -7,7 +7,7 @@ import 'package:aarast_mobile/core/push/push_registration_api.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -11,7 +11,7 @@ import 'package:aarast_mobile/features/account_contexts/providers/account_contex
 import 'package:aarast_mobile/features/account_contexts/widgets/account_context_entry_gate.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';

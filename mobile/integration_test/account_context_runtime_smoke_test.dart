@@ -9,7 +9,7 @@ import 'package:aarast_mobile/features/account_contexts/screens/account_context_
 import 'package:aarast_mobile/features/account_contexts/widgets/account_context_entry_gate.dart';
 import 'package:aarast_mobile/features/account_contexts/widgets/wedding_plan_context_gate.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/shell/main_shell.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';

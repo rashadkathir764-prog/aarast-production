@@ -16,7 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';

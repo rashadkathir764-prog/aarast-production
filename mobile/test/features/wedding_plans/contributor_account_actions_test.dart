@@ -17,7 +17,7 @@ import 'package:aarast_mobile/features/account_contexts/models/account_context.d
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/account_contexts/widgets/wedding_plan_context_gate.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/shell/main_shell.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';

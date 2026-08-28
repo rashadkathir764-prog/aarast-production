@@ -7,7 +7,7 @@ import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';

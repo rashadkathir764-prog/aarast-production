@@ -9,7 +9,7 @@ import 'package:aarast_mobile/features/account_contexts/data/account_contexts_ap
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';

@@ -11,7 +11,7 @@ import '../../../core/session/session_teardown_coordinator.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../data/auth_repository.dart';
 import '../models/auth_otp.dart';
-import '../models/safe_user.dart';
+import '../../../core/session/safe_user.dart';
 
 enum AuthStatus {
   checking,

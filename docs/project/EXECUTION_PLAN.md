@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R7 Locally Complete; Stop Before R8
+### P3 — Source Quality And Architecture — R8 Locally Complete; Stop Before R9
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -469,8 +469,38 @@ Completed R6 execution plan:
 - The authenticated phone checkpoint passed session/context/dashboard restore,
   synthetic invitation create/reissue/read/cancel cleanup, and full
   force-close/reopen. OpenWA remained disabled and no real delivery is claimed.
-- R7 is locally complete. R8 has not started. Push, merge, PR mutation,
-  deployment, and remote CI are not claimed.
+- R7 is locally complete. At R7 closeout R8 had not started; the R8 section
+  below records its later local completion. Push, merge, PR mutation,
+  deployment, and remote CI are not claimed by R7.
+
+#### R8 — Project-Owned Global Removal — Locally Complete
+
+- R8 executed from immutable R7 closeout
+  `c2b728bfe54304562923facfb6094e0de04c0b27` at application candidate
+  `464d785a0440b8494768a26a70ac1de73a4bff2c`.
+- Immutable design:
+  `docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md`.
+- Immutable staged implementation plan:
+  `docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md`.
+- `PrismaModule` and `ConversationRealtimeModule` are no longer project-owned
+  globals. Strict R8 reports globals 0, Prisma 21/21 with missing 0, Realtime 2,
+  duplicates/`forwardRef()`/cycles 0, dependency 22, and ownership 385/781.
+- Prisma and Realtime singleton identity plus the exact Realtime `useExisting`
+  chain are preserved. The existing Schedule 6.1.3 and Throttler 6.5.0
+  dependency-owned global behavior remains exact and frozen.
+- Architecture/check/build, 1,345/1,346 Backend tests with zero failures and
+  one intentional Windows skip, Prisma 52/41 and 76/76 equivalence, both
+  zero-finding audits, 12 focused smokes, all 30 aggregate smokes, docs,
+  protected surfaces, and independent reviews passed.
+- Immutable image `aarast-backend:r8-candidate-464d785a` passed audit, corrected
+  probe, local/LAN cutover, dependency readiness, restart/OOM, exact revision,
+  and sanitized configured-key/value gates. R7 remains stopped and preserved.
+- On the owner-authorized 26 phone only, the accepted R5Local app passed
+  session/context/dashboard restore, synthetic task create/read/update/delete,
+  one eligible quote-scoped realtime send/read, and force-stop/reopen cleanup
+  restore. S10 was not used.
+- R8 is locally complete. Push, merge, PR mutation, deployment, remote CI, and
+  R9 are not claimed or started.
 
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
@@ -482,7 +512,7 @@ The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
 The numbered P3 modernization work below remains subordinate to the completed
-R7 receipts. R8 and later work must not move forward without a separate owner
+R8 receipts. R9 and later work must not move forward without a separate owner
 instruction and approved plan.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
@@ -549,9 +579,8 @@ Stop and investigate rather than papering over any of the following:
 - A refactor changes a backend transaction/lock order without regression tests.
 - A release claim lacks the matching device or deployed-environment evidence.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
+for rollback. Stop before push, merge, deployment, remote CI, or R9.

@@ -23,6 +23,7 @@
 | Bind final R5 runtime and phone evidence to application candidate `8cfee451a76bb17e20d278a1646dde4387bf7b18`. | Accepted and locally verified | The exact immutable image, probe/cutover, local/LAN health, zero restart/OOM state, safe logs, authenticated owner login/read/write/close-reopen result, and sanitized request audit passed. The independent Task 6 review found one documentation-policy gap in three smoke fixtures; it was closed with an owner-authorized, hash-pinned, production-contract-only exception and permanent gates before the candidate commit. R4 remains stopped and preserved for rollback. No push, merge, PR mutation, deployment, remote CI, or R6 work is claimed. |
 | Remove Collaboration's direct concrete OpenWA transient-sender dependency through one Identity-owned public delivery port from immutable R6 base `ce0c0d19824bff79d91417e2fe4617914c6bcd70`. | Accepted; R6 locally completed | At candidate `cefe07a76b0e615d4fecbb666514d9a2b87a7d37`, the provider-neutral Identity token, input, interface, and uncertain/rejected errors are the only public contract. The sole private adapter calls the unchanged platform sender once and maps only its two known concrete errors; Collaboration imports only the Identity public module. Invitation copy, branch order, statuses, metrics, logs, persistence, timeouts, retries, schema, clients, and deployment stayed frozen. Full local gates, immutable runtime, and authenticated phone sharing/restore passed with OpenWA disabled truthfully and R5 preserved for rollback. Real-recipient OpenWA delivery, R7, push, merge, PR mutation, deployment, and remote CI remain outside this completion. |
 | Relocate all 18 legacy Collaboration source files one-to-one into `modules/collaboration` from immutable R7 base `31ea5324007fc71fa4b3590fbb98a454ee1deaa7`. | Accepted; R7 locally completed | At candidate `aafb47ea1742c278f6a5ed24799ada7bc23721b0`, all 18 files are in the final API/internal/public boundary and both old roots are absent. The four-export snapshot boundary, constructor/controller/decorator identities, optional realtime dependency, routes, permissions, history, transactions, Arabic/errors, schema, Mobile, Admin, and deployment stayed frozen. Dependency debt is exactly 22 and ownership remains 385/781. Exhaustive gates, cumulative independent review, immutable runtime, and the phone create/reissue/read/cancel/restore journey passed; OpenWA remained disabled and R6 is preserved for rollback. No push, merge, PR mutation, deployment, remote CI, or R8 work occurred. |
+| Remove the final two project-owned Nest globals from immutable R8 base `c2b728bfe54304562923facfb6094e0de04c0b27`. | Accepted; R8 locally completed | At candidate `464d785a0440b8494768a26a70ac1de73a4bff2c`, `PrismaModule` and `ConversationRealtimeModule` are ordinary modules, all 21 Prisma and both Realtime consumers import explicitly, and singleton/`useExisting` identities remain exact. Project-owned globals, missing importers, duplicates, `forwardRef()`, and cycles are zero. The existing `@nestjs/schedule@6.1.3` and `@nestjs/throttler@6.5.0` dependency-owned global behaviors remain exact and frozen. Exhaustive gates, independent reviews, immutable runtime, and the owner-authorized 26-phone task/chat/restore journey passed; R7 is preserved for rollback. No push, merge, PR mutation, deployment, remote CI, or R9 work occurred. |
 
 ### Existing-Test Change Policy
 
@@ -229,9 +230,9 @@ R0 adds tests and does not edit existing behavioral tests.
 - Exact persistence package/setup sequence.
 - Exact User model constraints, indexes, and uniqueness rules.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. The accepted decision above is
+bounded to local completion; R7 remains stopped/preserved. Stop before push,
+merge, deployment, remote CI, or R9.

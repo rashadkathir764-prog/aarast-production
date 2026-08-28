@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-24
+Snapshot date: 2026-08-28
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -93,6 +93,26 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-completion.md`
+  and
+  `docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal-completion.md`
+  - exact local R8 completion receipts from immutable R7 closeout
+  `c2b728bfe54304562923facfb6094e0de04c0b27` at application candidate
+  `464d785a0440b8494768a26a70ac1de73a4bff2c`. Project-owned globals are zero;
+  Prisma importers are 21/21 with missing 0; Realtime importers are 2; singleton
+  identities and the exact external Schedule/Throttler behaviors are preserved.
+  Full local gates, immutable runtime, independent reviews, and the authorized
+  26-phone task/chat/restore journey passed. R7 is stopped and preserved for
+  rollback. Push, merge, deployment, remote CI, and R9 have not started.
+- `docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-design.md`
+  and
+  `docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal.md`
+  - immutable owner-approved R8 design and staged implementation contract from
+  R7 closeout `c2b728bfe54304562923facfb6094e0de04c0b27`. The design/plan, exact scope,
+  semantic-global scanner, explicit importer closure, R3 projection, provider
+  identities, frozen external dependencies, and protected surfaces remain the
+  historical execution contract; the completion receipts above record the
+  later locally completed result.
 - `docs/superpowers/specs/2026-08-23-modular-monolith-r7-collaboration-relocation-completion.md`
   and
   `docs/superpowers/plans/2026-08-23-modular-monolith-r7-collaboration-relocation-completion.md`
@@ -239,9 +259,9 @@ snapshot, and link references. `git diff --check` catches whitespace errors.
 Only the first command updates generated Markdown; the remaining commands are
 read-only.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. The exact completion specification
+and checked plan are listed above. R7 remains stopped and preserved for rollback.
+Stop before push, merge, deployment, remote CI, or R9.

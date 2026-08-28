@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-24
+Snapshot date: 2026-08-28
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -267,6 +267,19 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   authenticated phone create/reissue/read/cancel/restore journey passed.
   OpenWA remained disabled; R6 is stopped and preserved for rollback. R8 has
   not started. No push, merge, deployment, or remote-CI result is claimed.
+- R8 is locally complete from immutable R7 closeout
+  `c2b728bfe54304562923facfb6094e0de04c0b27` at application candidate
+  `464d785a0440b8494768a26a70ac1de73a4bff2c`. Project-owned globals are zero;
+  all 21 Prisma and both Realtime consumers import their owner modules
+  explicitly; singleton provider identity and the Realtime `useExisting` chain
+  remain exact. The only global runtime behavior left is dependency-owned and
+  frozen to `@nestjs/schedule@6.1.3` through `ScheduleModule.forRoot()` and
+  `@nestjs/throttler@6.5.0` through
+  `ThrottlerModule.forRootAsync(...)`. Architecture/check/build/tests, Prisma
+  equivalence, audits, 12 focused smokes, all 30 aggregate smokes, independent
+  reviews, immutable runtime, and the authorized 26-phone task/chat/restore
+  journey passed. R7 is stopped and preserved for rollback. No push, merge,
+  deployment, remote CI, or R9 work is claimed.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.
@@ -281,9 +294,9 @@ runtime, phone, and receipt closeout; the active receipts above record the
 later completed local state. It is not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. The exact completion specification
+and checked plan are under `docs/superpowers/`. R7 remains stopped and preserved
+for rollback. Stop before push, merge, deployment, remote CI, or R9.

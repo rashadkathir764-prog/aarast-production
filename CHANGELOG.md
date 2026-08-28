@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-08-28 - Modular Monolith R8 Local Completion
+
+- Removed the final two project-owned Nest `@Global()` declarations from
+  `PrismaModule` and `ConversationRealtimeModule`; both are ordinary explicit
+  modules with no compatibility facade or duplicated provider.
+- Added the missing direct `PrismaModule` import to
+  `ApplicationOutboxRuntimeModule`. Strict R8 reports project globals 0,
+  Prisma 21/21 with missing 0, Realtime 2, duplicates/`forwardRef()`/cycles 0,
+  dependency 22, and ownership 385/781.
+- Preserved singleton Prisma and Realtime provider identity, the exact Realtime
+  `useExisting` chain, and the dependency-owned
+  `@nestjs/schedule@6.1.3`/`@nestjs/throttler@6.5.0` runtime behavior.
+- Architecture/check/build, 1,345/1,346 Backend tests with zero failures and one
+  intentional Windows skip, both zero-finding audits, Prisma 52/41 and 76/76
+  equivalence, 12 focused smokes, all 30 aggregate smokes, docs, scope, and
+  protected surfaces passed. Independent Task 3-5 reviews found no Critical or
+  Important issue.
+- Built immutable image `aarast-backend:r8-candidate-464d785a`, image ID
+  `sha256:6fa367649ef2835b6b4b16efba088e9c26c38baa8ffbb9e3efeb74bd853153ad`.
+  Corrected probe and local/LAN cutover passed `/live`/`/ready` 200,
+  database/Redis/media up, restart 0, OOM false, healthy exact revision, and
+  sanitized fatal/configured-key/value checks.
+- On owner-authorized phone 26 only, the accepted R5Local app restored the
+  authenticated context/dashboard, completed synthetic task
+  create/read/update/delete, sent/read one eligible quote-scoped realtime
+  message, and restored session/dashboard/clean task state after force-stop.
+  S10 was not used and no private identifiers, credentials, or raw bodies were
+  retained.
+- R8 is locally complete at application candidate
+  `464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 is stopped and preserved for
+  rollback. No push, merge, PR mutation, deployment, remote CI, or R9 work is
+  claimed.
+
 ## 2026-08-24 - Modular Monolith R7 Local Completion
 
 - Moved all 18 Collaboration files one-to-one from the retired `sharing` and

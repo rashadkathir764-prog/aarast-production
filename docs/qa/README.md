@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-08-22
+Snapshot date: 2026-08-28
 
 Snapshot source: the checked-out branch content. Resolve its immutable revision
 with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
@@ -252,6 +252,43 @@ and deployment artifacts.
   OpenWA remained disabled; no real recipient, credential, token, OTP, phone,
   raw body, screenshot, or business value was retained.
 - R7 is locally complete only. R8, push, merge, PR mutation, deployment, and
+  remote CI have not started.
+
+## Modular Monolith R8 Closeout Gates
+
+- Fixed-base R8 scope passed for the hash-bound design/plan, exact 38-path
+  fence, semantic global scanner/tests, R3 projection, provider/import closure,
+  external package identities, protected surfaces, and ten docs-only closeout
+  paths.
+- Strict R8 reports project globals 0, Prisma 21/21 with missing 0, Realtime 2,
+  duplicates 0, `forwardRef()` 0, cycles 0, dependency 22, and ownership
+  385/781. Real Nest contexts preserve Prisma/Realtime singleton identity and
+  the exact Realtime `useExisting` chain.
+- Permanent adversarial coverage rejects direct/aliased/computed project
+  decorators, project DynamicModule `global: true`, explicit external
+  `global`/`isGlobal` options, unresolved metadata/factories, package identity
+  drift, and a third external exception. Exact Schedule 6.1.3 and Throttler
+  6.5.0 dependency-owned behavior remains frozen.
+- Architecture/check/build passed at 348 modules / 1,406 dependencies. Focused
+  R8 passed 453/453; full Backend tests passed 1,345/1,346 with zero failures
+  and one intentional Windows skip.
+- Prisma 6.19.3 validate/generate, 52/41 DMMF, 76/76 migration discovery,
+  no-difference migrate proof, both zero-finding audits, 12 focused managed
+  smokes, all 30 aggregate smokes with real Socket.IO, docs, scope, protected
+  surfaces, and cleanup passed.
+- Independent Task 3 application, Task 4 exhaustive verification, and Task 5
+  runtime/phone reviews approved with no Critical or Important finding.
+- Immutable image `aarast-backend:r8-candidate-464d785a` passed in-image audit,
+  corrected isolated probe, local/LAN `/live` and `/ready` 200,
+  database/Redis/media up, restart 0, OOM false, healthy exact revision,
+  sanitized configured-key/value checks, and probe cleanup. R7 remains stopped
+  and preserved for rollback.
+- The authorized 26-phone gate passed authenticated session/context/dashboard
+  restore, synthetic task create/read/update/delete, one eligible quote-scoped
+  realtime send/read, and force-stop/reopen cleaned-state restore. S10 was not
+  used; no serial, phone, OTP, token, credential, raw body, screenshot, or
+  private value was retained.
+- R8 is locally complete only. R9, push, merge, PR mutation, deployment, and
   remote CI have not started.
 
 ## Modular Monolith R3 Closeout Gates
@@ -959,9 +996,8 @@ Admin runtime smoke requires a running backend.
 Report every verification as PASS, FAIL, or BLOCKED. Do not claim a check
 passed unless it was actually run.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
+for rollback. Stop before push, merge, deployment, remote CI, or R9.

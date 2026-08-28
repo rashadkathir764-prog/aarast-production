@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-24
+Snapshot date: 2026-08-28
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -32,8 +32,8 @@ for the exact reviewed pre-port Admin permission contract used only by legacy
 `forwardRef()` or `@Global()` use is allowed.
 
 R3 closed all six frozen platform-to-business dependencies and all retired
-provider edges. Sharing consumes an OTP transport directly until R6. The two
-approved globals remain until R8.
+provider edges. R6 later removed Collaboration's concrete OTP transport
+dependency, and R8 removed the final two project-owned globals.
 
 Physical ownership covers Prisma root delegates, relation traversal, nested
 writes, and raw-SQL tables. `WeddingPlan` is owned by planning. R4 retired
@@ -75,8 +75,16 @@ approved API/DTO/internal/public files are at their final paths, while the old
 `sharing` and `contribution-history` roots are absent. Cross-context consumers
 use the Collaboration boundary; strict reports zero legacy sources, 18 final
 targets, 22 known dependency records, and unchanged ownership at 385/781. The
-public contribution-snapshot builder keeps exactly four runtime exports. R8
-still owns the later two-global cleanup and has not started.
+public contribution-snapshot builder keeps exactly four runtime exports.
+
+R8 removed `@Global()` from `PrismaModule` and
+`ConversationRealtimeModule`. Strict closure is now project globals 0, Prisma
+21/21 with missing 0, and Realtime 2. `ApplicationOutboxRuntimeModule` imports
+`PrismaModule` explicitly; singleton provider identity and the Realtime
+`useExisting` aliases remain exact. The only global runtime behavior is
+dependency-owned and frozen to `@nestjs/schedule@6.1.3` and
+`@nestjs/throttler@6.5.0` through their existing root factories. Dependency
+evidence remains 22 and ownership remains 385/781.
 
 Database-writing smoke and load commands are managed by
 `scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker
@@ -94,9 +102,8 @@ Quote conversations are limited to the requester and provider account on a real
 quote request. They must not create payments, deposits, confirmed bookings,
 loans, credit, financing, AI, open messaging, or marketplace checkout behavior.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
+for rollback. No push, merge, deployment, remote CI, or R9 work is claimed.

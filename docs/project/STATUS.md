@@ -1,10 +1,57 @@
 # Current Status
 
-Snapshot date: 2026-08-24
+Snapshot date: 2026-08-28
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R8 Local Completion - 2026-08-28
+
+R8 is locally complete on branch `modular-monolith` from immutable R7 closeout
+`c2b728bfe54304562923facfb6094e0de04c0b27` at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. The exact completion receipts are
+the R8 completion specification and plan under `docs/superpowers/`.
+
+The final two project-owned Nest globals are removed. `PrismaModule` and
+`ConversationRealtimeModule` are ordinary modules; all 21 Prisma consumers and
+both Realtime consumers import explicitly. `ApplicationOutboxRuntimeModule`
+owns the one previously missing Prisma import. Real Nest contexts preserve the
+singleton Prisma and Realtime providers and the exact Realtime `useExisting`
+aliases. The dependency-owned Schedule 6.1.3 and Throttler 6.5.0 global
+behaviors remain exact and frozen.
+
+Final local verification passed: architecture at 348 modules / 1,406
+dependencies, dependency 22, ownership 385/781, project globals 0, Prisma
+21/21 with missing 0, Realtime 2, duplicates/`forwardRef()`/cycles 0; check;
+build; focused R8 453/453; 1,345/1,346 Backend tests with zero failures and one
+intentional Windows skip; Prisma 6.19.3 validate/generate, 52-model/41-enum
+fingerprint, 76/76 migrations, and no-difference equivalence; both audits at
+zero vulnerabilities; 12 focused smokes; all 30 aggregate smokes with real
+Socket.IO; docs; protected surfaces; cleanup; and cleanliness. Independent
+Task 3, Task 4, and Task 5 reviews found no Critical or Important issue.
+
+Immutable image `aarast-backend:r8-candidate-464d785a`, image ID
+`sha256:6fa367649ef2835b6b4b16efba088e9c26c38baa8ffbb9e3efeb74bd853153ad`,
+passed the in-image audit, corrected isolated probe, protected local/LAN
+cutover, database/Redis/media readiness, restart 0, OOM false, healthy exact
+revision, sanitized fatal/exact-configured-key/value gates, and probe cleanup.
+The initial probe stop was a verifier false positive caused by matching
+ordinary lowercase password/token route metadata; exact key/value detection
+proved zero disclosure before cutover. R7 remains stopped and preserved for
+rollback.
+
+The owner-authorized non-S10 phone 26 reached R8 through the installed accepted
+R5Local package. Session, selected context, and dashboard restored; one
+synthetic task was created/read/updated/deleted; one eligible existing
+quote-scoped conversation sent/read one synthetic realtime message; and
+force-stop/reopen restored session, context, dashboard, Tasks, and the cleaned
+task state. S10 was not used. Server and phone fatal/connection markers were
+zero. No device serial, phone, OTP, token, credential, provider/business data,
+raw body, screenshot, or private business value was retained.
+
+R8 is a local completion only. No push, merge, PR mutation, deployment, remote
+CI, or R9 work is claimed. R9 requires a separate owner instruction and plan.
 
 ## Modular Monolith R7 Local Completion - 2026-08-24
 
@@ -1445,9 +1492,8 @@ store assets/approval, and the Apple association identity.
 The active priority and acceptance order is defined in
 `docs/project/EXECUTION_PLAN.md`.
 
-## R8 Execution Contract — Task 0
+## R8 Local Completion Stop Boundary
 
-R8 base: `c2b728bfe54304562923facfb6094e0de04c0b27`
-Objective: zero project-owned globals with explicit Prisma/Realtime imports
-State: design and plan approved; application source unchanged
-Stop: no push, merge, deployment, remote CI, or R9
+R8 is locally complete at application candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
+for rollback. Stop before push, merge, deployment, remote CI, or R9.

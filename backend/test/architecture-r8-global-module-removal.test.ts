@@ -998,12 +998,55 @@ test('R8 detects finite project DynamicModule global metadata and fails closed w
     `,
   }), /DynamicModule|metadata|global/i);
 
+  await t.test('unresolved inferred direct function-expression factory fails closed', () => {
+    assert.throws(() => inspectFixtureGlobals({
+      'backend/src/function-expression-factory.module.ts': `
+        import { Module } from '@nestjs/common';
+        declare function buildMetadata(): unknown;
+        @Module({})
+        export class FunctionExpressionFactoryModule {
+          static register = function () { return buildMetadata(); };
+        }
+      `,
+    }), /DynamicModule|metadata|global/i);
+  });
+
+  await t.test('unresolved inferred computed function-expression factory fails closed', () => {
+    assert.throws(() => inspectFixtureGlobals({
+      'backend/src/computed-function-expression-factory.module.ts': `
+        import { Module } from '@nestjs/common';
+        const factoryName = 'registerAsync';
+        declare function buildMetadata(): unknown;
+        @Module({})
+        export class ComputedFunctionExpressionFactoryModule {
+          static [factoryName] = function () { return buildMetadata(); };
+        }
+      `,
+    }), /DynamicModule|metadata|global/i);
+  });
+
   assert.doesNotThrow(() => inspectFixtureGlobals({
     'backend/src/finite-utility.module.ts': `
       import { Module } from '@nestjs/common';
       @Module({})
       export class FiniteUtilityModule {
         static register() { return { enabled: true }; }
+      }
+    `,
+    'backend/src/non-callable-and-accessor.module.ts': `
+      import { Module } from '@nestjs/common';
+      declare function buildMetadata(): unknown;
+      @Module({})
+      export class NonCallableModule {
+        static register = buildMetadata();
+      }
+      @Module({})
+      export class AccessorModule {
+        static get register() { return buildMetadata(); }
+      }
+      @Module({})
+      export class FiniteFunctionExpressionModule {
+        static register = function () { return { enabled: true }; };
       }
     `,
   }));

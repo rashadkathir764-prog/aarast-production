@@ -766,7 +766,8 @@ function hasStaticModifier(node) {
 function inferredNestDynamicModuleFactory(node, checker) {
   const member = ts.isMethodDeclaration(node)
     ? node
-    : ts.isArrowFunction(node) && ts.isPropertyDeclaration(node.parent)
+    : (ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+      && ts.isPropertyDeclaration(node.parent)
       && node.parent.initializer === node
       ? node.parent
       : null;

@@ -76,7 +76,7 @@ selection
 
 | Path or group | Responsibility |
 | --- | --- |
-| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 146-path fence |
+| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 147-path fence |
 | `scripts/check-mobile-boundaries.mjs` | Directive-aware R9 scan, legal-edge inventory, structural errors, transitional debt, and strict CLI |
 | `scripts/check-mobile-boundaries.test.mjs` | Positive, adversarial, historical-compatibility, and final-zero scanner proofs |
 | `scripts/check-r9-scope.mjs` | Fixed-base changed-path, hash, protected-surface, and per-task debt enforcement |
@@ -209,7 +209,7 @@ Create a canonical JSON object with these literal identities:
 
 Add the 19 sorted feature/API pairs from Appendix A, the exact 34 root records
 from Appendix C, the exact debt map above, the two document paths and lowercase
-SHA-256 values, and the sorted 146 paths from Appendix D. Hash the plan only
+SHA-256 values, and the sorted 147 paths from Appendix D. Hash the plan only
 after this committed plan is final; never write secrets or absolute paths.
 
 - [ ] **Step 5: Implement directive-aware scanning and debt comparison**
@@ -276,6 +276,15 @@ Expected: one reviewed local commit and a clean worktree. Do not push.
 
 ---
 
+> **Owner-approved corrective checkpoint (2026-08-29):** The pre-existing
+> base blob of `mobile/lib/core/network/api_client.dart` fails the mandatory
+> Dart formatter only at line 53. The owner approved this formal correction on
+> 2026-08-29, and governance is amended before the source edit. The source
+> correction is formatter-only and behavior-neutral. No waiver, narrowed format
+> command, compatibility layer, or silent exception is allowed. Final history
+> must contain this reviewed governance checkpoint before one clean Task 2
+> checkpoint.
+
 ### Task 2: Move The Session Principal And Decouple Push
 
 **Files:**
@@ -285,6 +294,7 @@ Expected: one reviewed local commit and a clean worktree. Do not push.
 - Create: `mobile/test/core/session/safe_user_persistence_contract_test.dart`
 - Create: `mobile/test/core/push/push_lifecycle_bridge_test.dart`
 - Modify: `mobile/lib/app.dart`
+- Modify: `mobile/lib/core/network/api_client.dart`
 - Modify: `mobile/lib/core/offline/offline_sync_service.dart`
 - Modify: `mobile/lib/core/push/push_lifecycle_bridge.dart`
 - Modify: `mobile/lib/core/storage/auth_storage.dart`
@@ -392,7 +402,10 @@ git diff --check
 
 Expected: all commands pass; debt is exactly legacy 265/root 34; the old
 `SafeUser` path is absent; no Core file imports a feature except the approved
-router debt.
+router debt. The only diff for `mobile/lib/core/network/api_client.dart` must
+be Dart's line wrap of the assignment at former line 53, with no token or logic
+change. The full formatter gate above must pass without narrowing its command
+or adding an exception.
 
 - [ ] **Step 7: Review and commit**
 
@@ -1586,7 +1599,7 @@ welcome_gateway_api.dart show SmartWelcomeScreen
 
 ## Appendix D: Exact R9 Allowed Changed-Path Fence
 
-The manifest contains this sorted 146-path array exactly. The historical
+The manifest contains this sorted 147-path array exactly. The historical
 baseline is intentionally absent because it is immutable.
 
 ```text
@@ -1605,6 +1618,7 @@ docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-c
 docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md
 mobile/integration_test/account_context_runtime_smoke_test.dart
 mobile/lib/app.dart
+mobile/lib/core/network/api_client.dart
 mobile/lib/core/offline/offline_sync_service.dart
 mobile/lib/core/push/push_lifecycle_bridge.dart
 mobile/lib/core/routing/app_router.dart

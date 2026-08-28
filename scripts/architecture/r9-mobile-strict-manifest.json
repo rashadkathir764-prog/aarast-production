@@ -524,7 +524,7 @@
     },
     {
       "path": "docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md",
-      "sha256": "09c6513ad6fe1b84c96f04f6c03b3419756eaa84fe3b39b246730c970bb925b9"
+      "sha256": "ef46c6faa6dab8d60641a8d8ecd695e3e20760fc5a380a3c326b041e291489b3"
     }
   ],
   "allowedChangedPaths": [
@@ -543,6 +543,7 @@
     "docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md",
     "mobile/integration_test/account_context_runtime_smoke_test.dart",
     "mobile/lib/app.dart",
+    "mobile/lib/core/network/api_client.dart",
     "mobile/lib/core/offline/offline_sync_service.dart",
     "mobile/lib/core/push/push_lifecycle_bridge.dart",
     "mobile/lib/core/routing/app_router.dart",

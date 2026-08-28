@@ -115,9 +115,20 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
   assert.equal(manifest.rootInventory.canonicalSha256, '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b');
   assert.equal(manifest.rootInventory.records.length, 34);
   assert.equal(manifest.featureApis.length, 19);
-  assert.equal(manifest.allowedChangedPaths.length, 146);
+  assert.equal(manifest.allowedChangedPaths.length, 147);
   assert.deepEqual(manifest.allowedChangedPaths, [...manifest.allowedChangedPaths].sort());
-  assert.equal(new Set(manifest.allowedChangedPaths).size, 146);
+  assert.equal(new Set(manifest.allowedChangedPaths).size, 147);
+  const apiClientPath = 'mobile/lib/core/network/api_client.dart';
+  assert.equal(
+    manifest.allowedChangedPaths.filter((itemPath) => itemPath === apiClientPath).length,
+    1,
+  );
+  const apiClientIndex = manifest.allowedChangedPaths.indexOf(apiClientPath);
+  assert.deepEqual(manifest.allowedChangedPaths.slice(apiClientIndex - 1, apiClientIndex + 2), [
+    'mobile/lib/app.dart',
+    apiClientPath,
+    'mobile/lib/core/offline/offline_sync_service.dart',
+  ]);
   assert.deepEqual(manifest.expectedDebt, expectedDebt);
   assert.deepEqual(manifest.compositionSources, [
     'mobile/lib/app.dart',
@@ -127,7 +138,7 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
   assert.equal(manifest.finalLegalRecordCount, 159);
   assert.deepEqual(manifest.documents.map(({ path: itemPath }) => itemPath), [designPath, planPath]);
   assert.equal(manifest.documents[0].sha256, '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5');
-  assert.equal(manifest.documents[1].sha256, '09c6513ad6fe1b84c96f04f6c03b3419756eaa84fe3b39b246730c970bb925b9');
+  assert.equal(manifest.documents[1].sha256, 'ef46c6faa6dab8d60641a8d8ecd695e3e20760fc5a380a3c326b041e291489b3');
   assert.doesNotMatch(JSON.stringify(raw), /[A-Za-z]:[\\/]|(?:PASSWORD|SECRET|TOKEN)\s*=|\.\.[\\/]/i);
 });
 
@@ -162,6 +173,22 @@ test('manifest validation rejects a canonical but unapproved fence substitution'
   paths[paths.indexOf('mobile/lib/app.dart')] = 'mobile/lib/appx.dart';
   paths.sort();
   assert.throws(() => validateR9Manifest({ ...original, allowedChangedPaths: paths }));
+});
+
+test('manifest validation rejects removing or substituting the formatter prerequisite', () => {
+  const original = manifestValue();
+  const apiClientPath = 'mobile/lib/core/network/api_client.dart';
+  const apiClientIndex = original.allowedChangedPaths.indexOf(apiClientPath);
+  assert.notEqual(apiClientIndex, -1);
+
+  const removed = [...original.allowedChangedPaths];
+  removed.splice(apiClientIndex, 1);
+  assert.throws(() => validateR9Manifest({ ...original, allowedChangedPaths: removed }));
+
+  const substituted = [...original.allowedChangedPaths];
+  substituted[apiClientIndex] = 'mobile/lib/core/network/api_clientx.dart';
+  substituted.sort();
+  assert.throws(() => validateR9Manifest({ ...original, allowedChangedPaths: substituted }));
 });
 
 test('scope rejects unknown tasks and unapproved separator case and traversal near-misses', () => {

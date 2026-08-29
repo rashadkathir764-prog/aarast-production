@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-28
+Snapshot date: 2026-08-30
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -87,12 +87,32 @@ changing behavior.
 
 - `docs/legal/PRIVACY_POLICY.md`
 
+### Mobile
+
+- `docs/mobile/README.md`
+
 ### Archive
 
 - `docs/archive/README.md`
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-completion.md`
+  and
+  `docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-completion.md`
+  - exact local R9 completion receipts from immutable base
+  `833a4f1d31781b45cd0a68ecee1b969ac85f237f` at application candidate
+  `0f61bf283b455c4404182f5028ab78d2448053d3`. All 19 Mobile owner APIs are
+  strict, feature/root debt is zero, and the
+  legal projection is 159. Full local gates, the owner-selected `SM-S938B`
+  session-invalidation/two-relaunch journey, and independent review passed.
+  Live Firebase Push is unverified. No push, merge, deployment, remote CI, S10
+  work, or R10 is claimed.
+- `docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md`
+  and
+  `docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md`
+  - approved R9 design and staged execution contract. The completion receipts
+  above record the later local result and the reviewed C5 correction.
 - `docs/superpowers/specs/2026-08-27-modular-monolith-r8-global-module-removal-completion.md`
   and
   `docs/superpowers/plans/2026-08-27-modular-monolith-r8-global-module-removal-completion.md`
@@ -259,9 +279,9 @@ snapshot, and link references. `git diff --check` catches whitespace errors.
 Only the first command updates generated Markdown; the remaining commands are
 read-only.
 
-## R8 Local Completion Stop Boundary
+## R9 Local Completion Stop Boundary
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. The exact completion specification
-and checked plan are listed above. R7 remains stopped and preserved for rollback.
-Stop before push, merge, deployment, remote CI, or R9.
+R9 is locally complete at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`. The docs-only checkpoint is the
+commit containing the completion receipts listed above. Stop before push,
+merge, deployment, remote CI, store release, S10 work, or R10.

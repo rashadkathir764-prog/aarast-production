@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-08-28
+Snapshot date: 2026-08-30
 
 Snapshot source: the checked-out branch content. Resolve its immutable revision
 with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
@@ -40,6 +40,35 @@ exception; every other behavioral assertion, fixture, setup, error, timeout,
 and selection remains frozen.
 
 R0 itself adds tests and does not edit existing behavioral tests.
+
+## Modular Monolith R9 Closeout Gates
+
+Run from the repository root:
+
+```powershell
+node .\scripts\docs-sync.mjs --check
+node .\scripts\docs-verify.mjs
+node --test .\scripts\check-mobile-boundaries.test.mjs .\scripts\check-r9-scope.test.mjs
+node .\scripts\check-mobile-boundaries.mjs --check-baseline
+node .\scripts\check-mobile-boundaries.mjs --strict
+node .\scripts\check-r9-scope.mjs --check task-11
+git diff --check
+```
+
+- Final governance: 230/230 PASS; strict feature/root debt 0/0 and
+  `legal=159`.
+- SafeUser/Push 10/10, direct C5 18/18, expanded session 19/19, Flutter analysis
+  clean, and full Flutter 1164/1164 PASS. Existing Windows/Linux desktop-plugin
+  metadata notices remained non-failing; R9 does not claim desktop packaging.
+- Backend architecture/check/build, 1346 passing tests with zero failures and
+  one intentional skip, and both dependency audits at zero vulnerabilities.
+- Admin 18 files / 96 tests, typecheck, build, honesty, and 3/3 container gates
+  PASS. Isolated current-R9 migrations passed 76/76 and managed Marketplace
+  smoke passed 62/62.
+- The owner-selected `SM-S938B` passed session invalidation and two relaunches
+  while preserving the same unimported local plan. S10 was not used. Live
+  Firebase Push remains `UNVERIFIED`.
+- Independent final review: APPROVE, Critical 0 / Important 0 / Minor 0.
 
 ## Modular Monolith R1 Closeout Gates
 
@@ -996,8 +1025,9 @@ Admin runtime smoke requires a running backend.
 Report every verification as PASS, FAIL, or BLOCKED. Do not claim a check
 passed unless it was actually run.
 
-## R8 Local Completion Stop Boundary
+## R9 Local Completion Stop Boundary
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
-for rollback. Stop before push, merge, deployment, remote CI, or R9.
+R9 is locally complete at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
+commit containing this receipt. Stop before push, merge, deployment, remote CI,
+store release, S10 work, or R10.

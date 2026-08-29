@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-28
+Snapshot date: 2026-08-30
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -279,7 +279,20 @@ R0 adds architecture tests and does not edit existing behavioral tests.
   equivalence, audits, 12 focused smokes, all 30 aggregate smokes, independent
   reviews, immutable runtime, and the authorized 26-phone task/chat/restore
   journey passed. R7 is stopped and preserved for rollback. No push, merge,
-  deployment, remote CI, or R9 work is claimed.
+  deployment, remote CI, or R9 work is claimed by the R8 receipt.
+- R9 is locally complete in the working tree from immutable base
+  `833a4f1d31781b45cd0a68ecee1b969ac85f237f` with strict-CI HEAD
+  `6b1602decd09a266634e2a98debc7fcf650e12cd` plus the reviewed C5 diff. All 19
+  feature owners expose controlled public APIs; feature/root debt is zero and
+  the legal projection is 159. `SafeUser` is canonical under `core/session`,
+  Push binding consumes immutable nullable identity, and the only approved
+  behavior correction preserves an installation-owned unimported guest plan
+  across ordinary logout, restore rejection, and confirmed session expiry.
+  Confirmed account deletion may clear that plan; successful migration and
+  explicit double-confirmed discard retain their existing deletion contracts.
+  Governance 230/230, Flutter 1164/1164, focused session and Push proofs,
+  Backend/Admin gates, isolated runtime, the owner-selected `SM-S938B` journey,
+  and independent review passed. Live Firebase Push remains unverified.
 - The tracked R0 receipt records local checks only. The immutable candidate SHA
   and CI status are resolved from pull-request and workflow metadata and are
   never back-written into a self-referential tracked document.
@@ -294,9 +307,10 @@ runtime, phone, and receipt closeout; the active receipts above record the
 later completed local state. It is not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.
 
-## R8 Local Completion Stop Boundary
+## R9 Local Completion Stop Boundary
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. The exact completion specification
-and checked plan are under `docs/superpowers/`. R7 remains stopped and preserved
-for rollback. Stop before push, merge, deployment, remote CI, or R9.
+R9 is locally complete at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`. The exact completion specification
+and checked plan are under `docs/superpowers/`; the docs-only checkpoint is the
+commit containing those receipts. Stop before push, merge, deployment, remote
+CI, store release, S10 work, or R10.

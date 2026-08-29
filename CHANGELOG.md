@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-30 - Modular Monolith R9 Local Completion
+
+- Added controlled public APIs for all 19 Mobile feature owners and migrated
+  cross-feature consumers to exact exported symbols. Only `app.dart`,
+  `app_router.dart`, and `main.dart` remain approved composition roots.
+- Activated the fail-closed strict Mobile boundary in CI. Historical feature
+  debt fell from 269 records to zero, root debt from 34 to zero, and the legal
+  public projection is 159 records.
+- Canonicalized `SafeUser` under `core/session` and decoupled Push lifecycle
+  binding from mutable auth state without changing bind, unbind, replacement,
+  resume, or pending-notification behavior.
+- Corrected the phone-discovered local-plan ownership defect at the teardown
+  boundary: ordinary logout, restore rejection, and confirmed session expiry
+  preserve an unimported installation-owned guest plan. Confirmed account
+  deletion may clear it; successful migration and explicit double-confirmed
+  discard keep their existing destructive contracts.
+- Passed Mobile governance 230/230, strict debt zero with `legal=159`, Flutter
+  1164/1164, focused SafeUser/Push 10/10, direct C5 18/18, expanded session
+  19/19, Backend/Admin gates, isolated runtime migrations and smoke, physical
+  `SM-S938B` session-invalidation/relaunch acceptance, and independent review
+  with zero Critical, Important, or Minor findings.
+- Live Firebase Push, iOS/store acceptance, remote CI, deployment, and the stale
+  repository seed fixture remain outside this completion. R9 is committed
+  locally only; no push, merge, deployment, store release, S10, or R10 is
+  claimed.
+
 ## 2026-08-28 - Modular Monolith R8 Local Completion
 
 - Removed the final two project-owned Nest `@Global()` declarations from

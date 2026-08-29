@@ -1,6 +1,6 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-08-22
+Snapshot date: 2026-08-30
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R8 Locally Complete; Stop Before R9
+### P3 — Source Quality And Architecture — R9 Locally Complete; Stop Before R10
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -502,6 +502,31 @@ Completed R6 execution plan:
 - R8 is locally complete. Push, merge, PR mutation, deployment, remote CI, and
   R9 are not claimed or started.
 
+#### R9 — Mobile Strict Boundaries — Locally Complete In Working Tree
+
+- R9 executed from immutable base
+  `833a4f1d31781b45cd0a68ecee1b969ac85f237f`; application candidate is
+  `0f61bf283b455c4404182f5028ab78d2448053d3`. The docs-only checkpoint is the
+  commit containing the final receipts.
+- All 19 Mobile feature owners expose exact public APIs. Cross-feature and root
+  consumers are strict: feature debt 0, root debt 0, legal public records 159.
+  `app.dart`, `app_router.dart`, and `main.dart` are the only composition roots.
+- `SafeUser` is canonical under `core/session`; Push binding consumes immutable
+  nullable identity data. C5 preserves an unimported installation-owned guest
+  plan across ordinary logout, restore rejection, and confirmed session expiry;
+  confirmed account deletion may clear it.
+- Governance 230/230, Flutter 1164/1164, focused SafeUser/Push 10/10, direct C5
+  18/18, expanded session 19/19, Backend/Admin gates, isolated 76/76 migrations,
+  Marketplace smoke 62/62, and independent review passed.
+- The owner-selected `SM-S938B` passed local-plan migration-gate restraint,
+  server session invalidation, and two complete relaunches with the same local
+  plan restored. S10 was not used. Live Firebase Push remains `UNVERIFIED`.
+- The repository seed still contains stale removed-field fixtures and was not
+  patched outside R9 scope. Bare Task 9 Prisma validation was environment-
+  blocked; the isolated current-R9 migration/runtime proof passed.
+- R9 is locally complete only. No push, merge, PR mutation, deployment, remote
+  CI, store release, S10 work, or R10 is claimed.
+
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
 Its in-progress wording records the earlier application checkpoint; the active
@@ -512,7 +537,7 @@ The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
 The numbered P3 modernization work below remains subordinate to the completed
-R8 receipts. R9 and later work must not move forward without a separate owner
+R9 receipts. R10 and later work must not move forward without a separate owner
 instruction and approved plan.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
@@ -579,8 +604,9 @@ Stop and investigate rather than papering over any of the following:
 - A refactor changes a backend transaction/lock order without regression tests.
 - A release claim lacks the matching device or deployed-environment evidence.
 
-## R8 Local Completion Stop Boundary
+## R9 Local Completion Stop Boundary
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
-for rollback. Stop before push, merge, deployment, remote CI, or R9.
+R9 is locally complete at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
+commit containing this receipt. Stop before push, merge, deployment, remote CI,
+store release, S10 work, or R10.

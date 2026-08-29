@@ -132,7 +132,7 @@ R0 adds tests and does not edit existing behavioral tests.
 
 | Decision | Status | Rationale |
 | --- | --- | --- |
-| Make `AuthController` and `SessionTeardownCoordinator` the single Logout/session-expiry termination boundary. | Accepted and implemented in mobile source | The session state machine is `checking`, `authenticated`, `terminating`, `terminationFailed`, and `unauthenticated`. Logout increments the session operation generation, removes the in-memory user, enters `terminating`, and notifies the widget tree before awaiting cleanup. Credential capture is bounded to two seconds and every local cleanup stage to five seconds, so no dependency can leave the termination screen spinning forever. Local auth storage, account cache, guest draft, and the account's push binding are cleared before remote auth revoke and push unregister run in parallel with a two-second deadline. A local failure or timeout exposes only a retry-safe termination screen; a remote failure or timeout never restores the old session. |
+| Make `AuthController` and `SessionTeardownCoordinator` the single Logout/session-expiry termination boundary. | Accepted and implemented in mobile source | The session state machine is `checking`, `authenticated`, `terminating`, `terminationFailed`, and `unauthenticated`. Logout increments the session operation generation, removes the in-memory user, enters `terminating`, and notifies the widget tree before awaiting cleanup. Credential capture is bounded to two seconds and every local cleanup stage to five seconds, so no dependency can leave the termination screen spinning forever. Local auth storage, account cache, and the account's push binding are cleared before remote auth revoke and push unregister run in parallel with a two-second deadline. The installation-owned guest draft is preserved for ordinary logout, confirmed session expiry, and restore rejection; confirmed account deletion may clear it. Successful migration and explicit double-confirmed discard retain their dedicated deletion contracts. A local failure or timeout exposes only a retry-safe termination screen; a remote failure or timeout never restores the old session. |
 | Bind the persisted account context to its authenticated user. | Accepted and implemented in mobile source | Context persistence version 2 stores `version`, `userId`, and `contextKey` in the sensitive-value vault. A fresh authenticated session and full logout clear the prior selection. A multi-context account must choose again, a single available context may be selected directly, and cold restart restores only a same-user context that remains available in the fresh API result. A legacy raw key is migrated once when its user is known and is cleared if it is no longer valid. |
 | Give the session and account-context gates ownership of authentication-driven entry navigation. | Accepted and implemented in mobile source | `AarastSessionTransitionGate` prevents Login or any Dashboard from being mounted while the session is `checking`, `terminating`, or `terminationFailed`. `AarastAuthFlowRedirector` consumes Login, Logout, expiry, and invite-entry intents once; `AccountContextEntryGate` owns the matching Dashboard entry after context resolution. Logout widgets only request `AuthController.logout()`. Effective route transitions are recorded centrally, while ordinary in-feature navigation remains local to its feature. |
 | Use structured, privacy-redacted, memory-bounded mobile observability with optional Sentry delivery. | Accepted and implemented in mobile source; external acceptance pending | `AppLogger` uses logical categories rather than local `*.log` files, a Debug console sink, a 300-event/256KB/15-minute memory ring, and an optional Sentry sink. Identifiers are installation-salted hashes; tokens, credentials, contact data, headers, query values, and bodies are removed. Sentry errors are sampled at 100%, traces default to 100% in Staging and 10% elsewhere, and profiling, replay, screenshots, default PII, raw print/HTTP breadcrumbs, and request bodies are disabled. A diagnostic JSON attachment is generated in memory and sent only after explicit consent for that attempt. Live symbolication, access control, retention, and PII verification remain release gates outside the application code. |
@@ -230,9 +230,18 @@ R0 adds tests and does not edit existing behavioral tests.
 - Exact persistence package/setup sequence.
 - Exact User model constraints, indexes, and uniqueness rules.
 
-## R8 Local Completion Stop Boundary
+## Modular Monolith R9 Decisions - 2026-08-30
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. The accepted decision above is
-bounded to local completion; R7 remains stopped/preserved. Stop before push,
-merge, deployment, remote CI, or R9.
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Enforce owner-controlled public APIs for all Mobile cross-feature imports. | Accepted and implemented locally | Each of the 19 feature owners exposes one exact `<feature>_api.dart` surface. The strict scanner rejects deep cross-feature imports and unauthorized composition-root imports; final debt is zero with 159 legal records. |
+| Treat an unimported guest plan as installation-owned rather than account-owned. | Accepted and implemented locally | Ordinary logout, restore rejection, and confirmed session expiry must not destroy a local plan that has not been imported. Confirmed account deletion may clear it; successful migration and explicit double-confirmed discard remain the only other approved deletion paths. |
+| Close R9 with local checkpoints but without external integration. | Accepted by owner direction | The reviewed C5 application candidate and docs-only receipt checkpoint are committed locally. Push, merge, PR mutation, deployment, remote CI, store release, S10 work, and R10 remain stopped. |
+
+## R9 Local Completion Stop Boundary
+
+R9 is locally complete at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
+commit containing this decision. These decisions are bounded to local
+completion. Stop before push, merge, deployment, remote CI, store release, S10
+work, or R10.

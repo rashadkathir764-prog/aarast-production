@@ -1,10 +1,58 @@
 # Current Status
 
-Snapshot date: 2026-08-28
+Snapshot date: 2026-08-30
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R9 Local Completion - 2026-08-30
+
+R9 is locally complete on branch `modular-monolith` from immutable base
+`833a4f1d31781b45cd0a68ecee1b969ac85f237f` at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`. The exact completion specification
+and plan are under `docs/superpowers/`; the docs-only checkpoint is the commit
+containing those receipts.
+
+All 19 Mobile feature owners expose controlled public APIs. Cross-feature debt
+is zero, root debt is zero, and the legal public projection is 159 records;
+`app.dart`, `app_router.dart`, and `main.dart` remain the only approved
+composition roots. `SafeUser` is canonical under `core/session`, and Push
+binding consumes immutable nullable identity data without changing lifecycle
+behavior.
+
+C5 corrects one phone-discovered product defect at the earliest boundary. An
+unimported guest plan belongs to the installation: ordinary explicit logout,
+restore rejection, and confirmed session expiry preserve it. Confirmed account
+deletion may clear it; successful migration and explicit double-confirmed
+discard retain their existing deletion contracts.
+
+Final local verification passed: Mobile governance 230/230; strict debt zero
+with `legal=159`; SafeUser/Push 10/10; direct C5 18/18; expanded session 19/19;
+Flutter analysis clean and 1164/1164 tests; Backend architecture/check/build,
+1346 pass with zero failures and one intentional skip, and both audits at zero
+vulnerabilities; Admin 18 files / 96 tests plus typecheck/build/honesty and 3/3
+container checks; isolated current-R9 database migrations 76/76 and managed
+Marketplace smoke 62/62. Independent Task 10/C5 review approved with zero
+Critical, Important, or Minor findings.
+
+The final full Flutter rerun emitted existing Windows/Linux desktop-plugin
+metadata notices while still exiting successfully at 1164/1164. R9 accepts the
+Android application only and does not claim Windows/Linux desktop packaging.
+
+The owner-selected `SM-S938B` was the only phone used. The accepted debug APK
+created a synthetic local plan, reached the migration gate without Upload or
+Discard, then survived server session invalidation and two separate
+force-stop/relaunch cycles with the same local Dashboard restored. Disposable
+QA database/runtime and Redis state were cleaned. No device identifier, LAN
+address, credential, OTP, token, raw UI/log/body, screenshot, or private value
+is retained.
+
+Live Firebase Push is `UNVERIFIED`. Bare Task 9 Prisma validation was
+`BLOCKED — environment`, while isolated Task 10 migration/runtime proof passed.
+The stale repository seed fixture remains adjacent debt and was not patched
+outside scope. R9 is a local completion only: no push, merge, PR mutation,
+deployment, remote CI, store release, S10 work, or R10 is claimed.
 
 ## Modular Monolith R8 Local Completion - 2026-08-28
 
@@ -1492,8 +1540,9 @@ store assets/approval, and the Apple association identity.
 The active priority and acceptance order is defined in
 `docs/project/EXECUTION_PLAN.md`.
 
-## R8 Local Completion Stop Boundary
+## R9 Local Completion Stop Boundary
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
-for rollback. Stop before push, merge, deployment, remote CI, or R9.
+R9 is locally complete at application candidate
+`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
+commit containing this receipt. Stop before push, merge, deployment, remote CI,
+store release, S10 work, or R10.

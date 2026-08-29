@@ -5,7 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
-import '../../onboarding/widgets/location_picker_section.dart';
+import '../../onboarding/onboarding_api.dart' show LocationPickerSection;
 
 /// The single presentation contract for every wedding-plan creation route.
 ///

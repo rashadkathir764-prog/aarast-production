@@ -9,12 +9,13 @@ import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../home/data/dashboard_summary_sources.dart';
-import '../../sharing/models/shared_member.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
+import '../../home/home_api.dart'
+    show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
+import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
+import '../../sharing/sharing_api.dart' show SharedMember;
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../widgets/dashboard/aarast_dashboard_view.dart';

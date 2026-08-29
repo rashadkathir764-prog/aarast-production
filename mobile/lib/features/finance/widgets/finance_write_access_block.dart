@@ -3,7 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/finance_provider.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
 
 Widget? financeWriteAccessBlock({
   required BuildContext context,

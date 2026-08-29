@@ -14,8 +14,11 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/models/marketplace_models.dart';
-import '../../marketplace/providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        MarketplaceProvider,
+        ProviderMarketplaceProvider,
+        providerDirectoryErrorMessage;
 import '../models/cost_draft_intent.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';

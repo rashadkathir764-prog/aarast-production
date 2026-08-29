@@ -1,4 +1,4 @@
-import 'package:aarast_mobile/features/finance/models/money_formatters.dart';
+import 'package:aarast_mobile/core/utils/money_formatters.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/widgets/money_widgets.dart';

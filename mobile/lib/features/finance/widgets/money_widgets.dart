@@ -6,7 +6,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../models/money_formatters.dart';
+import '../../../core/utils/money_formatters.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 

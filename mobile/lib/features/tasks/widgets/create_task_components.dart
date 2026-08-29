@@ -8,7 +8,8 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
-import '../../sharing/models/shared_member.dart';
+import '../../sharing/sharing_api.dart'
+    show SharedMember, sharedMemberRoleLabel;
 import '../models/wedding_task.dart';
 
 class CreateTaskDetailsDisclosure extends StatelessWidget {

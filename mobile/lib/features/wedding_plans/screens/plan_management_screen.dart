@@ -12,23 +12,23 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../auth/widgets/account_deletion_flow.dart';
-import '../../account_contexts/models/account_context.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../onboarding/models/wedding_location_draft.dart';
-import '../../sharing/models/shared_member.dart';
-import '../../sharing/services/plan_leave_coordinator.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show
+        AccountContextController,
+        AccountContextPermissions,
+        AccountContextRole;
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, confirmAccountDeletion;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingDraft, GuestOnboardingStorage, WeddingLocationDraft;
+import '../../sharing/sharing_api.dart' show PlanLeaveCoordinator, SharedMember;
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
 import '../widgets/contributor_workspace_view.dart';
 import '../widgets/plan_management_view.dart';
-import '../../shell/widgets/aarast_plan_chrome.dart';
+import '../../shell/shell_api.dart' show AarastPlanNavigationBar;
 
 class PlanCenterScreen extends StatefulWidget {
   const PlanCenterScreen({

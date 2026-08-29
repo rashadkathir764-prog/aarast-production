@@ -1,4 +1,4 @@
-import '../../tasks/models/wedding_task.dart';
+import '../../tasks/tasks_api.dart' show WeddingTask;
 
 enum WeddingDayPhase { unavailable, countdown, tomorrow, today, wrapUp }
 

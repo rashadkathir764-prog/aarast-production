@@ -10,14 +10,12 @@ import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../home/data/dashboard_summary_sources.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../tasks/models/wedding_task.dart';
-import '../../tasks/providers/task_timeline_provider.dart';
-import '../../wedding_plans/models/dashboard_summary.dart';
-import '../../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../../wedding_plans/utils/plan_pulse_sync.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../home/home_api.dart' show LocalGuestDashboardSummarySource;
+import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
+import '../../tasks/tasks_api.dart' show TaskTimelineProvider, WeddingTask;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show DashboardSummary, DashboardSummaryProvider, publishTaskPlanPulse;
 import '../widgets/wedding_day_mode_view.dart';
 
 class WeddingDayModeScreen extends StatefulWidget {

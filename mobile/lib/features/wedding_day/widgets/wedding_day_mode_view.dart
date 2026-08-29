@@ -5,8 +5,9 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_loading_state.dart';
-import '../../tasks/models/wedding_task.dart';
-import '../../wedding_plans/models/dashboard_summary.dart';
+import '../../tasks/tasks_api.dart' show WeddingTask;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show DashboardProviderPreview, DashboardSummary;
 import '../models/wedding_day_mode.dart';
 
 class WeddingDayModeView extends StatelessWidget {

@@ -1,5 +1,5 @@
 ﻿import '../../../core/session/safe_user.dart';
-import '../../finance/models/budget_category.dart';
+import '../../finance/finance_api.dart' show BudgetCategory;
 import 'active_wedding_plan.dart';
 
 class OnboardingCompleteRequest {

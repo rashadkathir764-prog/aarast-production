@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
-import '../../sharing/models/shared_member.dart';
+import '../../sharing/sharing_api.dart' show SharedMember;
 import '../data/wedding_plans_api.dart';
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';

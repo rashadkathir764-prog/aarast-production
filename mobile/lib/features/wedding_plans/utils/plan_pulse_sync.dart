@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-import '../../guests/models/guest.dart';
-import '../../tasks/models/task_summary.dart';
+import '../../guests/guests_api.dart' show GuestSummary;
+import '../../tasks/tasks_api.dart' show TaskSummary;
 import '../providers/dashboard_summary_provider.dart';
 
 /// Publishes already-confirmed domain summaries to the visible plan pulse.

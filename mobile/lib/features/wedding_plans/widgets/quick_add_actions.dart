@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
-import '../../shell/widgets/aarast_plan_chrome.dart';
+import '../../shell/shell_api.dart' show AarastQuickAction;
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan_stage.dart';
 

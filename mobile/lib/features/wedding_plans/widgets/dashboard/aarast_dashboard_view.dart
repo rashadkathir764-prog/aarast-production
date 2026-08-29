@@ -5,11 +5,12 @@ import '../../../../core/experience_v3/aarast_v3.dart';
 import '../../../../core/theme/aarast_design_tokens.dart';
 import '../../../../core/theme/aarast_motion.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
 import '../../../../core/widgets/aarast_header_actions.dart';
 import '../../../../core/widgets/aarast_surface.dart';
-import '../../../finance/models/money_formatters.dart';
-import '../../../wedding_day/models/wedding_day_mode.dart';
+import '../../../wedding_day/wedding_day_api.dart'
+    show WeddingDayModeStatus, WeddingDayPhase, resolveWeddingDayMode;
 import '../../models/dashboard_summary.dart';
 import '../../models/wedding_plan_stage.dart';
 import 'aarast_dashboard_focus.dart';

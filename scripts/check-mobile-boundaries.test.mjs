@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdtempSync,
@@ -2337,6 +2338,273 @@ const trackedCollaborationBatchContracts = [
   },
 ];
 
+const trackedPlanningBatchContracts = [
+  {
+    source: 'mobile/lib/features/finance/models/money_starter_catalog.dart',
+    target: 'mobile/lib/features/catalogs/catalogs_api.dart',
+    show: ['ManagedReferenceCatalog', 'ManagedReferenceCatalogItem'],
+  },
+  {
+    source: 'mobile/lib/features/finance/providers/finance_provider.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['PlanAccessPermissions', 'SharingApi'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/cost_form_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: [
+      'MarketplaceProvider',
+      'ProviderMarketplaceProvider',
+      'providerDirectoryErrorMessage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+    target: 'mobile/lib/features/catalogs/catalogs_api.dart',
+    show: ['ReferenceCatalogProvider'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingProvider', 'GuestPersona'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardSummaryProvider',
+      'WeddingPlansProvider',
+      'WeddingStageContextLine',
+      'WeddingStageDomain',
+      'resolveWeddingPlanStage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/finance/widgets/finance_write_access_block.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/guests/screens/guest_list_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/guests/screens/guest_list_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardSummaryProvider',
+      'WeddingPlanStageState',
+      'WeddingStageContextLine',
+      'WeddingStageDomain',
+      'publishGuestPlanPulse',
+      'resolveWeddingPlanStage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember', 'SharingProvider'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['publishTaskPlanPulse'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember', 'SharingProvider'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardSummaryProvider',
+      'WeddingPlanStageState',
+      'WeddingStageContextLine',
+      'WeddingStageDomain',
+      'publishTaskPlanPulse',
+      'resolveWeddingPlanStage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/tasks/widgets/create_task_components.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember', 'sharedMemberRoleLabel'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/models/wedding_day_mode.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['WeddingTask'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
+    target: 'mobile/lib/features/home/home_api.dart',
+    show: ['LocalGuestDashboardSummarySource'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['TaskTimelineProvider', 'WeddingTask'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummary', 'DashboardSummaryProvider', 'publishTaskPlanPulse'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['WeddingTask'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardProviderPreview', 'DashboardSummary'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/models/active_wedding_plan.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/models/onboarding_complete.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['BudgetCategory'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/models/wedding_plan.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/providers/dashboard_summary_provider.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/my_wedding_plans_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextPermissions', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController', 'confirmAccountDeletion'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingDraft', 'GuestOnboardingStorage', 'WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['PlanLeaveCoordinator', 'SharedMember'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    target: 'mobile/lib/features/shell/shell_api.dart',
+    show: ['AarastPlanNavigationBar'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/home/home_api.dart',
+    show: ['LocalGuestDashboardSummary', 'LocalGuestDashboardSummarySource'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedMember'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart',
+    target: 'mobile/lib/features/guests/guests_api.dart',
+    show: ['GuestSummary'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['TaskSummary'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['WeddingDayModeStatus', 'WeddingDayPhase', 'resolveWeddingDayMode'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart',
+    target: 'mobile/lib/features/shell/shell_api.dart',
+    show: ['AarastQuickAction'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['LocationPickerSection'],
+  },
+];
+
 function trackedOwnerApiFixture(overrides = {}) {
   const files = {};
   for (const contract of trackedOwnerApiContracts) {
@@ -2548,6 +2816,175 @@ function assertTrackedCollaborationBatch({
   );
 }
 
+function assertTrackedPlanningBatch({
+  repoRoot: repositoryRoot,
+  manifest = loadR9Manifest(),
+}) {
+  const mobileLib = path.join(repositoryRoot, 'mobile', 'lib');
+  const scan = mobileBoundaries.scanR9MobileBoundaries({
+    mobileLib,
+    manifest,
+  });
+  const trackedSources = new Set(
+    trackedPlanningBatchContracts.map(({ source }) => source),
+  );
+  const expected = trackedPlanningBatchContracts.map((contract) => ({
+    source: contract.source,
+    target: contract.target,
+    directiveKind: 'import',
+    show: contract.show,
+    hide: [],
+    conditional: false,
+    count: 1,
+  }));
+  const sortBySourceTarget = (left, right) => (
+    left.source.localeCompare(right.source)
+    || left.target.localeCompare(right.target)
+  );
+  const actualLegal = scan.legalRecords
+    .filter(({ source }) => trackedSources.has(source))
+    .map(normalizeR9Record)
+    .sort(sortBySourceTarget);
+  const expectedLegal = expected
+    .map((record) => ({ ...record }))
+    .sort(sortBySourceTarget);
+  assert.deepEqual(
+    actualLegal,
+    expectedLegal,
+    'tracked Planning batch legal owner API imports mismatch',
+  );
+  assert.deepEqual(
+    scan.legacyRecords.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Planning batch still has internal cross-feature directives',
+  );
+  assert.deepEqual(
+    scan.strictViolations.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Planning batch still has strict R9 violations',
+  );
+  assert.deepEqual(
+    scan.errors.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Planning batch still has scanner errors',
+  );
+
+  const coreFormatterPath = path.join(
+    repositoryRoot,
+    'mobile',
+    'lib',
+    'core',
+    'utils',
+    'money_formatters.dart',
+  );
+  assert.equal(
+    existsSync(coreFormatterPath),
+    true,
+    'Planning batch Core money formatter is missing',
+  );
+  assert.equal(
+    existsSync(path.join(
+      repositoryRoot,
+      'mobile',
+      'lib',
+      'features',
+      'finance',
+      'models',
+      'money_formatters.dart',
+    )),
+    false,
+    'Planning batch old Finance money formatter still exists',
+  );
+
+  const coreFormatterText = readFileSync(coreFormatterPath, 'utf8')
+    .replace(/\r\n/g, '\n');
+  assert.equal(
+    createHash('sha256').update(coreFormatterText).digest('hex'),
+    '34515407d93a1733b80253561d22d3751deeac6321f85b2bf737304b10a4c37d',
+    'Planning batch Core money formatter normalized hash mismatch',
+  );
+  const restoredFinanceFormatterText = coreFormatterText.replace(
+    "import 'currency_label.dart';",
+    "import '../../../core/utils/currency_label.dart';",
+  );
+  assert.notEqual(restoredFinanceFormatterText, coreFormatterText);
+  assert.equal(
+    createHash('sha256').update(restoredFinanceFormatterText).digest('hex'),
+    'a9998b46f98f28f3d1bf52643459fa97a23accb685fd684569150d04446b7133',
+    'Planning batch original Finance money formatter hash mismatch',
+  );
+
+  const formatterConsumerContracts = [
+    {
+      source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+      uri: '../../../core/utils/money_formatters.dart',
+      show: [],
+    },
+    {
+      source: 'mobile/lib/features/finance/widgets/money_widgets.dart',
+      uri: '../../../core/utils/money_formatters.dart',
+      show: [],
+    },
+    {
+      source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
+      uri: '../../../../core/utils/money_formatters.dart',
+      show: ['compactMoneyParts'],
+    },
+    {
+      source: 'mobile/test/features/finance/money_summary_contract_test.dart',
+      uri: 'package:aarast_mobile/core/utils/money_formatters.dart',
+      show: [],
+    },
+  ];
+  for (const contract of formatterConsumerContracts) {
+    const directives = mobileBoundaries.parseR9DartDirectives(
+      readTrackedOwnerApi(repositoryRoot, contract.source),
+    );
+    assert.deepEqual(
+      directives
+        .filter(({ directiveKind, uri }) => (
+          directiveKind === 'import' && uri.endsWith('money_formatters.dart')
+        ))
+        .map(({ directiveKind, uri, show, hide, conditional }) => ({
+          directiveKind,
+          uri,
+          show,
+          hide,
+          conditional,
+        })),
+      [{
+        directiveKind: 'import',
+        uri: contract.uri,
+        show: contract.show,
+        hide: [],
+        conditional: false,
+      }],
+      `Planning batch money formatter consumer mismatch: ${contract.source}`,
+    );
+  }
+
+  const financeContractText = readTrackedOwnerApi(
+    repositoryRoot,
+    'mobile/test/features/finance/money_summary_contract_test.dart',
+  );
+  assert.equal(
+    createHash('sha256').update(financeContractText).digest('hex'),
+    '002054fedc4e770bc959c541df98e8e7343f2318fc6079bbfbf35c721048149f',
+    'Planning batch Finance contract assertions changed',
+  );
+
+  const financeApiDirectives = mobileBoundaries.parseR9DartDirectives(
+    readTrackedOwnerApi(repositoryRoot, 'mobile/lib/features/finance/finance_api.dart'),
+  );
+  assert.equal(
+    financeApiDirectives.some(({ directiveKind, uri }) => (
+      directiveKind === 'export' && uri.endsWith('/money_formatters.dart')
+    )),
+    false,
+    'finance_api.dart must not export money_formatters.dart',
+  );
+}
+
 function scanR9Fixture(files) {
   assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
   return withMobileFixture(files, ({ mobileLib }) => (
@@ -2583,6 +3020,10 @@ test('Identity batch imports consume only exact owner APIs from Appendix B', () 
 
 test('Collaboration batch imports consume only exact owner APIs from Appendix B', () => {
   assertTrackedCollaborationBatch({ repoRoot });
+});
+
+test('Planning batch imports consume exact owner APIs and the Core formatter contract', () => {
+  assertTrackedPlanningBatch({ repoRoot });
 });
 
 test('tracked owner API contract rejects an absent manifest API path', () => {

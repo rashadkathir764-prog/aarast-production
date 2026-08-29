@@ -14,12 +14,15 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../wedding_plans/utils/plan_pulse_sync.dart';
-import '../../wedding_plans/models/wedding_plan_stage.dart';
-import '../../wedding_plans/models/wedding_stage_domain_guidance.dart';
-import '../../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../../wedding_plans/widgets/wedding_stage_context_line.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        DashboardSummaryProvider,
+        WeddingPlanStageState,
+        WeddingStageContextLine,
+        WeddingStageDomain,
+        publishGuestPlanPulse,
+        resolveWeddingPlanStage;
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 import '../widgets/guest_form_sheet.dart';

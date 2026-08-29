@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../catalogs/models/reference_catalog.dart';
+import '../../catalogs/catalogs_api.dart'
+    show ManagedReferenceCatalog, ManagedReferenceCatalogItem;
 
 enum MoneyStarterPersona { groom, bride, neutral }
 

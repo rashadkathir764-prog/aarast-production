@@ -1,4 +1,4 @@
-import '../../../core/utils/currency_label.dart';
+import 'currency_label.dart';
 
 class CompactYemeniMoneyParts {
   const CompactYemeniMoneyParts({

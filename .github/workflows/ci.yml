@@ -127,7 +127,7 @@ jobs:
           channel: stable
           cache: true
       - run: node --test ../scripts/check-mobile-boundaries.test.mjs
-      - run: node ../scripts/check-mobile-boundaries.mjs --check-baseline
+      - run: node ../scripts/check-mobile-boundaries.mjs --strict
       - run: flutter pub get
       - run: flutter analyze
       # Golden PNGs are generated on Windows; Linux rasterizes fonts

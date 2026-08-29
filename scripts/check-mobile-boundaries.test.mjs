@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -1615,6 +1616,529 @@ function loadR9Manifest() {
   );
 }
 
+const ownerApiComment = '// Owner-controlled public API. Cross-feature consumers import this library.';
+const trackedOwnerApiContracts = [
+  {
+    area: 'features/account_contexts',
+    path: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    exports: [
+      { uri: 'data/account_contexts_api.dart', show: ['AccountContextsApi'] },
+      {
+        uri: 'models/account_context.dart',
+        show: ['AccountContext', 'AccountContextPermissions', 'AccountContextRole'],
+      },
+      {
+        uri: 'providers/account_context_controller.dart',
+        show: ['AccountContextController'],
+      },
+      {
+        uri: 'widgets/account_context_entry_gate.dart',
+        show: ['AccountContextEntryGate'],
+      },
+      {
+        uri: 'widgets/wedding_plan_context_gate.dart',
+        show: [
+          'SelectedWeddingPlanContextGate',
+          'WeddingPlanContextGate',
+          'WeddingPlanRouteAccess',
+        ],
+      },
+    ],
+  },
+  {
+    area: 'features/auth',
+    path: 'mobile/lib/features/auth/auth_api.dart',
+    exports: [
+      { uri: 'data/auth_repository.dart', show: ['AuthRepository'] },
+      { uri: 'providers/auth_controller.dart', show: ['AuthController', 'AuthStatus'] },
+      { uri: 'screens/login_screen.dart', show: ['LoginScreen'] },
+      { uri: 'screens/otp_screen.dart', show: ['OtpScreen', 'OtpScreenArgs'] },
+      { uri: 'screens/register_screen.dart', show: ['RegisterScreen'] },
+      { uri: 'screens/reset_password_screen.dart', show: ['ResetPasswordScreen'] },
+      { uri: 'screens/splash_screen.dart', show: ['SplashScreen'] },
+      { uri: 'utils/auth_action_guard.dart', show: ['AuthActionGuard', 'AuthGatePanel'] },
+      { uri: 'widgets/account_deletion_flow.dart', show: ['confirmAccountDeletion'] },
+      {
+        uri: 'widgets/auth_wedding_widgets.dart',
+        show: ['AuthObscureToggle', 'AuthTextField'],
+      },
+    ],
+  },
+  {
+    area: 'features/catalogs',
+    path: 'mobile/lib/features/catalogs/catalogs_api.dart',
+    exports: [
+      { uri: 'data/reference_catalog_api.dart', show: ['ReferenceCatalogApi'] },
+      {
+        uri: 'models/reference_catalog.dart',
+        show: ['ManagedReferenceCatalog', 'ManagedReferenceCatalogItem'],
+      },
+      {
+        uri: 'providers/reference_catalog_provider.dart',
+        show: ['ReferenceCatalogProvider'],
+      },
+    ],
+  },
+  {
+    area: 'features/chat',
+    path: 'mobile/lib/features/chat/chat_api.dart',
+    exports: [
+      { uri: 'data/chat_api.dart', show: ['ChatApi'] },
+      { uri: 'data/chat_realtime_client.dart', show: ['ChatRealtimeClient'] },
+      { uri: 'providers/chat_provider.dart', show: ['ChatProvider'] },
+      { uri: 'screens/chat_screen.dart', show: ['ChatScreen'] },
+      {
+        uri: 'screens/quote_conversation_entry_screen.dart',
+        show: ['QuoteConversationEntryScreen'],
+      },
+      { uri: 'widgets/conversation_list_view.dart', show: ['ConversationListView'] },
+    ],
+  },
+  {
+    area: 'features/finance',
+    path: 'mobile/lib/features/finance/finance_api.dart',
+    exports: [
+      { uri: 'data/finance_api.dart', show: ['FinanceApi', 'LocalFinancePlanContext'] },
+      { uri: 'models/budget_category.dart', show: ['BudgetCategory'] },
+      { uri: 'models/cost_draft_intent.dart', show: ['CostDraftIntent'] },
+      { uri: 'models/wedding_cost.dart', show: ['WeddingCost'] },
+      { uri: 'providers/finance_provider.dart', show: ['FinanceProvider'] },
+      {
+        uri: 'screens/budget_category_details_screen.dart',
+        show: ['BudgetCategoryDetailsScreen'],
+      },
+      {
+        uri: 'screens/budget_category_form_screen.dart',
+        show: ['BudgetCategoryFormScreen'],
+      },
+      { uri: 'screens/cost_details_screen.dart', show: ['CostDetailsScreen'] },
+      { uri: 'screens/cost_form_screen.dart', show: ['CostFormScreen'] },
+      {
+        uri: 'screens/cost_payment_screens.dart',
+        show: ['CostPaymentDetailsScreen', 'RecordCostPaymentScreen'],
+      },
+      { uri: 'screens/costs_screen.dart', show: ['CostsScreen'] },
+      { uri: 'screens/money_budget_screen.dart', show: ['MoneyBudgetScreen'] },
+      {
+        uri: 'screens/money_overview_screen.dart',
+        show: ['MoneyOverviewScreen', 'shouldShowMoneyStarter'],
+      },
+      {
+        uri: 'screens/payment_schedule_screens.dart',
+        show: [
+          'PayPaymentScheduleScreen',
+          'PaymentScheduleDetailsScreen',
+          'PaymentScheduleFormScreen',
+          'PaymentSchedulesScreen',
+        ],
+      },
+      {
+        uri: 'widgets/money_cost_action_picker.dart',
+        show: ['MoneyCostActionIntent', 'showMoneyCostActionPicker'],
+      },
+    ],
+  },
+  {
+    area: 'features/guests',
+    path: 'mobile/lib/features/guests/guests_api.dart',
+    exports: [
+      { uri: 'data/guests_api.dart', show: ['GuestsApi'] },
+      { uri: 'models/guest.dart', show: ['GuestSummary'] },
+      { uri: 'providers/guests_provider.dart', show: ['GuestsProvider'] },
+      { uri: 'screens/guest_list_screen.dart', show: ['GuestListScreen'] },
+    ],
+  },
+  {
+    area: 'features/home',
+    path: 'mobile/lib/features/home/home_api.dart',
+    exports: [
+      {
+        uri: 'data/dashboard_summary_sources.dart',
+        show: ['LocalGuestDashboardSummary', 'LocalGuestDashboardSummarySource'],
+      },
+      {
+        uri: 'providers/home_dashboard_provider.dart',
+        show: ['HomeDashboardProvider'],
+      },
+      { uri: 'screens/dashboard_entry_screen.dart', show: ['DashboardEntryScreen'] },
+    ],
+  },
+  {
+    area: 'features/marketplace',
+    path: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    exports: [
+      {
+        uri: 'data/marketplace_api.dart',
+        show: ['MarketplaceApi', 'ProviderDashboardApi'],
+      },
+      { uri: 'models/marketplace_models.dart', show: ['MarketplaceProvider'] },
+      {
+        uri: 'models/provider_budget_match_intent.dart',
+        show: ['ProviderBudgetMatchIntent', 'ProviderQuoteInitialContext'],
+      },
+      {
+        uri: 'providers/marketplace_provider.dart',
+        show: [
+          'ProviderDashboardProvider',
+          'ProviderMarketplaceProvider',
+          'providerDirectoryErrorMessage',
+          'providerReferenceDataErrorMessage',
+        ],
+      },
+      {
+        uri: 'screens/add_provider_package_screen.dart',
+        show: ['AddProviderPackageScreen'],
+      },
+      {
+        uri: 'screens/add_provider_service_screen.dart',
+        show: ['AddProviderServiceScreen'],
+      },
+      {
+        uri: 'screens/edit_provider_profile_screen.dart',
+        show: ['EditProviderProfileScreen'],
+      },
+      {
+        uri: 'screens/favorite_providers_screen.dart',
+        show: ['FavoriteProvidersScreen'],
+      },
+      {
+        uri: 'screens/provider_apply_screen.dart',
+        show: ['ProviderApplyScreen', 'ProviderApplyStatusScreen'],
+      },
+      { uri: 'screens/provider_details_screen.dart', show: ['ProviderDetailsScreen'] },
+      {
+        uri: 'screens/provider_marketplace_screen.dart',
+        show: ['ProviderMarketplaceScreen'],
+      },
+      { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
+      { uri: 'screens/quote_request_screen.dart', show: ['QuoteRequestScreen'] },
+      { uri: 'widgets/provider_auth_gate.dart', show: ['ProviderAuthGate'] },
+    ],
+  },
+  {
+    area: 'features/more',
+    path: 'mobile/lib/features/more/more_api.dart',
+    exports: [{ uri: 'screens/more_screen.dart', show: ['MoreScreen'] }],
+  },
+  {
+    area: 'features/notifications',
+    path: 'mobile/lib/features/notifications/notifications_api.dart',
+    exports: [
+      { uri: 'data/notifications_api.dart', show: ['NotificationsApi'] },
+      {
+        uri: 'providers/notifications_provider.dart',
+        show: ['NotificationsProvider'],
+      },
+      { uri: 'screens/notifications_screen.dart', show: ['NotificationsScreen'] },
+    ],
+  },
+  {
+    area: 'features/onboarding',
+    path: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    exports: [
+      {
+        uri: 'data/guest_onboarding_storage.dart',
+        show: ['GuestOnboardingStorage'],
+      },
+      {
+        uri: 'data/local_plan_migration.dart',
+        show: ['LocalPlanMigrationService', 'LocalPlanSnapshot'],
+      },
+      {
+        uri: 'data/yemen_administrative_api.dart',
+        show: ['YemenAdministrativeApi'],
+      },
+      { uri: 'models/generated_dashboard_seed.dart', show: ['GeneratedDashboardSeed'] },
+      {
+        uri: 'models/guest_onboarding_draft.dart',
+        show: ['GuestOnboardingDraft', 'GuestOnboardingPath', 'GuestPersona'],
+      },
+      {
+        uri: 'models/persona_copy.dart',
+        show: ['appRoleLabel', 'personaCopyForGuest'],
+      },
+      {
+        uri: 'models/wedding_location_draft.dart',
+        show: ['WeddingLocationDraft'],
+      },
+      {
+        uri: 'providers/guest_onboarding_provider.dart',
+        show: ['GuestOnboardingProvider'],
+      },
+      {
+        uri: 'providers/yemen_administrative_provider.dart',
+        show: ['YemenAdministrativeProvider'],
+      },
+      {
+        uri: 'screens/local_plan_migration_screen.dart',
+        show: ['LocalPlanMigrationScreen'],
+      },
+      {
+        uri: 'widgets/location_picker_section.dart',
+        show: ['LocationPickerSection'],
+      },
+    ],
+  },
+  {
+    area: 'features/settings',
+    path: 'mobile/lib/features/settings/settings_api.dart',
+    exports: [
+      { uri: 'data/settings_api.dart', show: ['SettingsApi'] },
+      { uri: 'providers/settings_provider.dart', show: ['SettingsProvider'] },
+      { uri: 'screens/settings_screen.dart', show: ['SettingsScreen'] },
+    ],
+  },
+  {
+    area: 'features/sharing',
+    path: 'mobile/lib/features/sharing/sharing_api.dart',
+    exports: [
+      { uri: 'data/sharing_api.dart', show: ['SharingApi'] },
+      {
+        uri: 'models/plan_access_permissions.dart',
+        show: ['PlanAccessPermissions'],
+      },
+      {
+        uri: 'models/shared_member.dart',
+        show: ['SharedMember', 'sharedMemberRoleLabel'],
+      },
+      { uri: 'models/shared_wedding_plan.dart', show: ['SharedWeddingPlan'] },
+      {
+        uri: 'providers/contribution_history_provider.dart',
+        show: ['ContributionHistoryProvider'],
+      },
+      { uri: 'providers/sharing_provider.dart', show: ['SharingProvider'] },
+      {
+        uri: 'screens/add_shared_member_screen.dart',
+        show: ['AddSharedMemberScreen'],
+      },
+      {
+        uri: 'screens/contribution_history_screen.dart',
+        show: ['ContributionHistoryScreen'],
+      },
+      {
+        uri: 'screens/edit_shared_member_screen.dart',
+        show: ['EditSharedMemberScreen'],
+      },
+      { uri: 'screens/invite_decision_screen.dart', show: ['InviteDecisionScreen'] },
+      {
+        uri: 'screens/shared_wedding_plans_screen.dart',
+        show: ['SharedWeddingPlansScreen'],
+      },
+      { uri: 'screens/sharing_screen.dart', show: ['SharingScreen'] },
+      {
+        uri: 'services/plan_leave_coordinator.dart',
+        show: ['PlanLeaveCoordinator'],
+      },
+    ],
+  },
+  {
+    area: 'features/shell',
+    path: 'mobile/lib/features/shell/shell_api.dart',
+    exports: [
+      { uri: 'main_shell.dart', show: ['MainShell'] },
+      { uri: 'screens/wedding_plan_shell.dart', show: ['WeddingPlanShell'] },
+      {
+        uri: 'widgets/aarast_plan_chrome.dart',
+        show: [
+          'AarastNavigationItem',
+          'AarastPlanNavigationBar',
+          'AarastQuickAction',
+          'showAarastQuickActionSheet',
+        ],
+      },
+      { uri: 'widgets/plan_shell_chrome.dart', show: ['PlanShellChrome'] },
+    ],
+  },
+  {
+    area: 'features/support',
+    path: 'mobile/lib/features/support/support_api.dart',
+    exports: [{ uri: 'screens/support_screen.dart', show: ['SupportScreen'] }],
+  },
+  {
+    area: 'features/tasks',
+    path: 'mobile/lib/features/tasks/tasks_api.dart',
+    exports: [
+      { uri: 'data/task_timeline_api.dart', show: ['TaskTimelineApi'] },
+      { uri: 'models/task_summary.dart', show: ['TaskSummary'] },
+      { uri: 'models/wedding_task.dart', show: ['WeddingTask'] },
+      {
+        uri: 'providers/task_timeline_provider.dart',
+        show: ['TaskTimelineProvider'],
+      },
+      { uri: 'screens/create_task_screen.dart', show: ['CreateTaskScreen'] },
+      { uri: 'screens/task_timeline_screen.dart', show: ['TaskTimelineScreen'] },
+    ],
+  },
+  {
+    area: 'features/wedding_day',
+    path: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    exports: [
+      {
+        uri: 'models/wedding_day_mode.dart',
+        show: ['WeddingDayModeStatus', 'WeddingDayPhase', 'resolveWeddingDayMode'],
+      },
+      {
+        uri: 'screens/wedding_day_mode_screen.dart',
+        show: ['WeddingDayModeScreen'],
+      },
+    ],
+  },
+  {
+    area: 'features/wedding_plans',
+    path: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    exports: [
+      { uri: 'data/wedding_plans_api.dart', show: ['WeddingPlansApi'] },
+      {
+        uri: 'models/dashboard_summary.dart',
+        show: [
+          'DashboardFinancialWarning',
+          'DashboardImportantItem',
+          'DashboardMoneySummary',
+          'DashboardNextPaymentSchedule',
+          'DashboardPermissionSummary',
+          'DashboardProviderPreview',
+          'DashboardSummary',
+        ],
+      },
+      {
+        uri: 'models/onboarding_complete.dart',
+        show: ['OnboardingCompleteRequest', 'OnboardingCompleteResponse'],
+      },
+      {
+        uri: 'models/wedding_plan_stage.dart',
+        show: ['WeddingPlanStage', 'WeddingPlanStageState', 'resolveWeddingPlanStage'],
+      },
+      { uri: 'models/wedding_plan.dart', show: ['WeddingPlan'] },
+      {
+        uri: 'models/wedding_stage_domain_guidance.dart',
+        show: ['WeddingStageDomain'],
+      },
+      {
+        uri: 'providers/dashboard_summary_provider.dart',
+        show: ['DashboardSummaryProvider'],
+      },
+      {
+        uri: 'providers/wedding_plans_provider.dart',
+        show: ['WeddingPlansProvider'],
+      },
+      {
+        uri: 'screens/create_wedding_plan_screen.dart',
+        show: ['CreateWeddingPlanScreen'],
+      },
+      {
+        uri: 'screens/my_wedding_plans_screen.dart',
+        show: ['MyWeddingPlansScreen'],
+      },
+      {
+        uri: 'screens/plan_management_screen.dart',
+        show: ['PlanCenterScreen'],
+      },
+      {
+        uri: 'screens/wedding_plan_dashboard_screen.dart',
+        show: ['WeddingPlanDashboardScreen'],
+      },
+      {
+        uri: 'utils/plan_pulse_sync.dart',
+        show: ['publishGuestPlanPulse', 'publishTaskPlanPulse'],
+      },
+      {
+        uri: 'widgets/dashboard/aarast_dashboard_view.dart',
+        show: ['AarastDashboardView'],
+      },
+      {
+        uri: 'widgets/quick_add_actions.dart',
+        show: [
+          'QuickAddContext',
+          'QuickAddSignals',
+          'buildCanonicalQuickAddActions',
+          'lastCanonicalQuickAddAction',
+          'lastCanonicalQuickAddActionId',
+          'planQuickAddIconForTab',
+          'planQuickAddLabelForTab',
+          'rememberCanonicalQuickAddAction',
+          'shouldShowPlanQuickAdd',
+        ],
+      },
+      {
+        uri: 'widgets/wedding_plan_creation_form.dart',
+        show: ['WeddingPlanCreationFields', 'WeddingPlanCreationScope'],
+      },
+      {
+        uri: 'widgets/wedding_stage_context_line.dart',
+        show: ['WeddingStageContextLine'],
+      },
+    ],
+  },
+  {
+    area: 'features/welcome_gateway',
+    path: 'mobile/lib/features/welcome_gateway/welcome_gateway_api.dart',
+    exports: [
+      { uri: 'screens/smart_welcome_screen.dart', show: ['SmartWelcomeScreen'] },
+    ],
+  },
+];
+
+function renderOwnerApiContractFile(contract) {
+  return [
+    ownerApiComment,
+    ...contract.exports.map(({ uri, show }) => `export '${uri}' show ${show.join(', ')};`),
+    '',
+  ].join('\n');
+}
+
+function trackedOwnerApiFixture(overrides = {}) {
+  const files = {};
+  for (const contract of trackedOwnerApiContracts) {
+    const relativePath = contract.path.replace('mobile/lib/', '');
+    files[relativePath] = overrides[contract.path] ?? renderOwnerApiContractFile(contract);
+  }
+  return files;
+}
+
+function readTrackedOwnerApi(repoRootPath, repositoryPath) {
+  const absolutePath = path.join(repoRootPath, ...repositoryPath.split('/'));
+  if (!existsSync(absolutePath)) {
+    throw new Error(`missing tracked owner API: ${repositoryPath}`);
+  }
+  return readFileSync(absolutePath, 'utf8').replace(/\r\n/g, '\n');
+}
+
+function assertTrackedOwnerApiContracts({
+  repoRoot: repositoryRoot,
+  manifest = loadR9Manifest(),
+}) {
+  assert.deepEqual(
+    manifest.featureApis,
+    trackedOwnerApiContracts.map(({ area, path: apiPath }) => ({ area, path: apiPath })),
+  );
+
+  for (const contract of trackedOwnerApiContracts) {
+    const text = readTrackedOwnerApi(repositoryRoot, contract.path);
+    assert.ok(
+      text.startsWith(`${ownerApiComment}\n`),
+      `owner API comment mismatch: ${contract.path}`,
+    );
+    const directives = mobileBoundaries.parseR9DartDirectives(text);
+    assert.deepEqual(
+      directives.map((directive) => ({
+        directiveKind: directive.directiveKind,
+        uri: directive.uri,
+        show: directive.show,
+        hide: directive.hide,
+        conditional: directive.conditional,
+      })),
+      contract.exports.map(({ uri, show }) => ({
+        directiveKind: 'export',
+        uri,
+        show,
+        hide: [],
+        conditional: false,
+      })),
+      `owner API exports mismatch: ${contract.path}`,
+    );
+  }
+}
+
 function scanR9Fixture(files) {
   assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
   return withMobileFixture(files, ({ mobileLib }) => (
@@ -1639,6 +2163,48 @@ function r9Record(overrides = {}) {
     ...overrides,
   };
 }
+
+test('tracked owner APIs exist and match the exact Appendix A export contracts', () => {
+  assertTrackedOwnerApiContracts({ repoRoot });
+});
+
+test('tracked owner API contract rejects an absent manifest API path', () => {
+  const files = trackedOwnerApiFixture();
+  delete files['features/auth/auth_api.dart'];
+
+  withMobileFixture(files, ({ root }) => {
+    assert.throws(
+      () => assertTrackedOwnerApiContracts({ repoRoot: root }),
+      /missing tracked owner API: mobile\/lib\/features\/auth\/auth_api\.dart/,
+    );
+  });
+});
+
+test('tracked owner API contract rejects one additional public symbol', () => {
+  const authContract = trackedOwnerApiContracts.find(({ path: apiPath }) => (
+    apiPath === 'mobile/lib/features/auth/auth_api.dart'
+  ));
+  assert.ok(authContract);
+  const files = trackedOwnerApiFixture({
+    'mobile/lib/features/auth/auth_api.dart': [
+      ownerApiComment,
+      ...authContract.exports.map(({ uri, show }) => {
+        if (uri !== 'providers/auth_controller.dart') {
+          return `export '${uri}' show ${show.join(', ')};`;
+        }
+        return `export '${uri}' show ${[...show, 'SafeUser'].join(', ')};`;
+      }),
+      '',
+    ].join('\n'),
+  });
+
+  withMobileFixture(files, ({ root }) => {
+    assert.throws(
+      () => assertTrackedOwnerApiContracts({ repoRoot: root }),
+      /owner API exports mismatch: mobile\/lib\/features\/auth\/auth_api\.dart/,
+    );
+  });
+});
 
 test('R9 parser preserves directive metadata and scan ownership metadata', () => {
   assert.equal(typeof mobileBoundaries.parseR9DartDirectives, 'function');

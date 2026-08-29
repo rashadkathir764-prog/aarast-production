@@ -663,6 +663,7 @@ class AuthController extends ChangeNotifier {
       await _sessionTeardownCoordinator.terminate(
         teardownLease,
         remoteSessionAlreadyDestroyed: reason == 'account_deleted',
+        clearGuestDraft: reason == 'account_deleted',
       );
       if (!_isCurrentSessionOperation(operation)) return;
 
@@ -700,8 +701,9 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Permanently deletes the account, then tears the local session down the
-  /// same way logout does (cache, queued writes and drafts all go with it).
+  /// Permanently deletes the account, then tears the local session down and
+  /// clears account caches, queued writes, and the installation guest draft.
+  /// Ordinary logout and session rejection intentionally preserve that draft.
   /// Ambiguous server outcomes keep the dashboard unmounted behind the safe
   /// termination gate until the durable request can be reconciled or retried.
   Future<bool> deleteAccount() async {

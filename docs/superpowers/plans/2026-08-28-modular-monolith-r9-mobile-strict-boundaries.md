@@ -76,7 +76,7 @@ selection
 
 | Path or group | Responsibility |
 | --- | --- |
-| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 155-path fence |
+| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 157-path fence |
 | `scripts/check-mobile-boundaries.mjs` | Directive-aware R9 scan, legal-edge inventory, structural errors, transitional debt, and strict CLI |
 | `scripts/check-mobile-boundaries.test.mjs` | Positive, adversarial, historical-compatibility, and final-zero scanner proofs |
 | `scripts/check-r9-scope.mjs` | Fixed-base changed-path, hash, protected-surface, and per-task debt enforcement |
@@ -209,7 +209,7 @@ Create a canonical JSON object with these literal identities:
 
 Add the 19 sorted feature/API pairs from Appendix A, the exact 34 root records
 from Appendix C, the exact debt map above, the two document paths and lowercase
-SHA-256 values, and the sorted 155 paths from Appendix D. Hash the plan only
+SHA-256 values, and the sorted 157 paths from Appendix D. Hash the plan only
 after this committed plan is final; never write secrets or absolute paths.
 
 - [ ] **Step 5: Implement directive-aware scanning and debt comparison**
@@ -942,6 +942,34 @@ Expected: reviewed local application candidate and clean worktree. Do not push.
 > The valid unstaged Task 9 CI line remains byte-identical, unstaged, and absent
 > from the C4 commit.
 
+> **Owner/controller-approved corrective checkpoint C5 (2026-08-29):** The
+> physical-phone Task 10 session-invalidation exercise exposed a destructive
+> Mobile contract defect: ordinary logout and confirmed session expiry route
+> through `SessionTeardownCoordinator`, which clears the installation-owned
+> unimported guest draft even though the local-plan migration flow promises
+> deletion only after a successful import or an explicit double-confirmed
+> discard. C5 fixes the earliest incorrect boundary and does not add a fallback
+> or compatibility layer. Ordinary logout, restore rejection, and confirmed
+> session expiry must preserve the guest draft; server-confirmed account
+> deletion remains the only session-teardown reason allowed to clear it. The
+> correction is restricted to exactly these eight tracked paths:
+> `docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md`,
+> `scripts/architecture/r9-mobile-strict-manifest.json`,
+> `scripts/check-mobile-boundaries.mjs`,
+> `scripts/check-r9-scope.test.mjs`,
+> `mobile/lib/core/session/session_teardown_coordinator.dart`,
+> `mobile/lib/features/auth/providers/auth_controller.dart`,
+> `mobile/test/core/session/session_teardown_coordinator_test.dart`, and
+> `mobile/test/features/auth/session_transition_gate_test.dart`. The TDD order
+> is behavior RED for ordinary logout and confirmed expiry, plan-hash RED,
+> canonical fence re-freeze, minimal implementation, focused GREEN, exhaustive
+> local gates, and a repeat physical-phone invalidation/relaunch check with a
+> synthetic local plan. Appendix D expands canonically by only two identities
+> to exactly 157 paths. The correction does not change routes, API contracts,
+> storage keys, Backend, database schema, deployment, or the strict-zero
+> boundary projection. Task 11 remains blocked until Task 10 records the
+> corrected physical-device PASS.
+
 ### Task 9: Activate Strict CI And Run Exhaustive Local Gates
 
 **Files:**
@@ -1168,10 +1196,16 @@ baseline hash, SafeUser codec proof, Push transition proof, full Flutter and
 proportional Backend/Admin results, APK hash/package/signer comparison, phone
 26 flows, live-Push classification, independent review, and remaining risks.
 
-Update active docs consistently. State explicitly: no API/database/dependency/
-UI/product behavior change; R8 Backend candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c` remained the server; no S10, push,
-merge, deploy, remote CI, store release, or R10.
+Update active docs consistently. State explicitly: no API, database,
+dependency, route, UI-scope, or product-scope change occurred. Record the one
+approved C5 behavior correction truthfully: ordinary logout, restore rejection,
+and confirmed session expiry preserve an unimported installation-owned local
+plan, while confirmed account deletion may still clear it. R8 Backend candidate
+`464d785a0440b8494768a26a70ac1de73a4bff2c` remained unchanged and was not
+deployed. Task 10's early read-only local-environment diagnosis exposed schema
+lag without a migration or repair; the accepted functional and phone journeys
+then used only a disposable isolated current-R9 QA runtime and database. State
+also: no S10, push, merge, deploy, remote CI, store release, or R10.
 
 - [ ] **Step 3: Verify docs and the exact final fence**
 
@@ -1678,7 +1712,7 @@ welcome_gateway_api.dart show SmartWelcomeScreen
 
 ## Appendix D: Exact R9 Allowed Changed-Path Fence
 
-The manifest contains this sorted 155-path array exactly. The historical
+The manifest contains this sorted 157-path array exactly. The historical
 baseline is intentionally absent because it is immutable.
 
 ```text
@@ -1705,6 +1739,7 @@ mobile/lib/core/offline/offline_sync_service.dart
 mobile/lib/core/push/push_lifecycle_bridge.dart
 mobile/lib/core/routing/app_router.dart
 mobile/lib/core/session/safe_user.dart
+mobile/lib/core/session/session_teardown_coordinator.dart
 mobile/lib/core/storage/auth_storage.dart
 mobile/lib/core/utils/money_formatters.dart
 mobile/lib/features/account_contexts/account_contexts_api.dart
@@ -1797,6 +1832,7 @@ mobile/lib/main.dart
 mobile/test/core/forms/aarast_form_draft_store_test.dart
 mobile/test/core/push/push_lifecycle_bridge_test.dart
 mobile/test/core/session/safe_user_persistence_contract_test.dart
+mobile/test/core/session/session_teardown_coordinator_test.dart
 mobile/test/core/session/session_teardown_push_authorization_test.dart
 mobile/test/core/storage/account_context_storage_test.dart
 mobile/test/core/storage/auth_session_privacy_test.dart

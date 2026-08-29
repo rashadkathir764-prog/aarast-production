@@ -50,6 +50,83 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('explicit logout preserves the installation guest draft', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    var guestDraftClearCalls = 0;
+    final controller = AuthController(
+      harness.repository,
+      sessionTeardownCoordinator: SessionTeardownCoordinator(
+        auth: harness.repository,
+        clearLocalAccountData: () async {},
+        clearGuestDraft: () async {
+          guestDraftClearCalls += 1;
+        },
+      ),
+      pendingAccountDeletionStore: harness.deletionStore,
+    );
+    await controller.restoreSession();
+
+    await controller.logout();
+
+    expect(controller.status, AuthStatus.unauthenticated);
+    expect(guestDraftClearCalls, 0);
+  });
+
+  testWidgets(
+    'confirmed session expiry preserves the installation guest draft',
+    (tester) async {
+      final harness = await _Harness.create();
+      var guestDraftClearCalls = 0;
+      final controller = AuthController(
+        harness.repository,
+        sessionTeardownCoordinator: SessionTeardownCoordinator(
+          auth: harness.repository,
+          clearLocalAccountData: () async {},
+          clearGuestDraft: () async {
+            guestDraftClearCalls += 1;
+          },
+        ),
+        pendingAccountDeletionStore: harness.deletionStore,
+      );
+      await controller.restoreSession();
+
+      await controller.handleSessionExpired();
+
+      expect(controller.status, AuthStatus.unauthenticated);
+      expect(controller.sessionExpired, isTrue);
+      expect(guestDraftClearCalls, 0);
+    },
+  );
+
+  testWidgets('restore rejection preserves the installation guest draft', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    harness.repository.meFailure = const ApiException(
+      'session rejected',
+      statusCode: 401,
+    );
+    var guestDraftClearCalls = 0;
+    final controller = AuthController(
+      harness.repository,
+      sessionTeardownCoordinator: SessionTeardownCoordinator(
+        auth: harness.repository,
+        clearLocalAccountData: () async {},
+        clearGuestDraft: () async {
+          guestDraftClearCalls += 1;
+        },
+      ),
+      pendingAccountDeletionStore: harness.deletionStore,
+    );
+
+    await controller.restoreSession();
+
+    expect(controller.status, AuthStatus.unauthenticated);
+    expect(guestDraftClearCalls, 0);
+  });
+
   testWidgets('local cleanup failure exposes a safe retry action', (
     tester,
   ) async {
@@ -96,10 +173,13 @@ void main() {
     (tester) async {
       final harness = await _Harness.create();
       final localAccountClear = Completer<void>();
+      var guestDraftClearCalls = 0;
       final coordinator = SessionTeardownCoordinator(
         auth: harness.repository,
         clearLocalAccountData: () => localAccountClear.future,
-        clearGuestDraft: () async {},
+        clearGuestDraft: () async {
+          guestDraftClearCalls += 1;
+        },
         clearDeletedAccountState: harness.deletionStore.removeForDeletedUser,
       );
       final controller = AuthController(
@@ -124,6 +204,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.status, AuthStatus.unauthenticated);
       expect(harness.repository.remoteRevokeCalls, 0);
+      expect(guestDraftClearCalls, 1);
     },
   );
 
@@ -316,6 +397,7 @@ class _SessionRepository extends AuthRepository {
   int deleteAccountCalls = 0;
   int remoteRevokeCalls = 0;
   Object? deleteAccountFailure;
+  Object? meFailure;
   AccountDeletionServerStatus deletionStatus =
       AccountDeletionServerStatus.notStarted;
   final List<String> deletionRequestIds = [];
@@ -327,7 +409,11 @@ class _SessionRepository extends AuthRepository {
   Future<String?> readAccessToken() async => 'access-a';
 
   @override
-  Future<SafeUser> me() async => user;
+  Future<SafeUser> me() async {
+    final failure = meFailure;
+    if (failure != null) throw failure;
+    return user;
+  }
 
   @override
   Future<void> deleteAccount({required String clientRequestId}) async {

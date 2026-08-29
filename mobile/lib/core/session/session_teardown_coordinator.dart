@@ -190,6 +190,7 @@ class SessionTeardownCoordinator {
   Future<SessionTeardownResult> terminate(
     SessionTeardownLease lease, {
     bool remoteSessionAlreadyDestroyed = false,
+    bool clearGuestDraft = false,
   }) async {
     if (!identical(_activeLease, lease)) {
       throw StateError('The teardown lease is no longer active');
@@ -200,6 +201,7 @@ class SessionTeardownCoordinator {
     }
     await _runLocalCleanup(
       lease,
+      clearGuestDraft: clearGuestDraft,
       clearDeletedAccountState: remoteSessionAlreadyDestroyed,
     );
     final result = remoteSessionAlreadyDestroyed
@@ -269,6 +271,7 @@ class SessionTeardownCoordinator {
 
   Future<void> _runLocalCleanup(
     SessionTeardownLease lease, {
+    required bool clearGuestDraft,
     required bool clearDeletedAccountState,
   }) async {
     if (!lease._authStorageCleared) {
@@ -285,7 +288,7 @@ class SessionTeardownCoordinator {
       );
       lease._accountCacheCleared = true;
     }
-    if (!lease._guestDraftCleared) {
+    if (clearGuestDraft && !lease._guestDraftCleared) {
       await _runLocalStage(
         SessionLocalTeardownStage.guestDraft,
         _clearGuestDraft,

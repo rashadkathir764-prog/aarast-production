@@ -24,8 +24,8 @@ const workflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
 const designPath = 'docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md';
 const planPath = 'docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md';
 const designSha256 = '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5';
-const planSha256 = '71cdf0b1a93215a0c8f049e9606d845ed4d223263bdf407395298530e85a0821';
-const allowedChangedPathsSha256 = 'f23b669362fb1bba6a8b2dc5a5ec7bc92a7bc51a445d3db39819ebcfc6794bf5';
+const planSha256 = '061e26f63393d9c988c3dbec1043e633ed32f9a213fda55b6db4406beccb2a0a';
+const allowedChangedPathsSha256 = 'eda3b152a7eb8986482fa1b2d0aeaa32120a26f721be1cf1c36515ba107f967c';
 const c4AllowedPathPositions = Object.freeze([
   [
     'CHANGELOG.md',
@@ -46,6 +46,18 @@ const c4AllowedPathPositions = Object.freeze([
     'mobile/test/features/chat/chat_realtime_client_test.dart',
     'mobile/test/features/finance/money_root_routing_contract_test.dart',
     'mobile/test/features/finance/money_summary_contract_test.dart',
+  ],
+]);
+const c5AllowedPathPositions = Object.freeze([
+  [
+    'mobile/lib/core/session/safe_user.dart',
+    'mobile/lib/core/session/session_teardown_coordinator.dart',
+    'mobile/lib/core/storage/auth_storage.dart',
+  ],
+  [
+    'mobile/test/core/session/safe_user_persistence_contract_test.dart',
+    'mobile/test/core/session/session_teardown_coordinator_test.dart',
+    'mobile/test/core/session/session_teardown_push_authorization_test.dart',
   ],
 ]);
 const c2AllowedPathPositions = Object.freeze([
@@ -241,9 +253,9 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
   assert.equal(manifest.rootInventory.canonicalSha256, '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b');
   assert.equal(manifest.rootInventory.records.length, 34);
   assert.equal(manifest.featureApis.length, 19);
-  assert.equal(manifest.allowedChangedPaths.length, 155);
+  assert.equal(manifest.allowedChangedPaths.length, 157);
   assert.deepEqual(manifest.allowedChangedPaths, [...manifest.allowedChangedPaths].sort());
-  assert.equal(new Set(manifest.allowedChangedPaths).size, 155);
+  assert.equal(new Set(manifest.allowedChangedPaths).size, 157);
   assert.equal(sha256(JSON.stringify(manifest.allowedChangedPaths)), allowedChangedPathsSha256);
   for (const [previousPath, c4Path, nextPath] of c4AllowedPathPositions) {
     assert.equal(
@@ -256,6 +268,19 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
       manifest.allowedChangedPaths.slice(c4Index - 1, c4Index + 2),
       [previousPath, c4Path, nextPath],
       c4Path,
+    );
+  }
+  for (const [previousPath, c5Path, nextPath] of c5AllowedPathPositions) {
+    assert.equal(
+      manifest.allowedChangedPaths.filter((itemPath) => itemPath === c5Path).length,
+      1,
+      c5Path,
+    );
+    const c5Index = manifest.allowedChangedPaths.indexOf(c5Path);
+    assert.deepEqual(
+      manifest.allowedChangedPaths.slice(c5Index - 1, c5Index + 2),
+      [previousPath, c5Path, nextPath],
+      c5Path,
     );
   }
   const apiClientPath = 'mobile/lib/core/network/api_client.dart';
@@ -396,7 +421,7 @@ test('manifest validation rejects removing or substituting the formatter prerequ
   assert.throws(() => validateR9Manifest({ ...original, allowedChangedPaths: substituted }));
 });
 
-test('manifest validation rejects removing or canonically substituting every C2 and C4 path', () => {
+test('manifest validation rejects removing or canonically substituting every C2 C4 and C5 path', () => {
   const original = manifestValue();
   for (const [, c2Path, , nearMiss] of c2AllowedPathPositions) {
     const c2Index = original.allowedChangedPaths.indexOf(c2Path);
@@ -434,6 +459,25 @@ test('manifest validation rejects removing or canonically substituting every C2 
     assert.throws(
       () => validateR9Manifest({ ...original, allowedChangedPaths: substituted }),
       c4Path,
+    );
+  }
+  for (const [, c5Path] of c5AllowedPathPositions) {
+    const c5Index = original.allowedChangedPaths.indexOf(c5Path);
+    assert.notEqual(c5Index, -1, c5Path);
+
+    const removed = [...original.allowedChangedPaths];
+    removed.splice(c5Index, 1);
+    assert.throws(
+      () => validateR9Manifest({ ...original, allowedChangedPaths: removed }),
+      c5Path,
+    );
+
+    const substituted = [...original.allowedChangedPaths];
+    substituted[c5Index] = `${c5Path}x`;
+    substituted.sort();
+    assert.throws(
+      () => validateR9Manifest({ ...original, allowedChangedPaths: substituted }),
+      c5Path,
     );
   }
 });

@@ -5,38 +5,40 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('clears every local scope before draining remote teardown', () async {
-    final events = <String>[];
-    final auth = _FakeAuthTeardown(events);
-    final push = _FakePushTeardown(events);
-    final coordinator = SessionTeardownCoordinator(
-      auth: auth,
-      push: push,
-      clearLocalAccountData: () async => events.add('local-cache'),
-      clearGuestDraft: () async => events.add('local-draft'),
-    );
+  test(
+    'preserves the installation guest draft during session teardown',
+    () async {
+      final events = <String>[];
+      final auth = _FakeAuthTeardown(events);
+      final push = _FakePushTeardown(events);
+      final coordinator = SessionTeardownCoordinator(
+        auth: auth,
+        push: push,
+        clearLocalAccountData: () async => events.add('local-cache'),
+        clearGuestDraft: () async => events.add('local-draft'),
+      );
 
-    final lease = coordinator.begin('user-a');
+      final lease = coordinator.begin('user-a');
 
-    expect(events, ['auth-begin', 'push-begin']);
-    final result = await coordinator.terminate(lease);
+      expect(events, ['auth-begin', 'push-begin']);
+      final result = await coordinator.terminate(lease);
 
-    expect(events, [
-      'auth-begin',
-      'push-begin',
-      'auth-capture',
-      'auth-local',
-      'local-cache',
-      'local-draft',
-      'push-local',
-      'auth-remote',
-      'push-remote',
-    ]);
-    expect(result.localCleanupCompleted, isTrue);
-    expect(result.authRemote, SessionRemoteTeardownOutcome.completed);
-    expect(result.pushRemote, SessionRemoteTeardownOutcome.completed);
-    expect(lease.hasSensitiveCredentials, isFalse);
-  });
+      expect(events, [
+        'auth-begin',
+        'push-begin',
+        'auth-capture',
+        'auth-local',
+        'local-cache',
+        'push-local',
+        'auth-remote',
+        'push-remote',
+      ]);
+      expect(result.localCleanupCompleted, isTrue);
+      expect(result.authRemote, SessionRemoteTeardownOutcome.completed);
+      expect(result.pushRemote, SessionRemoteTeardownOutcome.completed);
+      expect(lease.hasSensitiveCredentials, isFalse);
+    },
+  );
 
   test(
     'retries only unfinished local cleanup and never opens remote early',
@@ -184,6 +186,7 @@ void main() {
       final result = await coordinator.terminate(
         coordinator.begin('user-a'),
         remoteSessionAlreadyDestroyed: true,
+        clearGuestDraft: true,
       );
 
       expect(events, [
@@ -224,7 +227,11 @@ void main() {
       final lease = coordinator.begin('user-a');
 
       await expectLater(
-        coordinator.terminate(lease, remoteSessionAlreadyDestroyed: true),
+        coordinator.terminate(
+          lease,
+          remoteSessionAlreadyDestroyed: true,
+          clearGuestDraft: true,
+        ),
         throwsA(
           isA<SessionLocalTeardownException>().having(
             (error) => error.stage,
@@ -233,7 +240,11 @@ void main() {
           ),
         ),
       );
-      await coordinator.terminate(lease, remoteSessionAlreadyDestroyed: true);
+      await coordinator.terminate(
+        lease,
+        remoteSessionAlreadyDestroyed: true,
+        clearGuestDraft: true,
+      );
 
       expect(events, [
         'auth-begin',

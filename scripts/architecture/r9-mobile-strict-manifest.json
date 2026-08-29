@@ -524,7 +524,7 @@
     },
     {
       "path": "docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md",
-      "sha256": "71cdf0b1a93215a0c8f049e9606d845ed4d223263bdf407395298530e85a0821"
+      "sha256": "061e26f63393d9c988c3dbec1043e633ed32f9a213fda55b6db4406beccb2a0a"
     }
   ],
   "allowedChangedPaths": [
@@ -551,6 +551,7 @@
     "mobile/lib/core/push/push_lifecycle_bridge.dart",
     "mobile/lib/core/routing/app_router.dart",
     "mobile/lib/core/session/safe_user.dart",
+    "mobile/lib/core/session/session_teardown_coordinator.dart",
     "mobile/lib/core/storage/auth_storage.dart",
     "mobile/lib/core/utils/money_formatters.dart",
     "mobile/lib/features/account_contexts/account_contexts_api.dart",
@@ -643,6 +644,7 @@
     "mobile/test/core/forms/aarast_form_draft_store_test.dart",
     "mobile/test/core/push/push_lifecycle_bridge_test.dart",
     "mobile/test/core/session/safe_user_persistence_contract_test.dart",
+    "mobile/test/core/session/session_teardown_coordinator_test.dart",
     "mobile/test/core/session/session_teardown_push_authorization_test.dart",
     "mobile/test/core/storage/account_context_storage_test.dart",
     "mobile/test/core/storage/auth_session_privacy_test.dart",

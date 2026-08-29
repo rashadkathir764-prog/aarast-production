@@ -2086,6 +2086,52 @@ function renderOwnerApiContractFile(contract) {
   ].join('\n');
 }
 
+const trackedIdentityBatchContracts = [
+  {
+    source: 'mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart',
+    target: 'mobile/lib/features/shell/shell_api.dart',
+    show: ['MainShell'],
+  },
+  {
+    source: 'mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart',
+    target: 'mobile/lib/features/welcome_gateway/welcome_gateway_api.dart',
+    show: ['SmartWelcomeScreen'],
+  },
+  {
+    source: 'mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/auth/providers/auth_controller.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage'],
+  },
+  {
+    source: 'mobile/lib/features/auth/screens/otp_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderDashboardProvider'],
+  },
+  {
+    source: 'mobile/lib/features/auth/screens/register_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: [
+      'ProviderMarketplaceProvider',
+      'providerReferenceDataErrorMessage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/auth/screens/splash_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage'],
+  },
+  {
+    source: 'mobile/lib/features/onboarding/data/local_plan_migration.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['OnboardingCompleteResponse', 'WeddingPlansApi'],
+  },
+];
+
 function trackedOwnerApiFixture(overrides = {}) {
   const files = {};
   for (const contract of trackedOwnerApiContracts) {
@@ -2139,6 +2185,72 @@ function assertTrackedOwnerApiContracts({
   }
 }
 
+function normalizeR9Record(record) {
+  return {
+    source: record.source,
+    target: record.target,
+    directiveKind: record.directiveKind,
+    show: record.show,
+    hide: record.hide,
+    conditional: record.conditional,
+    count: record.count,
+  };
+}
+
+function assertTrackedIdentityBatch({
+  repoRoot: repositoryRoot,
+  manifest = loadR9Manifest(),
+}) {
+  const mobileLib = path.join(repositoryRoot, 'mobile', 'lib');
+  const scan = mobileBoundaries.scanR9MobileBoundaries({
+    mobileLib,
+    manifest,
+  });
+  const trackedSources = new Set(
+    trackedIdentityBatchContracts.map(({ source }) => source),
+  );
+  const expected = trackedIdentityBatchContracts.map((contract) => ({
+    source: contract.source,
+    target: contract.target,
+    directiveKind: 'import',
+    show: contract.show,
+    hide: [],
+    conditional: false,
+    count: 1,
+  }));
+  const sortBySourceTarget = (left, right) => (
+    left.source.localeCompare(right.source)
+    || left.target.localeCompare(right.target)
+  );
+  const actualLegal = scan.legalRecords
+    .filter(({ source }) => trackedSources.has(source))
+    .map(normalizeR9Record)
+    .sort(sortBySourceTarget);
+  const expectedLegal = expected
+    .map((record) => ({ ...record }))
+    .sort(sortBySourceTarget);
+  assert.deepEqual(
+    actualLegal,
+    expectedLegal,
+    'tracked Identity batch legal owner API imports mismatch',
+  );
+  assert.deepEqual(
+    scan.legacyRecords.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Identity batch still has internal cross-feature directives',
+  );
+  assert.deepEqual(
+    scan.strictViolations.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Identity batch still has strict R9 violations',
+  );
+  assert.deepEqual(
+    scan.errors.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Identity batch still has scanner errors',
+  );
+}
+
 function scanR9Fixture(files) {
   assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
   return withMobileFixture(files, ({ mobileLib }) => (
@@ -2166,6 +2278,10 @@ function r9Record(overrides = {}) {
 
 test('tracked owner APIs exist and match the exact Appendix A export contracts', () => {
   assertTrackedOwnerApiContracts({ repoRoot });
+});
+
+test('Identity batch imports consume only exact owner APIs from Appendix B', () => {
+  assertTrackedIdentityBatch({ repoRoot });
 });
 
 test('tracked owner API contract rejects an absent manifest API path', () => {

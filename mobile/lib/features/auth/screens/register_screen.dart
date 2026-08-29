@@ -9,7 +9,8 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart'
+    show ProviderMarketplaceProvider, providerReferenceDataErrorMessage;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import '../utils/application_password_policy.dart';

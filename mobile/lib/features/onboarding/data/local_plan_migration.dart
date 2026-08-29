@@ -1,7 +1,7 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
-import '../../wedding_plans/data/wedding_plans_api.dart';
-import '../../wedding_plans/models/onboarding_complete.dart';
+import '../../wedding_plans/wedding_plans_api.dart'
+    show OnboardingCompleteResponse, WeddingPlansApi;
 import '../models/guest_onboarding_draft.dart';
 import 'guest_onboarding_storage.dart';
 

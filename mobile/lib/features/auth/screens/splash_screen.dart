@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../providers/auth_controller.dart';
 import '../../../core/widgets/brand/aarast_brand_mark.dart';
 

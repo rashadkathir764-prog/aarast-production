@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthStatus;
 import '../models/account_context.dart';
 import '../providers/account_context_controller.dart';
 

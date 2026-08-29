@@ -8,7 +8,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/session/pending_account_deletion.dart';
 import '../../../core/session/session_teardown_coordinator.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../data/auth_repository.dart';
 import '../models/auth_otp.dart';
 import '../../../core/session/safe_user.dart';

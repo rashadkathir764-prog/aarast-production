@@ -12,9 +12,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/widgets/auth_wedding_widgets.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart'
+    show AuthController, AuthObscureToggle, AuthStatus, AuthTextField;
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 

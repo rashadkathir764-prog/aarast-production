@@ -7,8 +7,9 @@ import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart' show AuthController, AuthStatus;
 
 class ProviderAuthGate extends StatelessWidget {
   const ProviderAuthGate({

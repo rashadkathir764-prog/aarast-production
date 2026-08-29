@@ -11,7 +11,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/invite_share_content.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';

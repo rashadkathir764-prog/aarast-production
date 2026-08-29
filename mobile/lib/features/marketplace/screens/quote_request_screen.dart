@@ -13,12 +13,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/models/wedding_location_draft.dart';
-import '../../wedding_plans/providers/wedding_plans_provider.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthStatus;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingStorage, WeddingLocationDraft;
+import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';

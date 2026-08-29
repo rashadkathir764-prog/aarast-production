@@ -8,9 +8,9 @@ import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/models/account_context.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController, AccountContextRole;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../providers/sharing_provider.dart';
 import '../widgets/shared_plan_card.dart';
 

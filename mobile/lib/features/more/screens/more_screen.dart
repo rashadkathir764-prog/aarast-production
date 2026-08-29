@@ -10,12 +10,12 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../auth/widgets/account_deletion_flow.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthStatus, confirmAccountDeletion;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../widgets/more_screen_components.dart';
 
 class MoreScreen extends StatefulWidget {

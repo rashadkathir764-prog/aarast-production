@@ -9,18 +9,21 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../finance/providers/finance_provider.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../widgets/provider_result_card.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../onboarding/models/wedding_location_draft.dart';
-import '../../wedding_plans/providers/wedding_plans_provider.dart';
-import '../../wedding_plans/models/wedding_plan_stage.dart';
-import '../../wedding_plans/models/wedding_stage_domain_guidance.dart';
-import '../../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../../wedding_plans/widgets/wedding_stage_context_line.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingStorage, GuestPersona, WeddingLocationDraft;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        DashboardSummaryProvider,
+        WeddingPlanStage,
+        WeddingPlansProvider,
+        WeddingStageContextLine,
+        WeddingStageDomain,
+        resolveWeddingPlanStage;
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';

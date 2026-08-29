@@ -7,8 +7,8 @@ import '../../../core/push/push_notifications_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthGatePanel;
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
 

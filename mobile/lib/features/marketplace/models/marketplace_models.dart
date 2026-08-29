@@ -1,4 +1,4 @@
-import '../../onboarding/models/wedding_location_draft.dart';
+import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 
 class MarketplaceCity {
   const MarketplaceCity({

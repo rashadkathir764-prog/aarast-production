@@ -9,8 +9,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
 import '../utils/notification_route_policy.dart';

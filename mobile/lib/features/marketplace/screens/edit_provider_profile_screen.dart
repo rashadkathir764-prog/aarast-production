@@ -14,7 +14,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 

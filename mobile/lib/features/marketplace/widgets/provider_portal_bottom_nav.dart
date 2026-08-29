@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../shell/widgets/aarast_plan_chrome.dart';
+import '../../shell/shell_api.dart'
+    show AarastNavigationItem, AarastPlanNavigationBar;
 
 /// Provider navigation uses the same interaction grammar as the plan shell;
 /// only its destinations and capability surface differ.

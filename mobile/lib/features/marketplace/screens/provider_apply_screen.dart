@@ -14,9 +14,10 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthStatus;
 import '../providers/marketplace_provider.dart';
 
 class ProviderApplyScreen extends StatefulWidget {

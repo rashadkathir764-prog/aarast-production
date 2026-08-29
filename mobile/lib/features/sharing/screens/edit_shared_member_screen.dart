@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';

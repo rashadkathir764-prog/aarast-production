@@ -2132,11 +2132,254 @@ const trackedIdentityBatchContracts = [
   },
 ];
 
+const trackedCollaborationBatchContracts = [
+  {
+    source: 'mobile/lib/features/marketplace/models/marketplace_models.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/edit_provider_profile_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/favorite_providers_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_apply_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_apply_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_details_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContext', 'AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_details_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage', 'GuestPersona', 'WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardSummaryProvider',
+      'WeddingPlanStage',
+      'WeddingPlansProvider',
+      'WeddingStageContextLine',
+      'WeddingStageDomain',
+      'resolveWeddingPlanStage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_portal_screen.dart',
+    target: 'mobile/lib/features/chat/chat_api.dart',
+    show: ['ChatProvider', 'ConversationListView'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_profile_tab.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_profile_tab.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_profile_tab.dart',
+    target: 'mobile/lib/features/chat/chat_api.dart',
+    show: ['ChatProvider'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage', 'WeddingLocationDraft'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['WeddingPlansProvider'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/widgets/provider_account_actions.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['confirmAccountDeletion'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/widgets/provider_auth_gate.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/widgets/provider_auth_gate.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/widgets/provider_portal_bottom_nav.dart',
+    target: 'mobile/lib/features/shell/shell_api.dart',
+    show: ['AarastNavigationItem', 'AarastPlanNavigationBar'],
+  },
+  {
+    source: 'mobile/lib/features/more/screens/more_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/more/screens/more_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController', 'AuthStatus', 'confirmAccountDeletion'],
+  },
+  {
+    source: 'mobile/lib/features/more/screens/more_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingDraft', 'GuestOnboardingStorage'],
+  },
+  {
+    source: 'mobile/lib/features/more/widgets/more_screen_components.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContext', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/more/widgets/more_screen_components.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingDraft', 'appRoleLabel', 'personaCopyForGuest'],
+  },
+  {
+    source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+  {
+    source: 'mobile/lib/features/settings/screens/settings_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthController', 'AuthGatePanel'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/add_shared_member_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/edit_shared_member_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/invite_decision_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/invite_decision_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController', 'AuthObscureToggle', 'AuthStatus', 'AuthTextField'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+  {
+    source: 'mobile/lib/features/sharing/screens/sharing_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+];
+
 function trackedOwnerApiFixture(overrides = {}) {
   const files = {};
   for (const contract of trackedOwnerApiContracts) {
     const relativePath = contract.path.replace('mobile/lib/', '');
     files[relativePath] = overrides[contract.path] ?? renderOwnerApiContractFile(contract);
+  }
+  return files;
+}
+
+function relativeFixtureImportUri(source, target) {
+  const sourceRelative = source.replace('mobile/lib/', '');
+  const targetRelative = target.replace('mobile/lib/', '');
+  const relative = path.posix.relative(
+    path.posix.dirname(sourceRelative),
+    targetRelative,
+  );
+  return relative.startsWith('.') ? relative : `./${relative}`;
+}
+
+function trackedBatchFixture(contracts, overrides = {}) {
+  const files = trackedOwnerApiFixture();
+  for (const contract of trackedOwnerApiContracts) {
+    const ownerDir = path.posix.dirname(contract.path.replace('mobile/lib/', ''));
+    for (const { uri } of contract.exports) {
+      files[path.posix.join(ownerDir, uri)] ??= '';
+    }
+  }
+  const grouped = new Map();
+  for (const contract of contracts) {
+    const entries = grouped.get(contract.source) || [];
+    entries.push(contract);
+    grouped.set(contract.source, entries);
+  }
+  for (const [source, entries] of grouped) {
+    const body = entries
+      .map(({ target, show }) => (
+        `import '${relativeFixtureImportUri(source, target)}' show ${show.join(', ')};`
+      ))
+      .join('\n');
+    files[source.replace('mobile/lib/', '')] = `${body}\n`;
+  }
+  for (const [key, value] of Object.entries(overrides)) {
+    files[key.replace('mobile/lib/', '')] = value;
   }
   return files;
 }
@@ -2251,6 +2494,60 @@ function assertTrackedIdentityBatch({
   );
 }
 
+function assertTrackedCollaborationBatch({
+  repoRoot: repositoryRoot,
+  manifest = loadR9Manifest(),
+}) {
+  const mobileLib = path.join(repositoryRoot, 'mobile', 'lib');
+  const scan = mobileBoundaries.scanR9MobileBoundaries({
+    mobileLib,
+    manifest,
+  });
+  const trackedSources = new Set(
+    trackedCollaborationBatchContracts.map(({ source }) => source),
+  );
+  const expected = trackedCollaborationBatchContracts.map((contract) => ({
+    source: contract.source,
+    target: contract.target,
+    directiveKind: 'import',
+    show: contract.show,
+    hide: [],
+    conditional: false,
+    count: 1,
+  }));
+  const sortBySourceTarget = (left, right) => (
+    left.source.localeCompare(right.source)
+    || left.target.localeCompare(right.target)
+  );
+  const actualLegal = scan.legalRecords
+    .filter(({ source }) => trackedSources.has(source))
+    .map(normalizeR9Record)
+    .sort(sortBySourceTarget);
+  const expectedLegal = expected
+    .map((record) => ({ ...record }))
+    .sort(sortBySourceTarget);
+  assert.deepEqual(
+    actualLegal,
+    expectedLegal,
+    'tracked Collaboration batch legal owner API imports mismatch',
+  );
+  assert.deepEqual(
+    scan.legacyRecords.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Collaboration batch still has internal cross-feature directives',
+  );
+  assert.deepEqual(
+    scan.strictViolations.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Collaboration batch still has strict R9 violations',
+  );
+  assert.deepEqual(
+    scan.errors.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Collaboration batch still has scanner errors',
+  );
+}
+
 function scanR9Fixture(files) {
   assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
   return withMobileFixture(files, ({ mobileLib }) => (
@@ -2282,6 +2579,10 @@ test('tracked owner APIs exist and match the exact Appendix A export contracts',
 
 test('Identity batch imports consume only exact owner APIs from Appendix B', () => {
   assertTrackedIdentityBatch({ repoRoot });
+});
+
+test('Collaboration batch imports consume only exact owner APIs from Appendix B', () => {
+  assertTrackedCollaborationBatch({ repoRoot });
 });
 
 test('tracked owner API contract rejects an absent manifest API path', () => {
@@ -2318,6 +2619,59 @@ test('tracked owner API contract rejects one additional public symbol', () => {
     assert.throws(
       () => assertTrackedOwnerApiContracts({ repoRoot: root }),
       /owner API exports mismatch: mobile\/lib\/features\/auth\/auth_api\.dart/,
+    );
+  });
+});
+
+test('tracked Collaboration batch rejects one unchanged internal import', () => {
+  const files = trackedBatchFixture(trackedCollaborationBatchContracts, {
+    'mobile/lib/features/marketplace/screens/provider_apply_screen.dart': [
+      "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
+      "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController, AuthStatus;",
+      "import '../../auth/providers/auth_controller.dart';",
+      '',
+    ].join('\n'),
+  });
+
+  withMobileFixture(files, ({ root }) => {
+    assert.throws(
+      () => assertTrackedCollaborationBatch({ repoRoot: root }),
+      /tracked Collaboration batch still has internal cross-feature directives/,
+    );
+  });
+});
+
+test('tracked Collaboration batch rejects one duplicate owner import', () => {
+  const files = trackedBatchFixture(trackedCollaborationBatchContracts, {
+    'mobile/lib/features/marketplace/screens/provider_apply_screen.dart': [
+      "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
+      "import '../../auth/auth_api.dart' show AuthActionGuard;",
+      "import '../../auth/auth_api.dart' show AuthController, AuthStatus;",
+      '',
+    ].join('\n'),
+  });
+
+  withMobileFixture(files, ({ root }) => {
+    assert.throws(
+      () => assertTrackedCollaborationBatch({ repoRoot: root }),
+      /tracked Collaboration batch legal owner API imports mismatch/,
+    );
+  });
+});
+
+test('tracked Collaboration batch rejects one missing symbol', () => {
+  const files = trackedBatchFixture(trackedCollaborationBatchContracts, {
+    'mobile/lib/features/marketplace/screens/provider_apply_screen.dart': [
+      "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
+      "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;",
+      '',
+    ].join('\n'),
+  });
+
+  withMobileFixture(files, ({ root }) => {
+    assert.throws(
+      () => assertTrackedCollaborationBatch({ repoRoot: root }),
+      /tracked Collaboration batch legal owner API imports mismatch/,
     );
   });
 });

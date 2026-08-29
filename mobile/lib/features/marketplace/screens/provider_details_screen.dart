@@ -8,9 +8,9 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/models/account_context.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/utils/auth_action_guard.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContext, AccountContextController;
+import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';

@@ -5,9 +5,10 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_header_actions.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/models/account_context.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../onboarding/models/persona_copy.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContext, AccountContextRole;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingDraft, appRoleLabel, personaCopyForGuest;
 
 bool _hasText(String? value) {
   return value != null && value.trim().isNotEmpty;

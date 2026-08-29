@@ -3,7 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/widgets/account_deletion_flow.dart';
+import '../../auth/auth_api.dart' show confirmAccountDeletion;
 
 class ProviderAccountActions extends StatefulWidget {
   const ProviderAccountActions({

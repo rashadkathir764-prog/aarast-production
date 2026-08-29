@@ -76,7 +76,7 @@ selection
 
 | Path or group | Responsibility |
 | --- | --- |
-| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 147-path fence |
+| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 151-path fence |
 | `scripts/check-mobile-boundaries.mjs` | Directive-aware R9 scan, legal-edge inventory, structural errors, transitional debt, and strict CLI |
 | `scripts/check-mobile-boundaries.test.mjs` | Positive, adversarial, historical-compatibility, and final-zero scanner proofs |
 | `scripts/check-r9-scope.mjs` | Fixed-base changed-path, hash, protected-surface, and per-task debt enforcement |
@@ -209,7 +209,7 @@ Create a canonical JSON object with these literal identities:
 
 Add the 19 sorted feature/API pairs from Appendix A, the exact 34 root records
 from Appendix C, the exact debt map above, the two document paths and lowercase
-SHA-256 values, and the sorted 147 paths from Appendix D. Hash the plan only
+SHA-256 values, and the sorted 151 paths from Appendix D. Hash the plan only
 after this committed plan is final; never write secrets or absolute paths.
 
 - [ ] **Step 5: Implement directive-aware scanning and debt comparison**
@@ -455,7 +455,7 @@ Expected: fail because all 19 owner API files are absent.
 Create exactly the Appendix A contents. `wedding_plans_api.dart` exports the
 concrete `screens/plan_management_screen.dart show PlanCenterScreen`; it does
 not export the compatibility wrapper `screens/plan_center_screen.dart`.
-`finance_api.dart` does not export the unused `money_formatters.dart` library.
+`finance_api.dart` does not export the shared formatter library or symbols.
 `auth_api.dart` does not export `SafeUser`.
 
 - [ ] **Step 4: Run GREEN and preserve debt**
@@ -634,6 +634,25 @@ Expected: reviewed local checkpoint and clean worktree. Do not push.
 
 ---
 
+> **Owner/controller-approved corrective checkpoint C2 (2026-08-29):** Task
+> 6's unused-import premise was false. `aarast_dashboard_view.dart` owns five
+> `part` files, `aarast_dashboard_sections.dart:616` calls
+> `compactMoneyParts`, and Dart parts share the root library's imports. The
+> stateless formatter depends only on Core `currency_label.dart`, so C2 moves
+> its declarations byte-for-byte from
+> `mobile/lib/features/finance/models/money_formatters.dart` to
+> `mobile/lib/core/utils/money_formatters.dart`, normalizing only the import
+> from `../../../core/utils/currency_label.dart` to `currency_label.dart`.
+> The existing formatter SHA-256 is
+> `a9998b46f98f28f3d1bf52643459fa97a23accb685fd684569150d04446b7133`;
+> the normalized Core SHA-256 must be
+> `34515407d93a1733b80253561d22d3751deeac6321f85b2bf737304b10a4c37d`.
+> Behavior and every existing contract assertion remain unchanged. This does
+> not authorize a Finance API export, duplication, inlining, callback or
+> injection redesign, renaming, refactoring, a final legal-count change, or a
+> general permission to relocate utilities into Core. This C2 governance
+> checkpoint must precede the corrected Task 6 application commit.
+
 ### Task 6: Migrate Planning And Operations Consumers
 
 **Files:**
@@ -647,6 +666,10 @@ Expected: reviewed local checkpoint and clean worktree. Do not push.
 - Modify: `mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart`
 - Modify: `mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart`
 - Modify the 12 Wedding Plans sources in Appendix B, Planning batch.
+- Create: `mobile/lib/core/utils/money_formatters.dart`
+- Delete: `mobile/lib/features/finance/models/money_formatters.dart`
+- Modify: `mobile/lib/features/finance/widgets/money_widgets.dart`
+- Modify: `mobile/test/features/finance/money_summary_contract_test.dart`
 - Modify: `scripts/check-mobile-boundaries.test.mjs`
 
 **Interfaces:**
@@ -657,11 +680,15 @@ Expected: reviewed local checkpoint and clean worktree. Do not push.
 
 - [ ] **Step 1: Add the Planning-batch RED assertion**
 
-Assert the exact source-target owner map from Appendix B. Add one explicit
-assertion that
-`mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart`
-contains no `money_formatters.dart` import and that `finance_api.dart` does not
-export that unused file.
+Assert the exact source-target owner map from Appendix B. Require the formatter
+implementation at the exact Core path with the approved normalized hash, the
+old Finance formatter path absent, and exactly four mechanically changed
+consumer import URIs in `money_overview_screen.dart`, `money_widgets.dart`,
+`aarast_dashboard_view.dart`, and `money_summary_contract_test.dart`. Require
+the dashboard root library to import the exact Core formatter. Require
+`finance_api.dart` still not to export the formatter library or formatter
+symbols, and preserve every existing assertion in
+`money_summary_contract_test.dart`.
 
 - [ ] **Step 2: Run RED**
 
@@ -670,22 +697,28 @@ Set-Location D:\projects\aarast-modular-monolith
 node --test --test-name-pattern="Planning batch" .\scripts\check-mobile-boundaries.test.mjs
 ```
 
-Expected: fail on current internal imports and the unused Money formatter
-directive.
+Expected: fail on current internal imports and the pre-C2 Finance formatter
+ownership/import URIs.
 
-- [ ] **Step 3: Migrate Planning relationships and remove the unused import**
+- [ ] **Step 3: Migrate Planning relationships and move the shared formatter**
 
-Apply Appendix B mechanically. Delete the unused `money_formatters.dart`
-import; do not route it through `finance_api.dart`. Keep finance permissions,
-private data, task responsibility semantics, guest persistence, wedding-stage
-rules, pulses, quick-add behavior, and dashboard state unchanged.
+Apply Appendix B mechanically. Move the formatter implementation declarations
+byte-for-byte to Core, normalizing only the one relative
+`currency_label.dart` import, then update exactly the four consumer import URIs
+mechanically. The dashboard must import the exact Core formatter, the old
+Finance formatter path must be absent, and `finance_api.dart` must still not
+export the formatter library or symbols. Preserve every existing assertion in
+`money_summary_contract_test.dart`. Keep finance permissions, private data,
+task responsibility semantics, guest persistence, wedding-stage rules,
+pulses, quick-add behavior, dashboard state, and formatter behavior unchanged.
 
 - [ ] **Step 4: Run focused GREEN and debt gates**
 
 ```powershell
 Set-Location D:\projects\aarast-modular-monolith\mobile
-dart format --output=none --set-exit-if-changed lib/features/finance lib/features/guests lib/features/tasks lib/features/wedding_day lib/features/wedding_plans
+dart format --output=none --set-exit-if-changed lib/core/utils/money_formatters.dart lib/features/finance lib/features/guests lib/features/tasks lib/features/wedding_day lib/features/wedding_plans test/features/finance/money_summary_contract_test.dart
 flutter analyze --no-pub
+flutter test --no-pub test/features/finance/money_summary_contract_test.dart
 flutter test --no-pub test/features/finance test/features/guests test/features/tasks test/features/wedding_day test/features/wedding_plans
 flutter test --no-pub test/core/offline test/core/storage
 Set-Location ..
@@ -696,12 +729,15 @@ git diff --check
 ```
 
 Expected: all pass; debt is exactly legacy 119/root 34, a reduction of 79
-after the Task 2 `SafeUser` correction; private finance behavior is unchanged.
+after the Task 2 `SafeUser` correction; final legal records remain 159;
+private finance and formatter behavior are unchanged.
 
 - [ ] **Step 5: Review and commit**
 
-Review the 24 source diffs for import-only changes plus the one unused-import
-deletion, stage only Task 6 paths plus its scanner assertion, and commit:
+Review exactly 28 authorized Dart paths: the original 24 Planning paths plus
+the Core formatter creation, old Finance formatter deletion, Finance widget
+consumer, and Finance contract-test consumer. Stage only those Task 6 paths
+plus its scanner assertion, and commit:
 
 ```powershell
 git commit -m "refactor(mobile): route planning imports through public APIs"
@@ -1464,7 +1500,7 @@ wedding_plans/screens/wedding_plan_dashboard_screen.dart -> onboarding_api.dart 
 wedding_plans/screens/wedding_plan_dashboard_screen.dart -> sharing_api.dart show SharedMember
 wedding_plans/utils/plan_pulse_sync.dart -> guests_api.dart show GuestSummary
 wedding_plans/utils/plan_pulse_sync.dart -> tasks_api.dart show TaskSummary
-wedding_plans/widgets/dashboard/aarast_dashboard_view.dart -> delete unused finance/models/money_formatters.dart import
+wedding_plans/widgets/dashboard/aarast_dashboard_view.dart -> core/utils/money_formatters.dart show compactMoneyParts
 wedding_plans/widgets/dashboard/aarast_dashboard_view.dart -> wedding_day_api.dart show WeddingDayModeStatus, WeddingDayPhase, resolveWeddingDayMode
 wedding_plans/widgets/quick_add_actions.dart -> shell_api.dart show AarastQuickAction
 wedding_plans/widgets/wedding_plan_creation_form.dart -> onboarding_api.dart show LocationPickerSection
@@ -1599,7 +1635,7 @@ welcome_gateway_api.dart show SmartWelcomeScreen
 
 ## Appendix D: Exact R9 Allowed Changed-Path Fence
 
-The manifest contains this sorted 147-path array exactly. The historical
+The manifest contains this sorted 151-path array exactly. The historical
 baseline is intentionally absent because it is immutable.
 
 ```text
@@ -1624,6 +1660,7 @@ mobile/lib/core/push/push_lifecycle_bridge.dart
 mobile/lib/core/routing/app_router.dart
 mobile/lib/core/session/safe_user.dart
 mobile/lib/core/storage/auth_storage.dart
+mobile/lib/core/utils/money_formatters.dart
 mobile/lib/features/account_contexts/account_contexts_api.dart
 mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart
 mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart
@@ -1639,11 +1676,13 @@ mobile/lib/features/auth/screens/splash_screen.dart
 mobile/lib/features/catalogs/catalogs_api.dart
 mobile/lib/features/chat/chat_api.dart
 mobile/lib/features/finance/finance_api.dart
+mobile/lib/features/finance/models/money_formatters.dart
 mobile/lib/features/finance/models/money_starter_catalog.dart
 mobile/lib/features/finance/providers/finance_provider.dart
 mobile/lib/features/finance/screens/cost_form_screen.dart
 mobile/lib/features/finance/screens/money_overview_screen.dart
 mobile/lib/features/finance/widgets/finance_write_access_block.dart
+mobile/lib/features/finance/widgets/money_widgets.dart
 mobile/lib/features/guests/guests_api.dart
 mobile/lib/features/guests/screens/guest_list_screen.dart
 mobile/lib/features/home/data/dashboard_summary_sources.dart
@@ -1724,6 +1763,7 @@ mobile/test/features/auth/provider_to_groom_session_flow_test.dart
 mobile/test/features/auth/session_transition_gate_test.dart
 mobile/test/features/chat/chat_provider_reliability_test.dart
 mobile/test/features/chat/chat_realtime_client_test.dart
+mobile/test/features/finance/money_summary_contract_test.dart
 mobile/test/features/marketplace/city_filter_picker_test.dart
 mobile/test/features/marketplace/marketplace_context_isolation_test.dart
 mobile/test/features/marketplace/offers_inbox_card_test.dart

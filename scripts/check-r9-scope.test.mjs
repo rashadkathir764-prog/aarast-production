@@ -19,8 +19,37 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 const manifestPath = path.join(scriptDir, 'architecture', 'r9-mobile-strict-manifest.json');
 const baselinePath = path.join(scriptDir, 'architecture', 'mobile-boundaries-baseline.json');
+const validatorPath = path.join(scriptDir, 'check-mobile-boundaries.mjs');
 const designPath = 'docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md';
 const planPath = 'docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md';
+const designSha256 = '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5';
+const planSha256 = 'c72eeb74891a9c9fa1d4bbcb5e7d459e0ef246bd84304b43b87ddfdbb28948ee';
+const c2AllowedPathPositions = Object.freeze([
+  [
+    'mobile/lib/core/storage/auth_storage.dart',
+    'mobile/lib/core/utils/money_formatters.dart',
+    'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    'mobile/lib/core/utils/money_formatter.dart',
+  ],
+  [
+    'mobile/lib/features/finance/finance_api.dart',
+    'mobile/lib/features/finance/models/money_formatters.dart',
+    'mobile/lib/features/finance/models/money_starter_catalog.dart',
+    'mobile/lib/features/finance/models/money_formatter.dart',
+  ],
+  [
+    'mobile/lib/features/finance/widgets/finance_write_access_block.dart',
+    'mobile/lib/features/finance/widgets/money_widgets.dart',
+    'mobile/lib/features/guests/guests_api.dart',
+    'mobile/lib/features/finance/widgets/money_widget.dart',
+  ],
+  [
+    'mobile/test/features/chat/chat_realtime_client_test.dart',
+    'mobile/test/features/finance/money_summary_contract_test.dart',
+    'mobile/test/features/marketplace/city_filter_picker_test.dart',
+    'mobile/test/features/finance/money_summaries_contract_test.dart',
+  ],
+]);
 const expectedDebt = Object.freeze({
   'task-1': { legacy: 269, root: 34 },
   'task-2': { legacy: 265, root: 34 },
@@ -115,9 +144,9 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
   assert.equal(manifest.rootInventory.canonicalSha256, '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b');
   assert.equal(manifest.rootInventory.records.length, 34);
   assert.equal(manifest.featureApis.length, 19);
-  assert.equal(manifest.allowedChangedPaths.length, 147);
+  assert.equal(manifest.allowedChangedPaths.length, 151);
   assert.deepEqual(manifest.allowedChangedPaths, [...manifest.allowedChangedPaths].sort());
-  assert.equal(new Set(manifest.allowedChangedPaths).size, 147);
+  assert.equal(new Set(manifest.allowedChangedPaths).size, 151);
   const apiClientPath = 'mobile/lib/core/network/api_client.dart';
   assert.equal(
     manifest.allowedChangedPaths.filter((itemPath) => itemPath === apiClientPath).length,
@@ -129,6 +158,19 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
     apiClientPath,
     'mobile/lib/core/offline/offline_sync_service.dart',
   ]);
+  for (const [previousPath, c2Path, nextPath] of c2AllowedPathPositions) {
+    assert.equal(
+      manifest.allowedChangedPaths.filter((itemPath) => itemPath === c2Path).length,
+      1,
+      c2Path,
+    );
+    const c2Index = manifest.allowedChangedPaths.indexOf(c2Path);
+    assert.deepEqual(
+      manifest.allowedChangedPaths.slice(c2Index - 1, c2Index + 2),
+      [previousPath, c2Path, nextPath],
+      c2Path,
+    );
+  }
   assert.deepEqual(manifest.expectedDebt, expectedDebt);
   assert.deepEqual(manifest.compositionSources, [
     'mobile/lib/app.dart',
@@ -137,8 +179,13 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
   ]);
   assert.equal(manifest.finalLegalRecordCount, 159);
   assert.deepEqual(manifest.documents.map(({ path: itemPath }) => itemPath), [designPath, planPath]);
-  assert.equal(manifest.documents[0].sha256, '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5');
-  assert.equal(manifest.documents[1].sha256, 'ef46c6faa6dab8d60641a8d8ecd695e3e20760fc5a380a3c326b041e291489b3');
+  assert.equal(manifest.documents[0].sha256, designSha256);
+  assert.equal(manifest.documents[1].sha256, planSha256);
+  assert.equal(sha256(readFileSync(path.join(repoRoot, ...planPath.split('/')), 'utf8')), planSha256);
+  assert.match(
+    readFileSync(validatorPath, 'utf8'),
+    new RegExp(`sha256: '${planSha256}'`),
+  );
   assert.doesNotMatch(JSON.stringify(raw), /[A-Za-z]:[\\/]|(?:PASSWORD|SECRET|TOKEN)\s*=|\.\.[\\/]/i);
 });
 
@@ -189,6 +236,29 @@ test('manifest validation rejects removing or substituting the formatter prerequ
   substituted[apiClientIndex] = 'mobile/lib/core/network/api_clientx.dart';
   substituted.sort();
   assert.throws(() => validateR9Manifest({ ...original, allowedChangedPaths: substituted }));
+});
+
+test('manifest validation rejects removing or canonically substituting every C2 formatter path', () => {
+  const original = manifestValue();
+  for (const [, c2Path, , nearMiss] of c2AllowedPathPositions) {
+    const c2Index = original.allowedChangedPaths.indexOf(c2Path);
+    assert.notEqual(c2Index, -1, c2Path);
+
+    const removed = [...original.allowedChangedPaths];
+    removed.splice(c2Index, 1);
+    assert.throws(
+      () => validateR9Manifest({ ...original, allowedChangedPaths: removed }),
+      c2Path,
+    );
+
+    const substituted = [...original.allowedChangedPaths];
+    substituted[c2Index] = nearMiss;
+    substituted.sort();
+    assert.throws(
+      () => validateR9Manifest({ ...original, allowedChangedPaths: substituted }),
+      c2Path,
+    );
+  }
 });
 
 test('scope rejects unknown tasks and unapproved separator case and traversal near-misses', () => {

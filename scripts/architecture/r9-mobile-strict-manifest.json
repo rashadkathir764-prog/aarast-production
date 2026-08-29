@@ -524,7 +524,7 @@
     },
     {
       "path": "docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md",
-      "sha256": "ef46c6faa6dab8d60641a8d8ecd695e3e20760fc5a380a3c326b041e291489b3"
+      "sha256": "c72eeb74891a9c9fa1d4bbcb5e7d459e0ef246bd84304b43b87ddfdbb28948ee"
     }
   ],
   "allowedChangedPaths": [
@@ -549,6 +549,7 @@
     "mobile/lib/core/routing/app_router.dart",
     "mobile/lib/core/session/safe_user.dart",
     "mobile/lib/core/storage/auth_storage.dart",
+    "mobile/lib/core/utils/money_formatters.dart",
     "mobile/lib/features/account_contexts/account_contexts_api.dart",
     "mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart",
     "mobile/lib/features/account_contexts/widgets/wedding_plan_context_gate.dart",
@@ -564,11 +565,13 @@
     "mobile/lib/features/catalogs/catalogs_api.dart",
     "mobile/lib/features/chat/chat_api.dart",
     "mobile/lib/features/finance/finance_api.dart",
+    "mobile/lib/features/finance/models/money_formatters.dart",
     "mobile/lib/features/finance/models/money_starter_catalog.dart",
     "mobile/lib/features/finance/providers/finance_provider.dart",
     "mobile/lib/features/finance/screens/cost_form_screen.dart",
     "mobile/lib/features/finance/screens/money_overview_screen.dart",
     "mobile/lib/features/finance/widgets/finance_write_access_block.dart",
+    "mobile/lib/features/finance/widgets/money_widgets.dart",
     "mobile/lib/features/guests/guests_api.dart",
     "mobile/lib/features/guests/screens/guest_list_screen.dart",
     "mobile/lib/features/home/data/dashboard_summary_sources.dart",
@@ -649,6 +652,7 @@
     "mobile/test/features/auth/session_transition_gate_test.dart",
     "mobile/test/features/chat/chat_provider_reliability_test.dart",
     "mobile/test/features/chat/chat_realtime_client_test.dart",
+    "mobile/test/features/finance/money_summary_contract_test.dart",
     "mobile/test/features/marketplace/city_filter_picker_test.dart",
     "mobile/test/features/marketplace/marketplace_context_isolation_test.dart",
     "mobile/test/features/marketplace/offers_inbox_card_test.dart",

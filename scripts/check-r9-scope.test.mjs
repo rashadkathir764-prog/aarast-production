@@ -24,7 +24,30 @@ const workflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
 const designPath = 'docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md';
 const planPath = 'docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md';
 const designSha256 = '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5';
-const planSha256 = '228631ce793ecc189ea7b5d007f8e573b19ecbeea5fd9bad67a6ce1f6c737060';
+const planSha256 = '71cdf0b1a93215a0c8f049e9606d845ed4d223263bdf407395298530e85a0821';
+const allowedChangedPathsSha256 = 'f23b669362fb1bba6a8b2dc5a5ec7bc92a7bc51a445d3db39819ebcfc6794bf5';
+const c4AllowedPathPositions = Object.freeze([
+  [
+    'CHANGELOG.md',
+    'backend/scripts/architecture/r3-scope.cjs',
+    'backend/test/architecture-r3-scope.test.ts',
+  ],
+  [
+    'backend/scripts/architecture/r3-scope.cjs',
+    'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/architecture-r4-planning-finance-boundary.test.ts',
+  ],
+  [
+    'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/architecture-r4-planning-finance-boundary.test.ts',
+    'docs/README.md',
+  ],
+  [
+    'mobile/test/features/chat/chat_realtime_client_test.dart',
+    'mobile/test/features/finance/money_root_routing_contract_test.dart',
+    'mobile/test/features/finance/money_summary_contract_test.dart',
+  ],
+]);
 const c2AllowedPathPositions = Object.freeze([
   [
     'mobile/lib/core/storage/auth_storage.dart',
@@ -45,7 +68,7 @@ const c2AllowedPathPositions = Object.freeze([
     'mobile/lib/features/finance/widgets/money_widget.dart',
   ],
   [
-    'mobile/test/features/chat/chat_realtime_client_test.dart',
+    'mobile/test/features/finance/money_root_routing_contract_test.dart',
     'mobile/test/features/finance/money_summary_contract_test.dart',
     'mobile/test/features/marketplace/city_filter_picker_test.dart',
     'mobile/test/features/finance/money_summaries_contract_test.dart',
@@ -110,6 +133,47 @@ function assertMobileBoundaryCiContract(workflowText) {
     mobileJob,
     /node scripts\/check-mobile-boundaries\.mjs/,
   );
+}
+
+function mutateMobileBoundaryCiMode(workflowText, requestedMode) {
+  assert.ok(
+    ['check-baseline', 'strict'].includes(requestedMode),
+    'requested Mobile boundary mode must be an accepted lifecycle mode',
+  );
+  const text = String(workflowText);
+  assertMobileBoundaryCiContract(text);
+  const newline = text.includes('\r\n') ? '\r\n' : '\n';
+  const lines = text.split(/\r?\n/);
+  const mobileStart = lines.findIndex((line) => line === '  mobile:');
+  assert.notEqual(mobileStart, -1, 'missing Mobile CI job');
+  const relativeEnd = lines.slice(mobileStart + 1).findIndex((line) => (
+    /^  [A-Za-z0-9_-]+:\s*$/.test(line)
+  ));
+  const mobileEnd = relativeEnd === -1
+    ? lines.length
+    : mobileStart + 1 + relativeEnd;
+  const commandPattern = /^      - run: node \.\.\/scripts\/check-mobile-boundaries\.mjs --(check-baseline|strict)$/;
+  const matches = [];
+  for (let index = mobileStart; index < mobileEnd; index += 1) {
+    const match = commandPattern.exec(lines[index]);
+    if (match) matches.push({ index, currentMode: match[1] });
+  }
+  assert.equal(matches.length, 1, 'expected one exact Mobile boundary command');
+  const [{ index, currentMode }] = matches;
+  assert.notEqual(
+    currentMode,
+    requestedMode,
+    'requested Mobile boundary mode must differ from the captured mode',
+  );
+  const mutatedLines = [...lines];
+  mutatedLines[index] = `      - run: node ../scripts/check-mobile-boundaries.mjs --${requestedMode}`;
+  const mutatedWorkflowText = mutatedLines.join(newline);
+  assert.notEqual(mutatedWorkflowText, text, 'Mobile boundary fixture must change');
+  assertMobileBoundaryCiContract(mutatedWorkflowText);
+  return Object.freeze({
+    currentMode,
+    workflowText: mutatedWorkflowText,
+  });
 }
 
 function validDependencies(overrides = {}) {
@@ -177,9 +241,23 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
   assert.equal(manifest.rootInventory.canonicalSha256, '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b');
   assert.equal(manifest.rootInventory.records.length, 34);
   assert.equal(manifest.featureApis.length, 19);
-  assert.equal(manifest.allowedChangedPaths.length, 151);
+  assert.equal(manifest.allowedChangedPaths.length, 155);
   assert.deepEqual(manifest.allowedChangedPaths, [...manifest.allowedChangedPaths].sort());
-  assert.equal(new Set(manifest.allowedChangedPaths).size, 151);
+  assert.equal(new Set(manifest.allowedChangedPaths).size, 155);
+  assert.equal(sha256(JSON.stringify(manifest.allowedChangedPaths)), allowedChangedPathsSha256);
+  for (const [previousPath, c4Path, nextPath] of c4AllowedPathPositions) {
+    assert.equal(
+      manifest.allowedChangedPaths.filter((itemPath) => itemPath === c4Path).length,
+      1,
+      c4Path,
+    );
+    const c4Index = manifest.allowedChangedPaths.indexOf(c4Path);
+    assert.deepEqual(
+      manifest.allowedChangedPaths.slice(c4Index - 1, c4Index + 2),
+      [previousPath, c4Path, nextPath],
+      c4Path,
+    );
+  }
   const apiClientPath = 'mobile/lib/core/network/api_client.dart';
   assert.equal(
     manifest.allowedChangedPaths.filter((itemPath) => itemPath === apiClientPath).length,
@@ -225,21 +303,48 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
 test('Mobile CI keeps its working directory and exact parent boundary path', () => {
   const workflowText = readFileSync(workflowPath, 'utf8');
   assert.doesNotThrow(() => assertMobileBoundaryCiContract(workflowText));
-  assert.doesNotThrow(() => assertMobileBoundaryCiContract(
-    workflowText.replace('--check-baseline', '--strict'),
-  ));
-  assert.throws(() => assertMobileBoundaryCiContract(
+  const baselineFixture = mutateMobileBoundaryCiMode(workflowText, 'check-baseline');
+  assert.equal(baselineFixture.currentMode, 'strict');
+  assert.notEqual(baselineFixture.workflowText, workflowText);
+  assert.doesNotThrow(() => assertMobileBoundaryCiContract(baselineFixture.workflowText));
+
+  const strictFixture = mutateMobileBoundaryCiMode(baselineFixture.workflowText, 'strict');
+  assert.equal(strictFixture.currentMode, 'check-baseline');
+  assert.equal(strictFixture.workflowText, workflowText);
+  assert.doesNotThrow(() => assertMobileBoundaryCiContract(strictFixture.workflowText));
+
+  for (const invalidMode of ['write-baseline', 'strictly']) {
+    assert.throws(() => mutateMobileBoundaryCiMode(workflowText, invalidMode), invalidMode);
+  }
+  for (const invalidWorkflow of [
     workflowText.replace('working-directory: mobile', 'working-directory: .'),
-  ));
-  assert.throws(() => assertMobileBoundaryCiContract(
     workflowText.replace(
       'node ../scripts/check-mobile-boundaries.mjs',
       'node scripts/check-mobile-boundaries.mjs',
     ),
-  ));
-  assert.throws(() => assertMobileBoundaryCiContract(
-    workflowText.replace('--check-baseline', '--write-baseline'),
-  ));
+    workflowText.replace(
+      'node ../scripts/check-mobile-boundaries.mjs',
+      String.raw`node ..\scripts\check-mobile-boundaries.mjs`,
+    ),
+    workflowText.replace(
+      'check-mobile-boundaries.mjs',
+      'Check-Mobile-Boundaries.mjs',
+    ),
+    workflowText.replace('--strict', '--strictly'),
+    workflowText.replace(
+      '      - run: node ../scripts/check-mobile-boundaries.mjs --strict',
+      [
+        '      - run: node ../scripts/check-mobile-boundaries.mjs --strict',
+        '      - run: node ../scripts/check-mobile-boundaries.mjs --check-baseline',
+      ].join('\n'),
+    ),
+    workflowText.replace(
+      '      - run: node ../scripts/check-mobile-boundaries.mjs --strict',
+      '',
+    ),
+  ]) {
+    assert.throws(() => mutateMobileBoundaryCiMode(invalidWorkflow, 'check-baseline'));
+  }
 });
 
 test('manifest validation rejects wrong base hash count order duplicates and unsafe paths', () => {
@@ -291,7 +396,7 @@ test('manifest validation rejects removing or substituting the formatter prerequ
   assert.throws(() => validateR9Manifest({ ...original, allowedChangedPaths: substituted }));
 });
 
-test('manifest validation rejects removing or canonically substituting every C2 formatter path', () => {
+test('manifest validation rejects removing or canonically substituting every C2 and C4 path', () => {
   const original = manifestValue();
   for (const [, c2Path, , nearMiss] of c2AllowedPathPositions) {
     const c2Index = original.allowedChangedPaths.indexOf(c2Path);
@@ -310,6 +415,25 @@ test('manifest validation rejects removing or canonically substituting every C2 
     assert.throws(
       () => validateR9Manifest({ ...original, allowedChangedPaths: substituted }),
       c2Path,
+    );
+  }
+  for (const [, c4Path] of c4AllowedPathPositions) {
+    const c4Index = original.allowedChangedPaths.indexOf(c4Path);
+    assert.notEqual(c4Index, -1, c4Path);
+
+    const removed = [...original.allowedChangedPaths];
+    removed.splice(c4Index, 1);
+    assert.throws(
+      () => validateR9Manifest({ ...original, allowedChangedPaths: removed }),
+      c4Path,
+    );
+
+    const substituted = [...original.allowedChangedPaths];
+    substituted[c4Index] = `${c4Path}x`;
+    substituted.sort();
+    assert.throws(
+      () => validateR9Manifest({ ...original, allowedChangedPaths: substituted }),
+      c4Path,
     );
   }
 });

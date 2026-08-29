@@ -36,6 +36,12 @@ const r8ManifestPath = path.join(
   'architecture',
   'r8-global-module-removal.json',
 );
+const r9ManifestPath = path.join(
+  repositoryRoot,
+  'scripts',
+  'architecture',
+  'r9-mobile-strict-manifest.json',
+);
 const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const temporaryRoots: string[] = [];
 
@@ -47,6 +53,7 @@ type ScopeModule = {
   R6_ALLOWED_PATHS: readonly string[];
   R7_ALLOWED_PATHS: readonly string[];
   R8_ALLOWED_PATHS: readonly string[];
+  R9_ALLOWED_PATHS: readonly string[];
   assertAllowedPathsMatch(manifestPaths: unknown, scopePaths: unknown): void;
   writeAtomicJson(
     reportPath: string,
@@ -72,6 +79,10 @@ type ScopeModule = {
   validateR8GlobalRemovalManifest(value: unknown): {
     baseRevision: string;
     stage: 'design' | 'strict';
+    allowedChangedPaths: readonly string[];
+  };
+  validateR9MobileStrictManifest(value: unknown): {
+    baseRevision: string;
     allowedChangedPaths: readonly string[];
   };
   validateScopeSnapshot(value: unknown): any;
@@ -327,7 +338,8 @@ test('R3 scope pins the immutable base and accepts only the explicit strict path
       && !scope().R5_ALLOWED_PATHS.includes(entry)
       && !scope().R6_ALLOWED_PATHS.includes(entry)
       && !scope().R7_ALLOWED_PATHS.includes(entry)
-      && !scope().R8_ALLOWED_PATHS.includes(entry)),
+      && !scope().R8_ALLOWED_PATHS.includes(entry)
+      && !scope().R9_ALLOWED_PATHS.includes(entry)),
     [],
     'post-R3 paths must be delegated through an exact approved phase fence',
   );
@@ -560,6 +572,67 @@ test('R8 rejects a missing required delegated path', () => {
     () => scope().validateR8GlobalRemovalManifest(value),
     /path|allowlist.*drift|required/i,
   );
+});
+
+test('R9 delegates only its authoritative fixed-base hash-bound path fence', () => {
+  assert.equal(existsSync(r9ManifestPath), true, 'R9 manifest must exist');
+  const value = JSON.parse(readFileSync(r9ManifestPath, 'utf8'));
+  const delegated = scope().validateR9MobileStrictManifest(value);
+
+  assert.equal(delegated.baseRevision, '833a4f1d31781b45cd0a68ecee1b969ac85f237f');
+  assert.deepEqual(delegated.allowedChangedPaths, value.allowedChangedPaths);
+  assert.deepEqual(delegated.allowedChangedPaths, scope().R9_ALLOWED_PATHS);
+  assert.equal(Object.isFrozen(scope().R9_ALLOWED_PATHS), true);
+  for (const c4Path of [
+    'backend/scripts/architecture/r3-scope.cjs',
+    'backend/test/architecture-r3-scope.test.ts',
+    'backend/test/architecture-r4-planning-finance-boundary.test.ts',
+    'mobile/test/features/finance/money_root_routing_contract_test.dart',
+  ]) {
+    assert.equal(delegated.allowedChangedPaths.includes(c4Path), true, c4Path);
+  }
+
+  const invalidMutations = [
+    ['wrong base', (candidate: any) => { candidate.baseRevision = '0'.repeat(40); }],
+    ['wrong hash', (candidate: any) => { candidate.documents[0].sha256 = '0'.repeat(64); }],
+    ['reorder', (candidate: any) => {
+      [candidate.allowedChangedPaths[0], candidate.allowedChangedPaths[1]] = [
+        candidate.allowedChangedPaths[1],
+        candidate.allowedChangedPaths[0],
+      ];
+    }],
+    ['duplicate', (candidate: any) => {
+      candidate.allowedChangedPaths[1] = candidate.allowedChangedPaths[0];
+    }],
+    ['extra path', (candidate: any) => {
+      candidate.allowedChangedPaths.push('docs/attacker.md');
+      candidate.allowedChangedPaths.sort();
+    }],
+    ['missing path', (candidate: any) => {
+      candidate.allowedChangedPaths = candidate.allowedChangedPaths.slice(1);
+    }],
+    ['missing C4 path', (candidate: any) => {
+      candidate.allowedChangedPaths = candidate.allowedChangedPaths.filter(
+        (entry: string) => entry !== 'mobile/test/features/finance/money_root_routing_contract_test.dart',
+      );
+    }],
+    ['canonical near-miss', (candidate: any) => {
+      const index = candidate.allowedChangedPaths.indexOf(
+        'mobile/test/features/finance/money_root_routing_contract_test.dart',
+      );
+      candidate.allowedChangedPaths[index] =
+        'mobile/test/features/finance/money_root_routings_contract_test.dart';
+      candidate.allowedChangedPaths.sort();
+    }],
+  ] as const;
+  for (const [name, mutate] of invalidMutations) {
+    const candidate = structuredClone(value);
+    mutate(candidate);
+    assert.throws(
+      () => scope().validateR9MobileStrictManifest(candidate),
+      name,
+    );
+  }
 });
 
 test('Task 9 permits only the seven approved active receipt files', () => {

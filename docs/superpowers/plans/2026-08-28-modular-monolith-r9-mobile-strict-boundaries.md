@@ -76,7 +76,7 @@ selection
 
 | Path or group | Responsibility |
 | --- | --- |
-| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 151-path fence |
+| `scripts/architecture/r9-mobile-strict-manifest.json` | Immutable base, hashes, 269/34 inventories, 19 APIs, exact composition roots, debt milestones, and 155-path fence |
 | `scripts/check-mobile-boundaries.mjs` | Directive-aware R9 scan, legal-edge inventory, structural errors, transitional debt, and strict CLI |
 | `scripts/check-mobile-boundaries.test.mjs` | Positive, adversarial, historical-compatibility, and final-zero scanner proofs |
 | `scripts/check-r9-scope.mjs` | Fixed-base changed-path, hash, protected-surface, and per-task debt enforcement |
@@ -209,7 +209,7 @@ Create a canonical JSON object with these literal identities:
 
 Add the 19 sorted feature/API pairs from Appendix A, the exact 34 root records
 from Appendix C, the exact debt map above, the two document paths and lowercase
-SHA-256 values, and the sorted 151 paths from Appendix D. Hash the plan only
+SHA-256 values, and the sorted 155 paths from Appendix D. Hash the plan only
 after this committed plan is final; never write secrets or absolute paths.
 
 - [ ] **Step 5: Implement directive-aware scanning and debt comparison**
@@ -907,6 +907,40 @@ Expected: reviewed local application candidate and clean worktree. Do not push.
 > directory or the script path. Repository-root PowerShell commands continue
 > to use `.\scripts`. This governance checkpoint must precede the Task 9 CI
 > commit.
+
+> **Owner/controller-approved corrective checkpoint C4 (2026-08-29):** Task
+> 9's exhaustive gates exposed three stale gate contracts rather than
+> application defects: the negative CI fixture mutates only
+> `--check-baseline` and becomes a no-op against the valid strict candidate;
+> the Money root contract still requires Finance's retired internal data
+> import instead of its reviewed owner API; and the cumulative Backend R3/R4
+> scope guard delegates R4-R8 but not R9's authoritative manifest. C4 is
+> restricted to exactly these eight tracked paths:
+> `docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md`,
+> `scripts/architecture/r9-mobile-strict-manifest.json`,
+> `scripts/check-mobile-boundaries.mjs`,
+> `scripts/check-r9-scope.test.mjs`,
+> `mobile/test/features/finance/money_root_routing_contract_test.dart`,
+> `backend/scripts/architecture/r3-scope.cjs`,
+> `backend/test/architecture-r3-scope.test.ts`, and
+> `backend/test/architecture-r4-planning-finance-boundary.test.ts`. The TDD
+> order is plan-only stale-hash RED before any re-freeze, then focused
+> behavior REDs and new test-first expectations, then governance re-freeze,
+> minimal implementation, every separate GREEN gate, exact-path staging, and
+> the C4 commit before the preserved Task 9 CI commit. The CI fixture must
+> detect and mutate exactly one accepted lifecycle mode; Finance must require
+> `features/finance/finance_api.dart` with only `FinanceApi`,
+> `FinanceProvider`, and `LocalFinancePlanContext` and reject
+> `features/finance/data/`; Backend must consume `validateR9Manifest`, derive
+> the immutable R9 fence from the authoritative manifest, and delegate it
+> after R4-R8 without copying or weakening the allowlist. Appendix D expands
+> canonically by only four identities to exactly 155 paths. Prisma P1012
+> remains `BLOCKED - environment` when no approved `backend/.env` or process
+> `DATABASE_URL` exists; it is neither a source failure nor a pass, and C4
+> creates no environment input. The final plan hash is calculated only after
+> these plan bytes are final and is then copied to the three exact consumers.
+> The valid unstaged Task 9 CI line remains byte-identical, unstaged, and absent
+> from the C4 commit.
 
 ### Task 9: Activate Strict CI And Run Exhaustive Local Gates
 
@@ -1644,13 +1678,16 @@ welcome_gateway_api.dart show SmartWelcomeScreen
 
 ## Appendix D: Exact R9 Allowed Changed-Path Fence
 
-The manifest contains this sorted 151-path array exactly. The historical
+The manifest contains this sorted 155-path array exactly. The historical
 baseline is intentionally absent because it is immutable.
 
 ```text
 .github/workflows/ci.yml
 ARCHITECTURE.md
 CHANGELOG.md
+backend/scripts/architecture/r3-scope.cjs
+backend/test/architecture-r3-scope.test.ts
+backend/test/architecture-r4-planning-finance-boundary.test.ts
 docs/README.md
 docs/mobile/README.md
 docs/project/DECISIONS.md
@@ -1772,6 +1809,7 @@ mobile/test/features/auth/provider_to_groom_session_flow_test.dart
 mobile/test/features/auth/session_transition_gate_test.dart
 mobile/test/features/chat/chat_provider_reliability_test.dart
 mobile/test/features/chat/chat_realtime_client_test.dart
+mobile/test/features/finance/money_root_routing_contract_test.dart
 mobile/test/features/finance/money_summary_contract_test.dart
 mobile/test/features/marketplace/city_filter_picker_test.dart
 mobile/test/features/marketplace/marketplace_context_isolation_test.dart

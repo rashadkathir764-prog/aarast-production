@@ -877,7 +877,7 @@ export function compareMobileBaseline(current, baseline) {
 const R9_BASE_REVISION = '833a4f1d31781b45cd0a68ecee1b969ac85f237f';
 const R9_BASELINE_SHA256 = 'f9939fa25b7e3e3b7e3563c4dce30aa9a2cb0781cdf2ed8bbf9448477644cf1f';
 const R9_ROOT_SHA256 = '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e4e28848b';
-const R9_ALLOWED_PATHS_SHA256 = '2f5af497fe4675e424c7b5a7268597d60bbead62ae092c645c5b2f52db368204';
+const R9_ALLOWED_PATHS_SHA256 = 'f23b669362fb1bba6a8b2dc5a5ec7bc92a7bc51a445d3db39819ebcfc6794bf5';
 const R9_FEATURES = [
   'account_contexts', 'auth', 'catalogs', 'chat', 'finance', 'guests', 'home',
   'marketplace', 'more', 'notifications', 'onboarding', 'settings', 'sharing',
@@ -908,7 +908,7 @@ const R9_DOCUMENTS = [
   },
   {
     path: 'docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md',
-    sha256: '228631ce793ecc189ea7b5d007f8e573b19ecbeea5fd9bad67a6ce1f6c737060',
+    sha256: '71cdf0b1a93215a0c8f049e9606d845ed4d223263bdf407395298530e85a0821',
   },
 ];
 const R9_ROOT_PAIRS = [
@@ -1096,7 +1096,7 @@ export function validateR9Manifest(value) {
 
   const allowedChangedPaths = readDenseArray(manifest.allowedChangedPaths);
   if (
-    allowedChangedPaths.length !== 151
+    allowedChangedPaths.length !== 155
     || allowedChangedPaths.some((item) => !canonicalRepositoryFile(item))
     || new Set(allowedChangedPaths).size !== allowedChangedPaths.length
     || !sameArray(allowedChangedPaths, [...allowedChangedPaths].sort())

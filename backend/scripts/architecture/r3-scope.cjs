@@ -24,6 +24,9 @@ const {
   R8_BASE,
   validateR8Manifest,
 } = require('./r8-global-module-removal-scan.cjs');
+const {
+  validateR9Manifest,
+} = require('../../../scripts/check-mobile-boundaries.mjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const R4_BASE = '502b181a2ce624458fd7eae064f194497ec0151e';
@@ -32,6 +35,7 @@ const R5_MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
 const R6_MANIFEST_PATH = 'backend/architecture/r6-sharing-otp-transport.json';
 const R7_MANIFEST_PATH = 'backend/architecture/r7-collaboration-relocation.json';
 const R8_MANIFEST_PATH = 'backend/architecture/r8-global-module-removal.json';
+const R9_MANIFEST_PATH = 'scripts/architecture/r9-mobile-strict-manifest.json';
 const R7_ALLOWED_PATHS = Object.freeze([...R7_EXPECTED_ALLOWED_PATHS]);
 const R8_ALLOWED_PATHS = Object.freeze([...R8_EXPECTED_ALLOWED_PATHS]);
 const R4_ALLOWED_PATHS = Object.freeze([
@@ -300,6 +304,15 @@ const R6_ALLOWED_PATHS = Object.freeze([
     'r6-sharing-otp-transport.json',
   ), 'utf8'))).allowedChangedPaths,
 ]);
+const R9_ALLOWED_PATHS = Object.freeze([
+  ...validateR9Manifest(JSON.parse(fs.readFileSync(path.join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    ...R9_MANIFEST_PATH.split('/'),
+  ), 'utf8'))).allowedChangedPaths,
+]);
 
 function assertPlainObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !utilTypes.isProxy(value)) {
@@ -459,6 +472,18 @@ function validateR8GlobalRemovalManifest(value) {
   return Object.freeze({
     baseRevision: manifest.baseRevision,
     stage: manifest.stage,
+    allowedChangedPaths: Object.freeze(Array.from(manifest.allowedChangedPaths)),
+  });
+}
+
+function validateR9MobileStrictManifest(value) {
+  const manifest = validateR9Manifest(value);
+  assertAllowedPathsMatch(
+    manifest.allowedChangedPaths,
+    R9_ALLOWED_PATHS,
+  );
+  return Object.freeze({
+    baseRevision: manifest.baseRevision,
     allowedChangedPaths: Object.freeze(Array.from(manifest.allowedChangedPaths)),
   });
 }
@@ -689,6 +714,10 @@ function validateR3Scope(options) {
   const delegatedR8 = fs.existsSync(r8ManifestAbsolutePath)
     ? validateR8GlobalRemovalManifest(JSON.parse(fs.readFileSync(r8ManifestAbsolutePath, 'utf8')))
     : null;
+  const r9ManifestAbsolutePath = path.join(input.repositoryRoot, ...R9_MANIFEST_PATH.split('/'));
+  const delegatedR9 = validateR9MobileStrictManifest(
+    JSON.parse(fs.readFileSync(r9ManifestAbsolutePath, 'utf8')),
+  );
   const effectiveAllowedPaths = [...new Set([
     ...ALLOWED_PATHS,
     ...(delegatedR4 ? delegatedR4.allowedChangedPaths : []),
@@ -696,6 +725,7 @@ function validateR3Scope(options) {
     ...(delegatedR6 ? delegatedR6.allowedChangedPaths : []),
     ...(delegatedR7 ? delegatedR7.allowedChangedPaths : []),
     ...(delegatedR8 ? delegatedR8.allowedChangedPaths : []),
+    ...delegatedR9.allowedChangedPaths,
   ])].sort();
   const tracked = gitLines(input.repositoryRoot, ['diff', '--no-renames', '--name-only', R3_BASE, '--']);
   const untracked = gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
@@ -745,12 +775,14 @@ module.exports = {
   R6_ALLOWED_PATHS,
   R7_ALLOWED_PATHS,
   R8_ALLOWED_PATHS,
+  R9_ALLOWED_PATHS,
   assertAllowedPathsMatch,
   validateR4DelegationManifest,
   validateR5IdentityManifest,
   validateR6SharingOtpManifest,
   validateR7CollaborationManifest,
   validateR8GlobalRemovalManifest,
+  validateR9MobileStrictManifest,
   writeAtomicJson,
   validateR3Scope,
   validateScopeSnapshot,

@@ -20,8 +20,12 @@ void main() {
     () {
       expect(
         main,
-        contains("import 'features/finance/data/finance_api.dart';"),
+        contains(
+          "import 'features/finance/finance_api.dart'\n"
+          '    show FinanceApi, FinanceProvider, LocalFinancePlanContext;',
+        ),
       );
+      expect(main, isNot(contains("'features/finance/data/")));
       expect(main, contains('Provider<FinanceApi>.value(value: financeApi)'));
       expect(main, isNot(contains('BudgetExpenseApi')));
       expect(mainShell, contains('MoneyOverviewScreen('));

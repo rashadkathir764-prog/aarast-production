@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../notifications/providers/notifications_provider.dart';
+import '../../auth/auth_api.dart' show AuthController;
+import '../../notifications/notifications_api.dart' show NotificationsProvider;
 import '../providers/home_dashboard_provider.dart';
 import '../widgets/home_widgets.dart';
 

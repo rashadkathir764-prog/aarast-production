@@ -2,10 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
-import '../../sharing/data/sharing_api.dart';
-import '../../sharing/models/shared_wedding_plan.dart';
-import '../../wedding_plans/data/wedding_plans_api.dart';
-import '../../wedding_plans/models/wedding_plan.dart';
+import '../../sharing/sharing_api.dart' show SharedWeddingPlan, SharingApi;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show WeddingPlan, WeddingPlansApi;
 
 class HomeDashboardProvider extends ChangeNotifier with SessionScopedNotifier {
   HomeDashboardProvider({

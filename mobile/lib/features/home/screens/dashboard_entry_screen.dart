@@ -7,13 +7,16 @@ import 'package:provider/provider.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../account_contexts/widgets/account_context_entry_gate.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/data/local_plan_migration.dart';
-import '../../onboarding/screens/local_plan_migration_screen.dart';
-import '../../wedding_plans/data/wedding_plans_api.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController, AccountContextEntryGate;
+import '../../auth/auth_api.dart' show AuthController, AuthStatus;
+import '../../onboarding/onboarding_api.dart'
+    show
+        GuestOnboardingStorage,
+        LocalPlanMigrationScreen,
+        LocalPlanMigrationService,
+        LocalPlanSnapshot;
+import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansApi;
 import '../data/dashboard_summary_sources.dart';
 import 'local_guest_dashboard_screen.dart';
 

@@ -8,14 +8,22 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../auth/providers/auth_controller.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../onboarding/models/wedding_location_draft.dart';
-import '../../wedding_plans/models/onboarding_complete.dart';
-import '../../wedding_plans/providers/wedding_plans_provider.dart';
-import '../../wedding_plans/widgets/wedding_plan_creation_form.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart' show AuthController, AuthStatus;
+import '../../onboarding/onboarding_api.dart'
+    show
+        GuestOnboardingDraft,
+        GuestOnboardingPath,
+        GuestOnboardingStorage,
+        GuestPersona,
+        WeddingLocationDraft;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        OnboardingCompleteRequest,
+        WeddingPlanCreationFields,
+        WeddingPlanCreationScope,
+        WeddingPlansProvider;
 
 import '../widgets/aarast_path_card.dart';
 

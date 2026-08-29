@@ -10,15 +10,19 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../onboarding/models/persona_copy.dart';
-import '../../wedding_plans/models/dashboard_summary.dart';
-import '../../wedding_plans/models/wedding_plan_stage.dart';
-import '../../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../../wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
-import '../../wedding_plans/widgets/quick_add_actions.dart';
-import '../../shell/widgets/aarast_plan_chrome.dart';
-import '../../shell/widgets/plan_shell_chrome.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../onboarding/onboarding_api.dart' show personaCopyForGuest;
+import '../../shell/shell_api.dart'
+    show PlanShellChrome, showAarastQuickActionSheet;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        AarastDashboardView,
+        DashboardImportantItem,
+        DashboardSummary,
+        DashboardSummaryProvider,
+        QuickAddSignals,
+        buildCanonicalQuickAddActions,
+        resolveWeddingPlanStage;
 import '../data/dashboard_summary_sources.dart';
 
 class LocalGuestDashboardScreen extends StatefulWidget {

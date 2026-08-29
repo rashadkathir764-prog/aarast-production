@@ -2,24 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../account_contexts/models/account_context.dart';
-import '../../account_contexts/providers/account_context_controller.dart';
-import '../../wedding_plans/widgets/quick_add_actions.dart';
-import '../../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../../wedding_plans/models/dashboard_summary.dart';
-import '../../wedding_plans/models/wedding_plan_stage.dart';
-import '../../auth/utils/auth_action_guard.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../home/data/dashboard_summary_sources.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../finance/providers/finance_provider.dart';
-import '../../finance/screens/money_overview_screen.dart';
-import '../../finance/widgets/money_cost_action_picker.dart';
-import '../widgets/plan_shell_chrome.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController, AccountContextRole;
+import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../finance/finance_api.dart'
+    show
+        FinanceProvider,
+        MoneyCostActionIntent,
+        shouldShowMoneyStarter,
+        showMoneyCostActionPicker;
+import '../../home/home_api.dart' show LocalGuestDashboardSummarySource;
+import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        DashboardSummary,
+        DashboardSummaryProvider,
+        QuickAddContext,
+        QuickAddSignals,
+        buildCanonicalQuickAddActions,
+        lastCanonicalQuickAddAction,
+        lastCanonicalQuickAddActionId,
+        rememberCanonicalQuickAddAction,
+        resolveWeddingPlanStage,
+        shouldShowPlanQuickAdd;
 import '../widgets/aarast_plan_chrome.dart';
+import '../widgets/plan_shell_chrome.dart';
 
 class WeddingPlanShell extends StatelessWidget {
   const WeddingPlanShell({

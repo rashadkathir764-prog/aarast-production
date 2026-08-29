@@ -1,9 +1,15 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
-import '../../onboarding/data/guest_onboarding_storage.dart';
-import '../../onboarding/models/generated_dashboard_seed.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
-import '../../wedding_plans/models/dashboard_summary.dart';
+import '../../onboarding/onboarding_api.dart'
+    show GeneratedDashboardSeed, GuestOnboardingDraft, GuestOnboardingStorage;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        DashboardFinancialWarning,
+        DashboardImportantItem,
+        DashboardMoneySummary,
+        DashboardNextPaymentSchedule,
+        DashboardPermissionSummary,
+        DashboardSummary;
 
 class LocalGuestDashboardSummarySource {
   const LocalGuestDashboardSummarySource(

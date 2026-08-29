@@ -2605,6 +2605,233 @@ const trackedPlanningBatchContracts = [
   },
 ];
 
+const trackedShellEntryBatchContracts = [
+  {
+    source: 'mobile/lib/features/home/data/dashboard_summary_sources.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: [
+      'GeneratedDashboardSeed',
+      'GuestOnboardingDraft',
+      'GuestOnboardingStorage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/home/data/dashboard_summary_sources.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardFinancialWarning',
+      'DashboardImportantItem',
+      'DashboardMoneySummary',
+      'DashboardNextPaymentSchedule',
+      'DashboardPermissionSummary',
+      'DashboardSummary',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/home/providers/home_dashboard_provider.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['SharedWeddingPlan', 'SharingApi'],
+  },
+  {
+    source: 'mobile/lib/features/home/providers/home_dashboard_provider.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['WeddingPlan', 'WeddingPlansApi'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextEntryGate'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: [
+      'GuestOnboardingStorage',
+      'LocalPlanMigrationScreen',
+      'LocalPlanMigrationService',
+      'LocalPlanSnapshot',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['WeddingPlansApi'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/home_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/home_screen.dart',
+    target: 'mobile/lib/features/notifications/notifications_api.dart',
+    show: ['NotificationsProvider'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['personaCopyForGuest'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
+    target: 'mobile/lib/features/shell/shell_api.dart',
+    show: ['PlanShellChrome', 'showAarastQuickActionSheet'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'AarastDashboardView',
+      'DashboardImportantItem',
+      'DashboardSummary',
+      'DashboardSummaryProvider',
+      'QuickAddSignals',
+      'buildCanonicalQuickAddActions',
+      'resolveWeddingPlanStage',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/shell/main_shell.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContext', 'AccountContextController', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/shell/main_shell.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: [
+      'FinanceProvider',
+      'MoneyCostActionIntent',
+      'MoneyOverviewScreen',
+      'shouldShowMoneyStarter',
+      'showMoneyCostActionPicker',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/shell/main_shell.dart',
+    target: 'mobile/lib/features/guests/guests_api.dart',
+    show: ['GuestListScreen'],
+  },
+  {
+    source: 'mobile/lib/features/shell/main_shell.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderMarketplaceScreen'],
+  },
+  {
+    source: 'mobile/lib/features/shell/main_shell.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['TaskTimelineScreen'],
+  },
+  {
+    source: 'mobile/lib/features/shell/main_shell.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardSummaryProvider',
+      'PlanCenterScreen',
+      'QuickAddContext',
+      'QuickAddSignals',
+      'WeddingPlanDashboardScreen',
+      'buildCanonicalQuickAddActions',
+      'lastCanonicalQuickAddAction',
+      'lastCanonicalQuickAddActionId',
+      'rememberCanonicalQuickAddAction',
+      'resolveWeddingPlanStage',
+      'shouldShowPlanQuickAdd',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextRole'],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: [
+      'FinanceProvider',
+      'MoneyCostActionIntent',
+      'shouldShowMoneyStarter',
+      'showMoneyCostActionPicker',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/home/home_api.dart',
+    show: ['LocalGuestDashboardSummarySource'],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingStorage'],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'DashboardSummary',
+      'DashboardSummaryProvider',
+      'QuickAddContext',
+      'QuickAddSignals',
+      'buildCanonicalQuickAddActions',
+      'lastCanonicalQuickAddAction',
+      'lastCanonicalQuickAddActionId',
+      'rememberCanonicalQuickAddAction',
+      'resolveWeddingPlanStage',
+      'shouldShowPlanQuickAdd',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/shell/widgets/plan_shell_chrome.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['planQuickAddIconForTab', 'planQuickAddLabelForTab'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: [
+      'GuestOnboardingDraft',
+      'GuestOnboardingPath',
+      'GuestOnboardingStorage',
+      'GuestPersona',
+      'WeddingLocationDraft',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: [
+      'OnboardingCompleteRequest',
+      'WeddingPlanCreationFields',
+      'WeddingPlanCreationScope',
+      'WeddingPlansProvider',
+    ],
+  },
+];
+
 function trackedOwnerApiFixture(overrides = {}) {
   const files = {};
   for (const contract of trackedOwnerApiContracts) {
@@ -2985,6 +3212,71 @@ function assertTrackedPlanningBatch({
   );
 }
 
+function assertTrackedShellEntryBatch({
+  repoRoot: repositoryRoot,
+  manifest = loadR9Manifest(),
+}) {
+  const mobileLib = path.join(repositoryRoot, 'mobile', 'lib');
+  const scan = mobileBoundaries.scanR9MobileBoundaries({
+    mobileLib,
+    manifest,
+  });
+  const trackedSources = new Set(
+    trackedShellEntryBatchContracts.map(({ source }) => source),
+  );
+  const expected = trackedShellEntryBatchContracts.map((contract) => ({
+    source: contract.source,
+    target: contract.target,
+    directiveKind: 'import',
+    show: contract.show,
+    hide: [],
+    conditional: false,
+    count: 1,
+  }));
+  const sortBySourceTarget = (left, right) => (
+    left.source.localeCompare(right.source)
+    || left.target.localeCompare(right.target)
+  );
+  const actualLegal = scan.legalRecords
+    .filter(({ source }) => trackedSources.has(source))
+    .map(normalizeR9Record)
+    .sort(sortBySourceTarget);
+  const expectedLegal = expected
+    .map((record) => ({ ...record }))
+    .sort(sortBySourceTarget);
+  assert.deepEqual(
+    actualLegal,
+    expectedLegal,
+    'tracked Shell Entry batch legal owner API imports mismatch',
+  );
+  assert.deepEqual(
+    scan.legacyRecords.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Shell Entry batch still has internal cross-feature directives',
+  );
+  assert.deepEqual(
+    scan.strictViolations.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Shell Entry batch still has strict R9 violations',
+  );
+  assert.deepEqual(
+    scan.errors.filter(({ source }) => trackedSources.has(source)),
+    [],
+    'tracked Shell Entry batch still has scanner errors',
+  );
+
+  const exactCompositionRoots = new Set([
+    'mobile/lib/app.dart',
+    'mobile/lib/main.dart',
+    'mobile/lib/core/routing/app_router.dart',
+  ]);
+  assert.deepEqual(
+    scan.legacyRecords.filter(({ source }) => !exactCompositionRoots.has(source)),
+    [],
+    'internal cross-feature directives remain outside exact composition roots',
+  );
+}
+
 function scanR9Fixture(files) {
   assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
   return withMobileFixture(files, ({ mobileLib }) => (
@@ -3024,6 +3316,10 @@ test('Collaboration batch imports consume only exact owner APIs from Appendix B'
 
 test('Planning batch imports consume exact owner APIs and the Core formatter contract', () => {
   assertTrackedPlanningBatch({ repoRoot });
+});
+
+test('Shell Entry batch imports consume only exact owner APIs from Appendix B', () => {
+  assertTrackedShellEntryBatch({ repoRoot });
 });
 
 test('tracked owner API contract rejects an absent manifest API path', () => {

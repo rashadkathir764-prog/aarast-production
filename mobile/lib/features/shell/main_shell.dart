@@ -8,21 +8,33 @@ import '../../core/routing/app_router.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
-import '../account_contexts/models/account_context.dart';
-import '../account_contexts/providers/account_context_controller.dart';
-import '../finance/screens/money_overview_screen.dart';
-import '../finance/providers/finance_provider.dart';
-import '../finance/widgets/money_cost_action_picker.dart';
-import '../guests/screens/guest_list_screen.dart';
-import '../marketplace/screens/provider_marketplace_screen.dart';
-import '../tasks/screens/task_timeline_screen.dart';
-import '../wedding_plans/models/wedding_plan_stage.dart';
-import '../wedding_plans/providers/dashboard_summary_provider.dart';
-import '../wedding_plans/screens/plan_management_screen.dart';
-import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
-import '../wedding_plans/widgets/quick_add_actions.dart';
-import 'widgets/plan_shell_chrome.dart';
+import '../account_contexts/account_contexts_api.dart'
+    show AccountContext, AccountContextController, AccountContextRole;
+import '../finance/finance_api.dart'
+    show
+        FinanceProvider,
+        MoneyCostActionIntent,
+        MoneyOverviewScreen,
+        shouldShowMoneyStarter,
+        showMoneyCostActionPicker;
+import '../guests/guests_api.dart' show GuestListScreen;
+import '../marketplace/marketplace_api.dart' show ProviderMarketplaceScreen;
+import '../tasks/tasks_api.dart' show TaskTimelineScreen;
+import '../wedding_plans/wedding_plans_api.dart'
+    show
+        DashboardSummaryProvider,
+        PlanCenterScreen,
+        QuickAddContext,
+        QuickAddSignals,
+        WeddingPlanDashboardScreen,
+        buildCanonicalQuickAddActions,
+        lastCanonicalQuickAddAction,
+        lastCanonicalQuickAddActionId,
+        rememberCanonicalQuickAddAction,
+        resolveWeddingPlanStage,
+        shouldShowPlanQuickAdd;
 import 'widgets/aarast_plan_chrome.dart';
+import 'widgets/plan_shell_chrome.dart';
 
 class MainShell extends StatelessWidget {
   const MainShell({super.key});

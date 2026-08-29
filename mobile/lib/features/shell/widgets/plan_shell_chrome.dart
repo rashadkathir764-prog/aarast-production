@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../wedding_plans/widgets/quick_add_actions.dart';
+import '../../wedding_plans/wedding_plans_api.dart'
+    show planQuickAddIconForTab, planQuickAddLabelForTab;
 import 'aarast_plan_chrome.dart';
 
 class PlanShellChrome extends StatefulWidget {

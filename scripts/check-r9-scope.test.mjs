@@ -20,10 +20,11 @@ const repoRoot = path.resolve(scriptDir, '..');
 const manifestPath = path.join(scriptDir, 'architecture', 'r9-mobile-strict-manifest.json');
 const baselinePath = path.join(scriptDir, 'architecture', 'mobile-boundaries-baseline.json');
 const validatorPath = path.join(scriptDir, 'check-mobile-boundaries.mjs');
+const workflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
 const designPath = 'docs/superpowers/specs/2026-08-28-modular-monolith-r9-mobile-strict-boundaries-design.md';
 const planPath = 'docs/superpowers/plans/2026-08-28-modular-monolith-r9-mobile-strict-boundaries.md';
 const designSha256 = '45f732498afda4fd0ba7861eb0aff75c31580cc14d20c810a655f3857174c5f5';
-const planSha256 = 'c72eeb74891a9c9fa1d4bbcb5e7d459e0ef246bd84304b43b87ddfdbb28948ee';
+const planSha256 = '228631ce793ecc189ea7b5d007f8e573b19ecbeea5fd9bad67a6ce1f6c737060';
 const c2AllowedPathPositions = Object.freeze([
   [
     'mobile/lib/core/storage/auth_storage.dart',
@@ -77,6 +78,38 @@ function manifestValue() {
 
 function sha256(text) {
   return createHash('sha256').update(text).digest('hex');
+}
+
+function mobileJobText(workflowText) {
+  const lines = String(workflowText).split(/\r?\n/);
+  const start = lines.findIndex((line) => line === '  mobile:');
+  assert.notEqual(start, -1, 'missing Mobile CI job');
+  const relativeEnd = lines.slice(start + 1).findIndex((line) => (
+    /^  [A-Za-z0-9_-]+:\s*$/.test(line)
+  ));
+  const end = relativeEnd === -1 ? lines.length : start + 1 + relativeEnd;
+  return lines.slice(start, end).join('\n');
+}
+
+function assertMobileBoundaryCiContract(workflowText) {
+  const mobileJob = mobileJobText(workflowText);
+  assert.match(
+    mobileJob,
+    /^  mobile:\n(?:.|\n)*?    defaults:\n      run:\n        working-directory: mobile(?:\n|$)/,
+  );
+  const boundaryCommands = mobileJob.split('\n').filter((line) => (
+    line.includes('check-mobile-boundaries.mjs')
+    && !line.includes('check-mobile-boundaries.test.mjs')
+  ));
+  assert.equal(boundaryCommands.length, 1, 'expected one Mobile boundary command');
+  assert.match(
+    boundaryCommands[0],
+    /^      - run: node \.\.\/scripts\/check-mobile-boundaries\.mjs --(?:check-baseline|strict)$/,
+  );
+  assert.doesNotMatch(
+    mobileJob,
+    /node scripts\/check-mobile-boundaries\.mjs/,
+  );
 }
 
 function validDependencies(overrides = {}) {
@@ -187,6 +220,26 @@ test('tracked R9 manifest freezes exact identities inventories milestones and so
     new RegExp(`sha256: '${planSha256}'`),
   );
   assert.doesNotMatch(JSON.stringify(raw), /[A-Za-z]:[\\/]|(?:PASSWORD|SECRET|TOKEN)\s*=|\.\.[\\/]/i);
+});
+
+test('Mobile CI keeps its working directory and exact parent boundary path', () => {
+  const workflowText = readFileSync(workflowPath, 'utf8');
+  assert.doesNotThrow(() => assertMobileBoundaryCiContract(workflowText));
+  assert.doesNotThrow(() => assertMobileBoundaryCiContract(
+    workflowText.replace('--check-baseline', '--strict'),
+  ));
+  assert.throws(() => assertMobileBoundaryCiContract(
+    workflowText.replace('working-directory: mobile', 'working-directory: .'),
+  ));
+  assert.throws(() => assertMobileBoundaryCiContract(
+    workflowText.replace(
+      'node ../scripts/check-mobile-boundaries.mjs',
+      'node scripts/check-mobile-boundaries.mjs',
+    ),
+  ));
+  assert.throws(() => assertMobileBoundaryCiContract(
+    workflowText.replace('--check-baseline', '--write-baseline'),
+  ));
 });
 
 test('manifest validation rejects wrong base hash count order duplicates and unsafe paths', () => {

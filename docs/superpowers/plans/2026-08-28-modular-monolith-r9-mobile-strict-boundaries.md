@@ -899,6 +899,15 @@ Expected: reviewed local application candidate and clean worktree. Do not push.
 
 ---
 
+> **Owner/controller-approved corrective checkpoint C3 (2026-08-29):** The
+> Mobile CI job keeps `working-directory: mobile`, so its repository-level
+> boundary command must keep the relative parent path
+> `node ../scripts/check-mobile-boundaries.mjs`. Task 9 changes only the mode
+> from `--check-baseline` to `--strict`; it does not change the Mobile working
+> directory or the script path. Repository-root PowerShell commands continue
+> to use `.\scripts`. This governance checkpoint must precede the Task 9 CI
+> commit.
+
 ### Task 9: Activate Strict CI And Run Exhaustive Local Gates
 
 **Files:**
@@ -909,7 +918,7 @@ Expected: reviewed local application candidate and clean worktree. Do not push.
 
 - Consumes: locally verified Task 8 candidate at strict zero.
 - Produces: CI Mobile boundary command
-  `node scripts/check-mobile-boundaries.mjs --strict`; historical write/check
+  `node ../scripts/check-mobile-boundaries.mjs --strict`; historical write/check
   modes remain available locally.
 
 - [ ] **Step 1: Prove the candidate is zero before editing CI**
@@ -925,8 +934,8 @@ Expected: both pass. Do not edit CI if either fails.
 - [ ] **Step 2: Switch only the Mobile boundary CI command**
 
 In `.github/workflows/ci.yml`, replace the exact
-`node scripts/check-mobile-boundaries.mjs --check-baseline` invocation with
-`node scripts/check-mobile-boundaries.mjs --strict`. Do not change triggers,
+`node ../scripts/check-mobile-boundaries.mjs --check-baseline` invocation with
+`node ../scripts/check-mobile-boundaries.mjs --strict`. Do not change triggers,
 permissions, runners, dependency installation, Backend/Admin jobs, or secrets.
 
 - [ ] **Step 3: Run full Mobile and repository architecture gates**

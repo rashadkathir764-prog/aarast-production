@@ -2832,6 +2832,229 @@ const trackedShellEntryBatchContracts = [
   },
 ];
 
+const trackedCompositionRootContracts = [
+  {
+    source: 'mobile/lib/app.dart',
+    imports: [
+      {
+        target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+        show: ['AccountContextController'],
+      },
+      {
+        target: 'mobile/lib/features/auth/auth_api.dart',
+        show: ['AuthController', 'AuthStatus'],
+      },
+    ],
+  },
+  {
+    source: 'mobile/lib/core/routing/app_router.dart',
+    imports: [
+      {
+        target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+        show: [
+          'AccountContextController',
+          'AccountContextRole',
+          'SelectedWeddingPlanContextGate',
+          'WeddingPlanContextGate',
+          'WeddingPlanRouteAccess',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/auth/auth_api.dart',
+        show: [
+          'LoginScreen',
+          'OtpScreen',
+          'OtpScreenArgs',
+          'RegisterScreen',
+          'ResetPasswordScreen',
+          'SplashScreen',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/chat/chat_api.dart',
+        show: ['ChatScreen', 'ConversationListView', 'QuoteConversationEntryScreen'],
+      },
+      {
+        target: 'mobile/lib/features/finance/finance_api.dart',
+        show: [
+          'BudgetCategory',
+          'BudgetCategoryDetailsScreen',
+          'BudgetCategoryFormScreen',
+          'CostDetailsScreen',
+          'CostDraftIntent',
+          'CostFormScreen',
+          'CostPaymentDetailsScreen',
+          'CostsScreen',
+          'FinanceProvider',
+          'MoneyBudgetScreen',
+          'MoneyOverviewScreen',
+          'PayPaymentScheduleScreen',
+          'PaymentScheduleDetailsScreen',
+          'PaymentScheduleFormScreen',
+          'PaymentSchedulesScreen',
+          'RecordCostPaymentScreen',
+          'WeddingCost',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/guests/guests_api.dart',
+        show: ['GuestListScreen'],
+      },
+      {
+        target: 'mobile/lib/features/home/home_api.dart',
+        show: ['DashboardEntryScreen'],
+      },
+      {
+        target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+        show: [
+          'AddProviderPackageScreen',
+          'AddProviderServiceScreen',
+          'EditProviderProfileScreen',
+          'FavoriteProvidersScreen',
+          'ProviderApplyScreen',
+          'ProviderApplyStatusScreen',
+          'ProviderAuthGate',
+          'ProviderBudgetMatchIntent',
+          'ProviderDetailsScreen',
+          'ProviderMarketplaceScreen',
+          'ProviderPortalScreen',
+          'ProviderQuoteInitialContext',
+          'QuoteRequestScreen',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/more/more_api.dart',
+        show: ['MoreScreen'],
+      },
+      {
+        target: 'mobile/lib/features/notifications/notifications_api.dart',
+        show: ['NotificationsScreen'],
+      },
+      {
+        target: 'mobile/lib/features/settings/settings_api.dart',
+        show: ['SettingsScreen'],
+      },
+      {
+        target: 'mobile/lib/features/sharing/sharing_api.dart',
+        show: [
+          'AddSharedMemberScreen',
+          'ContributionHistoryScreen',
+          'EditSharedMemberScreen',
+          'InviteDecisionScreen',
+          'SharedMember',
+          'SharedWeddingPlansScreen',
+          'SharingScreen',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/shell/shell_api.dart',
+        show: ['WeddingPlanShell'],
+      },
+      {
+        target: 'mobile/lib/features/support/support_api.dart',
+        show: ['SupportScreen'],
+      },
+      {
+        target: 'mobile/lib/features/tasks/tasks_api.dart',
+        show: ['CreateTaskScreen', 'TaskTimelineScreen', 'WeddingTask'],
+      },
+      {
+        target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+        show: ['WeddingDayModeScreen'],
+      },
+      {
+        target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+        show: [
+          'CreateWeddingPlanScreen',
+          'DashboardSummary',
+          'MyWeddingPlansScreen',
+          'PlanCenterScreen',
+          'WeddingPlanDashboardScreen',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/welcome_gateway/welcome_gateway_api.dart',
+        show: ['SmartWelcomeScreen'],
+      },
+    ],
+  },
+  {
+    source: 'mobile/lib/main.dart',
+    imports: [
+      {
+        target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+        show: ['AccountContextsApi', 'AccountContextController'],
+      },
+      {
+        target: 'mobile/lib/features/auth/auth_api.dart',
+        show: ['AuthController', 'AuthRepository'],
+      },
+      {
+        target: 'mobile/lib/features/catalogs/catalogs_api.dart',
+        show: ['ReferenceCatalogApi', 'ReferenceCatalogProvider'],
+      },
+      {
+        target: 'mobile/lib/features/chat/chat_api.dart',
+        show: ['ChatApi', 'ChatProvider', 'ChatRealtimeClient'],
+      },
+      {
+        target: 'mobile/lib/features/finance/finance_api.dart',
+        show: ['FinanceApi', 'FinanceProvider', 'LocalFinancePlanContext'],
+      },
+      {
+        target: 'mobile/lib/features/guests/guests_api.dart',
+        show: ['GuestsApi', 'GuestsProvider'],
+      },
+      {
+        target: 'mobile/lib/features/home/home_api.dart',
+        show: ['HomeDashboardProvider'],
+      },
+      {
+        target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+        show: [
+          'MarketplaceApi',
+          'ProviderDashboardApi',
+          'ProviderDashboardProvider',
+          'ProviderMarketplaceProvider',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/notifications/notifications_api.dart',
+        show: ['NotificationsApi', 'NotificationsProvider'],
+      },
+      {
+        target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+        show: [
+          'GuestOnboardingStorage',
+          'YemenAdministrativeApi',
+          'YemenAdministrativeProvider',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/settings/settings_api.dart',
+        show: ['SettingsApi', 'SettingsProvider'],
+      },
+      {
+        target: 'mobile/lib/features/sharing/sharing_api.dart',
+        show: [
+          'ContributionHistoryProvider',
+          'PlanLeaveCoordinator',
+          'SharingApi',
+          'SharingProvider',
+        ],
+      },
+      {
+        target: 'mobile/lib/features/tasks/tasks_api.dart',
+        show: ['TaskTimelineApi', 'TaskTimelineProvider'],
+      },
+      {
+        target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+        show: ['DashboardSummaryProvider', 'WeddingPlansApi', 'WeddingPlansProvider'],
+      },
+    ],
+  },
+];
+
 function trackedOwnerApiFixture(overrides = {}) {
   const files = {};
   for (const contract of trackedOwnerApiContracts) {
@@ -3277,6 +3500,81 @@ function assertTrackedShellEntryBatch({
   );
 }
 
+function assertTrackedCompositionRoots({
+  repoRoot: repositoryRoot,
+  manifest = loadR9Manifest(),
+}) {
+  const mobileLib = path.join(repositoryRoot, 'mobile', 'lib');
+  const scan = mobileBoundaries.scanR9MobileBoundaries({
+    mobileLib,
+    manifest,
+  });
+  const compositionSources = new Set(
+    trackedCompositionRootContracts.map(({ source }) => source),
+  );
+  const expected = trackedCompositionRootContracts.flatMap(({ source, imports }) => (
+    imports.map(({ target, show }) => ({
+      source,
+      target,
+      directiveKind: 'import',
+      show: [...show].sort(),
+      hide: [],
+      conditional: false,
+      count: 1,
+    }))
+  ));
+  const sortBySourceTarget = (left, right) => (
+    left.source.localeCompare(right.source)
+    || left.target.localeCompare(right.target)
+  );
+
+  for (const { source, imports } of trackedCompositionRootContracts) {
+    for (const { show } of imports) {
+      assert.equal(new Set(show).size, show.length, `${source} show list must be unique`);
+    }
+    const text = readTrackedOwnerApi(repositoryRoot, source);
+    const actualFeatureDirectives = mobileBoundaries.parseR9DartDirectives(text)
+      .filter(({ uri }) => typeof uri === 'string' && uri.split('/').includes('features'))
+      .map(({ directiveKind, uri, show, hide, conditional }) => ({
+        directiveKind,
+        uri,
+        show,
+        hide,
+        conditional,
+      }));
+    const expectedFeatureDirectives = imports.map(({ target, show }) => ({
+      directiveKind: 'import',
+      uri: path.posix.relative(path.posix.dirname(source), target),
+      show: [...show].sort(),
+      hide: [],
+      conditional: false,
+    }));
+    assert.deepEqual(
+      actualFeatureDirectives,
+      expectedFeatureDirectives,
+      `${source} composition directives mismatch`,
+    );
+  }
+
+  assert.deepEqual(
+    scan.legalRecords
+      .filter(({ source }) => compositionSources.has(source))
+      .map(normalizeR9Record)
+      .sort(sortBySourceTarget),
+    expected.map((record) => ({ ...record })).sort(sortBySourceTarget),
+    'composition root legal owner API imports mismatch',
+  );
+  assert.deepEqual(scan.errors, [], 'composition scan has structural errors');
+  assert.deepEqual(scan.legacyRecords, [], 'historical cross-feature debt remains');
+  assert.deepEqual(scan.rootRecords, [], 'root composition debt remains');
+  assert.deepEqual(scan.strictViolations, [], 'strict R9 violations remain');
+  assert.equal(
+    scan.legalRecords.length,
+    manifest.finalLegalRecordCount,
+    'final legal owner API projection mismatch',
+  );
+}
+
 function scanR9Fixture(files) {
   assert.equal(typeof mobileBoundaries.scanR9MobileBoundaries, 'function');
   return withMobileFixture(files, ({ mobileLib }) => (
@@ -3320,6 +3618,10 @@ test('Planning batch imports consume exact owner APIs and the Core formatter con
 
 test('Shell Entry batch imports consume only exact owner APIs from Appendix B', () => {
   assertTrackedShellEntryBatch({ repoRoot });
+});
+
+test('composition roots consume exact owner APIs with zero debt and final legal projection', () => {
+  assertTrackedCompositionRoots({ repoRoot });
 });
 
 test('tracked owner API contract rejects an absent manifest API path', () => {

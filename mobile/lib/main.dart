@@ -30,38 +30,41 @@ import 'core/session/session_teardown_coordinator.dart';
 import 'core/storage/auth_storage.dart';
 import 'core/storage/token_vault.dart';
 import 'core/storage/sensitive_value_vault.dart';
-import 'features/account_contexts/data/account_contexts_api.dart';
-import 'features/account_contexts/providers/account_context_controller.dart';
-import 'features/auth/data/auth_repository.dart';
-import 'features/auth/providers/auth_controller.dart';
-import 'features/chat/data/chat_api.dart';
-import 'features/chat/data/chat_realtime_client.dart';
-import 'features/chat/providers/chat_provider.dart';
-import 'features/catalogs/data/reference_catalog_api.dart';
-import 'features/catalogs/providers/reference_catalog_provider.dart';
-import 'features/finance/data/finance_api.dart';
-import 'features/finance/providers/finance_provider.dart';
-import 'features/guests/data/guests_api.dart';
-import 'features/guests/providers/guests_provider.dart';
-import 'features/home/providers/home_dashboard_provider.dart';
-import 'features/marketplace/data/marketplace_api.dart';
-import 'features/marketplace/providers/marketplace_provider.dart';
-import 'features/notifications/data/notifications_api.dart';
-import 'features/notifications/providers/notifications_provider.dart';
-import 'features/onboarding/data/guest_onboarding_storage.dart';
-import 'features/onboarding/data/yemen_administrative_api.dart';
-import 'features/onboarding/providers/yemen_administrative_provider.dart';
-import 'features/settings/data/settings_api.dart';
-import 'features/settings/providers/settings_provider.dart';
-import 'features/sharing/data/sharing_api.dart';
-import 'features/sharing/providers/sharing_provider.dart';
-import 'features/sharing/providers/contribution_history_provider.dart';
-import 'features/sharing/services/plan_leave_coordinator.dart';
-import 'features/tasks/data/task_timeline_api.dart';
-import 'features/tasks/providers/task_timeline_provider.dart';
-import 'features/wedding_plans/data/wedding_plans_api.dart';
-import 'features/wedding_plans/providers/dashboard_summary_provider.dart';
-import 'features/wedding_plans/providers/wedding_plans_provider.dart';
+import 'features/account_contexts/account_contexts_api.dart'
+    show AccountContextsApi, AccountContextController;
+import 'features/auth/auth_api.dart' show AuthController, AuthRepository;
+import 'features/catalogs/catalogs_api.dart'
+    show ReferenceCatalogApi, ReferenceCatalogProvider;
+import 'features/chat/chat_api.dart'
+    show ChatApi, ChatProvider, ChatRealtimeClient;
+import 'features/finance/finance_api.dart'
+    show FinanceApi, FinanceProvider, LocalFinancePlanContext;
+import 'features/guests/guests_api.dart' show GuestsApi, GuestsProvider;
+import 'features/home/home_api.dart' show HomeDashboardProvider;
+import 'features/marketplace/marketplace_api.dart'
+    show
+        MarketplaceApi,
+        ProviderDashboardApi,
+        ProviderDashboardProvider,
+        ProviderMarketplaceProvider;
+import 'features/notifications/notifications_api.dart'
+    show NotificationsApi, NotificationsProvider;
+import 'features/onboarding/onboarding_api.dart'
+    show
+        GuestOnboardingStorage,
+        YemenAdministrativeApi,
+        YemenAdministrativeProvider;
+import 'features/settings/settings_api.dart' show SettingsApi, SettingsProvider;
+import 'features/sharing/sharing_api.dart'
+    show
+        ContributionHistoryProvider,
+        PlanLeaveCoordinator,
+        SharingApi,
+        SharingProvider;
+import 'features/tasks/tasks_api.dart'
+    show TaskTimelineApi, TaskTimelineProvider;
+import 'features/wedding_plans/wedding_plans_api.dart'
+    show DashboardSummaryProvider, WeddingPlansApi, WeddingPlansProvider;
 
 Future<void> main() async {
   const observability = ObservabilityConfig.fromEnvironment();

@@ -13,8 +13,9 @@ import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/push/push_lifecycle_bridge.dart';
 import 'core/theme/app_theme.dart';
-import 'features/account_contexts/providers/account_context_controller.dart';
-import 'features/auth/providers/auth_controller.dart';
+import 'features/account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import 'features/auth/auth_api.dart' show AuthController, AuthStatus;
 
 class AarastApp extends StatefulWidget {
   const AarastApp({super.key});

@@ -4,66 +4,87 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../diagnostics/app_logger.dart';
-import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
-import '../../features/auth/screens/login_screen.dart';
-import '../../features/auth/screens/register_screen.dart';
-import '../../features/auth/screens/otp_screen.dart';
-import '../../features/auth/screens/reset_password_screen.dart';
-import '../../features/auth/screens/splash_screen.dart';
-import '../../features/account_contexts/widgets/wedding_plan_context_gate.dart';
-import '../../features/account_contexts/models/account_context.dart';
-import '../../features/account_contexts/providers/account_context_controller.dart';
-import '../../features/chat/screens/chat_screen.dart';
-import '../../features/chat/screens/quote_conversation_entry_screen.dart';
-import '../../features/chat/widgets/conversation_list_view.dart';
-import '../../features/finance/models/budget_category.dart';
-import '../../features/finance/models/cost_draft_intent.dart';
-import '../../features/finance/models/wedding_cost.dart';
-import '../../features/finance/providers/finance_provider.dart';
-import '../../features/finance/screens/budget_category_details_screen.dart';
-import '../../features/finance/screens/budget_category_form_screen.dart';
-import '../../features/finance/screens/cost_details_screen.dart';
-import '../../features/finance/screens/cost_form_screen.dart';
-import '../../features/finance/screens/cost_payment_screens.dart';
-import '../../features/finance/screens/costs_screen.dart';
-import '../../features/finance/screens/money_budget_screen.dart';
-import '../../features/finance/screens/money_overview_screen.dart';
-import '../../features/finance/screens/payment_schedule_screens.dart';
-import '../../features/guests/screens/guest_list_screen.dart';
-import '../../features/marketplace/screens/add_provider_package_screen.dart';
-import '../../features/marketplace/screens/add_provider_service_screen.dart';
-import '../../features/marketplace/screens/edit_provider_profile_screen.dart';
-import '../../features/marketplace/screens/favorite_providers_screen.dart';
-import '../../features/marketplace/screens/provider_apply_screen.dart';
-import '../../features/marketplace/screens/provider_details_screen.dart';
-import '../../features/marketplace/screens/provider_marketplace_screen.dart';
-import '../../features/marketplace/screens/provider_portal_screen.dart';
-import '../../features/marketplace/screens/quote_request_screen.dart';
-import '../../features/marketplace/models/provider_budget_match_intent.dart';
-import '../../features/marketplace/widgets/provider_auth_gate.dart';
-import '../../features/more/screens/more_screen.dart';
-import '../../features/notifications/screens/notifications_screen.dart';
-import '../../features/sharing/screens/invite_decision_screen.dart';
-import '../../features/home/screens/dashboard_entry_screen.dart';
-import '../../features/settings/screens/settings_screen.dart';
-import '../../features/sharing/screens/add_shared_member_screen.dart';
-import '../../features/sharing/screens/edit_shared_member_screen.dart';
-import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
-import '../../features/sharing/screens/sharing_screen.dart';
-import '../../features/sharing/screens/contribution_history_screen.dart';
-import '../../features/sharing/models/shared_member.dart';
-import '../../features/support/screens/support_screen.dart';
-import '../../features/tasks/models/wedding_task.dart';
-import '../../features/tasks/screens/create_task_screen.dart';
-import '../../features/tasks/screens/task_timeline_screen.dart';
-import '../../features/wedding_day/screens/wedding_day_mode_screen.dart';
-import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
-import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
-
-import '../../features/wedding_plans/models/dashboard_summary.dart';
-import '../../features/wedding_plans/screens/plan_center_screen.dart';
-import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
-import '../../features/shell/screens/wedding_plan_shell.dart';
+import '../../features/account_contexts/account_contexts_api.dart'
+    show
+        AccountContextController,
+        AccountContextRole,
+        SelectedWeddingPlanContextGate,
+        WeddingPlanContextGate,
+        WeddingPlanRouteAccess;
+import '../../features/auth/auth_api.dart'
+    show
+        LoginScreen,
+        OtpScreen,
+        OtpScreenArgs,
+        RegisterScreen,
+        ResetPasswordScreen,
+        SplashScreen;
+import '../../features/chat/chat_api.dart'
+    show ChatScreen, ConversationListView, QuoteConversationEntryScreen;
+import '../../features/finance/finance_api.dart'
+    show
+        BudgetCategory,
+        BudgetCategoryDetailsScreen,
+        BudgetCategoryFormScreen,
+        CostDetailsScreen,
+        CostDraftIntent,
+        CostFormScreen,
+        CostPaymentDetailsScreen,
+        CostsScreen,
+        FinanceProvider,
+        MoneyBudgetScreen,
+        MoneyOverviewScreen,
+        PayPaymentScheduleScreen,
+        PaymentScheduleDetailsScreen,
+        PaymentScheduleFormScreen,
+        PaymentSchedulesScreen,
+        RecordCostPaymentScreen,
+        WeddingCost;
+import '../../features/guests/guests_api.dart' show GuestListScreen;
+import '../../features/home/home_api.dart' show DashboardEntryScreen;
+import '../../features/marketplace/marketplace_api.dart'
+    show
+        AddProviderPackageScreen,
+        AddProviderServiceScreen,
+        EditProviderProfileScreen,
+        FavoriteProvidersScreen,
+        ProviderApplyScreen,
+        ProviderApplyStatusScreen,
+        ProviderAuthGate,
+        ProviderBudgetMatchIntent,
+        ProviderDetailsScreen,
+        ProviderMarketplaceScreen,
+        ProviderPortalScreen,
+        ProviderQuoteInitialContext,
+        QuoteRequestScreen;
+import '../../features/more/more_api.dart' show MoreScreen;
+import '../../features/notifications/notifications_api.dart'
+    show NotificationsScreen;
+import '../../features/settings/settings_api.dart' show SettingsScreen;
+import '../../features/sharing/sharing_api.dart'
+    show
+        AddSharedMemberScreen,
+        ContributionHistoryScreen,
+        EditSharedMemberScreen,
+        InviteDecisionScreen,
+        SharedMember,
+        SharedWeddingPlansScreen,
+        SharingScreen;
+import '../../features/shell/shell_api.dart' show WeddingPlanShell;
+import '../../features/support/support_api.dart' show SupportScreen;
+import '../../features/tasks/tasks_api.dart'
+    show CreateTaskScreen, TaskTimelineScreen, WeddingTask;
+import '../../features/wedding_day/wedding_day_api.dart'
+    show WeddingDayModeScreen;
+import '../../features/wedding_plans/wedding_plans_api.dart'
+    show
+        CreateWeddingPlanScreen,
+        DashboardSummary,
+        MyWeddingPlansScreen,
+        PlanCenterScreen,
+        WeddingPlanDashboardScreen;
+import '../../features/welcome_gateway/welcome_gateway_api.dart'
+    show SmartWelcomeScreen;
 import '../config/app_feature_flags.dart';
 
 enum ProviderMarketplaceLaunchOrigin { ownerMainShellProviders }

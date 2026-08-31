@@ -2,7 +2,7 @@ import { type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
+import { useAuth } from '../features/auth/api';
 import { resolveAdminLocation } from './adminNavigation';
 
 type TopbarProps = {

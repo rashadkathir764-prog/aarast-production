@@ -1,8 +1,8 @@
 import { type RefObject } from 'react';
 import { LogOut, ShieldCheck, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
-import { hasAdminPermission } from '../auth/adminPermissions';
+import { useAuth } from '../features/auth/api';
+import { hasAdminPermission } from '../features/auth/api';
 import {
   adminNavigationGroups,
   type AdminNavigationItem,

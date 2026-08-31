@@ -1,6 +1,6 @@
 # Frontend
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-31
 
 Frontend in this repository includes:
 
@@ -39,10 +39,15 @@ The former Premium/Royal roadmap is archived and must not be extended.
 From `admin-web/`:
 
 ```powershell
+npm run test:architecture
+npm run architecture
 npm run build
 npm run typecheck
 npm test -- --run
 npm run smoke:admin-runtime
 ```
 
-Admin runtime smoke requires a running backend.
+The Admin runtime command owns a disposable local backend/database lifecycle;
+use it only with the repository-managed local Docker services. R10 strict
+boundaries require all cross-feature imports through exact owner public APIs
+and keep the legacy Admin roots absent.

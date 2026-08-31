@@ -236,12 +236,30 @@ R0 adds tests and does not edit existing behavioral tests.
 | --- | --- | --- |
 | Enforce owner-controlled public APIs for all Mobile cross-feature imports. | Accepted and implemented locally | Each of the 19 feature owners exposes one exact `<feature>_api.dart` surface. The strict scanner rejects deep cross-feature imports and unauthorized composition-root imports; final debt is zero with 159 legal records. |
 | Treat an unimported guest plan as installation-owned rather than account-owned. | Accepted and implemented locally | Ordinary logout, restore rejection, and confirmed session expiry must not destroy a local plan that has not been imported. Confirmed account deletion may clear it; successful migration and explicit double-confirmed discard remain the only other approved deletion paths. |
-| Close R9 with local checkpoints but without external integration. | Accepted by owner direction | The reviewed C5 application candidate and docs-only receipt checkpoint are committed locally. Push, merge, PR mutation, deployment, remote CI, store release, S10 work, and R10 remain stopped. |
+| Close R9 with local checkpoints but without external integration. | Accepted and completed; R10 was later approved separately | The reviewed C5 application candidate and docs-only receipt checkpoint were committed locally. At R9 closeout, push, merge, PR mutation, deployment, remote CI, store release, S10 work, and R10 were stopped; the separately approved R10 local execution is recorded below. |
 
 ## R9 Local Completion Stop Boundary
 
 R9 is locally complete at application candidate
 `0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
 commit containing this decision. These decisions are bounded to local
-completion. Stop before push, merge, deployment, remote CI, store release, S10
-work, or R10.
+completion. Its stop before R10 was honored until the owner separately approved
+the R10 design and plan; external Git, deployment, CI, store, and S10 actions
+remain outside both receipts.
+
+## Modular Monolith R10 Decisions - 2026-08-31
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Make each Admin domain an owner-controlled feature with one exact public API and an acyclic allowlisted graph. | Accepted and implemented locally | The eight owners are Auth, Dashboard, Users, Providers, Catalog, Moderation, Notifications, and Audit. Cross-feature imports go only through `features/<owner>/api.ts`; Platform and Design System remain domain-free. The strict AST scanner and exact symbol surfaces prevent deep imports and public-API forwarding. |
+| Delete each legacy Admin implementation when it moves; do not retain a facade, alias, duplicate, fallback, or compatibility layer. | Accepted and implemented locally | All 78 starting Admin source files have one fate and the old `api/auth/components/pages` roots are `0/0/0/0`. A compatibility layer would hide ownership and make strict closeout false. |
+| Resolve cross-owner UI composition only at approved roots. | Accepted and implemented locally | `App.tsx` injects Dashboard statistics and Catalog loaders into Provider screens through narrow provider-owned structural projections. This preserves request order and UI behavior without a reciprocal Provider dependency or a Catalog/Provider cycle. |
+| Keep the two existing-test transformations exact and location-aware. | Accepted and machine-enforced | Dashboard may split only its two mock targets without changing mock behavior; Pagination may add only the resolved expected import for the same seven page records. Across the full preserved set of 96 existing tests, every other fixture, assertion, Arabic/error value, and behavior remains frozen. |
+| Distinguish local R10 phase closure from architecture-target or release completion. | Accepted | R10 passed the complete local Admin/Backend/Mobile/Prisma/runtime/docs matrix and independent review, but Backend debt remains 22 and 385/781. No commit, push, merge, deployment, remote CI, real WhatsApp delivery, live Push, or store release is implied. |
+
+## R10 Local Completion Stop Boundary
+
+R10 Admin phase is complete in the working tree from immutable R9 closeout
+`e560e5784278907dd6bf565327c3abfa0c9b8cab`. Stop before commit, push, merge,
+deployment, production mutation, remote CI, store release, or S10. A future
+Backend debt-removal phase requires a separate decision, design, and plan.

@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { Topbar } from './Topbar';
 
-vi.mock('../auth/AuthProvider', () => ({
+vi.mock('../features/auth/AuthProvider', () => ({
   useAuth: () => ({
     user: {
       id: 'admin-1',

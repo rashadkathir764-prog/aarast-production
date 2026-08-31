@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
+import { useAuth } from '../features/auth/api';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 

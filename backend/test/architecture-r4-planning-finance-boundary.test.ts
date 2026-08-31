@@ -25,6 +25,7 @@ const manifestPath = path.join(
 );
 const r4Base = '502b181a2ce624458fd7eae064f194497ec0151e';
 const ownershipDebtKey = 'backend/src/money/money-budget.service.ts|finance|planning|WeddingPlan|update|write|delegate|foreign-model';
+const r9Ceiling = 'e560e5784278907dd6bf565327c3abfa0c9b8cab';
 const expectedAllowedPaths = [
   'ARCHITECTURE.md',
   'CHANGELOG.md',
@@ -239,6 +240,7 @@ test('R3 accepts only the validated R4 phase handoff without mutating its receip
   const result = scope.validateR3Scope({
     repositoryRoot,
     baseRef: '6b06eb096aca8cc6684d365d16e05d4cd8529898',
+    targetRef: r9Ceiling,
   });
   try {
     assert.equal(result.changedPaths.includes(manifestPath
@@ -249,11 +251,10 @@ test('R3 accepts only the validated R4 phase handoff without mutating its receip
   }
 });
 
-test('live R4 paths stay inside the exact manifest fence with rename detection disabled', () => {
-  const changedPaths = [...new Set([
-    ...gitLines(['diff', '--no-renames', '--name-only', r4Base, '--']),
-    ...gitLines(['ls-files', '--others', '--exclude-standard', '--']),
-  ])].sort();
+test('R4-to-R9 snapshot paths stay inside the exact manifest fence with rename detection disabled', () => {
+  const changedPaths = [...new Set(
+    gitLines(['diff', '--no-renames', '--name-only', r4Base, r9Ceiling, '--']),
+  )].sort();
   const allowed = new Set([
     ...manifest().allowedChangedPaths,
     ...r3Scope().R5_ALLOWED_PATHS,

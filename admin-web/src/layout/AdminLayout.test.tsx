@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { AdminPermission } from '../auth/adminPermissions';
+import { AdminPermission } from '../features/auth/api';
 import { AdminLayout } from './AdminLayout';
 
-vi.mock('../auth/AuthProvider', () => ({
+vi.mock('../features/auth/AuthProvider', () => ({
   useAuth: () => ({
     user: {
       id: 'admin-1',

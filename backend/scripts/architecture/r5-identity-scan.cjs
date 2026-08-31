@@ -1155,14 +1155,19 @@ function readBaseJson(repositoryRoot, relativePath) {
   ));
 }
 
-function liveChangedPaths(repositoryRoot) {
-  const options = { cwd: repositoryRoot, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 };
-  const tracked = execFileSync(
+function liveChangedPaths(repositoryRoot, executeGit = execFileSync) {
+  const options = {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  };
+  const tracked = executeGit(
     'git',
     ['diff', '--no-renames', '--name-only', R5_BASE, '--'],
     options,
   ).split(/\r?\n/u).filter(Boolean);
-  const untracked = execFileSync(
+  const untracked = executeGit(
     'git',
     ['ls-files', '--others', '--exclude-standard'],
     options,
@@ -1241,6 +1246,7 @@ module.exports = {
   verifyR7DependencyHandoff,
   verifyR7HistoryOwnershipHandoff,
   verifyR7SharingOwnershipHandoff,
+  liveChangedPaths,
   runCli,
 };
 

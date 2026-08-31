@@ -43,10 +43,12 @@ const r9ManifestPath = path.join(
   'r9-mobile-strict-manifest.json',
 );
 const baseRef = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
+const targetRef = 'e560e5784278907dd6bf565327c3abfa0c9b8cab';
 const temporaryRoots: string[] = [];
 
 type ScopeModule = {
   R3_BASE: string;
+  R9_CEILING: string;
   ALLOWED_PATHS: readonly string[];
   R4_ALLOWED_PATHS: readonly string[];
   R5_ALLOWED_PATHS: readonly string[];
@@ -99,8 +101,10 @@ afterEach(() => {
 
 test('R3 scope pins the immutable base and accepts only the explicit strict paths', () => {
   assert.equal(scope().R3_BASE, baseRef);
-  const result = scope().validateR3Scope({ repositoryRoot, baseRef });
+  assert.equal(scope().R9_CEILING, targetRef);
+  const result = scope().validateR3Scope({ repositoryRoot, baseRef, targetRef });
   assert.equal(result.ok, true);
+  assert.equal(result.targetRef, targetRef);
   assert.deepEqual(result.unexpectedPaths, []);
   const preliminaryChangedPaths = [
     'backend/.dependency-cruiser-known-violations.json',
@@ -746,8 +750,8 @@ test('machine reports use a unique absolute OS-temp JSON path and reparse safely
   temporaryRoots.push(root);
   const first = path.join(root, 'first.json');
   const second = path.join(root, 'second.json');
-  const resultA = scope().validateR3Scope({ repositoryRoot, baseRef, reportPath: first });
-  const resultB = scope().validateR3Scope({ repositoryRoot, baseRef, reportPath: second });
+  const resultA = scope().validateR3Scope({ repositoryRoot, baseRef, targetRef, reportPath: first });
+  const resultB = scope().validateR3Scope({ repositoryRoot, baseRef, targetRef, reportPath: second });
   assert.equal(path.isAbsolute(resultA.reportPath), true);
   assert.equal(path.extname(resultA.reportPath), '.json');
   assert.notEqual(resultA.reportPath, resultB.reportPath);
@@ -755,11 +759,12 @@ test('machine reports use a unique absolute OS-temp JSON path and reparse safely
   assert.deepEqual(JSON.parse(readFileSync(first, 'utf8')).changedPaths, resultA.changedPaths);
 });
 
-test('I7 the default validator and real CLI both commit truthful atomic reports', () => {
-  const result = scope().validateR3Scope({ repositoryRoot, baseRef });
+test('I7 the historical validator and real snapshot CLI both commit truthful atomic reports', () => {
+  const result = scope().validateR3Scope({ repositoryRoot, baseRef, targetRef });
   try {
     assert.equal(existsSync(result.reportPath), true);
     assert.deepEqual(JSON.parse(readFileSync(result.reportPath, 'utf8')).changedPaths, result.changedPaths);
+    assert.equal(JSON.parse(readFileSync(result.reportPath, 'utf8')).targetRef, targetRef);
     assert.equal(existsSync(`${result.reportPath}.tmp`), false);
   } finally {
     rmSync(result.reportPath, { force: true });
@@ -774,6 +779,8 @@ test('I7 the default validator and real CLI both commit truthful atomic reports'
     '--check',
     '--base-ref',
     baseRef,
+    '--target-ref',
+    targetRef,
     '--report-path',
     reportPath,
   ], {
@@ -784,6 +791,207 @@ test('I7 the default validator and real CLI both commit truthful atomic reports'
   assert.equal(existsSync(reportPath), true);
   assert.equal(existsSync(`${reportPath}.tmp`), false);
   assert.equal(JSON.parse(readFileSync(reportPath, 'utf8')).ok, true);
+  assert.equal(JSON.parse(readFileSync(reportPath, 'utf8')).targetRef, targetRef);
+});
+
+test('snapshot mode pins the exact ceiling, reads manifests from it, and never scans live untracked files', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-snapshot-git-'));
+  temporaryRoots.push(root);
+  const reportPath = path.join(root, 'scope.json');
+  const mutableChildProcess = require('node:child_process') as any;
+  const mutableFs = require('node:fs') as any;
+  const originalExecFileSync = mutableChildProcess.execFileSync;
+  const originalReadFileSync = mutableFs.readFileSync;
+  const calls: string[][] = [];
+  const manifestPaths = [
+    'backend/architecture/r3-context-boundaries.json',
+    'backend/architecture/r4-planning-finance-boundary.json',
+    'backend/architecture/r5-identity-relocation.json',
+    'backend/architecture/r6-sharing-otp-transport.json',
+    'backend/architecture/r7-collaboration-relocation.json',
+    'backend/architecture/r8-global-module-removal.json',
+    'scripts/architecture/r9-mobile-strict-manifest.json',
+  ];
+  const liveManifestPaths = new Set(manifestPaths.map((manifestPath) => (
+    path.normalize(path.join(repositoryRoot, ...manifestPath.split('/')))
+  )));
+  delete require.cache[scopePath];
+  mutableFs.readFileSync = (target: unknown, ...args: unknown[]) => {
+    const targetPath = typeof target === 'string' ? path.normalize(target) : '';
+    if (liveManifestPaths.has(targetPath)) {
+      throw new Error(`snapshot attempted a live manifest read: ${targetPath}`);
+    }
+    return originalReadFileSync(target, ...args);
+  };
+  mutableChildProcess.execFileSync = (
+    executable: string,
+    args: string[],
+    options: Record<string, unknown>,
+  ) => {
+    if (executable !== 'git') return originalExecFileSync(executable, args, options);
+    calls.push([...args]);
+    if (args[0] === 'rev-parse') return `${targetRef}\n`;
+    if (args[0] === 'merge-base') return '';
+    if (args[0] === 'show') {
+      const relativePath = args[1].slice(`${targetRef}:`.length);
+      assert.ok(manifestPaths.includes(relativePath), relativePath);
+      return originalReadFileSync(
+        path.join(repositoryRoot, ...relativePath.split('/')),
+        'utf8',
+      );
+    }
+    if (args[0] === 'diff') return '';
+    if (args[0] === 'ls-files') throw new Error('snapshot must not inspect live untracked paths');
+    throw new Error(`unexpected Git command: ${args.join(' ')}`);
+  };
+  try {
+    const isolatedScope = require(scopePath) as ScopeModule;
+    const result = isolatedScope.validateR3Scope({
+      repositoryRoot,
+      baseRef,
+      targetRef,
+      reportPath,
+    });
+    assert.equal(result.targetRef, targetRef);
+    assert.deepEqual(calls.filter((args) => args[0] === 'show').map((args) => args[1]),
+      manifestPaths.map((manifestPath) => `${targetRef}:${manifestPath}`));
+    assert.ok(calls.some((args) => JSON.stringify(args) === JSON.stringify([
+      'diff', '--no-renames', '--name-only', baseRef, targetRef, '--',
+    ])));
+    assert.equal(calls.some((args) => args[0] === 'ls-files'), false);
+  } finally {
+    mutableFs.readFileSync = originalReadFileSync;
+    mutableChildProcess.execFileSync = originalExecFileSync;
+    delete require.cache[scopePath];
+  }
+});
+
+test('snapshot mode rejects every target except the exact R9 ceiling and verifies commit ancestry', () => {
+  assert.throws(() => scope().validateR3Scope({
+    repositoryRoot,
+    baseRef,
+    targetRef: '0'.repeat(40),
+  }), /target|ceiling/i);
+
+  const mutableChildProcess = require('node:child_process') as any;
+  const originalExecFileSync = mutableChildProcess.execFileSync;
+  delete require.cache[scopePath];
+  mutableChildProcess.execFileSync = (
+    executable: string,
+    args: string[],
+    options: Record<string, unknown>,
+  ) => {
+    if (executable !== 'git') return originalExecFileSync(executable, args, options);
+    if (args[0] === 'rev-parse') return `${targetRef}\n`;
+    if (args[0] === 'merge-base') throw new Error('not an ancestor');
+    throw new Error(`unexpected Git command: ${args.join(' ')}`);
+  };
+  try {
+    const isolatedScope = require(scopePath) as ScopeModule;
+    assert.throws(() => isolatedScope.validateR3Scope({
+      repositoryRoot,
+      baseRef,
+      targetRef,
+    }), /ancestor|ancestry|target/i);
+  } finally {
+    mutableChildProcess.execFileSync = originalExecFileSync;
+    delete require.cache[scopePath];
+  }
+});
+
+test('default live mode retains untracked scanning, records null identity, and rejects later R10 paths', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-live-mode-'));
+  temporaryRoots.push(root);
+  const reportPath = path.join(root, 'scope.json');
+  const mutableChildProcess = require('node:child_process') as any;
+  const originalExecFileSync = mutableChildProcess.execFileSync;
+  const calls: string[][] = [];
+  let trackedPaths = '';
+  delete require.cache[scopePath];
+  mutableChildProcess.execFileSync = (
+    executable: string,
+    args: string[],
+    options: Record<string, unknown>,
+  ) => {
+    if (executable !== 'git') return originalExecFileSync(executable, args, options);
+    calls.push([...args]);
+    if (args[0] === 'diff') return trackedPaths;
+    if (args[0] === 'ls-files') return '';
+    throw new Error(`unexpected Git command: ${args.join(' ')}`);
+  };
+  try {
+    const isolatedScope = require(scopePath) as ScopeModule;
+    const liveResult = isolatedScope.validateR3Scope({
+      repositoryRoot,
+      baseRef,
+      targetRef: null,
+      reportPath,
+    });
+    assert.equal(liveResult.targetRef, null);
+    assert.equal(JSON.parse(readFileSync(reportPath, 'utf8')).targetRef, null);
+    trackedPaths = 'admin-web/src/App.tsx\n';
+    assert.throws(() => isolatedScope.validateR3Scope({
+      repositoryRoot,
+      baseRef,
+      targetRef: null,
+      reportPath: path.join(root, 'rejected.json'),
+    }), /scope/);
+    assert.deepEqual(calls.slice(-2), [
+      ['diff', '--no-renames', '--name-only', baseRef, '--'],
+      ['ls-files', '--others', '--exclude-standard'],
+    ]);
+    assert.equal(existsSync(reportPath), true);
+    assert.equal(existsSync(path.join(root, 'rejected.json')), false);
+  } finally {
+    mutableChildProcess.execFileSync = originalExecFileSync;
+    delete require.cache[scopePath];
+  }
+});
+
+test('scope CLI accepts only four ordered forms and preserves live or snapshot identity', () => {
+  const validCases = [
+    { argv: ['--check', '--base-ref', baseRef], targetRef: null, reportPath: undefined },
+    { argv: ['--check', '--base-ref', baseRef, '--report-path', 'report.json'], targetRef: null, reportPath: 'report.json' },
+    { argv: ['--check', '--base-ref', baseRef, '--target-ref', targetRef], targetRef, reportPath: undefined },
+    { argv: ['--check', '--base-ref', baseRef, '--target-ref', targetRef, '--report-path', 'report.json'], targetRef, reportPath: 'report.json' },
+  ];
+  for (const candidate of validCases) {
+    let received: Record<string, unknown> | undefined;
+    const code = scope().runCli({
+      argv: candidate.argv,
+      validate: (options: Record<string, unknown>) => {
+        received = options;
+        return { changedPaths: [], targetRef: candidate.targetRef };
+      },
+      stdout: () => {},
+      stderr: () => {},
+    });
+    assert.equal(code, 0, candidate.argv.join(' '));
+    assert.equal(received?.targetRef, candidate.targetRef);
+    assert.equal(received?.reportPath, candidate.reportPath);
+  }
+
+  const invalidCases = [
+    ['--check', '--base-ref', '0'.repeat(40)],
+    ['--check', '--base-ref', baseRef, '--target-ref', '0'.repeat(40)],
+    ['--check', '--base-ref', baseRef, '--target-ref'],
+    ['--check', '--base-ref', baseRef, '--report-path'],
+    ['--check', '--base-ref', baseRef, '--unknown', 'value'],
+    ['--check', '--base-ref', baseRef, '--target-ref', targetRef, '--target-ref', targetRef],
+    ['--check', '--base-ref', baseRef, '--report-path', 'report.json', '--target-ref', targetRef],
+    ['--check', '--base-ref', baseRef, '--report-path', 'one.json', '--report-path', 'two.json'],
+  ];
+  for (const argv of invalidCases) {
+    let called = false;
+    const code = scope().runCli({
+      argv,
+      validate: () => { called = true; return { changedPaths: [] }; },
+      stdout: () => {},
+      stderr: () => {},
+    });
+    assert.equal(code, 2, argv.join(' '));
+    assert.equal(called, false, argv.join(' '));
+  }
 });
 
 test('I8 report confinement rejects junction or symlink escapes outside the canonical temp root', () => {
@@ -796,6 +1004,7 @@ test('I8 report confinement rejects junction or symlink escapes outside the cano
   assert.throws(() => scope().validateR3Scope({
     repositoryRoot,
     baseRef,
+    targetRef,
     reportPath,
   }), /canonical|reparse|junction|symbolic|temporary/i);
   assert.equal(existsSync(path.join(outsideRoot, 'escaped.json')), false);

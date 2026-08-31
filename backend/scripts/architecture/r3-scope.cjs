@@ -11,6 +11,7 @@ const {
   validateR5Manifest,
 } = require('./r5-identity-scan.cjs');
 const {
+  EXPECTED_ALLOWED_PATHS: R6_EXPECTED_ALLOWED_PATHS,
   R6_BASE,
   validateR6Manifest,
 } = require('./r6-sharing-otp-transport-scan.cjs');
@@ -29,6 +30,7 @@ const {
 } = require('../../../scripts/check-mobile-boundaries.mjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
+const R9_CEILING = 'e560e5784278907dd6bf565327c3abfa0c9b8cab';
 const R4_BASE = '502b181a2ce624458fd7eae064f194497ec0151e';
 const R4_MANIFEST_PATH = 'backend/architecture/r4-planning-finance-boundary.json';
 const R5_MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
@@ -286,33 +288,26 @@ const ALLOWED_PATHS = Object.freeze([
   'docs/qa/README.md',
   'CHANGELOG.md',
 ]);
-const R5_ALLOWED_PATHS = Object.freeze([
-  ...validateR5Manifest(JSON.parse(fs.readFileSync(path.join(
-    __dirname,
-    '..',
-    '..',
-    'architecture',
-    'r5-identity-relocation.json',
-  ), 'utf8'))).allowedChangedPaths,
-]);
-const R6_ALLOWED_PATHS = Object.freeze([
-  ...validateR6Manifest(JSON.parse(fs.readFileSync(path.join(
-    __dirname,
-    '..',
-    '..',
-    'architecture',
-    'r6-sharing-otp-transport.json',
-  ), 'utf8'))).allowedChangedPaths,
-]);
-const R9_ALLOWED_PATHS = Object.freeze([
-  ...validateR9Manifest(JSON.parse(fs.readFileSync(path.join(
+const R6_ALLOWED_PATHS = Object.freeze([...R6_EXPECTED_ALLOWED_PATHS]);
+
+function readLiveAllowedPaths(manifestPath, validator) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(
     __dirname,
     '..',
     '..',
     '..',
-    ...R9_MANIFEST_PATH.split('/'),
-  ), 'utf8'))).allowedChangedPaths,
-]);
+    ...manifestPath.split('/'),
+  ), 'utf8'));
+  return Object.freeze([...validator(manifest).allowedChangedPaths]);
+}
+
+function liveR5AllowedPaths() {
+  return readLiveAllowedPaths(R5_MANIFEST_PATH, validateR5Manifest);
+}
+
+function liveR9AllowedPaths() {
+  return readLiveAllowedPaths(R9_MANIFEST_PATH, validateR9Manifest);
+}
 
 function assertPlainObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !utilTypes.isProxy(value)) {
@@ -392,7 +387,6 @@ function validateR5IdentityManifest(value) {
   if (manifest.baseRevision !== R5_BASE) {
     throw new Error('R5 identity manifest identity is invalid');
   }
-  assertAllowedPathsMatch(manifest.allowedChangedPaths, R5_ALLOWED_PATHS);
   for (const requiredPath of [
     R5_MANIFEST_PATH,
     'backend/scripts/architecture/r3-scope.cjs',
@@ -478,10 +472,6 @@ function validateR8GlobalRemovalManifest(value) {
 
 function validateR9MobileStrictManifest(value) {
   const manifest = validateR9Manifest(value);
-  assertAllowedPathsMatch(
-    manifest.allowedChangedPaths,
-    R9_ALLOWED_PATHS,
-  );
   return Object.freeze({
     baseRevision: manifest.baseRevision,
     allowedChangedPaths: Object.freeze(Array.from(manifest.allowedChangedPaths)),
@@ -508,6 +498,41 @@ function validateScopeSnapshot(value) {
 function gitLines(repositoryRoot, args) {
   const text = execFileSync('git', args, { cwd: repositoryRoot, encoding: 'utf8' });
   return text.split(/\r?\n/u).map((item) => item.trim()).filter(Boolean);
+}
+
+function gitText(repositoryRoot, args) {
+  return execFileSync('git', args, { cwd: repositoryRoot, encoding: 'utf8' });
+}
+
+function validateSnapshotTarget(repositoryRoot, targetRef) {
+  if (targetRef !== R9_CEILING) throw new Error('scope target does not equal immutable R9 ceiling');
+  let resolved;
+  try {
+    resolved = gitLines(repositoryRoot, ['rev-parse', '--verify', `${targetRef}^{commit}`]);
+  } catch {
+    throw new Error('scope target must resolve to the immutable R9 ceiling commit');
+  }
+  if (resolved.length !== 1 || resolved[0] !== targetRef) {
+    throw new Error('scope target resolved to a different commit');
+  }
+  try {
+    gitText(repositoryRoot, ['merge-base', '--is-ancestor', R3_BASE, targetRef]);
+  } catch {
+    throw new Error('scope target must descend from the immutable R3 base');
+  }
+}
+
+function readManifest(repositoryRoot, manifestPath, targetRef, optional = false) {
+  if (targetRef !== null) {
+    try {
+      return JSON.parse(gitText(repositoryRoot, ['show', `${targetRef}:${manifestPath}`]));
+    } catch {
+      throw new Error(`scope snapshot manifest is missing or invalid: ${manifestPath}`);
+    }
+  }
+  const absolutePath = path.join(repositoryRoot, ...manifestPath.split('/'));
+  if (optional && !fs.existsSync(absolutePath)) return null;
+  return JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
 }
 
 function isInside(parent, candidate) {
@@ -687,36 +712,28 @@ function validateR3Scope(options) {
   if (typeof input.repositoryRoot !== 'string' || !path.isAbsolute(input.repositoryRoot)) {
     throw new Error('repository root must be absolute');
   }
-  const manifest = JSON.parse(fs.readFileSync(path.join(
+  const targetRef = input.targetRef === undefined || input.targetRef === null
+    ? null
+    : input.targetRef;
+  if (targetRef !== null) validateSnapshotTarget(input.repositoryRoot, targetRef);
+  const manifest = readManifest(
     input.repositoryRoot,
-    'backend',
-    'architecture',
-    'r3-context-boundaries.json',
-  ), 'utf8'));
+    'backend/architecture/r3-context-boundaries.json',
+    targetRef,
+  );
   assertAllowedPathsMatch(manifest.allowedChangedPaths, ALLOWED_PATHS);
-  const r4ManifestAbsolutePath = path.join(input.repositoryRoot, ...R4_MANIFEST_PATH.split('/'));
-  const delegatedR4 = fs.existsSync(r4ManifestAbsolutePath)
-    ? validateR4DelegationManifest(JSON.parse(fs.readFileSync(r4ManifestAbsolutePath, 'utf8')))
-    : null;
-  const r5ManifestAbsolutePath = path.join(input.repositoryRoot, ...R5_MANIFEST_PATH.split('/'));
-  const delegatedR5 = fs.existsSync(r5ManifestAbsolutePath)
-    ? validateR5IdentityManifest(JSON.parse(fs.readFileSync(r5ManifestAbsolutePath, 'utf8')))
-    : null;
-  const r6ManifestAbsolutePath = path.join(input.repositoryRoot, ...R6_MANIFEST_PATH.split('/'));
-  const delegatedR6 = fs.existsSync(r6ManifestAbsolutePath)
-    ? validateR6SharingOtpManifest(JSON.parse(fs.readFileSync(r6ManifestAbsolutePath, 'utf8')))
-    : null;
-  const r7ManifestAbsolutePath = path.join(input.repositoryRoot, ...R7_MANIFEST_PATH.split('/'));
-  const delegatedR7 = fs.existsSync(r7ManifestAbsolutePath)
-    ? validateR7CollaborationManifest(JSON.parse(fs.readFileSync(r7ManifestAbsolutePath, 'utf8')))
-    : null;
-  const r8ManifestAbsolutePath = path.join(input.repositoryRoot, ...R8_MANIFEST_PATH.split('/'));
-  const delegatedR8 = fs.existsSync(r8ManifestAbsolutePath)
-    ? validateR8GlobalRemovalManifest(JSON.parse(fs.readFileSync(r8ManifestAbsolutePath, 'utf8')))
-    : null;
-  const r9ManifestAbsolutePath = path.join(input.repositoryRoot, ...R9_MANIFEST_PATH.split('/'));
+  const delegatedR4Value = readManifest(input.repositoryRoot, R4_MANIFEST_PATH, targetRef, targetRef === null);
+  const delegatedR4 = delegatedR4Value ? validateR4DelegationManifest(delegatedR4Value) : null;
+  const delegatedR5Value = readManifest(input.repositoryRoot, R5_MANIFEST_PATH, targetRef, targetRef === null);
+  const delegatedR5 = delegatedR5Value ? validateR5IdentityManifest(delegatedR5Value) : null;
+  const delegatedR6Value = readManifest(input.repositoryRoot, R6_MANIFEST_PATH, targetRef, targetRef === null);
+  const delegatedR6 = delegatedR6Value ? validateR6SharingOtpManifest(delegatedR6Value) : null;
+  const delegatedR7Value = readManifest(input.repositoryRoot, R7_MANIFEST_PATH, targetRef, targetRef === null);
+  const delegatedR7 = delegatedR7Value ? validateR7CollaborationManifest(delegatedR7Value) : null;
+  const delegatedR8Value = readManifest(input.repositoryRoot, R8_MANIFEST_PATH, targetRef, targetRef === null);
+  const delegatedR8 = delegatedR8Value ? validateR8GlobalRemovalManifest(delegatedR8Value) : null;
   const delegatedR9 = validateR9MobileStrictManifest(
-    JSON.parse(fs.readFileSync(r9ManifestAbsolutePath, 'utf8')),
+    readManifest(input.repositoryRoot, R9_MANIFEST_PATH, targetRef),
   );
   const effectiveAllowedPaths = [...new Set([
     ...ALLOWED_PATHS,
@@ -727,8 +744,12 @@ function validateR3Scope(options) {
     ...(delegatedR8 ? delegatedR8.allowedChangedPaths : []),
     ...delegatedR9.allowedChangedPaths,
   ])].sort();
-  const tracked = gitLines(input.repositoryRoot, ['diff', '--no-renames', '--name-only', R3_BASE, '--']);
-  const untracked = gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
+  const tracked = gitLines(input.repositoryRoot, targetRef === null
+    ? ['diff', '--no-renames', '--name-only', R3_BASE, '--']
+    : ['diff', '--no-renames', '--name-only', R3_BASE, targetRef, '--']);
+  const untracked = targetRef === null
+    ? gitLines(input.repositoryRoot, ['ls-files', '--others', '--exclude-standard'])
+    : [];
   const changedPaths = [...new Set([...tracked, ...untracked])].sort();
   const snapshot = validateScopeSnapshot({
     baseRef: input.baseRef,
@@ -738,7 +759,7 @@ function validateR3Scope(options) {
   const reportPath = input.reportPath === undefined
     ? path.join((fs.realpathSync.native || fs.realpathSync)(os.tmpdir()), `aarast-r3-scope-${crypto.randomUUID()}.json`)
     : input.reportPath;
-  const result = { ...snapshot, reportPath };
+  const result = { ...snapshot, targetRef, reportPath };
   writeAtomicJson(reportPath, result);
   return Object.freeze(result);
 }
@@ -749,15 +770,21 @@ function runCli(dependencies = {}) {
   const stderr = dependencies.stderr || ((message) => process.stderr.write(`${message}\n`));
   const validate = dependencies.validate || validateR3Scope;
   try {
-    const hasReportPath = argv.length === 5 && argv[3] === '--report-path';
-    if (![3, 5].includes(argv.length) || argv[0] !== '--check' || argv[1] !== '--base-ref'
-        || argv[2] !== R3_BASE || (argv.length === 5 && !hasReportPath)) {
+    const live = argv.length === 3;
+    const liveReport = argv.length === 5 && argv[3] === '--report-path';
+    const snapshot = argv.length === 5 && argv[3] === '--target-ref' && argv[4] === R9_CEILING;
+    const snapshotReport = argv.length === 7 && argv[3] === '--target-ref'
+      && argv[4] === R9_CEILING && argv[5] === '--report-path';
+    if ((!live && !liveReport && !snapshot && !snapshotReport)
+        || argv[0] !== '--check' || argv[1] !== '--base-ref' || argv[2] !== R3_BASE) {
       throw new Error('invalid arguments');
     }
     const result = validate({
       repositoryRoot: path.resolve(__dirname, '../../..'),
       baseRef: argv[2],
-      ...(hasReportPath ? { reportPath: argv[4] } : {}),
+      targetRef: snapshot || snapshotReport ? argv[4] : null,
+      ...(liveReport ? { reportPath: argv[4] } : {}),
+      ...(snapshotReport ? { reportPath: argv[6] } : {}),
     });
     stdout(`PASS - R3 scope: changed=${result.changedPaths.length}, unexpected=0, base=${R3_BASE}`);
     return 0;
@@ -769,13 +796,12 @@ function runCli(dependencies = {}) {
 
 module.exports = {
   R3_BASE,
+  R9_CEILING,
   ALLOWED_PATHS,
   R4_ALLOWED_PATHS,
-  R5_ALLOWED_PATHS,
   R6_ALLOWED_PATHS,
   R7_ALLOWED_PATHS,
   R8_ALLOWED_PATHS,
-  R9_ALLOWED_PATHS,
   assertAllowedPathsMatch,
   validateR4DelegationManifest,
   validateR5IdentityManifest,
@@ -788,4 +814,14 @@ module.exports = {
   validateScopeSnapshot,
   runCli,
 };
+Object.defineProperties(module.exports, {
+  R5_ALLOWED_PATHS: {
+    enumerable: true,
+    get: liveR5AllowedPaths,
+  },
+  R9_ALLOWED_PATHS: {
+    enumerable: true,
+    get: liveR9AllowedPaths,
+  },
+});
 if (require.main === module) process.exitCode = runCli();

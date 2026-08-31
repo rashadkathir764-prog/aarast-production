@@ -1,6 +1,6 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-08-30
+Snapshot date: 2026-08-31
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
@@ -315,7 +315,7 @@ Acceptance:
   offline, permission-denied, and read-only acceptance criteria where relevant.
 - Design review includes real routed screens, not only component previews.
 
-### P3 — Source Quality And Architecture — R9 Locally Complete; Stop Before R10
+### P3 — Source Quality And Architecture — R0-R10 Local Wave Closed With Declared Gaps
 
 #### Completed R1 — Platform And Shared Kernel
 
@@ -524,8 +524,30 @@ Completed R6 execution plan:
 - The repository seed still contains stale removed-field fixtures and was not
   patched outside R9 scope. Bare Task 9 Prisma validation was environment-
   blocked; the isolated current-R9 migration/runtime proof passed.
-- R9 is locally complete only. No push, merge, PR mutation, deployment, remote
-  CI, store release, S10 work, or R10 is claimed.
+- The R9 receipt is local-only and claimed no push, merge, PR mutation,
+  deployment, remote CI, store release, S10 work, or R10. The separately
+  approved R10 execution is recorded below.
+
+#### R10 — Admin Owner Restructure — Locally Complete
+
+- R10 executed from immutable R9 closeout
+  `e560e5784278907dd6bf565327c3abfa0c9b8cab` under the reviewed design and
+  staged plan in `docs/superpowers/`.
+- Admin Web is split into eight acyclic owner features plus Platform and Design
+  System. All 78 starting source files have one final fate; the old
+  `api/auth/components/pages` roots are `0/0/0/0` with no compatibility layer.
+- Permanent TypeScript-AST boundaries enforce exact public APIs, feature edges,
+  composition roots, and the frozen route/request/Arabic/test contracts.
+- Admin 101/101, Backend 1,351 pass / 0 fail / 1 skip, Mobile 1,164/1,164,
+  Prisma equivalence, focused and aggregate smokes, audits, docs, runtime, and
+  protected-surface checks pass locally. Independent review approved every
+  task and the final Task 9 matrix with no unresolved finding.
+- R10 preserves Backend product source, Mobile, Prisma, dependencies,
+  lockfiles, deployment, API, permissions, Arabic copy, OTP, and session
+  behavior. Backend debt remains 22 and 385/781, so the architecture target is
+  not declared complete.
+- R0-R10 is a locally closed execution wave only. No commit, push, merge, PR
+  mutation, deployment, production mutation, remote CI, or release occurred.
 
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
@@ -537,7 +559,7 @@ The completed R4 execution snapshot remains:
 `docs/superpowers/plans/2026-08-16-modular-monolith-r4-planning-finance-ownership.md`.
 
 The numbered P3 modernization work below remains subordinate to the completed
-R9 receipts. R10 and later work must not move forward without a separate owner
+R10 receipts. Any future debt-removal phase must have a separate owner
 instruction and approved plan.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
@@ -604,9 +626,11 @@ Stop and investigate rather than papering over any of the following:
 - A refactor changes a backend transaction/lock order without regression tests.
 - A release claim lacks the matching device or deployed-environment evidence.
 
-## R9 Local Completion Stop Boundary
+## R10 Local Completion Stop Boundary
 
-R9 is locally complete at application candidate
-`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
-commit containing this receipt. Stop before push, merge, deployment, remote CI,
-store release, S10 work, or R10.
+R10 Admin phase and the R0-R10 local execution wave are complete in the working
+tree from immutable R9 closeout
+`e560e5784278907dd6bf565327c3abfa0c9b8cab`, with Backend debt 22 and 385/781
+still declared. Stop before commit, push, merge, deployment, production
+mutation, remote CI, store release, or S10. Future architecture debt work needs
+its own approved phase.

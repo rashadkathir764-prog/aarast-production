@@ -1,10 +1,43 @@
 # Current Status
 
-Snapshot date: 2026-08-30
+Snapshot date: 2026-08-31
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R10 Admin Local Completion - 2026-08-31
+
+R10 Admin phase is locally complete on branch `modular-monolith` from immutable
+R9 closeout `e560e5784278907dd6bf565327c3abfa0c9b8cab`. The reviewed design,
+implementation plan, and final report are under `docs/superpowers/`.
+
+Admin Web now has eight exact feature owners (`auth`, `dashboard`, `users`,
+`providers`, `catalog`, `moderation`, `notifications`, and `audit`) plus
+`platform`, `design_system`, retained composition roots, and test-only
+contracts. The legacy `src/api`, `src/auth`, `src/components`, and `src/pages`
+roots moved from `5/9/27/24` to `0/0/0/0` without a facade, alias, duplicate,
+fallback, or hidden compatibility path. Routes, 62 request records, 1,020
+Arabic literal records, auth/session/RBAC behavior, and all 96 pre-existing
+tests are frozen by permanent scanners; total Admin coverage is 101 tests.
+
+Final local verification passed: Admin boundaries 35/35 and strict zero,
+101/101 tests, typecheck, 2,401-module build, honesty 12/12, routes 16/16,
+container 3/3, zero audit findings, and managed runtime after 76 migrations;
+Backend architecture/check/build, 1,351 pass / 0 fail / 1 intentional skip,
+zero audits, security gate, Prisma 52-model/41-enum equivalence, 12 focused
+smokes plus aggregate smoke; Mobile strict `legal=159`, analysis clean, and
+1,164/1,164 tests; docs, protected surfaces, cleanup, and independent review
+all passed. The managed runtime proved fresh SUPER_ADMIN and SUPPORT sessions,
+allowed reads, structured `403`/`404` propagation, refresh, revocation, and
+logout without retaining disposable database, Redis, media, or process state.
+
+R10 is an internal Admin relocation, not completion of the whole architecture
+target. Backend dependency debt remains exactly 22 records and physical
+ownership debt remains 385 records / 781 occurrences. The R0-R10 execution wave
+is locally closed with those declared gaps. No commit, push, merge, PR mutation,
+deployment, production mutation, remote CI, real WhatsApp delivery, or live
+Firebase Push is claimed; release/store evidence remains governed separately.
 
 ## Modular Monolith R9 Local Completion - 2026-08-30
 
@@ -51,8 +84,9 @@ is retained.
 Live Firebase Push is `UNVERIFIED`. Bare Task 9 Prisma validation was
 `BLOCKED — environment`, while isolated Task 10 migration/runtime proof passed.
 The stale repository seed fixture remains adjacent debt and was not patched
-outside scope. R9 is a local completion only: no push, merge, PR mutation,
-deployment, remote CI, store release, S10 work, or R10 is claimed.
+outside scope. That R9 receipt was local-only and claimed no push, merge, PR
+mutation, deployment, remote CI, store release, S10 work, or R10; the separately
+approved R10 result is recorded above.
 
 ## Modular Monolith R8 Local Completion - 2026-08-28
 
@@ -1540,9 +1574,10 @@ store assets/approval, and the Apple association identity.
 The active priority and acceptance order is defined in
 `docs/project/EXECUTION_PLAN.md`.
 
-## R9 Local Completion Stop Boundary
+## R10 Local Completion Stop Boundary
 
-R9 is locally complete at application candidate
-`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
-commit containing this receipt. Stop before push, merge, deployment, remote CI,
-store release, S10 work, or R10.
+R10 Admin phase is locally complete in the working tree from immutable R9
+closeout `e560e5784278907dd6bf565327c3abfa0c9b8cab`. Stop before any commit,
+push, merge, PR mutation, deployment, production mutation, remote CI, store
+release, or S10 work unless the owner authorizes that action separately. The
+remaining Backend target debt requires its own future phase and plan.

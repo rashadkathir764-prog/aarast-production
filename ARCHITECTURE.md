@@ -307,10 +307,125 @@ runtime, phone, and receipt closeout; the active receipts above record the
 later completed local state. It is not a replacement for this contract or the active
 product, API, database, QA, and deployment sources listed in `docs/README.md`.
 
-## R9 Local Completion Stop Boundary
+## R10 Admin Local Completion Contract
+
+R10 Admin phase is locally complete from immutable R9 closeout
+`e560e5784278907dd6bf565327c3abfa0c9b8cab`. Its reviewed design, execution
+plan, and final evidence report are under `docs/superpowers/`. The relocation
+changed no Backend product source, Mobile, Prisma, database, dependency,
+lockfile, deployment, route, API, permission, Arabic copy, OTP, session, or
+observable Admin behavior.
+
+The eight Admin feature owners are exactly `auth`, `dashboard`, `users`,
+`providers`, `catalog`, `moderation`, `notifications`, and `audit`. Their only
+allowed cross-feature edges are:
+
+```text
+dashboard     -> auth, providers
+users         -> auth
+providers     -> auth
+catalog       -> auth, providers
+moderation    -> auth, providers
+notifications -> auth
+audit         -> (none)
+auth          -> (none)
+```
+
+Cross-feature production imports must target the owner's exact
+`features/<owner>/api.ts` public surface. Platform imports neither Features nor
+Design System; Design System imports neither Features nor Layout. The only
+production composition roots are `App.tsx`, `main.tsx`, and `layout/**`.
+`src/test/contracts/**` is a test-only composition exception and may never be
+imported by production code.
+
+The public APIs are owner-controlled: Auth owns session/permission symbols;
+Dashboard owns statistics and report overview; Users owns user projections and
+lifecycle; Providers owns provider/application projections and lifecycle;
+Catalog owns services, categories, cities, reference catalogs, and geography;
+Moderation owns reviews and conversation reports; Notifications owns Admin
+notification operations; Audit owns the read-only audit log. The exact symbol
+sets are machine-enforced by
+`admin-web/architecture/r10-admin-boundaries.json`; no owner may forward a
+foreign public API as its own.
+
+`App.tsx` alone may directly import these exact 18 feature screens plus the
+Platform NotFound screen:
+
+```text
+features/auth/LoginPage.tsx
+features/dashboard/DashboardPage.tsx
+features/dashboard/ReportsPage.tsx
+features/users/UsersPage.tsx
+features/users/UserDetailsPage.tsx
+features/providers/ProviderApplicationsPage.tsx
+features/providers/ProviderApplicationDetailsPage.tsx
+features/providers/ProvidersPage.tsx
+features/providers/ProviderDetailsPage.tsx
+features/catalog/CategoriesPage.tsx
+features/catalog/CitiesPage.tsx
+features/catalog/ServicesPage.tsx
+features/catalog/ReferenceCatalogsPage.tsx
+features/catalog/AdministrativeAreasPage.tsx
+features/moderation/ReviewsPage.tsx
+features/moderation/ConversationReportsPage.tsx
+features/notifications/NotificationsPage.tsx
+features/audit/AuditLogsPage.tsx
+platform/routing/NotFoundPage.tsx
+```
+
+Strict R10 closeout requires the old `src/api`, `src/auth`, `src/components`,
+and `src/pages` roots to be absent. A moved implementation is deleted in its
+own checkpoint; no facade, re-export alias, duplicate, fallback, symlink,
+junction, compatibility layer, or permanent Admin boundary baseline is
+allowed.
+
+The permanent local/CI gates are:
+
+```powershell
+Set-Location admin-web
+npm run test:architecture
+npm run architecture
+Set-Location ..
+node .\scripts\check-r10-scope.mjs --task task-11
+```
+
+The TypeScript-AST scanner resolves real locations and rejects deep or
+undeclared feature imports, foreign public-API forwarding, graph cycles,
+absolute/traversal paths, symlink/junction escapes, dynamic bypasses, and any
+return of the four legacy roots.
+
+All 18 existing Admin test files and 96 existing tests remain selected. Their
+assertions, expected values, fixtures, Arabic/error literals, timeouts, and
+behavior are frozen except for two reviewed mechanical transformations:
+
+- `DashboardPage.test.tsx` may split the existing Admin API mock target into
+  exact Dashboard `getStats` and Providers `getProviderApplications` targets;
+  mock implementations, fixtures, setup, test names, assertions, and expected
+  values stay unchanged.
+- `AdminPaginationContract.test.ts` may add one expected Pagination import to
+  each of its existing seven ordered page records, bind that third value in the
+  loop, and use it as the sole assertion operand. The value is exactly
+  `../design_system/Pagination` while a page remains in `src/pages` and exactly
+  `../../design_system/Pagination` after that page moves under its feature.
+  Every value must match the raw page import and resolve to the same
+  `src/design_system/Pagination.tsx`; no other assertion edit is allowed.
+
+The independently reviewed local gates passed: old roots `5/9/27/24 ->
+0/0/0/0`, boundary contracts 35/35, Admin tests 101/101, Mobile 1164/1164,
+Backend 1351 pass / 0 fail / 1 intentional skip, all managed smokes, Prisma
+52 models / 41 enums / 76 migrations, docs, audits, and protected surfaces.
+Therefore `R10 Admin phase complete` and `R0-R10 execution wave locally closed
+with declared Backend gaps` are accurate. `Modular-monolith architecture
+target complete` remains forbidden while Backend dependency debt is 22 records
+and physical-ownership debt is 385 records / 781 occurrences. R10 does not
+retire or hide that debt.
+
+## R9 Historical Stop Boundary
 
 R9 is locally complete at application candidate
 `0f61bf283b455c4404182f5028ab78d2448053d3`. The exact completion specification
 and checked plan are under `docs/superpowers/`; the docs-only checkpoint is the
-commit containing those receipts. Stop before push, merge, deployment, remote
-CI, store release, S10 work, or R10.
+commit containing those receipts. Its stop before R10 was honored until the
+owner separately approved the R10 design and plan. R10 changes none of the R9
+Mobile contract. Push, merge, deployment, remote CI, store release, and S10
+remain outside this local architecture wave.

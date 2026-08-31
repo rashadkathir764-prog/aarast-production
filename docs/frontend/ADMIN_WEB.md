@@ -1,6 +1,6 @@
 # Admin Web
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-08-31
 
 The admin web app is a React/Vite dashboard under `admin-web/`. It supports
 admin-facing management for dashboard stats, users, catalog references,
@@ -12,12 +12,16 @@ conversation-report moderation through the backend admin APIs.
 From `admin-web/`:
 
 ```powershell
+npm run test:architecture
+npm run architecture
 npm run build
 npm run typecheck
-npm test
+npm test -- --run
 npm run smoke:admin-runtime
 npm run smoke:routes
 npm run smoke:honesty
+npm run test:container-config
+npm audit --audit-level=high
 ```
 
 Unit tests run on Vitest + Testing Library (jsdom). They cover the auth
@@ -28,7 +32,7 @@ use by every paginated admin list. Shared-component coverage also verifies
 confirmation-dialog focus/keyboard behavior, named responsive data tables, and
 labelled search landmarks. `npm test` runs in CI on every push.
 
-A top-level `ErrorBoundary` (`src/components/ErrorBoundary.tsx`) wraps
+A top-level `ErrorBoundary` (`src/platform/errors/ErrorBoundary.tsx`) wraps
 the app so a render-time exception shows a recoverable Arabic message
 instead of a blank screen.
 
@@ -46,6 +50,30 @@ characters, at most 72 UTF-8 bytes), clears secrets on cancel/success,
 does not create a session automatically, and returns to normal password + OTP
 login after the backend revokes prior sessions. This recovery changes only the
 browser-administration password; it cannot overwrite the wedding-app password.
+
+## R10 Admin Architecture
+
+Admin source is owned by the eight directories under `src/features/` (Auth,
+Dashboard, Users, Providers, Catalog, Moderation, Notifications, and Audit),
+plus `src/platform` and `src/design_system`.
+`App.tsx`, `main.tsx`, and `layout/**` are the only production composition
+roots; `src/test/contracts/**` is test-only. Cross-feature imports target only
+the owner's exact `api.ts` surface. The old `src/api`, `src/auth`,
+`src/components`, and `src/pages` roots are absent with no facade or duplicate.
+
+The approved feature graph is acyclic: Dashboard may consume Auth and
+Providers; Users and Providers may consume Auth; Catalog and Moderation may
+consume Auth and Providers; Notifications may consume Auth; Audit and Auth
+consume no other feature. Platform and Design System import no feature.
+`App.tsx` owns the narrow Dashboard/Catalog loader injection needed by Provider
+screens, avoiding reverse feature edges while preserving the same requests and
+rendered behavior.
+
+The `npm run test:architecture` command proves adversarial scanner behavior;
+`npm run architecture` enforces strict zero legacy roots. CI runs both gates. Exact
+route, request, Arabic-literal, existing-test, lockfile, public-API, graph, and
+composition-root contracts are also enforced by `check-r10-scope` from the
+repository root.
 
 ## Modernization checkpoint
 
@@ -129,17 +157,30 @@ List summary cards distinguish complete filtered totals from counts derived
 only from the current 20-row page. Page-local cards are labeled
 `في الصفحة`; they must not be presented as full-dataset statistics.
 
-## Latest Local Verification — 2026-08-11
+## Latest Local Verification — 2026-08-31
 
-- PASS — React Router `7.18.2`, TypeScript type-check, Vitest `96/96`, route
-  smoke `16/16`, source-honesty smoke `12/12`, container runtime contract
-  tests `3/3`, and production build.
+- PASS — boundary contracts `35/35`, strict roots `0/0/0/0`, TypeScript
+  type-check, Vitest `101/101`, route smoke `16/16`, source-honesty smoke
+  `12/12`, container runtime contract `3/3`, and production build at 2,401
+  transformed modules.
 - PASS — full `npm audit` reports zero findings after the tested React Router 7
   migration and transitive `nanoid` remediation.
 - PASS — managed admin-runtime smoke against a disposable database after all 76
-  migrations. It covered admin authentication/session rotation, private-field
-  exclusion, catalog draft/publish/edit/rollback/disable, and governorate →
-  district → locality create/visibility/soft-disable behavior.
+  migrations. It covered password/MFA login, session refresh and revocation,
+  catalog draft/publish/edit/rollback/disable, geography, a fresh restricted
+  SUPPORT login, allowed reads, structured valid-write `403`, structured
+  missing-read `404`, and logout. The runner removed its database, Redis, media,
+  and process state.
+- PASS — R10 preserved 22 generated routes byte-identically, 62 request
+  records, 1,020 Arabic literal records, 18 existing test files / 96 existing
+  tests, and the Admin lockfile. Independent review approved with no finding.
+
+## Historical Pre-R10 Production Evidence
+
+The following evidence belongs to application revision
+`959c47b756d0bebc3e4e4fda5f81ae3349d05e62`; it predates R10 and is not an R10
+deployment claim:
+
 - PASS — deployed Admin container at application revision
   `959c47b756d0bebc3e4e4fda5f81ae3349d05e62` was healthy with zero restarts and
   no OOM termination; external `/login` returned `200`, and Production had all

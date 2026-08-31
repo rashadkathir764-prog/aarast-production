@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-08-31 - Modular Monolith R10 Admin Local Completion
+
+- Moved the 78-file Admin source set into eight owner features, Platform,
+  Design System, retained composition roots, and test-only contracts. The old
+  `api/auth/components/pages` roots are `0/0/0/0`; no facade, duplicate,
+  fallback, or compatibility layer remains.
+- Added permanent TypeScript-AST boundary and fixed-base scope gates for exact
+  public APIs, the acyclic feature graph, composition roots, 22 routes, 62
+  request records, 1,020 Arabic literals, 18 existing test files / 96 existing
+  tests, and protected hashes.
+- Preserved Admin UI behavior, Arabic/RTL copy, routes, request methods/paths,
+  auth/session/RBAC behavior, dependencies, Backend product source, Mobile,
+  Prisma, database history, and deployment topology.
+- Passed Admin 101/101 plus build/smokes/audit/runtime, Backend 1,351 pass / 0
+  fail / 1 skip plus Prisma and all smokes, Mobile 1,164/1,164, docs, protected
+  surfaces, cleanup, and independent review with zero finding.
+- Closed the R0-R10 local execution wave with declared Backend debt 22 and
+  385/781. No commit, push, merge, deployment, production mutation, remote CI,
+  real WhatsApp delivery, live Firebase Push, or architecture-target completion
+  is claimed.
+
 ## 2026-08-30 - Modular Monolith R9 Local Completion
 
 - Added controlled public APIs for all 19 Mobile feature owners and migrated

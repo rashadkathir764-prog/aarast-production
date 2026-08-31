@@ -40,6 +40,7 @@ let adminRefreshCookie = "";
 let smokeCredentials = null;
 let cleanupSmokeAdmin = async () => {};
 let isSmokeAdminPhoneVerified = async () => false;
+let setSmokeAdminRoleToSupport = async () => {};
 
 function check(name, passed, detail = "") {
   checks.push({ name, passed, detail });
@@ -109,7 +110,7 @@ async function createLocalSmokeAdmin() {
     );
   }
 
-  const { PrismaClient } = backendRequire("@prisma/client");
+  const { AdminRole, PrismaClient } = backendRequire("@prisma/client");
   const bcryptjs = backendRequire("bcryptjs");
   const prisma = new PrismaClient();
 
@@ -151,6 +152,12 @@ async function createLocalSmokeAdmin() {
         select: { phoneVerifiedAt: true },
       });
       return Boolean(currentUser?.phoneVerifiedAt);
+    };
+    setSmokeAdminRoleToSupport = async () => {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { adminRole: AdminRole.SUPPORT },
+      });
     };
 
     return { phone, password, source: "temporary local smoke admin" };
@@ -766,6 +773,116 @@ async function run() {
   check(
     "admin logout immediately invalidates the access token",
     res.status === 401,
+    String(res.status),
+  );
+
+  await setSmokeAdminRoleToSupport();
+
+  res = await request("/api/v1/auth/admin/login", {
+    method: "POST",
+    auth: false,
+    body: {
+      phone: smokeCredentials.phone,
+      password: smokeCredentials.password,
+    },
+  });
+  check(
+    "restricted admin fresh password step returns a new MFA challenge",
+    res.status === 200 &&
+      res.body?.mfaRequired === true &&
+      typeof res.body?.challengeToken === "string" &&
+      res.body.challengeToken !== challengeToken,
+    String(res.status),
+  );
+  const restrictedChallengeToken = res.body?.challengeToken;
+  const restrictedOtpCode = process.env.ADMIN_SMOKE_OTP_CODE || res.body?.code;
+  if (
+    typeof restrictedChallengeToken !== "string" ||
+    typeof restrictedOtpCode !== "string"
+  ) {
+    throw new Error(
+      "Restricted Admin MFA challenge or OTP is unavailable. Set ADMIN_SMOKE_OTP_CODE outside local dev mode.",
+    );
+  }
+
+  res = await request("/api/v1/auth/admin/login/complete", {
+    method: "POST",
+    auth: false,
+    body: {
+      challengeToken: restrictedChallengeToken,
+      code: restrictedOtpCode,
+    },
+  });
+  check(
+    "fresh MFA returns SUPPORT with catalog read and without catalog write",
+    res.status === 200 &&
+      res.body?.user?.adminRole === "SUPPORT" &&
+      Array.isArray(res.body?.user?.adminPermissions) &&
+      res.body.user.adminPermissions.includes("CATALOG_READ") &&
+      !res.body.user.adminPermissions.includes("CATALOG_WRITE"),
+    String(res.status),
+  );
+  check(
+    "fresh restricted MFA returns a new access session",
+    typeof res.body?.accessToken === "string" &&
+      adminRefreshCookie.startsWith("aarast_admin_refresh="),
+  );
+  if (typeof res.body?.accessToken !== "string") {
+    throw new Error("Restricted Admin MFA completion did not return an access token.");
+  }
+  token = res.body.accessToken;
+
+  res = await request("/admin/reference-catalogs/money.starter.categories");
+  check(
+    "SUPPORT catalog read remains allowed",
+    res.status === 200 && res.body?.key === "money.starter.categories",
+    String(res.status),
+  );
+
+  const restrictedWriteKey = `runtime-smoke-denied-${randomBytes(5).toString("hex")}`;
+  res = await request("/admin/reference-catalogs/money.starter.categories/items", {
+    method: "POST",
+    body: {
+      key: restrictedWriteKey,
+      nameAr: "تصنيف يجب رفض كتابته",
+      groupKey: "runtime-smoke",
+      groupNameAr: "اختبار التشغيل",
+      icon: "shield-check",
+      sortOrder: 9999,
+      showForGroom: true,
+      showForBride: false,
+      showForCustomer: true,
+      showForProvider: false,
+      isActive: true,
+    },
+  });
+  check(
+    "SUPPORT valid catalog write propagates the structured RBAC denial",
+    res.status === 403 &&
+      res.body?.statusCode === 403 &&
+      res.body?.message === "Admin permission is required",
+    String(res.status),
+  );
+
+  const missingCatalogKey = `runtime-smoke-missing-${randomBytes(12).toString("hex")}`;
+  res = await request(
+    `/admin/reference-catalogs/${encodeURIComponent(missingCatalogKey)}`,
+  );
+  check(
+    "authorized missing catalog read propagates the structured not-found response",
+    res.status === 404 &&
+      res.body?.statusCode === 404 &&
+      res.body?.message === "Reference catalog not found",
+    String(res.status),
+  );
+
+  res = await request("/api/v1/auth/admin/logout", {
+    method: "POST",
+    auth: false,
+  });
+  check(
+    "restricted admin logout revokes the fresh cookie session",
+    res.status === 200 && adminRefreshCookie === "",
     String(res.status),
   );
 

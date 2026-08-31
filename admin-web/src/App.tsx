@@ -1,27 +1,29 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { RequireAdmin } from './auth/RequireAdmin';
-import { RequireAdminPermission } from './auth/RequireAdminPermission';
-import { AdminPermission } from './auth/adminPermissions';
+import { RequireAdmin } from './features/auth/api';
+import { RequireAdminPermission } from './features/auth/api';
+import { AdminPermission } from './features/auth/api';
 import { AdminLayout } from './layout/AdminLayout';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ProviderApplicationsPage } from './pages/ProviderApplicationsPage';
-import { ProviderApplicationDetailsPage } from './pages/ProviderApplicationDetailsPage';
-import { ProvidersPage } from './pages/ProvidersPage';
-import { ProviderDetailsPage } from './pages/ProviderDetailsPage';
-import { CategoriesPage } from './pages/CategoriesPage';
-import { CitiesPage } from './pages/CitiesPage';
-import { UsersPage } from './pages/UsersPage';
-import { UserDetailsPage } from './pages/UserDetailsPage';
-import { ServicesPage } from './pages/ServicesPage';
-import { ReviewsPage } from './pages/ReviewsPage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { ConversationReportsPage } from './pages/ConversationReportsPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { AuditLogsPage } from './pages/AuditLogsPage';
-import { ReferenceCatalogsPage } from './pages/ReferenceCatalogsPage';
-import { AdministrativeAreasPage } from './pages/AdministrativeAreasPage';
+import { LoginPage } from './features/auth/LoginPage';
+import { DashboardPage } from './features/dashboard/DashboardPage';
+import { getStats } from './features/dashboard/api';
+import { getCategories, getCities } from './features/catalog/api';
+import { ProviderApplicationsPage } from './features/providers/ProviderApplicationsPage';
+import { ProviderApplicationDetailsPage } from './features/providers/ProviderApplicationDetailsPage';
+import { ProvidersPage } from './features/providers/ProvidersPage';
+import { ProviderDetailsPage } from './features/providers/ProviderDetailsPage';
+import { CategoriesPage } from './features/catalog/CategoriesPage';
+import { CitiesPage } from './features/catalog/CitiesPage';
+import { UsersPage } from './features/users/UsersPage';
+import { UserDetailsPage } from './features/users/UserDetailsPage';
+import { ServicesPage } from './features/catalog/ServicesPage';
+import { ReviewsPage } from './features/moderation/ReviewsPage';
+import { NotificationsPage } from './features/notifications/NotificationsPage';
+import { ReportsPage } from './features/dashboard/ReportsPage';
+import { ConversationReportsPage } from './features/moderation/ConversationReportsPage';
+import { NotFoundPage } from './platform/routing/NotFoundPage';
+import { AuditLogsPage } from './features/audit/AuditLogsPage';
+import { ReferenceCatalogsPage } from './features/catalog/ReferenceCatalogsPage';
+import { AdministrativeAreasPage } from './features/catalog/AdministrativeAreasPage';
 
 export default function App() {
   return (
@@ -47,7 +49,11 @@ export default function App() {
           path="providers/applications"
           element={
             <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
-              <ProviderApplicationsPage />
+              <ProviderApplicationsPage
+                getCategories={getCategories}
+                getCities={getCities}
+                getStats={getStats}
+              />
             </RequireAdminPermission>
           }
         />
@@ -63,7 +69,10 @@ export default function App() {
           path="providers"
           element={
             <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
-              <ProvidersPage />
+              <ProvidersPage
+                getCategories={getCategories}
+                getCities={getCities}
+              />
             </RequireAdminPermission>
           }
         />

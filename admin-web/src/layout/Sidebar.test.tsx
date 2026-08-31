@@ -2,7 +2,7 @@ import { createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdminPermission } from '../auth/adminPermissions';
+import { AdminPermission } from '../features/auth/api';
 import { Sidebar } from './Sidebar';
 
 const authState = vi.hoisted(() => ({
@@ -17,7 +17,7 @@ const authState = vi.hoisted(() => ({
   } | null,
 }));
 
-vi.mock('../auth/AuthProvider', () => ({
+vi.mock('../features/auth/AuthProvider', () => ({
   useAuth: () => authState,
 }));
 

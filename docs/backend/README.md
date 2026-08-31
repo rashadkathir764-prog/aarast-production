@@ -1,6 +1,6 @@
 # Backend
 
-Snapshot date: 2026-08-28
+Snapshot date: 2026-08-31
 
 The backend is a NestJS + Prisma + PostgreSQL API. It is the source of truth for
 account-backed wedding plans, financial records, permissions, provider
@@ -86,6 +86,15 @@ dependency-owned and frozen to `@nestjs/schedule@6.1.3` and
 `@nestjs/throttler@6.5.0` through their existing root factories. Dependency
 evidence remains 22 and ownership remains 385/781.
 
+R10 reorganized Admin Web only. Its Task 9 cumulative proof reran Backend
+architecture/check/build, 1,351 passing tests with zero failures and one
+intentional skip, both zero-finding audits, the Prisma security gate,
+52-model/41-enum/76-migration equivalence, 12 focused smokes, and the aggregate
+smoke suite. No Backend product source, schema, migration, seed, dependency, or
+lockfile changed. The 22 dependency records and 385 records / 781 occurrences
+of physical-ownership debt remain explicit future work; R10 does not convert
+them into exemptions or claim the Backend target complete.
+
 Database-writing smoke and load commands are managed by
 `scripts/smoke/run-isolated-smoke.js`. The runner uses the active local Docker
 Compose PostgreSQL, Redis, and MinIO services, but creates a per-run database,
@@ -102,8 +111,10 @@ Quote conversations are limited to the requester and provider account on a real
 quote request. They must not create payments, deposits, confirmed bookings,
 loans, credit, financing, AI, open messaging, or marketplace checkout behavior.
 
-## R8 Local Completion Stop Boundary
+## R10 Local Wave Stop Boundary
 
-R8 is locally complete at application candidate
-`464d785a0440b8494768a26a70ac1de73a4bff2c`. R7 remains stopped and preserved
-for rollback. No push, merge, deployment, remote CI, or R9 work is claimed.
+The Backend state remains behavior-identical through the locally completed R10
+Admin phase from immutable R9 closeout
+`e560e5784278907dd6bf565327c3abfa0c9b8cab`. No commit, push, merge,
+deployment, production mutation, or remote CI is claimed. Removing the
+remaining 22 and 385/781 debt requires a separately approved future phase.

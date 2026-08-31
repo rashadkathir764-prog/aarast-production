@@ -177,6 +177,14 @@ type R5Manifest = {
 };
 
 type R5Scanner = {
+  liveChangedPaths(
+    repositoryRoot: string,
+    executeGit?: (
+      executable: string,
+      args: string[],
+      options: Record<string, unknown>,
+    ) => string,
+  ): string[];
   validateR5Manifest(value: unknown): R5Manifest;
   scanR5Identity(options: {
     repositoryRoot: string;
@@ -1148,6 +1156,36 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
     candidateOwnership: foreignAccess,
     manifest,
   }), /ownership baseline drift/i);
+});
+
+test('R5 live scope captures Git diagnostics locally and keeps nonzero exits fail-closed', () => {
+  const calls: Array<{ args: string[]; options: Record<string, unknown> }> = [];
+  const result = loadScanner().liveChangedPaths(
+    repositoryRoot(),
+    (executable, args, options) => {
+      assert.equal(executable, 'git');
+      calls.push({ args: [...args], options: { ...options } });
+      if (args[0] === 'diff') return 'backend/package.json\n';
+      if (args[0] === 'ls-files') return 'backend/test/new-governance.test.ts\n';
+      throw new Error('unexpected Git command');
+    },
+  );
+  assert.deepEqual(result, [
+    'backend/package.json',
+    'backend/test/new-governance.test.ts',
+  ]);
+  assert.deepEqual(calls.map(({ args }) => args), [
+    ['diff', '--no-renames', '--name-only', r5Base, '--'],
+    ['ls-files', '--others', '--exclude-standard'],
+  ]);
+  for (const { options } of calls) {
+    assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+    assert.equal(options.encoding, 'utf8');
+  }
+  assert.throws(() => loadScanner().liveChangedPaths(
+    repositoryRoot(),
+    () => { throw new Error('git failed'); },
+  ), /git failed/);
 });
 
 function repositoryRoot(): string {

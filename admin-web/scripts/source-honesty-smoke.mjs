@@ -32,7 +32,7 @@ addCheck(
   mojibakeHits.map(({ file }) => file).join(', '),
 );
 
-const statusBadge = read(join(srcRoot, 'components', 'StatusBadge.tsx'));
+const statusBadge = read(join(srcRoot, 'design_system', 'StatusBadge.tsx'));
 addCheck(
   'Provider ACTIVE status is not labeled confirmed',
   !statusBadge.includes('مؤكد') && statusBadge.includes("ACTIVE: { label: 'نشط'"),
@@ -50,15 +50,16 @@ addCheck(
 const appRoutes = read(join(srcRoot, 'App.tsx'));
 const sidebar = read(join(srcRoot, 'layout', 'Sidebar.tsx'));
 const navigation = read(join(srcRoot, 'layout', 'adminNavigation.ts'));
-const dashboard = read(join(srcRoot, 'pages', 'DashboardPage.tsx'));
-const adminApi = read(join(srcRoot, 'api', 'admin.ts'));
-const authApi = read(join(srcRoot, 'api', 'auth.ts'));
-const loginPage = read(join(srcRoot, 'pages', 'LoginPage.tsx'));
-const apiClient = read(join(srcRoot, 'api', 'client.ts'));
+const dashboard = read(join(srcRoot, 'features', 'dashboard', 'DashboardPage.tsx'));
+const adminApi = read(join(srcRoot, 'features', 'moderation', 'api.ts'));
+const authApi = read(join(srcRoot, 'features', 'auth', 'transport.ts'));
+const loginPage = read(join(srcRoot, 'features', 'auth', 'LoginPage.tsx'));
+const apiClient = read(join(srcRoot, 'platform', 'api', 'client.ts'));
 const adminRuntimeSmoke = read(join(process.cwd(), 'scripts', 'admin-runtime-smoke.mjs'));
 const conversationReportsPagePath = join(
   srcRoot,
-  'pages',
+  'features',
+  'moderation',
   'ConversationReportsPage.tsx',
 );
 

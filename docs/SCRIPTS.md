@@ -2,6 +2,8 @@
 
 | Package | Script | Command |
 | --- | --- | --- |
+| `admin-web` | `npm run architecture` | `node scripts/admin-boundaries.mjs --strict` |
+| `admin-web` | `npm run architecture:stage` | `node scripts/admin-boundaries.mjs --stage` |
 | `admin-web` | `npm run build` | `tsc -b && vite build && node scripts/build-config-smoke.mjs` |
 | `admin-web` | `npm run dev` | `vite` |
 | `admin-web` | `npm run preview` | `vite preview` |
@@ -9,6 +11,7 @@
 | `admin-web` | `npm run smoke:honesty` | `node scripts/source-honesty-smoke.mjs` |
 | `admin-web` | `npm run smoke:routes` | `npm run build && node scripts/route-smoke.mjs` |
 | `admin-web` | `npm run test` | `vitest run` |
+| `admin-web` | `npm run test:architecture` | `node --test scripts/admin-boundaries.contract.mjs` |
 | `admin-web` | `npm run test:container-config` | `node --test scripts/runtime-config-guard.contract.mjs` |
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |

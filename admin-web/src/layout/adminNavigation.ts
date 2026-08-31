@@ -14,7 +14,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { AdminPermission } from '../auth/adminPermissions';
+import { AdminPermission } from '../features/auth/api';
 
 export type AdminNavigationItem = {
   route: string;

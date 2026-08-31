@@ -41,6 +41,50 @@ and selection remains frozen.
 
 R0 itself adds tests and does not edit existing behavioral tests.
 
+## Modular Monolith R10 Closeout Gates
+
+R10 is a local Admin architecture phase from immutable R9 closeout
+`e560e5784278907dd6bf565327c3abfa0c9b8cab`. Its final candidate passed:
+
+- R10 scope 47/47, Admin boundary contracts 35/35, strict legacy roots
+  `0/0/0/0`, Admin 101/101, typecheck, production build, honesty 12/12, routes
+  16/16, container 3/3, zero audit findings, and managed Admin runtime after all
+  76 migrations.
+- Backend architecture/check/build, 1,351 pass / 0 fail / 1 intentional skip,
+  zero dependency audits, Prisma configuration security, 52-model/41-enum
+  equivalence, 76 migrations, 12 focused smokes, and all aggregate smoke
+  packages. Cleanup proved zero smoke databases, Redis keys, media directories,
+  and managed processes.
+- Mobile strict `legal=159`, `flutter analyze --no-pub` with no issues, and
+  1,164/1,164 tests with zero R10 Mobile changes. Existing desktop-plugin
+  metadata warnings remained non-failing and do not prove desktop packaging.
+- Docs sync drift 0, docs verify errors/warnings 0, protected surface drift 0,
+  and independent final Task 9 review APPROVED with Critical 0 / Important 0 /
+  Minor 0.
+
+The managed Admin runtime proves local development OTP integration only; it is
+not real WhatsApp delivery. No live Firebase Push, remote CI, deployment,
+production mutation, commit, push, or merge is claimed. Backend architecture
+debt remains 22 and 385/781.
+
+From the repository root and Admin directory, the permanent R10 gates are:
+
+```powershell
+node .\admin-web\scripts\admin-boundaries.mjs --strict
+node .\scripts\check-r10-scope.mjs --task task-11
+Set-Location admin-web
+npm run test:architecture
+npm run architecture
+npm test -- --run
+npm run typecheck
+npm run build
+npm run smoke:honesty
+npm run smoke:routes
+npm run test:container-config
+npm run smoke:admin-runtime
+npm audit --audit-level=high
+```
+
 ## Modular Monolith R9 Closeout Gates
 
 Run from the repository root:
@@ -1025,9 +1069,9 @@ Admin runtime smoke requires a running backend.
 Report every verification as PASS, FAIL, or BLOCKED. Do not claim a check
 passed unless it was actually run.
 
-## R9 Local Completion Stop Boundary
+## R10 Local Completion Stop Boundary
 
-R9 is locally complete at application candidate
-`0f61bf283b455c4404182f5028ab78d2448053d3`; the docs-only checkpoint is the
-commit containing this receipt. Stop before push, merge, deployment, remote CI,
-store release, S10 work, or R10.
+R10 Admin phase is locally complete in the working tree from immutable R9
+closeout `e560e5784278907dd6bf565327c3abfa0c9b8cab`. Stop before commit, push,
+merge, deployment, production mutation, remote CI, store release, or S10. The
+remaining Backend debt needs its own approved future phase.

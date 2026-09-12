@@ -7,7 +7,7 @@ import { readLivePrismaSchema } from './support/live-prisma-schema';
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AdminRole } from '@prisma/client';
-import { AdminPermissionGuard } from '../src/admin/admin-permission.guard';
+import { AdminPermissionGuard } from '../src/modules/backoffice/public/admin-permission.guard';
 import {
   AdminPermission,
   hasAdminPermission,

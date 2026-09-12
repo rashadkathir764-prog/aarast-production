@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -184,7 +190,7 @@ test("quote detail rejects a stale authorized seed when the final live predicate
       canManageProviders: () => true,
       canViewMoney: () => true,
     } as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await assert.rejects(

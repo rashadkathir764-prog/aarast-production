@@ -52,7 +52,7 @@ import {
   toWeddingCostResponse,
   weddingCostResponseInclude,
   type WeddingCostResponse,
-} from "./wedding-cost.presenter";
+} from "../modules/finance/public/wedding-cost.presenter";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {

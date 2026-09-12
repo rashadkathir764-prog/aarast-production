@@ -1,0 +1,3220 @@
+{
+  "schemaVersion": 2,
+  "phase": "R12B",
+  "stage": "strict",
+  "documentationStage": "activated",
+  "documentationTransitionGenesisSha256": "e60fbd3d8820a9bfa00199937e0ce44025a32a73f41454786a3d53aef1adf4ad",
+  "documentationTransitions": [
+    {
+      "sequence": 1,
+      "from": "entry",
+      "to": "candidate-prepared",
+      "previousReceiptSha256": "e60fbd3d8820a9bfa00199937e0ce44025a32a73f41454786a3d53aef1adf4ad",
+      "beforeDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "f831577a63cd50537c35b78a160fabfa99317a0e5327a2a5d9035e87892910da"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "5b86073af49e1f1b05f2d788a376d3d3bc386dfec93b46e7cbfbffac86b3568b"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "f2ece280a72c5fad31a626a9c0962ca627c33073cdf7ba93fba4c8deb44a1601"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "8f46c6ae9112d899a2c9ea97fdc4ca3a36c48ab09c715bc68aff1d570ead72a8"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "0e5740f2c22106235c1618459b60dd2462a5a45a9dfd65c59a7752d91b437831"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "546dee5d63b03fda63ad9e976af85852c63976e8eb0e48eedf6c460444bcdfb5"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "975f628fe69bb77cc8237e5929808705a7ad8ee766813b762dd5c6413b34d1d2"
+        }
+      ],
+      "afterDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "f831577a63cd50537c35b78a160fabfa99317a0e5327a2a5d9035e87892910da"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "5b86073af49e1f1b05f2d788a376d3d3bc386dfec93b46e7cbfbffac86b3568b"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "f2ece280a72c5fad31a626a9c0962ca627c33073cdf7ba93fba4c8deb44a1601"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "8f46c6ae9112d899a2c9ea97fdc4ca3a36c48ab09c715bc68aff1d570ead72a8"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "0e5740f2c22106235c1618459b60dd2462a5a45a9dfd65c59a7752d91b437831"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "546dee5d63b03fda63ad9e976af85852c63976e8eb0e48eedf6c460444bcdfb5"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "975f628fe69bb77cc8237e5929808705a7ad8ee766813b762dd5c6413b34d1d2"
+        }
+      ],
+      "candidateDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "activatedDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "66a0e7a28d68415b5f94cdd00d94c6f78918918d1c0e53ee7c145047a085aa0d"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "76a64d6651f91552ce593548ec7d493ccff1d6b8ca2b8bcf1c7d0dd28eb2df49"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "89ad36b06a28ea7328c190e4021e34c8ac7ab89ae8d7d82f7eabd96c3482663a"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "aee6303742e85bc9aace22acd184a5211a6985ebda9bae9fc2cfbe844d629f8e"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "5c921db2bc50e645644f7b0d7c45125030da9057c1f73ca94d3ad75d643e0674"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "23b6e204bb7f4858ea27d18b624d3f51141658a74b98090987fdd953b0498791"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "receiptSha256": "c2e30ca755972aa977c61827c1104444576fb098848bea688f25e49946a8ec54"
+    },
+    {
+      "sequence": 2,
+      "from": "candidate-prepared",
+      "to": "candidate",
+      "previousReceiptSha256": "c2e30ca755972aa977c61827c1104444576fb098848bea688f25e49946a8ec54",
+      "beforeDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "f831577a63cd50537c35b78a160fabfa99317a0e5327a2a5d9035e87892910da"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "5b86073af49e1f1b05f2d788a376d3d3bc386dfec93b46e7cbfbffac86b3568b"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "f2ece280a72c5fad31a626a9c0962ca627c33073cdf7ba93fba4c8deb44a1601"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "8f46c6ae9112d899a2c9ea97fdc4ca3a36c48ab09c715bc68aff1d570ead72a8"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "0e5740f2c22106235c1618459b60dd2462a5a45a9dfd65c59a7752d91b437831"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "546dee5d63b03fda63ad9e976af85852c63976e8eb0e48eedf6c460444bcdfb5"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "975f628fe69bb77cc8237e5929808705a7ad8ee766813b762dd5c6413b34d1d2"
+        }
+      ],
+      "afterDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "candidateDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "activatedDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "66a0e7a28d68415b5f94cdd00d94c6f78918918d1c0e53ee7c145047a085aa0d"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "76a64d6651f91552ce593548ec7d493ccff1d6b8ca2b8bcf1c7d0dd28eb2df49"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "89ad36b06a28ea7328c190e4021e34c8ac7ab89ae8d7d82f7eabd96c3482663a"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "aee6303742e85bc9aace22acd184a5211a6985ebda9bae9fc2cfbe844d629f8e"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "5c921db2bc50e645644f7b0d7c45125030da9057c1f73ca94d3ad75d643e0674"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "23b6e204bb7f4858ea27d18b624d3f51141658a74b98090987fdd953b0498791"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "receiptSha256": "b660c56b85df77e087a057bc16ab35f98247f79c7736e9ab7e16fa0e80a83aa0"
+    },
+    {
+      "sequence": 3,
+      "from": "candidate",
+      "to": "activation-prepared",
+      "previousReceiptSha256": "b660c56b85df77e087a057bc16ab35f98247f79c7736e9ab7e16fa0e80a83aa0",
+      "beforeDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "afterDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "candidateDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "activatedDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "66a0e7a28d68415b5f94cdd00d94c6f78918918d1c0e53ee7c145047a085aa0d"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "76a64d6651f91552ce593548ec7d493ccff1d6b8ca2b8bcf1c7d0dd28eb2df49"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "89ad36b06a28ea7328c190e4021e34c8ac7ab89ae8d7d82f7eabd96c3482663a"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "aee6303742e85bc9aace22acd184a5211a6985ebda9bae9fc2cfbe844d629f8e"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "5c921db2bc50e645644f7b0d7c45125030da9057c1f73ca94d3ad75d643e0674"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "23b6e204bb7f4858ea27d18b624d3f51141658a74b98090987fdd953b0498791"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "receiptSha256": "1e0ec9480e3dc1fb164c662a1ef0a8eefc730af7992cff6ad02dbb32a715f781"
+    },
+    {
+      "sequence": 4,
+      "from": "activation-prepared",
+      "to": "activated",
+      "previousReceiptSha256": "1e0ec9480e3dc1fb164c662a1ef0a8eefc730af7992cff6ad02dbb32a715f781",
+      "beforeDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "afterDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "66a0e7a28d68415b5f94cdd00d94c6f78918918d1c0e53ee7c145047a085aa0d"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "76a64d6651f91552ce593548ec7d493ccff1d6b8ca2b8bcf1c7d0dd28eb2df49"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "89ad36b06a28ea7328c190e4021e34c8ac7ab89ae8d7d82f7eabd96c3482663a"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "aee6303742e85bc9aace22acd184a5211a6985ebda9bae9fc2cfbe844d629f8e"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "5c921db2bc50e645644f7b0d7c45125030da9057c1f73ca94d3ad75d643e0674"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "23b6e204bb7f4858ea27d18b624d3f51141658a74b98090987fdd953b0498791"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "candidateDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "activatedDocuments": [
+        {
+          "path": "ARCHITECTURE.md",
+          "sha256": "66a0e7a28d68415b5f94cdd00d94c6f78918918d1c0e53ee7c145047a085aa0d"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "76a64d6651f91552ce593548ec7d493ccff1d6b8ca2b8bcf1c7d0dd28eb2df49"
+        },
+        {
+          "path": "docs/project/DECISIONS.md",
+          "sha256": "89ad36b06a28ea7328c190e4021e34c8ac7ab89ae8d7d82f7eabd96c3482663a"
+        },
+        {
+          "path": "docs/project/EXECUTION_PLAN.md",
+          "sha256": "aee6303742e85bc9aace22acd184a5211a6985ebda9bae9fc2cfbe844d629f8e"
+        },
+        {
+          "path": "docs/project/STATUS.md",
+          "sha256": "5c921db2bc50e645644f7b0d7c45125030da9057c1f73ca94d3ad75d643e0674"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "23b6e204bb7f4858ea27d18b624d3f51141658a74b98090987fdd953b0498791"
+        },
+        {
+          "path": "docs/SCRIPTS.md",
+          "sha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+        }
+      ],
+      "receiptSha256": "96cde28510e22e54fce4820358d6097b369ebc927dcfbcb6dcfa5df515e2c83a"
+    }
+  ],
+  "repository": {
+    "rootName": "aarast-modular-monolith",
+    "branch": "modular-monolith",
+    "baseCommit": "4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1"
+  },
+  "predecessor": {
+    "phase": "R12A",
+    "manifestSha256": "b2904ef15dd104da8cc27315d89880b75042a6175df3a756897b0b45e4a269fd",
+    "dependencyRecords": 16,
+    "dependencySha256": "4dd61610c6583e369b836b3b0fe80ffc63153e70a0fbe86a089509962b35c71e",
+    "ownershipRecords": 385,
+    "ownershipOccurrences": 781,
+    "ownershipSha256": "5f42f33300a9727f587e62327c5261a88a6ce5928437241c9e7c20f726906496",
+    "overlayPaths": 65,
+    "overlaySha256": "30e2de6928edd7ac1b44598fae4ad18dbcd452b34f7e9a6fb792e1936ce8561c",
+    "overlayLedger": [
+      {
+        "status": " D",
+        "path": "backend/src/admin/admin-mutation-gate.ts",
+        "sha256": "DELETED"
+      },
+      {
+        "status": " D",
+        "path": "backend/src/admin/admin-permission.decorator.ts",
+        "sha256": "DELETED"
+      },
+      {
+        "status": " D",
+        "path": "backend/src/admin/admin-permission.guard.ts",
+        "sha256": "DELETED"
+      },
+      {
+        "status": " D",
+        "path": "backend/src/admin/admin.guard.ts",
+        "sha256": "DELETED"
+      },
+      {
+        "status": " D",
+        "path": "backend/src/marketplace/provider-review-rating.ts",
+        "sha256": "DELETED"
+      },
+      {
+        "status": " M",
+        "path": "ARCHITECTURE.md",
+        "sha256": "f831577a63cd50537c35b78a160fabfa99317a0e5327a2a5d9035e87892910da"
+      },
+      {
+        "status": " M",
+        "path": "backend/.dependency-cruiser-known-violations.json",
+        "sha256": "4dd61610c6583e369b836b3b0fe80ffc63153e70a0fbe86a089509962b35c71e"
+      },
+      {
+        "status": " M",
+        "path": "backend/.dependency-cruiser.cjs",
+        "sha256": "496efadf8629e80a6c61cdf8179e1287a2fbb81c1fd9659c618ba4fb6caeec04"
+      },
+      {
+        "status": " M",
+        "path": "backend/architecture/ownership-baseline.json",
+        "sha256": "5f42f33300a9727f587e62327c5261a88a6ce5928437241c9e7c20f726906496"
+      },
+      {
+        "status": " M",
+        "path": "backend/package.json",
+        "sha256": "43a685312a0ddd9904f99a7cd9ff2fa1d20aa163415f623858a7998ff74e2044"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/architecture/ports-scan.cjs",
+        "sha256": "1539c1c9e12277401f6612775b45088df1a9916523712f42d60a7b2c85ef3182"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/architecture/r3-context-scan.cjs",
+        "sha256": "4e9355858416a3475ccf8d16c8c659a299df1e39a62ba4d80d58cc29896254bb"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/architecture/r5-identity-scan.cjs",
+        "sha256": "a94cb81765c1e395a36c605f1f9f642ec16333870b7769e9af2bac9900340492"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs",
+        "sha256": "3a3638adae8902d8b1ffd9e6281f544907496555b77a848639dedc69bc5e20d2"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/architecture/r7-collaboration-relocation-scan.cjs",
+        "sha256": "2adf51070927fd46f82894f6512ffbe31f43a298fc8f314c03eb5016805de818"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/architecture/r8-global-module-removal-scan.cjs",
+        "sha256": "72cd9259b4a2d16f33669042788f3d387cb6feb6045aad83c5c3fec59c973eb1"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/security/prisma-config-merge-security.cjs",
+        "sha256": "5050a7ac3e5cf584bee5152b5789bd3101465bc87444f22552a4864f373911c8"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/smoke/phase2-provider-dashboard-concurrency-smoke.ts",
+        "sha256": "3903d9eb223481442a1252a64c3423721ddb74bd45f5f05b9f6c3260a5d1a88d"
+      },
+      {
+        "status": " M",
+        "path": "backend/scripts/smoke/phase2-provider-rating-concurrency-smoke.ts",
+        "sha256": "2b686e2c9e18f9c05933a960e2e65375c9802db1ba574bbfcc7db6849fa64ffc"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/admin/admin-audit.controller.ts",
+        "sha256": "dcbb59262195f19877219a58c96be72d57b14faac1a303ce260d5ec9a274cabd"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/admin/admin-mutation-executor.ts",
+        "sha256": "6a3880d53ed4666ba096817be1cf39d56c3c2a28d84517e720319edd505601fb"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/admin/admin-user-status.ts",
+        "sha256": "212d6b1ab4a7df70b939e8314f26e8f9c23fe67bddeed8674908870f72fea664"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/admin/admin.controller.ts",
+        "sha256": "b22c39bcad4d3694ecdf59eae51e4529d9064d7831ce6e3ed08aa38c29abbf85"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/catalogs/administrative-catalog.service.ts",
+        "sha256": "8683e817fd895a9f518ecbe23395244fb1b1c3676d11f550fc588c257eed543f"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/catalogs/catalogs.controller.ts",
+        "sha256": "f7c1784ca8343e6d79a9e3ad09f8f7341df1fcdd145f1418cad002560e7cc840"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/catalogs/reference-catalog.service.ts",
+        "sha256": "4d0dc0c79800537534849e0441b8b9a26a20dc168115ddbecafd2fefc81d1ea7"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/marketplace/marketplace.service.ts",
+        "sha256": "51d5f6412c10763bd11b60540203d59fac77e594edaf9de24b376f48e22721a1"
+      },
+      {
+        "status": " M",
+        "path": "backend/src/modules/identity/internal/profile/users.service.ts",
+        "sha256": "0db5c90531747da8d43548df8764f3ba892a4aa591a85cf62c057b84a01e71b9"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/admin-auth-session-security.test.ts",
+        "sha256": "222a7d78e5c7707547c53719e21f9cced4d8052c07cd58d547329fe9d83de491"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/admin-mutation-authorization.test.ts",
+        "sha256": "7a643f043a70beefa64ad88292f4575d99772ce1dbab573665ed986f8f9c4611"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/admin-rbac-audit.test.ts",
+        "sha256": "d346fa54dce9768dcf47b0a249b9afc956f9f010925571dc5e1b01eb302ec9a2"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-dependencies.test.ts",
+        "sha256": "f96cea9c75534044c7d43066c72eaf37cf71380aad29f76cd680f417c751b7a2"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-ports.test.ts",
+        "sha256": "fa0296ebd6fe7be5d6f7653eee424bd7860255399449dce5b87e16efe53e5f36"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r3-contexts.test.ts",
+        "sha256": "65b1424d37760724ef7cc5a2671cea0bb8f685114ba71c97f7503f13a876b065"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r3-scope.test.ts",
+        "sha256": "c38b7533dc838b4e474364a3ec66e05715000bf058334b64ea5892e70b7ef90d"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r4-planning-finance-boundary.test.ts",
+        "sha256": "ae49fcd3d2fd86bfe6ff2349a3609943087d8e485a2d69fe5fdd06343205353d"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r5-identity-relocation.test.ts",
+        "sha256": "d71483a026051e8d5d4ac134c1a4830a63055e47f8d4c985cbc63358310a3662"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r6-sharing-otp-transport.test.ts",
+        "sha256": "f17808b4ba93fca092d8a8edc0739a67b3d1504bb4cfbb2a69868c3b63e02477"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r7-collaboration-relocation.test.ts",
+        "sha256": "baf4acf775fa3a64e55b6d09515f02ada1c30095cd594ab0740784f6070a6e85"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/architecture-r8-global-module-removal.test.ts",
+        "sha256": "a033fe9484fdd61f6aebe6a7f33847248bb9f12a2ae2ce1acace08774e987b3f"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/prisma-config-merge-security.test.ts",
+        "sha256": "0b8f0af5256c6b6b9d8ebaa8ac664a8a1dee732c9845146f73ecf221b4f25d80"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/provider-rating-atomicity.test.ts",
+        "sha256": "74585e67e2ec4d7933f38e7f8f92e849d7a3c321d2c33da2e0998f3fcceee4e3"
+      },
+      {
+        "status": " M",
+        "path": "backend/test/sharing-reinvite-authority.test.ts",
+        "sha256": "964bebecd5c8fd299c1c8625215b48e8087c3f8e60c5e255765ad78567f1bba0"
+      },
+      {
+        "status": " M",
+        "path": "CHANGELOG.md",
+        "sha256": "5b86073af49e1f1b05f2d788a376d3d3bc386dfec93b46e7cbfbffac86b3568b"
+      },
+      {
+        "status": " M",
+        "path": "docs/project/DECISIONS.md",
+        "sha256": "f2ece280a72c5fad31a626a9c0962ca627c33073cdf7ba93fba4c8deb44a1601"
+      },
+      {
+        "status": " M",
+        "path": "docs/project/EXECUTION_PLAN.md",
+        "sha256": "8f46c6ae9112d899a2c9ea97fdc4ca3a36c48ab09c715bc68aff1d570ead72a8"
+      },
+      {
+        "status": " M",
+        "path": "docs/project/STATUS.md",
+        "sha256": "0e5740f2c22106235c1618459b60dd2462a5a45a9dfd65c59a7752d91b437831"
+      },
+      {
+        "status": " M",
+        "path": "docs/README.md",
+        "sha256": "546dee5d63b03fda63ad9e976af85852c63976e8eb0e48eedf6c460444bcdfb5"
+      },
+      {
+        "status": " M",
+        "path": "docs/SCRIPTS.md",
+        "sha256": "975f628fe69bb77cc8237e5929808705a7ad8ee766813b762dd5c6413b34d1d2"
+      },
+      {
+        "status": "??",
+        "path": "backend/architecture/r12a-backoffice-catalog-public-contracts.json",
+        "sha256": "b2904ef15dd104da8cc27315d89880b75042a6175df3a756897b0b45e4a269fd"
+      },
+      {
+        "status": "??",
+        "path": "backend/scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs",
+        "sha256": "e69b3b2bb52a806df821d57243d7b551f2e7478b70d2624873f8b828c7bf0a9e"
+      },
+      {
+        "status": "??",
+        "path": "backend/src/modules/backoffice/public/admin-mutation-gate.ts",
+        "sha256": "ed67b8c511b1cadad882f7170cae9a4c9442955c5b925c6c9f3519d821d26389"
+      },
+      {
+        "status": "??",
+        "path": "backend/src/modules/backoffice/public/admin-permission.decorator.ts",
+        "sha256": "c0147df52be408ab745cbb96e891098fcd68eaa68a010efe32ebe260926fe2c2"
+      },
+      {
+        "status": "??",
+        "path": "backend/src/modules/backoffice/public/admin-permission.guard.ts",
+        "sha256": "3be18a4b9f43ee6040b58ebfa46bd3e4d7c34a1fd0e85aa26341faab9088c4e5"
+      },
+      {
+        "status": "??",
+        "path": "backend/src/modules/backoffice/public/admin.guard.ts",
+        "sha256": "4bee3dbc5c4167378ffa741d104c78ace9ea00714e23356d45bde4084cfbb2db"
+      },
+      {
+        "status": "??",
+        "path": "backend/src/modules/marketplace/public/provider-review-rating.ts",
+        "sha256": "fdd12341d7b05298adb38fdb05e9232298045b00422b3815aa2a1df3380774d9"
+      },
+      {
+        "status": "??",
+        "path": "backend/test/architecture-r12a-backoffice-catalog-public-contracts.test.ts",
+        "sha256": "3231763b3e607e72911082c1ad306d48b61b96582ac627b11da924664dd23999"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/plans/2026-09-01-modular-monolith-r11-target-reconciliation.md",
+        "sha256": "c2e02ddbf86a5849f088cb01bd9389c6f11aca0f71df98b951c3d994dcf4a37e"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/plans/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts.md",
+        "sha256": "45e16c81966659073b135296871a63735c6feba5253e9cb562a47f5bca45b09b"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/plans/2026-09-01-modular-monolith-r12a-immutable-entry-reader-remediation.md",
+        "sha256": "2aa92b61cb263b52891634c538cf1aa2eba23cbe2a7ab3b0ea633789a34c0d8d"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/plans/2026-09-02-modular-monolith-r12a-task5-full-test-remediation.md",
+        "sha256": "0c97663c3bfb6cef4c0f3e5e52242cfa9c5c063f84e1c3c78e0e2f3a25877b63"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/reports/2026-09-01-modular-monolith-r11-reconciliation-report.md",
+        "sha256": "788e2c3c3b89ff100be1dccd18ff65bc1762c88884f1233fa1e9c72e3d6efc4a"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/reports/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts-report.md",
+        "sha256": "5994bb7d09b1aabc498ae4a32482568ef60cbd0e9d337641f38384ce273a48c7"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/specs/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts-design.md",
+        "sha256": "c058b288cd5c6eff6a1d039b2902725ea11bf78360398859a1b8c0fe7ac7516c"
+      },
+      {
+        "status": "??",
+        "path": "docs/superpowers/specs/2026-09-01-modular-monolith-remaining-target-design.md",
+        "sha256": "10a405fa5adb666be517d9f17f45972af854d281534bccfa2ccaa464508bea69"
+      }
+    ]
+  },
+  "stages": {
+    "design": {
+      "retiredDependencyIds": [],
+      "dependencyRecords": 16
+    },
+    "planning-public": {
+      "retiredDependencyIds": [
+        7,
+        8,
+        9,
+        11,
+        18
+      ],
+      "dependencyRecords": 11
+    },
+    "strict": {
+      "retiredDependencyIds": [
+        7,
+        8,
+        9,
+        11,
+        18,
+        21,
+        22
+      ],
+      "dependencyRecords": 9
+    }
+  },
+  "dependencyRecords": [
+    {
+      "id": 7,
+      "type": "dependency",
+      "from": "src/dashboard/dashboard.contracts.ts",
+      "to": "src/wedding-plans/wedding-location.ts",
+      "unresolvedTo": "../wedding-plans/wedding-location",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-insights-cross-context"
+      }
+    },
+    {
+      "id": 8,
+      "type": "dependency",
+      "from": "src/dashboard/dashboard.service.ts",
+      "to": "src/wedding-plans/wedding-location.ts",
+      "unresolvedTo": "../wedding-plans/wedding-location",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-insights-cross-context"
+      }
+    },
+    {
+      "id": 9,
+      "type": "dependency",
+      "from": "src/marketplace/marketplace.presenter.ts",
+      "to": "src/wedding-plans/wedding-location.ts",
+      "unresolvedTo": "../wedding-plans/wedding-location",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-marketplace-cross-context"
+      }
+    },
+    {
+      "id": 11,
+      "type": "dependency",
+      "from": "src/marketplace/marketplace.service.ts",
+      "to": "src/wedding-plans/wedding-location.ts",
+      "unresolvedTo": "../wedding-plans/wedding-location",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-marketplace-cross-context"
+      }
+    },
+    {
+      "id": 18,
+      "type": "dependency",
+      "from": "src/provider-dashboard/provider-dashboard.service.ts",
+      "to": "src/wedding-plans/wedding-location.ts",
+      "unresolvedTo": "../wedding-plans/wedding-location",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-marketplace-cross-context"
+      }
+    },
+    {
+      "id": 21,
+      "type": "dependency",
+      "from": "src/onboarding/dto/import-local-plan.dto.ts",
+      "to": "src/guests/dto/create-guest.dto.ts",
+      "unresolvedTo": "../../guests/dto/create-guest.dto",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-planning-cross-context"
+      }
+    },
+    {
+      "id": 22,
+      "type": "dependency",
+      "from": "src/onboarding/dto/import-local-plan.dto.ts",
+      "to": "src/tasks/dto/create-task.dto.ts",
+      "unresolvedTo": "../../tasks/dto/create-task.dto",
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "rule": {
+        "severity": "error",
+        "name": "context-planning-cross-context"
+      }
+    }
+  ],
+  "locationMove": {
+    "from": "backend/src/wedding-plans/wedding-location.ts",
+    "to": "backend/src/modules/planning/public/wedding-location.ts",
+    "sourceSha256": "7836f0cf91b07f970e947684e1c382fca97b42d8edeed57ee1563fbe556ac764",
+    "targetSha256": "7836f0cf91b07f970e947684e1c382fca97b42d8edeed57ee1563fbe556ac764"
+  },
+  "locationConsumers": [
+    {
+      "path": "backend/src/dashboard/dashboard.contracts.ts",
+      "oldModule": "../wedding-plans/wedding-location",
+      "newModule": "../modules/planning/public/wedding-location",
+      "entrySha256": "f637cbeac2027fc735233a15f2df36f91a7c61d861893ba2960235ac2cf9dbb6"
+    },
+    {
+      "path": "backend/src/dashboard/dashboard.service.ts",
+      "oldModule": "../wedding-plans/wedding-location",
+      "newModule": "../modules/planning/public/wedding-location",
+      "entrySha256": "c865b51880d1060bb1b84095f12aeaa50e41cd1636da267253c34a9b24414e97"
+    },
+    {
+      "path": "backend/src/marketplace/marketplace.presenter.ts",
+      "oldModule": "../wedding-plans/wedding-location",
+      "newModule": "../modules/planning/public/wedding-location",
+      "entrySha256": "c67f930f50bbac4524616aa9a1981a8d13a8854f1e1ce531f80bf8975c48dc85"
+    },
+    {
+      "path": "backend/src/marketplace/marketplace.service.ts",
+      "oldModule": "../wedding-plans/wedding-location",
+      "newModule": "../modules/planning/public/wedding-location",
+      "entrySha256": "51d5f6412c10763bd11b60540203d59fac77e594edaf9de24b376f48e22721a1"
+    },
+    {
+      "path": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+      "oldModule": "../wedding-plans/wedding-location",
+      "newModule": "../modules/planning/public/wedding-location",
+      "entrySha256": "44ce4ac70168b49bfe8f49b8c047d1ea888d74b8078a49f46d13b85cf56a46e8"
+    },
+    {
+      "path": "backend/src/wedding-plans/wedding-plans.service.ts",
+      "oldModule": "./wedding-location",
+      "newModule": "../modules/planning/public/wedding-location",
+      "entrySha256": "43cee77072074d9227ae3359488b8d6c21b74d6f5c4db1039fe0c7966ce0a777"
+    },
+    {
+      "path": "backend/test/backend-support.test.ts",
+      "oldModule": "../src/wedding-plans/wedding-location",
+      "newModule": "../src/modules/planning/public/wedding-location",
+      "entrySha256": "8dc46754c9d8982372d9f4bcd6a62a9427cf49e519a994c9bd6dd63eb5b6e834"
+    }
+  ],
+  "dtoReexpressions": [
+    {
+      "from": "backend/src/tasks/dto/create-task.dto.ts",
+      "to": "backend/src/onboarding/dto/import-local-task.dto.ts",
+      "oldClass": "CreateTaskDto",
+      "newClass": "ImportLocalTaskDto",
+      "sourceSha256": "9960bc6d618a5f3cb03a7491375842ab73e4fe2e9c4db884b3f24743b0745e6a",
+      "targetSha256": "e7a74a721f87e17a08ecf2a0210fb5f14874e9f371f3a16ea1c862402098b189"
+    },
+    {
+      "from": "backend/src/guests/dto/create-guest.dto.ts",
+      "to": "backend/src/onboarding/dto/import-local-guest.dto.ts",
+      "oldClass": "CreateGuestDto",
+      "newClass": "ImportLocalGuestDto",
+      "sourceSha256": "3efce4297de98e74a80e0158d5b005172728a32def420bc7de3a3ed4ee1068a6",
+      "targetSha256": "cfeab752387affdb8c55f61431ad3e08a8016258877f83c619c71bac22e43582"
+    }
+  ],
+  "behavioralTests": [
+    {
+      "path": "backend/test/backend-support.test.ts",
+      "entrySha256": "8dc46754c9d8982372d9f4bcd6a62a9427cf49e519a994c9bd6dd63eb5b6e834",
+      "oldModule": "../src/wedding-plans/wedding-location",
+      "newModule": "../src/modules/planning/public/wedding-location"
+    },
+    {
+      "path": "backend/test/import-local-plan-dto-contract.test.ts",
+      "entrySha256": "3575be4ec6ddf27205d8b3e1ba1b97ca8d45bd68e7c88091fc486b19a4299a74",
+      "purpose": "onboarding-local-dto-parity"
+    }
+  ],
+  "protectedPaths": [
+    "backend/package-lock.json",
+    "backend/architecture/ownership-baseline.json",
+    "backend/prisma",
+    "mobile",
+    "admin-web",
+    "deploy"
+  ],
+  "approvedSecurityPrerequisite": {
+    "path": "backend/package-lock.json",
+    "status": " M",
+    "oldRawSha256": "30bd3b228b763b3bbe895554a71623465e9717409c71266dbdff41e4c079cf0b",
+    "newRawSha256": "650bc45c00cd3cdf8298e33570481bb969fdbae78a63167cca9f8ff243b25f60",
+    "lockfileVersion": 3,
+    "package": {
+      "path": "node_modules/qs",
+      "version": "6.16.0",
+      "resolved": "https://registry.npmjs.org/qs/-/qs-6.16.0.tgz",
+      "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA=="
+    },
+    "parentRanges": [
+      {
+        "path": "node_modules/express",
+        "dependency": "qs",
+        "range": "^6.14.0"
+      },
+      {
+        "path": "node_modules/body-parser",
+        "dependency": "qs",
+        "range": "^6.15.2"
+      }
+    ]
+  },
+  "r12bPaths": [
+    {
+      "path": "backend/architecture/r12b-planning-public-contracts.json",
+      "status": "??",
+      "hashMode": "normalized-self",
+      "sha256": null,
+      "normalizedSelfSha256": "8992035cb26d952bf26c7b5525b9c1f4686e64711b32296638d3407b6a17a1b8"
+    },
+    {
+      "path": "backend/scripts/architecture/r12b-planning-public-contracts-scan.cjs",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "1c24c6f78e9e52e2e5bb7d8670b82f36dae92ecfe2d2b066fad4fa035270f493",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/scripts/architecture/r12b-documentation-transition.cjs",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "3585c316c29a08f3e4c78550d43cb70de47ba0c2c3d9c80548c92a9e1e61590c",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/test/architecture-r12b-planning-public-contracts.test.ts",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "7986c961da8733ef98dab23166eebebf56a1586285f9ec9af18122c1bd2da049",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/test/architecture-r12b-documentation-transition.test.ts",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "c0d28408023bb4cb99f7373ce296e6e505161b2ae1efce952ca313d24b8f5986",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-02-modular-monolith-r12b-planning-public-contracts.md",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "2f5552586664be75d515cd9f6e9b8fea91dcaca07611edb7bb745d44392b9abd",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-02-modular-monolith-r12b-planning-public-contracts-design.md",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "34f62a240df1c72f903f7f3a40cda8cef187731c063171a50157c60af954b3b9",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/src/onboarding/dto/import-local-plan.dto.ts",
+      "status": " M",
+      "hashMode": "raw",
+      "sha256": "50245805033bc038b0659de049970a5bc6f69f4d1c43622d760969f7e279afeb",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/src/onboarding/dto/import-local-task.dto.ts",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "e7a74a721f87e17a08ecf2a0210fb5f14874e9f371f3a16ea1c862402098b189",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/src/onboarding/dto/import-local-guest.dto.ts",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "cfeab752387affdb8c55f61431ad3e08a8016258877f83c619c71bac22e43582",
+      "normalizedSelfSha256": null
+    },
+    {
+      "path": "backend/test/import-local-plan-dto-contract.test.ts",
+      "status": "??",
+      "hashMode": "raw",
+      "sha256": "3575be4ec6ddf27205d8b3e1ba1b97ca8d45bd68e7c88091fc486b19a4299a74",
+      "normalizedSelfSha256": null
+    }
+  ],
+  "inverseTransforms": [
+    {
+      "path": "backend/.dependency-cruiser-known-violations.json",
+      "entrySha256": "4dd61610c6583e369b836b3b0fe80ffc63153e70a0fbe86a089509962b35c71e",
+      "kind": "dependency-subtraction-reinsertion",
+      "payload": {
+        "retiredDependencyIds": [
+          7,
+          8,
+          9,
+          11,
+          18,
+          21,
+          22
+        ],
+        "records": [
+          {
+            "ordinal": 0,
+            "record": {
+              "type": "dependency",
+              "from": "src/dashboard/dashboard.contracts.ts",
+              "to": "src/wedding-plans/wedding-location.ts",
+              "unresolvedTo": "../wedding-plans/wedding-location",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-insights-cross-context"
+              }
+            }
+          },
+          {
+            "ordinal": 1,
+            "record": {
+              "type": "dependency",
+              "from": "src/dashboard/dashboard.service.ts",
+              "to": "src/wedding-plans/wedding-location.ts",
+              "unresolvedTo": "../wedding-plans/wedding-location",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-insights-cross-context"
+              }
+            }
+          },
+          {
+            "ordinal": 2,
+            "record": {
+              "type": "dependency",
+              "from": "src/marketplace/marketplace.presenter.ts",
+              "to": "src/wedding-plans/wedding-location.ts",
+              "unresolvedTo": "../wedding-plans/wedding-location",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-marketplace-cross-context"
+              }
+            }
+          },
+          {
+            "ordinal": 4,
+            "record": {
+              "type": "dependency",
+              "from": "src/marketplace/marketplace.service.ts",
+              "to": "src/wedding-plans/wedding-location.ts",
+              "unresolvedTo": "../wedding-plans/wedding-location",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-marketplace-cross-context"
+              }
+            }
+          },
+          {
+            "ordinal": 11,
+            "record": {
+              "type": "dependency",
+              "from": "src/provider-dashboard/provider-dashboard.service.ts",
+              "to": "src/wedding-plans/wedding-location.ts",
+              "unresolvedTo": "../wedding-plans/wedding-location",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-marketplace-cross-context"
+              }
+            }
+          },
+          {
+            "ordinal": 14,
+            "record": {
+              "type": "dependency",
+              "from": "src/onboarding/dto/import-local-plan.dto.ts",
+              "to": "src/guests/dto/create-guest.dto.ts",
+              "unresolvedTo": "../../guests/dto/create-guest.dto",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-planning-cross-context"
+              }
+            }
+          },
+          {
+            "ordinal": 15,
+            "record": {
+              "type": "dependency",
+              "from": "src/onboarding/dto/import-local-plan.dto.ts",
+              "to": "src/tasks/dto/create-task.dto.ts",
+              "unresolvedTo": "../../tasks/dto/create-task.dto",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ],
+              "rule": {
+                "severity": "error",
+                "name": "context-planning-cross-context"
+              }
+            }
+          }
+        ]
+      },
+      "intendedFinalSha256": "fe4d3bfe23cf0400266bbfea8bd0357d578b93cad005c77af0814ec52ccfcb53"
+    },
+    {
+      "path": "backend/package.json",
+      "entrySha256": "43a685312a0ddd9904f99a7cd9ff2fa1d20aa163415f623858a7998ff74e2044",
+      "kind": "package-script-projection",
+      "payload": {
+        "script": "architecture:r12b",
+        "aggregate": "architecture",
+        "rewrites": [
+          {
+            "old": "    \"architecture:r12a\": \"node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check\",\n    \"architecture\": \"npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a\"\n  },\n",
+            "new": "    \"architecture:r12a\": \"node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check\",\n    \"architecture:r12b\": \"node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check\",\n    \"architecture\": \"npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a && npm run architecture:r12b\"\n  },\n",
+            "occurrences": 1
+          }
+        ]
+      },
+      "intendedFinalSha256": "da765869b7b093b4cbec6adea784b2ad15abd22114433dd6ccdc5191992ed555"
+    },
+    {
+      "path": "backend/src/marketplace/marketplace.service.ts",
+      "entrySha256": "51d5f6412c10763bd11b60540203d59fac77e594edaf9de24b376f48e22721a1",
+      "kind": "exact-text-rewrite",
+      "payload": {
+        "old": "../wedding-plans/wedding-location",
+        "new": "../modules/planning/public/wedding-location",
+        "occurrences": 1
+      },
+      "intendedFinalSha256": "5e0af6bb6a0fc0d190921638c26980aa2e26b35a5ae41e889f0b5b1360990be7"
+    },
+    {
+      "path": "backend/scripts/architecture/r3-context-scan.cjs",
+      "entrySha256": "4e9355858416a3475ccf8d16c8c659a299df1e39a62ba4d80d58cc29896254bb",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 123600,
+        "hunks": [
+          {
+            "offset": 383,
+            "before": "",
+            "after": "expectedR12aSuccessorDependencyRecords,\n  "
+          },
+          {
+            "offset": 417,
+            "before": "",
+            "after": "readR12aImmutableEntry,\n  "
+          },
+          {
+            "offset": 48736,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 50171,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 50173,
+            "before": "",
+            "after": "\nfunction verifyR12aSuccessorDependencyBaseline({ repoRoot, r12aManifest, readImmutableFile }) {\n  const relative = 'backend/.dependency-cruiser-known-violations.json';\n  const candidate = path.join(repoRoot, ...relative.split('/'));\n  if (!fs.existsSync(candidate)) return null;\n  const root = fs.realpathSync.native(repoRoot);\n  const stat = fs.lstatSync(candidate);\n  if (stat.isSymbolicLink() || !stat.isFile() || stat.size < 2 || stat.size > 2 * 1024 * 1024) {\n    throw new Error('R3 dependency baseline is not a bounded plain file');\n  }\n  const real = fs.realpathSync.native(candidate);\n  if (path.relative(root, real).startsWith('..')) throw new Error('R3 dependency baseline escapes repository');\n  const entry = readR12aImmutableEntry({\n    repositoryRoot: repoRoot,\n    manifest: r12aManifest,\n    readImmutableFile,\n  });\n  const expected = expectedR12aSuccessorDependencyRecords({\n    repositoryRoot: repoRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile,\n  });\n  const bytes = fs.readFileSync(real);\n  if (bytes.length !== stat.size || !Buffer.from(bytes.toString('utf8'), 'utf8').equals(bytes)) {\n    throw new Error('R3 dependency baseline changed or is not exact UTF-8');\n  }\n  let live;\n  try { live = JSON.parse(bytes.toString('utf8')); } catch { throw new Error('R3 dependency baseline contains invalid JSON'); }\n  assertDeepPlainData(live, 'R3 dependency baseline');\n  if (JSON.stringify(live) !== JSON.stringify(expected)) throw new Error('R3 successor dependency baseline drift detected');\n  return live.length;\n}\n"
+          },
+          {
+            "offset": 114419,
+            "before": "",
+            "after": "verifyR12aSu"
+          },
+          {
+            "offset": 114420,
+            "before": "",
+            "after": "cess"
+          },
+          {
+            "offset": 114421,
+            "before": "",
+            "after": "rDepe"
+          },
+          {
+            "offset": 114422,
+            "before": "",
+            "after": "dencyBa"
+          },
+          {
+            "offset": 114423,
+            "before": "",
+            "after": "eline({\n    repoRoo"
+          },
+          {
+            "offset": 114424,
+            "before": "",
+            "after": ":"
+          },
+          {
+            "offset": 114425,
+            "before": "",
+            "after": "options.repoRoot,\n    r12aManifest,\n    readImmutableFile: options.readImmutableFile,\n  });\n  const "
+          }
+        ]
+      },
+      "intendedFinalSha256": "020fe45ee466be18d90c642ec770d95b23bbfc4edf485e084f8c382508df7105"
+    },
+    {
+      "path": "backend/scripts/architecture/r5-identity-scan.cjs",
+      "entrySha256": "a94cb81765c1e395a36c605f1f9f642ec16333870b7769e9af2bac9900340492",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 63394,
+        "hunks": [
+          {
+            "offset": 355,
+            "before": "",
+            "after": "SuccessorDependencyRecords,\n  expectedR12a"
+          },
+          {
+            "offset": 28073,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 28150,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 28154,
+            "before": "",
+            "after": "con"
+          },
+          {
+            "offset": 28155,
+            "before": "",
+            "after": "t packag"
+          },
+          {
+            "offset": 28156,
+            "before": "",
+            "after": "Json = plainObje"
+          },
+          {
+            "offset": 28157,
+            "before": "",
+            "after": "t(inp"
+          },
+          {
+            "offset": 28158,
+            "before": "",
+            "after": "t.packageJson, 'R5 secu"
+          },
+          {
+            "offset": 28162,
+            "before": "",
+            "after": " package');\n  const scripts = plainObject(packageJson"
+          },
+          {
+            "offset": 28163,
+            "before": "",
+            "after": "scripts, 'R5 security package scripts');\n  const r12bKeys = Object.keys(scripts)\n    .filter((scriptName) => scriptName.startsWith('architecture:r12b'));\n  const hasR12bAggregateIdentity = typeof scripts.architecture === 'string'\n    && scripts.architecture.includes('architecture:r12b');\n  const historicalPackageJson = r12bKeys.length > 0 || hasR12bAggregateIdentity\n    ? security.projectR12BArchitectureScripts(packageJson)\n    : packageJson;\n  security."
+          },
+          {
+            "offset": 28184,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 28232,
+            "before": "",
+            "after": "h"
+          },
+          {
+            "offset": 28233,
+            "before": "npu",
+            "after": "s"
+          },
+          {
+            "offset": 28237,
+            "before": ".p",
+            "after": "oric"
+          },
+          {
+            "offset": 28240,
+            "before": "",
+            "after": "lPa"
+          },
+          {
+            "offset": 28251,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 28275,
+            "before": "\r",
+            "after": ""
+          },
+          {
+            "offset": 47326,
+            "before": "",
+            "after": " 'repositoryRoot', 'readImmutableFile',"
+          },
+          {
+            "offset": 47634,
+            "before": "",
+            "after": "if (input.repositoryRoot !== undefined\n      && (typeof input.repositoryRoot !== 'string' || !path.isAbsolute(input.repositoryRoot))) {\n    throw new Error('R5 baseline repository root is invalid');\n  }\n  if (input.readImmutableFile !== undefined && typeof input.readImmutableFile !== 'fun"
+          },
+          {
+            "offset": 47635,
+            "before": "",
+            "after": "ti"
+          },
+          {
+            "offset": 47637,
+            "before": "",
+            "after": "') {\n    throw new Error('R5 ba"
+          },
+          {
+            "offset": 47638,
+            "before": "",
+            "after": "eline immu"
+          },
+          {
+            "offset": 47639,
+            "before": "",
+            "after": "able"
+          },
+          {
+            "offset": 47640,
+            "before": "",
+            "after": "reader is invalid');\n  }\n  const "
+          },
+          {
+            "offset": 49089,
+            "before": "",
+            "after": "input.r"
+          },
+          {
+            "offset": 49090,
+            "before": "",
+            "after": "positoryRoot === undefined\n      ? e"
+          },
+          {
+            "offset": 49119,
+            "before": "",
+            "after": "historicalR7Live22, r12aManifest)"
+          },
+          {
+            "offset": 49126,
+            "before": "",
+            "after": ": expectedR12aSuccessorDependencyRecords({\n        repositoryRoot: input.repositoryRoot,\n        r12aEntryRecords: "
+          },
+          {
+            "offset": 49152,
+            "before": "",
+            "after": "  "
+          },
+          {
+            "offset": 49170,
+            "before": "",
+            "after": "    readImmutableFile: input.readImmutableFile,\n      }"
+          },
+          {
+            "offset": 62290,
+            "before": "",
+            "after": "  repositoryRoot,\n        readImmutableFile: dependencies.readImmutableFile,\n      "
+          }
+        ]
+      },
+      "intendedFinalSha256": "f6180409ca7160cf67a39495540da3e57bc481f67e7db714ce6e456dc05f30e7"
+    },
+    {
+      "path": "backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs",
+      "entrySha256": "3a3638adae8902d8b1ffd9e6281f544907496555b77a848639dedc69bc5e20d2",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 34559,
+        "hunks": [
+          {
+            "offset": 290,
+            "before": "",
+            "after": "Successor"
+          },
+          {
+            "offset": 24443,
+            "before": "",
+            "after": "Successor"
+          },
+          {
+            "offset": 24461,
+            "before": "",
+            "after": "{\n      "
+          },
+          {
+            "offset": 24462,
+            "before": "",
+            "after": "epositoryRoot,\n      r"
+          },
+          {
+            "offset": 24470,
+            "before": "",
+            "after": "Records: r12aEntry"
+          },
+          {
+            "offset": 24482,
+            "before": "",
+            "after": "\n"
+          },
+          {
+            "offset": 24483,
+            "before": "",
+            "after": "     "
+          },
+          {
+            "offset": 24495,
+            "before": "",
+            "after": ",\n      readImmutableFile,\n    }"
+          }
+        ]
+      },
+      "intendedFinalSha256": "fdc566b49de7f1370a659e3d190d8aab53965868a69bc3c86b1c541d20b3328a"
+    },
+    {
+      "path": "backend/scripts/architecture/r7-collaboration-relocation-scan.cjs",
+      "entrySha256": "2adf51070927fd46f82894f6512ffbe31f43a298fc8f314c03eb5016805de818",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 144162,
+        "hunks": [
+          {
+            "offset": 445,
+            "before": "",
+            "after": "Successor"
+          },
+          {
+            "offset": 36144,
+            "before": "",
+            "after": "Successor"
+          },
+          {
+            "offset": 36162,
+            "before": "",
+            "after": "{\n      "
+          },
+          {
+            "offset": 36163,
+            "before": "",
+            "after": "epositoryRoot,\n      r"
+          },
+          {
+            "offset": 36171,
+            "before": "",
+            "after": "Records: r12aEntry"
+          },
+          {
+            "offset": 36183,
+            "before": "",
+            "after": "\n"
+          },
+          {
+            "offset": 36184,
+            "before": "",
+            "after": "     "
+          },
+          {
+            "offset": 36196,
+            "before": "",
+            "after": ",\n      readImmutableFile,\n    }"
+          },
+          {
+            "offset": 139378,
+            "before": "",
+            "after": "\n      "
+          },
+          {
+            "offset": 139388,
+            "before": "",
+            "after": "\n"
+          },
+          {
+            "offset": 139389,
+            "before": "",
+            "after": "     "
+          },
+          {
+            "offset": 139406,
+            "before": "",
+            "after": ",\n      baselines.dependencyRecords,\n    "
+          },
+          {
+            "offset": 139873,
+            "before": "",
+            "after": "\n  "
+          },
+          {
+            "offset": 139883,
+            "before": "",
+            "after": "\n"
+          },
+          {
+            "offset": 139884,
+            "before": "",
+            "after": " "
+          },
+          {
+            "offset": 139897,
+            "before": "",
+            "after": ",\n  successorDependencyRecords = undefined,\n"
+          },
+          {
+            "offset": 139959,
+            "before": "if",
+            "after": "const"
+          },
+          {
+            "offset": 139962,
+            "before": "(!bas",
+            "after": ""
+          },
+          {
+            "offset": 139968,
+            "before": "lin",
+            "after": "xp"
+          },
+          {
+            "offset": 139972,
+            "before": "s",
+            "after": "cted"
+          },
+          {
+            "offset": 139974,
+            "before": "||",
+            "after": "="
+          },
+          {
+            "offset": 139977,
+            "before": "ba",
+            "after": ""
+          },
+          {
+            "offset": 139980,
+            "before": "",
+            "after": "ucc"
+          },
+          {
+            "offset": 139981,
+            "before": "line",
+            "after": ""
+          },
+          {
+            "offset": 139986,
+            "before": ".d",
+            "after": "sorD"
+          },
+          {
+            "offset": 140005,
+            "before": "!",
+            "after": ""
+          },
+          {
+            "offset": 140008,
+            "before": "",
+            "after": "="
+          },
+          {
+            "offset": 140009,
+            "before": "",
+            "after": "undefined\n    ? "
+          },
+          {
+            "offset": 140058,
+            "before": "",
+            "after": "\n    : successorDependencyRecords;\n  if (!Number.isSafeInteger(expected"
+          },
+          {
+            "offset": 140060,
+            "before": "",
+            "after": "|| expected < 0\n      || !baselines || baselines.dependencyRecords !== expected) "
+          }
+        ]
+      },
+      "intendedFinalSha256": "55114c07e14c4507ec57cef1a877b58858473f3c7a235d135f110a1b10ad81d7"
+    },
+    {
+      "path": "backend/scripts/architecture/r8-global-module-removal-scan.cjs",
+      "entrySha256": "72cd9259b4a2d16f33669042788f3d387cb6feb6045aad83c5c3fec59c973eb1",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 75518,
+        "hunks": [
+          {
+            "offset": 282,
+            "before": "",
+            "after": "Successor"
+          },
+          {
+            "offset": 65233,
+            "before": "",
+            "after": "Successor"
+          },
+          {
+            "offset": 65251,
+            "before": "",
+            "after": "{"
+          },
+          {
+            "offset": 65256,
+            "before": "",
+            "after": "r"
+          },
+          {
+            "offset": 65257,
+            "before": "n",
+            "after": "posi"
+          },
+          {
+            "offset": 65259,
+            "before": "",
+            "after": "o"
+          },
+          {
+            "offset": 65261,
+            "before": ".dependency",
+            "after": "Root"
+          },
+          {
+            "offset": 65282,
+            "before": "Ma",
+            "after": "E"
+          },
+          {
+            "offset": 65285,
+            "before": "if",
+            "after": "tryR"
+          },
+          {
+            "offset": 65288,
+            "before": "",
+            "after": "cord"
+          },
+          {
+            "offset": 65289,
+            "before": "t,\n",
+            "after": ":"
+          },
+          {
+            "offset": 65293,
+            "before": " );\n  if (",
+            "after": ""
+          },
+          {
+            "offset": 65304,
+            "before": "xpec",
+            "after": "n"
+          },
+          {
+            "offset": 65309,
+            "before": "e",
+            "after": "ry."
+          },
+          {
+            "offset": 65311,
+            "before": "D",
+            "after": ""
+          },
+          {
+            "offset": 65321,
+            "before": ".length",
+            "after": ",\n"
+          },
+          {
+            "offset": 65329,
+            "before": "!==",
+            "after": ""
+          },
+          {
+            "offset": 65333,
+            "before": "",
+            "after": "  "
+          },
+          {
+            "offset": 65345,
+            "before": ".stages[r12aManifest.stage].dependencyRecords) {",
+            "after": ","
+          },
+          {
+            "offset": 65398,
+            "before": "th",
+            "after": ""
+          },
+          {
+            "offset": 65401,
+            "before": "ow n",
+            "after": ""
+          },
+          {
+            "offset": 65406,
+            "before": "w Error('R8 R12A ",
+            "after": "a"
+          },
+          {
+            "offset": 65424,
+            "before": "",
+            "after": "Immutabl"
+          },
+          {
+            "offset": 65425,
+            "before": "pendency project",
+            "after": "F"
+          },
+          {
+            "offset": 65442,
+            "before": "on drift d",
+            "after": "l"
+          },
+          {
+            "offset": 65453,
+            "before": "tected');",
+            "after": ","
+          },
+          {
+            "offset": 65466,
+            "before": "",
+            "after": ");"
+          },
+          {
+            "offset": 66414,
+            "before": "",
+            "after": "\n  "
+          },
+          {
+            "offset": 66420,
+            "before": "",
+            "after": "\n"
+          },
+          {
+            "offset": 66421,
+            "before": "",
+            "after": " "
+          },
+          {
+            "offset": 66450,
+            "before": "",
+            "after": ",\n  successorDependencyRecords = undefined,\n"
+          },
+          {
+            "offset": 66603,
+            "before": "",
+            "after": "successo"
+          },
+          {
+            "offset": 66604,
+            "before": "",
+            "after": "DependencyRecords === undefined\n    ? (r"
+          },
+          {
+            "offset": 66629,
+            "before": "",
+            "after": "  "
+          },
+          {
+            "offset": 66680,
+            "before": "",
+            "after": "  "
+          },
+          {
+            "offset": 66739,
+            "before": "",
+            "after": ")\n    : successorDependencyRecords"
+          },
+          {
+            "offset": 66743,
+            "before": "",
+            "after": "if (!Number.isS"
+          },
+          {
+            "offset": 66744,
+            "before": "",
+            "after": "feInteger(expectedDependencyRecord"
+          },
+          {
+            "offset": 66745,
+            "before": "",
+            "after": ") || expectedDependencyRecord"
+          },
+          {
+            "offset": 66746,
+            "before": "",
+            "after": " < 0) {\n    throw n"
+          },
+          {
+            "offset": 66747,
+            "before": "",
+            "after": "w E"
+          },
+          {
+            "offset": 66748,
+            "before": "",
+            "after": "ror('R8 successor dependency coun"
+          },
+          {
+            "offset": 66749,
+            "before": "",
+            "after": " is invalid');\n  }\n  assert"
+          },
+          {
+            "offset": 73764,
+            "before": "",
+            "after": ", baselines.dependencyRecords"
+          }
+        ]
+      },
+      "intendedFinalSha256": "2a3713615cdfecbdbd884ee17987095d351e09e9c83c5e35b9a3113183b942c5"
+    },
+    {
+      "path": "backend/scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs",
+      "entrySha256": "e69b3b2bb52a806df821d57243d7b551f2e7478b70d2624873f8b828c7bf0a9e",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 49124,
+        "hunks": [
+          {
+            "offset": 16517,
+            "before": "",
+            "after": "function readBoundedPlainJson(repositoryRoot, relative, label) {\n  const file = inspectFile(repositoryRoot, relative);\n  if (!file) return null;\n  const stat = fs.statSync(file);\n  if (stat.size < 2 || stat.size > 2 * 1024 * 1024) throw new Error(`${label} exceeds its file bound`);\n  const bytes = fs.readFileSync(file);\n  if (bytes.length !== stat.size) throw new Error(`${label} changed while being read`);\n  const source = bytes.toString('utf8');\n  if (!Buffer.from(source, 'utf8').equals(bytes)) throw new Error(`${label} is not exact UTF-8`);\n  let value;\n  try { value = JSON.parse(source); } catch { throw new Error(`${label} contains invalid JSON`); }\n  deepData(value, label);\n  return Object.freeze({ bytes, value });\n}\nfunction r12aGitAuthorityError() {\n  return new Error('R12A successor Git authority is invalid');\n}\nfunction r12aPathIdentity(value) {\n  const resolved = path.resolve(value);\n  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;\n}\nfunction canonicalR12aGitPath(value) {\n  try {\n    return fs.realpathSync.native(value);\n  } catch {\n    throw r12aGitAuthorityError();\n  }\n}\nfunction r12aGitControlStat(value, expectedType) {\n  let stat;\n  try {\n    stat = fs.lstatSync(value);\n  } catch {\n    throw r12aGitAuthorityError();\n  }\n  if (stat.isSymbolicLink()\n      || (expectedType === 'file' && !stat.isFile())\n      || (expectedType === 'directory' && !stat.isDirectory())\n      || (expectedType === 'control' && !stat.isFile() && !stat.isDirectory())) {\n    throw r12aGitAuthorityError();\n  }\n  return stat;\n}\nfunction readR12aGitControlLine(filePath, prefixed) {\n  const stat = r12aGitControlStat(filePath, 'file');\n  if (stat.size < 1 || stat.size > 4096) throw r12aGitAuthorityError();\n  const bytes = fs.readFileSync(filePath);\n  if (bytes.length !== stat.size) throw r12aGitAuthorityError();\n  const source = bytes.toString('utf8');\n  if (!Buffer.from(source, 'utf8').equals(bytes)) throw r12aGitAuthorityError();\n  const match = (prefixed\n    ? /^gitdir: ([^\\r\\n\\u0000]+)(?:\\r?\\n)?$/u\n    : /^([^\\r\\n\\u0000]+)(?:\\r?\\n)?$/u).exec(source);\n  if (!match || !match[1] || match[1] !== match[1].trim()) throw r12aGitAuthorityError();\n  return match[1];\n}\nfunction runR12aGitAuthority(repositoryRoot, args) {\n  try {\n    const output = execFileSync('git', args, {\n      cwd: repositoryRoot,\n      encoding: 'utf8',\n      maxBuffer: 1024 * 1024,\n      windowsHide: true,\n      stdio: ['ignore', 'pipe', 'pipe'],\n    }).trim();\n    if (!output || output.includes('\\u0000')) throw r12aGitAuthorityError();\n    return output;\n  } catch {\n    throw r12aGitAuthorityError();\n  }\n}\nfunction verifyR12aSuccessorGitAuthority(repositoryRoot) {\n  const canonicalRoot = canonicalR12aGitPath(repositoryRoot);\n  const gitControl = path.join(canonicalRoot, '.git');\n  const controlStat = r12aGitControlStat(gitControl, 'control');\n  const topLevel = canonicalR12aGitPath(runR12aGitAuthority(canonicalRoot, ['rev-parse', '--show-toplevel']));\n  if (r12aPathIdentity(topLevel) !== r12aPathIdentity(canonicalRoot)) throw r12aGitAuthorityError();\n  const absoluteGitDir = runR12aGitAuthority(canonicalRoot, ['rev-parse', '--absolute-git-dir']);\n  if (!path.isAbsolute(absoluteGitDir)) throw r12aGitAuthorityError();\n  const resolvedGitDir = path.resolve(absoluteGitDir);\n  r12aGitControlStat(resolvedGitDir, 'directory');\n  const canonicalGitDir = canonicalR12aGitPath(resolvedGitDir);\n  if (r12aPathIdentity(canonicalGitDir) !== r12aPathIdentity(resolvedGitDir)) throw r12aGitAuthorityError();\n  if (controlStat.isDirectory()) {\n    const canonicalControl = canonicalR12aGitPath(gitControl);\n    if (r12aPathIdentity(canonicalGitDir) !== r12aPathIdentity(canonicalControl)) throw r12aGitAuthorityError();\n    return canonicalRoot;\n  }\n  const linkedTarget = readR12aGitControlLine(gitControl, true);\n  const resolvedTarget = path.resolve(path.dirname(gitControl), linkedTarget);\n  r12aGitControlStat(resolvedTarget, 'directory');\n  const canonicalTarget = canonicalR12aGitPath(resolvedTarget);\n  if (r12aPathIdentity(canonicalTarget) !== r12aPathIdentity(resolvedTarget)\n      || r12aPathIdentity(canonicalTarget) !== r12aPathIdentity(canonicalGitDir)) {\n    throw r12aGitAuthorityError();\n  }\n  const backReferenceFile = path.join(canonicalTarget, 'gitdir');\n  const backReference = readR12aGitControlLine(backReferenceFile, false);\n  const resolvedBackReference = path.resolve(canonicalTarget, backReference);\n  r12aGitControlStat(resolvedBackReference, 'file');\n  const canonicalBackReference = canonicalR12aGitPath(resolvedBackReference);\n  if (r12aPathIdentity(resolvedBackReference) !== r12aPathIdentity(gitControl)\n      || r12aPathIdentity(canonicalBackReference) !== r12aPathIdentity(gitControl)) {\n    throw r12aGitAuthorityError();\n  }\n  return canonicalRoot;\n}\nfunction expectedR12aSuccessorDependencyRecords({ repositoryRoot, r12aEntryRecords, r12aManifest, readImmutableFile } = {}) {\n  if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12A successor repository root must be absolute');\n  const checkedR12a = validateR12aManifest(r12aManifest);\n  const r12aRecords = expectedR12aDependencyRecords(r12aEntryRecords, checkedR12a);\n  const r12bFile = readBoundedPlainJson(repositoryRoot, 'backend/architecture/r12b-planning-public-contracts.json', 'R12B successor manifest');\n  if (!r12bFile) return r12aRecords;\n  const r12b = require('./r12b-planning-public-contracts-scan.cjs');\n  const manifest = r12b.validateR12bManifest(r12bFile.value);\n  const self = manifest.r12bPaths[0].normalizedSelfSha256;\n  const needle = Buffer.from(`\"normalizedSelfSha256\": \"${self}\"`, 'utf8');\n  const first = r12bFile.bytes.indexOf(needle);\n  if (first < 0 || r12bFile.bytes.indexOf(needle, first + needle.length) >= 0) throw new Error('R12B successor manifest self binding is invalid');\n  const normalized = Buffer.from(r12bFile.bytes);\n  normalized.set(Buffer.from('0'.repeat(64), 'utf8'), first + needle.indexOf(Buffer.from(self, 'utf8')));\n  if (sha256(normalized) !== self) throw new Error('R12B successor manifest self binding changed');\n  const liveR12aFile = readBoundedPlainJson(repositoryRoot, MANIFEST_PATH, 'R12A predecessor manifest');\n  if (!liveR12aFile || sha256(liveR12aFile.bytes) !== manifest.predecessor.manifestSha256) throw new Error('R12B predecessor manifest fingerprint changed');\n  const liveR12a = validateR12aManifest(liveR12aFile.value);\n  if (JSON.stringify(liveR12a) !== JSON.stringify(checkedR12a)) throw new Error('R12A successor manifest input is not the exact predecessor');\n  verifyR12aSuccessorGitAuthority(repositoryRoot);\n  const immutable = readR12aImmutableEntry({ repositoryRoot, manifest: liveR12a, readImmutableFile });\n  if (JSON.stringify(immutable.dependency) !== JSON.stringify(r12aEntryRecords)) throw new Error('R12A successor immutable entry changed');\n  return r12b.expectedR12bDependencyRecords(r12aRecords, manifest);\n}\nfunction r12aSuccessorPredecessorBytes({ repositoryRoot, r12aEntryRecords, r12aManifest, readImmutableFile } = {}) {\n  const r12bFile = readBoundedPlainJson(repositoryRoot, 'backend/architecture/r12b-planning-public-contracts.json', 'R12B successor manifest');\n  if (!r12bFile) return new Map();\n  expectedR12aSuccessorDependencyRecords({ repositoryRoot, r12aEntryRecords, r12aManifest, readImmutableFile });\n  const r12b = require('./r12b-planning-public-contracts-scan.cjs');\n  const manifest = r12b.validateR12bManifest(r12bFile.value);\n  const projected = r12b.projectR12bWorkingTreeToPredecessor({ repositoryRoot, manifest });\n  return new Map(projected.projectionDetails.nonDocumentation.map(\n    (item) => [item.path, item.entryBytes],\n  ));\n}\n"
+          },
+          {
+            "offset": 44561,
+            "before": " function scanR12aBackofficeCatalogPublicContracts({ repositoryRoot, manifest, readImmutableFile }) { if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12A repository root must be absolute'); const checked = validateR12aManifest(manifest); const stage = checked.stages[checked.stage]; const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repositoryRoot, encoding: 'utf8' }).trim(); if (head !== BASE_COMMIT) throw new Error('R12A immutable entry commit changed'); const depRelative = ENTRY_DEPENDENCY_PATH; const ownRelative = ENTRY_OWNERSHIP_PATH; const entry = readR12aImmutableEntry({ repositoryRoot, manifest: checked, readImmutableFile }); const entryDep = entry.dependency; const entryOwn = entry.ownership; const depFile = inspectFile(repositoryRoot, depRelative); const ownFile = inspectFile(repositoryRoot, ownRelative); const liveDep = JSON.parse(fs.readFileSync(depFile, 'utf8')); const liveOwn = JSON.parse(fs.readFileSync(ownFile, 'utf8')); if (JSON.stringify(liveDep) !== JSON.stringify(expectedR12aDependencyRecords(entryDep, checked)) || JSON.stringify(liveOwn) !== JSON.stringify(expectedR12aOwnershipBaseline(entryOwn, checked))) throw new Error('R12A baseline parity drift detected'); for (const move of checked.moves) { const sourcePath = inspectFile(repositoryRoot, move.from); const targetPath = inspectFile(repositoryRoot, move.to); const active = stage.activeMoveIds.includes(move.id); validateR12aMoveLayout(sourcePath, targetPath, active); const historical = readImmutable(repositoryRoot, move.from, checked); const live = fs.readFileSync(active ? targetPath : sourcePath, 'utf8'); if (!active) { if (sha256(live) !== move.entrySha256) throw new Error('R12A legacy source drift detected'); } else { verifyR12aSourceParity({ historicalSource: historical, liveSource: live, move }); verifyR12aPublicExportInventory(live, move); } } for (const contract of [...checked.consumers, ...checked.behavioralTests]) { const file = inspectFile(repositoryRoot, contract.path); if (!file) throw new Error('R12A contract path is missing'); verifyR12aLiteralParity({ historicalSource: readImmutable(repositoryRoot, contract.path, checked), liveSource: fs.readFileSync(file, 'utf8'), contract, manifest: checked }); } for (const exception of checked.exceptionRetirement) { const text = fs.readFileSync(inspectFile(repositoryRoot, exception.path), 'utf8'); if (isExactRetiredException(text, exception) !== (checked.stage !== 'strict')) throw new Error('R12A provider rating exception state is invalid'); } for (const [relative] of SIBLING_EXCEPTIONS) verifyR12aSiblingExceptionText(fs.readFileSync(inspectFile(repositoryRoot, relative), 'utf8'), relative); checkGuardOrder(repositoryRoot); checkRuntimeEdges(repositoryRoot, checked); return Object.freeze({ ok: true, stage: checked.stage, dependencyRecords: liveDep.length, ownershipRecords: liveOwn.violations.length, ownershipOccurrences: liveOwn.violations.reduce((sum, item) => sum + item.count, 0), legacyPaths: checked.moves.filter((move) => stage.activeMoveIds.includes(move.id) && inspectFile(repositoryRoot, move.from)).map((move) => move.from) }); }\n",
+            "after": " function scanR12aBackofficeCatalogPublicContracts({ repositoryRoot, manifest, readImmutableFile }) { if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12A repository root must be absolute'); const checked = validateR12aManifest(manifest); const stage = checked.stages[checked.stage]; const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repositoryRoot, encoding: 'utf8' }).trim(); if (head !== BASE_COMMIT) throw new Error('R12A immutable entry commit changed'); const depRelative = ENTRY_DEPENDENCY_PATH; const ownRelative = ENTRY_OWNERSHIP_PATH; const entry = readR12aImmutableEntry({ repositoryRoot, manifest: checked, readImmutableFile }); const entryDep = entry.dependency; const entryOwn = entry.ownership; const depFile = inspectFile(repositoryRoot, depRelative); const ownFile = inspectFile(repositoryRoot, ownRelative); const liveDep = JSON.parse(fs.readFileSync(depFile, 'utf8')); const liveOwn = JSON.parse(fs.readFileSync(ownFile, 'utf8')); if (JSON.stringify(liveDep) !== JSON.stringify(expectedR12aSuccessorDependencyRecords({ repositoryRoot, r12aEntryRecords: entryDep, r12aManifest: checked, readImmutableFile })) || JSON.stringify(liveOwn) !== JSON.stringify(expectedR12aOwnershipBaseline(entryOwn, checked))) throw new Error('R12A baseline parity drift detected'); const predecessorContractBytes = r12aSuccessorPredecessorBytes({ repositoryRoot, r12aEntryRecords: entryDep, r12aManifest: checked, readImmutableFile }); for (const move of checked.moves) { const sourcePath = inspectFile(repositoryRoot, move.from); const targetPath = inspectFile(repositoryRoot, move.to); const active = stage.activeMoveIds.includes(move.id); validateR12aMoveLayout(sourcePath, targetPath, active); const historical = readImmutable(repositoryRoot, move.from, checked); const live = fs.readFileSync(active ? targetPath : sourcePath, 'utf8'); if (!active) { if (sha256(live) !== move.entrySha256) throw new Error('R12A legacy source drift detected'); } else { verifyR12aSourceParity({ historicalSource: historical, liveSource: live, move }); verifyR12aPublicExportInventory(live, move); } } for (const contract of [...checked.consumers, ...checked.behavioralTests]) { const file = inspectFile(repositoryRoot, contract.path); if (!file) throw new Error('R12A contract path is missing'); verifyR12aLiteralParity({ historicalSource: readImmutable(repositoryRoot, contract.path, checked), liveSource: predecessorContractBytes.get(contract.path) || fs.readFileSync(file), contract, manifest: checked }); } for (const exception of checked.exceptionRetirement) { const text = fs.readFileSync(inspectFile(repositoryRoot, exception.path), 'utf8'); if (isExactRetiredException(text, exception) !== (checked.stage !== 'strict')) throw new Error('R12A provider rating exception state is invalid'); } for (const [relative] of SIBLING_EXCEPTIONS) verifyR12aSiblingExceptionText(fs.readFileSync(inspectFile(repositoryRoot, relative), 'utf8'), relative); checkGuardOrder(repositoryRoot); checkRuntimeEdges(repositoryRoot, checked); return Object.freeze({ ok: true, stage: checked.stage, dependencyRecords: liveDep.length, ownershipRecords: liveOwn.violations.length, ownershipOccurrences: liveOwn.violations.reduce((sum, item) => sum + item.count, 0), legacyPaths: checked.moves.filter((move) => stage.activeMoveIds.includes(move.id) && inspectFile(repositoryRoot, move.from)).map((move) => move.from) }); }\n"
+          },
+          {
+            "offset": 48528,
+            "before": " module.exports = { MANIFEST_PATH, dependencyKey, expectedR12aDependencyRecords, expectedR12aOwnershipBaseline, isAllowedR12aRuntimePublicEdge, normalizeR12aIdentityProviderRatingImport, readR12aImmutableEntry, runCli, checkGuardOrder, checkRuntimeEdges, exportedNames, inspectFile, verifyR12aPublicExportInventory, verifyR12aSiblingExceptionText, isExactRetiredException, scanR12aBackofficeCatalogPublicContracts, validateR12aMoveLayout, verifyR12aConsumerParity, validateR12aManifest, verifyR12aLiteralParity, verifyR12aSourceParity };\n",
+            "after": " module.exports = { MANIFEST_PATH, dependencyKey, expectedR12aDependencyRecords, expectedR12aSuccessorDependencyRecords, expectedR12aOwnershipBaseline, isAllowedR12aRuntimePublicEdge, normalizeR12aIdentityProviderRatingImport, readR12aImmutableEntry, runCli, checkGuardOrder, checkRuntimeEdges, exportedNames, inspectFile, verifyR12aPublicExportInventory, verifyR12aSiblingExceptionText, isExactRetiredException, scanR12aBackofficeCatalogPublicContracts, validateR12aMoveLayout, verifyR12aConsumerParity, validateR12aManifest, verifyR12aLiteralParity, verifyR12aSourceParity };\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "98bbf7954975649ee91c9da0cdd03dc0980f18bb03e839bad193cfdd2f8c5788"
+    },
+    {
+      "path": "backend/scripts/security/prisma-config-merge-security.cjs",
+      "entrySha256": "5050a7ac3e5cf584bee5152b5789bd3101465bc87444f22552a4864f373911c8",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 36585,
+        "hunks": [
+          {
+            "offset": 2252,
+            "before": "46ba2e49c063229aa498112f735f09f7538d6b1e01a0986fec57643d02b586bf",
+            "after": "6d3f757db4c2ec3f6d5d97168d325a6eae418e0038b3da7dc057340352c2dea3"
+          },
+          {
+            "offset": 3157,
+            "before": "",
+            "after": "R12B_ARCHITECTURE_"
+          },
+          {
+            "offset": 3158,
+            "before": "",
+            "after": "CRIPT =\n  R12A_ARCHIT"
+          },
+          {
+            "offset": 3160,
+            "before": "",
+            "after": "T"
+          },
+          {
+            "offset": 3162,
+            "before": "",
+            "after": "E_SCR"
+          },
+          {
+            "offset": 3163,
+            "before": "",
+            "after": "P"
+          },
+          {
+            "offset": 3164,
+            "before": "",
+            "after": " + ' && npm run architecture:r12b';\nconst R12B_STANDALONE_SCRIPT =\n  'node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check';\nconst SECURIT"
+          },
+          {
+            "offset": 7011,
+            "before": "a",
+            "after": "b"
+          },
+          {
+            "offset": 7088,
+            "before": "a",
+            "after": "b"
+          },
+          {
+            "offset": 7166,
+            "before": "",
+            "after": "bKeys.length > 0\n      || (typeof "
+          },
+          {
+            "offset": 7167,
+            "before": "",
+            "after": "ggregate === 'string' && aggregate.includes('architecture:r12b'))) {\n    return projectR12BArchitectureScripts(packageJson);\n  }\n  const r12a"
+          },
+          {
+            "offset": 7171,
+            "before": "",
+            "after": " = Object"
+          },
+          {
+            "offset": 7172,
+            "before": "",
+            "after": "keys(scripts).fi"
+          },
+          {
+            "offset": 7173,
+            "before": "",
+            "after": "t"
+          },
+          {
+            "offset": 7174,
+            "before": "",
+            "after": "r((key) => key.startsWith('architecture:r12a'));\n  if (r12aKeys.le"
+          },
+          {
+            "offset": 8038,
+            "before": "a",
+            "after": "b"
+          },
+          {
+            "offset": 8115,
+            "before": "a",
+            "after": "b"
+          },
+          {
+            "offset": 8193,
+            "before": "",
+            "after": "bKeys.length > 0\n      || (typeof "
+          },
+          {
+            "offset": 8194,
+            "before": "",
+            "after": "ggregate === 'string' && aggregate.includes('architecture:r12b'))) {\n    return projectR12BArchitectureScripts(packageJson);\n  }\n  const r12a"
+          },
+          {
+            "offset": 8198,
+            "before": "",
+            "after": " = Object"
+          },
+          {
+            "offset": 8199,
+            "before": "",
+            "after": "keys(scripts).fi"
+          },
+          {
+            "offset": 8200,
+            "before": "",
+            "after": "t"
+          },
+          {
+            "offset": 8201,
+            "before": "",
+            "after": "r((key) => key.startsWith('architecture:r12a'));\n  if (r12aKeys.le"
+          },
+          {
+            "offset": 9091,
+            "before": "",
+            "after": "bKeys = Object.keys(scripts).filter((key) => key.st"
+          },
+          {
+            "offset": 9092,
+            "before": "",
+            "after": "rtsWith('architecture:r12b'));\n  const aggregate = optionalOwnValue(scripts, 'architecture');\n  if (r12b"
+          },
+          {
+            "offset": 9096,
+            "before": "",
+            "after": ".length"
+          },
+          {
+            "offset": 9097,
+            "before": "",
+            "after": "> 0\n      || (typeof aggregate "
+          },
+          {
+            "offset": 9098,
+            "before": "",
+            "after": "=="
+          },
+          {
+            "offset": 9099,
+            "before": "",
+            "after": "'string' && aggregate.includes('architecture:r12b'))) {\n    return projectR12BArchitectureScripts(packageJson);\n  }\n  const r12aKeys = "
+          },
+          {
+            "offset": 9634,
+            "before": "",
+            "after": "\nfunction projectR12BArchitectureScripts(value) {\n  assertDeepPlainData(value);\n  const packageJson = plainRecord(value);\n  const scripts = plainRecord(ownValue(packageJson, 'scripts'));\n  const keys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12b'));\n  if (keys.length !== 1\n      || keys[0] !== 'architecture:r12b'\n      || ownValue(scripts, 'architecture:r12b') !== R12B_STANDALONE_SCRIPT\n      || ownValue(scripts, 'architecture') !== R12B_ARCHITECTURE_SCRIPT) fail();\n  const projectedScripts = { ...scripts };\n  delete projectedScripts['architecture:r12b'];\n  projectedScripts.architecture = R12A_ARCHITECTURE_SCRIPT;\n  return projectR12AArchitectureScripts({\n    ...packageJson,\n    scripts: projectedScripts,\n  });\n}\n"
+          },
+          {
+            "offset": 34679,
+            "before": "",
+            "after": "B"
+          },
+          {
+            "offset": 34680,
+            "before": "A",
+            "after": ""
+          },
+          {
+            "offset": 36098,
+            "before": "",
+            "after": "12B_ARCHITECTURE_SCRIPT,\n  R12B_STANDALONE_SCRIPT,\n  R"
+          },
+          {
+            "offset": 36298,
+            "before": "",
+            "after": "12BArchitectureScripts,\n  projectR"
+          }
+        ]
+      },
+      "intendedFinalSha256": "2bd62887ebdefa7ea23e1d24cd29e8817b9a37446aedae9831e77d691f0f22e0"
+    },
+    {
+      "path": "backend/test/architecture-r3-contexts.test.ts",
+      "entrySha256": "65b1424d37760724ef7cc5a2671cea0bb8f685114ba71c97f7503f13a876b065",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 88842,
+        "hunks": [
+          {
+            "offset": 88842,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot: repoRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repoRoot, encoding: 'utf8' },\n    ),\n  });\n  assert.equal(r12a.expectedR12aDependencyRecords(entry.dependency, r12aManifest).length, 16);\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot: repoRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repoRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "5e2c76382370b0c8bf430bd913ed89f40dacbd5d3b8034bfc29ac3b2699113d6"
+    },
+    {
+      "path": "backend/test/architecture-r3-scope.test.ts",
+      "entrySha256": "c38b7533dc838b4e474364a3ec66e05715000bf058334b64ea5892e70b7ef90d",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 48919,
+        "hunks": [
+          {
+            "offset": 48919,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  });\n  assert.equal(r12a.expectedR12aDependencyRecords(entry.dependency, r12aManifest).length, 16);\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "d90749ae706adddc75ebb21e955f490b5747abc9491c372208b74e7e4bb7b424"
+    },
+    {
+      "path": "backend/test/architecture-r5-identity-relocation.test.ts",
+      "entrySha256": "d71483a026051e8d5d4ac134c1a4830a63055e47f8d4c985cbc63358310a3662",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 60861,
+        "hunks": [
+          {
+            "offset": 20895,
+            "before": "p",
+            "after": "liveP"
+          },
+          {
+            "offset": 20998,
+            "before": "",
+            "after": "Json = structuredClone(livePackageJson);\n  delete packageJson.scripts['architecture:r12b'];\n  packageJson.scripts.architecture = packageJson.scripts.architecture\n    .split(' && ')\n    .filter((script: string) => script !== 'npm run architecture:r12b')\n    .join(' && ');\n  const package"
+          },
+          {
+            "offset": 21916,
+            "before": "",
+            "after": ": livePackageJson"
+          },
+          {
+            "offset": 21951,
+            "before": "r",
+            "after": "malformedR"
+          },
+          {
+            "offset": 21954,
+            "before": "a",
+            "after": "b"
+          },
+          {
+            "offset": 21962,
+            "before": " = ",
+            "after": "s: Array<["
+          },
+          {
+            "offset": 21968,
+            "before": "ucturedC",
+            "after": "ing, (candidate: Record<string, any>) => void]> = [\n    ['missing standa"
+          },
+          {
+            "offset": 21980,
+            "before": "(pack",
+            "after": "', (candidate) => { delete candidate.scripts['architecture:r12b']; }],\n    ['missing "
+          },
+          {
+            "offset": 21987,
+            "before": "eJson",
+            "after": "gregate', (candidate) => {\n      candidate.scripts.architecture = candidate.scripts.architecture\n        .replace(' && npm run architecture:r12b', ''"
+          },
+          {
+            "offset": 21997,
+            "before": "r12aPackage",
+            "after": "  }],\n    ['wrong standalone', (candidate) => {\n      candidate"
+          },
+          {
+            "offset": 22034,
+            "before": "a",
+            "after": "b"
+          },
+          {
+            "offset": 22044,
+            "before": "",
+            "after": "    "
+          },
+          {
+            "offset": 22074,
+            "before": "a-backoffice-catalo",
+            "after": "b-plannin"
+          },
+          {
+            "offset": 22123,
+            "before": "chec",
+            "after": "s"
+          },
+          {
+            "offset": 22128,
+            "before": "",
+            "after": "ip"
+          },
+          {
+            "offset": 22133,
+            "before": "",
+            "after": "  }],\n    ['p"
+          },
+          {
+            "offset": 22134,
+            "before": "12",
+            "after": "efixed key', (c"
+          },
+          {
+            "offset": 22137,
+            "before": "P",
+            "after": "ndid"
+          },
+          {
+            "offset": 22139,
+            "before": "",
+            "after": "te) => {\n      "
+          },
+          {
+            "offset": 22140,
+            "before": "k",
+            "after": ""
+          },
+          {
+            "offset": 22142,
+            "before": "g",
+            "after": "ndidat"
+          },
+          {
+            "offset": 22152,
+            "before": ".",
+            "after": "['"
+          },
+          {
+            "offset": 22165,
+            "before": " = ",
+            "after": ":"
+          },
+          {
+            "offset": 22171,
+            "before": "",
+            "after": "b:"
+          },
+          {
+            "offset": 22172,
+            "before": "P",
+            "after": "tt"
+          },
+          {
+            "offset": 22176,
+            "before": "",
+            "after": "er'] =\n        c"
+          },
+          {
+            "offset": 22177,
+            "before": "g",
+            "after": "ndidat"
+          },
+          {
+            "offset": 22187,
+            "before": ".",
+            "after": "['"
+          },
+          {
+            "offset": 22200,
+            "before": "",
+            "after": ":r12b'];"
+          },
+          {
+            "offset": 22205,
+            "before": "",
+            "after": "}],\n    ['renamed key', (candidate) => {\n      candidate"
+          },
+          {
+            "offset": 22207,
+            "before": "",
+            "after": "cri"
+          },
+          {
+            "offset": 22208,
+            "before": "l",
+            "after": "ts['arch"
+          },
+          {
+            "offset": 22211,
+            "before": "(",
+            "after": "ecture:r12b-renamed"
+          },
+          {
+            "offset": 22213,
+            "before": "",
+            "after": "]"
+          },
+          {
+            "offset": 22214,
+            "before": "&&",
+            "after": "=\n"
+          },
+          {
+            "offset": 22217,
+            "before": "",
+            "after": "       candidate.scripts["
+          },
+          {
+            "offset": 22218,
+            "before": ")",
+            "after": "architecture:r12b'];"
+          },
+          {
+            "offset": 22224,
+            "before": ".fi",
+            "after": "  de"
+          },
+          {
+            "offset": 22228,
+            "before": "",
+            "after": "e"
+          },
+          {
+            "offset": 22230,
+            "before": "r((",
+            "after": " candidate."
+          },
+          {
+            "offset": 22239,
+            "before": "",
+            "after": "s['architecture"
+          },
+          {
+            "offset": 22240,
+            "before": "",
+            "after": "r12b'];\n"
+          },
+          {
+            "offset": 22241,
+            "before": "s",
+            "after": "   }],\n    ['duplica"
+          },
+          {
+            "offset": 22243,
+            "before": "",
+            "after": "ed agg"
+          },
+          {
+            "offset": 22244,
+            "before": "",
+            "after": "egate', (cand"
+          },
+          {
+            "offset": 22245,
+            "before": "ng",
+            "after": "date"
+          },
+          {
+            "offset": 22252,
+            "before": "",
+            "after": "{\n      candidate."
+          },
+          {
+            "offset": 22258,
+            "before": "",
+            "after": "s.architecture"
+          },
+          {
+            "offset": 22259,
+            "before": "!",
+            "after": "+"
+          },
+          {
+            "offset": 22261,
+            "before": "=",
+            "after": ""
+          },
+          {
+            "offset": 22264,
+            "before": "",
+            "after": " && "
+          },
+          {
+            "offset": 22288,
+            "before": "",
+            "after": "b';\n    }],\n    ['wrong "
+          },
+          {
+            "offset": 22289,
+            "before": "",
+            "after": "ggregate order"
+          },
+          {
+            "offset": 22290,
+            "before": "",
+            "after": ", (candidate"
+          },
+          {
+            "offset": 22291,
+            "before": "",
+            "after": " => {"
+          },
+          {
+            "offset": 22296,
+            "before": "",
+            "after": "  candidate"
+          },
+          {
+            "offset": 22297,
+            "before": "",
+            "after": "s"
+          },
+          {
+            "offset": 22298,
+            "before": "o",
+            "after": "ripts.architecture = ca"
+          },
+          {
+            "offset": 22300,
+            "before": "",
+            "after": "didate.s"
+          },
+          {
+            "offset": 22301,
+            "before": "",
+            "after": "ripts."
+          },
+          {
+            "offset": 22302,
+            "before": "",
+            "after": "rchi"
+          },
+          {
+            "offset": 22303,
+            "before": "",
+            "after": "ecture\n        .replace"
+          },
+          {
+            "offset": 22304,
+            "before": "",
+            "after": "\n          "
+          },
+          {
+            "offset": 22330,
+            "before": "",
+            "after": " && npm run architecture:r12b"
+          },
+          {
+            "offset": 22331,
+            "before": "",
+            "after": ",\n          'npm run architecture:r12b && npm run architecture:r12a',\n        "
+          },
+          {
+            "offset": 22332,
+            "before": "",
+            "after": ";"
+          },
+          {
+            "offset": 22337,
+            "before": "",
+            "after": "}],\n  ];\n  for (const [label, mutate] of malformedR12bPackages) {\n    const candidate = structuredClone(livePackageJson);\n    mutate(candidate);\n    assert"
+          },
+          {
+            "offset": 22338,
+            "before": "j",
+            "after": "thr"
+          },
+          {
+            "offset": 22340,
+            "before": "",
+            "after": "ws(\n      () => r5.val"
+          },
+          {
+            "offset": 22341,
+            "before": "",
+            "after": "dateR5SecurityCheckpoi"
+          },
+          {
+            "offset": 22342,
+            "before": "",
+            "after": "tScope"
+          },
+          {
+            "offset": 22343,
+            "before": "'",
+            "after": "{\n"
+          },
+          {
+            "offset": 22345,
+            "before": "&&",
+            "after": ""
+          },
+          {
+            "offset": 22348,
+            "before": "'",
+            "after": "      changedPaths: checkpointPaths,\n        packageJson: candidate,\n        packageLock,\n      }"
+          },
+          {
+            "offset": 22350,
+            "before": "",
+            "after": ",\n      /invalid Prisma config merge security state/u,\n      label,\n    )"
+          },
+          {
+            "offset": 22354,
+            "before": "",
+            "after": "}\n\n  const r12"
+          },
+          {
+            "offset": 22355,
+            "before": "",
+            "after": "Package = "
+          },
+          {
+            "offset": 22356,
+            "before": "",
+            "after": "tructuredClone(packageJ"
+          },
+          {
+            "offset": 22357,
+            "before": "",
+            "after": "on);\n  ass"
+          },
+          {
+            "offset": 22630,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 22632,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 22637,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 22998,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 23000,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 23005,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 23300,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 23302,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 23307,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 23857,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 23859,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 23864,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 24237,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 24239,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 24244,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 24566,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 24568,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 24573,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 24883,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 24885,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 24890,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 25311,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 25313,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 25318,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 25590,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 25592,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 25597,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 25853,
+            "before": "p",
+            "after": "r12"
+          },
+          {
+            "offset": 25855,
+            "before": "",
+            "after": "Pa"
+          },
+          {
+            "offset": 25860,
+            "before": "Json",
+            "after": ""
+          },
+          {
+            "offset": 26480,
+            "before": "",
+            "after": "delete pa"
+          },
+          {
+            "offset": 26481,
+            "before": "",
+            "after": "kageJs"
+          },
+          {
+            "offset": 26483,
+            "before": "",
+            "after": "."
+          },
+          {
+            "offset": 26484,
+            "before": "",
+            "after": "crip"
+          },
+          {
+            "offset": 26485,
+            "before": "",
+            "after": "s['architecture:r12b'];\n"
+          },
+          {
+            "offset": 26486,
+            "before": "",
+            "after": " "
+          },
+          {
+            "offset": 26493,
+            "before": "",
+            "after": "Json.scripts.architecture = packageJson.scripts.architecture\n    .split(' && ')\n    .filter((script: string) => script !== 'npm run architecture:r12b')\n    .join(' && ');\n  const package"
+          },
+          {
+            "offset": 37501,
+            "before": "5",
+            "after": "6"
+          },
+          {
+            "offset": 37682,
+            "before": "",
+            "after": "  'npm run architecture:r12b',\n    "
+          },
+          {
+            "offset": 49097,
+            "before": "",
+            "after": "st"
+          },
+          {
+            "offset": 49098,
+            "before": "",
+            "after": "ictLiveDependency = r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot: repositoryRoot(),\n    r12aEntryRecords: historicalR7Live22,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot(), encoding: 'utf8' },\n    ),\n  }) as Array<Record<string, unknown>>;\n  const r"
+          },
+          {
+            "offset": 49410,
+            "before": "",
+            "after": "equal(strictLiveDepen"
+          },
+          {
+            "offset": 49412,
+            "before": "",
+            "after": "ncy.l"
+          },
+          {
+            "offset": 49413,
+            "before": "",
+            "after": "ngth, 9);\n  assert.dee"
+          },
+          {
+            "offset": 51584,
+            "before": "Cand",
+            "after": "L"
+          },
+          {
+            "offset": 51589,
+            "before": "dat",
+            "after": "v"
+          },
+          {
+            "offset": 52034,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 52046,
+            "before": "73",
+            "after": "80"
+          },
+          {
+            "offset": 60861,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const repositoryRoot = path.resolve(backendRoot, '..');\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  });\n  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-no-r12b-'));\n  try {\n    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n      repositoryRoot: historicalRoot,\n      r12aEntryRecords: entry.dependency,\n      r12aManifest,\n      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },\n    }).length, 16);\n  } finally {\n    rmSync(historicalRoot, { recursive: true, force: true });\n  }\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "f7886d6a43354e5d631fecb18f78e1d5933f32ebb4fe784c18f7444b4d0bf62f"
+    },
+    {
+      "path": "backend/test/architecture-r6-sharing-otp-transport.test.ts",
+      "entrySha256": "f17808b4ba93fca092d8a8edc0739a67b3d1504bb4cfbb2a69868c3b63e02477",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 36013,
+        "hunks": [
+          {
+            "offset": 9823,
+            "before": "",
+            "after": "  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile,\n  "
+          },
+          {
+            "offset": 9824,
+            "before": "",
+            "after": ");"
+          },
+          {
+            "offset": 9825,
+            "before": "",
+            "after": "  const historicalDependency = r12a.expectedR12aDependencyRecords("
+          },
+          {
+            "offset": 9826,
+            "before": "",
+            "after": "    entry.dependency,\n    r12"
+          },
+          {
+            "offset": 9827,
+            "before": "",
+            "after": "Mani"
+          },
+          {
+            "offset": 9828,
+            "before": "",
+            "after": "es"
+          },
+          {
+            "offset": 9829,
+            "before": "",
+            "after": ",\n  );\n  writ"
+          },
+          {
+            "offset": 9830,
+            "before": "",
+            "after": "FileSync(\n    path.join("
+          },
+          {
+            "offset": 9831,
+            "before": "",
+            "after": "oot, 'backend', '.dependency-cruiser-known-violations.json'),\n    `${JSON.stringify(historicalDependency, null, 2)}\\n`,\n    'utf8',\n  );\n}\n\nafter"
+          },
+          {
+            "offset": 18794,
+            "before": "",
+            "after": " && npm run architecture:r12b"
+          },
+          {
+            "offset": 36013,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  });\n  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r6-no-r12b-'));\n  try {\n    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n      repositoryRoot: historicalRoot,\n      r12aEntryRecords: entry.dependency,\n      r12aManifest,\n      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },\n    }).length, 16);\n  } finally {\n    rmSync(historicalRoot, { recursive: true, force: true });\n  }\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "b1933eae640725569556f69408c2f396527a963809d4f87c14e67dbf971c0789"
+    },
+    {
+      "path": "backend/test/architecture-r7-collaboration-relocation.test.ts",
+      "entrySha256": "baf4acf775fa3a64e55b6d09515f02ada1c30095cd594ab0740784f6070a6e85",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 161811,
+        "hunks": [
+          {
+            "offset": 30192,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 152521,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 161811,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  });\n  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r7-no-r12b-'));\n  try {\n    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n      repositoryRoot: historicalRoot,\n      r12aEntryRecords: entry.dependency,\n      r12aManifest,\n      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },\n    }).length, 16);\n  } finally {\n    rmSync(historicalRoot, { recursive: true, force: true });\n  }\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "9cc2ac85d0c969629a4979778df9cad9e7600fddb00edcce524c0f8f1e8bb970"
+    },
+    {
+      "path": "backend/test/architecture-r8-global-module-removal.test.ts",
+      "entrySha256": "a033fe9484fdd61f6aebe6a7f33847248bb9f12a2ae2ce1acace08774e987b3f",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 76624,
+        "hunks": [
+          {
+            "offset": 30494,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 37826,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 76624,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  });\n  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r8-no-r12b-'));\n  try {\n    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n      repositoryRoot: historicalRoot,\n      r12aEntryRecords: entry.dependency,\n      r12aManifest,\n      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },\n    }).length, 16);\n  } finally {\n    rmSync(historicalRoot, { recursive: true, force: true });\n  }\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "3bd8c129490b73aab681a67004076e35a19ff82683a22a13e7c85c6cf935c5eb"
+    },
+    {
+      "path": "backend/test/architecture-r12a-backoffice-catalog-public-contracts.test.ts",
+      "entrySha256": "3231763b3e607e72911082c1ad306d48b61b96582ac627b11da924664dd23999",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 36101,
+        "hunks": [
+          {
+            "offset": 5475,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 6301,
+            "before": "16",
+            "after": "9"
+          },
+          {
+            "offset": 14560,
+            "before": "ba",
+            "after": ""
+          },
+          {
+            "offset": 14563,
+            "before": "",
+            "after": "ucc"
+          },
+          {
+            "offset": 14564,
+            "before": "l",
+            "after": "ssor man"
+          },
+          {
+            "offset": 14566,
+            "before": "n",
+            "after": "f"
+          },
+          {
+            "offset": 14568,
+            "before": "",
+            "after": "st"
+          },
+          {
+            "offset": 14569,
+            "before": "",
+            "after": "in"
+          },
+          {
+            "offset": 14570,
+            "before": "ar",
+            "after": "ut "
+          },
+          {
+            "offset": 14573,
+            "before": "",
+            "after": "s no"
+          },
+          {
+            "offset": 14574,
+            "before": "y|mov",
+            "after": " th"
+          },
+          {
+            "offset": 14581,
+            "before": "l",
+            "after": "ex"
+          },
+          {
+            "offset": 14583,
+            "before": "y",
+            "after": "ct predecess"
+          },
+          {
+            "offset": 14585,
+            "before": "ut",
+            "after": "r"
+          },
+          {
+            "offset": 36101,
+            "before": "",
+            "after": "\ntest('R12B successor handoff preserves historical 16 and selects exact live 9', () => {\n  const r12a = require(path.join(\n    backendRoot,\n    'scripts',\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts-scan.cjs',\n  ));\n  const r12aManifest = JSON.parse(readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12a-backoffice-catalog-public-contracts.json',\n  ), 'utf8'));\n  const entry = r12a.readR12aImmutableEntry({\n    repositoryRoot,\n    manifest: r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  });\n  const historicalRoot = mkdtempSync(path.join(os.tmpdir(), 'aarast-r12a-no-r12b-'));\n  try {\n    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n      repositoryRoot: historicalRoot,\n      r12aEntryRecords: entry.dependency,\n      r12aManifest,\n      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },\n    }).length, 16);\n  } finally {\n    rmSync(historicalRoot, { recursive: true, force: true });\n  }\n  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest,\n    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(\n      'git',\n      ['show', `${revision}:${relative}`],\n      { cwd: repositoryRoot, encoding: 'utf8' },\n    ),\n  }).length, 9);\n});\n\nfunction r12bSuccessorFixture() {\n  const r12a = require(scannerPath);\n  const manifest = r12aManifest();\n  const entry = r12a.readR12aImmutableEntry({ repositoryRoot, manifest });\n  const r12aBytes = readFileSync(manifestPath);\n  const r12bBytes = readFileSync(path.join(\n    backendRoot,\n    'architecture',\n    'r12b-planning-public-contracts.json',\n  ));\n  const writeManifests = (root: string) => {\n    const architecture = path.join(root, 'backend', 'architecture');\n    mkdirSync(architecture, { recursive: true });\n    writeFileSync(path.join(architecture, 'r12a-backoffice-catalog-public-contracts.json'), r12aBytes);\n    writeFileSync(path.join(architecture, 'r12b-planning-public-contracts.json'), r12bBytes);\n  };\n  const project = (root: string) => r12a.expectedR12aSuccessorDependencyRecords({\n    repositoryRoot: root,\n    r12aEntryRecords: entry.dependency,\n    r12aManifest: manifest,\n  });\n  return { project, writeManifests };\n}\n\ntest('R12B successor Git authority rejects parent-repository fallback', () => {\n  const { project, writeManifests } = r12bSuccessorFixture();\n  const nestedRoot = mkdtempSync(path.join(repositoryRoot, '.r12b-parent-fallback-'));\n  try {\n    writeManifests(nestedRoot);\n    assert.throws(() => project(nestedRoot), /Git|authority|repository root/iu);\n  } finally {\n    rmSync(nestedRoot, { recursive: true, force: true });\n  }\n});\n\ntest('R12B successor Git authority rejects a copied linked-worktree control file', () => {\n  const { project, writeManifests } = r12bSuccessorFixture();\n  const copiedRoot = mkdtempSync(path.join(os.tmpdir(), 'r12b-copied-git-control-'));\n  try {\n    writeManifests(copiedRoot);\n    writeFileSync(path.join(copiedRoot, '.git'), readFileSync(path.join(repositoryRoot, '.git')));\n    assert.throws(() => project(copiedRoot), /Git|authority|repository root/iu);\n  } finally {\n    rmSync(copiedRoot, { recursive: true, force: true });\n  }\n});\n\ntest('R12B successor Git authority rejects missing, malformed, and incomplete controls', () => {\n  const { project, writeManifests } = r12bSuccessorFixture();\n  const roots = [\n    mkdtempSync(path.join(os.tmpdir(), 'r12b-missing-git-control-')),\n    mkdtempSync(path.join(os.tmpdir(), 'r12b-malformed-git-control-')),\n    mkdtempSync(path.join(os.tmpdir(), 'r12b-incomplete-git-control-')),\n  ];\n  try {\n    for (const root of roots) writeManifests(root);\n    writeFileSync(path.join(roots[1], '.git'), 'gitdir: missing-worktree-control\\n');\n    mkdirSync(path.join(roots[2], '.git'));\n    for (const root of roots) {\n      assert.throws(() => project(root), /Git|authority|repository/iu, root);\n    }\n  } finally {\n    for (const root of roots) rmSync(root, { recursive: true, force: true });\n  }\n});\n\ntest('R12B successor Git authority accepts the exact live linked worktree', () => {\n  const { project } = r12bSuccessorFixture();\n  assert.equal(project(repositoryRoot).length, 9);\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "7653a57ed67674698470ac37ede35d8014753cf5a6109fa66fd7cf9a0cb3a8d9"
+    },
+    {
+      "path": "backend/test/prisma-config-merge-security.test.ts",
+      "entrySha256": "0b8f0af5256c6b6b9d8ebaa8ac664a8a1dee732c9845146f73ecf221b4f25d80",
+      "kind": "bounded-hunk-replay",
+      "payload": {
+        "entryByteLength": 30407,
+        "hunks": [
+          {
+            "offset": 2708,
+            "before": "",
+            "after": "const r12bStandaloneScript ="
+          },
+          {
+            "offset": 2709,
+            "before": "",
+            "after": "  'node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check';\nconst r12bArchitectureScript =\n  r12aArchitectureScript + ' && npm run architecture:r12b';\n\n"
+          },
+          {
+            "offset": 10441,
+            "before": "",
+            "after": "b'];\n  delete (v"
+          },
+          {
+            "offset": 10442,
+            "before": "",
+            "after": "lidR8.scripts as JsonRecord)["
+          },
+          {
+            "offset": 10443,
+            "before": "",
+            "after": "architecture:r12a'"
+          },
+          {
+            "offset": 30407,
+            "before": "",
+            "after": "\ntest('R12B package wiring and security projection are exact and fail closed', () => {\n  const checker = loadChecker() as Checker & {\n    R12B_ARCHITECTURE_SCRIPT: string;\n    R12B_STANDALONE_SCRIPT: string;\n    projectR12BArchitectureScripts: (value: unknown) => JsonRecord;\n  };\n  assert.equal(checker.R12B_ARCHITECTURE_SCRIPT, r12bArchitectureScript);\n  assert.equal(checker.R12B_STANDALONE_SCRIPT, r12bStandaloneScript);\n  const livePackage = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));\n  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));\n  assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);\n  assert.equal((livePackage.scripts as JsonRecord).architecture, r12bArchitectureScript);\n  const r12aPackage = structuredClone(livePackage);\n  delete (r12aPackage.scripts as JsonRecord)['architecture:r12b'];\n  (r12aPackage.scripts as JsonRecord).architecture = r12aArchitectureScript;\n  assert.deepEqual(checker.projectR12BArchitectureScripts(livePackage), checker.projectR12AArchitectureScripts(r12aPackage));\n  assert.doesNotThrow(() => checker.validatePackageGraph(checker.projectR12BArchitectureScripts(livePackage), packageLock));\n\n  const mutations = Array.from({ length: 7 }, () => structuredClone(livePackage));\n  delete (mutations[0].scripts as JsonRecord)['architecture:r12b'];\n  (mutations[1].scripts as JsonRecord)['architecture:r12b'] = 'node scripts/attacker.cjs';\n  (mutations[2].scripts as JsonRecord).architecture = r12aArchitectureScript;\n  (mutations[3].scripts as JsonRecord)['architecture:r12b:attacker'] = r12bStandaloneScript;\n  (mutations[4].scripts as JsonRecord)['architecture:r12b-renamed'] = r12bStandaloneScript;\n  (mutations[5].scripts as JsonRecord)['architecture:r12b-prefix'] = 'attacker ' + r12bStandaloneScript;\n  (mutations[6].scripts as JsonRecord)['architecture:r12a'] = 'node scripts/attacker.cjs';\n  for (const mutation of mutations) {\n    assert.throws(() => checker.projectR12BArchitectureScripts(mutation), new RegExp(checker.SECURITY_FAILURE, 'u'));\n  }\n});\n\ntest('live CLI rejects duplicate raw JSON members before R12B projection', () => {\n  const worker = [\n    \"const fs = require('node:fs');\",\n    \"const path = require('node:path');\",\n    'const checkerPath = process.argv[1];',\n    'const backendRoot = process.argv[2];',\n    'const mode = process.argv[3];',\n    'const checker = require(checkerPath);',\n    'const originalReadFileSync = fs.readFileSync.bind(fs);',\n    \"const packagePath = path.join(backendRoot, 'package.json');\",\n    \"const raw = originalReadFileSync(packagePath, 'utf8');\",\n    \"const exactKey = JSON.stringify('architecture:r12b');\",\n    'const exactValue = JSON.stringify(checker.R12B_STANDALONE_SCRIPT);',\n    \"const needle = exactKey + ': ' + exactValue;\",\n    \"const duplicateKey = mode === 'escaped' ? '\\\"architecture\\\\\\\\u003ar12b\\\"' : exactKey;\",\n    \"const mutated = raw.replace(needle, needle + ',\\\\n    ' + duplicateKey + ': ' + exactValue);\",\n    'if (mutated === raw) process.exit(12);',\n    'fs.readFileSync = function readFixture(filePath, ...args) {',\n    '  return path.resolve(filePath) === path.resolve(packagePath) ? mutated : originalReadFileSync(filePath, ...args);',\n    '};',\n    'const stdout = []; const stderr = [];',\n    \"checker.runCli({ argv: ['--check'], backendRoot, stdout: (m) => stdout.push(m), stderr: (m) => stderr.push(m) }).then((exitCode) => {\",\n    \"  process.exit(exitCode === 1 && stdout.length === 0 && stderr.join('\\\\n') === 'FAIL - Prisma config merge security' ? 0 : 10);\",\n    '}, () => process.exit(11));',\n  ].join('\\n');\n  for (const mode of ['exact', 'escaped']) {\n    const result = spawnSync(process.execPath, ['-e', worker, checkerPath, backendRoot, mode], {\n      cwd: backendRoot, encoding: 'utf8', timeout: 5_000, windowsHide: true,\n    });\n    assert.equal(result.status, 0, `${mode} duplicate raw R12B member must fail closed`);\n    assert.equal(result.stdout, '');\n    assert.equal(result.stderr, '');\n  }\n});\n"
+          }
+        ]
+      },
+      "intendedFinalSha256": "d1aa961f417ebae66d71cfd19fdfb7394d55fd68b910614f20155a8d15ca44e3"
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "entrySha256": "f831577a63cd50537c35b78a160fabfa99317a0e5327a2a5d9035e87892910da",
+      "kind": "documentation-transition",
+      "candidateSha256": "06b8f067285c308852ac911f099732bdc4fd46d08645b1ede7a86ef3caf7a93a",
+      "activatedSha256": "66a0e7a28d68415b5f94cdd00d94c6f78918918d1c0e53ee7c145047a085aa0d"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "entrySha256": "5b86073af49e1f1b05f2d788a376d3d3bc386dfec93b46e7cbfbffac86b3568b",
+      "kind": "documentation-transition",
+      "candidateSha256": "9d876818b284523f12a50d17882ca034b1f0519928bfac53efae7ab697453dad",
+      "activatedSha256": "76a64d6651f91552ce593548ec7d493ccff1d6b8ca2b8bcf1c7d0dd28eb2df49"
+    },
+    {
+      "path": "docs/project/DECISIONS.md",
+      "entrySha256": "f2ece280a72c5fad31a626a9c0962ca627c33073cdf7ba93fba4c8deb44a1601",
+      "kind": "documentation-transition",
+      "candidateSha256": "fd9437e989054d6a0b0204edfea38ce758bfa7d578df41b8c0ce02c2d365ad8f",
+      "activatedSha256": "89ad36b06a28ea7328c190e4021e34c8ac7ab89ae8d7d82f7eabd96c3482663a"
+    },
+    {
+      "path": "docs/project/EXECUTION_PLAN.md",
+      "entrySha256": "8f46c6ae9112d899a2c9ea97fdc4ca3a36c48ab09c715bc68aff1d570ead72a8",
+      "kind": "documentation-transition",
+      "candidateSha256": "a4d71b0390574b907bdfee157b0adf78ea0ca89f562d45ba6d01da36c5354438",
+      "activatedSha256": "aee6303742e85bc9aace22acd184a5211a6985ebda9bae9fc2cfbe844d629f8e"
+    },
+    {
+      "path": "docs/project/STATUS.md",
+      "entrySha256": "0e5740f2c22106235c1618459b60dd2462a5a45a9dfd65c59a7752d91b437831",
+      "kind": "documentation-transition",
+      "candidateSha256": "298a709a7a4cd4ddfcba6ba4dcf3a7f0994f9194af3df54d9ecf118556ceb37a",
+      "activatedSha256": "5c921db2bc50e645644f7b0d7c45125030da9057c1f73ca94d3ad75d643e0674"
+    },
+    {
+      "path": "docs/README.md",
+      "entrySha256": "546dee5d63b03fda63ad9e976af85852c63976e8eb0e48eedf6c460444bcdfb5",
+      "kind": "documentation-transition",
+      "candidateSha256": "5137ddcba2b78f7567a91d925c792cbf68fd5b37cf3d2a9d8dfecb013f0ca172",
+      "activatedSha256": "23b6e204bb7f4858ea27d18b624d3f51141658a74b98090987fdd953b0498791"
+    },
+    {
+      "path": "docs/SCRIPTS.md",
+      "entrySha256": "975f628fe69bb77cc8237e5929808705a7ad8ee766813b762dd5c6413b34d1d2",
+      "kind": "documentation-transition",
+      "candidateSha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469",
+      "activatedSha256": "17e234a2930642b0aa33e3797993230999680dd7caa323190ccd7b7ce921b469"
+    }
+  ]
+}

@@ -116,7 +116,7 @@ function inviteAcceptanceHarness(options: {
     canInviteMembers: false,
     canManageMoney: false,
     receiveNotifications: true,
-    expiresAt: new Date("2026-09-02T00:00:00.000Z"),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     acceptedAt: null as Date | null,
     declinedAt: null,
     revokedAt: null,

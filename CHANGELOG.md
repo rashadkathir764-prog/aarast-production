@@ -1,5 +1,74 @@
 # Changelog
 
+## 2026-09-06 - Modular Monolith R12B Local Completion
+
+R12B is complete locally.
+Dependency debt is 9.
+Ownership remains 385/781.
+The architecture target remains incomplete.
+R12C implementation has not begun.
+No commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, phone acceptance, or release is claimed.
+
+- Relocated the unchanged Planning wedding-location implementation to its
+  single `modules/planning/public` owner and rewrote only the seven declared
+  consumers; no legacy implementation, facade, fallback, or duplicate remains.
+- Re-expressed the nested local-plan task and guest DTOs inside Onboarding with
+  exact validation and payload parity, removing only the declared cross-context
+  API-DTO reuse.
+- Retired exactly dependency IDs `7-9`, `11`, `18`, and `21-22`, moving the
+  ledger from `16` to `9` while the ownership baseline remains byte-identical
+  at `385/781`.
+- Preserved Product Logic, APIs, schema, migrations, permissions, transactions,
+  Arabic behavior, Mobile, Admin Web, deployment, and all later-phase scope.
+- Task 5 passed focused `54/54`, full Backend `1455/1456` with zero failures and
+  one declared Windows skip, affected smokes `9/9`, aggregate smokes `30/30`,
+  audits at zero, and independent review at Critical/Important/Minor `0/0/0`.
+
+## 2026-09-02 - Modular Monolith R12A Local Completion
+
+- Moved four Backoffice authority/mutation contracts and one Marketplace
+  provider-rating helper to their owner-controlled `public/` locations; rewrote
+  nine exact consumers and removed all five legacy implementations without
+  facade, duplicate, fallback, or compatibility layer.
+- Retired exactly dependency IDs 1-6 through `22 -> 17 -> 16`; projected one
+  ownership path without semantic/count drift, preserving `385/781`.
+- Removed the exact provider-rating exceptions while retaining the declared R16
+  Identity-to-Marketplace helper handoff and the R17 Backoffice permission
+  contract handoff.
+- Added the strict R12A manifest/scanner, immutable historical handoffs, and a
+  fail-closed Prisma package-security projection that rejects duplicate decoded
+  JSON members before native parsing. Pinned package/lock fingerprints and the
+  package lock remain unchanged.
+- Passed behavior `31/31`, architecture `522/522`, full Backend tests
+  `1407/1408` with zero failures and one pre-existing skip, all affected smokes,
+  all 30 aggregate smoke packages, protected-surface and whitespace gates.
+  Task 5 independent review is APPROVED (`0/0/0`).
+- Task 6 documentation/scope/identity gates and independent review passed with
+  no Critical, Important, or Minor finding. R12A is complete locally.
+  No API, schema, migration, route, DTO, error, permission, transaction, Arabic,
+  Mobile, Admin Web, deployment, commit, push, merge, remote CI, provider
+  delivery, or release change is claimed.
+
+## 2026-09-01 - Modular Monolith R11 Target Reconciliation
+
+- Added the post-R10 remaining-target design, approved R11 execution plan, and
+  evidence-receipt path; aligned active architecture, status, decision, and
+  execution documents with the original 2026-08-04 target.
+- Recorded the exact remaining Backend debt at 22 dependency records and 385
+  ownership records / 781 occurrences without modifying or regenerating either
+  baseline.
+- Assigned the full non-overlapping ownership retirement to R13-R17 and made
+  R18 a strict 0/0 proof and baseline-deletion phase only.
+- R11 changes documentation only. It changes no application source, API,
+  schema, migration, runtime, test, dependency, lockfile, CI, deployment, phone,
+  provider delivery, or release state. Local R10 commit
+  `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1` predates R11; R11 performs no
+  additional Git mutation.
+- Passed the exact nine-Markdown scope, immutable 178-path R10 fence,
+  documentation sync/verification, cumulative Backend architecture, unchanged
+  debt 22 and 385/781, and independent review with no unresolved finding.
+
 ## 2026-08-31 - Modular Monolith R10 Admin Local Completion
 
 - Moved the 78-file Admin source set into eight owner features, Platform,

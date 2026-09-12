@@ -34,7 +34,7 @@ import {
   optionalMoneyAmount,
   requiredMoneyAmount,
 } from '../shared-kernel/money/money';
-import { recordConversationEvent } from '../conversations/conversation-lifecycle';
+import { CONVERSATION_LIFECYCLE_PORT, type ConversationLifecyclePort } from '../modules/messaging/public/conversation-lifecycle.port';
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
@@ -60,7 +60,7 @@ import {
   applicationNameFields,
   toApplicationUserContact,
 } from '../shared-kernel/privacy/application-user-identity';
-import { weddingLocationResponse } from '../wedding-plans/wedding-location';
+import { weddingLocationResponse } from '../modules/planning/public/wedding-location';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
@@ -76,7 +76,7 @@ import {
 } from './dto/upsert-service-image.dto';
 import {
   assertProviderOperational,
-} from './provider-access-policy';
+} from '../modules/marketplace/public/provider-access-policy';
 import {
   lockOwnedProviderAfterUsersInTransaction,
   lockOwnedProviderForMutationInTransaction,
@@ -116,6 +116,8 @@ export class ProviderDashboardService {
     private readonly notifications: NotificationsPort,
     @Inject(MEDIA_STORAGE_PORT)
     private readonly mediaStorage: MediaStoragePort,
+    @Inject(CONVERSATION_LIFECYCLE_PORT)
+    private readonly lifecycle: ConversationLifecyclePort,
   ) {}
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {
@@ -841,7 +843,7 @@ export class ProviderDashboardService {
         include: this.quoteInclude(),
       });
       if (dto.status === QuoteRequestStatus.REJECTED) {
-        await recordConversationEvent(tx, {
+        await this.lifecycle.recordConversationEvent(tx, {
           conversationId: existing.conversationId,
           quoteRequestId: existing.id,
           actorUserId: currentUser.id,
@@ -950,7 +952,7 @@ export class ProviderDashboardService {
         data: { status: QuoteRequestStatus.RESPONDED },
       });
 
-      await recordConversationEvent(tx, {
+      await this.lifecycle.recordConversationEvent(tx, {
         conversationId: quote.conversationId,
         quoteRequestId,
         quoteOfferId: created.id,

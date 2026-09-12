@@ -29,7 +29,7 @@ import { PrismaService } from '../platform/database/prisma.service';
 import {
   assertProviderOperational,
   isProviderOperational,
-} from '../provider-dashboard/provider-access-policy';
+} from '../modules/marketplace/public/provider-access-policy';
 import {
   assertWeddingPlanWritable,
   isWeddingPlanWritable,

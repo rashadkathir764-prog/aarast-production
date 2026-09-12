@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -157,7 +163,7 @@ async function providerSuspensionWinsQuoteUpdate() {
       const service = new ProviderDashboardService(
         prisma as any,
         notifications as any,
-        media as any,
+        media as any, lifecycle,
       );
       const before = await prisma.quoteOffer.findUniqueOrThrow({
         where: { id: fixture.offer.id },
@@ -200,7 +206,7 @@ async function planArchiveWinsQuoteUpdate() {
       const service = new ProviderDashboardService(
         prisma as any,
         notifications as any,
-        media as any,
+        media as any, lifecycle,
       );
       const archive = await holdMutation(async (tx) => {
         await tx.weddingPlan.update({
@@ -240,7 +246,7 @@ async function conversationPrecedesQuoteRow() {
       const service = new ProviderDashboardService(
         prisma as any,
         notifications as any,
-        media as any,
+        media as any, lifecycle,
       );
       const blocker = await holdMutation(async (tx) => {
         await tx.$queryRaw(
@@ -292,7 +298,7 @@ async function imagePrecedesMediaTarget() {
       const service = new ProviderDashboardService(
         prisma as any,
         notifications as any,
-        media as any,
+        media as any, lifecycle,
       );
       const blocker = await holdMutation(async (tx) => {
         await tx.$queryRaw(
@@ -339,7 +345,7 @@ async function userDisableWinsServiceCreate() {
       const service = new ProviderDashboardService(
         prisma as any,
         notifications as any,
-        media as any,
+        media as any, lifecycle,
       );
       const before = await prisma.providerService.count({
         where: { providerId: fixture.provider.id },
@@ -406,9 +412,15 @@ async function adminLocksOwnerBeforeProvider() {
             `,
           );
         });
-        const service = new AdminService(prisma as any, {
-          revokeConversationAccess: () => undefined,
-        } as any);
+        const service = new AdminService(
+          prisma as any,
+          {
+            revokeConversationAccess: () => undefined,
+          } as any,
+          {
+            createNotificationInTransaction: async () => null,
+          } as any,
+        );
         const activate = service.activateProvider(
           {
             ...admin,

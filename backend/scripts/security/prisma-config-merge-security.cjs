@@ -15,6 +15,8 @@ const PrimordialError = Error;
 const PrimordialSet = Set;
 const PrimordialNumber = Number;
 const SecurityError = PrimordialError;
+const jsonParse = JSON.parse;
+const stringSlice = Function.prototype.call.bind(String.prototype.slice);
 const reflectOwnKeys = Reflect.ownKeys;
 const objectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 const objectGetPrototypeOf = Object.getPrototypeOf;
@@ -50,7 +52,7 @@ const PINNED_PRISMA_RANGE = '^6.19.3';
 const PINNED_PACKAGE_JSON_SHA256 =
   'd9503a604c4ffb3e63a6faa3b25478a2a4fd766883bcfa2927fccb31fbd2dad7';
 const PINNED_PACKAGE_LOCK_SHA256 =
-  '46ba2e49c063229aa498112f735f09f7538d6b1e01a0986fec57643d02b586bf';
+  '6d3f757db4c2ec3f6d5d97168d325a6eae418e0038b3da7dc057340352c2dea3';
 const R6_ARCHITECTURE_SCRIPT =
   'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6';
 const R7_ARCHITECTURE_SCRIPT = R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
@@ -59,6 +61,16 @@ const R7_STANDALONE_SCRIPT =
 const R8_ARCHITECTURE_SCRIPT = R7_ARCHITECTURE_SCRIPT + ' && npm run architecture:r8';
 const R8_STANDALONE_SCRIPT =
   'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
+const R12A_ARCHITECTURE_SCRIPT = R8_ARCHITECTURE_SCRIPT + ' && npm run architecture:r12a';
+const R12A_STANDALONE_SCRIPT =
+  'node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check';
+const R12B_ARCHITECTURE_SCRIPT =
+  R12A_ARCHITECTURE_SCRIPT + ' && npm run architecture:r12b';
+const R12B_STANDALONE_SCRIPT =
+  'node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check';
+const R12C_ARCHITECTURE_SCRIPT = R12B_ARCHITECTURE_SCRIPT + ' && npm run architecture:r12c';
+const R12C_STANDALONE_SCRIPT =
+  'node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check';
 const SECURITY_FAILURE = 'invalid Prisma config merge security state';
 const MAX_DEPTH = 32;
 const MAX_PROPERTIES = 100_000;
@@ -161,6 +173,17 @@ function projectR7ArchitectureScripts(value) {
   assertDeepPlainData(value);
   const packageJson = plainRecord(value);
   const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  const r12bKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12b'));
+  const aggregate = optionalOwnValue(scripts, 'architecture');
+  if (r12bKeys.length > 0
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r12b'))) {
+    return projectR12BArchitectureScripts(packageJson);
+  }
+  const r12aKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12a'));
+  if (r12aKeys.length > 0
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r12a'))) {
+    return projectR12AArchitectureScripts(packageJson);
+  }
   if (hasOwn(scripts, 'architecture:r8')) return projectR8ArchitectureScripts(packageJson);
   if (!hasOwn(scripts, 'architecture:r7')) return packageJson;
   if (ownValue(scripts, 'architecture:r7') !== R7_STANDALONE_SCRIPT
@@ -175,6 +198,17 @@ function projectR8ArchitectureScripts(value) {
   assertDeepPlainData(value);
   const packageJson = plainRecord(value);
   const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  const r12bKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12b'));
+  const aggregate = optionalOwnValue(scripts, 'architecture');
+  if (r12bKeys.length > 0
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r12b'))) {
+    return projectR12BArchitectureScripts(packageJson);
+  }
+  const r12aKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12a'));
+  if (r12aKeys.length > 0
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r12a'))) {
+    return projectR12AArchitectureScripts(packageJson);
+  }
   const r8Keys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r8'));
   if (r8Keys.length !== 1 || r8Keys[0] !== 'architecture:r8'
       || ownValue(scripts, 'architecture:r8') !== R8_STANDALONE_SCRIPT
@@ -183,6 +217,68 @@ function projectR8ArchitectureScripts(value) {
   delete projectedScripts['architecture:r8'];
   projectedScripts.architecture = R7_ARCHITECTURE_SCRIPT;
   return projectR7ArchitectureScripts({ ...packageJson, scripts: projectedScripts });
+}
+
+function projectR12AArchitectureScripts(value) {
+  assertDeepPlainData(value);
+  const packageJson = plainRecord(value);
+  const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  const r12bKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12b'));
+  const aggregate = optionalOwnValue(scripts, 'architecture');
+  if (r12bKeys.length > 0
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r12b'))) {
+    return projectR12BArchitectureScripts(packageJson);
+  }
+  const r12aKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12a'));
+  if (r12aKeys.length !== 1 || r12aKeys[0] !== 'architecture:r12a'
+      || ownValue(scripts, 'architecture:r12a') !== R12A_STANDALONE_SCRIPT
+      || ownValue(scripts, 'architecture') !== R12A_ARCHITECTURE_SCRIPT) fail();
+  const projectedScripts = { ...scripts };
+  delete projectedScripts['architecture:r12a'];
+  projectedScripts.architecture = R8_ARCHITECTURE_SCRIPT;
+  return projectR8ArchitectureScripts({ ...packageJson, scripts: projectedScripts });
+}
+
+function projectR12BArchitectureScripts(value) {
+  assertDeepPlainData(value);
+  const packageJson = plainRecord(value);
+  const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  const successorKeys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12c'));
+  const aggregate = optionalOwnValue(scripts, 'architecture');
+  if (successorKeys.length > 0
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r12c'))) {
+    return projectR12CArchitectureScripts(packageJson);
+  }
+  const keys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12b'));
+  if (keys.length !== 1
+      || keys[0] !== 'architecture:r12b'
+      || ownValue(scripts, 'architecture:r12b') !== R12B_STANDALONE_SCRIPT
+      || ownValue(scripts, 'architecture') !== R12B_ARCHITECTURE_SCRIPT) fail();
+  const projectedScripts = { ...scripts };
+  delete projectedScripts['architecture:r12b'];
+  projectedScripts.architecture = R12A_ARCHITECTURE_SCRIPT;
+  return projectR12AArchitectureScripts({
+    ...packageJson,
+    scripts: projectedScripts,
+  });
+}
+
+function projectR12CArchitectureScripts(value) {
+  assertDeepPlainData(value);
+  const packageJson = plainRecord(value);
+  const scripts = plainRecord(ownValue(packageJson, 'scripts'));
+  const keys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r12c'));
+  if (keys.length !== 1 || keys[0] !== 'architecture:r12c'
+      || ownValue(scripts, 'architecture:r12c') !== R12C_STANDALONE_SCRIPT
+      || ownValue(scripts, 'architecture') !== R12C_ARCHITECTURE_SCRIPT) fail();
+  const projectedScripts = { ...scripts };
+  delete projectedScripts['architecture:r12c'];
+  projectedScripts.architecture = R12B_ARCHITECTURE_SCRIPT;
+  const imports = ownValue(scripts, 'architecture:imports');
+  const predecessorImports = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  if (imports !== predecessorImports && imports !== 'depcruise --config .dependency-cruiser.cjs src') fail();
+  projectedScripts['architecture:imports'] = predecessorImports;
+  return projectR12BArchitectureScripts({ ...packageJson, scripts: projectedScripts });
 }
 
 function validatePackageGraph(
@@ -547,8 +643,140 @@ function assertMergeBehavior(deepmerge) {
   }
 }
 
+function assertNoDuplicateJsonMembers(source) {
+  if (typeof source !== 'string') fail();
+  let index = 0;
+  let properties = 0;
+
+  function skipWhitespace() {
+    while (index < source.length) {
+      const code = source.charCodeAt(index);
+      if (code !== 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) break;
+      index += 1;
+    }
+  }
+
+  function parseString() {
+    if (source.charCodeAt(index) !== 0x22) fail();
+    const start = index;
+    index += 1;
+    while (index < source.length) {
+      const code = source.charCodeAt(index);
+      if (code === 0x22) {
+        index += 1;
+        try {
+          const value = jsonParse(stringSlice(source, start, index));
+          if (typeof value !== 'string') fail();
+          return value;
+        } catch {
+          fail();
+        }
+      }
+      if (code < 0x20) fail();
+      if (code === 0x5c) {
+        index += 1;
+        if (index >= source.length) fail();
+        if (source.charCodeAt(index) === 0x75) {
+          index += 4;
+          if (index >= source.length) fail();
+        }
+      }
+      index += 1;
+    }
+    fail();
+  }
+
+  function parsePrimitive() {
+    const start = index;
+    while (index < source.length) {
+      const code = source.charCodeAt(index);
+      if (code === 0x2c || code === 0x5d || code === 0x7d
+          || code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d) break;
+      index += 1;
+    }
+    if (start === index) fail();
+    try {
+      jsonParse(stringSlice(source, start, index));
+    } catch {
+      fail();
+    }
+  }
+
+  function countProperty() {
+    properties += 1;
+    if (properties > MAX_PROPERTIES) fail();
+  }
+
+  function parseValue(depth) {
+    if (depth > MAX_DEPTH) fail();
+    skipWhitespace();
+    const code = source.charCodeAt(index);
+    if (code === 0x7b) {
+      index += 1;
+      skipWhitespace();
+      const keys = new PrimordialSet();
+      if (source.charCodeAt(index) === 0x7d) {
+        index += 1;
+        return;
+      }
+      while (index < source.length) {
+        const key = parseString();
+        if (setHas(keys, key)) fail();
+        setAdd(keys, key);
+        countProperty();
+        skipWhitespace();
+        if (source.charCodeAt(index) !== 0x3a) fail();
+        index += 1;
+        parseValue(depth + 1);
+        skipWhitespace();
+        const separator = source.charCodeAt(index);
+        if (separator === 0x7d) {
+          index += 1;
+          return;
+        }
+        if (separator !== 0x2c) fail();
+        index += 1;
+        skipWhitespace();
+      }
+      fail();
+    }
+    if (code === 0x5b) {
+      index += 1;
+      skipWhitespace();
+      if (source.charCodeAt(index) === 0x5d) {
+        index += 1;
+        return;
+      }
+      while (index < source.length) {
+        countProperty();
+        parseValue(depth + 1);
+        skipWhitespace();
+        const separator = source.charCodeAt(index);
+        if (separator === 0x5d) {
+          index += 1;
+          return;
+        }
+        if (separator !== 0x2c) fail();
+        index += 1;
+      }
+      fail();
+    }
+    if (code === 0x22) {
+      parseString();
+      return;
+    }
+    parsePrimitive();
+  }
+
+  parseValue(0);
+  skipWhitespace();
+  if (index !== source.length) fail();
+}
+
 function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const source = fs.readFileSync(filePath, 'utf8');
+  assertNoDuplicateJsonMembers(source);
+  return jsonParse(source);
 }
 
 function packageRootForEntry(entryPath, expectedName, boundary) {
@@ -702,7 +930,7 @@ async function checkPrismaConfigMergeSecurity({ backendRoot = path.resolve(__dir
   try {
     const canonicalBackendRoot = fs.realpathSync(path.resolve(backendRoot));
     const packageProof = validatePackageGraph(
-      projectR8ArchitectureScripts(readJson(path.join(canonicalBackendRoot, 'package.json'))),
+      projectR12BArchitectureScripts(readJson(path.join(canonicalBackendRoot, 'package.json'))),
       readJson(path.join(canonicalBackendRoot, 'package-lock.json')),
     );
     const installed = resolveLiveInstalledGraph(canonicalBackendRoot);
@@ -742,12 +970,21 @@ module.exports = {
   PINNED_DEEPMERGE_VERSION,
   PINNED_PACKAGE_JSON_SHA256,
   PINNED_PACKAGE_LOCK_SHA256,
+  R12A_ARCHITECTURE_SCRIPT,
+  R12A_STANDALONE_SCRIPT,
+  R12B_ARCHITECTURE_SCRIPT,
+  R12B_STANDALONE_SCRIPT,
+  R12C_ARCHITECTURE_SCRIPT,
+  R12C_STANDALONE_SCRIPT,
   R8_ARCHITECTURE_SCRIPT,
   R8_STANDALONE_SCRIPT,
   SECURITY_FAILURE,
   assertInstalledMergeBehavior,
   assertMergeBehavior,
   checkPrismaConfigMergeSecurity,
+  projectR12AArchitectureScripts,
+  projectR12BArchitectureScripts,
+  projectR12CArchitectureScripts,
   projectR7ArchitectureScripts,
   projectR8ArchitectureScripts,
   fingerprintPlainJson,

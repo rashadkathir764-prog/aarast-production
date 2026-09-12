@@ -1,12 +1,31 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-08-30
+Snapshot date: 2026-09-06
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
 ownership, Mobile boundaries, test-change policy, and phase gates. R0 is a
 governance phase: it moves no application source and changes no runtime
 behavior, route, database schema, migration, or deployment artifact.
+
+## Modular Monolith R12B — Local Completion — 2026-09-06
+
+R12B is complete locally.
+Dependency debt is 9.
+Ownership remains 385/781.
+The architecture target remains incomplete.
+R12C implementation has not begun.
+No commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, phone acceptance, or release is claimed.
+
+The Planning wedding-location implementation now exists once under its owner
+public boundary, and all seven declared consumers use that path. Onboarding
+owns exact local task and guest DTO re-expressions instead of importing API DTOs
+from Tasks or Guests. The strict R12B projection retires only dependency IDs
+`7-9`, `11`, `18`, and `21-22`; ownership bytes remain unchanged. Task 5 and
+the independent candidate review passed, and the four-receipt documentation
+transition is activated. The activated exact-state re-review remains the final
+Task 6 close gate.
 
 ## Business Module Map
 
@@ -419,6 +438,76 @@ with declared Backend gaps` are accurate. `Modular-monolith architecture
 target complete` remains forbidden while Backend dependency debt is 22 records
 and physical-ownership debt is 385 records / 781 occurrences. R10 does not
 retire or hide that debt.
+
+## Post-R10 Target Completion Contract
+
+The original 2026-08-04 final target remains binding. The tracked
+[remaining-target design](docs/superpowers/specs/2026-09-01-modular-monolith-remaining-target-design.md)
+and [R11 plan](docs/superpowers/plans/2026-09-01-modular-monolith-r11-target-reconciliation.md)
+reconcile that target with the locally closed R0-R10 wave; they do not weaken
+or redefine it. R10 was subsequently committed locally at
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. Push, merge, deployment,
+remote CI, real provider delivery, and store release remain outside the proven
+state.
+
+R11 documentation reconciliation is locally complete after its exact
+nine-Markdown scope, debt-truth, documentation, cumulative architecture, and
+independent-review gates passed. This activates the authority model below; it
+does not start or authorize R12A.
+
+The post-R10 sequence is:
+
+| Phase | Exact boundary |
+| --- | --- |
+| R11 | Align active documentation with the original target and live debt 22 and 385/781 |
+| R12A-R12C | Retire the 22 named dependency records to zero and delete the dependency baseline only after strict proof |
+| R13-R17 | Retire all 385 ownership records / 781 occurrences once, by their exact context allocations; R14A Identity must exit before R14B Collaboration starts |
+| R18 | Enter at ownership 0/0, prove strict zero without the baseline, then delete the zero-valued baseline |
+| R19 | Audit the unproven Mobile fate-map remainder and implement only confirmed gaps under separate plans |
+| R20 | Re-prove every original invariant in one all-surface final closeout |
+
+Every phase requires a separate design, implementation plan, fixed scope fence,
+independent review, affected tests, architecture gates, documentation gates,
+and real-phone QA when Mobile behavior is in scope. A phase may not widen after
+its plan is approved. Baselines are immutable debt ledgers: subtract exact
+reviewed entries only; never regenerate, widen, or delete them early.
+
+R13-R17 own the entire non-overlapping ownership retirement. Their exact totals
+are 44/85, R14A Identity 60/78, R14B Collaboration 28/80, 10/19, 140/288,
+and 103/231, summing to 385/781. R14B cannot start before R14A exits because
+the owner-side invite OTP port must exist first. The reason
+projection 301/563 plus 84/218 classifies those same records and is not a second
+backlog. Any nonzero record at R18 entry returns to its R13-R17 owner.
+
+The phrase `architecture target complete` remains reserved for R20 after
+dependency zero, ownership 0/0, both baselines removed, and all binding local
+and phone gates pass. Phase completion alone never authorizes push, merge,
+deployment, remote CI, provider delivery, or release claims.
+
+### R12A Backoffice/Catalog Public Contracts — Local Completion
+
+R12A was executed locally from immutable R10/R11 entry
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. Four Backoffice authority and
+mutation contracts now live only under `modules/backoffice/public`, and the
+provider-rating mutation helper now lives only under
+`modules/marketplace/public`. Nine fixed consumers import those owner-public
+locations; all five legacy implementations are absent without facade,
+duplicate, fallback, or compatibility layer.
+
+The dependency ledger was subtracted exactly by IDs 1-6: `22 -> 17 -> 16`,
+with no addition or unrelated removal. Ownership changed one approved path only
+and remains `385/781`. The exact Identity-to-Marketplace runtime-public helper
+edge remains declared for R16, and the R1 Backoffice permission-contract
+pre-port exception remains declared for R17. R12A therefore does not claim the
+architecture target complete.
+
+Task 5 and Task 6 are independently APPROVED with no Critical, Important, or Minor finding
+after a fail-closed duplicate-JSON-member security correction. Focused behavior
+passed `31/31`, focused architecture `522/522`, full Backend tests passed
+`1407/1408` with zero failures and one pre-existing skip, and all 30 managed
+smoke packages passed. Documentation, exact scope, immutable identity, and the
+final independent review also passed. R12A is complete locally. No commit, push, merge, deployment,
+production mutation, remote CI, provider delivery, or release is implied.
 
 ## R9 Historical Stop Boundary
 

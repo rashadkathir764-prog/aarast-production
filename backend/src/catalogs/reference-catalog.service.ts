@@ -8,7 +8,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
-import { runAuthorizedAdminMutation } from '../admin/admin-mutation-gate';
+import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
 import { AdminCatalogItemDto } from './dto/admin-reference-catalog.dto';
 import {

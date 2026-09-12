@@ -1,3 +1,10 @@
+import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
+import { ensureConversationContext, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext,
+  recordConversationEvent,
+};
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
@@ -292,7 +299,7 @@ function marketplaceWithPermissionSignal(): {
       prisma as any,
       permissions,
       notifications as any,
-      contributionHistory,
+      lifecycle, contributionHistory,
     ),
     permissionChecked: permissionChecked.promise,
   };
@@ -378,7 +385,7 @@ async function assertAcceptWinsUpdateRace(): Promise<void> {
       const providerDashboard = new ProviderDashboardService(
         prisma as any,
         notifications as any,
-        {} as any,
+        {} as any, lifecycle,
       );
       const blocker = await holdOfferLock(fixture.offer.id);
       const accept = service.acceptQuoteOffer(

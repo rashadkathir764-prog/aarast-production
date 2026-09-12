@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { afterEach, test } from 'node:test';
 
 const backendRoot = path.resolve(__dirname, '..');
@@ -1121,4 +1121,64 @@ test('the scope CLI returns one fixed failure line with exit 2', () => {
   });
   assert.equal(code, 2);
   assert.deepEqual(output, ['ERROR - R3 scope validation failed']);
+});
+
+test('R12A scope projection rejects changed historical dependency semantics', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  manifest.stage = 'strict';
+  const dependency = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest,
+    readImmutableFile: (revision: string, relative: string) => execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  }).dependency;
+  const changed = structuredClone(dependency);
+  changed[0].dependencyTypes = ['import'];
+  assert.throws(() => r12a.expectedR12aDependencyRecords(changed, manifest), /Expected values|projection/i);
+});
+
+test('R12C successor handoff preserves historical 16 and selects exact strict live 0', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  });
+  assert.equal(r12a.expectedR12aDependencyRecords(entry.dependency, r12aManifest).length, 16);
+  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  }).length, 0);
 });

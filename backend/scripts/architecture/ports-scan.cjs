@@ -31,10 +31,6 @@ const BACKOFFICE_PERMISSION_CONTRACT =
 const RELOCATED_SAFE_USER = 'backend/src/modules/identity/public/safe-user.ts';
 const R5_BOOTSTRAP_JWT_SECRET_EDGE =
   'backend/src/main.ts|backend/src/modules/identity/internal/auth/jwt-secret.ts';
-const R5_RELOCATED_IDENTITY_PURE_HELPER_EDGES = new Set([
-  'backend/src/modules/identity/internal/profile/contexts.service.ts|backend/src/provider-dashboard/provider-access-policy.ts',
-  'backend/src/modules/identity/internal/profile/users.service.ts|backend/src/marketplace/provider-review-rating.ts',
-]);
 const TRANSITIONAL_PLATFORM_BUSINESS_DEBT = new Set([
   'backend/src/platform/config/runtime-environment.ts|backend/src/auth/jwt-secret.ts',
   'backend/src/platform/health/readiness.service.ts|backend/src/media/media-storage.service.ts',
@@ -445,9 +441,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
         && source.context !== target.context
         && (source.future || target.future)
         && !(target.future && target.public)
-        && !R5_RELOCATED_IDENTITY_PURE_HELPER_EDGES.has(
-          `${repositoryPath}|${targetPath}`,
-        )
         && !(
           targetPath === BACKOFFICE_PERMISSION_CONTRACT
           && (repositoryPath.startsWith('backend/src/auth/')

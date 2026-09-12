@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -238,7 +244,7 @@ const marketplace = (
       ...perms,
     } as any,
     {} as any,
-    contributionHistory as any,
+    lifecycle, contributionHistory as any,
   );
 
 test("plan quote live data is denied after provider permission revocation", async () => {
@@ -286,7 +292,7 @@ test("plan owner sees the full plan quote context", async () => {
       canViewMoney: (context: any) => context.isOwner,
       canManageProviders: (context: any) => context.isOwner,
     } as any,
-    {} as any,
+    {} as any, lifecycle,
   );
   const [q] = await svc.findPlanQuoteRequests(user("owner"), "p1");
   assert.equal(q.contactPhone, "+967733333333");

@@ -6,6 +6,13 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
+const {
+  expectedR12aSuccessorDependencyRecords,
+  expectedR12aOwnershipBaseline,
+  readR12aImmutableEntry,
+  readR12aSuccessorDependencyBytes,
+  validateR12aManifest,
+} = require('./r12a-backoffice-catalog-public-contracts-scan.cjs');
 
 const R8_BASE = 'c2b728bfe54304562923facfb6094e0de04c0b27';
 const REPOSITORY_ROOT = path.resolve(__dirname, '../../..');
@@ -194,6 +201,11 @@ const EXPECTED_COUNTS = Object.freeze({
   duplicateProviders: 0,
   forwardRef: 0,
   nestModuleCycles: 0,
+  dependencyRecords: 22,
+  ownershipRecords: 385,
+  ownershipOccurrences: 781,
+});
+const EXPECTED_HISTORICAL_COUNTS = Object.freeze({
   dependencyRecords: 22,
   ownershipRecords: 385,
   ownershipOccurrences: 781,
@@ -1489,11 +1501,12 @@ function projectR3InventoryForR8(inventory, manifestValue) {
   return deepFrozenCopy(projected);
 }
 
-function verifyBaselines(repositoryRoot) {
-  const dependency = readJsonFile(
-    path.join(repositoryRoot, 'backend', '.dependency-cruiser-known-violations.json'),
-    'R8 dependency baseline',
-  );
+function verifyBaselines(
+  repositoryRoot,
+  r12aManifestValue = undefined,
+  readImmutableFile = undefined,
+) {
+  const dependency = JSON.parse(readR12aSuccessorDependencyBytes(repositoryRoot).toString('utf8'));
   const ownership = readJsonFile(
     path.join(repositoryRoot, 'backend', 'architecture', 'ownership-baseline.json'),
     'R8 ownership baseline',
@@ -1507,6 +1520,40 @@ function verifyBaselines(repositoryRoot) {
       throw new Error('R8 ownership baseline occurrence is invalid');
     }
     occurrences += violation.count;
+  }
+  if (ownership.violations.length !== EXPECTED_HISTORICAL_COUNTS.ownershipRecords
+      || occurrences !== EXPECTED_HISTORICAL_COUNTS.ownershipOccurrences) {
+    throw new Error('R8 historical ownership baseline drift detected');
+  }
+  if (r12aManifestValue === undefined) {
+    if (dependency.length !== EXPECTED_HISTORICAL_COUNTS.dependencyRecords) {
+      throw new Error('R8 historical dependency baseline drift detected');
+    }
+    return Object.freeze({
+      dependencyRecords: dependency.length,
+      ownershipRecords: ownership.violations.length,
+      ownershipOccurrences: occurrences,
+    });
+  }
+  const r12aManifest = validateR12aManifest(r12aManifestValue);
+  const entry = readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile,
+  });
+  const expectedDependency = expectedR12aSuccessorDependencyRecords({
+    repositoryRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile,
+  });
+  const expectedOwnership = expectedR12aOwnershipBaseline(
+    entry.ownership,
+    r12aManifest,
+  );
+  if (JSON.stringify(dependency) !== JSON.stringify(expectedDependency)
+      || JSON.stringify(ownership) !== JSON.stringify(expectedOwnership)) {
+    throw new Error('R8 R12A baseline projection drift detected');
   }
   return Object.freeze({
     dependencyRecords: dependency.length,
@@ -1526,7 +1573,22 @@ function validateStringArray(value, label) {
   return value;
 }
 
-function validateR8ScanResult(value) {
+function validateR8ScanResult(
+  value,
+  r12aManifestValue = undefined,
+  successorDependencyRecords = undefined,
+) {
+  const r12aManifest = r12aManifestValue === undefined
+    ? null
+    : validateR12aManifest(r12aManifestValue);
+  const expectedDependencyRecords = successorDependencyRecords === undefined
+    ? (r12aManifest === null
+      ? EXPECTED_HISTORICAL_COUNTS.dependencyRecords
+      : r12aManifest.stages[r12aManifest.stage].dependencyRecords)
+    : successorDependencyRecords;
+  if (!Number.isSafeInteger(expectedDependencyRecords) || expectedDependencyRecords < 0) {
+    throw new Error('R8 successor dependency count is invalid');
+  }
   assertPlainDenseJson(value, 'R8 scan result');
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('R8 scan result schema is invalid');
@@ -1585,9 +1647,9 @@ function validateR8ScanResult(value) {
       || value.globals.forwardRef !== EXPECTED_COUNTS.forwardRef
       || value.globals.nestModuleCycles !== EXPECTED_COUNTS.nestModuleCycles
       || value.external.identities !== EXPECTED_EXTERNAL_GLOBAL_IDENTITIES.length
-      || value.dependencyRecords !== EXPECTED_COUNTS.dependencyRecords
-      || value.ownershipRecords !== EXPECTED_COUNTS.ownershipRecords
-      || value.ownershipOccurrences !== EXPECTED_COUNTS.ownershipOccurrences) {
+      || value.dependencyRecords !== expectedDependencyRecords
+      || value.ownershipRecords !== EXPECTED_HISTORICAL_COUNTS.ownershipRecords
+      || value.ownershipOccurrences !== EXPECTED_HISTORICAL_COUNTS.ownershipOccurrences) {
     throw new Error('R8 scan result does not match the stage contract');
   }
   return Object.freeze({
@@ -1612,6 +1674,15 @@ function scanR8GlobalRemoval(options) {
     throw new Error('R8 scan options are invalid');
   }
   const manifest = validateR8Manifest(options.manifest);
+  const r12aManifest = options.r12aManifest === undefined
+    ? validateR12aManifest(JSON.parse(fs.readFileSync(path.join(
+      options.repositoryRoot,
+      'backend/architecture/r12a-backoffice-catalog-public-contracts.json',
+    ), 'utf8')))
+    : validateR12aManifest(options.r12aManifest);
+  if (options.readImmutableFile !== undefined && typeof options.readImmutableFile !== 'function') {
+    throw new Error('R8 immutable reader is invalid');
+  }
   const analysis = createProgram(options.repositoryRoot);
   const globals = collectProjectGlobalActivations(
     analysis.program,
@@ -1633,7 +1704,11 @@ function scanR8GlobalRemoval(options) {
     manifest,
     analysis,
   );
-  const baselines = verifyBaselines(options.repositoryRoot);
+  const baselines = verifyBaselines(
+    options.repositoryRoot,
+    r12aManifest,
+    options.readImmutableFile,
+  );
   const expectedGlobalPaths = manifest.stage === 'design'
     ? manifest.r3Projection.globalTransitions.map((entry) => entry.path).sort(compareText)
     : [];
@@ -1681,7 +1756,7 @@ function scanR8GlobalRemoval(options) {
     },
     external: { identities: external.identities },
     ...baselines,
-  });
+  }, r12aManifest, baselines.dependencyRecords);
 }
 
 function runCli({
@@ -1719,6 +1794,7 @@ function runCli({
 module.exports = {
   R8_BASE,
   EXPECTED_ALLOWED_PATHS,
+  EXPECTED_HISTORICAL_COUNTS,
   collectDirectPrismaConsumers,
   collectProjectGlobalActivations,
   collectRealtimeComposition,
@@ -1729,6 +1805,7 @@ module.exports = {
   validateR8Manifest,
   validateR8ScanResult,
   verifyExternalGlobalIdentities,
+  verifyBaselines,
 };
 
 if (require.main === module) process.exitCode = runCli();

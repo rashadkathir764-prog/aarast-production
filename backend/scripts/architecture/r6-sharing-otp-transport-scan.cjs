@@ -6,6 +6,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
+const {
+  expectedR12aSuccessorDependencyRecords,
+  expectedR12aOwnershipBaseline,
+  readR12aImmutableEntry,
+  readR12aSuccessorDependencyBytes,
+  validateR12aManifest,
+} = require('./r12a-backoffice-catalog-public-contracts-scan.cjs');
 
 const R6_BASE = 'ce0c0d19824bff79d91417e2fe4617914c6bcd70';
 const MANIFEST_PATH = 'backend/architecture/r6-sharing-otp-transport.json';
@@ -589,18 +596,37 @@ function verifyProtectedFiles(options) {
   return manifest.protectedFiles.length;
 }
 
-function verifyBaselines(repositoryRoot, manifest) {
-  const dependency = JSON.parse(fs.readFileSync(safeFile(
+function verifyBaselines(
+  repositoryRoot,
+  manifest,
+  r12aManifestValue = undefined,
+  readImmutableFile = undefined,
+) {
+  const r12aManifest = r12aManifestValue === undefined
+    ? null : validateR12aManifest(r12aManifestValue);
+  const r12aEntry = r12aManifest ? readR12aImmutableEntry({
     repositoryRoot,
-    'backend/.dependency-cruiser-known-violations.json',
-    'R6 dependency baseline',
-  ), 'utf8'));
+    manifest: r12aManifest,
+    readImmutableFile,
+  }) : null;
+  const dependency = JSON.parse(readR12aSuccessorDependencyBytes(repositoryRoot).toString('utf8'));
   if (!Array.isArray(dependency)
       || manifest.expectedBaselines.dependencyRecords !== 31
-      || dependency.length !== 22
-      || crypto.createHash('sha256').update(JSON.stringify(dependency)).digest('hex')
-        !== R7_LIVE_DEPENDENCY_HASH) {
+      || ((!r12aManifest || r12aManifest.stage === 'design') && (dependency.length !== 22
+        || crypto.createHash('sha256').update(JSON.stringify(dependency)).digest('hex')
+          !== R7_LIVE_DEPENDENCY_HASH))) {
     throw new Error('R6 dependency baseline count drift detected');
+  }
+  if (r12aEntry) {
+    const expected = expectedR12aSuccessorDependencyRecords({
+      repositoryRoot,
+      r12aEntryRecords: r12aEntry.dependency,
+      r12aManifest,
+      readImmutableFile,
+    });
+    if (JSON.stringify(dependency) !== JSON.stringify(expected)) {
+      throw new Error('R6 R12A dependency baseline drift detected');
+    }
   }
   const ownership = JSON.parse(fs.readFileSync(safeFile(
     repositoryRoot,
@@ -619,6 +645,11 @@ function verifyBaselines(repositoryRoot, manifest) {
   }, 0);
   if (occurrences !== manifest.expectedBaselines.ownershipOccurrences) {
     throw new Error('R6 ownership baseline occurrence drift detected');
+  }
+  if (r12aEntry && JSON.stringify(ownership) !== JSON.stringify(
+    expectedR12aOwnershipBaseline(r12aEntry.ownership, r12aManifest),
+  )) {
+    throw new Error('R6 R12A ownership baseline drift detected');
   }
 }
 
@@ -766,16 +797,31 @@ function verifyTargetStage(repositoryRoot, manifest) {
 function scanR6SharingOtpTransport(options) {
   const input = plainObject(options, 'R6 scan options');
   const keys = Object.keys(input).sort();
-  if (keys.some((key) => !['manifest', 'readBaseFile', 'repositoryRoot'].includes(key))
+  if (keys.some((key) => ![
+    'manifest',
+    'readBaseFile',
+    'readImmutableFile',
+    'repositoryRoot',
+    'r12aManifest',
+  ].includes(key))
       || !keys.includes('manifest') || !keys.includes('repositoryRoot')) {
     throw new Error('R6 scan options keys are invalid');
   }
-  const manifest = validateR6Manifest(input.manifest);
   if (typeof input.repositoryRoot !== 'string' || !path.isAbsolute(input.repositoryRoot)) {
     throw new Error('R6 repository root must be absolute');
   }
+  const manifest = validateR6Manifest(input.manifest);
+  const r12aManifest = input.r12aManifest === undefined
+    ? validateR12aManifest(JSON.parse(fs.readFileSync(path.join(
+      input.repositoryRoot,
+      'backend/architecture/r12a-backoffice-catalog-public-contracts.json',
+    ), 'utf8')))
+    : validateR12aManifest(input.r12aManifest);
   if (input.readBaseFile !== undefined && typeof input.readBaseFile !== 'function') {
     throw new Error('R6 base reader is invalid');
+  }
+  if (input.readImmutableFile !== undefined && typeof input.readImmutableFile !== 'function') {
+    throw new Error('R6 immutable reader is invalid');
   }
   verifyTargetStage(input.repositoryRoot, manifest);
   const protectedFiles = verifyProtectedFiles({
@@ -783,7 +829,7 @@ function scanR6SharingOtpTransport(options) {
     manifest,
     readBaseFile: input.readBaseFile,
   });
-  verifyBaselines(input.repositoryRoot, manifest);
+  verifyBaselines(input.repositoryRoot, manifest, r12aManifest, input.readImmutableFile);
   const imports = inspectConcreteTransportImports(input.repositoryRoot, manifest);
   const expectedImports = manifest.expectedBaselines
     .concreteTransportImports[manifest.stage];

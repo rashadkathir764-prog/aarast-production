@@ -22,7 +22,7 @@ import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-pr
 import {
   normalizeWeddingLocationInput,
   weddingLocationResponse,
-} from "../src/wedding-plans/wedding-location";
+} from "../src/modules/planning/public/wedding-location";
 
 test("backend image records the supplied Git revision in its OCI metadata", () => {
   const dockerfile = readFileSync(join(__dirname, "..", "Dockerfile"), "utf8");

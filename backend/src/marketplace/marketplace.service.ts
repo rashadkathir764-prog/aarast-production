@@ -1,3 +1,4 @@
+import { CONVERSATION_LIFECYCLE_PORT, type ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import {
   BadRequestException,
   ConflictException,
@@ -30,8 +31,8 @@ import { runSerializableTransaction } from "../platform/database/serializable-tr
 import { NOTIFICATIONS_PORT, type NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService, livePlanAuthorizationWhere } from "../modules/collaboration/public/collaboration-permission.port";
-import { normalizeWeddingLocationInput } from "../wedding-plans/wedding-location";
-import { toWeddingCostResponse } from "../wedding-costs/wedding-cost.presenter";
+import { normalizeWeddingLocationInput } from "../modules/planning/public/wedding-location";
+import { toWeddingCostResponse } from "../modules/finance/public/wedding-cost.presenter";
 import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
 import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
@@ -42,7 +43,7 @@ import { quoteLifecycleStatus } from "./quote-lifecycle";
 import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
 import { cancelQuoteRequestInTransaction } from "./quote-request-cancellation";
-import { runProviderReviewMutation } from "./provider-review-rating";
+import { runProviderReviewMutation } from "../modules/marketplace/public/provider-review-rating";
 import {
   assertMarketplaceProviderActive,
   assertProviderAccountUnchanged,
@@ -80,6 +81,8 @@ export class MarketplaceService {
     private readonly permissions: PermissionService,
     @Inject(NOTIFICATIONS_PORT)
     private readonly notifications: NotificationsPort,
+    @Inject(CONVERSATION_LIFECYCLE_PORT)
+    private readonly lifecycle: ConversationLifecyclePort,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
@@ -451,6 +454,7 @@ export class MarketplaceService {
 
     const quote = await createQuoteRequestInTransaction(
       this.prisma,
+      this.lifecycle,
       this.notifications,
       {
         requesterId: currentUser.id,
@@ -560,6 +564,7 @@ export class MarketplaceService {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
     const result = await cancelQuoteRequestInTransaction(
       this.prisma,
+      this.lifecycle,
       this.permissions,
       currentUser,
       id,
@@ -587,6 +592,7 @@ export class MarketplaceService {
     await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
     const result = await acceptQuoteOfferInTransaction(
       this.prisma,
+      this.lifecycle,
       this.permissions,
       this.notifications,
       {
@@ -635,6 +641,7 @@ export class MarketplaceService {
 
     const rejected = await rejectQuoteOfferInTransaction(
       this.prisma,
+      this.lifecycle,
       this.permissions,
       this.notifications,
       { id, currentUser },
@@ -676,6 +683,7 @@ export class MarketplaceService {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
     const result = await cancelQuoteRequestInTransaction(
       this.prisma,
+      this.lifecycle,
       this.permissions,
       currentUser,
       id,

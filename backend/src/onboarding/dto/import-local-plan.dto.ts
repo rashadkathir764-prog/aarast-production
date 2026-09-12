@@ -9,8 +9,8 @@ import {
   MaxLength,
   ValidateNested,
 } from "class-validator";
-import { CreateGuestDto } from "../../guests/dto/create-guest.dto";
-import { CreateTaskDto } from "../../tasks/dto/create-task.dto";
+import { ImportLocalGuestDto } from "./import-local-guest.dto";
+import { ImportLocalTaskDto } from "./import-local-task.dto";
 import { CompleteOnboardingDto } from "./complete-onboarding.dto";
 
 export class ImportLocalCostPaymentDto {
@@ -116,14 +116,14 @@ export class ImportLocalPlanDto extends CompleteOnboardingDto {
   @IsArray()
   @ArrayMaxSize(300)
   @ValidateNested({ each: true })
-  @Type(() => CreateTaskDto)
+  @Type(() => ImportLocalTaskDto)
   @IsOptional()
-  tasks?: CreateTaskDto[];
+  tasks?: ImportLocalTaskDto[];
 
   @IsArray()
   @ArrayMaxSize(200)
   @ValidateNested({ each: true })
-  @Type(() => CreateGuestDto)
+  @Type(() => ImportLocalGuestDto)
   @IsOptional()
-  guests?: CreateGuestDto[];
+  guests?: ImportLocalGuestDto[];
 }

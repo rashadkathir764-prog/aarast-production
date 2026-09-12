@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -11,6 +12,8 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createRequire, wrap } from 'node:module';
+import { Script } from 'node:vm';
 import { afterEach, test } from 'node:test';
 
 const backendRoot = path.resolve(__dirname, '..');
@@ -23,6 +26,7 @@ const r8ManifestPath = path.join(
 );
 const scannerPath = path.join(backendRoot, 'scripts', 'architecture', 'r3-context-scan.cjs');
 const temporaryRoots: string[] = [];
+const historicalFixtureScanners = new Map<string, Scanner>();
 
 type Scanner = {
   scanR3Contexts(options: Record<string, unknown>): any;
@@ -66,7 +70,14 @@ type Scanner = {
 };
 
 function scanner(): Scanner {
-  return require(scannerPath) as Scanner;
+  const live = require(scannerPath) as Scanner;
+  return {
+    ...live,
+    scanR3Contexts(options) {
+      const selected = historicalFixtureScanners.get(String(options.repoRoot)) || live;
+      return selected.scanR3Contexts(options);
+    },
+  };
 }
 
 function loadManifest() {
@@ -291,6 +302,60 @@ function fullSourceFixture(replacements: Array<{
     path.join(fixtureBackend, 'node_modules'),
     process.platform === 'win32' ? 'junction' : 'dir',
   );
+  const r12cManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12c-zero-cross-context-dependencies.json',
+  ), 'utf8'));
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const r12c = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12c-zero-cross-context-dependencies-scan.cjs',
+  ));
+  const predecessor = r12c.projectR12cWorkingTreeToPredecessor({
+    repositoryRoot: repoRoot,
+    manifest: r12cManifest,
+  });
+  // Each historical fixture owns its complete predecessor scanner and ports
+  // laws. Mutations below cannot be erased by a second successor projection.
+  const loadHistorical = (relative: string): any => {
+    const file = path.join(repoRoot, relative);
+    const nativeRequire = createRequire(file);
+    const mod = { exports: {} };
+    new Script(wrap(predecessor.readWorkingFile(relative).toString('utf8')), {
+      filename: `${file}#r3-historical-fixture`,
+    }).runInThisContext()(mod.exports, (request: string) => (
+      request === './ports-scan.cjs'
+        ? loadHistorical('backend/scripts/architecture/ports-scan.cjs')
+        : nativeRequire(request)
+    ), mod, file, path.dirname(file));
+    return mod.exports;
+  };
+  historicalFixtureScanners.set(root, loadHistorical('backend/scripts/architecture/r3-context-scan.cjs'));
+  const projectedPaths = new Set<string>([
+    ...predecessor.statusRows.map((row: { path: string }) => row.path),
+    ...r12cManifest.inverseTransforms.map((item: { path: string }) => item.path),
+    r12cManifest.financePublicCandidate.move.source,
+    r12cManifest.financePublicCandidate.move.target,
+    ...r12cManifest.financePublicCandidate.consumerRewrites.map((item: { path: string }) => item.path),
+    ...r12cManifest.messagingLifecycleCandidate.records.map((item: { path: string }) => item.path),
+    r12cManifest.marketplacePublicCandidate.move.source,
+    r12cManifest.marketplacePublicCandidate.move.target,
+    ...r12cManifest.marketplacePublicCandidate.records.map((item: { path: string }) => item.path),
+  ].filter((relative) => relative.startsWith('backend/src/')));
+  for (const relative of projectedPaths) {
+    const target = path.join(root, ...relative.split('/'));
+    if (!predecessor.pathExists(relative)) {
+      if (existsSync(target)) rmSync(target, { force: true });
+      continue;
+    }
+    const bytes = predecessor.readWorkingFile(relative);
+    assert.equal(Buffer.isBuffer(bytes), true, `R12C predecessor source is missing ${relative}`);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, Buffer.from(bytes));
+  }
   for (const replacement of replacements) {
     const target = path.join(fixtureBackend, 'src', replacement.relativePath);
     const current = readFileSync(target, 'utf8');
@@ -306,6 +371,7 @@ function fullSourceFixture(replacements: Array<{
 }
 
 afterEach(() => {
+  historicalFixtureScanners.clear();
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -458,6 +524,32 @@ test('the frozen injection, decorator, and lifecycle identities are exact and un
       'OutboxWorker',
     ],
   );
+});
+
+test('canonical R3 rejects a forged current R12C candidate before historical source laws', () => {
+  const fs = require('node:fs');
+  const r12cPath = path.join(backendRoot, 'architecture/r12c-zero-cross-context-dependencies.json');
+  const forged = JSON.parse(readFileSync(r12cPath, 'utf8'));
+  forged.marketplacePublicCandidate.move.candidateSha256 = '0'.repeat(64);
+  const nativeRequire = createRequire(scannerPath);
+  const mod = { exports: {} as Scanner };
+  new Script(wrap(readFileSync(scannerPath, 'utf8')), { filename: scannerPath }).runInThisContext()(
+    mod.exports,
+    (request: string) => request === 'node:fs' ? {
+      ...fs,
+      readFileSync(file: string, options: unknown) {
+        return path.resolve(file) === r12cPath
+          ? JSON.stringify(forged) : fs.readFileSync(file, options);
+      },
+    } : nativeRequire(request),
+    mod, scannerPath, path.dirname(scannerPath),
+  );
+  let calls = 0;
+  assert.throws(() => mod.exports.scanR3Contexts({
+    repoRoot, backendRoot, manifestPath, stage: 'strict',
+    sourceLawScan: () => { calls += 1; return { modules: [], diagnostics: [] }; },
+  }), /R12C/i);
+  assert.equal(calls, 0);
 });
 
 test('the live TypeScript inventory equals the canonical strict manifest', () => {
@@ -649,9 +741,9 @@ test('I1 live orchestration executes source laws and permits only exact approved
     provider,
     declarationPath,
   });
+  const fixture = fullSourceFixture([]);
   const result = scanner().scanR3Contexts({
-    repoRoot,
-    backendRoot,
+    ...fixture,
     manifestPath,
     stage: 'strict',
     sourceLawScan: () => {
@@ -1342,14 +1434,18 @@ test('only relocated SafeUser may import the exact Backoffice permission contrac
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user-private.ts')), true);
 });
 
-test('R5 relocated Identity internals preserve only their two exact pre-existing pure helper imports', () => {
+test('raw R3 laws reject unregistered Identity runtime helpers including public near-matches', () => {
   const options = fixtureProject({
+    'backend/src/modules/marketplace/public/provider-access-policy.ts':
+      'export const providerAccessPolicy = true;\n',
     'backend/src/provider-dashboard/provider-access-policy.ts':
       'export const providerAccessPolicy = true;\n',
     'backend/src/provider-dashboard/private.ts': 'export const privateValue = true;\n',
     'backend/src/marketplace/provider-review-rating.ts':
       'export const refreshProviderRating = true;\n',
     'backend/src/modules/identity/internal/profile/contexts.service.ts':
+      "import { providerAccessPolicy } from '../../../marketplace/public/provider-access-policy';\nexport { providerAccessPolicy };\n",
+    'backend/src/modules/identity/internal/profile/legacy-contexts.service.ts':
       "import { providerAccessPolicy } from '../../../../provider-dashboard/provider-access-policy';\nexport { providerAccessPolicy };\n",
     'backend/src/modules/identity/internal/profile/users.service.ts':
       "import { refreshProviderRating } from '../../../../marketplace/provider-review-rating';\nexport { refreshProviderRating };\n",
@@ -1361,10 +1457,11 @@ test('R5 relocated Identity internals preserve only their two exact pre-existing
   const diagnostics = scanner().scanR3SourceLaws(options).diagnostics.filter(
     (item: any) => item.kind === 'illegal-boundary-import',
   );
-  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/contexts.service.ts')), false);
-  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/users.service.ts')), false);
-  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/bad-contexts.service.ts')), true);
-  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/bad-target.service.ts')), true);
+  assert.equal(diagnostics.some((item: any) => item.path === 'backend/src/modules/identity/internal/profile/contexts.service.ts'), true);
+  assert.equal(diagnostics.some((item: any) => item.path === 'backend/src/modules/identity/internal/profile/legacy-contexts.service.ts'), true);
+  assert.equal(diagnostics.some((item: any) => item.path === 'backend/src/modules/identity/internal/profile/users.service.ts'), true);
+  assert.equal(diagnostics.some((item: any) => item.path === 'backend/src/modules/identity/internal/profile/bad-contexts.service.ts'), true);
+  assert.equal(diagnostics.some((item: any) => item.path === 'backend/src/modules/identity/internal/profile/bad-target.service.ts'), true);
 });
 
 test('an internal provider leaf may import only a foreign public Nest module used in metadata', () => {
@@ -1935,4 +2032,77 @@ test('mixed valid and invalid scan data is rejected atomically and the CLI is no
   assert.equal(exitCode, 2);
   assert.deepEqual(output, ['ERROR - R3 context scan failed']);
   assert.doesNotMatch(output.join('\n'), /private|attacker|secret/i);
+});
+
+test('R12A R3 projection keeps 22/17/16 and rejects a seventh retirement', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = r12a.validateR12aManifest(JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  )));
+  const dependency = JSON.parse(execFileSync(
+    'git',
+    ['show', `${manifest.repository.baseCommit}:backend/.dependency-cruiser-known-violations.json`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ));
+  for (const [stage, count] of [['design', 22], ['backoffice', 17], ['strict', 16]] as const) {
+    const candidate = structuredClone(manifest);
+    candidate.stage = stage;
+    assert.equal(r12a.expectedR12aDependencyRecords(dependency, candidate).length, count);
+  }
+  const invalid = structuredClone(manifest);
+  invalid.stages.strict.retiredDependencyIds = [1, 2, 3, 4, 5, 6, 99];
+  assert.throws(() => r12a.validateR12aManifest(invalid), /projection|retired/i);
+});
+
+test('R12B successor handoff preserves historical 16/9 and selects exact R12C zero-proven 0', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot: repoRoot,
+    manifest: r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repoRoot, encoding: 'utf8' },
+    ),
+  });
+  assert.equal(r12a.expectedR12aDependencyRecords(entry.dependency, r12aManifest).length, 16);
+  const r12b = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12b-planning-public-contracts-scan.cjs',
+  ));
+  const r12bManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12b-planning-public-contracts.json',
+  ), 'utf8'));
+  const r12aRecords = r12a.expectedR12aDependencyRecords(entry.dependency, r12aManifest);
+  assert.equal(r12b.expectedR12bDependencyRecords(r12aRecords, r12bManifest).length, 9);
+  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot: repoRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repoRoot, encoding: 'utf8' },
+    ),
+  }).length, 0);
 });

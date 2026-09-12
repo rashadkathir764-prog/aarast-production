@@ -15,7 +15,7 @@ import {
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
 import { optionalMoneyAmount } from "../shared-kernel/money/money";
-import { weddingLocationResponse } from "../wedding-plans/wedding-location";
+import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
 import {
   FavoriteWithProvider,
   FULL_QUOTE_VISIBILITY,

@@ -1,3 +1,10 @@
+import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
+import { ensureConversationContext, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext,
+  recordConversationEvent,
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -73,7 +80,7 @@ function marketplaceService(): MarketplaceService {
     prisma as any,
     new PermissionService(prisma as any),
     notifications as any,
-    contributionHistory,
+    lifecycle, contributionHistory,
   );
 }
 

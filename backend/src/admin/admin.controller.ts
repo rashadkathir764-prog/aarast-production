@@ -12,9 +12,9 @@ import {
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { CurrentUser } from '../modules/identity/public/current-user.decorator';
 import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
-import { AdminGuard } from './admin.guard';
-import { AdminPermissionGuard } from './admin-permission.guard';
-import { RequireAdminPermission } from './admin-permission.decorator';
+import { AdminGuard } from '../modules/backoffice/public/admin.guard';
+import { AdminPermissionGuard } from '../modules/backoffice/public/admin-permission.guard';
+import { RequireAdminPermission } from '../modules/backoffice/public/admin-permission.decorator';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { AdminService } from './admin.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';

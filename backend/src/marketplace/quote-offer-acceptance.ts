@@ -18,12 +18,12 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import type { CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { recordConversationEvent } from "../conversations/conversation-lifecycle";
+import type { ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
-import { assertProviderOperational } from "../provider-dashboard/provider-access-policy";
+import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
-import { weddingCostResponseInclude } from "../wedding-costs/wedding-cost.presenter";
+import { weddingCostResponseInclude } from "../modules/finance/public/wedding-cost.presenter";
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
@@ -52,6 +52,7 @@ interface AcceptQuoteOfferInput {
 
 export async function acceptQuoteOfferInTransaction(
   prisma: PrismaService,
+  lifecycle: ConversationLifecyclePort,
   permissions: PermissionService,
   notifications: NotificationsPort,
   input: AcceptQuoteOfferInput,
@@ -324,7 +325,7 @@ export async function acceptQuoteOfferInTransaction(
         throw new ConflictException("Quote request cannot be accepted");
       }
       for (const rejectedOffer of rejectedOffers) {
-        await recordConversationEvent(tx, {
+        await lifecycle.recordConversationEvent(tx, {
           conversationId: current.quoteRequest.conversationId,
           quoteRequestId: current.quoteRequestId,
           quoteOfferId: rejectedOffer.id,
@@ -335,7 +336,7 @@ export async function acceptQuoteOfferInTransaction(
           data: { status: QuoteOfferStatus.REJECTED },
         });
       }
-      await recordConversationEvent(tx, {
+      await lifecycle.recordConversationEvent(tx, {
         conversationId: current.quoteRequest.conversationId,
         quoteRequestId: current.quoteRequestId,
         quoteOfferId: current.id,

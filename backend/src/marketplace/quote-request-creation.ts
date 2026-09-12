@@ -14,10 +14,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import type { CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import {
-  ensureConversationContext,
-  recordConversationEvent,
-} from "../conversations/conversation-lifecycle";
+import type { ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
@@ -49,6 +46,7 @@ export interface QuoteRequestMutationGuard {
 
 export function createQuoteRequestInTransaction(
   prisma: PrismaService,
+  lifecycle: ConversationLifecyclePort,
   notifications: NotificationsPort,
   input: CreateQuoteRequestTransactionInput,
   guard?: QuoteRequestMutationGuard,
@@ -122,7 +120,7 @@ export function createQuoteRequestInTransaction(
     // The conversation is both the parent of the request and the row updated
     // by its first lifecycle event. It must precede QuoteRequest in the global
     // account-deletion lock order.
-    const conversation = await ensureConversationContext(tx, {
+    const conversation = await lifecycle.ensureConversationContext(tx, {
       requesterUserId: input.requesterId,
       providerId,
       weddingPlanId,
@@ -195,7 +193,7 @@ export function createQuoteRequestInTransaction(
         occurredAt: quote.createdAt,
       });
     }
-    await recordConversationEvent(tx, {
+    await lifecycle.recordConversationEvent(tx, {
       conversationId: conversation.id,
       quoteRequestId: quote.id,
       actorUserId: input.requesterId,

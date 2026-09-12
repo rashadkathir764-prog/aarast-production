@@ -5,11 +5,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import type { AuthenticatedUser } from '../../identity/public/identity-session.types';
 import {
   AdminPermission,
   hasAdminPermission,
-} from '../modules/backoffice/domain/admin-permissions';
+} from '../domain/admin-permissions';
 import { ADMIN_PERMISSIONS_KEY } from './admin-permission.decorator';
 
 @Injectable()

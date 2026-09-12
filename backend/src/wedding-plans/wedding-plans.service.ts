@@ -51,7 +51,7 @@ import {
   normalizeWeddingLocationInput,
   WeddingLocationResponse,
   weddingLocationResponse,
-} from "./wedding-location";
+} from "../modules/planning/public/wedding-location";
 
 export interface WeddingPlanResponse {
   id: string;

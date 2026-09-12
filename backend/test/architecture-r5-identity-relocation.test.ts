@@ -194,6 +194,10 @@ type R5Scanner = {
   validateR5ProfileStage(repositoryRoot: string): void;
   mapOwnershipRecordsForR5(records: Array<Record<string, unknown>>, manifest: R5Manifest):
     Array<Record<string, unknown>>;
+  applyR12aOwnershipProjection(
+    ownership: { violations: Array<Record<string, unknown>> } & Record<string, unknown>,
+    manifest: unknown,
+  ): { violations: Array<Record<string, unknown>> } & Record<string, unknown>;
   expectedR5DependencyRecords(records: Array<Record<string, unknown>>, manifest: R5Manifest):
     Array<Record<string, unknown>>;
   verifyR5Baselines(options: {
@@ -202,6 +206,7 @@ type R5Scanner = {
     baseOwnership: Record<string, unknown>;
     candidateOwnership: Record<string, unknown>;
     manifest: R5Manifest;
+    r12aManifest?: unknown;
   }): { dependencyRecords: number; retiredDependencyRecords: number; ownershipRecords: number; ownershipOccurrences: number };
   validateR5RetiredRoots(repositoryRoot: string, manifest: R5Manifest): void;
   validateR5SecurityCheckpointScope(input: {
@@ -244,6 +249,12 @@ type R5Scanner = {
     projectedRecords: number;
     projectedOccurrences: number;
   };
+  runCli(options: {
+    argv: string[];
+    r12aManifest?: unknown;
+    stdout?: (message: string) => void;
+    stderr?: (message: string) => void;
+  }): number;
 };
 
 function r7DependencyFixture() {
@@ -462,7 +473,20 @@ test('R5 Task 5A package security scope authorizes only the exact checkpoint pat
 test('R5 Task 5A package security scope rejects every mandated near-miss', () => {
   const r5 = loadScanner();
   assert.equal(typeof r5.validateR5SecurityCheckpointScope, 'function');
-  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const livePackageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageJson = structuredClone(livePackageJson);
+  delete packageJson.scripts['architecture:r12c'];
+  packageJson.scripts.architecture = packageJson.scripts.architecture
+    .split(' && ')
+    .filter((script: string) => script !== 'npm run architecture:r12c')
+    .join(' && ');
+  packageJson.scripts['architecture:imports'] =
+    'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  delete packageJson.scripts['architecture:r12b'];
+  packageJson.scripts.architecture = packageJson.scripts.architecture
+    .split(' && ')
+    .filter((script: string) => script !== 'npm run architecture:r12b')
+    .join(' && ');
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   const checkpointPaths = [
     'backend/architecture/r5-identity-relocation.json',
@@ -479,11 +503,62 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
   ];
   assert.doesNotThrow(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
-    packageJson,
+    packageJson: livePackageJson,
     packageLock,
   }));
 
-  const changedR8Gate = structuredClone(packageJson);
+  const malformedR12bPackages: Array<[string, (candidate: Record<string, any>) => void]> = [
+    ['missing standalone', (candidate) => { delete candidate.scripts['architecture:r12b']; }],
+    ['missing aggregate', (candidate) => {
+      candidate.scripts.architecture = candidate.scripts.architecture
+        .replace(' && npm run architecture:r12b', '');
+    }],
+    ['wrong standalone', (candidate) => {
+      candidate.scripts['architecture:r12b'] =
+        'node scripts/architecture/r12b-planning-public-contracts-scan.cjs --skip';
+    }],
+    ['prefixed key', (candidate) => {
+      candidate.scripts['architecture:r12b:attacker'] =
+        candidate.scripts['architecture:r12b'];
+    }],
+    ['renamed key', (candidate) => {
+      candidate.scripts['architecture:r12b-renamed'] =
+        candidate.scripts['architecture:r12b'];
+      delete candidate.scripts['architecture:r12b'];
+    }],
+    ['duplicated aggregate', (candidate) => {
+      candidate.scripts.architecture += ' && npm run architecture:r12b';
+    }],
+    ['wrong aggregate order', (candidate) => {
+      candidate.scripts.architecture = candidate.scripts.architecture
+        .replace(
+          'npm run architecture:r12a && npm run architecture:r12b',
+          'npm run architecture:r12b && npm run architecture:r12a',
+        );
+    }],
+  ];
+  for (const [label, mutate] of malformedR12bPackages) {
+    const candidate = structuredClone(livePackageJson);
+    mutate(candidate);
+    assert.throws(
+      () => r5.validateR5SecurityCheckpointScope({
+        changedPaths: checkpointPaths,
+        packageJson: candidate,
+        packageLock,
+      }),
+      /invalid Prisma config merge security state/u,
+      label,
+    );
+  }
+
+  const r12aPackage = structuredClone(packageJson);
+  assert.doesNotThrow(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths: checkpointPaths,
+    packageJson: r12aPackage,
+    packageLock,
+  }), 'the exact R12A handoff must be projected before immutable R8-to-R6 validation');
+
+  const changedR8Gate = structuredClone(r12aPackage);
   changedR8Gate.scripts['architecture:r8'] =
     'node scripts/architecture/r8-global-module-removal-scan.cjs --skip';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
@@ -492,7 +567,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }), /R8 architecture delegation is invalid/u);
 
-  const missingR8Gate = structuredClone(packageJson);
+  const missingR8Gate = structuredClone(r12aPackage);
   delete missingR8Gate.scripts['architecture:r8'];
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
@@ -500,16 +575,16 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }), /R8 architecture delegation is invalid/u);
 
-  const reorderedR8Gate = structuredClone(packageJson);
+  const reorderedR8Gate = structuredClone(r12aPackage);
   reorderedR8Gate.scripts.architecture =
     'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r8 && npm run architecture:r7';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
     packageJson: reorderedR8Gate,
     packageLock,
-  }), /R8 architecture delegation is invalid/u);
+  }), /R12A architecture delegation is invalid/u);
 
-  const attackerR8Gate = structuredClone(packageJson);
+  const attackerR8Gate = structuredClone(r12aPackage);
   attackerR8Gate.scripts['architecture:r8:attacker'] =
     'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
@@ -518,7 +593,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }), /R8 architecture delegation is invalid/u);
 
-  const changedR6Gate = structuredClone(packageJson);
+  const changedR6Gate = structuredClone(r12aPackage);
   changedR6Gate.scripts['architecture:r6'] =
     'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --skip';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
@@ -527,7 +602,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
-  const removedPriorGate = structuredClone(packageJson);
+  const removedPriorGate = structuredClone(r12aPackage);
   removedPriorGate.scripts.architecture =
     'npm run architecture:imports && npm run architecture:r6';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
@@ -536,7 +611,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
-  const unrelatedScript = structuredClone(packageJson);
+  const unrelatedScript = structuredClone(r12aPackage);
   unrelatedScript.scripts.start = 'node dist/other-main.js';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
@@ -550,7 +625,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
-  const unrelatedDependency = structuredClone(packageJson);
+  const unrelatedDependency = structuredClone(r12aPackage);
   unrelatedDependency.dependencies['scope-near-miss'] = '1.0.0';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
@@ -558,7 +633,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
-  const rangedOverride = structuredClone(packageJson);
+  const rangedOverride = structuredClone(r12aPackage);
   rangedOverride.overrides['deepmerge-ts'] = '^8.0.1';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
@@ -566,7 +641,7 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
-  const changedPrisma = structuredClone(packageJson);
+  const changedPrisma = structuredClone(r12aPackage);
   changedPrisma.dependencies.prisma = '^7.0.0';
   assert.throws(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
@@ -579,6 +654,43 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageJson,
     packageLock,
   }));
+});
+
+test('R5 rejects every malformed R12A standalone and aggregate package pair', () => {
+  const r5 = loadScanner();
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  delete packageJson.scripts['architecture:r12b'];
+  packageJson.scripts.architecture = packageJson.scripts.architecture
+    .split(' && ')
+    .filter((script: string) => script !== 'npm run architecture:r12b')
+    .join(' && ');
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const changedPaths = [
+    'backend/architecture/r5-identity-relocation.json', 'backend/package-lock.json',
+    'backend/package.json', 'backend/scripts/security/prisma-config-merge-security.cjs',
+    'backend/test/architecture-r5-identity-relocation.test.ts',
+    'backend/test/prisma-config-merge-security.test.ts', 'docs/SCRIPTS.md',
+    'docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md',
+    'docs/superpowers/plans/2026-08-21-r5-prisma-config-merge-security-checkpoint.md',
+    'docs/superpowers/specs/2026-08-20-modular-monolith-r5-identity-relocation-design.md',
+    'docs/superpowers/specs/2026-08-21-r5-prisma-config-merge-security-checkpoint-design.md',
+  ];
+  const check = (candidate: Record<string, any>) => assert.throws(() => r5.validateR5SecurityCheckpointScope({ changedPaths, packageJson: candidate, packageLock }), /R12A architecture delegation is invalid/u);
+  const changedStandalone = structuredClone(packageJson);
+  changedStandalone.scripts['architecture:r12a'] = 'node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --skip';
+  check(changedStandalone);
+  const changedAggregate = structuredClone(packageJson);
+  changedAggregate.scripts.architecture = changedAggregate.scripts.architecture.replace('npm run architecture:r12a', 'npm run architecture:r12a && npm run architecture:r12a');
+  check(changedAggregate);
+  const missingStandalone = structuredClone(packageJson);
+  delete missingStandalone.scripts['architecture:r12a'];
+  check(missingStandalone);
+  const missingAggregate = structuredClone(packageJson);
+  missingAggregate.scripts.architecture = missingAggregate.scripts.architecture.replace(' && npm run architecture:r12a', '');
+  check(missingAggregate);
+  const sibling = structuredClone(packageJson);
+  sibling.scripts['architecture:r12a:attacker'] = sibling.scripts['architecture:r12a'];
+  check(sibling);
 });
 
 test('R5 maps ownership paths at the active stage without changing semantics', () => {
@@ -693,7 +805,7 @@ test('R5 authorizes only the exact three test-only QA harness corrections', () =
   for (const correction of manifest.qaHarnessCorrections) {
     const destination = path.join(fixtureRoot, ...correction.path.split('/'));
     mkdirSync(path.dirname(destination), { recursive: true });
-    copyFileSync(path.join(repositoryRoot, ...correction.path.split('/')), destination);
+    writeFileSync(destination, r12cPredecessor().readWorkingFile(correction.path));
   }
   const drifted = manifest.qaHarnessCorrections[0];
   writeFileSync(
@@ -828,12 +940,15 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     'node scripts/architecture/r5-identity-scan.cjs --check',
   );
   assert.deepEqual(
-    packageJson.scripts.architecture.split(' && ').slice(-4),
+    packageJson.scripts.architecture.split(' && ').slice(-7),
     [
       'npm run architecture:r5',
       'npm run architecture:r6',
       'npm run architecture:r7',
       'npm run architecture:r8',
+      'npm run architecture:r12a',
+      'npm run architecture:r12b',
+      'npm run architecture:r12c',
     ],
   );
 
@@ -908,11 +1023,21 @@ test('R5 auth parity rejects provider, DTO, and error-body drift', () => {
     'backend/src/main.ts',
   ];
   for (const relative of paths) {
-    const source = path.join(repositoryRoot(), ...relative.split('/'));
     const target = path.join(fixtureRoot, ...relative.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
-    copyFileSync(source, target);
+    writeFileSync(target, r12cPredecessor().readWorkingFile(relative));
   }
+  const r12aManifestTarget = path.join(
+    fixtureRoot,
+    'backend',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  );
+  mkdirSync(path.dirname(r12aManifestTarget), { recursive: true });
+  copyFileSync(
+    path.join(repositoryRoot(), 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    r12aManifestTarget,
+  );
   const r5 = loadScanner();
   assert.doesNotThrow(() => r5.validateR5AuthStage(fixtureRoot));
 
@@ -1007,11 +1132,21 @@ test('R5 profile API and internal bodies reject post-move drift', () => {
     'backend/src/modules/identity/internal/identity-profile.internal.module.ts',
   ];
   for (const relative of paths) {
-    const source = path.join(repositoryRoot(), ...relative.split('/'));
     const target = path.join(fixtureRoot, ...relative.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
-    copyFileSync(source, target);
+    writeFileSync(target, r12cPredecessor().readWorkingFile(relative));
   }
+  const r12aManifestTarget = path.join(
+    fixtureRoot,
+    'backend',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  );
+  mkdirSync(path.dirname(r12aManifestTarget), { recursive: true });
+  copyFileSync(
+    path.join(repositoryRoot(), 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    r12aManifestTarget,
+  );
   const r5 = loadScanner();
   assert.doesNotThrow(() => r5.validateR5ProfileStage(fixtureRoot));
   const target = path.join(
@@ -1029,9 +1164,48 @@ test('R5 profile API and internal bodies reject post-move drift', () => {
   assert.throws(() => r5.validateR5ProfileStage(fixtureRoot), /profile.*drift/i);
 });
 
+test('R5 profile fallback resolves the R12A manifest from the supplied repository root', () => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-profile-r12a-root-'));
+  temporaryRoots.push(fixtureRoot);
+  const manifest = readManifest();
+  const paths = [
+    ...manifest.moves
+      .filter((move) => !move.to.includes('/public/')
+        && !move.to.includes('/internal/auth/')
+        && !move.to.includes('/api/auth'))
+      .map((move) => move.to),
+    'backend/src/modules/identity/internal/identity-profile.internal.module.ts',
+  ];
+  for (const relative of paths) {
+    const target = path.join(fixtureRoot, ...relative.split('/'));
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, r12cPredecessor().readWorkingFile(relative));
+  }
+  mkdirSync(path.join(fixtureRoot, 'backend', 'architecture'), { recursive: true });
+  writeFileSync(
+    path.join(fixtureRoot, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    '{"stage":"not-a-valid-r12a-stage"}\n',
+    'utf8',
+  );
+  assert.throws(
+    () => loadScanner().validateR5ProfileStage(fixtureRoot),
+    /R12A manifest/i,
+  );
+});
+
 test('R5 baseline verifier accepts only the exact remaining dependency and mapped ownership semantics', () => {
   const r5 = loadScanner();
   const manifest = r5.validateR5Manifest(readManifest());
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = r12a.validateR12aManifest(JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  )));
   const baseDependencyResult = spawnSync('git', [
     'show', `${r5Base}:backend/.dependency-cruiser-known-violations.json`,
   ], { cwd: repositoryRoot(), encoding: 'utf8' });
@@ -1046,16 +1220,77 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
   const baseOwnership = JSON.parse(
     baseOwnershipResult.stdout,
   ) as { violations: Array<Record<string, unknown>> } & Record<string, unknown>;
-  const candidateDependency = r5.expectedR5DependencyRecords(baseDependency, manifest);
-  const candidateOwnership = {
+  const r5CandidateDependency = r5.expectedR5DependencyRecords(baseDependency, manifest);
+  const r7Manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  ));
+  const r7Retired = new Set(r7Manifest.historicalHandoffs.retiredDependencyKeys);
+  const historicalR7Live22 = r5CandidateDependency.filter((record) => !r7Retired.has(
+    `${(record.rule as { name: string }).name}|${String(record.from)}|${String(record.to)}`,
+  ));
+  const strictCandidateDependency = r12a.expectedR12aDependencyRecords(
+    historicalR7Live22,
+    r12aManifest,
+  ) as Array<Record<string, unknown>>;
+  const strictLiveDependency = r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot: repositoryRoot(),
+    r12aEntryRecords: historicalR7Live22,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot(), encoding: 'utf8' },
+    ),
+  }) as Array<Record<string, unknown>>;
+  const r5CandidateOwnership = {
     ...baseOwnership,
     violations: r5.mapOwnershipRecordsForR5(baseOwnership.violations, manifest),
   };
+  const strictCandidateOwnership = r5.applyR12aOwnershipProjection(
+    r5CandidateOwnership,
+    r12aManifest,
+  );
+  assert.equal(strictCandidateDependency.length, 16);
+  assert.equal(strictLiveDependency.length, 0);
+  assert.deepEqual(strictCandidateOwnership, r12a.expectedR12aOwnershipBaseline(
+    r5CandidateOwnership,
+    r12aManifest,
+  ));
+  for (const [stage, expectedRecords, expectedRetired] of [
+    ['design', 22, 67],
+    ['backoffice', 17, 72],
+    ['strict', 16, 73],
+  ] as const) {
+    const stagedR12aManifest = structuredClone(r12aManifest);
+    stagedR12aManifest.stage = stage;
+    const stagedDependency = r12a.expectedR12aDependencyRecords(
+      historicalR7Live22,
+      stagedR12aManifest,
+    ) as Array<Record<string, unknown>>;
+    const stagedOwnership = r5.applyR12aOwnershipProjection(
+      r5CandidateOwnership,
+      stagedR12aManifest,
+    );
+    assert.deepEqual(r5.verifyR5Baselines({
+      baseDependency,
+      candidateDependency: stagedDependency,
+      baseOwnership,
+      candidateOwnership: stagedOwnership,
+      manifest,
+      r12aManifest: stagedR12aManifest,
+    }), {
+      dependencyRecords: expectedRecords,
+      retiredDependencyRecords: expectedRetired,
+      ownershipRecords: 385,
+      ownershipOccurrences: 781,
+    });
+  }
   const verified = r5.verifyR5Baselines({
     baseDependency,
-    candidateDependency,
+    candidateDependency: r5CandidateDependency,
     baseOwnership,
-    candidateOwnership,
+    candidateOwnership: r5CandidateOwnership,
     manifest,
   });
   assert.deepEqual(verified, {
@@ -1065,12 +1300,25 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
     ownershipOccurrences: 781,
   });
 
+  const unsortedOwnership = structuredClone(r5CandidateOwnership);
+  [unsortedOwnership.violations[0], unsortedOwnership.violations[1]] = [
+    unsortedOwnership.violations[1],
+    unsortedOwnership.violations[0],
+  ];
+  assert.throws(() => r5.verifyR5Baselines({
+    baseDependency,
+    candidateDependency: r5CandidateDependency,
+    baseOwnership,
+    candidateOwnership: unsortedOwnership,
+    manifest,
+  }), /ownership baseline drift/i);
+
   const candidateRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-baseline-cli-'));
   temporaryRoots.push(candidateRoot);
   const dependencyPath = path.join(candidateRoot, 'dependency.json');
   const ownershipPath = path.join(candidateRoot, 'ownership.json');
-  writeFileSync(dependencyPath, `${JSON.stringify(candidateDependency, null, 2)}\n`, 'utf8');
-  writeFileSync(ownershipPath, `${JSON.stringify(candidateOwnership, null, 2)}\n`, 'utf8');
+  writeFileSync(dependencyPath, `${JSON.stringify(strictLiveDependency, null, 2)}\n`, 'utf8');
+  writeFileSync(ownershipPath, `${JSON.stringify(strictCandidateOwnership, null, 2)}\n`, 'utf8');
   const cli = spawnSync(process.execPath, [
     scannerPath,
     '--check',
@@ -1078,7 +1326,7 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
     '--ownership-candidate', ownershipPath,
   ], { cwd: backendRoot, encoding: 'utf8' });
   assert.equal(cli.status, 0, cli.stderr || cli.stdout);
-  assert.match(cli.stdout, /dependency=31, retired=58, ownership=385\/781/u);
+  assert.match(cli.stdout, /dependency=0, retired=89, ownership=385\/781/u);
 
   const aliased = spawnSync(process.execPath, [
     scannerPath,
@@ -1103,17 +1351,17 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
   assert.equal(escaped.status, 2);
   assert.equal(escaped.stderr, 'ERROR - R5 Identity relocation validation failed\n');
 
-  const dependencyDrift = structuredClone(candidateDependency);
+  const dependencyDrift = structuredClone(r5CandidateDependency);
   dependencyDrift[0].dependencyTypes = ['local', 'type-only'];
   assert.throws(() => r5.verifyR5Baselines({
     baseDependency,
     candidateDependency: dependencyDrift,
     baseOwnership,
-    candidateOwnership,
+    candidateOwnership: r5CandidateOwnership,
     manifest,
   }), /dependency baseline drift/i);
 
-  const reorderedDependency = structuredClone(candidateDependency);
+  const reorderedDependency = structuredClone(r5CandidateDependency);
   [reorderedDependency[0], reorderedDependency[1]] = [
     reorderedDependency[1], reorderedDependency[0],
   ];
@@ -1121,21 +1369,21 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
     baseDependency,
     candidateDependency: reorderedDependency,
     baseOwnership,
-    candidateOwnership,
+    candidateOwnership: r5CandidateOwnership,
     manifest,
   }), /dependency baseline drift/i);
 
-  const ownershipDrift = structuredClone(candidateOwnership);
+  const ownershipDrift = structuredClone(r5CandidateOwnership);
   ownershipDrift.violations[0].operation = 'deleteMany';
   assert.throws(() => r5.verifyR5Baselines({
     baseDependency,
-    candidateDependency,
+    candidateDependency: r5CandidateDependency,
     baseOwnership,
     candidateOwnership: ownershipDrift,
     manifest,
   }), /ownership baseline drift/i);
 
-  const foreignAccess = structuredClone(candidateOwnership);
+  const foreignAccess = structuredClone(r5CandidateOwnership);
   foreignAccess.violations.push({
     ...foreignAccess.violations[0],
     key: 'backend/src/modules/identity/internal/profile/users.service.ts|identity|finance|WeddingCost|create|write|delegate|foreign-model',
@@ -1151,7 +1399,7 @@ test('R5 baseline verifier accepts only the exact remaining dependency and mappe
   });
   assert.throws(() => r5.verifyR5Baselines({
     baseDependency,
-    candidateDependency,
+    candidateDependency: r5CandidateDependency,
     baseOwnership,
     candidateOwnership: foreignAccess,
     manifest,
@@ -1191,3 +1439,177 @@ test('R5 live scope captures Git diagnostics locally and keeps nonzero exits fai
 function repositoryRoot(): string {
   return path.resolve(backendRoot, '..');
 }
+
+let cachedR12cPredecessor: any;
+function r12cPredecessor(): any {
+  if (cachedR12cPredecessor) return cachedR12cPredecessor;
+  const scanner = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12c-zero-cross-context-dependencies-scan.cjs',
+  ));
+  const manifest = scanner.validateR12cManifest(JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12c-zero-cross-context-dependencies.json',
+  ), 'utf8')));
+  cachedR12cPredecessor = scanner.projectR12cWorkingTreeToPredecessor({
+    repositoryRoot: repositoryRoot(),
+    manifest,
+  });
+  return cachedR12cPredecessor;
+}
+
+test('R12A Identity provider-rating handoff normalizes imports only', () => {
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  manifest.stage = 'strict';
+  const source = readFileSync(
+    path.join(backendRoot, 'src', 'modules', 'identity', 'internal', 'profile', 'users.service.ts'),
+    'utf8',
+  );
+  const historical = source.replace(
+    '../../../marketplace/public/provider-review-rating',
+    '../../../../marketplace/provider-review-rating',
+  );
+  assert.equal(
+    require(path.join(backendRoot, 'scripts', 'architecture', 'r5-identity-scan.cjs'))
+      .normalizeR12aIdentityProviderRatingSource(source, manifest),
+    historical.replace(/\r\n/gu, '\n'),
+  );
+  const behaviorChanged = source.replace('await refreshProviderRating', 'return refreshProviderRating');
+  assert.notEqual(
+    require(path.join(backendRoot, 'scripts', 'architecture', 'r5-identity-scan.cjs'))
+      .normalizeR12aIdentityProviderRatingSource(behaviorChanged, manifest),
+    historical.replace(/\r\n/gu, '\n'),
+  );
+});
+
+test('R5 ownership handoff applies the canonical R7 fixture once and rejects near-misses', () => {
+  const r5 = loadScanner();
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  manifest.stage = 'backoffice';
+  const fixture = r7HistoryOwnershipFixture();
+  const projected = r5.applyR12aOwnershipProjection(fixture.liveOwnership, manifest) as {
+    violations: Array<Record<string, any>>;
+  };
+  assert.equal(projected.violations.length, 385);
+  assert.equal(projected.violations.reduce((sum: number, item: any) => sum + item.count, 0), 781);
+  assert.deepEqual(projected.violations.map((item: any) => item.key), [...projected.violations.map((item: any) => item.key)].sort());
+
+  const unsorted = structuredClone(projected);
+  [unsorted.violations[0], unsorted.violations[1]] = [unsorted.violations[1], unsorted.violations[0]];
+  assert.notDeepEqual(unsorted, projected);
+
+  const secondProjection = structuredClone(manifest);
+  secondProjection.ownershipProjection.oldKey = 'backend/src/admin/admin.guard.ts|backoffice|identity|User|select|read|sql|foreign-model';
+  assert.throws(() => r5.applyR12aOwnershipProjection(fixture.liveOwnership, secondProjection), /projection|ownership/i);
+  const semanticDrift = structuredClone(manifest);
+  semanticDrift.ownershipProjection.unchanged.operation = 'update';
+  assert.throws(() => r5.applyR12aOwnershipProjection(fixture.liveOwnership, semanticDrift), /projection|ownership/i);
+  const removedR7 = structuredClone(JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r7-collaboration-relocation.json'),
+    'utf8',
+  )));
+  removedR7.historicalHandoffs.ownershipProjection = [];
+  assert.throws(() => require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r7-collaboration-relocation-scan.cjs',
+  )).validateR7Manifest(removedR7), /historical|handoff|projection/i);
+});
+
+test('R5 historical handoff mutations reject a seventh retirement and changed constants', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  const seventh = structuredClone(manifest);
+  seventh.stages.strict.retiredDependencyIds.push(7);
+  assert.throws(() => r12a.validateR12aManifest(seventh), /retired|projection/i);
+  const changed = structuredClone(manifest);
+  changed.entry.dependencyRecords = 21;
+  assert.throws(() => r12a.validateR12aManifest(changed), /entry|dependency/i);
+});
+
+test('R5 CLI validates and forwards the R12A manifest to its live scan', () => {
+  const scanner = loadScanner();
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  manifest.stage = 'not-a-stage';
+  const stderr: string[] = [];
+  const code = scanner.runCli({
+    argv: ['--check'],
+    r12aManifest: manifest,
+    stderr: (message: string) => stderr.push(message),
+    stdout: () => undefined,
+  });
+  assert.equal(code, 2);
+  assert.deepEqual(stderr, ['ERROR - R5 Identity relocation validation failed']);
+});
+
+test('R12C successor handoff preserves historical 16 and selects exact strict live 0', () => {
+  const repositoryRoot = path.resolve(backendRoot, '..');
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  });
+  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r5-no-r12b-'));
+  try {
+    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+      repositoryRoot: historicalRoot,
+      r12aEntryRecords: entry.dependency,
+      r12aManifest,
+      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },
+    }).length, 16);
+  } finally {
+    rmSync(historicalRoot, { recursive: true, force: true });
+  }
+  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  }).length, 0);
+});

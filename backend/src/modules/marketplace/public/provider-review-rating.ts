@@ -1,7 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Prisma, ReviewStatus } from "@prisma/client";
-import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { PrismaService } from "../platform/database/prisma.service";
+import { runSerializableTransaction } from "../../../platform/database/serializable-transaction";
+import { PrismaService } from "../../../platform/database/prisma.service";
 
 export async function lockProviderRatingRows(
   tx: Prisma.TransactionClient,

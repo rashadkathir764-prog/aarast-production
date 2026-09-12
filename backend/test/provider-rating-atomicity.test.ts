@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -116,7 +122,7 @@ test("concurrent review creation cannot leave a stale provider rating cache", as
       },
     },
   };
-  const service = new MarketplaceService(prisma, {} as any, {} as any);
+  const service = new MarketplaceService(prisma, {} as any, {} as any, lifecycle);
   const user = (id: string) =>
     ({
       id,
@@ -152,7 +158,7 @@ test("every product review mutation uses the shared locked aggregate boundary", 
   const marketplace = source("marketplace/marketplace.service.ts");
   const admin = source("admin/admin-mutation-executor.ts");
   const accountDeletion = source("modules/identity/internal/profile/users.service.ts");
-  const aggregate = source("marketplace/provider-review-rating.ts");
+  const aggregate = source("modules/marketplace/public/provider-review-rating.ts");
 
   assert.equal(
     (marketplace.match(/runProviderReviewMutation\(/g) ?? []).length,

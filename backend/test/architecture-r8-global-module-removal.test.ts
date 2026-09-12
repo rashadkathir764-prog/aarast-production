@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { afterEach, test } from 'node:test';
 import { Injectable, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -201,14 +202,33 @@ type R8Scanner = {
   scanR8GlobalRemoval(options: {
     repositoryRoot: string;
     manifest: unknown;
+    readImmutableFile?: (revision: string, relativePath: string) => string | Buffer;
   }): unknown;
   validateR8Manifest(value: unknown): Readonly<R8Manifest>;
-  validateR8ScanResult(value: unknown): unknown;
+  validateR8ScanResult(value: unknown, r12aManifest?: unknown): unknown;
+  verifyBaselines(
+    repositoryRoot: string,
+    r12aManifest?: unknown,
+    readImmutableFile?: (revision: string, relativePath: string) => string | Buffer,
+  ): {
+    dependencyRecords: number;
+    ownershipRecords: number;
+    ownershipOccurrences: number;
+  };
   verifyExternalGlobalIdentities(repositoryRoot: string, manifest: unknown): unknown;
 };
 
 function scanner(modulePath = scannerPath): R8Scanner {
   return require(modulePath) as R8Scanner;
+}
+
+function readImmutableFile(revision: string, relativePath: string): string {
+  return execFileSync('git', ['show', `${revision}:${relativePath}`], {
+    cwd: path.resolve(backendRoot, '..'),
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true,
+  });
 }
 
 function manifest(): R8Manifest {
@@ -407,7 +427,7 @@ function writeFixtureFile(root: string, relativePath: string, contents: string):
 }
 
 function sourceFixture(files: Record<string, string>): string {
-  const root = mkdtempSync(path.join(backendRoot, '.r8-architecture-fixture-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r8-architecture-fixture-'));
   temporaryRoots.push(root);
   writeFixtureFile(root, 'backend/tsconfig.json', JSON.stringify({
     compilerOptions: {
@@ -422,6 +442,11 @@ function sourceFixture(files: Record<string, string>): string {
     },
     include: ['src/**/*.ts'],
   }));
+  symlinkSync(
+    path.join(backendRoot, 'node_modules'),
+    path.join(root, 'backend', 'node_modules'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
   for (const [relativePath, contents] of Object.entries(files)) {
     writeFixtureFile(root, relativePath, contents);
   }
@@ -536,6 +561,100 @@ function externalFixture(): string {
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+test('R12A R8 historical/live count contract rejects changed ownership totals', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  const ownership = r12a.readR12aImmutableEntry({
+    repositoryRoot: path.resolve(backendRoot, '..'),
+    manifest,
+    readImmutableFile,
+  }).ownership;
+  assert.equal(r12a.expectedR12aOwnershipBaseline(ownership, manifest).violations.length, 385);
+  const changed = structuredClone(manifest);
+  changed.ownershipProjection.unchanged.count = 2;
+  assert.throws(() => r12a.validateR12aManifest(changed), /projection|ownership/i);
+});
+
+test('R8 accepts exact R12A design, backoffice, and strict baseline projections', () => {
+  const r8 = scanner();
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const entryDependency = JSON.parse(execFileSync('git', [
+    'show', '4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1:backend/.dependency-cruiser-known-violations.json',
+  ], { cwd: path.resolve(backendRoot, '..'), encoding: 'utf8' }));
+  const entryOwnership = JSON.parse(execFileSync('git', [
+    'show', '4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1:backend/architecture/ownership-baseline.json',
+  ], { cwd: path.resolve(backendRoot, '..'), encoding: 'utf8' }));
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r8-r12a-baseline-'));
+  temporaryRoots.push(root);
+  for (const stage of ['design', 'backoffice', 'strict'] as const) {
+    const candidate = JSON.parse(readFileSync(
+      path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+      'utf8',
+    ));
+    candidate.stage = stage;
+    writeFixtureFile(root, 'backend/.dependency-cruiser-known-violations.json',
+      `${JSON.stringify(r12a.expectedR12aDependencyRecords(entryDependency, candidate), null, 2)}\n`);
+    writeFixtureFile(root, 'backend/architecture/ownership-baseline.json',
+      `${JSON.stringify(r12a.expectedR12aOwnershipBaseline(entryOwnership, candidate), null, 2)}\n`);
+    assert.deepEqual(r8.verifyBaselines(root, candidate, readImmutableFile), {
+      dependencyRecords: stage === 'design' ? 22 : stage === 'backoffice' ? 17 : 16,
+      ownershipRecords: 385,
+      ownershipOccurrences: 781,
+    });
+  }
+});
+
+test('R8 historical handoff mutations reject a seventh retirement and changed constants', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  const seventh = structuredClone(manifest);
+  seventh.stages.strict.retiredDependencyIds.push(7);
+  assert.throws(() => r12a.validateR12aManifest(seventh), /retired|projection/i);
+
+  const changed = structuredClone(manifest);
+  changed.entry.dependencyRecords = 21;
+  assert.throws(() => r12a.validateR12aManifest(changed), /entry|dependency/i);
+});
+
+test('R8 default R12A manifest is resolved from the supplied repository root', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r8-r12a-root-'));
+  const invalid = { stage: 'not-a-valid-r12a-stage' };
+  mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
+  writeFileSync(
+    path.join(root, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    `${JSON.stringify(invalid)}\n`,
+  );
+  assert.throws(
+    () => scanner().scanR8GlobalRemoval({
+      repositoryRoot: root,
+      manifest: manifest(),
+    }),
+    /R12A manifest/i,
+  );
+  rmSync(root, { recursive: true, force: true });
 });
 
 test('R8 strict manifest is exact, hash-bound, and deeply immutable', () => {
@@ -686,7 +805,7 @@ test('R8 strict scan reports zero project globals and the complete live DI closu
       duplicateProviders: 0,
       forwardRef: 0,
       nestModuleCycles: 0,
-      dependencyRecords: 22,
+      dependencyRecords: 0,
       ownershipRecords: 385,
       ownershipOccurrences: 781,
     },
@@ -872,7 +991,7 @@ test('R8 CLI and result validator are fixed, bounded, and sanitized', () => {
     stderr: (message) => stderr.push(message),
   }), 0);
   assert.equal(stdout.length, 1);
-  assert.match(stdout[0], /^PASS - R8 global removal: stage=strict, globals=0, Prisma=21\/21, missing=0, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=22, ownership=385\/781$/u);
+  assert.match(stdout[0], /^PASS - R8 global removal: stage=strict, globals=0, Prisma=21\/21, missing=0, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=385\/781$/u);
   assert.deepEqual(stderr, []);
 
   const invalidOut: string[] = [];
@@ -906,10 +1025,27 @@ test('R8 CLI and result validator are fixed, bounded, and sanitized', () => {
     { ...validResult, extra: true },
     { ...validResult, stage: 'relocated' },
     { ...validResult, dependencyRecords: -1 },
+    { ...validResult, dependencyRecords: 17 },
+    { ...validResult, dependencyRecords: 16 },
     { ...validResult, external: { identities: 3 } },
   ]) {
     assert.throws(() => r8.validateR8ScanResult(mutation), /R8|scan|result|schema/i);
   }
+
+  const r12aManifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  assert.doesNotThrow(() => r8.validateR8ScanResult({
+    ...validResult,
+    dependencyRecords: 16,
+  }, r12aManifest));
+  const backoffice = structuredClone(r12aManifest);
+  backoffice.stage = 'backoffice';
+  assert.throws(() => r8.validateR8ScanResult({
+    ...validResult,
+    dependencyRecords: 16,
+  }, backoffice), /R8|scan|result|contract/i);
 });
 
 test('R8 resolves direct, aliased, namespace, re-exported, and computed Nest Global', async (t) => {
@@ -1805,4 +1941,48 @@ test('R8 external verifier rejects imported class, method, source path, and call
       /external|source|identity|app/i,
     );
   });
+});
+
+test('R12C successor handoff preserves historical 16 and selects exact strict live 0', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  });
+  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r8-no-r12b-'));
+  try {
+    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+      repositoryRoot: historicalRoot,
+      r12aEntryRecords: entry.dependency,
+      r12aManifest,
+      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },
+    }).length, 16);
+  } finally {
+    rmSync(historicalRoot, { recursive: true, force: true });
+  }
+  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  }).length, 0);
 });

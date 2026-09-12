@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -187,7 +193,7 @@ test("an administrator app session can create a provider profile without changin
   const service = new ProviderDashboardService(
     prisma as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await service.apply(

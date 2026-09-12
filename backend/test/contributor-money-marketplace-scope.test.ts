@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -169,7 +175,7 @@ test("plan quote list restricts a contributor to requests they submitted", async
     prisma as any,
     permissions as any,
     {} as any,
-    {} as any,
+    lifecycle, {} as any,
   );
 
   await service.findPlanQuoteRequests(

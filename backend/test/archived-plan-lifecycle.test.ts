@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
@@ -385,7 +391,7 @@ test('a requester cannot cancel a quote linked to an archived plan', async () =>
       }),
       canManageProviders: () => true,
     } as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await assert.rejects(
@@ -458,7 +464,7 @@ test('an active provider cannot transition a quote linked to an archived plan', 
         operation(tx),
     } as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await assert.rejects(
@@ -566,7 +572,7 @@ test('an active provider cannot create or update an offer for an archived plan',
         operation(tx),
     } as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await assert.rejects(

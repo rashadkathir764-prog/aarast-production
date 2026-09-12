@@ -114,6 +114,7 @@ type R6Scanner = {
     repositoryRoot: string;
     manifest: unknown;
     readBaseFile?: (relativePath: string) => Buffer;
+    readImmutableFile?: (revision: string, relativePath: string) => string | Buffer;
   }): {
     ok: boolean;
     stage: string;
@@ -229,14 +230,23 @@ function scanner(): R6Scanner {
   return require(scannerPath) as R6Scanner;
 }
 
+function readImmutableFile(revision: string, relativePath: string): string {
+  return execFileSync('git', ['show', `${revision}:${relativePath}`], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true,
+  });
+}
+
 function readManifest(): R6Manifest {
   return JSON.parse(readFileSync(manifestPath, 'utf8')) as R6Manifest;
 }
 
 function copyProtectedFixture(root: string): void {
   for (const relativePath of [
-    'backend/.dependency-cruiser-known-violations.json',
     'backend/architecture/ownership-baseline.json',
+    'backend/architecture/r12a-backoffice-catalog-public-contracts.json',
     'backend/src/platform/otp-transport/openwa-otp.channel.ts',
     'backend/src/platform/otp-transport/openwa-otp-config.ts',
     'backend/src/platform/otp-transport/openwa-transient-text.ts',
@@ -250,6 +260,31 @@ function copyProtectedFixture(root: string): void {
     mkdirSync(path.dirname(target), { recursive: true });
     copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
   }
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile,
+  });
+  const historicalDependency = r12a.expectedR12aDependencyRecords(
+    entry.dependency,
+    r12aManifest,
+  );
+  writeFileSync(
+    path.join(root, 'backend', '.dependency-cruiser-known-violations.json'),
+    `${JSON.stringify(historicalDependency, null, 2)}\n`,
+    'utf8',
+  );
 }
 
 afterEach(() => {
@@ -436,6 +471,7 @@ test('R6 scan rejects a second Collaboration concrete transport import', () => {
       manifest: readManifest(),
       readBaseFile: (relativePath: string) =>
         readFileSync(path.join(root, ...relativePath.split('/'))),
+      readImmutableFile,
     }),
     /concrete.*import|transport.*import/i,
   );
@@ -472,6 +508,7 @@ test('R6 scan rejects any other Collaboration platform OTP transport import', ()
       manifest: readManifest(),
       readBaseFile: (relativePath: string) =>
         readFileSync(path.join(root, ...relativePath.split('/'))),
+      readImmutableFile,
     }),
     /concrete.*import|transport.*import/i,
   );
@@ -497,6 +534,7 @@ test('R6 scan rejects protected OpenWA transport drift', () => {
       manifest: readManifest(),
       readBaseFile: (relativePath: string) =>
         readFileSync(path.join(repositoryRoot, ...relativePath.split('/'))),
+      readImmutableFile,
     }),
     /protected|hash|drift/i,
   );
@@ -512,7 +550,7 @@ test('R6 package scripts expose the standalone gate and keep every prior gate', 
   );
   assert.equal(
     packageJson.scripts.architecture,
-    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8',
+    'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a && npm run architecture:r12b && npm run architecture:r12c',
   );
 });
 
@@ -992,4 +1030,89 @@ test('R6 Task 3 injects the canonical Identity port and imports only its public 
     resolvedSymbol(injectCall.arguments[0]),
     contractDeclarations.get('IDENTITY_TRANSIENT_DELIVERY_PORT'),
   );
+});
+
+test('R12A dependency projection exposes exact cumulative counts and rejects a seventh retirement', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  const dependency = JSON.parse(readImmutableFile(
+    manifest.repository.baseCommit,
+    'backend/.dependency-cruiser-known-violations.json',
+  ));
+  for (const [stage, count] of [['design', 22], ['backoffice', 17], ['strict', 16]] as const) {
+    const candidate = structuredClone(manifest);
+    candidate.stage = stage;
+    assert.equal(r12a.expectedR12aDependencyRecords(dependency, candidate).length, count);
+  }
+  const invalid = structuredClone(manifest);
+  invalid.stages.strict.retiredDependencyIds.push(7);
+  assert.throws(() => r12a.validateR12aManifest(invalid), /projection|retired/i);
+});
+
+test('R6 default R12A manifest is resolved from the supplied repository root', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r6-r12a-root-'));
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const invalid = { stage: 'not-a-valid-r12a-stage' };
+  mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
+  writeFileSync(
+    path.join(root, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    `${JSON.stringify(invalid)}\n`,
+  );
+  assert.throws(
+    () => require(scannerPath).scanR6SharingOtpTransport({ repositoryRoot: root, manifest }),
+    /R12A manifest/i,
+  );
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('R12C successor handoff preserves historical 16 and selects exact strict live 0', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  });
+  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r6-no-r12b-'));
+  try {
+    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+      repositoryRoot: historicalRoot,
+      r12aEntryRecords: entry.dependency,
+      r12aManifest,
+      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },
+    }).length, 16);
+  } finally {
+    rmSync(historicalRoot, { recursive: true, force: true });
+  }
+  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  }).length, 0);
 });

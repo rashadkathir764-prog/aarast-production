@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConversationLifecyclePublicModule } from '../../messaging/public/conversation-lifecycle-public.module';
 import { MarketplaceService } from '../../../marketplace/marketplace.service';
 import { ProviderDashboardService } from '../../../provider-dashboard/provider-dashboard.service';
 import { PrismaModule } from '../../../platform/database/prisma.module';
@@ -10,6 +11,7 @@ import { NotificationsPublicModule } from '../../notifications/public/notificati
 @Module({
   imports: [
     PrismaModule,
+    ConversationLifecyclePublicModule,
     CollaborationPermissionPublicModule,
     CollaborationHistoryPublicModule,
     NotificationsPublicModule,

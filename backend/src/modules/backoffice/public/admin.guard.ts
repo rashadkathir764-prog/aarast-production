@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
-import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import type { AuthenticatedUser } from '../../identity/public/identity-session.types';
 
 @Injectable()
 export class AdminGuard implements CanActivate {

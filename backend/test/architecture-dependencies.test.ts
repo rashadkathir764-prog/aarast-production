@@ -236,30 +236,50 @@ test('only legacy auth/catalogs and relocated SafeUser may import the exact Back
   );
 });
 
-test('R5 relocated Identity internals retain only their two exact pure helper dependencies', () => {
+test('R12C relocated Identity internals consume provider access only through Marketplace public', () => {
   const allowedRoot = fixtureRoot();
   write(
     allowedRoot,
     'src/modules/identity/internal/profile/contexts.service.ts',
+    "import '../../../marketplace/public/provider-access-policy';\n",
+  );
+  write(
+    allowedRoot,
+    'src/modules/marketplace/public/provider-access-policy.ts',
+    'export const providerAccessPolicy = true;\n',
+  );
+  const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
+  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+
+  const legacyRoot = fixtureRoot();
+  write(
+    legacyRoot,
+    'src/modules/identity/internal/profile/contexts.service.ts',
     "import '../../../../provider-dashboard/provider-access-policy';\n",
   );
   write(
-    allowedRoot,
+    legacyRoot,
     'src/provider-dashboard/provider-access-policy.ts',
     'export const providerAccessPolicy = true;\n',
   );
+  const legacy = cruise(legacyRoot, ['--config', configPath, 'src']);
+  assert.notEqual(legacy.status, 0);
+  assert.match(`${legacy.stdout}\n${legacy.stderr}`, /context-identity-cross-context/);
+
+  const retiredRoot = fixtureRoot();
   write(
-    allowedRoot,
+    retiredRoot,
     'src/modules/identity/internal/profile/users.service.ts',
     "import '../../../../marketplace/provider-review-rating';\n",
   );
   write(
-    allowedRoot,
+    retiredRoot,
     'src/marketplace/provider-review-rating.ts',
     'export const refreshProviderRating = true;\n',
   );
-  const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
-  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+  const retired = cruise(retiredRoot, ['--config', configPath, 'src']);
+  assert.notEqual(retired.status, 0);
+  assert.match(`${retired.stdout}\n${retired.stderr}`, /context-identity-cross-context/);
 
   const siblingSourceRoot = fixtureRoot();
   write(

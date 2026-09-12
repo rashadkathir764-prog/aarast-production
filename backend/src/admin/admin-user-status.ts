@@ -2,7 +2,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AdminRole, Prisma, UserRole, UserStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
-import { authorizeAdminMutationActor } from './admin-mutation-gate';
+import { authorizeAdminMutationActor } from '../modules/backoffice/public/admin-mutation-gate';
 
 export async function authorizeAdminUserStatusChange(
   tx: Prisma.TransactionClient,

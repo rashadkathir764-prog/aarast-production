@@ -1,10 +1,85 @@
 # Current Status
 
-Snapshot date: 2026-08-31
+Snapshot date: 2026-09-06
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R12B — Local Completion — 2026-09-06
+
+R12B is complete locally.
+Dependency debt is 9.
+Ownership remains 385/781.
+The architecture target remains incomplete.
+R12C implementation has not begun.
+No commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, phone acceptance, or release is claimed.
+
+The unchanged wedding-location implementation now has one Planning public
+owner, its legacy path is absent, and the seven declared consumers use the
+public contract. Onboarding owns two local nested DTOs with exact source and
+validation parity. Only dependency IDs `7-9`, `11`, `18`, and `21-22` were
+retired, so the ledger is `16 -> 9`; ownership remains byte-identical at
+`385/781`.
+
+Task 5 passed focused `54/54`, full Backend `1455/1456` with zero failures and
+one declared Windows skip, affected smokes `9/9`, aggregate smokes `30/30`,
+both audits at zero, and independent review at Critical/Important/Minor
+`0/0/0`. The Task 6 candidate review approved activation; the four-receipt
+documentation transition is complete and activated exact-state re-review is
+the final close gate.
+
+## Modular Monolith R12A Local Completion - 2026-09-02
+
+R12A is complete locally on branch
+`modular-monolith` from immutable entry
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. Four Backoffice
+authority/mutation contracts and one Marketplace provider-rating helper now
+exist only under owner `public/` locations; nine fixed consumers use them and
+all five legacy paths are absent without facade, duplicate, or fallback.
+
+Dependency records 1-6 were subtracted exactly: `22 -> 17 -> 16`, with no
+addition or unrelated removal. One ownership path was projected without
+semantic/count drift, so ownership remains `385/781`. R16 still owns the exact
+Identity-to-Marketplace runtime-public helper handoff; R17 still owns the R1
+Backoffice pure permission-contract pre-port handoff. The architecture target
+is not complete.
+
+Fresh verification passed behavior `31/31`, architecture `522/522`, cumulative
+architecture/check/build, full Backend tests `1407/1408` with zero failures and
+one pre-existing skip, five affected managed smokes, and all 30 aggregate smoke
+packages. The security reader rejects exact and Unicode-escaped duplicate JSON
+members before package projection; Task 5 independent re-review approved the
+candidate with Critical `0`, Important `0`, Minor `0`.
+
+Task 6 documentation, exact scope, immutable identity, and independent review
+passed with Critical `0`, Important `0`, Minor `0`. No API/schema/migration/route/DTO/error/permission/
+transaction/Arabic/Mobile/Admin Web/deployment behavior changed. No commit,
+push, merge, deployment, production mutation, remote CI, provider delivery, or
+release occurred. Do not start R12B; R12B design/planning still requires
+separate owner approval.
+
+## Modular Monolith R11 Target Reconciliation - 2026-09-01
+
+R11 documentation reconciliation is locally complete on branch
+`modular-monolith` from immutable local R10 closeout
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. The original target remains
+binding; the R0-R10 wave is locally closed with declared gaps, not equivalent
+to full architecture completion.
+
+R11 is documentation-only. It records the exact live Backend debt at 22
+dependency records and 385 ownership records / 781 occurrences, the immutable
+record allocations, and the ordered R11-R20 completion program. R13-R17 own
+the full non-overlapping ownership retirement; R14A Identity must exit before
+R14B Collaboration begins so the invite OTP owner port exists first. R18 must
+enter at 0/0 and may only prove strict zero and delete the zero-valued baseline.
+
+The exact nine-Markdown scope fence, historical 178-path R10 fence,
+architecture debt truth checks, documentation gates, and independent review
+passed with no unresolved finding. R11 does not authorize R12 implementation.
+Push, merge, deployment, production mutation, remote CI, provider delivery,
+and release remain outside scope.
 
 ## Modular Monolith R10 Admin Local Completion - 2026-08-31
 
@@ -35,7 +110,9 @@ logout without retaining disposable database, Redis, media, or process state.
 R10 is an internal Admin relocation, not completion of the whole architecture
 target. Backend dependency debt remains exactly 22 records and physical
 ownership debt remains 385 records / 781 occurrences. The R0-R10 execution wave
-is locally closed with those declared gaps. No commit, push, merge, PR mutation,
+is locally closed with those declared gaps. The R10 report itself claimed no
+commit; the owner subsequently authorized the local R10 closeout commit
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. No push, merge, PR mutation,
 deployment, production mutation, remote CI, real WhatsApp delivery, or live
 Firebase Push is claimed; release/store evidence remains governed separately.
 
@@ -1581,3 +1658,13 @@ closeout `e560e5784278907dd6bf565327c3abfa0c9b8cab`. Stop before any commit,
 push, merge, PR mutation, deployment, production mutation, remote CI, store
 release, or S10 work unless the owner authorizes that action separately. The
 remaining Backend target debt requires its own future phase and plan.
+
+That stop was later lifted only for the owner-authorized local R10 commit
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`; no external Git or deployment
+action followed.
+
+## R11 Target Reconciliation Stop Boundary
+
+R11 may change only its nine approved Markdown paths. Stop before R12 source
+implementation, any additional commit, push, merge, PR mutation, deployment,
+production mutation, remote CI, provider delivery, store release, or S10.

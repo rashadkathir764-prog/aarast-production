@@ -1,5 +1,22 @@
 # Decisions
 
+## Modular Monolith R12B — Local Completion — 2026-09-06
+
+R12B is complete locally.
+Dependency debt is 9.
+Ownership remains 385/781.
+The architecture target remains incomplete.
+R12C implementation has not begun.
+No commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, phone acceptance, or release is claimed.
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Publish the unchanged wedding-location implementation from the Planning owner public boundary and remove the legacy path. | Local Completion | Exactly seven declared consumers use the public path. Source parity, behavior, and predecessor reconstruction pass without a facade, fallback, duplicate, route, payload, or runtime change. |
+| Own local-plan nested task and guest DTO shapes inside Onboarding. | Local Completion | The two local DTOs are exact class-name re-expressions of the immutable API DTOs. External keys, decorator order, accepted/rejected values, and nested transformation behavior remain unchanged. |
+| Retire only R12B dependency records `7-9`, `11`, `18`, and `21-22`. | Local Completion | The dependency ledger is `16 -> 9` with additions `0` and unrelated removals `0`; ownership remains byte-identical at `385/781`. R12C retains the remaining nine records. |
+| Keep R12B local completion distinct from architecture-target and release completion. | Accepted boundary | Task 5 and the Task 6 candidate review are approved; activated exact-state re-review remains mandatory. No Git, deployment, provider, phone, production, remote-CI, or release evidence is implied. |
+
 ## Modular Monolith R0 Decisions - 2026-08-11
 
 | Decision | Status | Rationale |
@@ -263,3 +280,40 @@ R10 Admin phase is complete in the working tree from immutable R9 closeout
 `e560e5784278907dd6bf565327c3abfa0c9b8cab`. Stop before commit, push, merge,
 deployment, production mutation, remote CI, store release, or S10. A future
 Backend debt-removal phase requires a separate decision, design, and plan.
+
+That historical stop was lifted only for local R10 commit
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. It did not authorize push,
+merge, deployment, remote CI, provider delivery, or release.
+
+## Modular Monolith R11 Decisions - 2026-09-01
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Version the post-R10 execution sequence as R11-R20 while preserving the 2026-08-04 final target. | Accepted and completed locally in R11 | Later R4-R9 plans narrowed their phase labels without updating the original external specification. The reconciliation keeps completed work, forbids false target-complete language, and restores just-in-time phase gates while live debt remains 22 and 385/781. |
+| Treat dependency and ownership baselines as exact subtraction ledgers. | Accepted and active | Each future plan names the exact records it retires. Regeneration, count widening, unrelated subtraction, and early deletion are forbidden. |
+| Allocate all ownership retirement to R13-R17 and reserve R18 for strict zero proof. | Accepted and active | R13, R14A Identity, R14B Collaboration, R15, R16, and R17 total 44/85, 60/78, 28/80, 10/19, 140/288, and 103/231, summing exactly to 385/781. R14B is blocked until R14A exits because the invite OTP owner port must exist first. The reason totals classify those same records; R18 enters at 0/0 and returns any residue to its owner. |
+| Keep R11 documentation-only and require separate authority for R12A. | Accepted and completed locally in R11 | R11 aligned nine Markdown paths and verified the unchanged live debt. It changed no application source, schema, package, runtime, deployment, provider, or release state. |
+
+## R11 Target Reconciliation Stop Boundary
+
+Stop before R12A source work, any additional commit, push, merge, deployment,
+production mutation, remote CI, provider delivery, store release, or S10. R12A
+requires its own reviewed design, implementation plan, scope fence, and owner
+approval.
+
+## Modular Monolith R12A Decisions - 2026-09-02
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Publish the four existing Backoffice authority/mutation contracts from `modules/backoffice/public` and the existing provider-rating mutation helper from `modules/marketplace/public`. | Accepted; R12A completed locally | The five implementations moved one-to-one, nine declared consumers now use owner-public paths, and all legacy files are absent. Export identity, guard order, transaction/lock order, permissions, errors, and behavior remain machine-checked without facades or fallbacks. |
+| Retire only dependency records 1-6 and project only the Backoffice mutation-gate ownership path. | Accepted; strict local result verified | The ledger moves exactly `22 -> 17 -> 16`; ownership remains `385/781`. Baselines are subtraction ledgers and were neither regenerated nor widened. |
+| Keep the remaining runtime-public and permission-contract handoffs explicit. | Accepted and active | R16 owns the Identity-to-Marketplace provider-rating infrastructure/public-port replacement. R17 owns publication of the pure Backoffice permission contract and deletion of the exact R1 pre-port exception before R18. |
+| Reject duplicate decoded JSON members before Prisma package-security parsing. | Accepted; independently reviewed | Exact and Unicode-escaped duplicate R12A script keys failed through the live CLI. The rule applies to every JSON object, retains pinned package/lock fingerprints, and adds no fallback or package change. |
+
+## R12A Local Closeout Stop Boundary
+
+R12A is complete locally. Task 5 and Task 6 are APPROVED (`0/0/0`), and the
+documentation, scope, identity, and final independent review gates passed.
+Stop before commit, push, merge, deployment, production mutation,
+remote CI, provider delivery, release, or R12B execution. After closeout, the
+only next permitted work is separate R12B design/planning with owner approval.

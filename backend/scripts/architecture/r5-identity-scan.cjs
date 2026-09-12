@@ -7,6 +7,13 @@ const os = require('node:os');
 const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
+const {
+  expectedR12aDependencyRecords,
+  expectedR12aSuccessorDependencyRecords,
+  expectedR12aOwnershipBaseline,
+  normalizeR12aIdentityProviderRatingImport,
+  validateR12aManifest,
+} = require('./r12a-backoffice-catalog-public-contracts-scan.cjs');
 
 const R5_BASE = '9dab73acdc187a4a18d8a675713d8ded40a16d02';
 const MANIFEST_PATH = 'backend/architecture/r5-identity-relocation.json';
@@ -394,12 +401,16 @@ const R7_ARCHITECTURE_SCRIPT =
   R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
 const R8_ARCHITECTURE_SCRIPT =
   R7_ARCHITECTURE_SCRIPT + ' && npm run architecture:r8';
+const R12A_ARCHITECTURE_SCRIPT =
+  R8_ARCHITECTURE_SCRIPT + ' && npm run architecture:r12a';
 const R6_STANDALONE_SCRIPT =
   'node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check';
 const R7_STANDALONE_SCRIPT =
   'node scripts/architecture/r7-collaboration-relocation-scan.cjs --check';
 const R8_STANDALONE_SCRIPT =
   'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
+const R12A_STANDALONE_SCRIPT =
+  'node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check';
 const R5_SECURITY_PACKAGE_JSON_SHA256 =
   '6db5c9fc4f6b6f7b3088cf351e61917d6dc62dfbeee6f816ffacb957f8d883ef';
 const R6_IDENTITY_MODULE_IMPORT =
@@ -412,6 +423,20 @@ function projectR6ArchitectureScriptsForR5Security(value) {
   const packageJson = plainObject(value, 'R5 security package');
   const scripts = plainObject(packageJson.scripts, 'R5 security package scripts');
   let projectedScripts = { ...scripts };
+  const r12aScriptKeys = Object.keys(projectedScripts)
+    .filter((scriptName) => scriptName.startsWith('architecture:r12a'));
+  const hasR12aAggregateIdentity = typeof projectedScripts.architecture === 'string'
+    && projectedScripts.architecture.includes('architecture:r12a');
+  if (r12aScriptKeys.length > 0 || hasR12aAggregateIdentity) {
+    if (r12aScriptKeys.length !== 1
+        || r12aScriptKeys[0] !== 'architecture:r12a'
+        || projectedScripts['architecture:r12a'] !== R12A_STANDALONE_SCRIPT
+        || projectedScripts.architecture !== R12A_ARCHITECTURE_SCRIPT) {
+      throw new Error('R5 security R12A architecture delegation is invalid');
+    }
+    delete projectedScripts['architecture:r12a'];
+    projectedScripts.architecture = R8_ARCHITECTURE_SCRIPT;
+  }
   const r8ScriptKeys = Object.keys(projectedScripts)
     .filter((scriptName) => scriptName.startsWith('architecture:r8'));
   const hasR8AggregateIdentity = typeof projectedScripts.architecture === 'string'
@@ -489,8 +514,17 @@ function validateR5SecurityCheckpointScope(value) {
     }
   }
   const security = require('../security/prisma-config-merge-security.cjs');
+  const packageJson = plainObject(input.packageJson, 'R5 security package');
+  const scripts = plainObject(packageJson.scripts, 'R5 security package scripts');
+  const r12bKeys = Object.keys(scripts)
+    .filter((scriptName) => scriptName.startsWith('architecture:r12b'));
+  const hasR12bAggregateIdentity = typeof scripts.architecture === 'string'
+    && scripts.architecture.includes('architecture:r12b');
+  const historicalPackageJson = r12bKeys.length > 0 || hasR12bAggregateIdentity
+    ? security.projectR12BArchitectureScripts(packageJson)
+    : packageJson;
   security.validatePackageGraph(
-    projectR6ArchitectureScriptsForR5Security(input.packageJson),
+    projectR6ArchitectureScriptsForR5Security(historicalPackageJson),
     input.packageLock,
     {
       expectedPackageFingerprint: R5_SECURITY_PACKAGE_JSON_SHA256,
@@ -536,6 +570,17 @@ function normalizedTextHash(text) {
   return crypto.createHash('sha256').update(text.replace(/\r\n/gu, '\n')).digest('hex');
 }
 
+function r12cPredecessorProjection(repositoryRoot) {
+  const relative = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
+  if (!inspectExistingPath(repositoryRoot, relative, 'file').exists) return null;
+  const r12c = require('./r12c-zero-cross-context-dependencies-scan.cjs');
+  const manifest = r12c.validateR12cManifest(JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, ...relative.split('/')),
+    'utf8',
+  )));
+  return r12c.projectR12cWorkingTreeToPredecessor({ repositoryRoot, manifest });
+}
+
 function projectR7QaHarnessForR5(relativePath, text) {
   const pathHandoffs = new Map([
     [
@@ -560,7 +605,7 @@ function projectR7QaHarnessForR5(relativePath, text) {
 function verifyR5QaHarnessCorrections(options) {
   const input = plainObject(options, 'R5 QA harness verifier options');
   const keys = Object.keys(input).sort();
-  if (keys.some((key) => !['manifest', 'readBaseFile', 'repositoryRoot'].includes(key))
+  if (keys.some((key) => !['manifest', 'readBaseFile', 'readWorkingFile', 'repositoryRoot'].includes(key))
       || !keys.includes('manifest') || !keys.includes('repositoryRoot')) {
     throw new Error('R5 QA harness verifier options are invalid');
   }
@@ -578,16 +623,20 @@ function verifyR5QaHarnessCorrections(options) {
   if (typeof readBaseFile !== 'function') {
     throw new Error('R5 QA harness base reader is invalid');
   }
+  if (input.readWorkingFile !== undefined && typeof input.readWorkingFile !== 'function') {
+    throw new Error('R5 QA harness working reader is invalid');
+  }
+  const readWorkingFile = input.readWorkingFile
+    || r12cPredecessorProjection(input.repositoryRoot)?.readWorkingFile;
   for (const correction of manifest.qaHarnessCorrections) {
     if (!manifest.allowedChangedPaths.includes(correction.path)) {
       throw new Error('R5 QA harness correction is outside the candidate scope');
     }
     const inspected = inspectExistingPath(input.repositoryRoot, correction.path, 'file');
     if (!inspected.exists) throw new Error('R5 QA harness correction is missing');
-    const liveSource = fs.readFileSync(
-      path.join(input.repositoryRoot, ...correction.path.split('/')),
-      'utf8',
-    );
+    const liveSource = readWorkingFile === undefined
+      ? fs.readFileSync(path.join(input.repositoryRoot, ...correction.path.split('/')), 'utf8')
+      : readWorkingFile(correction.path).toString('utf8');
     if (normalizedTextHash(readBaseFile(correction.path)) !== correction.baseSha256
         || normalizedTextHash(projectR7QaHarnessForR5(correction.path, liveSource))
           !== correction.approvedSha256) {
@@ -612,12 +661,44 @@ function validateR5AuthStage(repositoryRoot) {
   }
 }
 
-function validateR5ProfileStage(repositoryRoot) {
+function validateR5ProfileStage(repositoryRoot, r12aManifestValue = undefined, readWorkingFile = undefined) {
+  if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) {
+    throw new Error('R5 profile repository root must be absolute');
+  }
+  const predecessorRead = readWorkingFile || r12cPredecessorProjection(repositoryRoot)?.readWorkingFile;
   for (const [relative, expectedHash] of Object.entries(PROFILE_STAGE_HASHES)) {
     const inspected = inspectExistingPath(repositoryRoot, relative, 'file');
     if (!inspected.exists) throw new Error('R5 profile stage drift detected');
     const absolute = path.join(repositoryRoot, ...relative.split('/'));
-    if (normalizedFileHash(absolute) !== expectedHash) {
+    if (readWorkingFile !== undefined && typeof readWorkingFile !== 'function') {
+      throw new Error('R5 profile working reader is invalid');
+    }
+    let source = predecessorRead === undefined
+      ? fs.readFileSync(absolute, 'utf8')
+      : predecessorRead(relative).toString('utf8');
+    if (relative === 'backend/src/modules/identity/internal/profile/users.service.ts') {
+      const r12aPath = path.join(
+        repositoryRoot,
+        'backend',
+        'architecture',
+        'r12a-backoffice-catalog-public-contracts.json',
+      );
+      const r12aManifest = r12aManifestValue === undefined
+        ? validateR12aManifest(JSON.parse(fs.readFileSync(r12aPath, 'utf8')))
+        : validateR12aManifest(r12aManifestValue);
+      if (r12aManifest.stage === 'strict') {
+        const file = ts.createSourceFile(relative, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+        const imports = file.statements.filter(ts.isImportDeclaration);
+        const liveImport = '../../../marketplace/public/provider-review-rating';
+        const historicalImport = '../../../../marketplace/provider-review-rating';
+        if (imports.filter((item) => item.moduleSpecifier.text === liveImport).length !== 1
+          || imports.some((item) => item.moduleSpecifier.text === historicalImport)) {
+          throw new Error('R5 profile stage drift detected');
+        }
+        source = normalizeR12aIdentityProviderRatingSource(source, r12aManifest);
+      }
+    }
+    if (normalizedTextHash(source) !== expectedHash) {
       throw new Error('R5 profile stage drift detected');
     }
   }
@@ -671,6 +752,16 @@ function mapOwnershipRecordsForR5(records, manifestValue) {
     throw new Error('R5 ownership relocation collides');
   }
   return mapped;
+}
+
+function applyR12aOwnershipProjection(ownership, manifestValue) {
+  return expectedR12aOwnershipBaseline(ownership, validateR12aManifest(manifestValue));
+}
+
+function normalizeR12aIdentityProviderRatingSource(source, manifestValue) {
+  const manifest = validateR12aManifest(manifestValue);
+  return normalizeR12aIdentityProviderRatingImport(source, manifest)
+    .replace('../../../marketplace/public/provider-review-rating', '../../../../marketplace/provider-review-rating');
 }
 
 function dependencyRecordKey(record) {
@@ -895,11 +986,24 @@ function validateOwnershipBaseline(value, label) {
 }
 
 function verifyR5Baselines(options) {
-  const input = exactObject(options, [
+  const input = plainObject(options, 'R5 baseline verifier input');
+  const allowed = new Set([
     'baseDependency', 'candidateDependency', 'baseOwnership',
-    'candidateOwnership', 'manifest',
-  ], 'R5 baseline verifier input');
+    'candidateOwnership', 'manifest', 'r12aManifest', 'repositoryRoot', 'readImmutableFile',
+  ]);
+  if (Object.keys(input).some((key) => !allowed.has(key))) {
+    throw new Error('R5 baseline verifier input keys are invalid');
+  }
   const manifest = validateR5Manifest(input.manifest);
+  const r12aManifest = input.r12aManifest === undefined
+    ? null : validateR12aManifest(input.r12aManifest);
+  if (input.repositoryRoot !== undefined
+      && (typeof input.repositoryRoot !== 'string' || !path.isAbsolute(input.repositoryRoot))) {
+    throw new Error('R5 baseline repository root is invalid');
+  }
+  if (input.readImmutableFile !== undefined && typeof input.readImmutableFile !== 'function') {
+    throw new Error('R5 baseline immutable reader is invalid');
+  }
   const baseDependency = validateDependencyRecords(
     input.baseDependency,
     'R5 base dependency baseline',
@@ -912,7 +1016,7 @@ function verifyR5Baselines(options) {
     input.candidateDependency,
     'R5 dependency candidate',
   );
-  if (JSON.stringify(candidateDependency) !== JSON.stringify(expectedDependency)) {
+  if (!r12aManifest && JSON.stringify(candidateDependency) !== JSON.stringify(expectedDependency)) {
     throw new Error('R5 dependency baseline drift detected');
   }
 
@@ -927,10 +1031,28 @@ function verifyR5Baselines(options) {
     input.candidateOwnership,
     'R5 ownership candidate',
   );
-  const expectedOwnership = {
+  let expectedOwnership = {
     ...baseOwnership,
     violations: mapOwnershipRecordsForR5(baseOwnership.violations, manifest),
   };
+  if (r12aManifest) {
+    const historicalR7Live22 = expectedDependency.filter(
+      (record) => !R7_RETIRED_DEPENDENCY_KEYS.includes(dependencyRecordKey(record)),
+    );
+    if (historicalR7Live22.length !== 22) throw new Error('R5 R7 dependency handoff is invalid');
+    const expectedR12aDependency = input.repositoryRoot === undefined
+      ? expectedR12aDependencyRecords(historicalR7Live22, r12aManifest)
+      : expectedR12aSuccessorDependencyRecords({
+        repositoryRoot: input.repositoryRoot,
+        r12aEntryRecords: historicalR7Live22,
+        r12aManifest,
+        readImmutableFile: input.readImmutableFile,
+      });
+    if (JSON.stringify(candidateDependency) !== JSON.stringify(expectedR12aDependency)) {
+      throw new Error('R5 R12A dependency baseline drift detected');
+    }
+    expectedOwnership = applyR12aOwnershipProjection(expectedOwnership, r12aManifest);
+  }
   if (JSON.stringify(candidateOwnership) !== JSON.stringify(expectedOwnership)) {
     throw new Error('R5 ownership baseline drift detected');
   }
@@ -1057,7 +1179,10 @@ function scanR5Identity(options) {
     throw new Error('R5 repository root must be absolute');
   }
   const manifest = validateR5Manifest(input.manifest);
+  const r12aManifest = input.r12aManifest === undefined
+    ? null : validateR12aManifest(input.r12aManifest);
   const currentStage = STAGES.indexOf(manifest.stage);
+  const r12cProjection = r12cPredecessorProjection(input.repositoryRoot);
   for (const move of manifest.moves) {
     const moved = currentStage >= STAGES.indexOf(moveStage(move));
     const source = inspectExistingPath(input.repositoryRoot, move.from, 'file');
@@ -1074,11 +1199,16 @@ function scanR5Identity(options) {
     validateR5AuthStage(input.repositoryRoot);
   }
   if (manifest.stage === 'strict') {
-    validateR5ProfileStage(input.repositoryRoot);
+    validateR5ProfileStage(
+      input.repositoryRoot,
+      r12aManifest || undefined,
+      r12cProjection?.readWorkingFile,
+    );
     validateR5RetiredRoots(input.repositoryRoot, manifest);
     verifyR5QaHarnessCorrections({
       repositoryRoot: input.repositoryRoot,
       manifest,
+      readWorkingFile: r12cProjection?.readWorkingFile,
     });
   }
   return Object.freeze({ ok: true, stage: manifest.stage, moves: manifest.moves.length });
@@ -1175,6 +1305,16 @@ function liveChangedPaths(repositoryRoot, executeGit = execFileSync) {
   return [...new Set([...tracked, ...untracked])].sort();
 }
 
+function readR12aManifest(repositoryRoot) {
+  const manifestPath = path.join(
+    repositoryRoot,
+    'backend',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  );
+  return validateR12aManifest(JSON.parse(fs.readFileSync(manifestPath, 'utf8')));
+}
+
 function runCli(dependencies = {}) {
   const argv = dependencies.argv || process.argv.slice(2);
   const stdout = dependencies.stdout || ((message) => process.stdout.write(`${message}\n`));
@@ -1192,12 +1332,15 @@ function runCli(dependencies = {}) {
       path.join(repositoryRoot, ...MANIFEST_PATH.split('/')),
       'utf8',
     ));
+    const r12aManifest = dependencies.r12aManifest === undefined
+      ? readR12aManifest(repositoryRoot)
+      : validateR12aManifest(dependencies.r12aManifest);
     validateR5SecurityCheckpointScope({
       changedPaths: liveChangedPaths(repositoryRoot),
       packageJson: JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package.json'), 'utf8')),
       packageLock: JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package-lock.json'), 'utf8')),
     });
-    const result = scanR5Identity({ repositoryRoot, manifest });
+    const result = scanR5Identity({ repositoryRoot, manifest, r12aManifest });
     if (baselineMode) {
       const dependencyCandidate = readTempCandidateJson(argv[2]);
       const ownershipCandidate = readTempCandidateJson(argv[4]);
@@ -1215,6 +1358,9 @@ function runCli(dependencies = {}) {
         baseOwnership: readBase('backend/architecture/ownership-baseline.json'),
         candidateOwnership: ownershipCandidate.value,
         manifest,
+        r12aManifest,
+        repositoryRoot,
+        readImmutableFile: dependencies.readImmutableFile,
       });
       stdout(`PASS - R5 baselines: dependency=${baseline.dependencyRecords}, retired=${baseline.retiredDependencyRecords}, ownership=${baseline.ownershipRecords}/${baseline.ownershipOccurrences}`);
     } else {
@@ -1241,6 +1387,8 @@ module.exports = {
   projectR6ArchitectureScriptsForR5Security,
   verifyR5QaHarnessCorrections,
   mapOwnershipRecordsForR5,
+  applyR12aOwnershipProjection,
+  normalizeR12aIdentityProviderRatingSource,
   expectedR5DependencyRecords,
   verifyR5Baselines,
   verifyR7DependencyHandoff,

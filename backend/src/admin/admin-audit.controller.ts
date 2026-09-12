@@ -2,9 +2,9 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { AdminAuditService } from './admin-audit.service';
-import { AdminGuard } from './admin.guard';
-import { RequireAdminPermission } from './admin-permission.decorator';
-import { AdminPermissionGuard } from './admin-permission.guard';
+import { AdminGuard } from '../modules/backoffice/public/admin.guard';
+import { RequireAdminPermission } from '../modules/backoffice/public/admin-permission.decorator';
+import { AdminPermissionGuard } from '../modules/backoffice/public/admin-permission.guard';
 import { AdminAuditQueryDto } from './dto/admin-audit-query.dto';
 
 @Controller('admin/audit-logs')

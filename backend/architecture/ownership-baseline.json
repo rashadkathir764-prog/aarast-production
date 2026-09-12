@@ -315,18 +315,6 @@
       "count": 8
     },
     {
-      "key": "backend/src/admin/admin-mutation-gate.ts|backoffice|identity|User|select|read|sql|foreign-model",
-      "file": "backend/src/admin/admin-mutation-gate.ts",
-      "context": "backoffice",
-      "owner": "identity",
-      "model": "User",
-      "operation": "select",
-      "mode": "read",
-      "source": "sql",
-      "reason": "foreign-model",
-      "count": 1
-    },
-    {
       "key": "backend/src/admin/admin-user-status.ts|backoffice|collaboration|PlanInvite|updateMany|write|delegate|foreign-model",
       "file": "backend/src/admin/admin-user-status.ts",
       "context": "backoffice",
@@ -2328,6 +2316,18 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
+      "count": 1
+    },
+    {
+      "key": "backend/src/modules/backoffice/public/admin-mutation-gate.ts|backoffice|identity|User|select|read|sql|foreign-model",
+      "file": "backend/src/modules/backoffice/public/admin-mutation-gate.ts",
+      "context": "backoffice",
+      "owner": "identity",
+      "model": "User",
+      "operation": "select",
+      "mode": "read",
+      "source": "sql",
+      "reason": "foreign-model",
       "count": 1
     },
     {

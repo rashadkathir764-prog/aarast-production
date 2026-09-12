@@ -285,16 +285,29 @@ function assertStrictOwnershipDelta(
       records: Array<Record<string, unknown>>,
       manifestValue: unknown,
     ): Array<Record<string, unknown>>;
+    applyR12aOwnershipProjection(
+      ownership: { violations: Array<Record<string, unknown>> } & Record<string, unknown>,
+      manifest: unknown,
+    ): { violations: Array<Record<string, unknown>> } & Record<string, unknown>;
   };
   const expected = r5Scanner.mapOwnershipRecordsForR5(
     base.violations.filter((entry) => entry.key !== ownershipDebtKey),
     r5Manifest,
   );
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const projected = r5Scanner.applyR12aOwnershipProjection(
+    { ...base, violations: expected },
+    r12aManifest,
+  ).violations;
   assert.equal(
     base.violations.filter((entry) => entry.key === ownershipDebtKey).length,
     1,
   );
-  assert.deepEqual(current.violations, expected);
+  assert.deepEqual(current.violations, projected);
   assert.equal(current.violations.length, 385);
   assert.equal(
     current.violations.reduce((sum, entry) => sum + Number(entry.count), 0),

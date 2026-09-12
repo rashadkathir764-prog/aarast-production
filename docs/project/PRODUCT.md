@@ -1,6 +1,6 @@
 # Product
 
-Snapshot date: 2026-07-23
+Snapshot date: 2026-09-07
 
 Aarast / اعّرست is a Yemen-first wedding planning product. The product center
 is a Wedding Financial OS: wedding plans, one general budget, budget

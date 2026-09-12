@@ -3,6 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { createRequire, wrap: wrapModule } = require('node:module');
+const vm = require('node:vm');
 const { types: utilTypes } = require('node:util');
 const ts = require('typescript');
 const { scanPorts } = require('./ports-scan.cjs');
@@ -10,12 +12,69 @@ const {
   projectR3InventoryForR8,
   validateR8Manifest,
 } = require('./r8-global-module-removal-scan.cjs');
+const {
+  expectedR12aSuccessorDependencyRecords,
+  isAllowedR12aRuntimePublicEdge,
+  readR12aImmutableEntry,
+  validateR12aManifest,
+} = require('./r12a-backoffice-catalog-public-contracts-scan.cjs');
 
 const R3_BASE = '6b06eb096aca8cc6684d365d16e05d4cd8529898';
 const R8_MANIFEST_PATH = path.resolve(
   __dirname,
   '../../architecture/r8-global-module-removal.json',
 );
+const R12A_MANIFEST_PATH = path.resolve(
+  __dirname,
+  '../../architecture/r12a-backoffice-catalog-public-contracts.json',
+);
+const R12A_PATH_MOVES = Object.freeze(new Map([
+  ['backend/src/admin/admin.guard.ts', 'backend/src/modules/backoffice/public/admin.guard.ts'],
+  ['backend/src/admin/admin-permission.decorator.ts', 'backend/src/modules/backoffice/public/admin-permission.decorator.ts'],
+  ['backend/src/admin/admin-permission.guard.ts', 'backend/src/modules/backoffice/public/admin-permission.guard.ts'],
+  ['backend/src/admin/admin-mutation-gate.ts', 'backend/src/modules/backoffice/public/admin-mutation-gate.ts'],
+]));
+const R12A_RUNTIME_PUBLIC_MOVES = Object.freeze(new Map([
+  ['backend/src/marketplace/provider-review-rating.ts', 'backend/src/modules/marketplace/public/provider-review-rating.ts'],
+]));
+
+function projectR12aPath(relativePath, manifest) {
+  if (!manifest || !['backoffice', 'strict'].includes(manifest.stage)) return relativePath;
+  return R12A_PATH_MOVES.get(relativePath) || relativePath;
+}
+
+function projectR12aInventory(value, manifest) {
+  if (!manifest || !['backoffice', 'strict'].includes(manifest.stage)) return value;
+  if (typeof value === 'string') return projectR12aPath(value, manifest);
+  if (Array.isArray(value)) return value.map((item) => projectR12aInventory(item, manifest));
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key, projectR12aInventory(item, manifest),
+  ]));
+}
+
+function projectR12aSourceLaws(value, manifest) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const diagnostics = Array.isArray(value.diagnostics)
+    ? value.diagnostics.map((diagnostic) => {
+      const projected = Object.fromEntries(Object.entries(diagnostic).map(([key, item]) => [
+        key, typeof item === 'string' ? projectR12aPath(item, manifest) : item,
+      ]));
+      delete projected.node;
+      delete projected.sourceFile;
+      return projected;
+    })
+    : value.diagnostics;
+  return { ...value, diagnostics };
+}
+
+function sortR12aDecoratorInventory(value) {
+  return [...value].sort((left, right) => {
+    const leftKey = `${left.source}|${left.symbol}|${left.kind}`;
+    const rightKey = `${right.source}|${right.symbol}|${right.kind}`;
+    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+  });
+}
 const CONTEXTS = Object.freeze([
   'identity', 'planning', 'finance', 'collaboration', 'tasks', 'guests',
   'marketplace', 'messaging', 'notifications', 'catalog', 'media', 'insights',
@@ -684,6 +743,39 @@ function verifyR7DependencyHandoff(options) {
   });
 }
 
+function verifyR12aSuccessorDependencyBaseline({ repoRoot, r12aManifest, readImmutableFile }) {
+  const relative = 'backend/.dependency-cruiser-known-violations.json';
+  const candidate = path.join(repoRoot, ...relative.split('/'));
+  if (!fs.existsSync(candidate)) return null;
+  const root = fs.realpathSync.native(repoRoot);
+  const stat = fs.lstatSync(candidate);
+  if (stat.isSymbolicLink() || !stat.isFile() || stat.size < 2 || stat.size > 2 * 1024 * 1024) {
+    throw new Error('R3 dependency baseline is not a bounded plain file');
+  }
+  const real = fs.realpathSync.native(candidate);
+  if (path.relative(root, real).startsWith('..')) throw new Error('R3 dependency baseline escapes repository');
+  const entry = readR12aImmutableEntry({
+    repositoryRoot: repoRoot,
+    manifest: r12aManifest,
+    readImmutableFile,
+  });
+  const expected = expectedR12aSuccessorDependencyRecords({
+    repositoryRoot: repoRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile,
+  });
+  const bytes = fs.readFileSync(real);
+  if (bytes.length !== stat.size || !Buffer.from(bytes.toString('utf8'), 'utf8').equals(bytes)) {
+    throw new Error('R3 dependency baseline changed or is not exact UTF-8');
+  }
+  let live;
+  try { live = JSON.parse(bytes.toString('utf8')); } catch { throw new Error('R3 dependency baseline contains invalid JSON'); }
+  assertDeepPlainData(live, 'R3 dependency baseline');
+  if (JSON.stringify(live) !== JSON.stringify(expected)) throw new Error('R3 successor dependency baseline drift detected');
+  return live.length;
+}
+
 function projectR7HistoryDecoratorSources(records) {
   return records.map((record) => (
     record.source === R7_CONTRIBUTION_HISTORY_HANDOFF.from
@@ -1102,11 +1194,9 @@ function scanR3SourceLaws(options) {
   const relocatedSafeUser = 'backend/src/modules/identity/public/safe-user.ts';
   const backofficePermissionContract =
     'backend/src/modules/backoffice/domain/admin-permissions.ts';
-  const relocatedIdentityPureHelpers = new Set([
-    'backend/src/modules/identity/internal/profile/contexts.service.ts->backend/src/provider-dashboard/provider-access-policy.ts',
-    'backend/src/modules/identity/internal/profile/users.service.ts->backend/src/marketplace/provider-review-rating.ts',
-  ]);
   const providerContracts = [...(options.providerContracts || [])];
+  const r12aManifest = options.r12aManifest === undefined
+    ? null : validateR12aManifest(options.r12aManifest);
   const contractsByToken = new Map(providerContracts.map((contract) => [
     contract.token,
     new Set(contract.implementations),
@@ -1142,7 +1232,10 @@ function scanR3SourceLaws(options) {
             statement,
           );
         }
-        const targetPath = resolvedImportPath(sourceFile, statement.moduleSpecifier.text, program, repoRoot);
+        const resolvedTargetPath = resolvedImportPath(sourceFile, statement.moduleSpecifier.text, program, repoRoot);
+        const targetPath = resolvedTargetPath
+          ? projectR12aPath(resolvedTargetPath, r12aManifest)
+          : resolvedTargetPath;
         if (!targetPath) continue;
         const targetClass = classify(targetPath);
         imports.push({ sourcePath: repositoryPath, targetPath, sourceClass, targetClass, node: statement, sourceFile });
@@ -1161,7 +1254,8 @@ function scanR3SourceLaws(options) {
             && targetClass.slice === 'public' && isTypeOnlyImport(statement);
           const importedNames = statement.importClause?.namedBindings
             && ts.isNamedImports(statement.importClause.namedBindings)
-            ? statement.importClause.namedBindings.elements.map((item) => item.name.text)
+            ? statement.importClause.namedBindings.elements
+              .map((item) => (item.propertyName || item.name).text).sort()
             : [];
           const sourceModuleImports = sourceFile.statements
             .filter(ts.isClassDeclaration)
@@ -1180,15 +1274,24 @@ function scanR3SourceLaws(options) {
             && targetPath.endsWith('.port.ts');
           const legalRelocatedPermissionContract = repositoryPath === relocatedSafeUser
             && targetPath === backofficePermissionContract;
-          const legalRelocatedIdentityPureHelper = relocatedIdentityPureHelpers.has(
-            `${repositoryPath}->${targetPath}`,
-          );
+          const r12aRuntimeTargetPath = r12aManifest && r12aManifest.stage === 'strict'
+            ? (R12A_RUNTIME_PUBLIC_MOVES.get(resolvedTargetPath) || targetPath)
+            : targetPath;
+          const legalR12aRuntimePublicEdge = r12aManifest
+            ? isAllowedR12aRuntimePublicEdge({
+              sourcePath: repositoryPath,
+              targetPath: r12aRuntimeTargetPath,
+              importedNames,
+              stage: r12aManifest.stage,
+            }, r12aManifest)
+            : false;
           const legalR7CollaborationRelocatedImport =
             R7_COLLABORATION_RELOCATED_IMPORTS.has(
               `${repositoryPath}->${targetPath}`,
             );
           if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
-              && !legalRelocatedPermissionContract && !legalRelocatedIdentityPureHelper
+              && !legalRelocatedPermissionContract
+              && !legalR12aRuntimePublicEdge
               && !legalR7CollaborationRelocatedImport) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
@@ -1454,12 +1557,12 @@ function routeForMethod(method, checker) {
   return { routeMethod: null, routePath: null };
 }
 
-function namedDecoratorCall(node, expected, checker, repoRoot) {
+function namedDecoratorCall(node, expected, checker, repoRoot, declarations = CUSTOM_DECORATOR_DECLARATIONS) {
   return decorators(node).map((item) => item.expression).find((expression) => {
     if (!ts.isCallExpression(expression)) return false;
     const identity = symbolIdentity(expression.expression, checker, repoRoot);
     return Boolean(identity && identity.name === expected
-      && identity.declarationPath === CUSTOM_DECORATOR_DECLARATIONS.get(expected));
+      && identity.declarationPath === declarations.get(expected));
   }) || null;
 }
 
@@ -1470,6 +1573,15 @@ function collectR3DecoratorInventory(options) {
     ? { program: options.program, checker: options.checker }
     : createProgram(backendRoot);
   const { program, checker } = supplied;
+  const r12aManifest = options.r12aManifest === undefined
+    ? null : validateR12aManifest(options.r12aManifest);
+  const projectedDeclaration = (value) => projectR12aPath(value, r12aManifest);
+  const guardDeclarations = new Map([...GUARD_DECLARATIONS].map(([name, declaration]) => [
+    name, projectedDeclaration(declaration),
+  ]));
+  const customDecoratorDeclarations = new Map([...CUSTOM_DECORATOR_DECLARATIONS].map(([name, declaration]) => [
+    name, projectedDeclaration(declaration),
+  ]));
   const groupedGuards = new Map();
   const groupedRuntime = new Map();
   const adminGuardMetadata = [];
@@ -1502,7 +1614,7 @@ function collectR3DecoratorInventory(options) {
         for (const argument of call.arguments) {
           const identity = symbolIdentity(argument, checker, repoRoot);
           if (!identity) throw new Error('guard identity cannot be resolved');
-          const exactGuard = GUARD_DECLARATIONS.get(identity.name) === identity.declarationPath;
+          const exactGuard = guardDeclarations.get(identity.name) === identity.declarationPath;
           guardNames.push(exactGuard ? identity.name : `${identity.name}@${identity.declarationPath}`);
           if (exactGuard && ['JwtAuthGuard', 'JwtSessionGuard'].includes(identity.name)
               && source !== 'backend/src/modules/identity/api/auth.controller.ts') {
@@ -1517,7 +1629,9 @@ function collectR3DecoratorInventory(options) {
       if (classGuards.includes('AdminPermissionGuard')) {
         adminGuardMetadata.push({ source, controllerClass, routePrefix, guards: classGuards });
       }
-      const classPermission = namedDecoratorCall(statement, 'RequireAdminPermission', checker, repoRoot);
+      const classPermission = namedDecoratorCall(
+        statement, 'RequireAdminPermission', checker, repoRoot, customDecoratorDeclarations,
+      );
       if (classPermission) {
         addUse(groupedRuntime, source, 'RequireAdminPermission', 'runtime-decorator', useRecord(
           controllerClass, null, routePrefix, null, null,
@@ -1531,14 +1645,18 @@ function collectR3DecoratorInventory(options) {
         if (methodGuards.includes('AdminPermissionGuard')) {
           throw new Error('Admin guard metadata must be controller-scoped');
         }
-        if (namedDecoratorCall(member, 'RequireAdminPermission', checker, repoRoot)) {
+        if (namedDecoratorCall(
+          member, 'RequireAdminPermission', checker, repoRoot, customDecoratorDeclarations,
+        )) {
           addUse(groupedRuntime, source, 'RequireAdminPermission', 'runtime-decorator', useRecord(
             controllerClass, method, routePrefix, route.routeMethod, route.routePath,
           ));
         }
         for (let parameterIndex = 0; parameterIndex < member.parameters.length; parameterIndex += 1) {
           const parameter = member.parameters[parameterIndex];
-          if (namedDecoratorCall(parameter, 'CurrentUser', checker, repoRoot)
+          if (namedDecoratorCall(
+            parameter, 'CurrentUser', checker, repoRoot, customDecoratorDeclarations,
+          )
               && source !== 'backend/src/modules/identity/api/auth.controller.ts') {
             addUse(groupedRuntime, source, 'CurrentUser', 'runtime-decorator', useRecord(
               controllerClass, method, routePrefix, route.routeMethod, route.routePath, parameterIndex,
@@ -1549,7 +1667,8 @@ function collectR3DecoratorInventory(options) {
     }
   }
   const metadataSource = sources.find((sourceFile) => (
-    repoPath(sourceFile.fileName, repoRoot) === 'backend/src/admin/admin-permission.guard.ts'
+    projectedDeclaration(repoPath(sourceFile.fileName, repoRoot))
+      === projectedDeclaration('backend/src/admin/admin-permission.guard.ts')
   ));
   if (metadataSource) {
     let metadataUsed = false;
@@ -1562,14 +1681,14 @@ function collectR3DecoratorInventory(options) {
         const symbol = alias(checker.getSymbolAtLocation(node), checker);
         const resolved = symbolRepositoryDeclaration(symbol, repoRoot);
         if (symbol && symbol.getName() === 'ADMIN_PERMISSIONS_KEY' && resolved
-            && resolved.declarationPath === 'backend/src/admin/admin-permission.decorator.ts'
+            && resolved.declarationPath === customDecoratorDeclarations.get('RequireAdminPermission')
             && !ts.isImportSpecifier(node.parent)) metadataUsed = true;
       }
       ts.forEachChild(node, visit);
     };
     visit(metadataSource);
     if (metadataUsed) {
-      addUse(groupedRuntime, 'backend/src/admin/admin-permission.guard.ts', 'ADMIN_PERMISSIONS_KEY', 'runtime-value',
+      addUse(groupedRuntime, projectedDeclaration('backend/src/admin/admin-permission.guard.ts'), 'ADMIN_PERMISSIONS_KEY', 'runtime-value',
         useRecord(className, 'canActivate', null, null, null));
     }
   }
@@ -1604,7 +1723,7 @@ function metadataTexts(call, key, sourceFile) {
   return [...property.initializer.elements].map((item) => item.getText(sourceFile)).sort();
 }
 
-function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initialRetiredEdges) {
+function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initialRetiredEdges, r12aManifest = null) {
   const { program, checker } = createProgram(backendRoot);
   let globals = 0;
   const modules = [];
@@ -1618,7 +1737,9 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   for (const sourceFile of sources) {
     const repositoryPath = repoPath(sourceFile.fileName, repoRoot);
     const first = repositoryPath.slice('backend/src/'.length).split('/')[0];
-    const sourceContext = ROOT_TO_CONTEXT.get(first);
+    const sourceContext = r12aManifest && ['backoffice', 'strict'].includes(r12aManifest.stage)
+      ? classify(repositoryPath).context
+      : ROOT_TO_CONTEXT.get(first);
     for (const statement of sourceFile.statements) {
       if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
         const targetPath = resolvedImportPath(sourceFile, statement.moduleSpecifier.text, program, repoRoot);
@@ -1670,7 +1791,11 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
           if (!declaration) continue;
           const targetPath = repoPath(declaration.getSourceFile().fileName, repoRoot);
           const targetRoot = targetPath.slice('backend/src/'.length).split('/')[0];
-          const targetContext = ROOT_TO_CONTEXT.get(targetRoot);
+          const targetContext = r12aManifest && ['backoffice', 'strict'].includes(r12aManifest.stage)
+            ? (targetPath.startsWith('backend/src/modules/backoffice/public/')
+              ? classify(targetPath).context
+              : ROOT_TO_CONTEXT.get(targetRoot))
+            : ROOT_TO_CONTEXT.get(targetRoot);
           if (targetContext && targetContext !== sourceContext) {
             injections.push({
               source: repositoryPath,
@@ -1690,7 +1815,9 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   }
   modules.sort((left, right) => `${left.path}|${left.className}`.localeCompare(`${right.path}|${right.className}`));
   injections.sort((left, right) => `${left.source}|${left.parameter}|${left.target}`.localeCompare(`${right.source}|${right.parameter}|${right.target}`));
-  const decoratorInventory = collectR3DecoratorInventory({ repoRoot, backendRoot, program, checker });
+  const decoratorInventory = collectR3DecoratorInventory({
+    repoRoot, backendRoot, program, checker, r12aManifest,
+  });
   const lifecycleNames = new Set([
     'AuthChallengeCleanupScheduler', 'ConversationsGateway', 'IdempotencyCleanupScheduler',
     'LoginThrottleCleanupScheduler', 'MediaUploadCleanupScheduler',
@@ -1848,7 +1975,88 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   };
 }
 
+function scanR12cPredecessorContexts(options, successorManifest) {
+  const r12c = require('./r12c-zero-cross-context-dependencies-scan.cjs');
+  // Prove the actual successor before exposing any historical read view.
+  // This executes the complete R12C and R12B laws, not just manifest shape.
+  r12c.scanR12cZeroCrossContextDependencies({
+    repositoryRoot: options.repoRoot, manifest: successorManifest,
+  });
+  const projection = r12c.projectR12cWorkingTreeToPredecessor({
+    repositoryRoot: options.repoRoot, manifest: successorManifest,
+  });
+  const relativeSource = (file) => {
+    const relative = path.relative(options.repoRoot, path.resolve(file)).replaceAll('\\', '/');
+    return relative.startsWith('backend/src/') ? relative : null;
+  };
+  const projectedSys = {
+    ...ts.sys,
+    fileExists(file) {
+      const relative = relativeSource(file);
+      return relative === null ? ts.sys.fileExists(file) : projection.pathExists(relative);
+    },
+    readFile(file) {
+      const relative = relativeSource(file);
+      return relative === null ? ts.sys.readFile(file)
+        : projection.pathExists(relative) ? projection.readWorkingFile(relative)?.toString('utf8') : undefined;
+    },
+  };
+  const historicalTs = {
+    ...ts,
+    sys: projectedSys,
+    createProgram(input, compilerOptions) {
+      const rootNames = Array.isArray(input) ? input : input.rootNames;
+      const programOptions = Array.isArray(input) ? compilerOptions : input.options;
+      const restored = [
+        successorManifest.financePublicCandidate.move.source,
+        successorManifest.marketplacePublicCandidate.move.source,
+      ].map((relative) => path.join(options.repoRoot, ...relative.split('/')));
+      const names = [...new Set([...rootNames, ...restored])].filter(projectedSys.fileExists);
+      const host = ts.createCompilerHost(programOptions);
+      host.fileExists = projectedSys.fileExists;
+      host.readFile = projectedSys.readFile;
+      host.getSourceFile = (file, languageVersion) => {
+        const source = projectedSys.readFile(file);
+        return source === undefined ? undefined : ts.createSourceFile(file, source, languageVersion, true);
+      };
+      return ts.createProgram(names, programOptions, host);
+    },
+  };
+  const loadHistorical = (relative) => {
+    const file = path.join(options.repoRoot, ...relative.split('/'));
+    const nativeRequire = createRequire(file);
+    const projectedModule = { exports: {} };
+    const compile = new vm.Script(wrapModule(projection.readWorkingFile(relative).toString('utf8')), {
+      filename: `${file}#r12c-predecessor`,
+    }).runInThisContext();
+    compile(projectedModule.exports, (request) => {
+      if (request === 'typescript') return historicalTs;
+      if (request === './ports-scan.cjs') return loadHistorical('backend/scripts/architecture/ports-scan.cjs');
+      return nativeRequire(request);
+    }, projectedModule, file, path.dirname(file));
+    return projectedModule.exports;
+  };
+  // These exact reconstructed scanners predate this successor hook. All their
+  // source laws and inventories run unchanged; neither scanner can recurse.
+  return loadHistorical('backend/scripts/architecture/r3-context-scan.cjs').scanR3Contexts(options);
+}
+
 function scanR3Contexts(options) {
+  const successorPath = path.join(options.repoRoot, 'backend/architecture/r12c-zero-cross-context-dependencies.json');
+  if (fs.existsSync(successorPath)) {
+    return scanR12cPredecessorContexts(options, JSON.parse(fs.readFileSync(successorPath, 'utf8')));
+  }
+  const r12aManifest = options.r12aManifest === undefined
+    ? validateR12aManifest(JSON.parse(fs.readFileSync(
+      options.r12aManifestPath || R12A_MANIFEST_PATH,
+      'utf8',
+    )))
+    : validateR12aManifest(options.r12aManifest);
+  verifyR12aSuccessorDependencyBaseline({
+    repoRoot: options.repoRoot,
+    r12aManifest,
+    readImmutableFile: options.readImmutableFile,
+  });
   const historicalManifest = validateR3ContextManifest(
     JSON.parse(fs.readFileSync(options.manifestPath, 'utf8')),
   );
@@ -1874,25 +2082,29 @@ function scanR3Contexts(options) {
     repoRoot: options.repoRoot,
     backendRoot: options.backendRoot,
     providerContracts: contractDefinitions,
+    r12aManifest,
   });
-  const duplicateDiagnostics = sourceLaws.diagnostics
+  const projectedHistoricalManifest = projectR12aInventory(manifest, r12aManifest);
+  const projectedSourceLaws = projectR12aSourceLaws(sourceLaws, r12aManifest);
+  const duplicateDiagnostics = projectedSourceLaws.diagnostics
     .filter((item) => item.kind === 'duplicate-provider' && typeof item.provider === 'string');
   const duplicateIdentities = new Set(duplicateDiagnostics
     .filter((item) => item.kind === 'duplicate-provider' && typeof item.provider === 'string')
     .map((item) => `${item.provider}|${item.declarationPath}`));
   const permittedDuplicates = new Set(manifest.remainingDuplicateProviders);
-  const sourceDiagnostics = sourceLaws.diagnostics.filter((item) => {
+  const sourceDiagnostics = projectedSourceLaws.diagnostics.filter((item) => {
     if (item.kind !== 'duplicate-provider') return true;
     return !(permittedDuplicates.has(item.provider)
       && APPROVED_DUPLICATE_IDENTITIES.get(item.provider) === item.declarationPath
       && APPROVED_DUPLICATE_REGISTRATIONS.get(item.provider)?.has(item.path));
   });
-  const live = collectLiveInventory(
+  const live = projectR12aInventory(collectLiveInventory(
     options.repoRoot,
     options.backendRoot,
     contractDefinitions,
     manifest.initialRetiredLegacyProviderEdges,
-  );
+    r12aManifest,
+  ), r12aManifest);
   const ports = scanPorts({ repoRoot: options.repoRoot, backendRoot: options.backendRoot });
   const exactRemainingDuplicates = manifest.remainingDuplicateProviders.every((provider) => {
     const registrations = duplicateDiagnostics.filter((item) => (
@@ -1904,10 +2116,10 @@ function scanR3Contexts(options) {
     item.key === 'app-jwt-module-availability' ? 'runtime-jwt-secret' : item.key
   ));
   const drift = !projectionValid
-    || JSON.stringify(live.modules) !== JSON.stringify(manifest.legacyModules)
-    || JSON.stringify(live.injections) !== JSON.stringify(manifest.crossContextInjections)
-    || JSON.stringify(livePlatformDebts) !== JSON.stringify(manifest.remainingPlatformDebts)
-    || JSON.stringify(live.providerContracts) !== JSON.stringify(manifest.providerContracts)
+    || JSON.stringify(live.modules) !== JSON.stringify(projectedHistoricalManifest.legacyModules)
+    || JSON.stringify(live.injections) !== JSON.stringify(projectedHistoricalManifest.crossContextInjections)
+    || JSON.stringify(livePlatformDebts) !== JSON.stringify(projectedHistoricalManifest.remainingPlatformDebts)
+    || JSON.stringify(live.providerContracts) !== JSON.stringify(projectedHistoricalManifest.providerContracts)
     || !live.providerContractSurfacesPresent
     || !live.task2ConstructorInventoryPresent
     || (manifest.stage !== 'task-2' && !live.task3ConstructorInventoryPresent)
@@ -1917,13 +2129,13 @@ function scanR3Contexts(options) {
       && !live.task5ConstructorInventoryPresent)
     || !live.r6ConstructorInventoryPresent
     || (manifest.stage === 'strict' && !live.r4ConstructorInventoryPresent)
-    || JSON.stringify(live.decoratorRuntimeReferences)
-      !== JSON.stringify(projectR7SharingDecoratorSources(manifest.decoratorRuntimeReferences))
-    || JSON.stringify(live.runtimeDecoratorValueReferences)
-      !== JSON.stringify(projectR7SharingDecoratorSources(manifest.runtimeDecoratorValueReferences))
-    || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(manifest.lifecycleProviders)
-    || JSON.stringify(live.retiredEdges.map((item) => item.key)) !== JSON.stringify(manifest.remainingRetiredLegacyProviderEdges)
-    || JSON.stringify(live.adminGuardMetadata) !== JSON.stringify(manifest.adminGuardMetadata)
+    || JSON.stringify(sortR12aDecoratorInventory(live.decoratorRuntimeReferences))
+      !== JSON.stringify(sortR12aDecoratorInventory(projectR12aInventory(projectR7SharingDecoratorSources(manifest.decoratorRuntimeReferences), r12aManifest)))
+    || JSON.stringify(sortR12aDecoratorInventory(live.runtimeDecoratorValueReferences))
+      !== JSON.stringify(sortR12aDecoratorInventory(projectR12aInventory(projectR7SharingDecoratorSources(manifest.runtimeDecoratorValueReferences), r12aManifest)))
+    || JSON.stringify(live.lifecycleProviders) !== JSON.stringify(projectedHistoricalManifest.lifecycleProviders)
+    || JSON.stringify(live.retiredEdges.map((item) => item.key)) !== JSON.stringify(projectedHistoricalManifest.remainingRetiredLegacyProviderEdges)
+    || JSON.stringify(live.adminGuardMetadata) !== JSON.stringify(projectedHistoricalManifest.adminGuardMetadata)
     || live.globals !== 0
     || !exactRemainingDuplicates;
   const diagnostics = [...sourceDiagnostics];
@@ -2004,6 +2216,8 @@ module.exports = {
   verifyR7DependencyHandoff,
   verifyR7HistoryDecoratorHandoff,
   verifyR7SharingDecoratorHandoff,
+  projectR12aPath,
+  projectR12aInventory,
   runCli,
 };
 if (require.main === module) process.exitCode = runCli();

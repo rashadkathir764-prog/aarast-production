@@ -1,12 +1,10 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
-import { PROVIDER_PORTAL_ROUTE } from "../provider-dashboard/provider-access-policy";
+import { PROVIDER_PORTAL_ROUTE } from "../modules/marketplace/public/provider-access-policy";
 
 // بناة مدخلات إشعارات دورة عروض الأسعار — نقية بلا Prisma ولا خدمات،
 // حتى يبقى marketplace.service على التنسيق فقط (انظر عقد marketplace-presenter).
 // المبدأ: الطرفان يعلمان دائمًا — لا طلب صامت ولا قبول لا يعرفه المورد.
-
-export { PROVIDER_PORTAL_ROUTE };
 
 export function requesterQuoteRoute(quoteId: string): string {
   return `/providers?quoteId=${encodeURIComponent(quoteId)}`;

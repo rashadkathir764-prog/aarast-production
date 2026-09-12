@@ -1,3 +1,10 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+import { ensureConversationContext, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext,
+  recordConversationEvent,
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -130,7 +137,7 @@ function creationHarness(
     run: () =>
       createQuoteRequestInTransaction(
         prisma as any,
-        notificationService as any,
+        lifecycle, notificationService as any,
         input,
       ),
     get creates() {
@@ -272,7 +279,7 @@ test("backend rejects acceptance of an expired pending offer", async () => {
       canManageProviders: () => true,
     } as any,
     {} as any,
-    {} as any,
+    lifecycle, {} as any,
   );
   await assert.rejects(
     service.acceptQuoteOffer(requester, offer.id),
@@ -382,7 +389,7 @@ test("concurrent provider submissions create exactly one offer", async () => {
   const service = new ProviderDashboardService(
     prisma as any,
     notifications as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   const results = await Promise.allSettled([

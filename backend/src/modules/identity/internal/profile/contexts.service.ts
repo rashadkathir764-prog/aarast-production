@@ -19,7 +19,7 @@ import {
   providerAccessPolicy,
   ProviderAccessCapabilities,
   ProviderAccessMode,
-} from "../../../../provider-dashboard/provider-access-policy";
+} from "../../../marketplace/public/provider-access-policy";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,

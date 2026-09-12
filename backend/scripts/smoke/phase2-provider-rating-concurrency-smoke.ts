@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -80,9 +86,11 @@ async function main(): Promise<void> {
   const marketplace = new MarketplaceService(
     prisma as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
-  const admin = new AdminService(prisma as any, {} as any);
+  const admin = new AdminService(prisma as any, {} as any, {
+    createNotificationInTransaction: async () => null,
+  } as any);
 
   try {
     const migrationProvider = await prisma.provider.create({
@@ -231,7 +239,10 @@ async function main(): Promise<void> {
     const usersService = new UsersService(
       prisma as any,
       {} as any,
-      { scheduleAllOwnedMediaDeletion: async () => [] } as any,
+      {
+        lockAccountDeletionBoundary: async () => undefined,
+        scheduleAllOwnedMediaDeletion: async () => [],
+      } as any,
     );
     await usersService.deleteMe(
       deletionReviewer as any,

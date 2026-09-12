@@ -13,9 +13,9 @@ import { optionalMoneyAmount } from '../shared-kernel/money/money';
 import {
   lockProviderRatingRows,
   refreshProviderRating,
-} from '../marketplace/provider-review-rating';
+} from '../modules/marketplace/public/provider-review-rating';
 import { PrismaService } from '../platform/database/prisma.service';
-import { runAuthorizedAdminMutation } from './admin-mutation-gate';
+import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import {
   toAdminNotificationResponse,
   toAdminReviewResponse,

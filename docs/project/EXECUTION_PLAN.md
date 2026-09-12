@@ -1,11 +1,29 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-08-31
+Snapshot date: 2026-09-06
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
 notes. Product, API, database, privacy, and phase boundaries remain governed by
 the current source documents listed in `docs/README.md`.
+
+## Modular Monolith R12B — Local Completion — 2026-09-06
+
+R12B is complete locally.
+Dependency debt is 9.
+Ownership remains 385/781.
+The architecture target remains incomplete.
+R12C implementation has not begun.
+No commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, phone acceptance, or release is claimed.
+
+R12B has completed its bounded Planning public-location move, seven declared
+consumer rewrites, and two Onboarding-owned local DTO re-expressions. Task 5
+verification and independent review are approved at `0/0/0`; the independent
+Task 6 candidate review has approved activation and the exact four-receipt
+documentation transition is complete. Activated exact-state re-review remains
+the final Task 6 close gate. The next implementation phase stays R12C only
+after separate owner authorization.
 
 ## Delivery Standard
 
@@ -547,7 +565,10 @@ Completed R6 execution plan:
   behavior. Backend debt remains 22 and 385/781, so the architecture target is
   not declared complete.
 - R0-R10 is a locally closed execution wave only. No commit, push, merge, PR
-  mutation, deployment, production mutation, remote CI, or release occurred.
+  mutation, deployment, production mutation, remote CI, or release was claimed
+  by the R10 report. The owner later authorized local R10 closeout commit
+  `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`; no external Git, deployment,
+  remote CI, or release action followed.
 
 The completed R5 execution snapshot remains:
 `docs/superpowers/plans/2026-08-20-modular-monolith-r5-identity-relocation.md`.
@@ -561,6 +582,49 @@ The completed R4 execution snapshot remains:
 The numbered P3 modernization work below remains subordinate to the completed
 R10 receipts. Any future debt-removal phase must have a separate owner
 instruction and approved plan.
+
+#### Post-R10 Architecture Target Completion
+
+The [remaining-target design](../superpowers/specs/2026-09-01-modular-monolith-remaining-target-design.md)
+and [R11 plan](../superpowers/plans/2026-09-01-modular-monolith-r11-target-reconciliation.md)
+govern the ordered remainder. Rows are planning boundaries, not permission to
+edit source code.
+
+| Phase | Bounded outcome | Exit gate |
+| --- | --- | --- |
+| R11 | Locally complete: reconcile the original target, current state, debt ledger, and future order | Nine Markdown paths agree; live debt remains 22 and 385/781 |
+| R12A | Locally complete: replace Backoffice/Catalog authority and mutation deep imports | Records 1-6 retired; 22 -> 16; ownership remains 385/781; Task 5/6 reviews approved |
+| R12B | Replace Planning DTO reuse and Planning-location read-model deep imports | Records 7-9, 11, 18, 21-22 retired; 16 -> 9 |
+| R12C | Replace Finance presenter, Messaging lifecycle, and Marketplace access-policy deep imports | Records 10, 12-17, 19-20 retired; 9 -> 0; strict dependency baseline deleted |
+| R13 | Complete Planning and Finance internals | Ownership 44/85 retired |
+| R14A | Complete Identity internals and preserve the invite OTP owner port | Identity ownership 60/78 retired |
+| R14B | Complete Collaboration internals after R14A exits | Collaboration ownership 28/80 retired; combined R14 total 88/158 |
+| R15 | Complete Tasks and Guests internals | Ownership 10/19 retired |
+| R16 | Complete Catalog, Marketplace, Media, Messaging, and Notifications in five subplans | Ownership 140/288 retired |
+| R17 | Re-express Insights and Backoffice over owner ports | Ownership 103/231 retired; total reaches 0/0 |
+| R18 | Prove strict ownership zero without the baseline | Entry and exit 0/0; zero-valued baseline deleted |
+| R19 | Audit the unproven Mobile fate map and implement only confirmed gaps | Strict boundary remains green; affected phone journeys pass |
+| R20 | Re-prove every original invariant in one final closeout | Dependency 0, ownership 0/0, baselines absent, all-surface gates pass |
+
+```text
+R11 -> R12A -> R12B -> R12C -> R13 -> R14A Identity
+R14A Identity -> R14B Collaboration -> R15
+R15 -> R16 catalog -> R16 marketplace -> R16 media
+R16 marketplace -> R16 messaging -> R16 notifications
+R16 all -> R17 -> R18 -> R19 audit/confirmed work -> R20
+```
+
+Each phase requires a just-in-time design and plan, exact changed-path and debt
+fences, independent review, complete affected tests, architecture and docs
+gates, and real-phone QA for Mobile behavior. No baseline may be regenerated,
+widened, or deleted before strict zero. R14B is blocked until R14A proves the
+Identity exit and the owner-side invite OTP port remains available.
+
+R11 passed its local nine-path, historical R10 fence, debt-truth, cumulative
+architecture, documentation, and independent-review gates. R12A is complete
+locally at dependency 16 and ownership 385/781 after Task 5 and Task 6 evidence,
+documentation, scope, identity, and independent reviews passed. The owner may
+separately authorize R12B design and planning; R12B implementation has not begun.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along
@@ -634,3 +698,21 @@ tree from immutable R9 closeout
 still declared. Stop before commit, push, merge, deployment, production
 mutation, remote CI, store release, or S10. Future architecture debt work needs
 its own approved phase.
+
+The historical stop was lifted only for local R10 commit
+`4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`.
+
+## R11 Target Reconciliation Stop Boundary
+
+R11 is limited to its nine Markdown paths. Stop before R12A implementation,
+any additional commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, store release, or S10.
+
+## R12A Local Closeout Stop Boundary
+
+R12A is complete locally after Task 6 docs sync/verification, scope
+classification, immutable identity, and final independent review passed. Stop
+before commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, store release, R12B implementation, or S10. The next
+permitted phase after local closeout is R12B design/planning only after separate
+owner approval.

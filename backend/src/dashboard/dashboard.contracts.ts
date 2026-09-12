@@ -8,7 +8,7 @@ import {
   WeddingPlanStatus,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { WeddingLocationResponse } from "../wedding-plans/wedding-location";
+import { WeddingLocationResponse } from "../modules/planning/public/wedding-location";
 import type { ContributionHistorySummaryResponse } from "../modules/collaboration/public/collaboration-history.port";
 
 export interface DashboardPermissionSummary {

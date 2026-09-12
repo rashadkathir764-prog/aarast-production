@@ -86,7 +86,13 @@ type R7Scanner = {
     exports: number;
     legacyRuntimeImports: number;
   };
-  verifyStrictRelocationState(repositoryRoot: string, manifest: R7Manifest): {
+  verifyStrictRelocationState(
+    repositoryRoot: string,
+    manifest: R7Manifest,
+    analysis?: unknown,
+    r12aManifest?: unknown,
+    readImmutableFile?: (revision: string, relativePath: string) => string | Buffer,
+  ): {
     legacyRoots: number;
     legacyImportLiterals: number;
     retiredDependencyKeys: number;
@@ -97,9 +103,12 @@ type R7Scanner = {
     forwardRef: number;
     globals: number;
   };
+  verifyR12aStrictDependencyProjection(value: { dependencyRecords: number }, manifest: unknown): true;
   scanR7CollaborationRelocation(options: {
     repositoryRoot: string;
     manifest: unknown;
+    r12aManifest?: unknown;
+    readImmutableFile?: (revision: string, relativePath: string) => string | Buffer;
   }): {
     ok: boolean;
     stage: string;
@@ -122,13 +131,29 @@ function manifest(): R7Manifest {
   return JSON.parse(readFileSync(manifestPath, 'utf8')) as R7Manifest;
 }
 
+function readImmutableFile(revision: string, relativePath: string): string {
+  return execFileSync('git', ['show', `${revision}:${relativePath}`], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true,
+  });
+}
+
 function scanner(): R7Scanner {
-  return require(path.join(
+  const loaded = require(path.join(
     backendRoot,
     'scripts',
     'architecture',
     'r7-collaboration-relocation-scan.cjs',
   )) as R7Scanner;
+  return {
+    ...loaded,
+    scanR7CollaborationRelocation: (options) => loaded.scanR7CollaborationRelocation({
+      ...options,
+      readImmutableFile: options.readImmutableFile ?? readImmutableFile,
+    }),
+  };
 }
 
 function r3Scope(): R3Scope {
@@ -268,6 +293,15 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     'utf8',
   );
   mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
+  const r12aManifest = JSON.parse(readFileSync(
+    path.join(repositoryRoot, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  r12aManifest.stage = 'design';
+  writeJson(
+    path.join(root, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    r12aManifest,
+  );
   writeFileSync(
     path.join(root, 'backend', 'architecture', 'ownership-baseline.json'),
     execFileSync(
@@ -382,6 +416,67 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     });
   }
   return { root, value };
+}
+
+function r12aStagedFixture(stage: 'backoffice' | 'strict'): {
+  root: string;
+  value: R7Manifest;
+  r12aManifest: Record<string, any>;
+} {
+  const fixture = stagedFixture('strict');
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  r12aManifest.stage = stage;
+  writeJson(
+    path.join(fixture.root, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    r12aManifest,
+  );
+  const entryDependency = JSON.parse(execFileSync('git', [
+    'show', `${r12aManifest.repository.baseCommit}:backend/.dependency-cruiser-known-violations.json`,
+  ], { cwd: repositoryRoot, encoding: 'utf8' }));
+  writeJson(
+    path.join(fixture.root, 'backend', '.dependency-cruiser-known-violations.json'),
+    r12a.expectedR12aDependencyRecords(entryDependency, r12aManifest),
+  );
+  const entryOwnership = JSON.parse(execFileSync('git', [
+    'show', `${r12aManifest.repository.baseCommit}:backend/architecture/ownership-baseline.json`,
+  ], { cwd: repositoryRoot, encoding: 'utf8' }));
+  const r7Ownership = JSON.parse(readFileSync(
+    path.join(fixture.root, 'backend', 'architecture', 'ownership-baseline.json'),
+    'utf8',
+  ));
+  writeJson(
+    path.join(fixture.root, 'backend', 'architecture', 'ownership-baseline.json'),
+    r12a.expectedR12aOwnershipBaseline(r7Ownership, r12aManifest),
+  );
+  assert.deepEqual(entryOwnership.violations.length, 385);
+  for (const move of r12aManifest.moves) {
+    const source = path.join(fixture.root, ...move.from.split('/'));
+    const target = path.join(fixture.root, ...move.to.split('/'));
+    const active = r12aManifest.stages[stage].activeMoveIds.includes(move.id);
+    if (active) {
+      mkdirSync(path.dirname(target), { recursive: true });
+      writeFileSync(target, execFileSync('git', [
+        'show', `${r12aManifest.repository.baseCommit}:${move.from}`,
+      ], { cwd: repositoryRoot, encoding: 'utf8' }), 'utf8');
+      rmSync(source, { force: true });
+    } else {
+      mkdirSync(path.dirname(source), { recursive: true });
+      writeFileSync(source, execFileSync('git', [
+        'show', `${r12aManifest.repository.baseCommit}:${move.from}`,
+      ], { cwd: repositoryRoot, encoding: 'utf8' }), 'utf8');
+      rmSync(target, { force: true });
+    }
+  }
+  return { ...fixture, r12aManifest };
 }
 
 function mutateFixtureFile(
@@ -570,7 +665,16 @@ test('R7 strict stage preserves the history API, providers, aliases, exports, an
 test('R7 strict stage pins final layout, API, providers, DI, builder, and baselines', () => {
   const value = scanner().validateR7Manifest(manifest());
   assert.equal(value.stage, 'strict');
-  assert.deepEqual(scanner().verifyStrictRelocationState(repositoryRoot, value), {
+  assert.deepEqual(scanner().verifyStrictRelocationState(
+    repositoryRoot,
+    value,
+    undefined,
+    JSON.parse(readFileSync(
+      path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+      'utf8',
+    )),
+    readImmutableFile,
+  ), {
     legacyRoots: 0,
     legacyImportLiterals: 0,
     retiredDependencyKeys: 0,
@@ -610,7 +714,7 @@ test('R7 strict stage pins final layout, API, providers, DI, builder, and baseli
     stage: 'strict',
     sourceFiles: 0,
     targetFiles: 18,
-    dependencyRecords: 22,
+    dependencyRecords: 0,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });
@@ -4443,7 +4547,7 @@ test('R7 scope is exact, sorted, delegated, and does not mutate R3', () => {
     stage: 'strict',
     sourceFiles: 0,
     targetFiles: 18,
-    dependencyRecords: 22,
+    dependencyRecords: 0,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
   });
@@ -4489,4 +4593,253 @@ test('R7 architecture delegation preserves the immutable R5 package fingerprint'
     packageJson: JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8')),
     packageLock: JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8')),
   }));
+});
+
+test('R12A R7 handoff keeps exact 22/17/16 dependency projection', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  const dependency = JSON.parse(readImmutableFile(
+    manifest.repository.baseCommit,
+    'backend/.dependency-cruiser-known-violations.json',
+  ));
+  for (const [stage, count] of [['design', 22], ['backoffice', 17], ['strict', 16]] as const) {
+    const candidate = structuredClone(manifest);
+    candidate.stage = stage;
+    assert.equal(r12a.expectedR12aDependencyRecords(dependency, candidate).length, count);
+  }
+  const invalid = structuredClone(manifest);
+  invalid.dependencyRecords[0].dependencyTypes = ['import', 'local'];
+  assert.throws(() => r12a.validateR12aManifest(invalid), /semantics|dependency/i);
+});
+
+test('R7 strict completion accepts the validated R12A live dependency count', () => {
+  const r7 = scanner();
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const manifest = r12a.validateR12aManifest(JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  )));
+  const strict = structuredClone(manifest);
+  strict.stage = 'strict';
+  assert.doesNotThrow(() => r7.verifyR12aStrictDependencyProjection(
+    { dependencyRecords: 16 },
+    strict,
+  ));
+  assert.throws(() => r7.verifyR12aStrictDependencyProjection(
+    { dependencyRecords: 22 },
+    strict,
+  ), /dependency inventory drift/i);
+});
+
+test('R7 default R12A manifest is resolved from the supplied repository root', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r7-r12a-root-'));
+  const invalid = { stage: 'not-a-valid-r12a-stage' };
+  mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
+  writeFileSync(
+    path.join(root, 'backend', 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    `${JSON.stringify(invalid)}\n`,
+  );
+  assert.throws(
+    () => scanner().scanR7CollaborationRelocation({
+      repositoryRoot: root,
+      manifest: manifest(),
+    }),
+    /R12A manifest/i,
+  );
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('R12A R7 ownership handoff preserves the immutable R7 projection and rejects near-misses', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r7 = manifest();
+  const historical = JSON.parse(execFileSync('git', [
+    'show', `${r7.baseRevision}:backend/architecture/ownership-baseline.json`,
+  ], { cwd: repositoryRoot, encoding: 'utf8' })) as {
+    violations: Array<Record<string, any>>;
+  };
+  const r7Live = structuredClone(historical);
+  for (const projection of r7.historicalHandoffs.ownershipProjection) {
+    for (const record of r7Live.violations) {
+      if (record.file !== projection.from) continue;
+      record.file = projection.to;
+      record.key = String(record.key).replace(projection.from, projection.to);
+    }
+  }
+  r7Live.violations.sort((left, right) => (
+    left.key < right.key ? -1 : left.key > right.key ? 1 : 0
+  ));
+  const r12aManifest = JSON.parse(readFileSync(
+    path.join(backendRoot, 'architecture', 'r12a-backoffice-catalog-public-contracts.json'),
+    'utf8',
+  ));
+  r12aManifest.stage = 'backoffice';
+  const projected = r12a.expectedR12aOwnershipBaseline(r7Live, r12aManifest);
+  assert.equal(projected.violations.length, 385);
+  assert.equal(projected.violations.reduce((sum: number, record: any) => sum + record.count, 0), 781);
+  assert.deepEqual(projected.violations, [...projected.violations].sort(
+    (left: any, right: any) => (
+      left.key < right.key ? -1 : left.key > right.key ? 1 : 0
+    ),
+  ));
+
+  const unsorted = structuredClone(projected);
+  [unsorted.violations[0], unsorted.violations[1]] = [
+    unsorted.violations[1],
+    unsorted.violations[0],
+  ];
+  assert.notDeepEqual(unsorted, projected, 'an in-place unsorted edit must fail complete equality');
+
+  const secondProjection = structuredClone(r12aManifest);
+  secondProjection.ownershipProjection.oldKey = projected.violations[0].key;
+  assert.throws(
+    () => r12a.expectedR12aOwnershipBaseline(r7Live, secondProjection),
+    /projection|ownership/i,
+  );
+  const semanticDrift = structuredClone(r12aManifest);
+  semanticDrift.ownershipProjection.unchanged.operation = 'update';
+  assert.throws(
+    () => r12a.expectedR12aOwnershipBaseline(r7Live, semanticDrift),
+    /projection|ownership/i,
+  );
+  const countDrift = structuredClone(r12aManifest);
+  countDrift.ownershipProjection.unchanged.count = 2;
+  assert.throws(
+    () => r12a.expectedR12aOwnershipBaseline(r7Live, countDrift),
+    /projection|ownership/i,
+  );
+  const removedHandoff = structuredClone(r7);
+  removedHandoff.historicalHandoffs.ownershipProjection = [];
+  assert.throws(
+    () => scanner().validateR7Manifest(removedHandoff),
+    /historical|handoff|projection/i,
+  );
+});
+
+test('R7 complete scanner catches unprojected backoffice and strict R12A baselines', () => {
+  for (const stage of ['backoffice', 'strict'] as const) {
+    const fixture = r12aStagedFixture(stage);
+    try {
+      writeFileSync(
+        path.join(fixture.root, 'backend', '.dependency-cruiser-known-violations.json'),
+        readImmutableFile(
+          fixture.r12aManifest.repository.baseCommit,
+          'backend/.dependency-cruiser-known-violations.json',
+        ),
+        'utf8',
+      );
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation({
+          repositoryRoot: fixture.root,
+          manifest: fixture.value,
+          r12aManifest: fixture.r12aManifest,
+        }),
+        /R12A dependency baseline drift/i,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('R7 complete scanner accepts physically staged R12A backoffice and strict projections', () => {
+  for (const stage of ['backoffice', 'strict'] as const) {
+    const fixture = r12aStagedFixture(stage);
+    try {
+      const scanOptions = {
+        repositoryRoot: fixture.root,
+        manifest: fixture.value,
+        r12aManifest: fixture.r12aManifest,
+      };
+      assert.deepEqual(scanner().scanR7CollaborationRelocation(scanOptions), {
+        ok: true,
+        stage: 'strict',
+        sourceFiles: 0,
+        targetFiles: 18,
+        dependencyRecords: stage === 'backoffice' ? 17 : 16,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      });
+
+      const ownershipPath = path.join(
+        fixture.root,
+        'backend',
+        'architecture',
+        'ownership-baseline.json',
+      );
+      const unsortedOwnership = JSON.parse(readFileSync(ownershipPath, 'utf8'));
+      [unsortedOwnership.violations[0], unsortedOwnership.violations[1]] = [
+        unsortedOwnership.violations[1],
+        unsortedOwnership.violations[0],
+      ];
+      writeJson(ownershipPath, unsortedOwnership);
+      assert.throws(
+        () => scanner().scanR7CollaborationRelocation(scanOptions),
+        /ownership baseline identity drift/i,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('R12C successor handoff preserves historical 16 and selects exact strict live 0', () => {
+  const r12a = require(path.join(
+    backendRoot,
+    'scripts',
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts-scan.cjs',
+  ));
+  const r12aManifest = JSON.parse(readFileSync(path.join(
+    backendRoot,
+    'architecture',
+    'r12a-backoffice-catalog-public-contracts.json',
+  ), 'utf8'));
+  const entry = r12a.readR12aImmutableEntry({
+    repositoryRoot,
+    manifest: r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  });
+  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r7-no-r12b-'));
+  try {
+    assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+      repositoryRoot: historicalRoot,
+      r12aEntryRecords: entry.dependency,
+      r12aManifest,
+      readImmutableFile: () => { throw new Error('no immutable read before R12B exists'); },
+    }).length, 16);
+  } finally {
+    rmSync(historicalRoot, { recursive: true, force: true });
+  }
+  assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
+    repositoryRoot,
+    r12aEntryRecords: entry.dependency,
+    r12aManifest,
+    readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
+      'git',
+      ['show', `${revision}:${relative}`],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    ),
+  }).length, 0);
 });

@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -30,7 +36,7 @@ test("provider service prices fail at validation before Prisma can round or over
   const service = new ProviderDashboardService(
     prisma as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   for (const basePrice of ["9999999999999", "10.999"]) {

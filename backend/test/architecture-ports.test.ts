@@ -525,18 +525,30 @@ test('only the bootstrap root may import the relocated internal JWT secret valid
   assert.equal(diagnosticsOfKind(sibling, 'non-public-cross-module-import').length, 1);
 });
 
-test('R5 relocated Identity internals keep only the two exact pre-existing pure helper edges', () => {
+test('R12C relocated Identity internals consume provider access only through Marketplace public', () => {
   const allowed = scanPorts(fixtureProject({
+    'backend/src/modules/identity/internal/profile/contexts.service.ts':
+      "import { providerAccessPolicy } from '../../../marketplace/public/provider-access-policy';\nexport { providerAccessPolicy };\n",
+    'backend/src/modules/marketplace/public/provider-access-policy.ts':
+      'export const providerAccessPolicy = true;\n',
+  }));
+  assert.deepEqual(diagnosticsOfKind(allowed, 'non-public-cross-module-import'), []);
+
+  const legacy = scanPorts(fixtureProject({
     'backend/src/modules/identity/internal/profile/contexts.service.ts':
       "import { providerAccessPolicy } from '../../../../provider-dashboard/provider-access-policy';\nexport { providerAccessPolicy };\n",
     'backend/src/provider-dashboard/provider-access-policy.ts':
       'export const providerAccessPolicy = true;\n',
+  }));
+  assert.equal(diagnosticsOfKind(legacy, 'non-public-cross-module-import').length, 1);
+
+  const retired = scanPorts(fixtureProject({
     'backend/src/modules/identity/internal/profile/users.service.ts':
       "import { refreshProviderRating } from '../../../../marketplace/provider-review-rating';\nexport { refreshProviderRating };\n",
     'backend/src/marketplace/provider-review-rating.ts':
       'export const refreshProviderRating = true;\n',
   }));
-  assert.deepEqual(diagnosticsOfKind(allowed, 'non-public-cross-module-import'), []);
+  assert.equal(diagnosticsOfKind(retired, 'non-public-cross-module-import').length, 1);
 
   const siblingSource = scanPorts(fixtureProject({
     'backend/src/modules/identity/internal/profile/not-contexts.service.ts':

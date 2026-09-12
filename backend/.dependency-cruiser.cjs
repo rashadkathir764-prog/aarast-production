@@ -23,14 +23,6 @@ const allBusinessPaths = businessContexts.map(contextPattern).join('|');
 const backofficePermissionContract =
   '^src/modules/backoffice/domain/admin-permissions\\.ts$';
 const relocatedSafeUser = '^src/modules/identity/public/safe-user\\.ts$';
-const relocatedIdentityContextsService =
-  '^src/modules/identity/internal/profile/contexts\\.service\\.ts$';
-const relocatedIdentityUsersService =
-  '^src/modules/identity/internal/profile/users\\.service\\.ts$';
-const providerAccessPolicy = '^src/provider-dashboard/provider-access-policy\\.ts$';
-const providerReviewRating = '^src/marketplace/provider-review-rating\\.ts$';
-const relocatedIdentityExceptionalSources =
-  '^(?:src/modules/identity/public/safe-user\\.ts|src/modules/identity/internal/profile/(?:contexts|users)\\.service\\.ts)$';
 const makeContextRule = (
   name,
   ownRoots,
@@ -72,22 +64,12 @@ const contextRules = businessContexts.flatMap(([name, ownRoots]) => {
         ownRoots.filter((root) => root !== 'auth'),
         null,
         true,
-        relocatedIdentityExceptionalSources,
+        relocatedSafeUser,
       ),
       {
         ...makeContextRule(name, ownRoots, [], backofficePermissionContract),
         name: 'context-identity-relocated-safe-user-cross-context',
         from: { path: relocatedSafeUser },
-      },
-      {
-        ...makeContextRule(name, ownRoots, [], providerAccessPolicy),
-        name: 'context-identity-relocated-contexts-helper-cross-context',
-        from: { path: relocatedIdentityContextsService },
-      },
-      {
-        ...makeContextRule(name, ownRoots, [], providerReviewRating),
-        name: 'context-identity-relocated-users-helper-cross-context',
-        from: { path: relocatedIdentityUsersService },
       },
     ];
   }

@@ -1,3 +1,10 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+import { ensureConversationContext, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext,
+  recordConversationEvent,
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -168,7 +175,7 @@ test("a new quote request notifies the provider account too", async () => {
   const service = new MarketplaceService(
     prisma as any,
     {} as any,
-    notifications as any,
+    notifications as any, lifecycle,
   );
 
   await service.createQuoteRequest(requester, PROVIDER_ID, {} as any);
@@ -230,7 +237,7 @@ test("a provider without a linked user account is skipped silently", async () =>
   const service = new MarketplaceService(
     prisma as any,
     {} as any,
-    notifications as any,
+    notifications as any, lifecycle,
   );
 
   await service.createQuoteRequest(requester, PROVIDER_ID, {} as any);
@@ -288,7 +295,7 @@ test("provider rejection notifies the requester with the exact quote route", asy
   const service = new ProviderDashboardService(
     prisma as any,
     notifications as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await service.updateQuoteRequestStatus(
@@ -507,7 +514,7 @@ function acceptanceHarness({
   const service = new MarketplaceService(
     prisma as any,
     permissions as any,
-    notifications as any,
+    notifications as any, lifecycle,
   );
 
   return {
@@ -643,7 +650,7 @@ function acceptedReplayIntegrityHarness({
         $transaction: async (operation: (client: any) => Promise<unknown>) =>
           operation(tx),
       } as any,
-      {
+      lifecycle, {
         assertProviderAndMoneyManageableInTransaction: async () => ({}),
       } as any,
       {
@@ -934,7 +941,7 @@ test("rejecting an offer notifies the provider rather than the requester", async
   const service = new MarketplaceService(
     prisma as any,
     permissions as any,
-    notifications as any,
+    notifications as any, lifecycle,
   );
 
   await service.rejectQuoteOffer(requester, OFFER_ID);
@@ -992,7 +999,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
       assertProviderManageable: async () => ({}),
       assertProviderManageableInTransaction: async () => ({}),
     } as any,
-    notifications as any,
+    notifications as any, lifecycle,
   );
 
   const result = await service.rejectQuoteOffer(requester, OFFER_ID);
@@ -1066,7 +1073,7 @@ test("a received provider offer opens its exact marketplace quote", async () => 
   const service = new ProviderDashboardService(
     prisma as any,
     notifications as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await service.createQuoteOffer({ id: PROVIDER_USER_ID } as any, QUOTE_ID, {

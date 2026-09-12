@@ -81,7 +81,7 @@ test("every affected admin mutation runs behind the live serializable gate", () 
 });
 
 test("the gate locks and reauthorizes the actor before target helpers run", () => {
-  const gate = source("admin-mutation-gate.ts");
+  const gate = source("../modules/backoffice/public/admin-mutation-gate.ts");
   assert.match(gate, /runSerializableTransaction/);
   assert.match(gate, /FROM "User"[\s\S]*FOR UPDATE/);
   assert.match(gate, /actor\.role !== UserRole\.ADMIN/);

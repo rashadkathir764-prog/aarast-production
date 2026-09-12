@@ -1,3 +1,10 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+import { recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent,
+};
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
@@ -228,7 +235,7 @@ function createProviderDashboard(status: ProviderStatus) {
         _currentUser: unknown,
         url: string,
       ) => url,
-    } as any,
+    } as any, lifecycle,
   );
 }
 
@@ -831,7 +838,7 @@ test('a customer cannot accept an offer after the provider becomes inactive', as
         $transaction: async (operation: (client: any) => Promise<unknown>) =>
           operation(tx),
       } as any,
-      {
+      lifecycle, {
         assertProviderAndMoneyManageableInTransaction: async () => ({
           plan: {
             id: currentOffer.quoteRequest.weddingPlanId,

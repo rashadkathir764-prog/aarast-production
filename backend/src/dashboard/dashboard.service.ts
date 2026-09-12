@@ -34,7 +34,7 @@ import {
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
 } from "../modules/collaboration/public/collaboration-permission.port";
-import { weddingLocationResponse } from "../wedding-plans/wedding-location";
+import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
 import {
   DashboardPermissionSummary,
   WeddingPlanDashboardSummaryResponse,

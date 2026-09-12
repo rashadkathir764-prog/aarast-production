@@ -12,7 +12,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import type { CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { recordConversationEvent } from "../conversations/conversation-lifecycle";
+import type { ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
@@ -35,6 +35,7 @@ interface RejectQuoteOfferInput {
 
 export async function rejectQuoteOfferInTransaction(
   prisma: PrismaService,
+  lifecycle: ConversationLifecyclePort,
   permissions: PermissionService,
   notifications: NotificationsPort,
   input: RejectQuoteOfferInput,
@@ -152,7 +153,7 @@ export async function rejectQuoteOfferInTransaction(
       throw new ConflictException("Quote request cannot be rejected");
     }
 
-    await recordConversationEvent(tx, {
+    await lifecycle.recordConversationEvent(tx, {
       conversationId: current.quoteRequest.conversationId,
       quoteRequestId: current.quoteRequestId,
       quoteOfferId: current.id,
@@ -162,7 +163,7 @@ export async function rejectQuoteOfferInTransaction(
       dedupeKey: `quote-offer:${current.id}:rejected`,
       data: { status: QuoteOfferStatus.REJECTED },
     });
-    await recordConversationEvent(tx, {
+    await lifecycle.recordConversationEvent(tx, {
       conversationId: current.quoteRequest.conversationId,
       quoteRequestId: current.quoteRequestId,
       actorUserId: currentUser.id,

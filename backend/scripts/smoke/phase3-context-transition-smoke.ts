@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -38,7 +44,7 @@ const notifications = {
 const providerDashboard = new ProviderDashboardService(
   prisma as any,
   notifications as any,
-  {} as any,
+  {} as any, lifecycle,
 );
 const admin = new AdminService(prisma as any, {
   disconnectUser: () => undefined,

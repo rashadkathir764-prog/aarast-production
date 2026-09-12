@@ -7,7 +7,7 @@ import { readLivePrismaSchema } from './support/live-prisma-schema';
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { OtpPurpose, UserRole } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
-import { AdminGuard } from "../src/admin/admin.guard";
+import { AdminGuard } from "../src/modules/backoffice/public/admin.guard";
 import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
 import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
 import { resolveJwtSessionScope } from "../src/modules/identity/public/access-token-scope";
@@ -213,8 +213,8 @@ test("application and admin credentials stay separated and only admin MFA mints 
   assert.match(credentialsBlock, /user\.appPasswordHash/);
   assert.doesNotMatch(loginBlock, /createAuthResponse\([^)]*,\s*true/);
   assert.doesNotMatch(otpBlock, /createAuthResponse\([^)]*,\s*true/);
-  assert.match(read("src/admin/admin.guard.ts"), /adminMfa !== true/);
-  assert.match(read("src/admin/admin.guard.ts"), /sessionScope !== 'admin'/);
+  assert.match(read("src/modules/backoffice/public/admin.guard.ts"), /adminMfa !== true/);
+  assert.match(read("src/modules/backoffice/public/admin.guard.ts"), /sessionScope !== 'admin'/);
   assert.match(
     read("src/modules/identity/internal/auth/jwt.strategy.ts"),
     /resolveJwtSessionScope\(payload\)/,

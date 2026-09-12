@@ -74,7 +74,7 @@
     "seed": "ts-node prisma/seed.ts",
     "start": "node dist/main.js",
     "start:dev": "node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts",
-    "architecture:imports": "depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src",
+    "architecture:imports": "depcruise --config .dependency-cruiser.cjs src",
     "architecture:imports:baseline": "depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src",
     "architecture:ownership": "node scripts/architecture/ownership-scan.cjs --check",
     "architecture:ports": "node scripts/architecture/ports-scan.cjs --check",
@@ -84,7 +84,10 @@
     "architecture:r6": "node scripts/architecture/r6-sharing-otp-transport-scan.cjs --check",
     "architecture:r7": "node scripts/architecture/r7-collaboration-relocation-scan.cjs --check",
     "architecture:r8": "node scripts/architecture/r8-global-module-removal-scan.cjs --check",
-    "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8"
+    "architecture:r12a": "node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check",
+    "architecture:r12b": "node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check",
+    "architecture:r12c": "node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check",
+    "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a && npm run architecture:r12b && npm run architecture:r12c"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

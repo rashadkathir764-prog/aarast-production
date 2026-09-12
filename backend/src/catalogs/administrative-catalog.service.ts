@@ -8,7 +8,7 @@ import { AdministrativeLocalityType, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
-import { runAuthorizedAdminMutation } from '../admin/admin-mutation-gate';
+import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
 import {
   AdminDistrictDto,

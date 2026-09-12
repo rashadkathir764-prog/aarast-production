@@ -4,7 +4,7 @@ import { lockUserLifecycleRowsInTransaction } from "../modules/identity/public/u
 import {
   assertProviderOperational,
   assertProviderProfileWritable,
-} from "./provider-access-policy";
+} from "../modules/marketplace/public/provider-access-policy";
 
 export type ProviderMutationAccess = "OPERATIONAL" | "PROFILE";
 export type ProviderMutationLockMode = "SHARE" | "UPDATE";

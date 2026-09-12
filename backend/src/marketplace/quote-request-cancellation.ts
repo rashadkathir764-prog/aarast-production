@@ -15,7 +15,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import type { CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
-import { recordConversationEvent } from "../conversations/conversation-lifecycle";
+import type { ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   assertWeddingPlanWritable,
@@ -42,6 +42,7 @@ export type QuoteCancellationAccess =
 
 export function cancelQuoteRequestInTransaction(
   prisma: PrismaService,
+  lifecycle: ConversationLifecyclePort,
   permissions: PermissionService,
   currentUser: AuthenticatedUser,
   id: string,
@@ -179,7 +180,7 @@ export function cancelQuoteRequestInTransaction(
       where: { id },
       include: MARKETPLACE_QUOTE_INCLUDE,
     });
-    await recordConversationEvent(tx, {
+    await lifecycle.recordConversationEvent(tx, {
       conversationId: existing.conversationId,
       quoteRequestId: existing.id,
       actorUserId: currentUser.id,

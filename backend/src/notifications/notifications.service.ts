@@ -29,7 +29,7 @@ import {
   assertProviderOperational,
   isProviderOperational,
   PROVIDER_PORTAL_ROUTE,
-} from "../provider-dashboard/provider-access-policy";
+} from "../modules/marketplace/public/provider-access-policy";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,

@@ -1,10 +1,27 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-08-30
+Snapshot date: 2026-09-06
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
 old files are preserved as `.md.txt` archive references.
+
+## Modular Monolith R12B — Local Completion — 2026-09-06
+
+R12B is complete locally.
+Dependency debt is 9.
+Ownership remains 385/781.
+The architecture target remains incomplete.
+R12C implementation has not begun.
+No commit, push, merge, deployment, production mutation, remote CI,
+provider delivery, phone acceptance, or release is claimed.
+
+The active architecture, status, decisions, execution plan, changelog, and
+generated scripts reference now describe the same R12B local-completion state.
+The Planning location boundary and Onboarding local DTO work passed Task 5 and
+its independent `0/0/0` review. The Task 6 candidate review approved activation;
+activated exact-state re-review remains the final close gate. Local completion
+does not authorize R12C or any external action.
 
 ## Inventory Policy
 
@@ -97,6 +114,29 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts-design.md`,
+  `docs/superpowers/plans/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts.md`,
+  and
+  `docs/superpowers/reports/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts-report.md`
+  - locally completed R12A from immutable local R10/R11 entry
+    `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. Five contracts moved to owner
+    public slices, nine consumers were rewritten, dependency debt is exactly 16,
+    and ownership remains 385/781. Task 5 tests, smokes, and independent review
+    passed. Task 6 documentation/scope/identity and independent review passed;
+    no
+    commit, push, merge, deployment, provider delivery, or release is claimed.
+- `docs/superpowers/specs/2026-09-01-modular-monolith-remaining-target-design.md`,
+  `docs/superpowers/plans/2026-09-01-modular-monolith-r11-target-reconciliation.md`,
+  and
+  `docs/superpowers/reports/2026-09-01-modular-monolith-r11-reconciliation-report.md`
+  - locally completed R11 authority, execution contract, and evidence receipt
+    reconcile the
+    original architecture target with the locally closed R0-R10 wave. R10 is
+    committed locally at `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`.
+    R11 changed documentation only and keeps the live Backend debt explicit at
+    dependency 22 and ownership 385/781. Its nine-file scope, architecture,
+    documentation, and independent-review gates passed. It does not authorize R12 source work,
+    push, merge, deployment, remote CI, real provider delivery, or release.
 - `docs/superpowers/specs/2026-08-30-modular-monolith-r10-admin-closeout-design.md`,
   `docs/superpowers/plans/2026-08-30-modular-monolith-r10-admin-closeout.md`,
   and
@@ -298,3 +338,22 @@ R10 Admin phase is locally complete in the working tree from immutable R9
 closeout `e560e5784278907dd6bf565327c3abfa0c9b8cab`. Stop before commit, push,
 merge, deployment, production mutation, remote CI, store release, or S10. The
 remaining Backend debt needs a separate approved phase.
+
+That historical stop was lifted only for the later owner-authorized local R10
+commit `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`. It did not authorize external
+Git or deployment activity.
+
+## R11 Target Reconciliation Stop Boundary
+
+R11 is a documentation-only reconciliation from the immutable local R10
+commit. Its only allowed paths are the nine Markdown files listed in the R11
+plan. Stop before R12 source work, any additional commit, push, merge,
+deployment, production mutation, remote CI, provider delivery, or release.
+
+## R12A Local Closeout Boundary
+
+R12A is complete locally after Task 5 and Task 6 evidence, documentation,
+exact-scope, identity, and independent-review gates passed. Do not commit, push,
+merge, deploy, start R12B, mutate production, run remote CI, deliver to a
+provider, or release. The next permitted work is R12B design/planning only after
+separate owner approval.

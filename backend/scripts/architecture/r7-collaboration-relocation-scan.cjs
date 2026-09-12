@@ -11,6 +11,13 @@ const {
   createProgram: createR8Program,
   validateR8Manifest,
 } = require('./r8-global-module-removal-scan.cjs');
+const {
+  expectedR12aSuccessorDependencyRecords,
+  expectedR12aOwnershipBaseline,
+  readR12aImmutableEntry,
+  readR12aSuccessorDependencyBytes,
+  validateR12aManifest,
+} = require('./r12a-backoffice-catalog-public-contracts-scan.cjs');
 
 const R7_BASE = '31ea5324007fc71fa4b3590fbb98a454ee1deaa7';
 const MANIFEST_PATH = 'backend/architecture/r7-collaboration-relocation.json';
@@ -582,16 +589,26 @@ function validateStagedLayout(repositoryRoot, manifest) {
   return Object.freeze({ sourceFiles, targetFiles });
 }
 
-function verifyBaselines(repositoryRoot, manifest) {
-  const dependency = JSON.parse(fs.readFileSync(path.join(
+function verifyBaselines(
+  repositoryRoot,
+  manifest,
+  r12aManifestValue = undefined,
+  readImmutableFile = undefined,
+) {
+  const r12aManifest = r12aManifestValue === undefined
+    ? null : validateR12aManifest(r12aManifestValue);
+  const r12aEntry = r12aManifest ? readR12aImmutableEntry({
     repositoryRoot,
-    'backend',
-    '.dependency-cruiser-known-violations.json',
-  ), 'utf8'));
+    manifest: r12aManifest,
+    readImmutableFile,
+  }) : null;
+  const preserveHistoricalBaseline = !r12aManifest || r12aManifest.stage === 'design';
+  const dependency = JSON.parse(readR12aSuccessorDependencyBytes(repositoryRoot).toString('utf8'));
   const expectedDependencyRecords = manifest.stage === 'design'
     ? manifest.expectedBaselines.baseDependencyRecords
     : manifest.expectedBaselines.strictDependencyRecords;
-  if (!Array.isArray(dependency) || dependency.length !== expectedDependencyRecords) {
+  if (!Array.isArray(dependency)
+      || (preserveHistoricalBaseline && dependency.length !== expectedDependencyRecords)) {
     throw new Error('R7 dependency baseline drift detected');
   }
   const actualDependencyKeys = dependency.map(dependencyKey).sort();
@@ -600,14 +617,27 @@ function verifyBaselines(repositoryRoot, manifest) {
     : EXPECTED_BASE_DEPENDENCY_KEYS.filter(
       (key) => !manifest.historicalHandoffs.retiredDependencyKeys.includes(key),
     );
-  assertExact(actualDependencyKeys, expectedDependencyKeys, 'R7 dependency identity');
+  if (preserveHistoricalBaseline) {
+    assertExact(actualDependencyKeys, expectedDependencyKeys, 'R7 dependency identity');
+  }
   const debt = actualDependencyKeys
     .filter((key) => manifest.historicalHandoffs.retiredDependencyKeys.includes(key));
-  assertExact(
-    debt,
-    manifest.stage === 'design' ? manifest.historicalHandoffs.retiredDependencyKeys : [],
-    'R7 dependency handoff',
-  );
+  if (preserveHistoricalBaseline) assertExact(
+      debt,
+      manifest.stage === 'design' ? manifest.historicalHandoffs.retiredDependencyKeys : [],
+      'R7 dependency handoff',
+    );
+  if (r12aManifest && manifest.stage !== 'design') {
+    const expectedR12a = expectedR12aSuccessorDependencyRecords({
+      repositoryRoot,
+      r12aEntryRecords: r12aEntry.dependency,
+      r12aManifest,
+      readImmutableFile,
+    });
+    if (JSON.stringify(dependency) !== JSON.stringify(expectedR12a)) {
+      throw new Error('R7 R12A dependency baseline drift detected');
+    }
+  }
 
   const ownership = JSON.parse(fs.readFileSync(path.join(
     repositoryRoot,
@@ -648,7 +678,15 @@ function verifyBaselines(repositoryRoot, manifest) {
       throw new Error('R7 ownership semantic drift detected');
     }
   }
-  const expectedOwnership = expectedOwnershipBaseline(repositoryRoot, manifest, targetPaths);
+  let expectedOwnership = expectedOwnershipBaseline(
+    repositoryRoot,
+    manifest,
+    targetPaths,
+    readImmutableFile,
+  );
+  if (r12aManifest && manifest.stage !== 'design') {
+    expectedOwnership = expectedR12aOwnershipBaseline(expectedOwnership, r12aManifest);
+  }
   if (JSON.stringify(ownership) !== JSON.stringify(expectedOwnership)) {
     throw new Error('R7 ownership baseline identity drift detected');
   }
@@ -659,24 +697,33 @@ function verifyBaselines(repositoryRoot, manifest) {
   });
 }
 
-function expectedOwnershipBaseline(repositoryRoot, manifest, targetPaths) {
-  const scannerRepositoryRoot = path.resolve(__dirname, '..', '..', '..');
-  const gitRoot = [repositoryRoot, scannerRepositoryRoot].find((candidate) => (
-    fs.existsSync(path.join(candidate, '.git'))
+function expectedOwnershipBaseline(
+  repositoryRoot,
+  manifest,
+  targetPaths,
+  readImmutableFile = undefined,
+) {
+  if (readImmutableFile !== undefined && typeof readImmutableFile !== 'function') {
+    throw new Error('R7 immutable reader is invalid');
+  }
+  const reader = readImmutableFile || ((revision, relative) => execFileSync(
+    'git',
+    ['show', `${revision}:${relative}`],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    },
   ));
-  if (!gitRoot) throw new Error('R7 immutable ownership baseline is unavailable');
   let historical;
   try {
-    historical = JSON.parse(execFileSync(
-      'git',
-      ['show', `${manifest.baseRevision}:backend/architecture/ownership-baseline.json`],
-      {
-        cwd: gitRoot,
-        encoding: 'utf8',
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      },
-    ));
+    const bytes = reader(manifest.baseRevision, 'backend/architecture/ownership-baseline.json');
+    if (typeof bytes !== 'string' && !Buffer.isBuffer(bytes)) {
+      throw new Error('R7 immutable ownership reader must return a string or Buffer');
+    }
+    historical = JSON.parse(Buffer.isBuffer(bytes) ? bytes.toString('utf8') : bytes);
   } catch {
     throw new Error('R7 immutable ownership baseline is unavailable');
   }
@@ -3025,20 +3072,35 @@ function verifyStrictRelocationState(
   repositoryRoot,
   manifest,
   analysis = createTypeScriptAnalysis(repositoryRoot),
+  r12aManifestValue = undefined,
+  readImmutableFile = undefined,
 ) {
   if (manifest.stage !== 'strict') {
     throw new Error('R7 strict relocation verification requires stage=strict');
   }
   const layout = validateStagedLayout(repositoryRoot, manifest);
-  const baselines = verifyBaselines(repositoryRoot, manifest);
+  const baselines = verifyBaselines(
+    repositoryRoot,
+    manifest,
+    r12aManifestValue,
+    readImmutableFile,
+  );
   const sourceReferences = verifyStrictSourceReferences(repositoryRoot, analysis);
   const protectedImports = verifyProtectedCollaborationImports(repositoryRoot, analysis);
   const nest = verifyStrictNestState(repositoryRoot, analysis);
   if (layout.sourceFiles !== 0 || layout.targetFiles !== manifest.moves.length) {
     throw new Error('R7 strict final inventory drift detected');
   }
-  if (baselines.dependencyRecords !== manifest.expectedBaselines.strictDependencyRecords) {
-    throw new Error('R7 strict dependency inventory drift detected');
+  if (r12aManifestValue === undefined) {
+    if (baselines.dependencyRecords !== manifest.expectedBaselines.strictDependencyRecords) {
+      throw new Error('R7 strict dependency inventory drift detected');
+    }
+  } else {
+    verifyR12aStrictDependencyProjection(
+      baselines,
+      r12aManifestValue,
+      baselines.dependencyRecords,
+    );
   }
   return Object.freeze({
     legacyRoots: 0,
@@ -3053,16 +3115,46 @@ function verifyStrictRelocationState(
   });
 }
 
+function verifyR12aStrictDependencyProjection(
+  baselines,
+  manifestValue,
+  successorDependencyRecords = undefined,
+) {
+  const manifest = validateR12aManifest(manifestValue);
+  const expected = successorDependencyRecords === undefined
+    ? manifest.stages[manifest.stage].dependencyRecords
+    : successorDependencyRecords;
+  if (!Number.isSafeInteger(expected) || expected < 0
+      || !baselines || baselines.dependencyRecords !== expected) {
+    throw new Error('R7 strict dependency inventory drift detected');
+  }
+  return true;
+}
+
 function scanR7CollaborationRelocation(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new Error('R7 scan options are invalid');
   }
-  const manifest = validateR7Manifest(options.manifest);
   if (typeof options.repositoryRoot !== 'string' || !path.isAbsolute(options.repositoryRoot)) {
     throw new Error('R7 repository root must be absolute');
   }
+  const manifest = validateR7Manifest(options.manifest);
+  const r12aManifest = options.r12aManifest === undefined
+    ? validateR12aManifest(JSON.parse(fs.readFileSync(path.join(
+      options.repositoryRoot,
+      'backend/architecture/r12a-backoffice-catalog-public-contracts.json',
+    ), 'utf8')))
+    : validateR12aManifest(options.r12aManifest);
+  if (options.readImmutableFile !== undefined && typeof options.readImmutableFile !== 'function') {
+    throw new Error('R7 immutable reader is invalid');
+  }
   const { sourceFiles, targetFiles } = validateStagedLayout(options.repositoryRoot, manifest);
-  const baselines = verifyBaselines(options.repositoryRoot, manifest);
+  const baselines = verifyBaselines(
+    options.repositoryRoot,
+    manifest,
+    r12aManifest,
+    options.readImmutableFile,
+  );
   const analysis = createTypeScriptAnalysis(options.repositoryRoot);
   verifySourceParity(options.repositoryRoot, manifest);
   verifyPublicSnapshotSource(options.repositoryRoot, manifest, analysis);
@@ -3077,7 +3169,13 @@ function scanR7CollaborationRelocation(options) {
   }
   verifyProtectedCollaborationImports(options.repositoryRoot, analysis);
   if (manifest.stage === 'strict') {
-    verifyStrictRelocationState(options.repositoryRoot, manifest, analysis);
+    verifyStrictRelocationState(
+      options.repositoryRoot,
+      manifest,
+      analysis,
+      r12aManifest,
+      options.readImmutableFile,
+    );
   }
   return Object.freeze({
     ok: true,
@@ -3122,6 +3220,7 @@ module.exports = {
   inspectSemanticSource,
   runCli,
   scanR7CollaborationRelocation,
+  verifyR12aStrictDependencyProjection,
   validateR7Manifest,
   verifyConstructorHandoffs,
   verifyControllerHandoffs,

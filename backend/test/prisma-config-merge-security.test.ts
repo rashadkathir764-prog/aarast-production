@@ -14,6 +14,21 @@ const checkerPath = path.join(
 );
 
 type JsonRecord = Record<string, unknown>;
+test('R12C Task 5 strict import command preserves the pinned package graph without an allowance', () => {
+  const checker = require(checkerPath);
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  packageJson.scripts['architecture:imports'] = 'depcruise --config .dependency-cruiser.cjs src';
+  assert.doesNotThrow(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(packageJson), packageLock));
+  for (const command of [
+    'depcruise --config .dependency-cruiser.cjs --ignore-known alternate.json src',
+    'depcruise --config .dependency-cruiser.cjs --ignore-known src',
+    'depcruise --config .dependency-cruiser.cjs src --exclude src/marketplace',
+  ]) {
+    packageJson.scripts['architecture:imports'] = command;
+    assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(packageJson), packageLock));
+  }
+});
 type InstalledResolution = {
   backendRoot: string;
   prismaConfigPackageRoot: string;
@@ -27,6 +42,8 @@ type InstalledResolution = {
 type Checker = {
   PINNED_DEEPMERGE_VERSION: string;
   PINNED_DEEPMERGE_INTEGRITY: string;
+  R12A_ARCHITECTURE_SCRIPT: string;
+  R12A_STANDALONE_SCRIPT: string;
   R8_ARCHITECTURE_SCRIPT: string;
   R8_STANDALONE_SCRIPT: string;
   SECURITY_FAILURE: string;
@@ -34,6 +51,7 @@ type Checker = {
   assertMergeBehavior: (deepmerge: (left: JsonRecord, right: JsonRecord) => JsonRecord) => void;
   checkPrismaConfigMergeSecurity: (options?: { backendRoot?: string }) => Promise<unknown>;
   fingerprintPlainJson: (value: unknown) => string;
+  projectR12AArchitectureScripts: (value: unknown) => JsonRecord;
   projectR7ArchitectureScripts: (value: unknown) => JsonRecord;
   projectR8ArchitectureScripts: (value: unknown) => JsonRecord;
   runCli: (options: {
@@ -60,6 +78,13 @@ const r7ArchitectureScript = r6ArchitectureScript + ' && npm run architecture:r7
 const r8ArchitectureScript = r7ArchitectureScript + ' && npm run architecture:r8';
 const r8StandaloneScript =
   'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
+const r12aArchitectureScript = r8ArchitectureScript + ' && npm run architecture:r12a';
+const r12aStandaloneScript =
+  'node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check';
+const r12bStandaloneScript =
+  'node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check';
+const r12bArchitectureScript =
+  r12aArchitectureScript + ' && npm run architecture:r12b';
 
 function loadChecker(): Checker {
   return require(checkerPath) as Checker;
@@ -132,6 +157,90 @@ test('accepts only the exact patched Prisma config merge graph', () => {
   ));
 });
 
+test('R12A architecture delegation projects exactly through R8 to the pinned package graph', () => {
+  const checker = loadChecker();
+  assert.equal(checker.R12A_ARCHITECTURE_SCRIPT, r12aArchitectureScript);
+  assert.equal(checker.R12A_STANDALONE_SCRIPT, r12aStandaloneScript);
+  const livePackage = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  const projected = checker.projectR12AArchitectureScripts(livePackage);
+
+  for (const scriptName of ['architecture:r12a', 'architecture:r8', 'architecture:r7']) {
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(projected.scripts as JsonRecord, scriptName),
+      false,
+    );
+  }
+  assert.equal((projected.scripts as JsonRecord).architecture, r6ArchitectureScript);
+  assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
+
+  const mutations = Array.from({ length: 5 }, () => structuredClone(livePackage));
+  delete (mutations[0].scripts as JsonRecord)['architecture:r12a'];
+  (mutations[1].scripts as JsonRecord)['architecture:r12a'] = 'node scripts/attacker.cjs';
+  (mutations[2].scripts as JsonRecord).architecture = r8ArchitectureScript;
+  (mutations[3].scripts as JsonRecord)['architecture:r12a:attacker'] = r12aStandaloneScript;
+  (mutations[4].scripts as JsonRecord)['architecture:r8'] = 'node scripts/attacker.cjs';
+
+  for (const mutation of mutations) {
+    assert.throws(
+      () => checker.projectR12AArchitectureScripts(mutation),
+      new RegExp(checker.SECURITY_FAILURE, 'u'),
+    );
+  }
+});
+
+test('live CLI rejects duplicate raw JSON members before R12A projection', () => {
+  const worker = [
+    "const fs = require('node:fs');",
+    "const path = require('node:path');",
+    'const checkerPath = process.argv[1];',
+    'const backendRoot = process.argv[2];',
+    'const mode = process.argv[3];',
+    'const checker = require(checkerPath);',
+    'const originalReadFileSync = fs.readFileSync.bind(fs);',
+    "const packagePath = path.join(backendRoot, 'package.json');",
+    "const raw = originalReadFileSync(packagePath, 'utf8');",
+    "const exactKey = JSON.stringify('architecture:r12a');",
+    'const exactValue = JSON.stringify(checker.R12A_STANDALONE_SCRIPT);',
+    "const needle = exactKey + ': ' + exactValue;",
+    'const duplicateKey = mode === \'escaped\' ? \'"architecture\\\\u003ar12a"\' : exactKey;',
+    "const mutated = raw.replace(needle, needle + ',\\n    ' + duplicateKey + ': ' + exactValue);",
+    'if (mutated === raw) process.exit(12);',
+    'fs.readFileSync = function readFixture(filePath, ...args) {',
+    '  return path.resolve(filePath) === path.resolve(packagePath)',
+    '    ? mutated',
+    '    : originalReadFileSync(filePath, ...args);',
+    '};',
+    'const stdout = [];',
+    'const stderr = [];',
+    'checker.runCli({',
+    "  argv: ['--check'],",
+    '  backendRoot,',
+    '  stdout: (message) => stdout.push(message),',
+    '  stderr: (message) => stderr.push(message),',
+    '}).then((exitCode) => {',
+    "  const rejected = exitCode === 1 && stdout.length === 0 && stderr.join('\\n') === 'FAIL - Prisma config merge security';",
+    '  process.exit(rejected ? 0 : 10);',
+    '}, () => process.exit(11));',
+  ].join('\n');
+
+  for (const mode of ['exact', 'escaped']) {
+    const result = spawnSync(
+      process.execPath,
+      ['-e', worker, checkerPath, backendRoot, mode],
+      {
+        cwd: backendRoot,
+        encoding: 'utf8',
+        timeout: 5_000,
+        windowsHide: true,
+      },
+    );
+    assert.equal(result.status, 0, `${mode} duplicate raw member must fail closed`);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+  }
+});
+
 test('R7 architecture delegation projects exactly to the pinned R6 package graph', () => {
   const checker = loadChecker();
   const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
@@ -170,6 +279,10 @@ test('R8 architecture delegation projects exactly through R7 to the pinned packa
   const livePackage = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   const validR8 = structuredClone(livePackage);
+  (validR8.scripts as JsonRecord)['architecture:imports'] = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  delete (validR8.scripts as JsonRecord)['architecture:r12c'];
+  delete (validR8.scripts as JsonRecord)['architecture:r12b'];
+  delete (validR8.scripts as JsonRecord)['architecture:r12a'];
   (validR8.scripts as JsonRecord)['architecture:r8'] = r8StandaloneScript;
   (validR8.scripts as JsonRecord).architecture = r8ArchitectureScript;
 
@@ -698,4 +811,103 @@ test('CLI is fixed, sanitized, and truthful for the live installed graph', async
   assert.deepEqual(invalidStdout, []);
   assert.deepEqual(invalidStderr, ['ERROR - Prisma config merge security check failed']);
   assert.doesNotMatch(invalidStderr.join('\n'), /(?:[A-Za-z]:\\|file:\/\/|Error:|\n\s+at\s)/u);
+});
+
+test('R12B package wiring and security projection are exact and fail closed', () => {
+  const checker = loadChecker() as Checker & {
+    R12B_ARCHITECTURE_SCRIPT: string;
+    R12B_STANDALONE_SCRIPT: string;
+    projectR12BArchitectureScripts: (value: unknown) => JsonRecord;
+  };
+  assert.equal(checker.R12B_ARCHITECTURE_SCRIPT, r12bArchitectureScript);
+  assert.equal(checker.R12B_STANDALONE_SCRIPT, r12bStandaloneScript);
+  const livePackage = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  // Keep this no-successor fixture at the exact historical R12B package stage.
+  assert.equal(livePackage.scripts['architecture:r12c'], 'node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check');
+  assert.equal(livePackage.scripts.architecture, r12bArchitectureScript + ' && npm run architecture:r12c');
+  delete livePackage.scripts['architecture:r12c'];
+  livePackage.scripts.architecture = r12bArchitectureScript;
+  livePackage.scripts['architecture:imports'] =
+    'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);
+  assert.equal((livePackage.scripts as JsonRecord).architecture, r12bArchitectureScript);
+  const r12aPackage = structuredClone(livePackage);
+  delete (r12aPackage.scripts as JsonRecord)['architecture:r12b'];
+  (r12aPackage.scripts as JsonRecord).architecture = r12aArchitectureScript;
+  assert.deepEqual(checker.projectR12BArchitectureScripts(livePackage), checker.projectR12AArchitectureScripts(r12aPackage));
+  assert.doesNotThrow(() => checker.validatePackageGraph(checker.projectR12BArchitectureScripts(livePackage), packageLock));
+
+  const mutations = Array.from({ length: 7 }, () => structuredClone(livePackage));
+  delete (mutations[0].scripts as JsonRecord)['architecture:r12b'];
+  (mutations[1].scripts as JsonRecord)['architecture:r12b'] = 'node scripts/attacker.cjs';
+  (mutations[2].scripts as JsonRecord).architecture = r12aArchitectureScript;
+  (mutations[3].scripts as JsonRecord)['architecture:r12b:attacker'] = r12bStandaloneScript;
+  (mutations[4].scripts as JsonRecord)['architecture:r12b-renamed'] = r12bStandaloneScript;
+  (mutations[5].scripts as JsonRecord)['architecture:r12b-prefix'] = 'attacker ' + r12bStandaloneScript;
+  (mutations[6].scripts as JsonRecord)['architecture:r12a'] = 'node scripts/attacker.cjs';
+  for (const mutation of mutations) {
+    assert.throws(() => checker.projectR12BArchitectureScripts(mutation), new RegExp(checker.SECURITY_FAILURE, 'u'));
+  }
+});
+
+test('R12C package-script successor is exact and cannot admit prefixes, omissions, or duplicate aggregate commands', () => {
+  const checker = require(checkerPath);
+  assert.equal(typeof checker.projectR12CArchitectureScripts, 'function', 'missing R12C security projection');
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const script = 'node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check';
+  assert.equal(packageJson.scripts['architecture:r12c'], script);
+  assert.equal(packageJson.scripts.architecture, r12bArchitectureScript + ' && npm run architecture:r12c');
+  const predecessor = structuredClone(packageJson);
+  delete predecessor.scripts['architecture:r12c'];
+  predecessor.scripts.architecture = r12bArchitectureScript;
+  predecessor.scripts['architecture:imports'] =
+    'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  assert.deepEqual(checker.projectR12CArchitectureScripts(packageJson), checker.projectR12BArchitectureScripts(predecessor));
+  for (const mutate of [
+    (copy: any) => { delete copy.scripts['architecture:r12c']; },
+    (copy: any) => { copy.scripts['architecture:r12c'] += ' --skip'; },
+    (copy: any) => { copy.scripts['architecture:r12c:other'] = script; },
+    (copy: any) => { copy.scripts.architecture += ' && npm run architecture:r12c'; },
+    (copy: any) => { copy.scripts.architecture = r12bArchitectureScript; },
+    (copy: any) => { copy.scripts['architecture:imports'] += ' --ignore-known other.json'; },
+  ]) {
+    const copy = structuredClone(packageJson); mutate(copy);
+    assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'))));
+  }
+});
+
+test('live CLI rejects duplicate raw JSON members before R12B projection', () => {
+  const worker = [
+    "const fs = require('node:fs');",
+    "const path = require('node:path');",
+    'const checkerPath = process.argv[1];',
+    'const backendRoot = process.argv[2];',
+    'const mode = process.argv[3];',
+    'const checker = require(checkerPath);',
+    'const originalReadFileSync = fs.readFileSync.bind(fs);',
+    "const packagePath = path.join(backendRoot, 'package.json');",
+    "const raw = originalReadFileSync(packagePath, 'utf8');",
+    "const exactKey = JSON.stringify('architecture:r12b');",
+    'const exactValue = JSON.stringify(checker.R12B_STANDALONE_SCRIPT);',
+    "const needle = exactKey + ': ' + exactValue;",
+    "const duplicateKey = mode === 'escaped' ? '\"architecture\\\\u003ar12b\"' : exactKey;",
+    "const mutated = raw.replace(needle, needle + ',\\n    ' + duplicateKey + ': ' + exactValue);",
+    'if (mutated === raw) process.exit(12);',
+    'fs.readFileSync = function readFixture(filePath, ...args) {',
+    '  return path.resolve(filePath) === path.resolve(packagePath) ? mutated : originalReadFileSync(filePath, ...args);',
+    '};',
+    'const stdout = []; const stderr = [];',
+    "checker.runCli({ argv: ['--check'], backendRoot, stdout: (m) => stdout.push(m), stderr: (m) => stderr.push(m) }).then((exitCode) => {",
+    "  process.exit(exitCode === 1 && stdout.length === 0 && stderr.join('\\n') === 'FAIL - Prisma config merge security' ? 0 : 10);",
+    '}, () => process.exit(11));',
+  ].join('\n');
+  for (const mode of ['exact', 'escaped']) {
+    const result = spawnSync(process.execPath, ['-e', worker, checkerPath, backendRoot, mode], {
+      cwd: backendRoot, encoding: 'utf8', timeout: 5_000, windowsHide: true,
+    });
+    assert.equal(result.status, 0, `${mode} duplicate raw R12B member must fail closed`);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+  }
 });

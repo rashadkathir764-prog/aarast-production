@@ -1,3 +1,9 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -294,7 +300,7 @@ test("service image creation rejects an external URL before persisting", async (
       {
         verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
           normalizeOwnedMediaUrl(value, purpose, current.id),
-      } as any,
+      } as any, lifecycle,
     );
     const serviceId = "11111111-1111-4111-8111-111111111111";
 

@@ -5,13 +5,13 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import type { AuthenticatedUser } from '../../identity/public/identity-session.types';
 import {
   AdminPermission,
   hasAdminPermission,
-} from '../modules/backoffice/domain/admin-permissions';
-import { runSerializableTransaction } from '../platform/database/serializable-transaction';
-import { PrismaService } from '../platform/database/prisma.service';
+} from '../domain/admin-permissions';
+import { runSerializableTransaction } from '../../../platform/database/serializable-transaction';
+import { PrismaService } from '../../../platform/database/prisma.service';
 
 export interface AuthorizedAdminMutationActor {
   id: string;

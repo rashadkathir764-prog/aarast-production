@@ -6,26 +6,14 @@ import {
 import { randomUUID } from 'crypto';
 import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
 
-type ConversationTransaction = Pick<
-  Prisma.TransactionClient,
-  | '$queryRaw'
-  | 'conversation'
-  | 'conversationEvent'
-  | 'conversationParticipant'
-  | 'outboxEvent'
-  | 'provider'
-  | 'weddingPlan'
->;
-
-export interface EnsureConversationContextInput {
-  requesterUserId: string;
-  providerId: string;
-  weddingPlanId: string | null;
-  activityAt?: Date;
-}
+import type {
+  ConversationLifecycleClient,
+  EnsureConversationContextInput,
+  RecordConversationEventInput,
+} from '../modules/messaging/public/conversation-lifecycle.port';
 
 export async function ensureConversationContext(
-  tx: ConversationTransaction,
+  tx: ConversationLifecycleClient,
   input: EnsureConversationContextInput,
 ): Promise<{ id: string; scope: ConversationScope }> {
   const activityAt = input.activityAt ?? new Date();
@@ -95,19 +83,8 @@ export async function ensureConversationContext(
   return { id: conversation.id, scope };
 }
 
-export interface RecordConversationEventInput {
-  conversationId: string;
-  quoteRequestId?: string | null;
-  quoteOfferId?: string | null;
-  actorUserId?: string | null;
-  type: ConversationEventType;
-  occurredAt?: Date;
-  dedupeKey: string;
-  data?: Prisma.InputJsonObject;
-}
-
 export async function recordConversationEvent(
-  tx: ConversationTransaction,
+  tx: ConversationLifecycleClient,
   input: RecordConversationEventInput,
 ) {
   const occurredAt = input.occurredAt ?? new Date();

@@ -37,7 +37,7 @@ import {
 import {
   lockProviderRatingRows,
   refreshProviderRating,
-} from "../../../../marketplace/provider-review-rating";
+} from "../../../marketplace/public/provider-review-rating";
 import { PrismaService } from "../../../../platform/database/prisma.service";
 import {
   COLLABORATION_PERMISSION_PORT,

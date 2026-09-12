@@ -1,3 +1,10 @@
+import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
+import { recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+
+const lifecycle: ConversationLifecyclePort = {
+  ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
+  recordConversationEvent,
+};
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
@@ -74,7 +81,7 @@ test("my quote list filters plan-linked requests by the caller's current stored 
       },
     } as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await service.findMyQuoteRequests(currentUser(contributorAId));
@@ -117,7 +124,7 @@ test("my quote detail keeps contributor A and B isolated and checks current plan
       },
     } as any,
     {} as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   await assert.rejects(
@@ -306,7 +313,7 @@ function cancellationHarness(options: {
   const service = new MarketplaceService(
     prisma as any,
     permissions as any,
-    {} as any,
+    {} as any, lifecycle,
   );
 
   return {

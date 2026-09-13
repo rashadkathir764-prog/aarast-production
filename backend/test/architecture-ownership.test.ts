@@ -272,6 +272,27 @@ afterEach(() => {
   }
 });
 
+test('the scan fails closed when the generated Prisma client cannot be resolved', () => {
+  // The scan recognizes Prisma access through the generated client types. A
+  // checkout that skipped `prisma generate` resolves them to `any`, measures
+  // nothing, and must not report a passing zero.
+  const options = fixtureProject({
+    'auth/root.ts': prismaFixture('await prisma.user.findUnique({ where: { id: "u" } });'),
+  });
+  // A `@prisma/client` whose generated re-export does not resolve (the
+  // fixture's own node_modules shadows the real package; the real generated
+  // client is still reachable by walking up, so the stub re-exports a path
+  // that exists nowhere).
+  write(options.repoRoot, 'backend/node_modules/@prisma/client/package.json', '{"name":"@prisma/client","version":"0.0.0-fixture","types":"index.d.ts"}\n');
+  write(options.repoRoot, 'backend/node_modules/@prisma/client/index.d.ts', "export * from './generated-output-that-was-never-produced';\n");
+  assert.throws(() => scanOwnershipViolations(options), /generated Prisma client is not resolvable/u);
+  assert.throws(() => classifyOwnershipAccesses(options), /generated Prisma client is not resolvable/u);
+  // A `PrismaClient` declared by the wrapper itself rather than by the
+  // generated output is equally not the generated client.
+  write(options.repoRoot, 'backend/node_modules/@prisma/client/index.d.ts', 'export declare class PrismaClient { user: { findUnique(args: unknown): Promise<unknown> } }\nexport declare namespace Prisma { type TransactionClient = PrismaClient }\n');
+  assert.throws(() => scanOwnershipViolations(options), /generated Prisma client is not resolvable/u);
+});
+
 test('registry and schema contain the same models exactly once', () => {
   const metadata = extractSchemaMetadata(schemaText);
   const registered = Object.values(registry.owners).flat();

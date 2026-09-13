@@ -1283,6 +1283,32 @@ function sqlAccesses(node, checker, makeAccess, operation) {
   return accesses;
 }
 
+// The scan recognizes Prisma access only through the generated client types.
+// In a checkout that skipped `prisma generate`, `@prisma/client` re-exports an
+// absent `.prisma/client`, every root type resolves to `any`, and the scan
+// would measure nothing and report a passing zero. Any source file that
+// imports `@prisma/client` must therefore see `PrismaClient` declared inside
+// the generated client; otherwise the scan fails closed.
+function assertGeneratedPrismaClientResolvable(program, checker) {
+  const clientEntries = program.getSourceFiles().filter((sourceFile) => (
+    sourceFile.isDeclarationFile
+    && normalizeFsPath(sourceFile.fileName).includes('/node_modules/@prisma/client/')
+    && /\/index\.d\.ts$/u.test(normalizeFsPath(sourceFile.fileName))
+  ));
+  for (const entry of clientEntries) {
+    const moduleSymbol = checker.getSymbolAtLocation(entry);
+    const exported = moduleSymbol ? checker.getExportsOfModule(moduleSymbol) : [];
+    const client = exported.find((symbol) => symbol.getName() === 'PrismaClient');
+    const generated = client ? resolvedGeneratedPrismaSymbol(client, checker) : null;
+    const declaredInGeneratedOutput = Boolean(generated) && (generated.declarations || []).some((declaration) => (
+      normalizeFsPath(declaration.getSourceFile().fileName).includes('/node_modules/.prisma/client/')
+    ));
+    if (!declaredInGeneratedOutput) {
+      throw new Error('generated Prisma client is not resolvable: run "prisma generate" before the ownership scan');
+    }
+  }
+}
+
 function classifyOwnershipAccesses(options) {
   if (!options || !options.repoRoot || !options.backendRoot) {
     throw new Error('ownership scan roots are required');
@@ -1297,6 +1323,7 @@ function classifyOwnershipAccesses(options) {
   const schemaMetadata = extractSchemaMetadata(schemaText);
   const { modelOwners, delegateModels } = buildRegistryMetadata(registry, schemaMetadata);
   const { program, checker } = createProgram(backendRoot);
+  assertGeneratedPrismaClientResolvable(program, checker);
   const sourceRoot = path.resolve(backendRoot, 'src');
   const accesses = [];
 

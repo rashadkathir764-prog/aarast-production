@@ -165,11 +165,13 @@ test('active executable and documentation readers contain no retired single-file
   const executableAllowlist = new Set([
     'backend/test/architecture-r2-schema-layout.test.ts',
     'backend/test/prisma-schema-files.test.ts',
-    'scripts/check-r0-scope.test.mjs',
   ]);
+  // Historical documents that describe the single file's dissolution: the
+  // original architecture target (tracked verbatim) and the R0-R2 records.
   const documentationAllowlist = new Set([
     'CHANGELOG.md',
     'docs/project/STATUS.md',
+    'docs/superpowers/specs/2026-08-04-modular-monolith-architecture-design.md',
     'docs/superpowers/plans/2026-08-11-modular-monolith-r0-governance.md',
     'docs/superpowers/plans/2026-08-12-modular-monolith-r1-platform-shared-kernel.md',
     'docs/superpowers/plans/2026-08-13-modular-monolith-r2-prisma-schema.md',

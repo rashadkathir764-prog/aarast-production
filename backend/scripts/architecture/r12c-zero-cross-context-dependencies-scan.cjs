@@ -5,24 +5,43 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const { createRequire, wrap: wrapModule } = require('node:module');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 const { types } = require('node:util');
 const vm = require('node:vm');
 const security = require('../security/prisma-config-merge-security.cjs');
+const identity = require('./repository-identity.cjs');
 const r12b = require('./r12b-planning-public-contracts-scan.cjs');
 
 const MANIFEST_PATH = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
 const R12B_PATH = 'backend/architecture/r12b-planning-public-contracts.json';
 const DEPENDENCY_PATH = 'backend/.dependency-cruiser-known-violations.json';
 const OWNERSHIP_PATH = 'backend/architecture/ownership-baseline.json';
-const ROOT = 'D:/projects/aarast-modular-monolith';
-const HEAD = '4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1';
+// Immutable entry commit of the R11-R12C composite overlay. Identity is the
+// repository that contains it plus the content overlay measured against it;
+// see repository-identity.cjs for why no path, name, branch or HEAD is pinned.
+const BASE_COMMIT = '4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1';
+// The R12B closure scanner opens its scan by binding to the entry environment
+// (directory name, branch, exact HEAD). That preamble was never architecture
+// law and cannot hold in any other checkout of the same content, so the
+// historical replay executes every closure byte verbatim except this exact,
+// hash-pinned preamble, which it replaces with the portable identity check.
+const R12B_CLOSURE_ENVIRONMENT_PREAMBLE = Object.freeze({
+  sha256: '1eab247dc4e02b20d97869ad700e99328e59ca3cd7eed5925f90e2411c818c2a',
+  text: String.raw`  const root = fs.realpathSync.native(repositoryRoot);
+  exact(path.basename(root).toLowerCase(), checked.repository.rootName, 'R12B repository root name');
+  const top = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim().replaceAll('\\', '/');
+  if (path.resolve(top) !== path.resolve(root)) throw new Error('R12B repository root changed');
+  exact(execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim(), checked.repository.branch, 'R12B repository branch');
+  exact(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim(), checked.repository.baseCommit, 'R12B repository HEAD');
+`,
+  replacement: String.raw`  const root = require('./repository-identity.cjs').verifyRepositoryIdentity(repositoryRoot, checked.repository.baseCommit);
+`,
+});
 const R12B_SHA = '1bf0c2d00886f1ec442187f2719c4d604b0ebcc57a3ada56d97006015c029845';
 const DEPENDENCY_SHA = 'fe4d3bfe23cf0400266bbfea8bd0357d578b93cad005c77af0814ec52ccfcb53';
 const OWNERSHIP_SHA = '5f42f33300a9727f587e62327c5261a88a6ce5928437241c9e7c20f726906496';
 // Immutable design-entry identity, records, complete predecessor overlay and
 // contract registry. Generated live file fingerprints are deliberately separate.
-const AUTHORITY_SHA = '32055ad03f3bea727e6d844ce0ec1607ee1c90098af9b458d1a119e4d1fe1510';
+const AUTHORITY_SHA = '9a56f36736fede7ae71a20883ac952954d3b2021abbcb1b7ddd5fedb5e2b62aa';
 const HASH = /^[0-9a-f]{64}$/u;
 const INVERSE_PATHS = Object.freeze([
   'backend/package.json',
@@ -37,6 +56,37 @@ const NEW_PATHS = Object.freeze([
   'backend/test/architecture-r12c-zero-cross-context-dependencies.test.ts',
   'docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md',
   'docs/superpowers/plans/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies.md',
+]);
+// The only paths the Task 5 strict candidate may register. Historical
+// successor projections, their exact tests, the package command, the R12C
+// test, and the governance-portability surfaces added on 2026-09-13: the
+// identity helper, its regression test, the registration tool, the line-ending
+// attributes, and the ports scanner whose canonical LF bytes they require.
+const STRICT_CANDIDATE_PATHS = Object.freeze([
+  '.gitattributes',
+  'backend/package.json',
+  'backend/scripts/architecture/ports-scan.cjs',
+  'backend/scripts/architecture/r3-context-scan.cjs',
+  'backend/scripts/architecture/r5-identity-scan.cjs',
+  'backend/scripts/architecture/r6-sharing-otp-transport-scan.cjs',
+  'backend/scripts/architecture/r7-collaboration-relocation-scan.cjs',
+  'backend/scripts/architecture/r8-global-module-removal-scan.cjs',
+  'backend/scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs',
+  'backend/scripts/architecture/r12b-planning-public-contracts-scan.cjs',
+  'backend/scripts/architecture/repository-identity.cjs',
+  'backend/scripts/architecture/r12c-strict-candidate.cjs',
+  'backend/scripts/security/prisma-config-merge-security.cjs',
+  'backend/test/architecture-r3-contexts.test.ts',
+  'backend/test/architecture-r3-scope.test.ts',
+  'backend/test/architecture-r5-identity-relocation.test.ts',
+  'backend/test/architecture-r6-sharing-otp-transport.test.ts',
+  'backend/test/architecture-r7-collaboration-relocation.test.ts',
+  'backend/test/architecture-r8-global-module-removal.test.ts',
+  'backend/test/architecture-r12a-backoffice-catalog-public-contracts.test.ts',
+  'backend/test/architecture-r12b-planning-public-contracts.test.ts',
+  'backend/test/architecture-r12c-zero-cross-context-dependencies.test.ts',
+  'backend/test/architecture-governance-portability.test.ts',
+  'backend/test/prisma-config-merge-security.test.ts',
 ]);
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const serialize = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -286,8 +336,15 @@ function validateMarketplacePublicCandidate(candidate) {
 
 function validateStrictCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== 'f592fe3c397609deac89c8294caf9a07723f5634cca6881b6c62a84363806ae2') {
+  if (sha(JSON.stringify(candidate)) !== 'f4a453aedae918914431930b4b67ce5220d4ac5fc82cddc228c1297bbe8051d1') {
     throw new Error('R12C preregistered strict candidate changed');
+  }
+  const seen = new Set();
+  for (const row of candidate.records) {
+    if (typeof row.path !== 'string' || seen.has(row.path) || !STRICT_CANDIDATE_PATHS.includes(row.path)) {
+      throw new Error('R12C strict candidate registers a path outside its scope: ' + row.path);
+    }
+    seen.add(row.path);
   }
 }
 
@@ -295,7 +352,9 @@ function validateStrictCandidate(candidate) {
 // historical proof, never a new dependency allowance or a file on disk.
 function strictPredecessorFiles(read, exists, manifest) {
   const reconstructed = new Map();
-  if (manifest.stage !== 'strict') return { read, exists, reconstructed };
+  // Files the strict candidate introduced do not exist in the predecessor.
+  const absent = new Set();
+  if (manifest.stage !== 'strict') return { read, exists, reconstructed, absent };
   validateStrictCandidate(manifest.strictCandidate);
   if (exists(DEPENDENCY_PATH)) throw new Error('R12C strict dependency baseline must be absent');
   const empty = Buffer.from('[]\n', 'utf8');
@@ -310,12 +369,19 @@ function strictPredecessorFiles(read, exists, manifest) {
   reconstructed.set(DEPENDENCY_PATH, empty);
   for (const row of manifest.strictCandidate.records) {
     if (!exists(row.path)) throw new Error('R12C strict candidate is missing: ' + row.path);
-    reconstructed.set(row.path, reconstructMarketplaceCandidateRecord(read(row.path), row));
+    const entry = reconstructMarketplaceCandidateRecord(read(row.path), row);
+    if (entry === null) absent.add(row.path);
+    else reconstructed.set(row.path, entry);
   }
   return {
     reconstructed,
-    read: relative => reconstructed.has(relative) ? Buffer.from(reconstructed.get(relative)) : read(relative),
-    exists: relative => reconstructed.has(relative) || exists(relative),
+    absent,
+    read: (relative) => {
+      if (reconstructed.has(relative)) return Buffer.from(reconstructed.get(relative));
+      if (absent.has(relative)) throw new Error('R12C strict new file has no predecessor bytes: ' + relative);
+      return read(relative);
+    },
+    exists: relative => reconstructed.has(relative) || (!absent.has(relative) && exists(relative)),
   };
 }
 
@@ -335,42 +401,85 @@ function inspectMarketplacePolicyPath(repositoryRoot, relative, required = true)
   return r12b.inspectPlainFile(repositoryRoot, relative, required);
 }
 
+// Reverses ordered, non-overlapping byte splices expressed at candidate
+// offsets, yielding the bytes the splices were applied to.
+function inverseSplices(bytes, splices, label) {
+  if (!Array.isArray(splices) || splices.length > 256) throw new Error('R12C strict multi-splice inverse is invalid: ' + label);
+  let previousEnd = 0;
+  const checked = splices.map((splice) => {
+    plainData(splice);
+    if (Object.keys(splice).join('|') !== 'offset|beforeBase64|afterBase64'
+        || !Number.isSafeInteger(splice.offset) || splice.offset < previousEnd) {
+      throw new Error('R12C strict multi-splice range is invalid: ' + label);
+    }
+    const before = chunksToBytes(splice.beforeBase64);
+    const after = chunksToBytes(splice.afterBase64);
+    if (before.equals(after) || splice.offset + after.length > bytes.length) {
+      throw new Error('R12C strict multi-splice payload is invalid: ' + label);
+    }
+    previousEnd = splice.offset + after.length;
+    return { offset: splice.offset, before, after };
+  });
+  let entry = Buffer.from(bytes);
+  for (const splice of [...checked].reverse()) {
+    if (!entry.subarray(splice.offset, splice.offset + splice.after.length).equals(splice.after)) {
+      throw new Error('R12C strict multi-splice candidate range changed: ' + label);
+    }
+    entry = Buffer.concat([
+      entry.subarray(0, splice.offset),
+      splice.before,
+      entry.subarray(splice.offset + splice.after.length),
+    ]);
+  }
+  return entry;
+}
+
 function reconstructMarketplaceCandidateRecord(bytes, row) {
   if (!Buffer.isBuffer(bytes) || sha(bytes) !== row.candidateSha256) {
     throw new Error('R12C Marketplace candidate bytes changed: ' + row.path);
   }
+  if (row.kind === 'line-ending-normalization') {
+    // The historical entry carried CRLF terminators (mixed with LF ones); the
+    // canonical candidate is LF only. Reversing the registered splices yields
+    // the LF form of the entry, and the listed LF-only terminators restore its
+    // exact bytes. The entry hash proves that, beyond the splices, nothing but
+    // line endings moved.
+    assert.deepStrictEqual(Object.keys(row), ['path', 'kind', 'entrySha256', 'candidateSha256', 'entryByteLength', 'entryStatus', 'candidateStatus', 'lfLines', 'splices']);
+    if (bytes.includes(0x0d) || !HASH.test(row.entrySha256) || !Number.isSafeInteger(row.entryByteLength)
+        || row.entryByteLength < 1 || row.entryByteLength > 2097152 || !Array.isArray(row.lfLines) || row.lfLines.length > 65536) {
+      throw new Error('R12C line-ending record is invalid: ' + row.path);
+    }
+    let previous = -1;
+    for (const index of row.lfLines) {
+      if (!Number.isSafeInteger(index) || index <= previous) throw new Error('R12C line-ending record lines are invalid: ' + row.path);
+      previous = index;
+    }
+    const normalized = inverseSplices(bytes, row.splices, row.path);
+    if (normalized.includes(0x0d)) throw new Error('R12C line-ending normalized entry contains a carriage return: ' + row.path);
+    const lfOnly = new Set(row.lfLines);
+    const parts = [];
+    let line = 0;
+    let start = 0;
+    for (let index = 0; index < normalized.length; index += 1) {
+      if (normalized[index] !== 0x0a) continue;
+      parts.push(normalized.subarray(start, index), lfOnly.has(line) ? Buffer.from('\n') : Buffer.from('\r\n'));
+      line += 1;
+      start = index + 1;
+    }
+    if (start < normalized.length) parts.push(normalized.subarray(start));
+    if (previous >= line) throw new Error('R12C line-ending record exceeds the candidate: ' + row.path);
+    const entry = Buffer.concat(parts);
+    if (entry.length !== row.entryByteLength || sha(entry) !== row.entrySha256) {
+      throw new Error('R12C line-ending entry bytes changed: ' + row.path);
+    }
+    return entry;
+  }
   if (row.kind === 'bounded-byte-splices') {
-    if (!Array.isArray(row.splices) || row.splices.length < 1 || row.splices.length > 256
-        || !HASH.test(row.entrySha256) || !Number.isSafeInteger(row.entryByteLength)
-        || row.entryByteLength < 1 || row.entryByteLength > 2097152) {
+    if (!Array.isArray(row.splices) || row.splices.length < 1 || !HASH.test(row.entrySha256)
+        || !Number.isSafeInteger(row.entryByteLength) || row.entryByteLength < 1 || row.entryByteLength > 2097152) {
       throw new Error('R12C strict multi-splice inverse is invalid: ' + row.path);
     }
-    let previousEnd = 0;
-    const splices = row.splices.map((splice) => {
-      plainData(splice);
-      if (Object.keys(splice).join('|') !== 'offset|beforeBase64|afterBase64'
-          || !Number.isSafeInteger(splice.offset) || splice.offset < previousEnd) {
-        throw new Error('R12C strict multi-splice range is invalid: ' + row.path);
-      }
-      const before = chunksToBytes(splice.beforeBase64);
-      const after = chunksToBytes(splice.afterBase64);
-      if (before.equals(after) || splice.offset + after.length > bytes.length) {
-        throw new Error('R12C strict multi-splice payload is invalid: ' + row.path);
-      }
-      previousEnd = splice.offset + after.length;
-      return { offset: splice.offset, before, after };
-    });
-    let entry = Buffer.from(bytes);
-    for (const splice of [...splices].reverse()) {
-      if (!entry.subarray(splice.offset, splice.offset + splice.after.length).equals(splice.after)) {
-        throw new Error('R12C strict multi-splice candidate range changed: ' + row.path);
-      }
-      entry = Buffer.concat([
-        entry.subarray(0, splice.offset),
-        splice.before,
-        entry.subarray(splice.offset + splice.after.length),
-      ]);
-    }
+    const entry = inverseSplices(bytes, row.splices, row.path);
     if (entry.length !== row.entryByteLength || sha(entry) !== row.entrySha256) {
       throw new Error('R12C strict multi-splice entry bytes changed: ' + row.path);
     }
@@ -572,12 +681,21 @@ function verifyR12cOwnership(bytes, manifest) {
 }
 
 function verifyIdentity(repositoryRoot) {
-  if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)
-      || fs.realpathSync.native(repositoryRoot).replaceAll('\\', '/') !== ROOT) throw new Error('R12C repository root changed');
-  const git = (args) => execFileSync('git', args, { cwd: repositoryRoot, encoding: 'utf8', windowsHide: true }).trim();
-  if (git(['rev-parse', '--show-toplevel']).replaceAll('\\', '/') !== ROOT
-      || git(['branch', '--show-current']) !== 'modular-monolith'
-      || git(['rev-parse', 'HEAD']) !== HEAD || git(['diff', '--cached', '--name-only']) !== '') throw new Error('R12C repository identity or staging changed');
+  if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12C repository root must be absolute');
+  try {
+    identity.verifyRepositoryIdentity(repositoryRoot, BASE_COMMIT);
+  } catch (error) {
+    throw new Error(`R12C repository identity changed: ${error.message}`);
+  }
+}
+
+function replayClosureScannerSource(scannerBytes) {
+  const source = scannerBytes.toString('utf8');
+  const { text, replacement, sha256 } = R12B_CLOSURE_ENVIRONMENT_PREAMBLE;
+  if (sha(Buffer.from(text, 'utf8')) !== sha256) throw new Error('R12C closure preamble registration changed');
+  const first = source.indexOf(text);
+  if (first < 0 || source.indexOf(text, first + text.length) >= 0) throw new Error('R12C closure preamble is not exactly once in the replayed scanner');
+  return source.slice(0, first) + replacement + source.slice(first + text.length);
 }
 
 function repositoryRelative(repositoryRoot, candidate) {
@@ -704,7 +822,7 @@ function scanR12bPredecessorProjection(input) {
     return nativeRequire(request);
   };
   const projectedModule = { exports: {} };
-  const compile = new vm.Script(wrapModule(scannerBytes.toString('utf8')), {
+  const compile = new vm.Script(wrapModule(replayClosureScannerSource(scannerBytes)), {
     filename: `${scannerFile}#r12c-predecessor-projection`,
   }).runInThisContext();
   compile(projectedModule.exports, projectedRequire, projectedModule, scannerFile, path.dirname(scannerFile));
@@ -735,8 +853,7 @@ function projectR12cWorkingTreeToPredecessor(input) {
     return injected ? Boolean(pathExists(relative)) : Boolean(r12b.inspectPlainFile(repositoryRoot, relative, false));
   };
   const statusRows = suppliedRows === undefined
-    ? execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: repositoryRoot, encoding: 'utf8', windowsHide: true }).trimEnd().split(/\r?\n/u).filter(Boolean)
-      .map((line) => ({ status: line.slice(0, 2), path: line.slice(3).replaceAll('\\', '/') }))
+    ? identity.workingTreeInventory(repositoryRoot, BASE_COMMIT)
     : suppliedRows;
   plainData(statusRows);
   if (!Array.isArray(statusRows) || statusRows.length > 256) throw new Error('R12C status rows are unbounded');
@@ -829,13 +946,16 @@ function projectR12cWorkingTreeToPredecessor(input) {
     if (sha(bytes) !== row.sha256) throw new Error(`R12C predecessor reconstruction changed: ${row.path}`);
     reconstructed.set(row.path, bytes);
   }
-  // Only these five exact successor files disappear. Every earlier R12B path
-  // remains status- and byte-bound and is rechecked by the historical scanner.
+  // Only the exact successor-introduced files disappear: the five design-entry
+  // paths, the stage candidates' new files, and the strict candidate's new
+  // files. Every earlier R12B path remains status- and byte-bound and is
+  // rechecked by the historical scanner.
   const successorNewPaths = new Set([
     ...NEW_PATHS,
     checked.financePublicCandidate.move.target,
     ...checked.messagingLifecycleCandidate.records.filter((row) => row.kind === 'new-file').map((row) => row.path),
     checked.marketplacePublicCandidate.move.target,
+    ...strict.absent,
   ]);
   return {
     statusRows: checked.predecessor.overlayLedger.map(({ sha256, ...row }) => row),
@@ -877,10 +997,12 @@ function runCli() {
 }
 
 module.exports = {
+  BASE_COMMIT, STRICT_CANDIDATE_PATHS, R12B_CLOSURE_ENVIRONMENT_PREAMBLE,
   authorityFingerprint, validateR12cManifest, expectedR12cDependencyRecords,
   verifyR12cOwnership, verifyR12cFinanceProjection, verifyR12cMessagingLifecycleProjection,
   verifyMarketplacePublicFiles, verifyR12cMarketplacePublicProjection,
   strictPredecessorFiles, readR12cStrictDependencyBytes,
+  reconstructCandidateRecord: reconstructMarketplaceCandidateRecord, replayClosureScannerSource,
   scanR12bPredecessorProjection, projectR12cFileToPredecessor,
   projectR12cWorkingTreeToPredecessor, scanR12cZeroCrossContextDependencies, runCli,
 };

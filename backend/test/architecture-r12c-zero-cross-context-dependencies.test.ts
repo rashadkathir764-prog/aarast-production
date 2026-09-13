@@ -46,8 +46,10 @@ const changed = (value: any, mutation: (copy: any) => void) => {
 };
 const fixture = () => {
   const { api, manifest } = load();
-  const statusRows = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: root, encoding: 'utf8' })
-    .trimEnd().split(/\r?\n/u).filter(Boolean).map((line) => ({ status: line.slice(0, 2), path: line.slice(3).replaceAll('\\', '/') }));
+  // The overlay is measured against the immutable base commit, never against
+  // HEAD or the staging state, so committed and uncommitted work project alike.
+  const identity = require(path.join(root, 'backend/scripts/architecture/repository-identity.cjs'));
+  const statusRows = identity.workingTreeInventory(root, api.BASE_COMMIT) as Array<{ status: string; path: string }>;
   const files = new Map<string, Buffer>();
   for (const row of statusRows) if (row.status !== ' D') files.set(row.path, read(row.path));
   for (const relative of [manifestPath, r12bPath, dependencyPath, ownershipPath, manifest.financePublicCandidate.move.target, ...manifest.sourceFiles.map((item: any) => item.path)]) {
@@ -127,8 +129,11 @@ test('R12C binds exactly three approved contract families, consumer inventories 
   assert.throws(() => api.validateR12cManifest(changed(manifest, (copy) => copy.contractFamilies[0].consumers.pop())));
 });
 
-test('R12C rejects forged predecessor hash, receipts, documentation, root, branch and HEAD', () => {
+test('R12C rejects forged predecessor hash, receipts, documentation and entry provenance', () => {
   const { api, manifest } = load();
+  // `repository.root` and `repository.branch` record where the composite entry
+  // was captured; they are immutable provenance inside the design authority,
+  // not an execution constraint (see architecture-governance-portability).
   const mutations = [
     (copy: any) => { copy.predecessor.manifestSha256 = '0'.repeat(64); },
     (copy: any) => { copy.predecessor.receipts = 3; },
@@ -139,7 +144,37 @@ test('R12C rejects forged predecessor hash, receipts, documentation, root, branc
     (copy: any) => { copy.predecessor.overlayLedger.reverse(); },
   ];
   for (const mutation of mutations) assert.throws(() => api.validateR12cManifest(changed(manifest, mutation)));
-  assert.throws(() => api.scanR12cZeroCrossContextDependencies({ repositoryRoot: path.dirname(root), manifest }));
+  assert.throws(
+    () => api.scanR12cZeroCrossContextDependencies({ repositoryRoot: path.dirname(root), manifest }),
+    /repository identity/u,
+    'a parent directory is never accepted as the repository',
+  );
+  assert.throws(
+    () => api.scanR12cZeroCrossContextDependencies({ repositoryRoot: path.join(root, 'backend'), manifest }),
+    /repository identity/u,
+    'a nested directory is never resolved up to its repository',
+  );
+});
+
+test('R12C strict candidate registers only its declared scope and reconstructs line-ending normalization exactly', () => {
+  const { api, manifest } = load();
+  assert.deepEqual([...manifest.strictCandidate.records.map((row: any) => row.path)].sort(), [...new Set(manifest.strictCandidate.records.map((row: any) => row.path))].sort());
+  for (const row of manifest.strictCandidate.records) assert.ok(api.STRICT_CANDIDATE_PATHS.includes(row.path), row.path);
+  assert.throws(() => api.validateR12cManifest(changed(manifest, (copy) => { copy.strictCandidate.records.push({ ...copy.strictCandidate.records[0], path: 'backend/src/attacker.ts' }); })));
+  const entry = Buffer.from('a\r\nb\nc\r\n', 'utf8');
+  const candidate = Buffer.from('a\nb\nc\n', 'utf8');
+  const record = {
+    path: 'backend/scripts/architecture/ports-scan.cjs', kind: 'line-ending-normalization',
+    entrySha256: hash(entry), candidateSha256: hash(candidate), entryByteLength: entry.length,
+    entryStatus: ' M', candidateStatus: ' M', lfLines: [1], splices: [],
+  };
+  assert.deepEqual(api.reconstructCandidateRecord(candidate, record), entry);
+  assert.throws(() => api.reconstructCandidateRecord(candidate, { ...record, lfLines: [0] }), /entry bytes changed/u);
+  assert.throws(() => api.reconstructCandidateRecord(candidate, { ...record, lfLines: [5] }), /exceeds/u);
+  assert.throws(() => api.reconstructCandidateRecord(Buffer.from('a\r\nb\nc\n'), { ...record, candidateSha256: hash('a\r\nb\nc\n') }), /invalid/u);
+  const spliced = Buffer.from('a\nB\nc\n', 'utf8');
+  const withSplice = { ...record, candidateSha256: hash(spliced), splices: [{ offset: 2, beforeBase64: [Buffer.from('b').toString('base64')], afterBase64: [Buffer.from('B').toString('base64')] }] };
+  assert.deepEqual(api.reconstructCandidateRecord(spliced, withSplice), entry);
 });
 
 test('R12C rejects non-plain manifest and scanner input without invoking getters or proxies', () => {

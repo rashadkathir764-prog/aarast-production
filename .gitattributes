@@ -8,3 +8,13 @@
 *.js text eol=lf
 *.dart text eol=lf
 *.sh text eol=lf
+# Governance scanners, tooling and their inputs are fingerprinted byte-for-byte
+# and must materialize identically on every platform: canonical LF only.
+*.cjs text eol=lf
+*.mjs text eol=lf
+*.prisma text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.gitleaksignore text eol=lf

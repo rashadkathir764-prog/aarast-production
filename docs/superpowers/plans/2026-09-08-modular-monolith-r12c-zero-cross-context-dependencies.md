@@ -12,6 +12,17 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md`
 
+> **Amendment 2026-09-13 (governance portability, spec section 18).** Every
+> identity expectation in this plan that names a directory, a branch, an exact
+> `HEAD`, an empty index, or `git status` output is superseded: identity is the
+> Git top level extending the immutable base commit
+> `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`, and the overlay is measured
+> against that base commit (`' M'`/`' D'`/`'??'`), identically for committed
+> and uncommitted work. Per-phase commits on the recovery branch are the
+> owner's current mandate; the "no commit / no worktree" wording below records
+> the original plan and no longer applies. Task 5's registrable scope gains the
+> portability surfaces listed in the spec amendment.
+
 ## Global Constraints
 
 - This plan is not implementation authorization. A later session must receive

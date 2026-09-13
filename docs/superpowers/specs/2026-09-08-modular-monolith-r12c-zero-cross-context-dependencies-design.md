@@ -3,8 +3,10 @@
 **Date:** 2026-09-08  
 **Status:** APPROVED — independent review 0 Critical / 0 Important / 0 Minor  
 **Phase boundary:** DESIGN AND PLANNING ONLY; SOURCE IMPLEMENTATION NOT STARTED  
-**Repository:** `D:/projects/aarast-modular-monolith`  
-**Branch / immutable HEAD:** `modular-monolith` / `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`
+**Immutable base commit:** `4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1`  
+**Entry provenance (recorded, not a constraint — see section 18):** captured in
+`D:/projects/aarast-modular-monolith` on branch `modular-monolith`  
+**Amended:** 2026-09-13 — section 18, governance portability
 
 ## 1. Decision Summary
 
@@ -544,3 +546,108 @@ Stop R12C and request a revised design if:
 
 This document authorizes planning only. It does not authorize Task 1, source
 implementation, Git integration, R13, deployment, or release work.
+
+## 18. Governance Portability Amendment (2026-09-13)
+
+This section amends the identity model of the whole R12A/R12B/R12C governance
+chain. It is recorded here because R12A and R12B are closed phases whose
+design documents are byte-bound by their successors' manifests; the clauses of
+those documents that bind identity to an environment (R12A/R12B
+"**Repository**"/"**Branch**" headers, R12B "Authority And Composite Entry"
+items *Git root*, *Branch*, *HEAD*, R12B exit criterion 1 "root, branch, and
+HEAD match the composite entry", and the R12B stop rule on "Git identity") are
+superseded by this section. Their `repository.rootName`, `repository.branch`
+and this manifest's `repository.root` fields remain in the manifests as the
+recorded provenance of each design entry; no scanner compares them to the
+environment any more.
+
+### What was pinned, and why it was fragile
+
+Until this amendment the scanners required, before reading any content:
+
+- the absolute working-tree path `D:/projects/aarast-modular-monolith` (R12C)
+  and the directory name `aarast-modular-monolith` (R12B);
+- the branch name `modular-monolith` (R12B, R12C);
+- `HEAD` equal to the base commit `4d0d3ee9…` (R12A, R12B, R12C), which forced
+  the entire R11–R12C overlay to stay uncommitted forever;
+- an empty index (R12C);
+- `git status --porcelain` equal to the manifest's overlay inventory, which is
+  the same requirement expressed through the working tree.
+
+None of these facts is architecture. They could not hold in a linked worktree,
+a differently named clone, a CI checkout, or any commit of the work — so the
+gates were only ever executable on one machine, in one directory, in one
+uncommitted state. That is not a verification environment; a law that cannot be
+re-run elsewhere cannot be independently verified. Worse, seven fingerprinted
+scanners (`ports-scan`, `r3-context-scan`, `r5`–`r8`, `prisma-config-merge-security`)
+had been registered with mixed CRLF/LF bytes that Git normalizes on commit,
+so even a checkout at the exact commit could not reproduce the registered
+bytes.
+
+### What replaces it
+
+Identity is now repository and content identity, implemented once in
+`backend/scripts/architecture/repository-identity.cjs` and used by the R12A,
+R12B and R12C scanners:
+
+1. the given root must be the Git top level it discovers (`rev-parse
+   --show-toplevel`, `--absolute-git-dir`), never a parent or nested
+   directory, never a reparse point;
+2. the phase's immutable base commit must exist and be an ancestor of, or
+   equal to, `HEAD` (`merge-base --is-ancestor`): the current state must be a
+   genuine extension of the entry;
+3. the overlay is measured against the base commit (`git diff --no-renames
+   --name-status <base>` plus `ls-files --others --exclude-standard`) with the
+   manifests' unchanged vocabulary — `' M'` modified, `' D'` deleted, `'??'`
+   added — so a committed and an uncommitted extension of the base project
+   identically;
+4. every governed byte is still bound by its registered fingerprint, every
+   predecessor is still reconstructed byte-for-byte, and the exact overlay
+   inventory is still enforced.
+
+The historical replay of the R12B closure scanner inside the R12C projection
+executes every closure byte verbatim except the six-line environment preamble
+of `scanR12bPlanningPublicContracts`, which is pinned by hash in
+`R12B_CLOSURE_ENVIRONMENT_PREAMBLE` and replaced by the portable identity
+check. The replay fails closed if that preamble is absent, duplicated, or
+altered; no other closure byte is touched.
+
+Canonical bytes: `.gitattributes` now declares `*.cjs`, `*.mjs`, `Dockerfile`,
+`.dockerignore`, `.gitattributes`, `.gitignore` and `.gitleaksignore` as LF
+text, and the seven mixed-ending scanners were normalized to LF. The strict
+candidate registers each of them as a `line-ending-normalization` record: the
+LF-only terminators of the historical entry and the Task 5 splices, from which
+the exact historical bytes reconstruct and whose entry hash proves that nothing
+beyond line endings and the registered splices changed.
+
+### Strict-candidate scope extension
+
+Task 5's registrable path set (`STRICT_CANDIDATE_PATHS`, enforced by the
+scanner) is extended by exactly: `.gitattributes`,
+`backend/scripts/architecture/ports-scan.cjs`,
+`backend/scripts/architecture/repository-identity.cjs`,
+`backend/scripts/architecture/r12c-strict-candidate.cjs` and
+`backend/test/architecture-governance-portability.test.ts`. The strict layer
+may also register `new-file` records; the predecessor projection treats them
+as absent. Registration is performed by the tracked tool
+`r12c-strict-candidate.cjs`, which derives the Task 5 entry bytes from the last
+registered state by content hash and refreshes only the fingerprints that
+depend on the registration.
+
+### Guarantees retained
+
+- unauthorized change of any governed file fails (raw fingerprints, inverse
+  and candidate reconstruction, normalized-self manifest hash);
+- a forged or broken manifest fails (immutable design authority hash,
+  preregistered candidate hashes, path scope of the strict candidate);
+- an added dependency violation fails (strict, unbaselined dependency-cruiser
+  command projected through every historical authority);
+- an unregistered change to a protected surface or an undeclared file fails
+  (exact base-relative overlay inventory, R12B protected paths and security
+  receipt);
+- identical content on a history that does not extend the base commit fails.
+
+`backend/test/architecture-governance-portability.test.ts` proves all of the
+above by running the real gate commands inside a fresh, renamed clone on a
+different branch, both with the work committed and with it uncommitted, after a
+clean dependency install, and by probing each rejection.

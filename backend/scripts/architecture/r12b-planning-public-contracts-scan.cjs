@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const prismaSecurity = require('../security/prisma-config-merge-security.cjs');
+const identity = require('./repository-identity.cjs');
 
 const MANIFEST_PATH = 'backend/architecture/r12b-planning-public-contracts.json';
 const R12A_MANIFEST_PATH = 'backend/architecture/r12a-backoffice-catalog-public-contracts.json';
@@ -711,10 +712,11 @@ function inspectPlainFile(root, relative, required = true) {
   return current;
 }
 
+// Working-tree overlay against the immutable base commit. The ' M' / ' D' / '??'
+// vocabulary is unchanged; it now describes the content delta from the base,
+// which is identical whether that delta is committed or not.
 function gitStatus(repositoryRoot) {
-  const output = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: repositoryRoot, encoding: 'utf8', windowsHide: true });
-  const rows = output.trimEnd().split(/\r?\n/u).filter(Boolean);
-  return rows.map((line) => ({ status: line.slice(0, 2), path: line.slice(3).replaceAll('\\', '/') }));
+  return identity.workingTreeInventory(repositoryRoot, BASE_COMMIT);
 }
 
 function verifyApprovedSecurityPrerequisite({ repositoryRoot, manifest, statusRows: suppliedStatusRows, readWorkingFile, pathExists } = {}) {
@@ -1239,12 +1241,10 @@ function assertNoTransitionArtifacts(repositoryRoot) {
 function scanR12bPlanningPublicContracts({ repositoryRoot, manifest, readImmutableFile } = {}) {
   if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12B repository root must be absolute');
   const checked = validateR12bManifest(manifest);
-  const root = fs.realpathSync.native(repositoryRoot);
-  exact(path.basename(root).toLowerCase(), checked.repository.rootName, 'R12B repository root name');
-  const top = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim().replaceAll('\\', '/');
-  if (path.resolve(top) !== path.resolve(root)) throw new Error('R12B repository root changed');
-  exact(execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim(), checked.repository.branch, 'R12B repository branch');
-  exact(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim(), checked.repository.baseCommit, 'R12B repository HEAD');
+  // Repository identity: this Git top level, extending the immutable base
+  // commit. `repository.rootName` and `repository.branch` record where the
+  // composite entry was captured; they are provenance, not a constraint.
+  const root = identity.verifyRepositoryIdentity(repositoryRoot, checked.repository.baseCommit);
   assertNoTransitionArtifacts(root);
 
   const r12aManifestFile = inspectPlainFile(root, R12A_MANIFEST_PATH);

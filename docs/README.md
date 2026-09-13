@@ -138,6 +138,18 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-08-04-modular-monolith-architecture-design.md`
+  - the original approved architecture target, tracked verbatim (SHA-256
+    `db4232f9795b5211532c454f838996af7e50d5aefee13a20d5e3e513539845f4`, the
+    bytes the R11 reconciliation recorded from its external location). It
+    is the requirement source; it does not describe the current state.
+- `docs/superpowers/reports/2026-09-13-modular-monolith-requirement-traceability-matrix.md`
+  - traces every requirement of the original target and the R0–R12C
+    phases to its live proof at the closure of R12C. Verdict: the execution
+    wave R0–R12C is closed; the modular-monolith mission is **not** closed
+    (ownership 385/781, pure Finance domain, erasure-port saga, port-based
+    insights/reminders and the Mobile fate-map remainder stay open as
+    R13–R20 of the remaining-target design).
 - `docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md`,
   `docs/superpowers/plans/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies.md`,
   and

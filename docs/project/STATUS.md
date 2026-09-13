@@ -45,6 +45,16 @@ are re-run at the lineage commit by the governance-portability suite, and
 governed files are ordinary reviewed code from here on. Nothing is baselined
 or ignored by the closure.
 
+The requirement traceability matrix
+`docs/superpowers/reports/2026-09-13-modular-monolith-requirement-traceability-matrix.md`
+traces the original target (now tracked at
+`docs/superpowers/specs/2026-08-04-modular-monolith-architecture-design.md`)
+to live proof: the import law, acyclicity, schema split, migrations, mobile
+and admin boundaries and route contracts are closed; the ownership law
+(385/781), the pure Finance domain, the erasure-port saga, port-based
+insights/reminders and the Mobile fate-map remainder are open (R13–R20).
+The modular-monolith mission is not closed.
+
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
 R12B is complete locally.

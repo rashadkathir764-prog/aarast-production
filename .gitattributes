@@ -18,3 +18,8 @@ Dockerfile text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf
 .gitleaksignore text eol=lf
+# Flutter rewrites its generated plugin registrants with LF on every
+# `flutter pub get`; checking them out with LF keeps a fresh checkout clean.
+mobile/**/generated_plugin_registrant.* text eol=lf
+mobile/**/generated_plugins.cmake text eol=lf
+mobile/**/GeneratedPluginRegistrant.* text eol=lf

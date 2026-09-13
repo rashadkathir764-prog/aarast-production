@@ -87,6 +87,9 @@ const STRICT_CANDIDATE_PATHS = Object.freeze([
   'backend/test/architecture-r12c-zero-cross-context-dependencies.test.ts',
   'backend/test/architecture-governance-portability.test.ts',
   'backend/test/prisma-config-merge-security.test.ts',
+  // Isolated dependency surface shared by the R3/R8 fixtures (2026-09-13):
+  // replaces the junctions those fixtures made into the live node_modules.
+  'backend/test/support/isolated-dependency-surface.ts',
 ]);
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const serialize = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -336,7 +339,7 @@ function validateMarketplacePublicCandidate(candidate) {
 
 function validateStrictCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== 'f4a453aedae918914431930b4b67ce5220d4ac5fc82cddc228c1297bbe8051d1') {
+  if (sha(JSON.stringify(candidate)) !== '574d873ea91041ebc7b812080c081be73ef2b496ea5b52f4f75d1da82c1aec90') {
     throw new Error('R12C preregistered strict candidate changed');
   }
   const seen = new Set();

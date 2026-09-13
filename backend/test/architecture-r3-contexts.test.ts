@@ -6,7 +6,6 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +13,13 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire, wrap } from 'node:module';
 import { Script } from 'node:vm';
-import { afterEach, test } from 'node:test';
+import { after, afterEach, before, test } from 'node:test';
+import {
+  assertNoReparsePoints,
+  createDependencySurface,
+  installationSentinel,
+  type DependencySurface,
+} from './support/isolated-dependency-surface';
 
 const backendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(backendRoot, '..');
@@ -26,6 +31,28 @@ const r8ManifestPath = path.join(
 );
 const scannerPath = path.join(backendRoot, 'scripts', 'architecture', 'r3-context-scan.cjs');
 const temporaryRoots: string[] = [];
+// Full-source fixtures resolve the Nest closure through an isolated copy; the
+// real installation is fingerprinted before the first fixture and after the last.
+const sentinelPackages = ['@nestjs/common', '@nestjs/core', '@nestjs/jwt', '@nestjs/schedule', '@nestjs/throttler'];
+let surface: DependencySurface;
+let installationBefore: Record<string, string>;
+
+before(() => {
+  installationBefore = installationSentinel(backendRoot, sentinelPackages);
+  surface = createDependencySurface(backendRoot, 'aarast-r3-dependency-surface-');
+});
+
+after(() => {
+  try {
+    assert.deepEqual(
+      installationSentinel(backendRoot, sentinelPackages),
+      installationBefore,
+      'R3 fixtures must leave the real dependency installation byte-identical',
+    );
+  } finally {
+    surface.dispose();
+  }
+});
 const historicalFixtureScanners = new Map<string, Scanner>();
 
 type Scanner = {
@@ -291,17 +318,15 @@ function fullSourceFixture(replacements: Array<{
   before: string;
   after: string;
 }>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r3-consumer-identity-'));
+  // Beneath the isolated surface: package resolution walks up plain
+  // directories into the copied closure; nothing links to the real install.
+  const root = surface.fixtureRoot('aarast-r3-consumer-identity-');
   temporaryRoots.push(root);
   const fixtureBackend = path.join(root, 'backend');
   mkdirSync(fixtureBackend, { recursive: true });
   cpSync(path.join(backendRoot, 'src'), path.join(fixtureBackend, 'src'), { recursive: true });
   cpSync(path.join(backendRoot, 'tsconfig.json'), path.join(fixtureBackend, 'tsconfig.json'));
-  symlinkSync(
-    path.join(backendRoot, 'node_modules'),
-    path.join(fixtureBackend, 'node_modules'),
-    process.platform === 'win32' ? 'junction' : 'dir',
-  );
+  assertNoReparsePoints(root);
   const r12cManifest = JSON.parse(readFileSync(path.join(
     backendRoot,
     'architecture',

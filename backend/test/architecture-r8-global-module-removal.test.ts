@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {
   copyFileSync,
+  lstatSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -11,7 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { afterEach, test } from 'node:test';
+import { after, afterEach, before, test } from 'node:test';
 import { Injectable, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { Program, TypeChecker } from 'typescript';
@@ -21,8 +23,37 @@ import { MESSAGING_REALTIME_IMPLEMENTATION } from '../src/modules/messaging/inte
 import { MESSAGING_REALTIME_PORT } from '../src/modules/messaging/public/messaging-realtime.port';
 import { PrismaModule } from '../src/platform/database/prisma.module';
 import { PrismaService } from '../src/platform/database/prisma.service';
+import {
+  assertContained,
+  assertNoReparsePoints,
+  createDependencySurface,
+  installationSentinel,
+  type DependencySurface,
+} from './support/isolated-dependency-surface';
 
 const backendRoot = path.resolve(__dirname, '..');
+// Packages the external-identity fixtures stub out. Their real installation
+// is fingerprinted before the first fixture and re-checked after the last one.
+const sentinelPackages = ['@nestjs/schedule', '@nestjs/throttler', '@nestjs/common', '@nestjs/core'];
+let surface: DependencySurface;
+let installationBefore: Record<string, string>;
+
+before(() => {
+  installationBefore = installationSentinel(backendRoot, sentinelPackages);
+  surface = createDependencySurface(backendRoot, 'aarast-r8-dependency-surface-');
+});
+
+after(() => {
+  try {
+    assert.deepEqual(
+      installationSentinel(backendRoot, sentinelPackages),
+      installationBefore,
+      'R8 fixtures must leave the real dependency installation byte-identical',
+    );
+  } finally {
+    surface.dispose();
+  }
+});
 const manifestPath = path.join(
   backendRoot,
   'architecture',
@@ -426,8 +457,12 @@ function writeFixtureFile(root: string, relativePath: string, contents: string):
   writeFileSync(absolutePath, contents, 'utf8');
 }
 
+// Fixture roots live beneath the isolated dependency surface: Node and
+// TypeScript resolve packages by walking up plain directories into the copied
+// closure, and any package a fixture writes under its own backend/node_modules
+// shadows that copy locally. Nothing links to the real installation.
 function sourceFixture(files: Record<string, string>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r8-architecture-fixture-'));
+  const root = surface.fixtureRoot('aarast-r8-architecture-fixture-');
   temporaryRoots.push(root);
   writeFixtureFile(root, 'backend/tsconfig.json', JSON.stringify({
     compilerOptions: {
@@ -442,11 +477,6 @@ function sourceFixture(files: Record<string, string>): string {
     },
     include: ['src/**/*.ts'],
   }));
-  symlinkSync(
-    path.join(backendRoot, 'node_modules'),
-    path.join(root, 'backend', 'node_modules'),
-    process.platform === 'win32' ? 'junction' : 'dir',
-  );
   for (const [relativePath, contents] of Object.entries(files)) {
     writeFixtureFile(root, relativePath, contents);
   }
@@ -641,6 +671,7 @@ test('R8 historical handoff mutations reject a seventh retirement and changed co
 
 test('R8 default R12A manifest is resolved from the supplied repository root', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'aarast-r8-r12a-root-'));
+  temporaryRoots.push(root);
   const invalid = { stage: 'not-a-valid-r12a-stage' };
   mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
   writeFileSync(
@@ -1870,11 +1901,42 @@ test('R8 external verifier accepts only the locked Schedule root forwarding shim
     }
   `);
   writeFixtureFile(root, `${packageRoot}/index.js`, readFileSync(
-    path.join(backendRoot, 'node_modules', '@nestjs', 'schedule', 'index.js'),
+    path.join(surface.nodeModules, '@nestjs', 'schedule', 'index.js'),
     'utf8',
   ));
   writeFixtureFile(root, `${packageRoot}/dist/index.js`, runtime);
   assert.doesNotThrow(() => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()));
+});
+
+test('R8 fixtures own an isolated dependency surface and cannot reach the real installation', () => {
+  const realSchedule = path.join(backendRoot, 'node_modules', '@nestjs', 'schedule');
+  const realPackageJson = readFileSync(path.join(realSchedule, 'package.json'));
+  const root = externalFixture();
+  // The verifier resolves the copied closure through plain directories.
+  assert.doesNotThrow(() => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()));
+  const resolvedFromFixture = require('node:module').createRequire(path.join(root, 'backend', 'package.json')).resolve('@nestjs/schedule');
+  assert.equal(path.relative(surface.root, realpathSync.native(resolvedFromFixture)).startsWith('..'), false, 'fixtures resolve packages inside the surface');
+  assert.notEqual(realpathSync.native(path.dirname(resolvedFromFixture)).toLowerCase(), realpathSync.native(realSchedule).toLowerCase());
+
+  // Writing a stub package the way the negative fixtures do stays inside its
+  // own fixture (a fresh root: Node caches package resolution per parent).
+  const stubbed = externalFixture();
+  const packageRoot = 'backend/node_modules/@nestjs/schedule';
+  writeFixtureFile(stubbed, `${packageRoot}/package.json`, JSON.stringify({ name: '@nestjs/schedule', version: '0.0.0-stub', main: './dist/index.js' }));
+  writeFixtureFile(stubbed, `${packageRoot}/dist/index.js`, 'module.exports = { ScheduleModule: class ScheduleModule {} };');
+  assertR8Failure(
+    () => scanner().verifyExternalGlobalIdentities(stubbed, manifestWithContract()),
+    /external|installed|identity|lock|shim/i,
+  );
+  for (const fixtureRoot of [root, stubbed]) {
+    assertNoReparsePoints(fixtureRoot);
+    assertContained(fixtureRoot);
+  }
+  assert.equal(lstatSync(path.join(stubbed, 'backend', 'node_modules')).isSymbolicLink(), false);
+  assert.equal(realpathSync.native(path.join(stubbed, ...packageRoot.split('/'))).toLowerCase().startsWith(realpathSync.native(stubbed).toLowerCase()), true);
+  assert.deepEqual(readFileSync(path.join(realSchedule, 'package.json')), realPackageJson, 'the real package.json is untouched');
+  assert.deepEqual(installationSentinel(backendRoot, sentinelPackages), installationBefore, 'the real installation is byte-identical after fixture writes');
+  assert.equal(JSON.parse(readFileSync(path.join(realSchedule, 'package.json'), 'utf8')).version, '6.1.3');
 });
 
 test('R8 external verifier rejects a forwarding Throttler root entrypoint', () => {

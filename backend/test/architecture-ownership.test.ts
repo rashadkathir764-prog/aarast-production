@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -1525,7 +1526,8 @@ test('ownership output mode rejects invalid paths and write failures atomically 
   for (const argv of [
     ['--output'],
     ['--output', 'relative.json'],
-    ['--output', path.join(backendRoot, 'ownership-candidate.json')],
+    // Outside the OS temp directory wherever the repository lives.
+    ['--output', path.join(path.dirname(realpathSync.native(tmpdir())), 'aarast-ownership-non-temp', 'ownership-candidate.json')],
     ['--output', outputPath, '--output', outputPath],
     ['--output', `${outputPath}\u0000TOKEN=secret`],
   ]) {

@@ -771,7 +771,12 @@ test('R12B successor Git authority rejects a copied linked-worktree control file
   const copiedRoot = temporaryRoot('r12b-copied-git-control-');
   try {
     writeManifests(copiedRoot);
-    writeFileSync(path.join(copiedRoot, '.git'), readFileSync(path.join(repositoryRoot, '.git')));
+    // A control file pointing at the live Git directory, whether the live
+    // checkout is a linked worktree (`.git` file) or an ordinary clone
+    // (`.git` directory): the copy is not the top level Git reports.
+    const liveGitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: repositoryRoot, encoding: 'utf8' }).trim();
+    writeFileSync(path.join(copiedRoot, '.git'), `gitdir: ${liveGitDir}
+`);
     assert.throws(() => project(copiedRoot), /Git|authority|repository root/iu);
   } finally {
     rmSync(copiedRoot, { recursive: true, force: true });
@@ -797,7 +802,7 @@ test('R12B successor Git authority rejects missing, malformed, and incomplete co
   }
 });
 
-test('R12B successor Git authority accepts the exact live linked worktree', () => {
+test('R12B successor Git authority accepts the exact live checkout', () => {
   const { project } = r12bSuccessorFixture();
   assert.equal(project(repositoryRoot).length, 0);
 });

@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -51,6 +52,16 @@ function temporaryRoot(prefix: string) {
 function ignoredBackendFixture(prefix: string): string {
   const parent = path.join(backendRoot, 'dist', 'test-fixtures');
   mkdirSync(parent, { recursive: true });
+  const root = mkdtempSync(path.join(parent, prefix));
+  temporaryRoots.push(root);
+  return root;
+}
+
+// A directory that is outside the OS temp directory wherever the repository
+// lives (a checkout under the temp directory would otherwise make a
+// repository path count as "inside temp"): a sibling of the temp root.
+function outsideTempRoot(prefix: string): string {
+  const parent = path.dirname(realpathSync.native(os.tmpdir()));
   const root = mkdtempSync(path.join(parent, prefix));
   temporaryRoots.push(root);
   return root;
@@ -289,13 +300,13 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
 });
 
 test('rejects a non-temp output and a junction escape without writing outside temp', () => {
-  const outside = ignoredBackendFixture('r2-dmmf-output-outside-');
+  const outside = outsideTempRoot('aarast-r2-dmmf-output-outside-');
   const root = temporaryRoot('aarast-r2-dmmf-junction-');
   const junction = path.join(root, 'junction');
   symlinkSync(outside, junction, 'junction');
 
   for (const outputPath of [
-    path.join(backendRoot, 'fingerprint.json'),
+    path.join(outside, 'fingerprint.json'),
     path.join(junction, 'fingerprint.json'),
   ]) {
     const result = spawnSync(process.execPath, [scriptPath, '--output', outputPath], {

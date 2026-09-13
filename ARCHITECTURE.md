@@ -441,9 +441,12 @@ The permanent local/CI gates are:
 Set-Location admin-web
 npm run test:architecture
 npm run architecture
-Set-Location ..
-node .\scripts\check-r10-scope.mjs --task task-11
 ```
+
+The R10 task scope fence (`scripts/check-r10-scope.mjs`) was a phase-time
+changed-path check against the R9 base revision; it was removed with the
+other phase scope fences at the 2026-09-13 architecture exit audit, after the
+phases it fenced were closed.
 
 The TypeScript-AST scanner resolves real locations and rejects deep or
 undeclared feature imports, foreign public-API forwarding, graph cycles,

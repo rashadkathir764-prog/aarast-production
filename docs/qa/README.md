@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-08-30
+Snapshot date: 2026-09-13
 
 Snapshot source: the checked-out branch content. Resolve its immutable revision
 with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
@@ -8,6 +8,54 @@ remote-CI result.
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
+
+## Current Gates (after the R12C closure, 2026-09-13)
+
+These are the gates every change runs today; the per-phase sections below
+are the historical closeout receipts of each phase and are not re-run as
+written.
+
+```powershell
+# Backend (from backend/)
+npm run check
+npm run architecture          # imports, ownership, ports, R3, R4, R5, R6, R7, R8, R12A, R12B, R12C
+npm run security:prisma-config-merge
+npm test                      # guarded runner: preflight batch, then the main batch
+npm run smoke:all             # managed isolated smoke packages (Docker stack)
+
+# Repository root
+node .\scripts\docs-sync.mjs --check
+node .\scripts\docs-verify.mjs
+node --test .\scripts\check-mobile-boundaries.test.mjs
+node .\scripts\check-mobile-boundaries.mjs --strict
+git diff --check
+
+# Admin web (from admin-web/)
+npm run test:architecture
+npm run architecture
+npm test -- --run
+npm run typecheck
+npm run build
+
+# Mobile (from mobile/)
+flutter analyze
+flutter test
+```
+
+The R3–R8 and R12A–R12C architecture gates run in closed mode (their PASS
+lines say `(closed)`): they verify live architecture laws — boundaries,
+wiring rules, layout, counts — not the byte parity of the relocations those
+phases performed. The parity proofs are history, re-run at the recorded
+lineage commit by `backend/test/architecture-governance-portability.test.ts`
+(spec: `docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md`,
+section 19). Set `ARCHITECTURE_DEBUG=1` to print the reason a scanner fails;
+the R3 scanner always lists its diagnostics.
+
+Phase scope fences (`check-r0-scope`, `check-r9-scope`, `check-r10-scope`,
+`r2-schema-scope`) and the one-shot R12B documentation transition runner were
+removed at the 2026-09-13 architecture exit audit; the phases they fenced are
+closed and the fences were changed-path checks against base revisions that
+no longer describe the tree.
 
 ## Docs-Only Changes
 
@@ -71,7 +119,6 @@ From the repository root and Admin directory, the permanent R10 gates are:
 
 ```powershell
 node .\admin-web\scripts\admin-boundaries.mjs --strict
-node .\scripts\check-r10-scope.mjs --task task-11
 Set-Location admin-web
 npm run test:architecture
 npm run architecture
@@ -92,10 +139,9 @@ Run from the repository root:
 ```powershell
 node .\scripts\docs-sync.mjs --check
 node .\scripts\docs-verify.mjs
-node --test .\scripts\check-mobile-boundaries.test.mjs .\scripts\check-r9-scope.test.mjs
+node --test .\scripts\check-mobile-boundaries.test.mjs
 node .\scripts\check-mobile-boundaries.mjs --check-baseline
 node .\scripts\check-mobile-boundaries.mjs --strict
-node .\scripts\check-r9-scope.mjs --check task-11
 git diff --check
 ```
 
@@ -159,9 +205,9 @@ flutter test --no-pub
 ```
 
 R1 CI keeps the counted dependency, ownership, and Mobile baseline modes. The
-phase-specific R0 fixed-base scope job is removed at R1 closeout; the local
-`check-r0-scope` script and tests remain historical R0 evidence and are not
-retargeted. The
+phase-specific R0 fixed-base scope job is removed at R1 closeout (the local
+`check-r0-scope` script and tests were kept as historical R0 evidence until
+the 2026-09-13 architecture exit audit removed every phase scope fence). The
 Backend dependency command with `--no-ignore-known` and
 `node .\scripts\check-mobile-boundaries.mjs --strict` deliberately expose
 current migration debt and are expected to fail today; they are proof/debug

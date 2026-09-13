@@ -3,7 +3,6 @@
 | Package | Script | Command |
 | --- | --- | --- |
 | `admin-web` | `npm run architecture` | `node scripts/admin-boundaries.mjs --strict` |
-| `admin-web` | `npm run architecture:stage` | `node scripts/admin-boundaries.mjs --stage` |
 | `admin-web` | `npm run build` | `tsc -b && vite build && node scripts/build-config-smoke.mjs` |
 | `admin-web` | `npm run dev` | `vite` |
 | `admin-web` | `npm run preview` | `vite preview` |

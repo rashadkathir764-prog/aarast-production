@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "architecture": "node scripts/admin-boundaries.mjs --strict",
-    "architecture:stage": "node scripts/admin-boundaries.mjs --stage",
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/build-config-smoke.mjs",
     "preview": "vite preview",

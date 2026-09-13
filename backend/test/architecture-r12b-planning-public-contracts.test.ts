@@ -3,7 +3,19 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
+
+// Every temporary root this suite creates is removed when the suite ends,
+// including roots whose fixture failed to build.
+const temporaryRoots: string[] = [];
+function temporaryRoot(prefix: string): string {
+  const created = mkdtempSync(path.join(require('node:os').tmpdir(), prefix));
+  temporaryRoots.push(created);
+  return created;
+}
+after(() => {
+  for (const created of temporaryRoots) rmSync(created, { recursive: true, force: true });
+});
 import { brotliDecompressSync } from 'node:zlib';
 
 const backendRoot = path.resolve(__dirname, '..');
@@ -992,7 +1004,7 @@ test('R12B projection derives and reconstructs entry bytes at all five documenta
   const base = loadManifest();
   const states: DocumentationState[] = ['entry', 'candidate-prepared', 'candidate', 'activation-prepared', 'activated'];
   for (const state of states) {
-    const caseRoot = mkdtempSync(path.join(require('node:os').tmpdir(), `aarast-r12b-projection-${state}-`));
+    const caseRoot = temporaryRoot(`aarast-r12b-projection-${state}-`);
     const manifest = buildDocumentationManifest(base, state);
     const fixture = projectFixture(manifest, { repositoryRoot: caseRoot });
     try {
@@ -1027,7 +1039,7 @@ test('R12B final report classifier is activated-only, exact, and status-bound', 
   const api = scanner();
   const base = loadManifest();
   const createCase = (state: DocumentationState, reportPath = finalReportPath, status = '??', materialize: 'file' | 'directory' | 'symlink' | 'junction' | 'none' = 'file') => {
-    const root = mkdtempSync(path.join(require('node:os').tmpdir(), `aarast-r12b-final-report-${state}-`));
+    const root = temporaryRoot(`aarast-r12b-final-report-${state}-`);
     const manifest = buildDocumentationManifest(base, state);
     const fixture = projectFixture(manifest, { repositoryRoot: root, includeActivatedFinalReport: false });
     forwardSharedTransforms(manifest, fixture.files);
@@ -1094,7 +1106,7 @@ test('R12B final report classifier reaches the plain-file boundary for directori
   const api = scanner();
   const base = loadManifest();
   const createCase = (materialize: 'directory' | 'symlink' | 'junction') => {
-    const root = mkdtempSync(path.join(require('node:os').tmpdir(), `aarast-r12b-final-report-type-${materialize}-`));
+    const root = temporaryRoot(`aarast-r12b-final-report-type-${materialize}-`);
     const manifest = buildDocumentationManifest(base, 'activated');
     const fixture = projectFixture(manifest, { repositoryRoot: root, includeActivatedFinalReport: false });
     forwardSharedTransforms(manifest, fixture.files);
@@ -1162,7 +1174,7 @@ test('R12B PRODUCT freshness prerequisite is exact, stage-bound, status-bound, a
     statuses: string[],
     extraRows: Array<{ status: string; path: string }> = [],
   ) => {
-    const root = mkdtempSync(path.join(require('node:os').tmpdir(), `aarast-r12b-product-${state}-`));
+    const root = temporaryRoot(`aarast-r12b-product-${state}-`);
     const manifest = buildDocumentationManifest(base, state);
     const fixture = projectFixture(manifest, { repositoryRoot: root });
     forwardSharedTransforms(manifest, fixture.files);
@@ -1232,7 +1244,7 @@ test('R12B PRODUCT freshness prerequisite reaches the plain-file boundary for mi
   const api = scanner();
   const base = loadManifest();
   const createCase = (materialize: 'missing' | 'directory' | 'symlink' | 'junction') => {
-    const root = mkdtempSync(path.join(require('node:os').tmpdir(), `aarast-r12b-product-type-${materialize}-`));
+    const root = temporaryRoot(`aarast-r12b-product-type-${materialize}-`);
     const manifest = buildDocumentationManifest(base, 'candidate');
     const fixture = projectFixture(manifest);
     forwardSharedTransforms(manifest, fixture.files);
@@ -1407,7 +1419,7 @@ test('R12B closed mode measures the qs security prerequisite on the live lock an
   // carrying copies of the two files stands in for the repository.
   const api = scanner();
   const manifest = loadManifest();
-  const root = mkdtempSync(path.join(require('node:os').tmpdir(), 'aarast-r12b-closed-security-'));
+  const root = temporaryRoot('aarast-r12b-closed-security-');
   const write = (relative: string, bytes: Buffer | string) => {
     const target = path.join(root, ...relative.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
@@ -1443,44 +1455,6 @@ test('R12B closed mode measures the qs security prerequisite on the live lock an
     assert.equal(api.versionAtLeast('6.9.9', '6.16.0'), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test('R12B documentation transition planning accepts the strict dependency stage', () => {
-  const runnerPath = path.join(backendRoot, 'scripts', 'architecture', 'r12b-documentation-transition.cjs');
-  const api = require(runnerPath);
-  const root = mkdtempSync(path.join(require('node:os').tmpdir(), 'aarast-r12b-transition-plan-'));
-  const candidateRoot = mkdtempSync(path.join(require('node:os').tmpdir(), 'aarast-r12b-candidate-plan-'));
-  const activatedRoot = mkdtempSync(path.join(require('node:os').tmpdir(), 'aarast-r12b-activated-plan-'));
-  const states = freshPortableDocumentStates();
-  const manifest = buildDocumentationManifest(loadManifest(), 'entry');
-  const self = manifest.r12bPaths[0];
-  self.normalizedSelfSha256 = '0'.repeat(64);
-  self.normalizedSelfSha256 = hashBytes(rawManifest(manifest));
-  const manifestFile = path.join(root, ...manifestRelative.split('/'));
-  try {
-    for (const relative of documentPaths) {
-      for (const [targetRoot, state] of [[root, 'entry'], [candidateRoot, 'candidate'], [activatedRoot, 'activated']] as const) {
-        const target = path.join(targetRoot, ...relative.split('/'));
-        mkdirSync(path.dirname(target), { recursive: true });
-        writeFileSync(target, states[state].get(relative)!);
-      }
-    }
-    mkdirSync(path.dirname(manifestFile), { recursive: true });
-    writeFileSync(manifestFile, rawManifest(manifest));
-    assertLiteralDocumentationState(JSON.parse(readFileSync(manifestFile, 'utf8')));
-    const planned = api.planDocumentationTransition({
-      repositoryRoot: root,
-      to: 'candidate-prepared',
-      expectedManifestSha256: hashBytes(readFileSync(manifestFile)),
-      candidateRoot,
-      activatedRoot,
-    });
-    assert.deepEqual(planned.transition, { from: 'entry', to: 'candidate-prepared' });
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-    require('node:fs').rmSync(candidateRoot, { recursive: true, force: true });
-    require('node:fs').rmSync(activatedRoot, { recursive: true, force: true });
   }
 });
 

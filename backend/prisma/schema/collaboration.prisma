@@ -184,7 +184,10 @@ model ContributionEvent {
 
   @@unique([contributorTenureId, dedupeKey])
   @@index([contributorTenureId, capturedAt(sort: Desc), id(sort: Desc)])
-  @@index([contributorTenureId, section, entityType, action, entityId])
+  // Migration 20260802090000 named this index with 73 characters; PostgreSQL
+  // stores the first 63. The mapped name is the name that exists in every
+  // database built from the migration history, so no migration is needed.
+  @@index([contributorTenureId, section, entityType, action, entityId], map: "ContributionEvent_contributorTenureId_section_entityType_action")
   @@index([historyScopeId, section, capturedAt(sort: Desc)])
   @@index([historyScopeId, entityType, entityId])
 }

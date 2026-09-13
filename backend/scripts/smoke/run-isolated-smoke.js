@@ -559,6 +559,7 @@ function validateSmokeScripts(values) {
     '--admin-runtime',
     '--contributor-history-migration',
     '--guest-phone-migration',
+    '--schema-equivalence',
     '--load-test',
   ]);
   if (scripts.some((value) => externalTargets.has(value)) && scripts.length !== 1) {
@@ -752,6 +753,7 @@ async function main(args = process.argv.slice(2)) {
     const databaseOnlySmoke = new Map([
       ['--contributor-history-migration', 'contributor-history-migration-smoke.js'],
       ['--guest-phone-migration', 'guest-phone-migration-smoke.js'],
+      ['--schema-equivalence', 'schema-equivalence-smoke.js'],
     ]).get(scripts[0]);
     if (databaseOnlySmoke) {
       await executeManagedDatabaseRun({

@@ -85,6 +85,7 @@
 | `backend` | `npm run smoke:providers-quotes` | `node scripts/smoke/run-isolated-smoke.js providers-quotes-smoke.js` |
 | `backend` | `npm run smoke:quote-stability` | `node scripts/smoke/run-isolated-smoke.js quote-stability-smoke.js` |
 | `backend` | `npm run smoke:reference-catalog` | `node scripts/smoke/run-isolated-smoke.js reference-catalog-smoke.js` |
+| `backend` | `npm run smoke:schema-equivalence` | `node scripts/smoke/run-isolated-smoke.js --schema-equivalence` |
 | `backend` | `npm run smoke:sharing` | `node scripts/smoke/run-isolated-smoke.js sharing-smoke.js` |
 | `backend` | `npm run smoke:sharing-roles` | `node scripts/smoke/run-isolated-smoke.js sharing-roles-smoke.js` |
 | `backend` | `npm run smoke:sharing-security` | `node scripts/smoke/run-isolated-smoke.js sharing-security-smoke.js` |

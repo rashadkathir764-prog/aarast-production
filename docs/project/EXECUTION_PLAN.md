@@ -647,8 +647,9 @@ Identity exit and the owner-side invite OTP port remains available.
 R11 passed its local nine-path, historical R10 fence, debt-truth, cumulative
 architecture, documentation, and independent-review gates. R12A is complete
 locally at dependency 16 and ownership 385/781 after Task 5 and Task 6 evidence,
-documentation, scope, identity, and independent reviews passed. The owner may
-separately authorize R12B design and planning; R12B implementation has not begun.
+documentation, scope, identity, and independent reviews passed. R12B (16 -> 9)
+and R12C (9 -> 0, dependency baseline deleted) followed on 2026-09-06 and
+2026-09-13 (see above); the sequence now stands at R13.
 
 1. Add project-specific lint/quality gates for Backend, Admin, and Flutter.
 2. Split oversized services, providers, route definitions, and screens along

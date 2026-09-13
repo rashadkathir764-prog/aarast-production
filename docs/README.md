@@ -143,6 +143,14 @@ changing behavior.
     `db4232f9795b5211532c454f838996af7e50d5aefee13a20d5e3e513539845f4`, the
     bytes the R11 reconciliation recorded from its external location). It
     is the requirement source; it does not describe the current state.
+- `docs/superpowers/reports/2026-09-13-architecture-exit-audit.md`
+  - the architecture exit audit after the R12C closure: sixteen findings
+    (gates that pinned product bytes and inventories, a silent R3 CLI, an
+    ownership gate that passed vacuously without the generated Prisma client,
+    dead phase tools, temp-root leaks, one duplicate mobile file, drifting
+    generated desktop registrants, stale statements) classified and fixed,
+    0 open. Declared legacy (ownership 385/781, legacy backend roots) is
+    recorded, not counted as open.
 - `docs/superpowers/reports/2026-09-13-modular-monolith-requirement-traceability-matrix.md`
   - traces every requirement of the original target and the R0–R12C
     phases to its live proof at the closure of R12C. Verdict: the execution

@@ -40,6 +40,7 @@ const gateScripts = {
   r5: ['scripts/architecture/r5-identity-scan.cjs', '--check'],
   r6: ['scripts/architecture/r6-sharing-otp-transport-scan.cjs', '--check'],
   r7: ['scripts/architecture/r7-collaboration-relocation-scan.cjs', '--check'],
+  r8: ['scripts/architecture/r8-global-module-removal-scan.cjs', '--check'],
   r12a: ['scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs', '--check'],
   r12b: ['scripts/architecture/r12b-planning-public-contracts-scan.cjs', '--check'],
   r12c: ['scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs', '--check'],
@@ -73,7 +74,7 @@ function runGate(cwd: string, gate: Gate): { status: number | null; output: stri
     cwd: path.join(cwd, 'backend'),
     encoding: 'utf8',
     windowsHide: true,
-    env: { ...process.env, R12A_DEBUG: '1', R12B_DEBUG: '1', R12C_DEBUG: '1' },
+    env: { ...process.env, ARCHITECTURE_DEBUG: '1', R12A_DEBUG: '1', R12B_DEBUG: '1', R12C_DEBUG: '1' },
   });
   return { status: result.status, output: `${result.stdout}${result.stderr}` };
 }
@@ -302,6 +303,109 @@ describe('governance portability', () => {
     }
     assert.equal(git(clone, ['status', '--porcelain']), '', 'every probe restored the clone');
     expectPass(clone, 'r12c');
+  });
+
+  test('closed gates accept ordinary product evolution inside the R3-R8 governed areas and still reject their law violations', { skip: closedOnly }, () => {
+    // The relocation phases R3-R8 proved their moves with exact inventories and
+    // byte parity. After closure those proofs are history; the live laws are
+    // layout, boundaries, wiring rules and counts. A product change that
+    // respects the laws needs no scanner edit.
+    const edits = new Map<string, Buffer | null>();
+    const file = (relative: string) => path.join(clone, relative);
+    const remember = (relative: string) => {
+      if (!edits.has(relative)) edits.set(relative, existsSync(file(relative)) ? readFileSync(file(relative)) : null);
+    };
+    const append = (relative: string, text: string) => { remember(relative); writeFileSync(file(relative), Buffer.concat([readFileSync(file(relative)), Buffer.from(text)])); };
+    const replace = (relative: string, before: string, after: string) => {
+      remember(relative);
+      const current = readFileSync(file(relative), 'utf8');
+      assert.equal(current.split(before).length, 2, `${relative}: probe anchor`);
+      writeFileSync(file(relative), current.replace(before, after));
+    };
+    const createdDirectories: string[] = [];
+    const create = (relative: string, text: string) => {
+      remember(relative);
+      const directory = path.dirname(file(relative));
+      // A directory this probe creates is removed with it: an empty retired
+      // root (backend/src/auth) is invisible to git status but visible to R5.
+      if (!existsSync(directory)) createdDirectories.push(directory);
+      mkdirSync(directory, { recursive: true });
+      writeFileSync(file(relative), text);
+    };
+    const restore = () => {
+      for (const [relative, bytes] of edits) {
+        if (bytes === null) rmSync(file(relative), { force: true });
+        else writeFileSync(file(relative), bytes);
+      }
+      edits.clear();
+      for (const directory of createdDirectories.splice(0).reverse()) rmSync(directory, { recursive: true, force: true });
+    };
+    const gatesPass = (gates: Gate[]) => { for (const gate of gates) expectPass(clone, gate); };
+    const all = Object.keys(gateScripts) as Gate[];
+
+    // 1. A new Nest module wired into an existing context, and a new consumer
+    //    of a public port: legal evolution, every gate passes.
+    create('backend/src/tasks/task-probe.module.ts', 'import { Module } from "@nestjs/common";\n\n@Module({})\nexport class TaskProbeModule {}\n');
+    replace('backend/src/modules/tasks/tasks.module.ts', 'imports: [TasksServiceInternalModule],', 'imports: [TasksServiceInternalModule, TaskProbeModule],');
+    replace('backend/src/modules/tasks/tasks.module.ts', 'import { TasksServiceInternalModule } from "./internal/tasks-service.internal.module";', 'import { TasksServiceInternalModule } from "./internal/tasks-service.internal.module";\nimport { TaskProbeModule } from "../../tasks/task-probe.module";');
+    replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', '    CollaborationScopePublicModule,\n  ],', '    CollaborationScopePublicModule,\n    NotificationsPublicModule,\n  ],');
+    replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', 'import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";', 'import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";\nimport { NotificationsPublicModule } from "../../notifications/public/notifications-public.module";');
+    replace('backend/src/guests/guests.service.ts', '    @Inject(COLLABORATION_SCOPE_PORT)\n    private readonly contributorScope: ContributorScopeService,\n  ) {}', '    @Inject(COLLABORATION_SCOPE_PORT)\n    private readonly contributorScope: ContributorScopeService,\n    @Inject(NOTIFICATIONS_PORT)\n    private readonly notificationsProbe: NotificationsPort,\n  ) {}');
+    replace('backend/src/guests/guests.service.ts', 'import { PrismaService } from "../platform/database/prisma.service";', 'import { PrismaService } from "../platform/database/prisma.service";\nimport { NOTIFICATIONS_PORT, NotificationsPort } from "../modules/notifications/public/notifications.port";');
+    // 2. Ordinary edits inside the relocated Identity, OTP-transport and
+    //    Collaboration files.
+    append('backend/src/modules/identity/internal/auth/auth.service.ts', '\n// product change after closure\n');
+    append('backend/src/modules/identity/api/auth.controller.ts', '\n// product change after closure\n');
+    append('backend/src/platform/otp-transport/openwa-transient-text.ts', '\n// product change after closure\n');
+    append('backend/src/modules/collaboration/public/collaboration-permission.port.ts', '\n// product change after closure\n');
+    append('backend/src/modules/collaboration/internal/sharing.service.ts', '\n// product change after closure\n');
+    try {
+      gatesPass(all);
+      const imports = npmRun(clone, 'architecture:imports');
+      assert.equal(imports.status, 0, imports.output);
+      const ports = npmRun(clone, 'architecture:ports');
+      assert.equal(ports.status, 0, ports.output);
+    } finally {
+      restore();
+    }
+
+    // Violations of the live laws are still rejected, each with a visible reason.
+    create('backend/src/tasks/task-probe.module.ts', 'import { Global, Module } from "@nestjs/common";\n\n@Global()\n@Module({})\nexport class TaskProbeModule {}\n');
+    try {
+      expectFailure(clone, 'r8', /global/iu);
+      const ports = npmRun(clone, 'architecture:ports');
+      assert.notEqual(ports.status, 0, 'a project @Global() must fail the ports gate');
+    } finally {
+      restore();
+    }
+    append('backend/src/tasks/tasks.service.ts', '\nimport { OpenWaOtpChannel as _Probe } from "../platform/otp-transport/openwa-otp.channel";\n');
+    try {
+      expectFailure(clone, 'r6', /transport/iu);
+    } finally {
+      restore();
+    }
+    create('backend/src/auth/legacy-probe.ts', 'export const legacy = true;\n');
+    try {
+      expectFailure(clone, 'r5', /retired identity root remains/u);
+    } finally {
+      restore();
+    }
+    append('backend/src/tasks/tasks.service.ts', '\nimport { ConversationsService as _Probe } from "../conversations/conversations.service";\n');
+    replace('backend/src/tasks/tasks.service.ts', '  constructor(\n', '  constructor(\n    private readonly conversationsProbe: _Probe,\n');
+    try {
+      const r3 = runGate(clone, 'r3');
+      assert.notEqual(r3.status, 0, 'a cross-context injection of an internal service must fail R3');
+      assert.match(r3.output, /illegal|cross-context|boundary/iu, `R3 must name the violation:\n${r3.output}`);
+    } finally {
+      restore();
+    }
+    append('backend/src/tasks/tasks.service.ts', '\nimport { SharingService as _Probe } from "../modules/collaboration/internal/sharing.service";\n');
+    try {
+      expectFailure(clone, 'r7', /collaboration|internal|protected/iu);
+    } finally {
+      restore();
+    }
+    assert.equal(git(clone, ['status', '--porcelain']), '', 'every probe restored the clone');
   });
 
   test('the recorded lineage commit still passes the complete lineage gates verbatim', { skip: closedOnly }, () => {

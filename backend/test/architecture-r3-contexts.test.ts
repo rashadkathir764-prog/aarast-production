@@ -36,6 +36,9 @@ const temporaryRoots: string[] = [];
 // value provider and public port alias), which R3 projects forward.
 const r12cClosed = Boolean(require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repoRoot));
 const liveLegacyModules = 53 + (r12cClosed ? 2 : 0);
+// While R12C was open a lookalike injection surfaced as drift of the exact
+// constructor inventory; the closed law names it directly.
+const injectionLawKind = r12cClosed ? 'injection-identity-drift' : 'inventory-drift';
 // Full-source fixtures resolve the Nest closure through an isolated copy; the
 // real installation is fingerprinted before the first fixture and after the last.
 const sentinelPackages = ['@nestjs/common', '@nestjs/core', '@nestjs/jwt', '@nestjs/schedule', '@nestjs/throttler'];
@@ -361,6 +364,9 @@ function fullSourceFixture(replacements: Array<{
       manifestPath,
       stage: 'strict',
       r12cManifest,
+      // The live command reads the closure from the tree; fixtures declare it
+      // so they exercise the closed law the live command applies.
+      closed: true,
     };
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -616,9 +622,12 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
     stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
+  // Closed: the module inventory is informational and may grow with product
+  // work; the law counts stay exact.
+  if (r12cClosed) assert.ok(result.counts.legacyModules >= liveLegacyModules, String(result.counts.legacyModules));
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: liveLegacyModules,
+    legacyModules: r12cClosed ? result.counts.legacyModules : liveLegacyModules,
     crossContextInjections: 0,
     compositionDependencies: 0,
     initialDuplicateProviders: 3,
@@ -659,7 +668,8 @@ test('R6 Task 4 records the final Identity delivery modules and Collaboration pu
     stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
-  assert.equal(result.counts.legacyModules, liveLegacyModules);
+  if (r12cClosed) assert.ok(result.counts.legacyModules >= liveLegacyModules);
+  else assert.equal(result.counts.legacyModules, liveLegacyModules);
 
   const duplicate = fullSourceFixture([{
     relativePath:
@@ -674,11 +684,18 @@ test('R6 Task 4 records the final Identity delivery modules and Collaboration pu
       '    PrismaModule,',
     ].join('\n'),
   }]);
-  assert.ok(scanner().scanR3Contexts({
+  const duplicateKinds = scanner().scanR3Contexts({
     ...duplicate,
     manifestPath,
     stage: 'strict',
-  }).diagnostics.some((item: any) => item.kind === 'inventory-drift'));
+  }).diagnostics.map((item: any) => item.kind);
+  if (r12cClosed) {
+    // A repeated module import is not a boundary law; the closed scan reports
+    // nothing for it, and nothing else about the tree drifts.
+    assert.deepEqual(duplicateKinds, []);
+  } else {
+    assert.ok(duplicateKinds.includes('inventory-drift'));
+  }
 });
 
 test('R6 Task 4 rejects boundary bypasses, concrete injection, and token lookalikes', () => {
@@ -995,7 +1012,7 @@ test('Task 2 DI consumers reject independent same-name public and platform Symbo
     },
   ]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI consumers reject fake same-name public and platform interface types', () => {
@@ -1030,7 +1047,7 @@ test('Task 2 DI consumers reject fake same-name public and platform interface ty
     },
   ]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law rejects a local same-name MEDIA_READINESS_PORT Symbol', () => {
@@ -1048,7 +1065,7 @@ test('Task 2 DI law rejects a local same-name MEDIA_READINESS_PORT Symbol', () =
     ].join('\n'),
   }]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law rejects a fake same-name MediaReadinessPort type', () => {
@@ -1066,7 +1083,7 @@ test('Task 2 DI law rejects a fake same-name MediaReadinessPort type', () => {
     ].join('\n'),
   }]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law rejects a local same-name OUTBOX_REALTIME_SINK Symbol', () => {
@@ -1086,7 +1103,7 @@ test('Task 2 DI law rejects a local same-name OUTBOX_REALTIME_SINK Symbol', () =
     ].join('\n'),
   }]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law rejects a fake same-name OutboxRealtimeSink type', () => {
@@ -1115,7 +1132,7 @@ test('Task 2 DI law rejects a fake same-name OutboxRealtimeSink type', () => {
     ].join('\n'),
   }]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law rejects a canonical readiness decoy in another same-file class', () => {
@@ -1157,7 +1174,7 @@ test('Task 2 DI law rejects a canonical readiness decoy in another same-file cla
     },
   ]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law rejects a canonical readiness decoy at another constructor parameter', () => {
@@ -1198,7 +1215,7 @@ test('Task 2 DI law rejects a canonical readiness decoy at another constructor p
     },
   ]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('Task 2 DI law accepts canonical readiness aliases at the exact consumer parameter', () => {
@@ -1257,7 +1274,7 @@ test('R4 DI law rejects a local same-name Planning token and interface', () => {
     ].join('\n'),
   }]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('R4 DI law rejects a canonical Planning injection hidden in a same-file decoy', () => {
@@ -1301,7 +1318,7 @@ test('R4 DI law rejects a canonical Planning injection hidden in a same-file dec
     },
   ]);
   const kinds = scanner().scanR3Contexts(options).diagnostics.map((item: any) => item.kind);
-  assert.ok(kinds.includes('inventory-drift'));
+  assert.ok(kinds.includes(injectionLawKind), kinds.join(','));
 });
 
 test('I6 ledgers retire monotonically only at their declared task', () => {
@@ -2088,6 +2105,33 @@ test('mixed valid and invalid scan data is rejected atomically and the CLI is no
   assert.equal(exitCode, 2);
   assert.deepEqual(output, ['ERROR - R3 context scan failed']);
   assert.doesNotMatch(output.join('\n'), /private|attacker|secret/i);
+});
+
+test('the CLI names every validated diagnostic on failure, bounded and without source text', () => {
+  const output: string[] = [];
+  const diagnostics = Array.from({ length: 25 }, (_, index) => ({
+    kind: index === 0 ? 'illegal-boundary-import' : 'inventory-drift',
+    path: `backend/src/tasks/file-${index}.ts`,
+    line: index + 1,
+  }));
+  const counts = Object.fromEntries([
+    'contexts', 'legacyModules', 'crossContextInjections', 'compositionDependencies',
+    'initialDuplicateProviders', 'remainingDuplicateProviders', 'initialPlatformDebts',
+    'remainingPlatformDebts', 'initialRetiredLegacyProviderEdges', 'remainingRetiredLegacyProviderEdges',
+    'forwardRef', 'globals', 'nestModuleCycles', 'illegalEdges',
+  ].map((key) => [key, 0]));
+  const exitCode = scanner().runCli({
+    argv: ['--check', '--stage', 'strict'],
+    scan: () => ({ diagnostics, counts }),
+    stdout: (message: string) => output.push(`out:${message}`),
+    stderr: (message: string) => output.push(`err:${message}`),
+  });
+  assert.equal(exitCode, 1);
+  assert.equal(output[0], 'err:FAIL - R3 contexts: 25 diagnostic(s)');
+  assert.equal(output[1], 'err:  illegal-boundary-import backend/src/tasks/file-0.ts:1');
+  assert.equal(output.length, 22, 'twenty listed diagnostics, the header and the overflow line');
+  assert.equal(output[21], 'err:  ... 5 more');
+  assert.ok(output.every((line) => line.startsWith('err:')), 'nothing is written to stdout on failure');
 });
 
 test('R12A R3 projection keeps 22/17/16 and rejects a seventh retirement', () => {

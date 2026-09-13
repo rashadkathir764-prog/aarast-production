@@ -218,6 +218,7 @@ type R5Scanner = {
     repositoryRoot: string;
     manifest: R5Manifest;
     readBaseFile?: (relativePath: string) => string;
+    readWorkingFile?: (relativePath: string) => Buffer;
   }): { corrections: number };
   verifyR7DependencyHandoff(options: {
     historicalDependency: Array<Record<string, unknown>>;
@@ -788,8 +789,10 @@ test('R5 authorizes only the exact three test-only QA harness corrections', () =
   const repositoryRoot = path.resolve(backendRoot, '..');
   const manifest = scanner.validateR5Manifest(readManifest());
 
+  // The corrections are read in the form the R5 law reads them (through the
+  // R12C predecessor view; after closure, from the lineage commit).
   assert.deepEqual(
-    scanner.verifyR5QaHarnessCorrections({ repositoryRoot, manifest }),
+    scanner.verifyR5QaHarnessCorrections({ repositoryRoot, manifest, readWorkingFile: r12cPredecessor().readWorkingFile }),
     { corrections: 3 },
   );
 
@@ -962,7 +965,10 @@ test('R5 architecture command executes the live scanner from the full chain', ()
     { cwd: backendRoot, encoding: 'utf8' },
   );
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /PASS - R5 Identity relocation: stage=strict, moves=44/u);
+  const closed = Boolean(require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot()));
+  assert.match(result.stdout, closed
+    ? /PASS - R5 Identity relocation: stage=strict \(closed\), moves=44/u
+    : /PASS - R5 Identity relocation: stage=strict, moves=44/u);
 });
 
 test('R5 public contracts exist only at the ten canonical target paths', () => {
@@ -1458,20 +1464,31 @@ function r12cPredecessor(): any {
     'architecture',
     'r12c-zero-cross-context-dependencies.json',
   ), 'utf8')));
-  const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs'));
-  if (closure.readClosure(repositoryRoot())) {
-    // R12C is closed: fixtures double the live tree in the form R5's law
-    // reads it — the Task 4 policy import normalized back for
+  const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot());
+  if (closure) {
+    // R12C is closed: the relocation-parity laws are history, so their
+    // fixtures read the exact bytes of the recorded lineage commit (never the
+    // live tree, which product work may change) in the form the R5 law read
+    // them there — the Task 4 policy import normalized back for
     // contexts.service.ts and the approved Task 3 QA-harness records
-    // reconstructed — exactly the two R12C projections the live R5 scan applies.
+    // reconstructed.
     const records = new Map([
       ...manifest.messagingLifecycleCandidate.records,
       ...manifest.marketplacePublicCandidate.records,
     ].map((record: any) => [record.path, record]));
+    const lineageBytes = (relative: string): Buffer => execFileSync(
+      'git',
+      ['show', `${closure.lineageCommit}:${relative}`],
+      { cwd: repositoryRoot(), maxBuffer: 64 * 1024 * 1024 },
+    );
+    const lineageHas = (relative: string): boolean => spawnSync(
+      'git',
+      ['cat-file', '-e', `${closure.lineageCommit}:${relative}`],
+      { cwd: repositoryRoot(), stdio: 'ignore' },
+    ).status === 0;
     cachedR12cPredecessor = {
       readWorkingFile(relative: string): Buffer {
-        const absolute = path.join(repositoryRoot(), ...relative.split('/'));
-        const bytes = readFileSync(absolute);
+        const bytes = lineageBytes(relative);
         if (relative === 'backend/src/modules/identity/internal/profile/contexts.service.ts') {
           return Buffer.from(bytes.toString('utf8').replace(
             '../../../marketplace/public/provider-access-policy',
@@ -1485,7 +1502,7 @@ function r12cPredecessor(): any {
         }
         return bytes;
       },
-      pathExists: (relative: string) => existsSync(path.join(repositoryRoot(), ...relative.split('/'))),
+      pathExists: lineageHas,
     };
     return cachedR12cPredecessor;
   }

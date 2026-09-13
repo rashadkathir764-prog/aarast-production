@@ -21,6 +21,10 @@ import ts from 'typescript';
 
 const backendRoot = path.resolve(__dirname, '..');
 const repositoryRoot = path.resolve(backendRoot, '..');
+// After the R12C closure the live R6 gate proves the platform contract (OTP
+// transport consumed only by Identity and platform) instead of the relocation
+// parity; fixture-based tests of the lineage law keep running on fixtures.
+const closed = Boolean(require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot));
 const manifestPath = path.join(
   backendRoot,
   'architecture',
@@ -118,9 +122,13 @@ type R6Scanner = {
   }): {
     ok: boolean;
     stage: string;
+    closed?: boolean;
     concreteImports: number;
-    protectedFiles: number;
+    protectedFiles?: number;
+    transportConsumers?: number;
   };
+  scanR6Closed(repositoryRoot: string, manifest: R6Manifest): { ok: boolean; stage: string; closed: boolean; concreteImports: number; transportConsumers: number };
+  inspectOtpTransportConsumers(repositoryRoot: string, manifest: unknown): ReadonlyArray<{ file: string; target: string; declarations: readonly string[] }>;
   runCli(dependencies?: Record<string, unknown>): number;
   verifyR7DependencyHandoff(options: {
     historicalDependency: Array<Record<string, unknown>>;
@@ -432,12 +440,38 @@ test('R6 strict scan removes the Collaboration concrete import and keeps protect
     repositoryRoot,
     manifest: readManifest(),
   });
-  assert.deepEqual(result, {
-    ok: true,
-    stage: 'strict',
-    concreteImports: 0,
-    protectedFiles: 2,
-  });
+  assert.deepEqual(result, closed
+    ? { ok: true, stage: 'strict', closed: true, concreteImports: 0, transportConsumers: result.transportConsumers }
+    : { ok: true, stage: 'strict', concreteImports: 0, protectedFiles: 2 });
+  if (closed) {
+    // Every live consumer of the transport adapters is Identity or platform.
+    assert.ok((result.transportConsumers ?? 0) >= 3, 'the Identity adapter, channel selection and auth consume the transport');
+    const consumers = scanner().inspectOtpTransportConsumers(repositoryRoot, readManifest());
+    assert.equal(consumers.length, result.transportConsumers);
+    for (const consumer of consumers) {
+      assert.ok(/^backend\/src\/(?:modules\/identity|platform)\//u.test(consumer.file), consumer.file);
+    }
+  }
+});
+
+test('R6 closed law rejects a transport consumer outside Identity and platform and accepts edited transport files', { skip: closed ? false : 'the phase is open' }, () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r6-closed-'));
+  temporaryRoots.push(root);
+  copyProtectedFixture(root);
+  for (const relative of ['backend/tsconfig.json', 'backend/package.json']) {
+    mkdirSync(path.dirname(path.join(root, ...relative.split('/'))), { recursive: true });
+    copyFileSync(path.join(repositoryRoot, ...relative.split('/')), path.join(root, ...relative.split('/')));
+  }
+  const manifest = readManifest();
+  // The fixture is not a Git repository: closed mode is exercised directly.
+  const closedApi = scanner();
+  const transport = path.join(root, 'backend', 'src', 'platform', 'otp-transport', 'openwa-transient-text.ts');
+  writeFileSync(transport, `${readFileSync(transport, 'utf8')}\n// product change after closure\n`, 'utf8');
+  assert.equal(closedApi.scanR6Closed(root, closedApi.validateR6Manifest(manifest)).closed, true);
+  const foreign = path.join(root, 'backend', 'src', 'tasks', 'tasks-transport-probe.ts');
+  mkdirSync(path.dirname(foreign), { recursive: true });
+  writeFileSync(foreign, "import { sendOpenWaTransientText } from '../platform/otp-transport/openwa-transient-text';\nexport const probe = sendOpenWaTransientText;\n", 'utf8');
+  assert.throws(() => closedApi.scanR6Closed(root, closedApi.validateR6Manifest(manifest)), /consumed outside Identity and platform: backend\/src\/tasks\/tasks-transport-probe\.ts/u);
 });
 
 test('R6 scan rejects a second Collaboration concrete transport import', () => {
@@ -565,9 +599,10 @@ test('R6 CLI accepts only check mode and reports one bounded result', () => {
     stderr: (message: string) => errors.push(message),
   }), 0);
   assert.equal(errors.length, 0);
-  assert.deepEqual(output, [
-    'PASS - R6 Sharing OTP transport: stage=strict, concrete-imports=0, protected=2',
-  ]);
+  assert.equal(output.length, 1);
+  assert.match(output[0], closed
+    ? /^PASS - R6 Sharing OTP transport: stage=strict \(closed\), concrete-imports=0, transport-consumers=\d+$/u
+    : /^PASS - R6 Sharing OTP transport: stage=strict, concrete-imports=0, protected=2$/u);
 
   assert.equal(r6.runCli({
     argv: ['--check', '--extra'],

@@ -1704,6 +1704,57 @@ function scanR8GlobalRemoval(options) {
     manifest,
     analysis,
   );
+  // Closed successor. The exact importer inventories (which modules import
+  // PrismaModule or the Messaging realtime module) and the frozen baseline
+  // counts were the proof that R8's hardening changed nothing else; after the
+  // R12C closure they are history verified at the recorded lineage commit.
+  // The live law: no project-owned @Global(), no forwardRef, no Nest module
+  // cycle, every PrismaService consumer imports PrismaModule, PrismaService
+  // and the realtime publisher are provided and exported by exactly their
+  // owner modules with no duplicate provider, the Messaging realtime port is
+  // bound exactly as declared, and the external globals resolve to their
+  // locked identities.
+  if (options.readImmutableFile === undefined && options.r12aManifest === undefined
+      && manifest.stage === 'strict'
+      && require('./modular-monolith-closure.cjs').readClosure(options.repositoryRoot)) {
+    const owner = (provider) => [`${provider.modulePath}#${provider.moduleClass}`];
+    const bindings = manifest.messagingBindings.map(
+      (entry) => `${entry.modulePath}#${entry.provideName}->${entry.useExistingName}`,
+    );
+    const failures = [];
+    if (globals.globalPaths.length !== 0) failures.push(`project @Global(): ${globals.globalPaths.join(', ')}`);
+    if (globals.forwardRef !== 0) failures.push(`forwardRef: ${globals.forwardRef}`);
+    if (globals.nestModuleCycles !== 0) failures.push(`Nest module cycles: ${globals.nestModuleCycles}`);
+    if (prisma.missingImporters.length !== 0) failures.push(`PrismaService consumers without PrismaModule: ${prisma.missingImporters.join(', ')}`);
+    if (prisma.duplicateProviders !== 0 || realtime.duplicateProviders !== 0) failures.push('duplicate PrismaService or realtime providers');
+    if (canonicalJson(prisma.providerOwners) !== canonicalJson(owner(manifest.projectProviders.prisma))
+        || canonicalJson(prisma.exportOwners) !== canonicalJson(owner(manifest.projectProviders.prisma))) {
+      failures.push('PrismaService is provided or exported outside its owner module');
+    }
+    if (canonicalJson(realtime.providerOwners) !== canonicalJson(owner(manifest.projectProviders.realtime))
+        || canonicalJson(realtime.exportOwners) !== canonicalJson(owner(manifest.projectProviders.realtime))) {
+      failures.push('the realtime publisher is provided or exported outside its owner module');
+    }
+    if (canonicalJson(realtime.bindings) !== canonicalJson(bindings)) failures.push('Messaging realtime port bindings changed');
+    if (failures.length !== 0) throw new Error(`R8 closed law violated: ${failures.join('; ')}`);
+    const ownership = readJsonFile(path.join(options.repositoryRoot, 'backend', 'architecture', 'ownership-baseline.json'), 'R8 ownership baseline');
+    return Object.freeze({
+      ok: true,
+      stage: manifest.stage,
+      closed: true,
+      projectOwnedGlobals: 0,
+      prismaImporters: prisma.importers.length,
+      missingPrismaImporters: Object.freeze([]),
+      realtimeImporters: realtime.importers.length,
+      duplicateProviders: 0,
+      forwardRef: 0,
+      nestModuleCycles: 0,
+      externalIdentities: external.identities,
+      dependencyRecords: 0,
+      ownershipRecords: ownership.violations.length,
+      ownershipOccurrences: ownership.violations.reduce((sum, item) => sum + item.count, 0),
+    });
+  }
   const baselines = verifyBaselines(
     options.repositoryRoot,
     r12aManifest,
@@ -1774,9 +1825,11 @@ function runCli({
       'R8 manifest',
     );
     const result = scanR8GlobalRemoval({ repositoryRoot, manifest });
-    stdout(`PASS - R8 global removal: stage=${result.stage}`
+    stdout(`PASS - R8 global removal: stage=${result.stage}${result.closed ? ' (closed)' : ''}`
       + `, globals=${result.projectOwnedGlobals}`
-      + `, Prisma=${result.prismaImporters}/${EXPECTED_COUNTS.strictPrismaImporters}`
+      + (result.closed
+        ? `, Prisma=${result.prismaImporters}`
+        : `, Prisma=${result.prismaImporters}/${EXPECTED_COUNTS.strictPrismaImporters}`)
       + `, missing=${result.missingPrismaImporters.length}`
       + `, Realtime=${result.realtimeImporters}`
       + `, duplicates=${result.duplicateProviders}`
@@ -1785,8 +1838,9 @@ function runCli({
       + `, dependency=${result.dependencyRecords}`
       + `, ownership=${result.ownershipRecords}/${result.ownershipOccurrences}`);
     return 0;
-  } catch {
+  } catch (error) {
     stderr('ERROR - R8 global removal validation failed');
+    if (process.env.ARCHITECTURE_DEBUG === '1') stderr(String(error && error.message));
     return 2;
   }
 }

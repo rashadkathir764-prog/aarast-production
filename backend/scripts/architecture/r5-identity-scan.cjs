@@ -570,36 +570,6 @@ function normalizedTextHash(text) {
   return crypto.createHash('sha256').update(text.replace(/\r\n/gu, '\n')).digest('hex');
 }
 
-// Closed R12C successor: the approved R12C stage records reconstruct, from a
-// still-identical live file, the exact bytes R5 pinned for a QA harness
-// script that R12C later edited (the Task 3 lifecycle-port double). Any other
-// change to such a script is R5 drift and needs a new R5 correction.
-function r12cClosedQaHarnessReader(repositoryRoot) {
-  const relative = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
-  if (!inspectExistingPath(repositoryRoot, relative, 'file').exists) return undefined;
-  if (!require('./modular-monolith-closure.cjs').readClosure(repositoryRoot)) return undefined;
-  const r12c = require('./r12c-zero-cross-context-dependencies-scan.cjs');
-  const manifest = r12c.validateR12cManifest(JSON.parse(fs.readFileSync(
-    path.join(repositoryRoot, ...relative.split('/')),
-    'utf8',
-  )));
-  const records = new Map([
-    ...manifest.messagingLifecycleCandidate.records,
-    ...manifest.marketplacePublicCandidate.records,
-  ].map((record) => [record.path, record]));
-  return (candidatePath) => {
-    const bytes = fs.readFileSync(path.join(repositoryRoot, ...candidatePath.split('/')));
-    const record = records.get(candidatePath);
-    if (!record) return bytes;
-    try {
-      const entry = r12c.reconstructCandidateRecord(bytes, record);
-      return entry === null ? bytes : entry;
-    } catch {
-      throw new Error('R5 QA harness correction drift detected');
-    }
-  };
-}
-
 function r12cPredecessorProjection(repositoryRoot) {
   const relative = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
   if (!inspectExistingPath(repositoryRoot, relative, 'file').exists) return null;
@@ -660,8 +630,7 @@ function verifyR5QaHarnessCorrections(options) {
     throw new Error('R5 QA harness working reader is invalid');
   }
   const readWorkingFile = input.readWorkingFile
-    || r12cPredecessorProjection(input.repositoryRoot)?.readWorkingFile
-    || r12cClosedQaHarnessReader(input.repositoryRoot);
+    || r12cPredecessorProjection(input.repositoryRoot)?.readWorkingFile;
   for (const correction of manifest.qaHarnessCorrections) {
     if (!manifest.allowedChangedPaths.includes(correction.path)) {
       throw new Error('R5 QA harness correction is outside the candidate scope');
@@ -710,19 +679,6 @@ function validateR5ProfileStage(repositoryRoot, r12aManifestValue = undefined, r
     let source = predecessorRead === undefined
       ? fs.readFileSync(absolute, 'utf8')
       : predecessorRead(relative).toString('utf8');
-    if (relative === 'backend/src/modules/identity/internal/profile/contexts.service.ts'
-        && predecessorRead === undefined
-        && require('./modular-monolith-closure.cjs').readClosure(repositoryRoot)) {
-      // Closed R12C successor: Task 4 rewrote exactly this consumer's import
-      // to the Marketplace public provider-access policy. The stage hash is
-      // taken over the source with that single rewrite normalized back.
-      const liveImport = '../../../marketplace/public/provider-access-policy';
-      const historicalImport = '../../../../provider-dashboard/provider-access-policy';
-      if (source.split(liveImport).length !== 2 || source.includes(historicalImport)) {
-        throw new Error('R5 profile stage drift detected');
-      }
-      source = source.replace(liveImport, historicalImport);
-    }
     if (relative === 'backend/src/modules/identity/internal/profile/users.service.ts') {
       const r12aPath = path.join(
         repositoryRoot,
@@ -1203,15 +1159,19 @@ function publicRuntimeConsumers(repositoryRoot, contractPaths) {
   return normalizedContracts;
 }
 
-function validatePublicRuntimeSurface(repositoryRoot, manifest) {
+function validatePublicRuntimeSurface(repositoryRoot, manifest, closed = false) {
   const stageIndex = STAGES.indexOf(manifest.stage);
   const currentPaths = manifest.publicRuntimeContracts.map((contract) => {
     const moved = stageIndex >= STAGES.indexOf('task-2');
     const relative = moved ? contract.target : contract.source;
     const absolute = path.join(repositoryRoot, ...relative.split('/'));
-    if (JSON.stringify(exportedDeclarations(absolute)) !== JSON.stringify(contract.declarations)) {
-      throw new Error('R5 public runtime declaration drift detected');
-    }
+    const live = exportedDeclarations(absolute);
+    // Relocation proof: the exact export inventory. Closed law: every
+    // declared runtime contract is still exported; the surface may grow.
+    const intact = closed
+      ? contract.declarations.every((name) => live.includes(name))
+      : JSON.stringify(live) === JSON.stringify(contract.declarations);
+    if (!intact) throw new Error('R5 public runtime declaration drift detected');
     return absolute;
   });
   const consumers = publicRuntimeConsumers(repositoryRoot, currentPaths);
@@ -1241,7 +1201,18 @@ function scanR5Identity(options) {
       throw new Error('R5 inventory does not match the filesystem');
     }
   }
-  validatePublicRuntimeSurface(input.repositoryRoot, manifest);
+  // Closed successor. The relocation proofs (auth/profile stage hashes over
+  // 38 files, the QA-harness corrections and the R12C predecessor read view)
+  // are history verified at the recorded lineage commit; the live law is the
+  // relocation layout, the retired roots, the public runtime surface and the
+  // security checkpoint on the live package graph (checked by the CLI).
+  const closed = Boolean(require('./modular-monolith-closure.cjs').readClosure(input.repositoryRoot));
+  validatePublicRuntimeSurface(input.repositoryRoot, manifest, closed);
+  if (closed) {
+    if (manifest.stage !== 'strict') throw new Error('R5 closure requires the strict stage');
+    validateR5RetiredRoots(input.repositoryRoot, manifest);
+    return Object.freeze({ ok: true, stage: manifest.stage, closed: true, moves: manifest.moves.length });
+  }
   if (currentStage >= STAGES.indexOf('task-3')) {
     validateR5AuthStage(input.repositoryRoot);
   }
@@ -1382,11 +1353,18 @@ function runCli(dependencies = {}) {
     const r12aManifest = dependencies.r12aManifest === undefined
       ? readR12aManifest(repositoryRoot)
       : validateR12aManifest(dependencies.r12aManifest);
-    validateR5SecurityCheckpointScope({
-      changedPaths: liveChangedPaths(repositoryRoot),
-      packageJson: JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package.json'), 'utf8')),
-      packageLock: JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package-lock.json'), 'utf8')),
-    });
+    const packageJson = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package.json'), 'utf8'));
+    const packageLock = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'backend', 'package-lock.json'), 'utf8'));
+    if (require('./modular-monolith-closure.cjs').readClosure(repositoryRoot)) {
+      // Closed: the security checkpoint is the live package graph through the
+      // checker's own projection chain, not the paths changed since R5.
+      require('../security/prisma-config-merge-security.cjs').validatePackageGraph(
+        require('../security/prisma-config-merge-security.cjs').projectR12BArchitectureScripts(packageJson),
+        packageLock,
+      );
+    } else {
+      validateR5SecurityCheckpointScope({ changedPaths: liveChangedPaths(repositoryRoot), packageJson, packageLock });
+    }
     const result = scanR5Identity({ repositoryRoot, manifest, r12aManifest });
     if (baselineMode) {
       const dependencyCandidate = readTempCandidateJson(argv[2]);
@@ -1411,11 +1389,12 @@ function runCli(dependencies = {}) {
       });
       stdout(`PASS - R5 baselines: dependency=${baseline.dependencyRecords}, retired=${baseline.retiredDependencyRecords}, ownership=${baseline.ownershipRecords}/${baseline.ownershipOccurrences}`);
     } else {
-      stdout(`PASS - R5 Identity relocation: stage=${result.stage}, moves=${result.moves}`);
+      stdout(`PASS - R5 Identity relocation: stage=${result.stage}${result.closed ? ' (closed)' : ''}, moves=${result.moves}`);
     }
     return 0;
-  } catch {
+  } catch (error) {
     stderr('ERROR - R5 Identity relocation validation failed');
+    if (process.env.ARCHITECTURE_DEBUG === '1') stderr(String(error && error.message));
     return 2;
   }
 }

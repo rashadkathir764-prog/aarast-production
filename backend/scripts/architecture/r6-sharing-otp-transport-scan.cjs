@@ -794,6 +794,55 @@ function verifyTargetStage(repositoryRoot, manifest) {
   }
 }
 
+// Closed successor. The R6 relocation proofs (the two protected transport
+// files pinned by hash, the historical baselines through the R7/R12A chain)
+// are history verified at the recorded lineage commit. The live law is the
+// platform contract of the architecture target: OTP transport adapters are
+// consumed only by Identity (and by platform itself); Collaboration reaches
+// invite OTP delivery through the Identity transient-delivery port, whose
+// target boundary must exist.
+const OTP_TRANSPORT_CONSUMER_PREFIXES = Object.freeze([
+  'backend/src/modules/identity/',
+  'backend/src/platform/',
+]);
+
+function inspectOtpTransportConsumers(repositoryRoot, manifest) {
+  const options = compilerOptions(repositoryRoot);
+  const transportDirectory = path.dirname(path.resolve(safeFile(
+    repositoryRoot,
+    manifest.currentConcreteDependency.transport,
+    'R6 concrete transport',
+  )));
+  const files = collectTypeScriptFiles(path.join(repositoryRoot, 'backend', 'src')).sort();
+  const consumers = [];
+  for (const file of files) {
+    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    for (const reference of moduleReferences(source)) {
+      const resolved = ts.resolveModuleName(reference.specifier, file, options, ts.sys).resolvedModule;
+      if (!resolved) continue;
+      const resolvedPath = path.resolve(resolved.resolvedFileName);
+      if (!isInside(transportDirectory, resolvedPath)) continue;
+      consumers.push(Object.freeze({
+        file: path.relative(repositoryRoot, file).split(path.sep).join('/'),
+        target: path.relative(repositoryRoot, resolvedPath).split(path.sep).join('/'),
+        declarations: Object.freeze(reference.declarations),
+      }));
+    }
+  }
+  return Object.freeze(consumers);
+}
+
+function scanR6Closed(repositoryRoot, manifest) {
+  if (manifest.stage !== 'strict') throw new Error('R6 closure requires the strict stage');
+  verifyTargetStage(repositoryRoot, manifest);
+  const consumers = inspectOtpTransportConsumers(repositoryRoot, manifest);
+  const foreign = consumers.filter((item) => !OTP_TRANSPORT_CONSUMER_PREFIXES.some((prefix) => item.file.startsWith(prefix)));
+  if (foreign.length !== 0) {
+    throw new Error('R6 OTP transport is consumed outside Identity and platform: ' + foreign.map((item) => item.file).join(', '));
+  }
+  return Object.freeze({ ok: true, stage: manifest.stage, closed: true, concreteImports: 0, transportConsumers: consumers.length });
+}
+
 function scanR6SharingOtpTransport(options) {
   const input = plainObject(options, 'R6 scan options');
   const keys = Object.keys(input).sort();
@@ -811,6 +860,10 @@ function scanR6SharingOtpTransport(options) {
     throw new Error('R6 repository root must be absolute');
   }
   const manifest = validateR6Manifest(input.manifest);
+  if (input.readBaseFile === undefined && input.readImmutableFile === undefined
+      && require('./modular-monolith-closure.cjs').readClosure(input.repositoryRoot)) {
+    return scanR6Closed(input.repositoryRoot, manifest);
+  }
   const r12aManifest = input.r12aManifest === undefined
     ? validateR12aManifest(JSON.parse(fs.readFileSync(path.join(
       input.repositoryRoot,
@@ -870,14 +923,17 @@ function runCli(dependencies = {}) {
       'utf8',
     ));
     const result = scanR6SharingOtpTransport({ repositoryRoot, manifest });
-    stdout(
-      'PASS - R6 Sharing OTP transport: stage=' + result.stage
+    stdout(result.closed
+      ? 'PASS - R6 Sharing OTP transport: stage=' + result.stage
+        + ' (closed), concrete-imports=' + result.concreteImports
+        + ', transport-consumers=' + result.transportConsumers
+      : 'PASS - R6 Sharing OTP transport: stage=' + result.stage
         + ', concrete-imports=' + result.concreteImports
-        + ', protected=' + result.protectedFiles,
-    );
+        + ', protected=' + result.protectedFiles);
     return 0;
-  } catch {
+  } catch (error) {
     stderr('ERROR - R6 Sharing OTP transport validation failed');
+    if (process.env.ARCHITECTURE_DEBUG === '1') stderr(String(error && error.message));
     return 2;
   }
 }
@@ -888,7 +944,9 @@ module.exports = {
   R6_BASE,
   STAGES,
   inspectConcreteTransportImports,
+  inspectOtpTransportConsumers,
   runCli,
+  scanR6Closed,
   scanR6SharingOtpTransport,
   validateR6Manifest,
   verifyR7DependencyHandoff,

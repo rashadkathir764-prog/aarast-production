@@ -310,6 +310,11 @@ class R8PrismaSingletonTestModule {}
 class R8RealtimeSingletonTestModule {}
 
 const repositoryRoot = path.resolve(backendRoot, '..');
+// After the R12C closure the live R8 gate proves the hardening laws (no
+// project global, forwardRef or cycle; owner-only PrismaService and realtime
+// providers; every consumer imports PrismaModule) instead of the exact
+// importer inventories; fixture-based tests of the lineage law keep running.
+const closed = Boolean(require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot));
 const strictPrismaImporters = [
   'backend/src/app.module.ts',
   'backend/src/application-composition/application-outbox-runtime.module.ts',
@@ -831,23 +836,45 @@ test('R8 validator rejects a junction in an allowed-path ancestry', () => {
 
 test('R8 strict scan reports zero project globals and the complete live DI closure', () => {
   const r8 = scanner();
+  const result = r8.scanR8GlobalRemoval({ repositoryRoot, manifest: strictManifest() }) as { prismaImporters: number; realtimeImporters: number };
   assert.deepEqual(
-    r8.scanR8GlobalRemoval({ repositoryRoot, manifest: strictManifest() }),
-    {
-      ok: true,
-      stage: 'strict',
-      projectOwnedGlobals: 0,
-      prismaImporters: 21,
-      missingPrismaImporters: [],
-      realtimeImporters: 2,
-      duplicateProviders: 0,
-      forwardRef: 0,
-      nestModuleCycles: 0,
-      dependencyRecords: 0,
-      ownershipRecords: 385,
-      ownershipOccurrences: 781,
-    },
+    result,
+    closed
+      ? {
+        ok: true,
+        stage: 'strict',
+        closed: true,
+        projectOwnedGlobals: 0,
+        // Live counts: the importer sets may grow with product work.
+        prismaImporters: result.prismaImporters,
+        missingPrismaImporters: [],
+        realtimeImporters: result.realtimeImporters,
+        duplicateProviders: 0,
+        forwardRef: 0,
+        nestModuleCycles: 0,
+        externalIdentities: 2,
+        dependencyRecords: 0,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      }
+      : {
+        ok: true,
+        stage: 'strict',
+        projectOwnedGlobals: 0,
+        prismaImporters: 21,
+        missingPrismaImporters: [],
+        realtimeImporters: 2,
+        duplicateProviders: 0,
+        forwardRef: 0,
+        nestModuleCycles: 0,
+        dependencyRecords: 0,
+        ownershipRecords: 385,
+        ownershipOccurrences: 781,
+      },
   );
+  if (closed) {
+    assert.ok(result.prismaImporters >= 21 && result.realtimeImporters >= 2, 'the live closure still contains every R8 importer');
+  }
 });
 
 test('R8 live provider owners, importer projection, and Messaging aliases are exact', () => {
@@ -862,8 +889,14 @@ test('R8 live provider owners, importer projection, and Messaging aliases are ex
   assert.deepEqual(prisma.exportOwners, [
     'backend/src/platform/database/prisma.module.ts#PrismaModule',
   ]);
-  assert.deepEqual(prisma.strictImporters, strictPrismaImporters);
-  assert.deepEqual(prisma.importers, strictPrismaImporters);
+  if (closed) {
+    // Closed: the R8 importers are still present; the live set may have grown.
+    for (const importer of strictPrismaImporters) assert.ok(prisma.importers.includes(importer), importer);
+    assert.deepEqual(prisma.strictImporters, prisma.importers);
+  } else {
+    assert.deepEqual(prisma.strictImporters, strictPrismaImporters);
+    assert.deepEqual(prisma.importers, strictPrismaImporters);
+  }
   assert.deepEqual(prisma.missingImporters, []);
   assert.equal(prisma.duplicateProviders, 0);
 
@@ -873,7 +906,8 @@ test('R8 live provider owners, importer projection, and Messaging aliases are ex
   assert.deepEqual(realtime.exportOwners, [
     'backend/src/conversations/conversation-realtime.module.ts#ConversationRealtimeModule',
   ]);
-  assert.deepEqual(realtime.importers, strictRealtimeImporters);
+  if (closed) for (const importer of strictRealtimeImporters) assert.ok(realtime.importers.includes(importer), importer);
+  else assert.deepEqual(realtime.importers, strictRealtimeImporters);
   assert.deepEqual(realtime.bindings, [
     'backend/src/modules/messaging/internal/messaging-realtime.internal.module.ts#MESSAGING_REALTIME_IMPLEMENTATION->ConversationRealtimePublisher',
     'backend/src/modules/messaging/public/messaging-realtime-public.module.ts#MESSAGING_REALTIME_PORT->MESSAGING_REALTIME_IMPLEMENTATION',
@@ -1029,7 +1063,9 @@ test('R8 CLI and result validator are fixed, bounded, and sanitized', () => {
     stderr: (message) => stderr.push(message),
   }), 0);
   assert.equal(stdout.length, 1);
-  assert.match(stdout[0], /^PASS - R8 global removal: stage=strict, globals=0, Prisma=21\/21, missing=0, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=385\/781$/u);
+  assert.match(stdout[0], closed
+    ? /^PASS - R8 global removal: stage=strict \(closed\), globals=0, Prisma=\d+, missing=0, Realtime=\d+, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=385\/781$/u
+    : /^PASS - R8 global removal: stage=strict, globals=0, Prisma=21\/21, missing=0, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=385\/781$/u);
   assert.deepEqual(stderr, []);
 
   const invalidOut: string[] = [];

@@ -778,5 +778,62 @@ manifests are frozen by hash, not consulted for byte replay.
 Governed files are ordinary reviewed code from the closure onwards: the
 scanners, tests, security checker and design documents change through
 regular commits, guarded by their test suites and by the live invariants
-above, not by byte fingerprints. The strict-candidate tool remains only for
-reproducing the historical registration at commits before the closure.
+above, not by byte fingerprints. The strict-candidate tool is removed at
+HEAD; the historical registration is reproducible at commits before the
+closure, which carry their own copy.
+
+### The earlier relocation phases read the same closure (2026-09-13)
+
+The architecture exit audit that followed the closure found that the R3, R5,
+R6, R7 and R8 gates carried their own relocation proofs as live law: R5
+pinned 38 Identity files (including `auth.service.ts` and `main.ts`) by
+normalized hash and the QA-harness smoke scripts by reconstruction, R6 pinned
+the two OTP-transport adapters by raw hash, R7 pinned the normalized source of
+the 18 relocated Collaboration files, the exact Collaboration file inventory
+and the exact constructor/controller handoffs, R3 pinned the exact Nest module
+inventory and the exact constructor-use inventory of every public port, and
+R8 pinned the exact set of modules importing PrismaModule and the realtime
+module. Any ordinary product change in those areas — a new module, a new
+consumer of a public port, an edit to `auth.service.ts` — failed `npm run
+architecture`. The same reasoning as above applies: those proofs are
+history, verifiable at the lineage commit; they are not the live law.
+
+Once the closure record exists, those gates verify only live laws:
+
+- **R3**: the source laws, no cross-context constructor injection (each one
+  is reported as `cross-context-injection`), no remaining platform debt or
+  retired legacy provider edge, every public contract surface present, no
+  duplicate provider, no project global, and the injection-identity law:
+  every public port token or interface the scanner ever froze may be
+  injected by any consumer, but only as its real declaration — a same-name
+  Symbol or interface declared elsewhere, or a canonical token paired with a
+  non-canonical parameter type, is `injection-identity-drift`. Module and
+  consumer inventories are informational. The CLI names every diagnostic on
+  failure (bounded to twenty lines, no source text).
+- **R5**: every move complete, the retired Identity roots absent, the public
+  runtime contracts still exported (the surface may grow), and the security
+  checkpoint as the live package graph through the security checker's own
+  projection chain.
+- **R6**: the target boundary present and the platform contract of the
+  original target — OTP transport adapters consumed only from
+  `modules/identity/` and `platform/`.
+- **R7**: every move complete and both legacy roots absent, the relocated
+  Collaboration surface present (it may grow), no legacy Collaboration import
+  literal or duplicate public re-export, no runtime import from another
+  context into Collaboration `api/` or `internal/`, the public snapshot
+  builder's declared exports present without dynamic dependencies,
+  `forwardRef` and project globals at zero.
+- **R8**: no project-owned `@Global()`, `forwardRef` or Nest module cycle;
+  every PrismaService consumer imports PrismaModule; PrismaService and the
+  realtime publisher provided and exported only by their owner modules with
+  no duplicate provider; the Messaging realtime port bound exactly as
+  declared; the external globals resolved to their locked identities.
+
+Their test suites exercise the lineage laws on fixtures built from the
+lineage commit (R5 reads the lineage bytes through Git, R7 clones the
+lineage tree), never from the live tree, and each gains a closed-mode test.
+The governance-portability suite proves, in a clone, that a new Nest module,
+a new consumer of a public port and edits inside Identity, OTP transport and
+Collaboration pass every gate, while a project global, a foreign transport
+consumer, a recreated Identity root, a cross-context injection and a runtime
+import into Collaboration internals are each rejected with a named reason.

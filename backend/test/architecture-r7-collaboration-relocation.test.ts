@@ -11,13 +11,42 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
-import { test } from 'node:test';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { after, test } from 'node:test';
 import { tmpdir } from 'node:os';
 import ts from 'typescript';
 
 const backendRoot = path.resolve(__dirname, '..');
-const repositoryRoot = path.resolve(backendRoot, '..');
+const gitRoot = path.resolve(backendRoot, '..');
+// Every temporary root is removed when the suite ends.
+const temporaryRoots: string[] = [];
+function temporaryRoot(prefix: string): string {
+  const root = mkdtempSync(path.join(tmpdir(), prefix));
+  temporaryRoots.push(root);
+  return root;
+}
+after(() => {
+  for (const root of temporaryRoots) rmSync(root, { recursive: true, force: true });
+});
+// Closure. The relocation-parity laws this suite exercises are history once
+// R12C is closed: the live gate proves the live Collaboration laws (see the
+// closed-mode test), and every lineage fixture is built from the exact tree
+// of the recorded lineage commit, never from the live tree, so product work
+// in Collaboration cannot fail a historical proof.
+const closure: { lineageCommit: string } | null = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(gitRoot);
+function lineageTree(commit: string): string {
+  // A shared clone checked out at the lineage commit: a real Git repository
+  // (the successor chain verifies repository identity) whose objects are the
+  // live repository's, and whose working tree is exactly the lineage tree.
+  const root = temporaryRoot('aarast-r7-lineage-');
+  const tree = path.join(root, 'tree');
+  const cloned = spawnSync('git', ['clone', '--quiet', '--shared', '--no-checkout', gitRoot, tree], { encoding: 'utf8', windowsHide: true });
+  assert.equal(cloned.status, 0, `cloning the repository for the lineage tree failed: ${cloned.stderr}`);
+  const checkedOut = spawnSync('git', ['checkout', '--quiet', '--detach', commit], { cwd: tree, encoding: 'utf8', windowsHide: true });
+  assert.equal(checkedOut.status, 0, `checking out the lineage commit failed: ${checkedOut.stderr}`);
+  return tree;
+}
+const repositoryRoot = closure ? lineageTree(closure.lineageCommit) : gitRoot;
 const manifestPath = path.join(
   backendRoot,
   'architecture',
@@ -133,7 +162,7 @@ function manifest(): R7Manifest {
 
 function readImmutableFile(revision: string, relativePath: string): string {
   return execFileSync('git', ['show', `${revision}:${relativePath}`], {
-    cwd: repositoryRoot,
+    cwd: gitRoot,
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024,
     windowsHide: true,
@@ -166,7 +195,7 @@ function r3Scope(): R3Scope {
 }
 
 function sourceContractFixture(): string {
-  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r7-source-contract-'));
+  const fixtureRoot = temporaryRoot('aarast-r7-source-contract-');
   const paths = manifest().moves.map((move) => move.from);
   for (const relativePath of paths) {
     const target = path.join(fixtureRoot, ...relativePath.split('/'));
@@ -260,7 +289,7 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
   root: string;
   value: R7Manifest;
 } {
-  const root = mkdtempSync(path.join(tmpdir(), `aarast-r7-${stage}-`));
+  const root = temporaryRoot(`aarast-r7-${stage}-`);
   const value = structuredClone(manifest());
   value.stage = stage;
   const collaborationSource = path.join(repositoryRoot, 'backend', 'src', 'modules', 'collaboration');
@@ -288,7 +317,7 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     execFileSync(
       'git',
       ['show', `${value.baseRevision}:backend/.dependency-cruiser-known-violations.json`],
-      { cwd: repositoryRoot, encoding: 'utf8' },
+      { cwd: gitRoot, encoding: 'utf8' },
     ),
     'utf8',
   );
@@ -307,7 +336,7 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     execFileSync(
       'git',
       [`show`, `${value.baseRevision}:backend/architecture/ownership-baseline.json`],
-      { cwd: repositoryRoot, encoding: 'utf8' },
+      { cwd: gitRoot, encoding: 'utf8' },
     ),
     'utf8',
   );
@@ -334,7 +363,7 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
       writeFileSync(
         target,
         execFileSync('git', ['show', `${value.baseRevision}:${relativePath}`], {
-          cwd: repositoryRoot,
+          cwd: gitRoot,
           encoding: 'utf8',
         }),
         'utf8',
@@ -353,7 +382,7 @@ function stagedFixture(stage: keyof typeof expectedStageCounts): {
     const source = path.join(root, ...move.from.split('/'));
     mkdirSync(path.dirname(source), { recursive: true });
     const baseSource = execFileSync('git', ['show', `${value.baseRevision}:${move.from}`], {
-      cwd: repositoryRoot,
+      cwd: gitRoot,
       encoding: 'utf8',
     });
     writeFileSync(
@@ -441,14 +470,14 @@ function r12aStagedFixture(stage: 'backoffice' | 'strict'): {
   );
   const entryDependency = JSON.parse(execFileSync('git', [
     'show', `${r12aManifest.repository.baseCommit}:backend/.dependency-cruiser-known-violations.json`,
-  ], { cwd: repositoryRoot, encoding: 'utf8' }));
+  ], { cwd: gitRoot, encoding: 'utf8' }));
   writeJson(
     path.join(fixture.root, 'backend', '.dependency-cruiser-known-violations.json'),
     r12a.expectedR12aDependencyRecords(entryDependency, r12aManifest),
   );
   const entryOwnership = JSON.parse(execFileSync('git', [
     'show', `${r12aManifest.repository.baseCommit}:backend/architecture/ownership-baseline.json`,
-  ], { cwd: repositoryRoot, encoding: 'utf8' }));
+  ], { cwd: gitRoot, encoding: 'utf8' }));
   const r7Ownership = JSON.parse(readFileSync(
     path.join(fixture.root, 'backend', 'architecture', 'ownership-baseline.json'),
     'utf8',
@@ -466,13 +495,13 @@ function r12aStagedFixture(stage: 'backoffice' | 'strict'): {
       mkdirSync(path.dirname(target), { recursive: true });
       writeFileSync(target, execFileSync('git', [
         'show', `${r12aManifest.repository.baseCommit}:${move.from}`,
-      ], { cwd: repositoryRoot, encoding: 'utf8' }), 'utf8');
+      ], { cwd: gitRoot, encoding: 'utf8' }), 'utf8');
       rmSync(source, { force: true });
     } else {
       mkdirSync(path.dirname(source), { recursive: true });
       writeFileSync(source, execFileSync('git', [
         'show', `${r12aManifest.repository.baseCommit}:${move.from}`,
-      ], { cwd: repositoryRoot, encoding: 'utf8' }), 'utf8');
+      ], { cwd: gitRoot, encoding: 'utf8' }), 'utf8');
       rmSync(target, { force: true });
     }
   }
@@ -504,7 +533,7 @@ function inspectSemanticFixtureSources(
   commonJsExports: string[];
   globalApplications: number;
 }> {
-  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r7-semantic-'));
+  const root = temporaryRoot('aarast-r7-semantic-');
   try {
     writeFixtureFile(
       root,
@@ -761,7 +790,7 @@ test('R7 strict stage rejects every compatibility, boundary, topology, and Nest 
         const historical = JSON.parse(execFileSync(
           'git',
           ['show', `${value.baseRevision}:backend/.dependency-cruiser-known-violations.json`],
-          { cwd: repositoryRoot, encoding: 'utf8' },
+          { cwd: gitRoot, encoding: 'utf8' },
         )) as typeof dependency;
         const retired = historical.find((record) => (
           [record.rule.name, record.from, record.to].join('|') === expectedDependencyKeys[0]
@@ -4581,7 +4610,7 @@ test('R7 architecture delegation preserves the immutable R5 package fingerprint'
     validateR5SecurityCheckpointScope(value: unknown): unknown;
   };
   const gitLines = (args: string[]) => execFileSync('git', args, {
-    cwd: repositoryRoot,
+    cwd: gitRoot,
     encoding: 'utf8',
   }).split(/\r?\n/u).filter(Boolean);
   const changedPaths = [...new Set([
@@ -4645,7 +4674,7 @@ test('R7 strict completion accepts the validated R12A live dependency count', ()
 });
 
 test('R7 default R12A manifest is resolved from the supplied repository root', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'aarast-r7-r12a-root-'));
+  const root = temporaryRoot('aarast-r7-r12a-root-');
   const invalid = { stage: 'not-a-valid-r12a-stage' };
   mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
   writeFileSync(
@@ -4672,7 +4701,7 @@ test('R12A R7 ownership handoff preserves the immutable R7 projection and reject
   const r7 = manifest();
   const historical = JSON.parse(execFileSync('git', [
     'show', `${r7.baseRevision}:backend/architecture/ownership-baseline.json`,
-  ], { cwd: repositoryRoot, encoding: 'utf8' })) as {
+  ], { cwd: gitRoot, encoding: 'utf8' })) as {
     violations: Array<Record<string, any>>;
   };
   const r7Live = structuredClone(historical);
@@ -4818,10 +4847,10 @@ test('R12C successor handoff preserves historical 16 and selects exact strict li
     readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
       'git',
       ['show', `${revision}:${relative}`],
-      { cwd: repositoryRoot, encoding: 'utf8' },
+      { cwd: gitRoot, encoding: 'utf8' },
     ),
   });
-  const historicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r7-no-r12b-'));
+  const historicalRoot = temporaryRoot('aarast-r7-no-r12b-');
   try {
     assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
       repositoryRoot: historicalRoot,
@@ -4839,7 +4868,41 @@ test('R12C successor handoff preserves historical 16 and selects exact strict li
     readImmutableFile: (revision: string, relative: string) => require('node:child_process').execFileSync(
       'git',
       ['show', `${revision}:${relative}`],
-      { cwd: repositoryRoot, encoding: 'utf8' },
+      { cwd: gitRoot, encoding: 'utf8' },
     ),
   }).length, 0);
+});
+
+test('R7 closed law proves the live Collaboration boundary and lets relocated files evolve', { skip: closure ? false : 'the phase is open' }, () => {
+  const loaded = require(path.join(backendRoot, 'scripts', 'architecture', 'r7-collaboration-relocation-scan.cjs')) as R7Scanner & {
+    scanR7Closed(repositoryRoot: string, manifest: R7Manifest): { closed: boolean; targetFiles: number; forwardRef: number; globals: number };
+  };
+  const value = loaded.validateR7Manifest(manifest());
+  // The live gate (no injected readers) runs the closed law on the real tree.
+  const live = loaded.scanR7CollaborationRelocation({ repositoryRoot: gitRoot, manifest: value });
+  assert.equal(live.ok, true);
+  assert.equal((live as { closed?: boolean }).closed, true);
+  assert.equal(live.sourceFiles, 0);
+  assert.equal(live.targetFiles, 18);
+  assert.equal(live.dependencyRecords, 0);
+  // A doubled tree with an edited relocated file and a new Collaboration file passes.
+  const root = temporaryRoot('aarast-r7-closed-');
+  cpSync(path.join(gitRoot, 'backend', 'src'), path.join(root, 'backend', 'src'), { recursive: true });
+  for (const relative of ['backend/tsconfig.json', 'backend/package.json']) {
+    copyFileSync(path.join(gitRoot, ...relative.split('/')), path.join(root, ...relative.split('/')));
+  }
+  mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
+  for (const name of ['ownership-baseline.json', 'r8-global-module-removal.json']) {
+    copyFileSync(path.join(backendRoot, 'architecture', name), path.join(root, 'backend', 'architecture', name));
+  }
+  // The fixture resolves @nestjs types through the real installation read-only.
+  symlinkSync(path.join(backendRoot, 'node_modules'), path.join(root, 'backend', 'node_modules'), 'junction');
+  const relocated = path.join(root, 'backend', 'src', 'modules', 'collaboration', 'internal', 'sharing.service.ts');
+  writeFileSync(relocated, `${readFileSync(relocated, 'utf8')}\n// product change after closure\n`, 'utf8');
+  writeFileSync(path.join(root, 'backend', 'src', 'modules', 'collaboration', 'internal', 'new-helper.ts'), 'export const helper = 1;\n', 'utf8');
+  assert.equal(loaded.scanR7Closed(root, value).closed, true);
+  // A runtime import into Collaboration internal from another context fails.
+  const intruder = path.join(root, 'backend', 'src', 'tasks', 'tasks.service.ts');
+  writeFileSync(intruder, `${readFileSync(intruder, 'utf8')}\nimport { SharingService as _Probe } from "../modules/collaboration/internal/sharing.service";\n`, 'utf8');
+  assert.throws(() => loaded.scanR7Closed(root, value), /enters Collaboration internal or api/u);
 });

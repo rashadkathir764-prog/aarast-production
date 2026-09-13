@@ -3131,6 +3131,83 @@ function verifyR12aStrictDependencyProjection(
   return true;
 }
 
+// Closed successor. The relocation proofs (normalized source parity of the
+// 18 moved files, constructor/controller handoff fingerprints, exact
+// Collaboration file inventory, exact public-snapshot consumer set, ownership
+// handoff projections) are history verified at the recorded lineage commit.
+// The live law: every move is complete and both legacy roots are gone, the
+// relocated Collaboration surface exists (it may grow), no legacy
+// Collaboration import literal or duplicate public re-export remains, no
+// runtime import from outside enters Collaboration api/internal, the public
+// snapshot builder keeps its declared exports without dynamic dependencies,
+// and forwardRef/project globals stay at zero.
+function validateClosedLayout(repositoryRoot, manifest) {
+  if (manifest.stage !== 'strict') throw new Error('R7 closure requires the strict stage');
+  let targetFiles = 0;
+  for (const move of manifest.moves) {
+    if (inspectExistingPath(repositoryRoot, move.from, 'file').exists) {
+      throw new Error('R7 legacy source path still exists: ' + move.from);
+    }
+    if (!inspectExistingPath(repositoryRoot, move.to, 'file').exists) {
+      throw new Error('R7 relocated target is missing: ' + move.to);
+    }
+    targetFiles += 1;
+  }
+  for (const legacyRoot of ['backend/src/contribution-history', 'backend/src/sharing']) {
+    if (inspectExistingPath(repositoryRoot, legacyRoot, 'directory').exists) {
+      throw new Error('R7 legacy root still exists: ' + legacyRoot);
+    }
+  }
+  const present = new Set(listPlainFiles(repositoryRoot, 'backend/src/modules/collaboration'));
+  for (const relativePath of EXPECTED_EXISTING_COLLABORATION_FILES) {
+    if (!present.has(relativePath)) throw new Error('R7 Collaboration surface file is missing: ' + relativePath);
+  }
+  return Object.freeze({ sourceFiles: 0, targetFiles });
+}
+
+function verifyClosedPublicSnapshotSource(repositoryRoot, manifest, analysis) {
+  const sourceFile = sourceFromAnalysis(analysis, manifest.publicSnapshotContract.path);
+  let dynamicDependencies = 0;
+  const visit = (node) => {
+    if (ts.isImportEqualsDeclaration(node) || moduleReferenceSpecifierFromCall(node, analysis) !== null) dynamicDependencies += 1;
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (dynamicDependencies !== 0) throw new Error('R7 public snapshot dynamic dependency drift detected');
+  const exports = runtimeExportNames(sourceFile, analysis);
+  for (const name of manifest.publicSnapshotContract.exports) {
+    if (!exports.includes(name)) throw new Error('R7 public snapshot export is missing: ' + name);
+  }
+  return Object.freeze({ exports: exports.length });
+}
+
+function scanR7Closed(repositoryRoot, manifest) {
+  const layout = validateClosedLayout(repositoryRoot, manifest);
+  const analysis = createTypeScriptAnalysis(repositoryRoot);
+  verifyClosedPublicSnapshotSource(repositoryRoot, manifest, analysis);
+  const sourceReferences = verifyStrictSourceReferences(repositoryRoot, analysis);
+  if (sourceReferences.legacyImportLiterals !== 0) throw new Error('R7 legacy Collaboration import literal remains');
+  if (sourceReferences.duplicatePublicExports !== 0) throw new Error('R7 duplicate public snapshot export remains');
+  verifyProtectedCollaborationImports(repositoryRoot, analysis);
+  const nest = verifyStrictNestState(repositoryRoot, analysis);
+  const ownership = JSON.parse(fs.readFileSync(path.join(
+    repositoryRoot,
+    ...'backend/architecture/ownership-baseline.json'.split('/'),
+  ), 'utf8'));
+  return Object.freeze({
+    ok: true,
+    stage: manifest.stage,
+    closed: true,
+    sourceFiles: layout.sourceFiles,
+    targetFiles: layout.targetFiles,
+    dependencyRecords: 0,
+    ownershipRecords: ownership.violations.length,
+    ownershipOccurrences: ownership.violations.reduce((sum, item) => sum + item.count, 0),
+    forwardRef: nest.forwardRef,
+    globals: nest.globals,
+  });
+}
+
 function scanR7CollaborationRelocation(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new Error('R7 scan options are invalid');
@@ -3139,6 +3216,10 @@ function scanR7CollaborationRelocation(options) {
     throw new Error('R7 repository root must be absolute');
   }
   const manifest = validateR7Manifest(options.manifest);
+  if (options.readImmutableFile === undefined && options.r12aManifest === undefined
+      && require('./modular-monolith-closure.cjs').readClosure(options.repositoryRoot)) {
+    return scanR7Closed(options.repositoryRoot, manifest);
+  }
   const r12aManifest = options.r12aManifest === undefined
     ? validateR12aManifest(JSON.parse(fs.readFileSync(path.join(
       options.repositoryRoot,
@@ -3201,12 +3282,14 @@ function runCli(dependencies = {}) {
     ), 'utf8'));
     const result = scanR7CollaborationRelocation({ repositoryRoot, manifest });
     stdout('PASS - R7 Collaboration relocation: stage=' + result.stage
+      + (result.closed ? ' (closed)' : '')
       + ', source=' + result.sourceFiles + ', target=' + result.targetFiles
       + ', dependency=' + result.dependencyRecords
       + ', ownership=' + result.ownershipRecords + '/' + result.ownershipOccurrences);
     return 0;
-  } catch {
+  } catch (error) {
     stderr('ERROR - R7 Collaboration relocation validation failed');
+    if (process.env.ARCHITECTURE_DEBUG === '1') stderr(String(error && error.message));
     return 2;
   }
 }
@@ -3219,6 +3302,7 @@ module.exports = {
   R7_BASE,
   inspectSemanticSource,
   runCli,
+  scanR7Closed,
   scanR7CollaborationRelocation,
   verifyR12aStrictDependencyProjection,
   validateR7Manifest,

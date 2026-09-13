@@ -195,6 +195,7 @@ const DIAGNOSTIC_KINDS = new Set([
   'public-binding-not-use-existing', 'public-imports-concrete',
   'implementation-token-misuse', 'forward-ref', 'unknown-context',
   'nest-module-cycle', 'inventory-drift', 'r4-writer-isolation',
+  'injection-identity-drift', 'cross-context-injection',
 ]);
 const COUNT_KEYS = Object.freeze([
   'contexts', 'legacyModules', 'crossContextInjections', 'compositionDependencies',
@@ -2071,7 +2072,53 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
     r4ConstructorInventoryPresent,
     ...decoratorInventory,
     lifecycleProviders, retiredEdges,
+    constructorUses: allConstructorUses,
   };
+}
+
+// Injection-identity law (closed successor). Every public contract token and
+// port interface this scanner ever froze may be injected by any consumer, but
+// only as its real declaration: a same-name Symbol or interface declared
+// elsewhere is a lookalike, and a canonical token paired with a non-canonical
+// parameter type (or the reverse) is a mismatched injection. Positions and
+// consumer sets are not law.
+const CANONICAL_INJECTION_GROUPS = Object.freeze([
+  TASK2_CANONICAL_INJECTION_IDENTITIES, TASK3_CANONICAL_INJECTION_IDENTITIES,
+  TASK4_CANONICAL_INJECTION_IDENTITIES, TASK5_CANONICAL_INJECTION_IDENTITIES,
+  R6_CANONICAL_INJECTION_IDENTITIES, R4_CANONICAL_INJECTION_IDENTITIES,
+]);
+
+function canonicalInjectionIdentities() {
+  const tokensByName = new Map();
+  const typesByName = new Map();
+  const pairs = new Set();
+  for (const group of CANONICAL_INJECTION_GROUPS) {
+    for (const identity of Object.values(group)) {
+      tokensByName.set(identity.token.split('#')[1], identity.token);
+      typesByName.set(identity.parameterType.split('#')[1], identity.parameterType);
+      pairs.add(`${identity.token}|${identity.parameterType}`);
+    }
+  }
+  return { tokensByName, typesByName, pairs };
+}
+
+function injectionIdentityDiagnostics(constructorUses) {
+  const { tokensByName, typesByName, pairs } = canonicalInjectionIdentities();
+  const diagnostics = [];
+  for (const use of constructorUses) {
+    const tokenName = use.injectionTokenIdentity ? use.injectionTokenIdentity.split('#')[1] : null;
+    const typeName = use.parameterTypeIdentity ? use.parameterTypeIdentity.split('#')[1] : null;
+    const canonicalToken = tokenName ? tokensByName.get(tokenName) : undefined;
+    const canonicalType = typeName ? typesByName.get(typeName) : undefined;
+    const tokenLookalike = canonicalToken !== undefined && canonicalToken !== use.injectionTokenIdentity;
+    const typeLookalike = canonicalType !== undefined && canonicalType !== use.parameterTypeIdentity;
+    const canonicalUse = canonicalToken === use.injectionTokenIdentity || canonicalType === use.parameterTypeIdentity;
+    const mismatched = canonicalUse && !pairs.has(`${use.injectionTokenIdentity}|${use.parameterTypeIdentity}`);
+    if (tokenLookalike || typeLookalike || mismatched) {
+      diagnostics.push({ kind: 'injection-identity-drift', path: use.source, line: 1 });
+    }
+  }
+  return diagnostics;
 }
 
 function scanR12cPredecessorContexts(options, successorManifest) {
@@ -2228,7 +2275,28 @@ function scanR3Contexts(options) {
   const livePlatformDebts = live.compositionDependencies.map((item) => (
     item.key === 'app-jwt-module-availability' ? 'runtime-jwt-secret' : item.key
   ));
-  const drift = !projectionValid
+  // Closed successor. The exact inventories (module list, constructor uses by
+  // position, decorator references, lifecycle providers, guard metadata) were
+  // the proof that each relocation task changed nothing else; after the R12C
+  // closure they are history verified at the recorded lineage commit. The
+  // live law keeps every rule a product change must respect: the source laws,
+  // no cross-context injection, no remaining platform debt or retired legacy
+  // edge, every public contract surface present, no duplicate provider, no
+  // project global, and the injection-identity law below.
+  const closed = options.r12cManifest !== undefined
+    ? Boolean(options.closed)
+    : Boolean(require('./modular-monolith-closure.cjs').readClosure(options.repoRoot));
+  const identityDrift = closed ? injectionIdentityDiagnostics(live.constructorUses) : [];
+  const crossContextInjections = closed
+    ? live.injections.map((item) => ({ kind: 'cross-context-injection', path: item.source, line: 1 }))
+    : [];
+  const drift = closed
+    ? (!projectionValid
+      || livePlatformDebts.length !== 0
+      || live.retiredEdges.length !== 0
+      || !live.providerContractSurfacesPresent
+      || live.globals !== 0)
+    : !projectionValid
     || JSON.stringify(live.modules) !== JSON.stringify(projectedHistoricalManifest.legacyModules)
     || JSON.stringify(live.injections) !== JSON.stringify(projectedHistoricalManifest.crossContextInjections)
     || JSON.stringify(livePlatformDebts) !== JSON.stringify(projectedHistoricalManifest.remainingPlatformDebts)
@@ -2251,7 +2319,7 @@ function scanR3Contexts(options) {
     || JSON.stringify(live.adminGuardMetadata) !== JSON.stringify(projectedHistoricalManifest.adminGuardMetadata)
     || live.globals !== 0
     || !exactRemainingDuplicates;
-  const diagnostics = [...sourceDiagnostics];
+  const diagnostics = [...sourceDiagnostics, ...identityDrift, ...crossContextInjections];
   if (drift) diagnostics.push({ kind: 'inventory-drift', path: 'backend/src/app.module.ts', line: 1 });
   if (ports.diagnostics.length) diagnostics.push({ kind: 'inventory-drift', path: 'backend/src/app.module.ts', line: 1 });
   return validateR3ScanResult({
@@ -2310,7 +2378,14 @@ function runCli(dependencies = {}) {
       stage: argv[2],
     }));
     const result = validateR3ScanResult(scan());
-    if (result.diagnostics.length) return 1;
+    if (result.diagnostics.length) {
+      // Diagnostics are validated records (kind, repository path, line): a
+      // bounded listing names the violation without echoing source text.
+      stderr(`FAIL - R3 contexts: ${result.diagnostics.length} diagnostic(s)`);
+      for (const item of result.diagnostics.slice(0, MAX_REPORTED_DIAGNOSTICS)) stderr(`  ${item.kind} ${item.path}:${item.line}`);
+      if (result.diagnostics.length > MAX_REPORTED_DIAGNOSTICS) stderr(`  ... ${result.diagnostics.length - MAX_REPORTED_DIAGNOSTICS} more`);
+      return 1;
+    }
     stdout(`PASS - R3 contexts: contexts=${result.counts.contexts}, duplicates=${result.counts.remainingDuplicateProviders}/${result.counts.initialDuplicateProviders}, platform debts=${result.counts.remainingPlatformDebts}/${result.counts.initialPlatformDebts}, retired edges=${result.counts.remainingRetiredLegacyProviderEdges}/${result.counts.initialRetiredLegacyProviderEdges}, forwardRef=${result.counts.forwardRef}, globals=${result.counts.globals}, cycles=${result.counts.nestModuleCycles}, illegal=${result.counts.illegalEdges}`);
     return 0;
   } catch {
@@ -2318,6 +2393,7 @@ function runCli(dependencies = {}) {
     return 2;
   }
 }
+const MAX_REPORTED_DIAGNOSTICS = 20;
 
 module.exports = {
   collectR3DecoratorInventory,

@@ -8,8 +8,9 @@ import {
   toApplicationUserContact,
 } from "../shared-kernel/privacy/application-user-identity";
 import {
-  decimalToNumber,
   moneyOrNull,
+  resolveBudgetDecimal,
+  sumMoney,
 } from "./dashboard-summary.presenter";
 
 type DashboardHomeClient = Pick<
@@ -78,25 +79,18 @@ async function getMoneyHomeSummary(
       select: { totalAmount: true, paidAmount: true },
     }),
   ]);
-  const confirmedCost = costs.reduce(
-    (sum, cost) => sum + decimalToNumber(cost.totalAmount),
-    0,
-  );
-  const paid = costs.reduce(
-    (sum, cost) => sum + decimalToNumber(cost.paidAmount),
-    0,
-  );
-  const totalBudget = plan.estimatedBudget
-    ? decimalToNumber(plan.estimatedBudget)
-    : null;
+  // Exact decimal sums: the home summary must agree with Finance to the cent.
+  const confirmedCost = sumMoney(costs.map((cost) => cost.totalAmount));
+  const paid = sumMoney(costs.map((cost) => cost.paidAmount));
+  const totalBudget = resolveBudgetDecimal(plan);
   return {
     currency: plan.currency,
     totalBudget: moneyOrNull(totalBudget),
     confirmedCost: moneyOrNull(confirmedCost),
     paid: moneyOrNull(paid),
-    outstanding: moneyOrNull(confirmedCost - paid),
+    outstanding: moneyOrNull(confirmedCost.minus(paid)),
     remainingBudget:
-      totalBudget === null ? null : moneyOrNull(totalBudget - confirmedCost),
+      totalBudget === null ? null : moneyOrNull(totalBudget.minus(confirmedCost)),
     costsCount: costs.length,
   };
 }

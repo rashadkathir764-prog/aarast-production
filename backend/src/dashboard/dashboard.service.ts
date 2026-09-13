@@ -49,11 +49,11 @@ import {
   buildImportantItems,
   compareDates,
   daysRemaining,
-  decimalToNumber,
   moneyOrNull,
   nextProviderAction,
   progressPercentage,
-  resolveBudgetTotal,
+  resolveBudgetDecimal,
+  sumMoney,
   toPaymentScheduleDueMoneyItem,
   toNotificationPreview,
   toPlanResponse,
@@ -485,21 +485,24 @@ export class DashboardService {
       ? actionableSchedules.length
       : null;
 
+    // Exact decimal sums: the dashboard must agree with Finance to the cent.
     const budgetTotalNumber =
-      canViewMoney && context.isOwner ? resolveBudgetTotal(context.plan) : null;
+      canViewMoney && context.isOwner
+        ? resolveBudgetDecimal(context.plan)
+        : null;
     const confirmedCostNumber = canViewMoney
-      ? costs.reduce((sum, cost) => sum + decimalToNumber(cost.totalAmount), 0)
+      ? sumMoney(costs.map((cost) => cost.totalAmount))
       : null;
     const paidNumber = canViewMoney
-      ? costs.reduce((sum, cost) => sum + decimalToNumber(cost.paidAmount), 0)
+      ? sumMoney(costs.map((cost) => cost.paidAmount))
       : null;
     const outstandingNumber =
       confirmedCostNumber !== null && paidNumber !== null
-        ? confirmedCostNumber - paidNumber
+        ? confirmedCostNumber.minus(paidNumber)
         : null;
     const remainingBudgetNumber =
       budgetTotalNumber !== null && confirmedCostNumber !== null
-        ? budgetTotalNumber - confirmedCostNumber
+        ? budgetTotalNumber.minus(confirmedCostNumber)
         : null;
     const location = weddingLocationResponse(
       context.plan.location,
@@ -529,7 +532,7 @@ export class DashboardService {
       // are not allowed to inspect.
       hasBudget:
         !context.isOwner ||
-        (budgetTotalNumber !== null && budgetTotalNumber > 0),
+        (budgetTotalNumber !== null && budgetTotalNumber.greaterThan(0)),
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
@@ -628,7 +631,7 @@ export class DashboardService {
         outstanding: moneyOrNull(outstandingNumber),
         remainingBudget: moneyOrNull(remainingBudgetNumber),
         overBudget:
-          remainingBudgetNumber === null ? null : remainingBudgetNumber < 0,
+          remainingBudgetNumber === null ? null : remainingBudgetNumber.isNegative(),
       },
       financialWarnings,
       taskSummary: {

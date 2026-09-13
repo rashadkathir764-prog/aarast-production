@@ -317,22 +317,16 @@ test('dashboard numeric and date helpers keep exact behavior', () => {
   assert.ok(dashboardPresenter.compareDates(earlier, later) < 0);
   assert.equal(dashboardPresenter.moneyOrNull(null), null);
   assert.equal(dashboardPresenter.moneyOrNull(15.5), '15.50');
+  // decimalToNumber / resolveBudgetTotal (float money) were replaced by the
+  // exact sumMoney / resolveBudgetDecimal helpers; see the decimal-sum test.
   assert.equal(
-    dashboardPresenter.decimalToNumber(new Prisma.Decimal('9.75')),
-    9.75,
-  );
-  assert.equal(
-    dashboardPresenter.decimalToNumber({ toString: () => 'invalid' }),
-    0,
-  );
-  assert.equal(
-    dashboardPresenter.resolveBudgetTotal({
+    dashboardPresenter.resolveBudgetDecimal({
       estimatedBudget: new Prisma.Decimal('9000'),
-    }),
-    9000,
+    })?.toString(),
+    '9000',
   );
   assert.equal(
-    dashboardPresenter.resolveBudgetTotal({ estimatedBudget: null }),
+    dashboardPresenter.resolveBudgetDecimal({ estimatedBudget: null }),
     null,
   );
   assert.equal(dashboardPresenter.daysRemaining(new Date(2026, 6, 13), later), 2);
@@ -369,3 +363,28 @@ function providerLink() {
     },
   };
 }
+
+test('dashboard money totals are exact decimal sums, never float accumulations', () => {
+  // Finance sums Prisma.Decimal exactly; the dashboard must agree to the cent
+  // at every magnitude numeric(14,2) allows. 132 costs of the pattern below
+  // sum to 5,250,000,000,006.51 exactly; a float accumulation prints .50.
+  const values = Array.from({ length: 132 }, (_, index) => new Prisma.Decimal(`${(index % 7) + 1}0000000000.0${(index % 9) + 1}`));
+  const floatSum = values.reduce((sum, value) => sum + Number(value.toString()), 0).toFixed(2);
+  assert.equal(floatSum, '5250000000006.50', 'the float accumulation loses a cent at this magnitude');
+  const exact = dashboardPresenter.sumMoney(values);
+  assert.ok(exact instanceof Prisma.Decimal);
+  assert.equal(dashboardPresenter.moneyOrNull(exact), '5250000000006.51');
+  assert.equal(dashboardPresenter.sumMoney([]).toFixed(2), '0.00');
+  assert.equal(dashboardPresenter.sumMoney([new Prisma.Decimal('0.1'), new Prisma.Decimal('0.2')]).toFixed(2), '0.30');
+  assert.equal(dashboardPresenter.moneyOrNull(new Prisma.Decimal('15.5')), '15.50');
+  assert.equal(dashboardPresenter.resolveBudgetDecimal({ estimatedBudget: new Prisma.Decimal('9000') })?.toFixed(2), '9000.00');
+  assert.equal(dashboardPresenter.resolveBudgetDecimal({ estimatedBudget: null }), null);
+  // Warnings compare exactly as well.
+  const [warning] = dashboardPresenter.buildFinancialWarnings({
+    remainingBudget: new Prisma.Decimal('-0.01'),
+    overdueCount: null,
+    dueSoonCount: null,
+  });
+  assert.equal(warning.type, 'BUDGET_EXCEEDED');
+  assert.equal(warning.amount, '0.01');
+});

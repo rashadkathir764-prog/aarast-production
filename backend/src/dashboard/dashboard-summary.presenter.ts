@@ -1,5 +1,6 @@
 import {
   PaymentScheduleStatus,
+  Prisma,
   WeddingPlan,
   WeddingTaskPriority,
 } from "@prisma/client";
@@ -269,18 +270,20 @@ export function buildFinancialWarnings({
   overdueCount,
   dueSoonCount,
 }: {
-  remainingBudget: number | null;
+  remainingBudget: Prisma.Decimal | number | null;
   overdueCount: number | null;
   dueSoonCount: number | null;
 }): WeddingPlanDashboardSummaryResponse["financialWarnings"] {
   const warnings: WeddingPlanDashboardSummaryResponse["financialWarnings"] = [];
-  if (remainingBudget !== null && remainingBudget < 0) {
+  const remaining =
+    remainingBudget === null ? null : new Prisma.Decimal(remainingBudget);
+  if (remaining !== null && remaining.isNegative()) {
     warnings.push({
       type: "BUDGET_EXCEEDED",
       severity: "DANGER",
       message: "التكاليف المؤكدة تجاوزت الميزانية العامة.",
       count: null,
-      amount: moneyOrNull(Math.abs(remainingBudget)),
+      amount: moneyOrNull(remaining.abs()),
     });
   }
   if (overdueCount !== null && overdueCount > 0) {
@@ -344,21 +347,32 @@ export function toPlanResponse(plan: WeddingPlan) {
   };
 }
 
-export function resolveBudgetTotal(
+// Money is numeric(14,2) in the database and Prisma.Decimal in code. The
+// dashboard composes the same totals Finance reports, so it sums exactly:
+// a float accumulation loses cents once amounts reach the column's
+// magnitude, and the two surfaces would then disagree.
+export function sumMoney(
+  values: Iterable<Prisma.Decimal | number | string | null | undefined>,
+): Prisma.Decimal {
+  let sum = new Prisma.Decimal(0);
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    sum = sum.plus(new Prisma.Decimal(value));
+  }
+  return sum;
+}
+
+export function resolveBudgetDecimal(
   plan: Pick<WeddingPlan, "estimatedBudget">,
-): number | null {
+): Prisma.Decimal | null {
   return plan.estimatedBudget === null
     ? null
-    : decimalToNumber(plan.estimatedBudget);
+    : new Prisma.Decimal(plan.estimatedBudget);
 }
 
-export function decimalToNumber(value: { toString(): string } | null): number {
-  if (!value) return 0;
-  const parsed = Number(value.toString());
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-export function moneyOrNull(value: number | null): string | null {
+export function moneyOrNull(
+  value: Prisma.Decimal | number | null,
+): string | null {
   return value === null ? null : value.toFixed(2);
 }
 

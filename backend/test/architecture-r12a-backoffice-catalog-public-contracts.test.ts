@@ -4,7 +4,19 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import * as fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
+
+// Every temporary root this suite creates is removed when the suite ends,
+// including roots whose fixture failed to build.
+const temporaryRoots: string[] = [];
+function temporaryRoot(prefix: string): string {
+  const created = mkdtempSync(path.join(require('node:os').tmpdir(), prefix));
+  temporaryRoots.push(created);
+  return created;
+}
+after(() => {
+  for (const created of temporaryRoots) rmSync(created, { recursive: true, force: true });
+});
 
 const backendRoot = path.resolve(__dirname, '..');
 const scannerPath = path.join(
@@ -254,7 +266,7 @@ test('R12A runtime edge prohibition is fail-closed with Windows path separators'
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = scanner.validateR12aManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-runtime-edge-'));
+  const fixture = temporaryRoot('r12a-runtime-edge-');
   try {
     const source = path.join(fixture, 'backend', 'src', 'modules', 'backoffice', 'public');
     mkdirSync(source, { recursive: true });
@@ -409,7 +421,7 @@ test('R12A exact allowed-edge variants reject wrong source, target, names, and s
 test('R12A guard order rejects a temporary controller with reordered guards', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-guard-order-'));
+  const fixture = temporaryRoot('r12a-guard-order-');
   try {
     const dir = path.join(fixture, 'backend', 'src', 'admin'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'controller.ts'), "import { UseGuards } from '@nestjs/common';\n@UseGuards(AdminGuard, JwtSessionGuard, AdminPermissionGuard)\nexport class Controller {}\n");
@@ -420,7 +432,7 @@ test('R12A guard order rejects a temporary controller with reordered guards', ()
 test('R12A guard order resolves an aliased Nest UseGuards import', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-guard-alias-'));
+  const fixture = temporaryRoot('r12a-guard-alias-');
   try {
     const dir = path.join(fixture, 'backend', 'src', 'admin'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'controller.ts'), [
@@ -436,7 +448,7 @@ test('R12A guard order resolves an aliased Nest UseGuards import', () => {
 test('R12A guard order resolves a Nest namespace UseGuards property', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-guard-namespace-'));
+  const fixture = temporaryRoot('r12a-guard-namespace-');
   try {
     const dir = path.join(fixture, 'backend', 'src', 'admin'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'controller.ts'), [
@@ -452,7 +464,7 @@ test('R12A guard order resolves a Nest namespace UseGuards property', () => {
 test('R12A guard order ignores local homonyms without the Nest import', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-guard-homonym-'));
+  const fixture = temporaryRoot('r12a-guard-homonym-');
   try {
     const dir = path.join(fixture, 'backend', 'src', 'admin'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'controller.ts'), [
@@ -468,7 +480,7 @@ test('R12A guard order ignores local homonyms without the Nest import', () => {
 test('R12A guard order ignores a nested homonym shadowing the Nest binding', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-guard-shadow-'));
+  const fixture = temporaryRoot('r12a-guard-shadow-');
   try {
     const dir = path.join(fixture, 'backend', 'src', 'admin'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'controller.ts'), [
@@ -487,7 +499,7 @@ test('R12A guard order ignores a nested homonym shadowing the Nest binding', () 
 test('R12A guard order ignores a nested namespace homonym shadowing Nest common', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-guard-namespace-shadow-'));
+  const fixture = temporaryRoot('r12a-guard-namespace-shadow-');
   try {
     const dir = path.join(fixture, 'backend', 'src', 'admin'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'controller.ts'), [
@@ -507,7 +519,7 @@ test('R12A unapproved source consumer fails against a temporary active target', 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = r12aManifest(); manifest.stage = 'backoffice';
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-unapproved-consumer-'));
+  const fixture = temporaryRoot('r12a-unapproved-consumer-');
   try {
     const dir = path.join(fixture, 'backend', 'src'); mkdirSync(dir, { recursive: true });
     const target = path.join(dir, 'modules', 'backoffice', 'public'); mkdirSync(target, { recursive: true });
@@ -521,7 +533,7 @@ test('R12A runtime edges resolve JavaScript specifiers to active TypeScript targ
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = r12aManifest(); manifest.stage = 'backoffice';
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-runtime-js-specifier-'));
+  const fixture = temporaryRoot('r12a-runtime-js-specifier-');
   try {
     const dir = path.join(fixture, 'backend', 'src'); mkdirSync(dir, { recursive: true });
     const target = path.join(dir, 'modules', 'backoffice', 'public'); mkdirSync(target, { recursive: true });
@@ -535,7 +547,7 @@ test('R12A runtime edges resolve directory index barrels to active targets', () 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = r12aManifest(); manifest.stage = 'backoffice';
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-runtime-directory-barrel-'));
+  const fixture = temporaryRoot('r12a-runtime-directory-barrel-');
   try {
     const sourceDir = path.join(fixture, 'backend', 'src'); const publicDir = path.join(sourceDir, 'modules', 'backoffice', 'public');
     mkdirSync(publicDir, { recursive: true });
@@ -550,7 +562,7 @@ test('R12A runtime edges reject unresolved local module forms', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = r12aManifest(); manifest.stage = 'backoffice';
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-runtime-unresolved-'));
+  const fixture = temporaryRoot('r12a-runtime-unresolved-');
   try {
     const dir = path.join(fixture, 'backend', 'src'); mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'unresolved.ts'), "import value from './missing-local-module';\nexport { value };\n");
@@ -568,7 +580,7 @@ test('R12A runtime edges follow CommonJS forwarding facades and reject ambiguous
     ['exports-property', "const contract = require('./modules/backoffice/public/admin.guard');\nexports.AdminGuard = contract.AdminGuard;"],
   ];
   for (const [name, body] of cases) {
-    const fixture = mkdtempSync(path.join(os.tmpdir(), `r12a-cjs-${name}-`));
+    const fixture = temporaryRoot(`r12a-cjs-${name}-`);
     try {
       const sourceDir = path.join(fixture, 'backend', 'src'); const publicDir = path.join(sourceDir, 'modules', 'backoffice', 'public'); mkdirSync(publicDir, { recursive: true });
       writeFileSync(path.join(sourceDir, 'unapproved.ts'), `import contract from './facade';\nexport const value = contract;\n`);
@@ -577,7 +589,7 @@ test('R12A runtime edges follow CommonJS forwarding facades and reject ambiguous
       assert.throws(() => scanner.checkRuntimeEdges(fixture, manifest), /unapproved source consumer/u, name);
     } finally { rmSync(fixture, { recursive: true, force: true }); }
   }
-  const safe = mkdtempSync(path.join(os.tmpdir(), 'r12a-cjs-safe-'));
+  const safe = temporaryRoot('r12a-cjs-safe-');
   try {
     const sourceDir = path.join(safe, 'backend', 'src'); mkdirSync(sourceDir, { recursive: true });
     writeFileSync(path.join(sourceDir, 'unapproved.ts'), "import value from './facade';\nexport { value };\n");
@@ -589,7 +601,7 @@ test('R12A runtime edges follow CommonJS forwarding facades and reject ambiguous
     ['cycle', "module.exports = require('./b');\n", "module.exports = require('./a');\n"],
     ['ambiguous', "module.exports = require('./a') || require('./b');\n", 'module.exports = { value: true };\n'],
   ]) {
-    const fixture = mkdtempSync(path.join(os.tmpdir(), `r12a-cjs-${name}-`));
+    const fixture = temporaryRoot(`r12a-cjs-${name}-`);
     try {
       const sourceDir = path.join(fixture, 'backend', 'src'); mkdirSync(sourceDir, { recursive: true });
       writeFileSync(path.join(sourceDir, 'unapproved.ts'), "import value from './facade';\nexport { value };\n");
@@ -645,7 +657,7 @@ test('R12A compares behavioral literals exactly, including substring near-misses
 test('R12A rejects path traversal and symlink/reparse fixture paths', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
-  const fixture = mkdtempSync(path.join(os.tmpdir(), 'r12a-paths-'));
+  const fixture = temporaryRoot('r12a-paths-');
   try {
     assert.throws(() => scanner.inspectFile(fixture, 'backend/../outside.ts'), /escapes/u);
     const dir = path.join(fixture, 'backend'); mkdirSync(dir, { recursive: true }); writeFileSync(path.join(fixture, 'outside.ts'), 'export {};\n');
@@ -696,7 +708,7 @@ test('R12B successor handoff preserves historical 16 and selects exact live 9', 
       { cwd: repositoryRoot, encoding: 'utf8' },
     ),
   });
-  const historicalRoot = mkdtempSync(path.join(os.tmpdir(), 'aarast-r12a-no-r12b-'));
+  const historicalRoot = temporaryRoot('aarast-r12a-no-r12b-');
   try {
     assert.equal(r12a.expectedR12aSuccessorDependencyRecords({
       repositoryRoot: historicalRoot,
@@ -756,7 +768,7 @@ test('R12B successor Git authority rejects parent-repository fallback', () => {
 
 test('R12B successor Git authority rejects a copied linked-worktree control file', () => {
   const { project, writeManifests } = r12bSuccessorFixture();
-  const copiedRoot = mkdtempSync(path.join(os.tmpdir(), 'r12b-copied-git-control-'));
+  const copiedRoot = temporaryRoot('r12b-copied-git-control-');
   try {
     writeManifests(copiedRoot);
     writeFileSync(path.join(copiedRoot, '.git'), readFileSync(path.join(repositoryRoot, '.git')));
@@ -769,9 +781,9 @@ test('R12B successor Git authority rejects a copied linked-worktree control file
 test('R12B successor Git authority rejects missing, malformed, and incomplete controls', () => {
   const { project, writeManifests } = r12bSuccessorFixture();
   const roots = [
-    mkdtempSync(path.join(os.tmpdir(), 'r12b-missing-git-control-')),
-    mkdtempSync(path.join(os.tmpdir(), 'r12b-malformed-git-control-')),
-    mkdtempSync(path.join(os.tmpdir(), 'r12b-incomplete-git-control-')),
+    temporaryRoot('r12b-missing-git-control-'),
+    temporaryRoot('r12b-malformed-git-control-'),
+    temporaryRoot('r12b-incomplete-git-control-'),
   ];
   try {
     for (const root of roots) writeManifests(root);

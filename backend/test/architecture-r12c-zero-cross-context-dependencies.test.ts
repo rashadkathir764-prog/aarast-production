@@ -14,7 +14,19 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
+
+// Every temporary root this suite creates is removed when the suite ends,
+// including roots whose fixture failed to build.
+const temporaryRoots: string[] = [];
+function temporaryRoot(prefix: string): string {
+  const created = mkdtempSync(path.join(require('node:os').tmpdir(), prefix));
+  temporaryRoots.push(created);
+  return created;
+}
+after(() => {
+  for (const created of temporaryRoots) rmSync(created, { recursive: true, force: true });
+});
 
 const root = path.resolve(__dirname, '../..');
 const manifestPath = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
@@ -73,7 +85,7 @@ test('R12C closure record binds the phase, the frozen manifests and real history
   assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
   assert.throws(() => api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }), /R12C is closed/u);
   // The record is validated exactly: shape, phase, frozen manifests, history.
-  const scratch = mkdtempSync(path.join(tmpdir(), 'aarast-r12c-closure-'));
+  const scratch = temporaryRoot('aarast-r12c-closure-');
   try {
     const write = (relative: string, bytes: Buffer | string) => {
       const target = path.join(scratch, ...relative.split('/'));
@@ -586,7 +598,7 @@ function writeFixtureFile(fixtureRoot: string, relative: string, bytes: Buffer |
 }
 
 function task4FilesystemFixture(api: any, manifest: any) {
-  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r12c-task4-'));
+  const fixtureRoot = temporaryRoot('aarast-r12c-task4-');
   const predecessor = api.strictPredecessorFiles(
     read,
     (relative: string) => existsSync(path.join(root, relative)),

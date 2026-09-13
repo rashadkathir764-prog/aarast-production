@@ -117,6 +117,9 @@ Fixed, each in its own commit with a RED-first regression test:
 | `f26d2c72` | Dashboard money summed as floats |
 | `4b59faea` | Invite OTP routes without the per-IP throttle of the OTP family |
 | `ab840700` | Admin dev-dependency advisories |
+| `c1436572` | Found by the first clean-room run: the Prisma-config security checkpoint fingerprinted the whole `package.json`, so the new `smoke:schema-equivalence` script failed the security gate, R5 and R12B; the fingerprint now covers the package security surface (every member except `scripts`), and the R7 script projection rejects an aggregate naming a gate without its standalone script |
+| `d6e30207` | Found by the first clean-room run: the phase-0 source guard (pretest) did not know the new managed package; registered |
+| `bf11ab17` | Found by the first clean-room run: Flutter rewrites its generated registrants with LF, a CRLF checkout reported seven files modified with an empty diff; `.gitattributes` now checks them out with LF |
 
 **PRODUCT DECISION REQUIRED** (recorded, not acted on):
 

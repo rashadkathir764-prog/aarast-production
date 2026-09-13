@@ -19,6 +19,14 @@ const manifestPath = path.join(
   'r12a-backoffice-catalog-public-contracts.json',
 );
 const repositoryRoot = path.resolve(backendRoot, '..');
+// Closure. After the R12C closure record exists the R12A gate proves its live
+// invariants; the base-commit parity and predecessor-projection laws are
+// verified at the recorded lineage commit by
+// architecture-governance-portability.test.ts and are lineage-only here.
+const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot);
+const lineageOnly = closure
+  ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
+  : false;
 const immutableBase = '4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1';
 const readImmutable = (relative: string) =>
   execFileSync('git', ['show', `${immutableBase}:${relative}`], {
@@ -130,7 +138,9 @@ test('R12A strict-stage contract exports the scanner and freezes the approved pr
   assert.equal(typeof scanner.scanR12aBackofficeCatalogPublicContracts, 'function');
   assert.deepEqual(
     scanner.scanR12aBackofficeCatalogPublicContracts({ repositoryRoot: path.resolve(backendRoot, '..'), manifest }),
-    { ok: true, stage: 'strict', dependencyRecords: 0, ownershipRecords: 385, ownershipOccurrences: 781, legacyPaths: [] },
+    closure
+      ? { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, ownershipRecords: 385, ownershipOccurrences: 781, legacyPaths: [] }
+      : { ok: true, stage: 'strict', dependencyRecords: 0, ownershipRecords: 385, ownershipOccurrences: 781, legacyPaths: [] },
   );
   for (const move of manifest.moves) {
     const live = readFileSync(path.resolve(repositoryRoot, move.to), 'utf8');
@@ -158,7 +168,7 @@ test('R12A strict projection activates M1 and retires exactly six dependency rec
   assert.deepEqual(strict.stages.strict.activeMoveIds, ['B1', 'B2', 'B3', 'B4', 'M1']);
 });
 
-test('R12A strict stage retains its historical sibling exception only through the R12C projection', () => {
+test('R12A strict stage retains its historical sibling exception only through the R12C projection', { skip: lineageOnly }, () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = scanner.validateR12aManifest(r12aManifest());
@@ -314,7 +324,7 @@ test('R12A rejects unknown manifest keys and skipped stage input', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const candidate = r12aManifest(); candidate.stage = 'backoffice';
-  assert.throws(() => scanner.scanR12aBackofficeCatalogPublicContracts({ repositoryRoot: path.resolve(backendRoot, '..'), manifest: candidate }), /successor manifest input is not the exact predecessor/u);
+  assert.throws(() => scanner.scanR12aBackofficeCatalogPublicContracts({ repositoryRoot: path.resolve(backendRoot, '..'), manifest: candidate }), closure ? /closure requires the strict stage/u : /successor manifest input is not the exact predecessor/u);
 });
 
 test('R12A rejects duplicate or seventh retired dependency keys', () => {
@@ -648,7 +658,7 @@ test('R12A rejects path traversal and symlink/reparse fixture paths', () => {
   } finally { rmSync(fixture, { recursive: true, force: true }); }
 });
 
-test('R12A predecessor sibling provider-access-policy exception remains exact while live R12C removes it', () => {
+test('R12A predecessor sibling provider-access-policy exception remains exact while live R12C removes it', { skip: lineageOnly }, () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const scanner = require(scannerPath);
   const manifest = scanner.validateR12aManifest(r12aManifest());

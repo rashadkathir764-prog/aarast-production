@@ -674,3 +674,109 @@ clean dependency install, and by probing each rejection.
 - **Historical fixtures projected.** The R12B generated-catalog mirrors build
   from the R12B-era `backend/package.json` reconstructed by the R12C
   predecessor projection, and no fixture probe targets a real repository file.
+
+## 19. Closure Of The Byte-Lineage Regime (2026-09-13)
+
+This section records why and how the R12A/R12B/R12C governance chain was
+closed after Task 7, what the gates verify from the closure onwards, and what
+remains provable about the lineage. It is recorded in the same change that
+introduced the closure because it changes the governing law of three phases.
+
+### Why the lineage regime could not remain the live law
+
+Sections 5–8 bind every gate to a byte lineage: the strict candidate is the
+exact overlay of the working tree over the immutable base commit, every
+governed file (the scanners, their tests, the security checker, the design
+documents, the package and lock files) is fingerprinted, and the predecessor
+tree is reconstructed byte-for-byte before the invariants are checked. That
+regime proved that each transformation was exactly the one designed. It is
+also, by construction, a regime in which no governed byte can change without
+re-registering the whole candidate: fixing a scanner defect, extending a test,
+or correcting a sentence of a design document invalidates the lineage until
+`r12c-strict-candidate.cjs` re-registers it, and a re-registration is a
+mutable authority that can register anything. Kept as the live law it is not
+a guarantee but a deferred obstacle: the next engineering change to any
+governed file is either forbidden or laundered through a re-registration.
+The mission rule that a problem may not be replaced by a deferred one applies
+to the governance itself.
+
+### The closure record
+
+`backend/architecture/modular-monolith-closure.json` is a tracked record with
+exactly these members: `schemaVersion` (1), `phase` (`R12C`), `closedOn`,
+`baseCommit` (the immutable base `4d0d3ee9…`), `lineageCommit` (the commit at
+which the complete lineage gates last passed verbatim, `4bae5c6d…`, the Task 7
+closeout), `manifests` (the SHA-256 of the three frozen manifests
+`r12a`/`r12b`/`r12c`), and `lineageGates` (the commands that constitute the
+lineage proof). `backend/scripts/architecture/modular-monolith-closure.cjs`
+reads it and fails closed on any deviation: a member added or removed, a
+manifest whose bytes no longer match, a lineage commit that is not present,
+that does not extend the base commit, or that `HEAD` does not extend. The
+record is read by the R12A, R12B, R12C, R3 and R5 scanners; while it is
+absent the gates run exactly as sections 5–8 specify, so a checkout of any
+commit before the closure still replays its lineage.
+
+### What the gates verify once closed
+
+- **R12C** verifies the live invariants of Tasks 2–5 directly: the Finance
+  legacy presenter is absent and the public projection exports its declared
+  surface; the Messaging lifecycle port files exist and nothing outside
+  `conversations/` and `modules/messaging/` imports
+  `conversations/conversation-lifecycle`; the Marketplace legacy policy is
+  absent, the public policy exports its declared surface, no alternate
+  import path, re-export, dynamic import or copied declaration exists; the
+  dependency ledger is absent, `architecture:imports` is the exact
+  unbaselined command, the baseline generator is retired, and the package
+  script chain still projects to the R12B/R5 security fingerprints.
+- **R12B** verifies that the transition artifacts are gone, the Planning
+  wedding-location contract exists once under its owner public slice with the
+  strict DTO layout, its legacy location is absent and unimported, the
+  successor dependency count is zero, and the qs security prerequisite is
+  measured on the live lock (exactly one qs copy, not below the approved
+  version, and a package graph the Prisma security checker accepts through
+  its own projection chain). The lineage stage's `unapprovedProtected`
+  counter has no closed counterpart and is no longer reported: the package
+  and lock are pinned by the security checker and R5, and the other formerly
+  protected files are ordinary reviewed code.
+- **R12A** verifies the Backoffice/Catalog move layout and export inventory,
+  the absence of the retired exception and of the sibling-exception needles,
+  the guard order and runtime edges, zero successor dependencies, and live
+  ownership.
+- **R3** replays no lineage; the two R12C lifecycle modules and the port
+  injections are declared as exact inventory entries and projected forward,
+  so the strict stage counts them and the source law accepts the port tokens.
+- **R5** treats the R12C predecessor projection as historical; the one
+  Identity import moved by Task 4 and the QA-harness smoke file are
+  normalized from the frozen R12C records.
+- The **security prerequisite** and **R5** still pin `backend/package.json`
+  and the approved `backend/package-lock.json` lineage; the strict import
+  command remains unbaselined and unallowanced.
+
+Nothing is baselined, allowed, ignored or excluded by the closure. The three
+manifests are frozen by hash, not consulted for byte replay.
+
+### What remains provable, and where
+
+- At `lineageCommit` the complete lineage gates pass verbatim with no closure
+  record present. The governance-portability suite proves this on every run:
+  it checks the lineage commit out in its clone and runs the architecture
+  aggregate and the security prerequisite there, asserting that R12A/R12B/R12C
+  report `stage=strict` without `(closed)`. The typecheck gate at the lineage
+  commit needs the generated Prisma client, an install-time step the clone
+  does not perform; it is verified in clean-room checkouts.
+- Tests that exercise lineage-only laws (predecessor reconstruction, overlay
+  inventory, governed-fingerprint drift, documentation mirrors) are skipped
+  in closed mode with the reason printed in the test output; none is deleted
+  or weakened, and every one runs again at any commit before the closure.
+- The closure cannot be moved to hide a change: a lineage commit that already
+  contains the closure record fails the lineage proof, a lineage commit whose
+  gates fail fails it, and a manifest edited after closure fails every
+  closed gate.
+
+### Governance after closure
+
+Governed files are ordinary reviewed code from the closure onwards: the
+scanners, tests, security checker and design documents change through
+regular commits, guarded by their test suites and by the live invariants
+above, not by byte fingerprints. The strict-candidate tool remains only for
+reproducing the historical registration at commits before the closure.

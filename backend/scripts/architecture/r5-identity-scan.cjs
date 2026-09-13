@@ -570,9 +570,42 @@ function normalizedTextHash(text) {
   return crypto.createHash('sha256').update(text.replace(/\r\n/gu, '\n')).digest('hex');
 }
 
+// Closed R12C successor: the approved R12C stage records reconstruct, from a
+// still-identical live file, the exact bytes R5 pinned for a QA harness
+// script that R12C later edited (the Task 3 lifecycle-port double). Any other
+// change to such a script is R5 drift and needs a new R5 correction.
+function r12cClosedQaHarnessReader(repositoryRoot) {
+  const relative = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
+  if (!inspectExistingPath(repositoryRoot, relative, 'file').exists) return undefined;
+  if (!require('./modular-monolith-closure.cjs').readClosure(repositoryRoot)) return undefined;
+  const r12c = require('./r12c-zero-cross-context-dependencies-scan.cjs');
+  const manifest = r12c.validateR12cManifest(JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, ...relative.split('/')),
+    'utf8',
+  )));
+  const records = new Map([
+    ...manifest.messagingLifecycleCandidate.records,
+    ...manifest.marketplacePublicCandidate.records,
+  ].map((record) => [record.path, record]));
+  return (candidatePath) => {
+    const bytes = fs.readFileSync(path.join(repositoryRoot, ...candidatePath.split('/')));
+    const record = records.get(candidatePath);
+    if (!record) return bytes;
+    try {
+      const entry = r12c.reconstructCandidateRecord(bytes, record);
+      return entry === null ? bytes : entry;
+    } catch {
+      throw new Error('R5 QA harness correction drift detected');
+    }
+  };
+}
+
 function r12cPredecessorProjection(repositoryRoot) {
   const relative = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
   if (!inspectExistingPath(repositoryRoot, relative, 'file').exists) return null;
+  // Once R12C is closed the R5 law reads the live tree; the predecessor
+  // projection is history verified at the recorded lineage commit.
+  if (require('./modular-monolith-closure.cjs').readClosure(repositoryRoot)) return null;
   const r12c = require('./r12c-zero-cross-context-dependencies-scan.cjs');
   const manifest = r12c.validateR12cManifest(JSON.parse(fs.readFileSync(
     path.join(repositoryRoot, ...relative.split('/')),
@@ -627,7 +660,8 @@ function verifyR5QaHarnessCorrections(options) {
     throw new Error('R5 QA harness working reader is invalid');
   }
   const readWorkingFile = input.readWorkingFile
-    || r12cPredecessorProjection(input.repositoryRoot)?.readWorkingFile;
+    || r12cPredecessorProjection(input.repositoryRoot)?.readWorkingFile
+    || r12cClosedQaHarnessReader(input.repositoryRoot);
   for (const correction of manifest.qaHarnessCorrections) {
     if (!manifest.allowedChangedPaths.includes(correction.path)) {
       throw new Error('R5 QA harness correction is outside the candidate scope');
@@ -676,6 +710,19 @@ function validateR5ProfileStage(repositoryRoot, r12aManifestValue = undefined, r
     let source = predecessorRead === undefined
       ? fs.readFileSync(absolute, 'utf8')
       : predecessorRead(relative).toString('utf8');
+    if (relative === 'backend/src/modules/identity/internal/profile/contexts.service.ts'
+        && predecessorRead === undefined
+        && require('./modular-monolith-closure.cjs').readClosure(repositoryRoot)) {
+      // Closed R12C successor: Task 4 rewrote exactly this consumer's import
+      // to the Marketplace public provider-access policy. The stage hash is
+      // taken over the source with that single rewrite normalized back.
+      const liveImport = '../../../marketplace/public/provider-access-policy';
+      const historicalImport = '../../../../provider-dashboard/provider-access-policy';
+      if (source.split(liveImport).length !== 2 || source.includes(historicalImport)) {
+        throw new Error('R5 profile stage drift detected');
+      }
+      source = source.replace(liveImport, historicalImport);
+    }
     if (relative === 'backend/src/modules/identity/internal/profile/users.service.ts') {
       const r12aPath = path.join(
         repositoryRoot,

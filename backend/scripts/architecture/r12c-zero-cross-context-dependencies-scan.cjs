@@ -9,6 +9,7 @@ const { types } = require('node:util');
 const vm = require('node:vm');
 const security = require('../security/prisma-config-merge-security.cjs');
 const identity = require('./repository-identity.cjs');
+const closure = require('./modular-monolith-closure.cjs');
 const r12b = require('./r12b-planning-public-contracts-scan.cjs');
 
 const MANIFEST_PATH = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
@@ -412,14 +413,96 @@ function strictPredecessorFiles(read, exists, manifest) {
   };
 }
 
+// Closed mode: the phase closure record marks the last commit at which the
+// complete lineage validation holds. From there on the R12C gate proves the
+// invariants R12C established on the live tree; the byte lineage stays
+// verifiable at that commit and is never replayed over an evolving tree.
+function r12cClosure(repositoryRoot) {
+  return closure.readClosure(repositoryRoot, BASE_COMMIT);
+}
+
+function readLivePackageJson(repositoryRoot) {
+  return JSON.parse(fs.readFileSync(r12b.inspectPlainFile(repositoryRoot, 'backend/package.json'), 'utf8'));
+}
+
+// Strict zero on the live tree: no ledger, the exact unbaselined command, no
+// generator, and the package-script chain still closes.
+function verifyStrictZeroCommand(repositoryRoot) {
+  if (r12b.inspectPlainFile(repositoryRoot, DEPENDENCY_PATH, false)) throw new Error('R12C strict dependency baseline must be absent');
+  const packageJson = readLivePackageJson(repositoryRoot);
+  if (packageJson.scripts['architecture:imports'] !== 'depcruise --config .dependency-cruiser.cjs src') {
+    throw new Error('R12C strict import command changed');
+  }
+  if (Object.prototype.hasOwnProperty.call(packageJson.scripts, 'architecture:imports:baseline')) {
+    throw new Error('R12C strict retired the dependency baseline generator');
+  }
+  security.projectR12CArchitectureScripts(packageJson);
+}
+
 function readR12cStrictDependencyBytes(repositoryRoot) {
   const manifestFile = r12b.inspectPlainFile(repositoryRoot, MANIFEST_PATH);
   const manifest = validateR12cManifest(JSON.parse(fs.readFileSync(manifestFile, 'utf8')));
   if (manifest.stage !== 'strict') throw new Error('R12C missing baseline is permitted only at strict');
+  if (r12cClosure(repositoryRoot)) {
+    verifyStrictZeroCommand(repositoryRoot);
+    return serialize(expectedR12cDependencyRecords([], manifest));
+  }
   // Full byte/status/source/ownership reconstruction must succeed before any
   // historical authority receives the exact zero projection.
   projectR12cWorkingTreeToPredecessor({ repositoryRoot, manifest });
   return serialize(expectedR12cDependencyRecords([], manifest));
+}
+
+function exportedNamesOf(bytes) {
+  return [...bytes.toString('utf8').matchAll(/^export\s+(?:const|type|interface|function)\s+([A-Za-z0-9_]+)/gmu)].map((match) => match[1]);
+}
+
+// Live invariants of the closed phase: each of the three contracts exists
+// once under its owner public slice with its declared exports, its legacy
+// path is gone, the Messaging lifecycle implementation is reached only from
+// the Messaging context, the Marketplace policy has no copy, re-export or
+// alternate path, and strict zero holds without any allowance. Ownership and
+// cross-context imports are enforced by their live gates
+// (architecture:ownership, architecture:imports); this gate reports the live
+// ownership totals it reads.
+function scanR12cClosed(repositoryRoot, manifest) {
+  const checked = validateR12cManifest(manifest);
+  if (checked.stage !== 'strict') throw new Error('R12C closure requires the strict stage');
+  verifyIdentity(repositoryRoot);
+  const exists = (relative) => Boolean(r12b.inspectPlainFile(repositoryRoot, relative, false));
+  const read = (relative) => fs.readFileSync(r12b.inspectPlainFile(repositoryRoot, relative));
+  const finance = checked.financePublicCandidate.move;
+  if (exists(finance.source)) throw new Error('R12C Finance legacy presenter still exists');
+  if (!exists(finance.target)) throw new Error('R12C Finance public target is missing');
+  assert.deepStrictEqual(exportedNamesOf(read(finance.target)), checked.contractFamilies[0].exports);
+  for (const relative of checked.messagingLifecycleCandidate.records.filter((row) => row.kind === 'new-file').map((row) => row.path)) {
+    if (!exists(relative)) throw new Error('R12C Messaging lifecycle public wiring is missing: ' + relative);
+  }
+  const lifecycleImplementation = 'conversations/conversation-lifecycle';
+  for (const file of listTypeScriptFiles(path.join(repositoryRoot, 'backend/src'))) {
+    const relative = path.relative(repositoryRoot, file).replaceAll('\\', '/');
+    if (relative.startsWith('backend/src/conversations/') || relative.startsWith('backend/src/modules/messaging/')) continue;
+    const text = fs.readFileSync(file, 'utf8');
+    if (new RegExp(`from\\s+['"][^'"]*${lifecycleImplementation}['"]`, 'u').test(text)) {
+      throw new Error('R12C Messaging lifecycle implementation is imported outside Messaging: ' + relative);
+    }
+  }
+  const marketplace = checked.marketplacePublicCandidate.move;
+  if (exists(marketplace.source)) throw new Error('R12C Marketplace legacy policy still exists');
+  if (!inspectMarketplacePolicyPath(repositoryRoot, marketplace.target, false)) throw new Error('R12C Marketplace public policy is missing');
+  assert.deepStrictEqual(exportedNamesOf(read(marketplace.target)), checked.contractFamilies[2].exports);
+  const consumers = marketplacePolicyReferences(repositoryRoot, marketplace.target);
+  verifyStrictZeroCommand(repositoryRoot);
+  const ownership = JSON.parse(read(OWNERSHIP_PATH).toString('utf8'));
+  return {
+    ok: true,
+    stage: checked.stage,
+    closed: true,
+    dependencyRecords: 0,
+    marketplaceConsumers: consumers.length,
+    ownershipRecords: ownership.violations.length,
+    ownershipOccurrences: ownership.violations.reduce((sum, row) => sum + row.count, 0),
+  };
 }
 
 function inspectMarketplacePolicyPath(repositoryRoot, relative, required = true) {
@@ -855,6 +938,11 @@ function projectR12cWorkingTreeToPredecessor(input) {
   plainOptions(input, ['repositoryRoot', 'manifest', 'statusRows', 'readWorkingFile', 'pathExists']);
   const { repositoryRoot, manifest, statusRows: suppliedRows, readWorkingFile, pathExists } = input;
   const checked = validateR12cManifest(manifest);
+  // Injected fixture I/O replays a recorded tree and never depends on the live
+  // repository state; a live projection is history once the phase is closed.
+  if (typeof readWorkingFile !== 'function' && r12cClosure(repositoryRoot)) {
+    throw new Error('R12C is closed: the predecessor projection is historical and is verified at the recorded lineage commit');
+  }
   verifyIdentity(repositoryRoot);
   if ((readWorkingFile !== undefined && typeof readWorkingFile !== 'function')
       || (pathExists !== undefined && typeof pathExists !== 'function')
@@ -985,6 +1073,9 @@ function projectR12cWorkingTreeToPredecessor(input) {
 function scanR12cZeroCrossContextDependencies(input) {
   plainOptions(input, ['repositoryRoot', 'manifest']);
   const { repositoryRoot, manifest } = input;
+  if (typeof repositoryRoot === 'string' && path.isAbsolute(repositoryRoot) && r12cClosure(repositoryRoot)) {
+    return scanR12cClosed(repositoryRoot, manifest);
+  }
   const projection = projectR12cWorkingTreeToPredecessor(input);
   const predecessor = JSON.parse(projection.readWorkingFile(R12B_PATH).toString('utf8'));
   r12b.projectR12bWorkingTreeToPredecessor({ repositoryRoot, manifest: predecessor, ...projection });
@@ -1006,7 +1097,7 @@ function runCli() {
     const repositoryRoot = path.resolve(__dirname, '../../..');
     const manifest = JSON.parse(fs.readFileSync(r12b.inspectPlainFile(repositoryRoot, MANIFEST_PATH), 'utf8'));
     const result = scanR12cZeroCrossContextDependencies({ repositoryRoot, manifest });
-    process.stdout.write(`PASS - R12C zero cross-context dependencies: stage=${result.stage}, dependency=${result.dependencyRecords}, ownership=${result.ownershipRecords}/${result.ownershipOccurrences}\n`);
+    process.stdout.write(`PASS - R12C zero cross-context dependencies: stage=${result.stage}${result.closed ? ' (closed)' : ''}, dependency=${result.dependencyRecords}, ownership=${result.ownershipRecords}/${result.ownershipOccurrences}\n`);
     return 0;
   } catch (error) {
     process.stderr.write(process.env.R12C_DEBUG === '1' ? `${error.stack || error}\n` : 'ERROR - R12C zero cross-context dependencies validation failed\n');
@@ -1021,6 +1112,7 @@ module.exports = {
   verifyMarketplacePublicFiles, verifyR12cMarketplacePublicProjection,
   strictPredecessorFiles, readR12cStrictDependencyBytes,
   reconstructCandidateRecord: reconstructMarketplaceCandidateRecord, replayClosureScannerSource,
+  r12cClosure, scanR12cClosed, verifyStrictZeroCommand,
   scanR12bPredecessorProjection, projectR12cFileToPredecessor,
   projectR12cWorkingTreeToPredecessor, scanR12cZeroCrossContextDependencies, runCli,
 };

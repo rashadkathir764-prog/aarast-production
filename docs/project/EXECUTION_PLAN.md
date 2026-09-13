@@ -25,8 +25,11 @@ lifecycle port, Marketplace provider-access policy), retired dependency IDs
 with the full verification gate (`npm test` 1499 with 1498 passing and one
 declared Windows skip, smokes 30/30 plus six phase-2 packages, audits 0/0).
 Governance gates are portable across checkouts and fixtures are isolated from
-the live installation. The next implementation phase is R13 ownership
-retirement only after separate owner authorization.
+the live installation. The byte-lineage governance is closed by the tracked
+closure record (lineage commit `4bae5c6d`; spec section 19), so the gates
+verify live invariants and governed files change through ordinary review. The
+next implementation phase is R13 ownership retirement only after separate
+owner authorization.
 
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 

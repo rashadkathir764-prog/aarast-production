@@ -23,6 +23,18 @@ const backendRoot = path.join(repositoryRoot, 'backend');
 const identity = require(path.join(backendRoot, 'scripts/architecture/repository-identity.cjs'));
 const r12c = require(path.join(backendRoot, 'scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs'));
 const baseCommit: string = r12c.BASE_COMMIT;
+// Closure. While the phase is open the gates replay the byte lineage over the
+// exact overlay; once the closure record exists they prove live invariants and
+// the lineage stays verifiable at the recorded lineage commit (the lineage
+// proof below runs it). Lineage-only probes are skipped in closed mode with
+// that reason; closed-mode probes are skipped while the phase is open.
+const closureModule = require(path.join(backendRoot, 'scripts/architecture/modular-monolith-closure.cjs'));
+const closure: { lineageCommit: string } | null = closureModule.readClosure(repositoryRoot, baseCommit);
+const lineageOnly = closure
+  ? `R12C is closed: this lineage law is proven at lineage commit ${closure.lineageCommit.slice(0, 12)} by the lineage proof in this suite`
+  : false;
+const closedOnly = closure ? false : 'the phase is open: the closure record does not exist yet';
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const gateScripts = {
   r3: ['scripts/architecture/r3-context-scan.cjs', '--check', '--stage', 'strict'],
   r5: ['scripts/architecture/r5-identity-scan.cjs', '--check'],
@@ -61,7 +73,7 @@ function runGate(cwd: string, gate: Gate): { status: number | null; output: stri
     cwd: path.join(cwd, 'backend'),
     encoding: 'utf8',
     windowsHide: true,
-    env: { ...process.env, R12B_DEBUG: '1', R12C_DEBUG: '1' },
+    env: { ...process.env, R12A_DEBUG: '1', R12B_DEBUG: '1', R12C_DEBUG: '1' },
   });
   return { status: result.status, output: `${result.stdout}${result.stderr}` };
 }
@@ -76,6 +88,13 @@ function expectFailure(cwd: string, gate: Gate, reason: RegExp): void {
   const { status, output } = runGate(cwd, gate);
   assert.notEqual(status, 0, `${gate} must fail from ${cwd}`);
   assert.match(output, reason, `${gate} must fail for the expected reason:\n${output}`);
+}
+
+function npmRun(cwd: string, script: string): { status: number | null; output: string } {
+  const result = spawnSync(npmCommand, ['run', '-s', script], {
+    cwd: path.join(cwd, 'backend'), encoding: 'utf8', windowsHide: true, shell: process.platform === 'win32', maxBuffer: 64 * 1024 * 1024,
+  });
+  return { status: result.status, output: `${result.stdout}${result.stderr}` };
 }
 
 describe('governance portability', () => {
@@ -94,7 +113,7 @@ describe('governance portability', () => {
     // the scanners resolve Nest decorators through a real TypeScript program.
     // The clone owns a plain node_modules directory of its own; nothing is
     // linked to this worktree's installation.
-    const install = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline', '--loglevel=error'], {
+    const install = spawnSync(npmCommand, ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline', '--loglevel=error'], {
       cwd: path.join(clone, 'backend'), encoding: 'utf8', windowsHide: true, shell: process.platform === 'win32',
     });
     assert.equal(install.status, 0, `dependency install in the clone failed:\n${install.stdout}${install.stderr}`);
@@ -141,7 +160,7 @@ describe('governance portability', () => {
     for (const gate of Object.keys(gateScripts) as Gate[]) expectPass(clone, gate);
   });
 
-  test('the same content passes when the extension of the base commit is uncommitted', () => {
+  test('the same content passes when the extension of the base commit is uncommitted', { skip: lineageOnly }, () => {
     git(clone, ['reset', '--quiet', '--mixed', baseCommit]);
     try {
       assert.equal(git(clone, ['rev-parse', 'HEAD']), baseCommit);
@@ -162,9 +181,11 @@ describe('governance portability', () => {
         GIT_AUTHOR_NAME: 'portability', GIT_AUTHOR_EMAIL: 'portability@test', GIT_COMMITTER_NAME: 'portability', GIT_COMMITTER_EMAIL: 'portability@test',
       });
       assert.equal(git(clone, ['status', '--porcelain']), '');
-      expectFailure(clone, 'r12c', /does not extend base commit/u);
-      expectFailure(clone, 'r12b', /does not extend base commit/u);
-      expectFailure(clone, 'r12a', /does not extend base commit|validation failed/u);
+      // Open phase: the base commit is not an ancestor. Closed phase: the
+      // closure record's lineage commit is not an ancestor either.
+      expectFailure(clone, 'r12c', /does not extend base commit|does not extend the lineage commit/u);
+      expectFailure(clone, 'r12b', /does not extend base commit|does not extend the lineage commit/u);
+      expectFailure(clone, 'r12a', /does not extend base commit|does not extend the lineage commit|validation failed/u);
     } finally {
       git(clone, ['checkout', '--quiet', 'portability-proof']);
       git(clone, ['branch', '--quiet', '-D', 'forged-history']);
@@ -172,7 +193,7 @@ describe('governance portability', () => {
     }
   });
 
-  test('drift of a governed file, an undeclared file, and an unregistered protected change are still rejected', () => {
+  test('drift of a governed file, an undeclared file, and an unregistered protected change are still rejected', { skip: lineageOnly }, () => {
     const scanner = path.join(clone, 'backend/scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs');
     const original = readFileSync(scanner);
     writeFileSync(scanner, Buffer.concat([original, Buffer.from('\n')]));
@@ -210,6 +231,105 @@ describe('governance portability', () => {
     }
     assert.equal(git(clone, ['status', '--porcelain']), '', 'every probe restored the clone');
     expectPass(clone, 'r12c');
+  });
+
+  test('closed gates accept an unrelated product change and still reject a cross-context import, a recreated ledger, a legacy import, a tampered lock and a tampered closure record', { skip: closedOnly }, () => {
+    const service = path.join(clone, 'backend/src/tasks/tasks.service.ts');
+    const original = readFileSync(service);
+    // A product change nowhere near the governed surfaces needs no registration.
+    writeFileSync(service, Buffer.concat([original, Buffer.from('\n// product change after closure\n')]));
+    try {
+      for (const gate of Object.keys(gateScripts) as Gate[]) expectPass(clone, gate);
+      const imports = npmRun(clone, 'architecture:imports');
+      assert.equal(imports.status, 0, imports.output);
+    } finally {
+      writeFileSync(service, original);
+    }
+    // A cross-context import is a violation of the strict, unbaselined command.
+    writeFileSync(service, Buffer.concat([original, Buffer.from('\nimport { MarketplaceService as _Probe } from "../marketplace/marketplace.service";\n')]));
+    try {
+      const imports = npmRun(clone, 'architecture:imports');
+      assert.notEqual(imports.status, 0, 'the strict import command must reject a cross-context import');
+      assert.match(imports.output, /context-tasks-cross-context/u, imports.output);
+    } finally {
+      writeFileSync(service, original);
+    }
+    // A reintroduced import of a published contract at its legacy location, a
+    // re-export of it, and a copied declaration are each rejected.
+    for (const [probe, reason] of [
+      ['\nimport { providerAccessPolicy as _Probe } from "../provider-dashboard/provider-access-policy";\n', /alternate Marketplace policy import is forbidden: backend\/src\/tasks\/tasks\.service\.ts/u],
+      ['\nexport { providerAccessPolicy } from "../modules/marketplace/public/provider-access-policy";\n', /Marketplace policy re-export is forbidden: backend\/src\/tasks\/tasks\.service\.ts/u],
+      ['\nexport const PROVIDER_PORTAL_ROUTE = "/provider";\n', /Marketplace policy copy is forbidden: backend\/src\/tasks\/tasks\.service\.ts/u],
+    ] as Array<[string, RegExp]>) {
+      writeFileSync(service, Buffer.concat([original, Buffer.from(probe)]));
+      try {
+        expectFailure(clone, 'r12c', reason);
+      } finally {
+        writeFileSync(service, original);
+      }
+    }
+    // A recreated dependency ledger is rejected.
+    const ledger = path.join(clone, 'backend/.dependency-cruiser-known-violations.json');
+    writeFileSync(ledger, '[]\n');
+    try {
+      expectFailure(clone, 'r12c', /strict dependency baseline must be absent/u);
+    } finally {
+      rmSync(ledger, { force: true });
+    }
+    // A lock outside the approved lineage fails the security prerequisite and R5.
+    const lock = path.join(clone, 'backend/package-lock.json');
+    const lockBytes = readFileSync(lock);
+    writeFileSync(lock, Buffer.from(JSON.stringify({ ...JSON.parse(lockBytes.toString('utf8')), probe: true }, null, 2)));
+    try {
+      const security = npmRun(clone, 'security:prisma-config-merge');
+      assert.notEqual(security.status, 0, 'the security prerequisite must reject a lock outside the approved lineage');
+      assert.match(security.output, /FAIL - Prisma config merge security/u, security.output);
+      expectFailure(clone, 'r5', /R5 Identity relocation validation failed/u);
+    } finally {
+      writeFileSync(lock, lockBytes);
+    }
+    // A closure record that no longer matches the frozen manifests fails every closed gate.
+    const record = path.join(clone, closureModule.CLOSURE_PATH);
+    const recordBytes = readFileSync(record);
+    const parsed = JSON.parse(recordBytes.toString('utf8'));
+    writeFileSync(record, JSON.stringify({ ...parsed, manifests: { ...parsed.manifests, r12c: '0'.repeat(64) } }, null, 2));
+    try {
+      expectFailure(clone, 'r12c', /r12c manifest changed after closure/u);
+      expectFailure(clone, 'r12b', /r12c manifest changed after closure/u);
+      expectFailure(clone, 'r12a', /r12c manifest changed after closure|validation failed/u);
+    } finally {
+      writeFileSync(record, recordBytes);
+    }
+    assert.equal(git(clone, ['status', '--porcelain']), '', 'every probe restored the clone');
+    expectPass(clone, 'r12c');
+  });
+
+  test('the recorded lineage commit still passes the complete lineage gates verbatim', { skip: closedOnly }, () => {
+    // History stays provable: the clone is checked out at the lineage commit,
+    // where no closure record exists, and the lineage gates the record names
+    // that need only the installed dependency surface run there unchanged
+    // (the lockfile is identical). The typecheck gate additionally needs the
+    // generated Prisma client, an install-time step this clone does not
+    // perform; it is verified in the clean-room checkout, not here.
+    const lineageCommit = (closure as { lineageCommit: string }).lineageCommit;
+    assert.equal(git(clone, ['diff', '--stat', lineageCommit, 'HEAD', '--', 'backend/package-lock.json']), '', 'the lineage commit shares the lock');
+    git(clone, ['checkout', '--quiet', '--detach', lineageCommit]);
+    try {
+      assert.equal(existsSync(path.join(clone, closureModule.CLOSURE_PATH)), false, 'the lineage commit predates the closure record');
+      assert.equal(git(clone, ['status', '--porcelain']), '');
+      const architecture = npmRun(clone, 'architecture');
+      assert.equal(architecture.status, 0, `lineage architecture aggregate:\n${architecture.output}`);
+      for (const phase of ['R12A', 'R12B', 'R12C']) {
+        assert.match(architecture.output, new RegExp(`^PASS - ${phase} .*stage=strict`, 'mu'), `${phase} lineage gate`);
+        assert.doesNotMatch(architecture.output, new RegExp(`^PASS - ${phase} .*\\(closed\\)`, 'mu'), `${phase} must run in lineage mode`);
+      }
+      const security = npmRun(clone, 'security:prisma-config-merge');
+      assert.equal(security.status, 0, `lineage security prerequisite:\n${security.output}`);
+    } finally {
+      git(clone, ['checkout', '--quiet', 'portability-proof']);
+      git(clone, ['reset', '--quiet', '--hard', snapshot]);
+      git(clone, ['clean', '--quiet', '-fd']);
+    }
   });
 
   test('the historical R12B replay substitutes exactly its pinned environment preamble and nothing else', () => {

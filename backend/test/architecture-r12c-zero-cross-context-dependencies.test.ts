@@ -41,11 +41,67 @@ const load = () => {
   assert.equal(existsSync(path.join(root, scannerPath)), true, 'missing R12C scanner successor authority');
   return { api: require(path.join(root, scannerPath)), manifest: JSON.parse(read(manifestPath).toString('utf8')) };
 };
+// Closure. While R12C was open its gates replayed the byte lineage over the
+// exact working tree; after the closure record exists they prove the live
+// invariants instead, and the lineage machinery is verified at the recorded
+// lineage commit (architecture-governance-portability.test.ts re-runs the
+// lineage gates in a clone checked out there). Tests of that machinery are
+// therefore lineage-only in the live suite.
+const closureModule = require(path.join(root, 'backend/scripts/architecture/modular-monolith-closure.cjs'));
+const closure = closureModule.readClosure(root);
+const lineageOnly = closure
+  ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
+  : false;
+
 const changed = (value: any, mutation: (copy: any) => void) => {
   const copy = structuredClone(value);
   mutation(copy);
   return copy;
 };
+
+test('R12C closure record binds the phase, the frozen manifests and real history, and fails closed', { skip: closure ? false : 'the phase is open; the closure record does not exist yet' }, () => {
+  const { api, manifest } = load();
+  assert.equal(closure.phase, 'R12C');
+  assert.equal(closure.baseCommit, api.BASE_COMMIT);
+  assert.match(closure.lineageCommit, /^[0-9a-f]{40}$/u);
+  assert.equal(hash(read(manifestPath)), closure.manifests.r12c);
+  assert.equal(hash(read(r12bPath)), closure.manifests.r12b);
+  assert.ok(closure.lineageGates.some((gate: string) => gate.includes('run architecture')));
+  // Closed mode: the live gate proves the invariants without any lineage replay.
+  const result = api.scanR12cZeroCrossContextDependencies({ repositoryRoot: root, manifest });
+  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 7, ownershipRecords: 385, ownershipOccurrences: 781 });
+  assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
+  assert.throws(() => api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }), /R12C is closed/u);
+  // The record is validated exactly: shape, phase, frozen manifests, history.
+  const scratch = mkdtempSync(path.join(tmpdir(), 'aarast-r12c-closure-'));
+  try {
+    const write = (relative: string, bytes: Buffer | string) => {
+      const target = path.join(scratch, ...relative.split('/'));
+      mkdirSync(path.dirname(target), { recursive: true });
+      writeFileSync(target, bytes);
+    };
+    for (const relative of [manifestPath, r12bPath, 'backend/architecture/r12a-backoffice-catalog-public-contracts.json']) write(relative, read(relative));
+    const record = JSON.parse(read(closureModule.CLOSURE_PATH).toString('utf8'));
+    write(closureModule.CLOSURE_PATH, JSON.stringify(record));
+    // Not a Git repository: the recorded history cannot be proven, so the record is rejected.
+    assert.throws(() => closureModule.readClosure(scratch), /lineage commit is not present/u);
+    for (const [label, mutate, reason] of [
+      ['phase', (copy: any) => { copy.phase = 'R13'; }, /identity is invalid/u],
+      ['extra key', (copy: any) => { copy.extra = true; }, /shape changed/u],
+      ['manifest hash', (copy: any) => { copy.manifests.r12c = '0'.repeat(64); }, /manifest changed after closure/u],
+      ['manifest set', (copy: any) => { delete copy.manifests.r12a; }, /manifest set changed/u],
+      ['commit form', (copy: any) => { copy.lineageCommit = 'HEAD'; }, /full lowercase SHA-1/u],
+      ['no gates', (copy: any) => { copy.lineageGates = []; }, /lineage gates/u],
+    ] as Array<[string, (copy: any) => void, RegExp]>) {
+      write(closureModule.CLOSURE_PATH, JSON.stringify(changed(record, mutate)));
+      assert.throws(() => closureModule.readClosure(scratch), reason, label);
+    }
+    write(closureModule.CLOSURE_PATH, '{not json');
+    assert.throws(() => closureModule.readClosure(scratch), /not valid JSON/u);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
 const fixture = () => {
   const { api, manifest } = load();
   // The overlay is measured against the immutable base commit, never against
@@ -116,10 +172,12 @@ test('R12C binds exactly three approved contract families, consumer inventories 
     const livePath = family.owner === 'finance' || family.owner === 'marketplace'
       ? family.target
       : family.source;
-    const sourceBytes = family.owner === 'messaging'
-      ? api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }).readWorkingFile(livePath)
-      : read(livePath);
-    assert.equal(hash(sourceBytes), family.sourceSha256);
+    // The Messaging source hash is the design-entry hash of the private
+    // implementation, which Task 3 then edited; while R12C is open it is
+    // re-proven through the predecessor projection, after closure it is
+    // history and the live wiring is proven by the Task 3 behavior tests.
+    if (family.owner !== 'messaging') assert.equal(hash(read(livePath)), family.sourceSha256);
+    else if (!closure) assert.equal(hash(api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }).readWorkingFile(livePath)), family.sourceSha256);
     for (const consumer of family.consumers) assert.equal(existsSync(path.join(root, consumer)), true, consumer);
     for (const behavior of family.behaviorTests) assert.equal(existsSync(path.join(root, behavior)), true, behavior);
     if (family.owner !== 'messaging') assert.equal(family.targetSha256, family.sourceSha256);
@@ -158,7 +216,7 @@ test('R12C rejects forged predecessor hash, receipts, documentation and entry pr
   );
 });
 
-test('R12C stage and strict records use the compact reversible encodings and reconstruct their exact entries', () => {
+test('R12C stage and strict records use the compact reversible encodings and reconstruct their exact entries', { skip: lineageOnly }, () => {
   const { api, manifest } = load();
   // A single whole-span splice carried every unchanged byte between the first
   // and last edit twice; the approved Task 3/4 records were re-encoded
@@ -233,7 +291,7 @@ test('R12C ownership raw bytes and 385/781 counts are exact and immutable', () =
   assert.throws(() => api.validateR12cManifest(changed(manifest, (copy) => { copy.ownership.records--; })));
 });
 
-test('R12C successor reconstructs activated R12B bytes and preserves its full historical projection', () => {
+test('R12C successor reconstructs activated R12B bytes and preserves its full historical projection', { skip: lineageOnly }, () => {
   const item = fixture();
   const projected = item.api.projectR12cWorkingTreeToPredecessor(item.input);
   assert.deepEqual(projected.statusRows, item.manifest.predecessor.overlayLedger.map(({ sha256, ...row }: any) => row));
@@ -259,7 +317,7 @@ test('R12C successor reconstructs activated R12B bytes and preserves its full hi
   assert.equal(JSON.parse(projected.readWorkingFile(dependencyPath).toString('utf8')).length, 9);
 });
 
-test('R12C projected full R12B scan retains source-layout ownership security and receipts', () => {
+test('R12C projected full R12B scan retains source-layout ownership security and receipts', { skip: lineageOnly }, () => {
   const item = fixture();
   const projected = item.api.projectR12cWorkingTreeToPredecessor({
     repositoryRoot: root,
@@ -306,7 +364,7 @@ test('R12C projected full R12B scan retains source-layout ownership security and
   );
 });
 
-test('R12C rejects governed-byte drift, status drift, forged inverse and any undeclared planning path', () => {
+test('R12C rejects governed-byte drift, status drift, forged inverse and any undeclared planning path', { skip: lineageOnly }, () => {
   const item = fixture();
   for (const contract of item.manifest.governedFiles) {
     const original = item.files.get(contract.path)!;
@@ -332,7 +390,7 @@ test('R12C rejects governed-byte drift, status drift, forged inverse and any und
   item.files.set(r12bPath, rawPredecessor);
 });
 
-test('R12C active stage rejects premature later contract files and changed target-source hashes', () => {
+test('R12C active stage rejects premature later contract files and changed target-source hashes', { skip: lineageOnly }, () => {
   const item = fixture();
   for (const relative of item.manifest.futurePaths.filter((relative: string) => relative !== item.manifest.financePublicCandidate.move.target && !item.manifest.messagingLifecycleCandidate.records.some((record: any) => record.kind === 'new-file' && record.path === relative))) {
     item.files.set(relative, Buffer.from('premature'));
@@ -351,7 +409,7 @@ test('R12C active stage rejects premature later contract files and changed targe
   ]);
 });
 
-test('R12C Finance projection publishes one byte-identical public presenter and retires only IDs 10 and 13', () => {
+test('R12C Finance projection publishes one byte-identical public presenter and retires only IDs 10 and 13', { skip: lineageOnly }, () => {
   const { api, manifest } = load();
   const result = api.verifyR12cFinanceProjection({ repositoryRoot: root, manifest });
   assert.deepEqual(result, {
@@ -375,7 +433,7 @@ test('R12C Finance projection publishes one byte-identical public presenter and 
 test('R12C CLI accepts only --check and reports strict/dependency0/ownership385/781', () => {
   load();
   const output = execFileSync(process.execPath, [path.join(root, scannerPath), '--check'], { cwd: root, encoding: 'utf8' });
-  assert.match(output, /stage=strict, dependency=0, ownership=385\/781/u);
+  assert.match(output, closure ? /stage=strict \(closed\), dependency=0, ownership=385\/781/u : /stage=strict, dependency=0, ownership=385\/781/u);
   assert.throws(() => execFileSync(process.execPath, [path.join(root, scannerPath), '--unknown'], { cwd: root, stdio: 'pipe' }));
 });
 
@@ -489,7 +547,7 @@ test('R12C Task 3 lifecycle consumers require one port and keep exact tx with no
   }
 });
 
-test('R12C Task 3 lifecycle projection retires exactly five rows and rejects any unregistered source drift', () => {
+test('R12C Task 3 lifecycle projection retires exactly five rows and rejects any unregistered source drift', { skip: lineageOnly }, () => {
   requireLifecycle();
   const item = fixture();
   assert.equal(item.manifest.stage, 'strict');
@@ -552,7 +610,7 @@ function task4FilesystemFixture(api: any, manifest: any) {
   };
 }
 
-test('R12C Task 4 publishes one byte-identical Marketplace provider policy and retires IDs 19/20', () => {
+test('R12C Task 4 publishes one byte-identical Marketplace provider policy and retires IDs 19/20', { skip: lineageOnly }, () => {
   const { api, manifest } = load();
   assert.equal(manifest.stage, 'strict');
   assert.equal(existsSync(path.join(root, marketplacePolicyLegacyPath)), false);
@@ -617,7 +675,7 @@ test('R12C Task 4 rewrites exactly seven consumers and removes only the exact li
   assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
 });
 
-test('R12C Task 4 scanner rejects policy copies, re-exports, alternate paths, unlisted consumers, and byte drift', () => {
+test('R12C Task 4 scanner rejects policy copies, re-exports, alternate paths, unlisted consumers, and byte drift', { skip: lineageOnly }, () => {
   const { api, manifest } = load();
   assert.equal(typeof api.verifyMarketplacePublicFiles, 'function');
   const strictHistoricalPath = 'backend/scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs';
@@ -700,7 +758,7 @@ test('R12C Task 4 scanner rejects policy copies, re-exports, alternate paths, un
   }
 });
 
-test('R12C Task 4 exact public target must be a plain file, never a directory or Windows reparse point', () => {
+test('R12C Task 4 exact public target must be a plain file, never a directory or Windows reparse point', { skip: lineageOnly }, () => {
   const { api, manifest } = load();
   assert.equal(typeof api.verifyMarketplacePublicFiles, 'function');
   const directory = task4FilesystemFixture(api, manifest);

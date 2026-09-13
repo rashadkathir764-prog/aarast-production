@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "phase": "R12C",
+  "closedOn": "2026-09-13",
+  "baseCommit": "4d0d3ee91fb32d0432aa3bd69fe018d9a5a323b1",
+  "lineageCommit": "4bae5c6d1948ee000d5013a02dd9c10599b02955",
+  "manifests": {
+    "r12a": "b2904ef15dd104da8cc27315d89880b75042a6175df3a756897b0b45e4a269fd",
+    "r12b": "1bf0c2d00886f1ec442187f2719c4d604b0ebcc57a3ada56d97006015c029845",
+    "r12c": "2d3c8e830b522d668e76fd7110857e84e2fa563041c71f604290827ed64fb06b"
+  },
+  "lineageGates": [
+    "npm --prefix backend run architecture",
+    "npm --prefix backend run check",
+    "npm --prefix backend run security:prisma-config-merge",
+    "node --test -r ts-node/register backend/test/architecture-r12a-backoffice-catalog-public-contracts.test.ts backend/test/architecture-r12b-planning-public-contracts.test.ts backend/test/architecture-r12b-documentation-transition.test.ts backend/test/architecture-r12c-zero-cross-context-dependencies.test.ts backend/test/architecture-governance-portability.test.ts"
+  ]
+}

@@ -24,6 +24,15 @@ const runnerPath = path.join(backendRoot, 'scripts', 'architecture', 'r12b-docum
 const manifestPath = path.join(backendRoot, 'architecture', 'r12b-planning-public-contracts.json');
 const manifestRelative = 'backend/architecture/r12b-planning-public-contracts.json';
 const packagePaths = ['backend/package.json', 'admin-web/package.json'];
+// Closure. The generated-catalog mirrors reproduce the R12B candidate catalog
+// from the R12B-era package commands; after the R12C closure that predecessor
+// package is history verified at the recorded lineage commit by
+// architecture-governance-portability.test.ts, and the live catalog is
+// verified by `node scripts/docs-sync.mjs --check`.
+const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot);
+const lineageOnly = closure
+  ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
+  : false;
 
 function r12bEraBackendPackage(): Buffer {
   const successorManifest = path.join(backendRoot, 'architecture', 'r12c-zero-cross-context-dependencies.json');
@@ -390,7 +399,7 @@ test('R12B candidate preparation enforces generated scripts and narrative hash r
   }
 });
 
-test('R12B generated scripts are canonical and byte-identical in both outside-repository mirrors', () => {
+test('R12B generated scripts are canonical and byte-identical in both outside-repository mirrors', { skip: lineageOnly }, () => {
   const candidateRoot = mkdtempSync(path.join(os.tmpdir(), 'aarast-r12b-docs-sync-candidate-'));
   const activatedRoot = mkdtempSync(path.join(os.tmpdir(), 'aarast-r12b-docs-sync-activated-'));
   try {

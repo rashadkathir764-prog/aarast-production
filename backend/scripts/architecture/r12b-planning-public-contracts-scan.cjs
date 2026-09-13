@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const prismaSecurity = require('../security/prisma-config-merge-security.cjs');
 const identity = require('./repository-identity.cjs');
+const closure = require('./modular-monolith-closure.cjs');
 
 const MANIFEST_PATH = 'backend/architecture/r12b-planning-public-contracts.json';
 const R12A_MANIFEST_PATH = 'backend/architecture/r12a-backoffice-catalog-public-contracts.json';
@@ -948,6 +949,9 @@ function applyR12bHunkTransform({ bytes, inverse, direction }) {
 function projectR12bWorkingTreeToPredecessor({ repositoryRoot, manifest, statusRows: suppliedStatusRows, readWorkingFile, pathExists } = {}) {
   if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12B repository root must be absolute');
   const checked = validateR12bManifest(manifest);
+  if (typeof readWorkingFile !== 'function' && closure.readClosure(repositoryRoot, checked.repository.baseCommit)) {
+    throw new Error('R12B is closed: the predecessor projection is historical and is verified at the recorded lineage commit');
+  }
   validateR12bDocumentationTransitions(checked);
   const successorPath = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
   // Injected no-successor fixtures never consult the live successor. A present
@@ -1238,6 +1242,78 @@ function assertNoTransitionArtifacts(repositoryRoot) {
   }
 }
 
+function versionAtLeast(live, approved) {
+  const parse = (value) => {
+    const match = /^(\d+)\.(\d+)\.(\d+)$/u.exec(String(value));
+    if (!match) throw new Error('R12B closed qs version is not a release version: ' + value);
+    return match.slice(1).map(Number);
+  };
+  const a = parse(live);
+  const b = parse(approved);
+  for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] > b[index];
+  return true;
+}
+
+// Closed security prerequisite: the approved qs remediation cannot regress.
+// Exactly one qs copy at or above the approved version, and the live package
+// graph passes the Prisma security checker through the same projection chain
+// its CLI applies (which also pins the lock to the approved lineage).
+function verifyR12bClosedSecurityPrerequisite(root, checked) {
+  const receipt = validateApprovedSecurityPrerequisiteContract(checked.approvedSecurityPrerequisite);
+  const packageLock = JSON.parse(fs.readFileSync(inspectPlainFile(root, receipt.path), 'utf8'));
+  const packages = plainObject(packageLock.packages, 'R12B closed lock packages');
+  const qsPaths = Object.keys(packages).filter(
+    (packagePath) => packagePath === 'node_modules/qs' || packagePath.endsWith('/node_modules/qs'),
+  );
+  if (JSON.stringify(qsPaths) !== JSON.stringify([receipt.package.path])) throw new Error('R12B closed qs copy count changed');
+  const live = plainObject(packages[receipt.package.path], 'R12B closed qs package').version;
+  if (!versionAtLeast(live, receipt.package.version)) throw new Error('R12B closed qs version regressed below the approved remediation');
+  const packageJson = JSON.parse(fs.readFileSync(inspectPlainFile(root, 'backend/package.json'), 'utf8'));
+  prismaSecurity.validatePackageGraph(prismaSecurity.projectR12BArchitectureScripts(packageJson), packageLock);
+  return 1;
+}
+
+// Closed successor: after the R12C closure the R12B gate proves the live
+// invariants R12B established (one Planning public location, no legacy
+// consumer, Onboarding-owned DTO re-expressions in parity, the qs security
+// prerequisite not regressed, strict successor zero) instead of replaying the
+// byte lineage; the lineage is verified at the recorded lineage commit. The
+// protected-surface count of the lineage stage has no closed counterpart: the
+// package and lock are pinned by the security checker and R5, and every other
+// governed file is ordinary reviewed code.
+function scanR12bClosed(root, checked) {
+  assertNoTransitionArtifacts(root);
+  validateR12bDocumentationTransitions(checked);
+  if (checked.stage !== 'strict' || checked.documentationStage !== 'activated') throw new Error('R12B closure requires the activated strict stage');
+  if (inspectPlainFile(root, checked.locationMove.from, false)) throw new Error('R12B location legacy and target coexist');
+  if (!inspectPlainFile(root, checked.locationMove.to, false)) throw new Error('R12B location target is missing');
+  const legacyModule = 'wedding-plans/wedding-location';
+  for (const scope of ['backend/src', 'backend/test']) {
+    for (const relative of walkTypeScriptFiles(root, scope)) {
+      const source = fs.readFileSync(inspectPlainFile(root, relative), 'utf8');
+      const modules = [...source.matchAll(/(?:from\s*|import\s*\()(['"])([^'"]*wedding-location)\1/gu)].map((match) => match[2]);
+      if (modules.some((module) => module.includes(legacyModule))) throw new Error(`R12B legacy location consumer remains: ${relative}`);
+    }
+  }
+  verifyR12bStrictDtoLayout({ repositoryRoot: root, manifest: checked });
+  const r12a = require(R12A_SCANNER_PATH);
+  const dependency = JSON.parse(r12a.readR12aSuccessorDependencyBytes(root).toString('utf8'));
+  if (!Array.isArray(dependency) || dependency.length !== 0) throw new Error('R12B closed successor dependency must be zero');
+  const approvedSecurityPrerequisite = verifyR12bClosedSecurityPrerequisite(root, checked);
+  const ownership = JSON.parse(fs.readFileSync(inspectPlainFile(root, OWNERSHIP_PATH), 'utf8'));
+  return deepFreeze({
+    ok: true,
+    stage: checked.stage,
+    closed: true,
+    documentationStage: checked.documentationStage,
+    receipts: checked.documentationTransitions.length,
+    dependencyRecords: 0,
+    ownershipRecords: ownership.violations.length,
+    ownershipOccurrences: ownership.violations.reduce((sum, item) => sum + item.count, 0),
+    approvedSecurityPrerequisite,
+  });
+}
+
 function scanR12bPlanningPublicContracts({ repositoryRoot, manifest, readImmutableFile } = {}) {
   if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw new Error('R12B repository root must be absolute');
   const checked = validateR12bManifest(manifest);
@@ -1245,6 +1321,7 @@ function scanR12bPlanningPublicContracts({ repositoryRoot, manifest, readImmutab
   // commit. `repository.rootName` and `repository.branch` record where the
   // composite entry was captured; they are provenance, not a constraint.
   const root = identity.verifyRepositoryIdentity(repositoryRoot, checked.repository.baseCommit);
+  if (closure.readClosure(root, checked.repository.baseCommit)) return scanR12bClosed(root, checked);
   assertNoTransitionArtifacts(root);
 
   const r12aManifestFile = inspectPlainFile(root, R12A_MANIFEST_PATH);
@@ -1328,7 +1405,7 @@ function runCli() {
     const manifestFile = inspectPlainFile(repositoryRoot, MANIFEST_PATH);
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
     const result = scanR12bPlanningPublicContracts({ repositoryRoot, manifest });
-    process.stdout.write(`PASS - R12B Planning public contracts: stage=${result.stage}, dependency=${result.dependencyRecords}, documentation=${result.documentationStage}, receipts=${result.receipts}, ownership=${result.ownershipRecords}/${result.ownershipOccurrences}, approvedSecurityPrerequisite=${result.approvedSecurityPrerequisite}, unapprovedProtected=${result.unapprovedProtected}\n`);
+    process.stdout.write(`PASS - R12B Planning public contracts: stage=${result.stage}${result.closed ? ' (closed)' : ''}, dependency=${result.dependencyRecords}, documentation=${result.documentationStage}, receipts=${result.receipts}, ownership=${result.ownershipRecords}/${result.ownershipOccurrences}, approvedSecurityPrerequisite=${result.approvedSecurityPrerequisite}${result.closed ? '' : `, unapprovedProtected=${result.unapprovedProtected}`}\n`);
     return 0;
   } catch (error) {
     if (process.env.R12B_DEBUG === '1') process.stderr.write(`${error.stack || error}\n`);
@@ -1353,6 +1430,9 @@ module.exports = {
   runCli,
   applyR12bHunkTransform,
   verifyApprovedSecurityPrerequisite,
+  verifyR12bClosedSecurityPrerequisite,
+  versionAtLeast,
+  scanR12bClosed,
 };
 
 if (require.main === module) process.exitCode = runCli();

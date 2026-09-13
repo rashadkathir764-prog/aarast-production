@@ -31,6 +31,11 @@ const r8ManifestPath = path.join(
 );
 const scannerPath = path.join(backendRoot, 'scripts', 'architecture', 'r3-context-scan.cjs');
 const temporaryRoots: string[] = [];
+// The R3 manifest froze 53 legacy modules. Once R12C is closed the live tree
+// also carries the two Messaging lifecycle modules R12C introduced (internal
+// value provider and public port alias), which R3 projects forward.
+const r12cClosed = Boolean(require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repoRoot));
+const liveLegacyModules = 53 + (r12cClosed ? 2 : 0);
 // Full-source fixtures resolve the Nest closure through an isolated copy; the
 // real installation is fingerprinted before the first fixture and after the last.
 const sentinelPackages = ['@nestjs/common', '@nestjs/core', '@nestjs/jwt', '@nestjs/schedule', '@nestjs/throttler'];
@@ -332,6 +337,25 @@ function fullSourceFixture(replacements: Array<{
     'architecture',
     'r12c-zero-cross-context-dependencies.json',
   ), 'utf8'));
+  // Once R12C is closed the R3 law applies to the live tree with the R12C
+  // forward projection: fixtures double the live sources and pass the closed
+  // R12C manifest explicitly (a fixture root is not a Git repository).
+  const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs'));
+  if (closure.readClosure(repoRoot)) {
+    for (const replacement of replacements) {
+      const target = path.join(fixtureBackend, 'src', replacement.relativePath);
+      const current = readFileSync(target, 'utf8');
+      assert.ok(current.includes(replacement.before), `${replacement.relativePath}: fixture source`);
+      writeFileSync(target, current.replace(replacement.before, replacement.after), 'utf8');
+    }
+    return {
+      repoRoot: root,
+      backendRoot: fixtureBackend,
+      manifestPath,
+      stage: 'strict',
+      r12cManifest,
+    };
+  }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const r12c = require(path.join(
     backendRoot,
@@ -587,7 +611,7 @@ test('the live TypeScript inventory equals the canonical strict manifest', () =>
   assert.deepEqual(result.diagnostics, []);
   assert.deepEqual(result.counts, {
     contexts: 13,
-    legacyModules: 53,
+    legacyModules: liveLegacyModules,
     crossContextInjections: 0,
     compositionDependencies: 0,
     initialDuplicateProviders: 3,
@@ -628,7 +652,7 @@ test('R6 Task 4 records the final Identity delivery modules and Collaboration pu
     stage: 'strict',
   });
   assert.deepEqual(result.diagnostics, []);
-  assert.equal(result.counts.legacyModules, 53);
+  assert.equal(result.counts.legacyModules, liveLegacyModules);
 
   const duplicate = fullSourceFixture([{
     relativePath:

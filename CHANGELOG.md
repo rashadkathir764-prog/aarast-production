@@ -35,6 +35,14 @@ claimed.
   Task 6 passed focused `133/133`, full Backend `1499` with `1498` passing and
   one declared Windows skip, aggregate smokes `30/30`, six phase-2
   concurrency smokes, architecture/check/build/security at zero.
+- Closed the byte-lineage governance after Task 7 (spec section 19): added
+  the tracked closure record `backend/architecture/modular-monolith-closure.json`
+  (phase, base commit, lineage commit `4bae5c6d`, frozen manifest hashes,
+  lineage gates) and its reader; R12A/R12B/R12C, R3 and R5 verify live
+  invariants once it exists (`stage=strict (closed)`) and fail closed on any
+  deviation of the record, manifests or ancestry; lineage-only tests skip
+  with a printed reason and the governance-portability suite re-runs the
+  lineage gates at the lineage commit. Nothing is baselined or ignored.
 - No Product, API, schema, migration, Mobile, Admin Web, deployment, or
   release behavior changed.
 

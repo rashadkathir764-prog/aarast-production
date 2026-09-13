@@ -36,6 +36,15 @@ prerequisite. Task 6 passed focused `133/133`, full Backend `1499` with
 phase-2 concurrency smokes, and both audits at zero. See
 `docs/superpowers/reports/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-report.md`.
 
+The byte-lineage governance is closed (spec section 19). The tracked record
+`backend/architecture/modular-monolith-closure.json` freezes the R12A/R12B/R12C
+manifests by hash and names the lineage commit `4bae5c6d` at which the
+complete lineage gates last passed; the scanners read it and verify live
+invariants from then on (`stage=strict (closed)`), failing closed on any
+deviation of the record, the manifests or the ancestry. The
+governance-portability suite re-runs the lineage gates at the lineage commit
+on every run. Governed files are ordinary reviewed code after the closure.
+
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
 R12B is complete locally.

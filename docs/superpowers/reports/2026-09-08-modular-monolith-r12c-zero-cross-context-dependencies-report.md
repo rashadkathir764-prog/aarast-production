@@ -88,8 +88,33 @@ not represented as independent review.
   only dependency change is the registered security prerequisite.
 - Nothing left this machine: commits exist only on the local recovery branch.
 
-## 7. Next
+## 7. Closure of the byte-lineage regime (2026-09-13)
 
-With R12C closed, the byte-lineage governance that froze the whole working
-tree during the phase is converted to live architecture invariants so product
-work can proceed (closeout governance commit, recorded in the spec).
+The byte-lineage governance that froze the whole working tree during the
+phase is converted to live architecture invariants (spec section 19). The
+closure record `backend/architecture/modular-monolith-closure.json` binds
+phase, base commit, the lineage commit `4bae5c6d` (Task 7 closeout) and the
+SHA-256 of the three frozen manifests; the R12A/R12B/R12C/R3/R5 scanners read
+it and fail closed on any deviation. Measured after the conversion, from the
+recovery worktree:
+
+- `npm run architecture`: 12 gates pass; R12A/R12B/R12C report
+  `stage=strict (closed)`, dependency=0, ownership=385/781.
+- `npm run security:prisma-config-merge`, `npm run check`: pass.
+- Governance portability suite: 7 pass, 2 lineage-only probes skipped with
+  the printed reason; the suite checks the lineage commit out in its clone
+  and re-runs the architecture aggregate and the security prerequisite there
+  in lineage mode (`stage=strict`, no `(closed)`), and proves in closed mode
+  that an unrelated product change passes every gate while a cross-context
+  import, a recreated ledger, a legacy contract import, a lock outside the
+  approved lineage and a tampered closure record are each rejected.
+- R12A/R12B/R12C/R12B-documentation suites: every live-invariant test passes;
+  lineage-only tests are skipped with the reason printed, none removed.
+
+Nothing is baselined, allowed or ignored by the closure. Governed files are
+ordinary reviewed code from here on.
+
+## 8. Next
+
+R13–R18 (physical ownership) and product work proceed under the live
+invariants; the lineage stays verifiable at the lineage commit.

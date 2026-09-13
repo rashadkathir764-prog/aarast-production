@@ -25,6 +25,10 @@ provider-access policy passed Tasks 2-6 and the final gate; the final report
 is
 `docs/superpowers/reports/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-report.md`.
 Local completion does not authorize R13 or any external action.
+The byte-lineage governance is closed (spec section 19; closure record
+`backend/architecture/modular-monolith-closure.json`, lineage commit
+`4bae5c6d`); the scanners verify live invariants from then on and governed
+files are ordinary reviewed code.
 
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 

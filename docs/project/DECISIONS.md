@@ -23,6 +23,7 @@ claimed.
 | Isolate architecture fixtures from the live dependency installation with a real, link-free copy of the Nest closure. | Accepted | Junctions from temp fixtures into the live `node_modules` had stubbed out installed packages in the original worktree. |
 | Apply multer 2.3.0 and sharp 0.35.4 as a registered R12C security prerequisite with an approved lock lineage. | Local Completion | Registry advisories published after the R12B audit; fixes are within declared ranges; both audits are zero; R12B keeps validating its own approved lock. |
 | Keep R12C local completion distinct from architecture-target and release completion. | Accepted boundary | Physical-ownership debt 385/781 remains for R13-R18; nothing left this machine. |
+| Close the byte-lineage governance after Task 7 with a tracked closure record (phase, base commit, lineage commit `4bae5c6d`, frozen manifest hashes, lineage gates) and verify live invariants from then on. | Accepted; spec section 19 | The lineage regime forbids any change to a governed byte without a mutable re-registration, which is a deferred obstacle rather than a guarantee; the lineage stays provable at the lineage commit (re-run by the portability suite), nothing is baselined or ignored, and governed files become ordinary reviewed code. |
 
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 

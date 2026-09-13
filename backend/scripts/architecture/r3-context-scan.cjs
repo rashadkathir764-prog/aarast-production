@@ -68,6 +68,101 @@ function projectR12aSourceLaws(value, manifest) {
   return { ...value, diagnostics };
 }
 
+// R12C forward projection (closed successor). R12C introduced one Messaging
+// lifecycle public module (its port bound with useExisting to the internal
+// value provider), the internal module behind it, one import of that public
+// module in the Marketplace internal module, one constructor injection of the
+// port at parameter index 3 in MarketplaceService and ProviderDashboardService,
+// and runtime public edges from the declared consumers to the Finance and
+// Marketplace public contracts. While R12C was open these facts were proven by
+// replaying the R3 law over the reconstructed predecessor; once R12C is closed
+// they are projected forward so the R3 law applies to the live tree.
+const R12C_LIFECYCLE_MODULES = Object.freeze([
+  Object.freeze({
+    path: 'backend/src/modules/messaging/internal/conversation-lifecycle.internal.module.ts',
+    className: 'ConversationLifecycleInternalModule',
+    imports: [],
+    providers: ['{ provide: CONVERSATION_LIFECYCLE_IMPLEMENTATION, useValue: conversationLifecycle }'],
+    exports: ['CONVERSATION_LIFECYCLE_IMPLEMENTATION'],
+    global: false,
+  }),
+  Object.freeze({
+    path: 'backend/src/modules/messaging/public/conversation-lifecycle-public.module.ts',
+    className: 'ConversationLifecyclePublicModule',
+    imports: ['ConversationLifecycleInternalModule'],
+    providers: ['{ provide: CONVERSATION_LIFECYCLE_PORT, useExisting: CONVERSATION_LIFECYCLE_IMPLEMENTATION }'],
+    exports: ['CONVERSATION_LIFECYCLE_PORT'],
+    global: false,
+  }),
+]);
+const R12C_LIFECYCLE_WIRING = Object.freeze({
+  module: 'backend/src/modules/marketplace/internal/marketplace-services.internal.module.ts',
+  imported: 'ConversationLifecyclePublicModule',
+});
+const R12C_LIFECYCLE_PORT_INJECTIONS = Object.freeze(new Map([
+  ['backend/src/marketplace/marketplace.service.ts#MarketplaceService', 3],
+  ['backend/src/provider-dashboard/provider-dashboard.service.ts#ProviderDashboardService', 3],
+]));
+
+function r12cSuccessor(repoRoot) {
+  const relative = 'backend/architecture/r12c-zero-cross-context-dependencies.json';
+  const file = path.join(repoRoot, ...relative.split('/'));
+  if (!fs.existsSync(file)) return null;
+  const closure = require('./modular-monolith-closure.cjs').readClosure(repoRoot);
+  if (!closure) return null;
+  const r12c = require('./r12c-zero-cross-context-dependencies-scan.cjs');
+  const manifest = r12c.validateR12cManifest(JSON.parse(fs.readFileSync(file, 'utf8')));
+  if (manifest.stage !== 'strict') throw new Error('R12C closed projection requires the strict stage');
+  return manifest;
+}
+
+function projectR12cModules(modules, r12cManifest) {
+  if (!r12cManifest) return modules;
+  const wired = modules.filter((module) => module.path === R12C_LIFECYCLE_WIRING.module);
+  if (wired.length !== 1 || wired[0].imports.includes(R12C_LIFECYCLE_WIRING.imported)) {
+    throw new Error('R12C lifecycle wiring projection is invalid');
+  }
+  const projected = modules.map((module) => (module.path === R12C_LIFECYCLE_WIRING.module
+    ? { ...module, imports: [...module.imports, R12C_LIFECYCLE_WIRING.imported].sort() }
+    : module));
+  for (const entry of R12C_LIFECYCLE_MODULES) {
+    if (projected.some((module) => module.path === entry.path)) throw new Error('R12C lifecycle module projection is duplicated');
+    projected.push({ ...entry, imports: [...entry.imports], providers: [...entry.providers], exports: [...entry.exports] });
+  }
+  return projected.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
+}
+
+function projectR12cConstructorUses(uses, r12cManifest) {
+  if (!r12cManifest) return uses;
+  return uses.map((use) => {
+    const insertion = R12C_LIFECYCLE_PORT_INJECTIONS.get(use.consumerClass);
+    return insertion !== undefined && use.parameterIndex >= insertion
+      ? { ...use, parameterIndex: use.parameterIndex + 1 }
+      : use;
+  });
+}
+
+// Public contract tokens declared by the R12C port files and the runtime
+// public edges from declared consumers to the R12C public contracts.
+function r12cSourceLawAllowances(repoRoot, r12cManifest) {
+  const tokens = new Set();
+  const edges = new Set();
+  if (!r12cManifest) return { tokens, edges };
+  for (const family of r12cManifest.contractFamilies) {
+    const targets = family.targets || [family.target];
+    for (const target of targets) {
+      if (target.endsWith('.port.ts')) {
+        const source = fs.readFileSync(path.join(repoRoot, ...target.split('/')), 'utf8');
+        for (const match of source.matchAll(/^export\s+const\s+([A-Z][A-Z0-9_]*)\s*=/gmu)) tokens.add(`${target}#${match[1]}`);
+        continue;
+      }
+      if (target.endsWith('.module.ts')) continue;
+      for (const consumer of family.consumers) edges.add(`${consumer}->${target}`);
+    }
+  }
+  return { tokens, edges };
+}
+
 function sortR12aDecoratorInventory(value) {
   return [...value].sort((left, right) => {
     const leftKey = `${left.source}|${left.symbol}|${left.kind}`;
@@ -1197,6 +1292,7 @@ function scanR3SourceLaws(options) {
   const providerContracts = [...(options.providerContracts || [])];
   const r12aManifest = options.r12aManifest === undefined
     ? null : validateR12aManifest(options.r12aManifest);
+  const r12cAllowances = r12cSourceLawAllowances(repoRoot, options.r12cManifest || null);
   const contractsByToken = new Map(providerContracts.map((contract) => [
     contract.token,
     new Set(contract.implementations),
@@ -1289,10 +1385,12 @@ function scanR3SourceLaws(options) {
             R7_COLLABORATION_RELOCATED_IMPORTS.has(
               `${repositoryPath}->${targetPath}`,
             );
+          const legalR12cRuntimePublicEdge = r12cAllowances.edges.has(`${repositoryPath}->${targetPath}`);
           if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
               && !legalRelocatedPermissionContract
               && !legalR12aRuntimePublicEdge
-              && !legalR7CollaborationRelocatedImport) {
+              && !legalR7CollaborationRelocatedImport
+              && !legalR12cRuntimePublicEdge) {
             addDiagnostic(diagnostics, 'illegal-boundary-import', repositoryPath, sourceFile, statement);
           }
         }
@@ -1489,6 +1587,7 @@ function scanR3SourceLaws(options) {
       const isPublicContractToken = Boolean(identity && (
         contractsByToken.has(identity.name)
         || (!enforceManifestImplementations && identity.name.endsWith('_PORT'))
+        || r12cAllowances.tokens.has(identity.key)
       ));
       if (identity && isPublicContractToken && isDeclaredSymbolToken(identity)
           && classify(identity.declarationPath).context === moduleClass.context
@@ -1723,7 +1822,7 @@ function metadataTexts(call, key, sourceFile) {
   return [...property.initializer.elements].map((item) => item.getText(sourceFile)).sort();
 }
 
-function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initialRetiredEdges, r12aManifest = null) {
+function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initialRetiredEdges, r12aManifest = null, r12cManifest = null) {
   const { program, checker } = createProgram(backendRoot);
   let globals = 0;
   const modules = [];
@@ -1913,7 +2012,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const liveTask2ConstructorUses = allConstructorUses.filter((item) => task2CanonicalPairs.has(
     `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
   )).map(task2ConstructorUseKey).sort();
-  const exactTask2ConstructorUses = TASK2_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const exactTask2ConstructorUses = projectR12cConstructorUses(TASK2_EXACT_CONSTRUCTOR_USES, r12cManifest).map(task2ConstructorUseKey).sort();
   const task2ConstructorInventoryPresent = JSON.stringify(liveTask2ConstructorUses)
     === JSON.stringify(exactTask2ConstructorUses);
   const task3CanonicalPairs = new Set(Object.values(TASK3_CANONICAL_INJECTION_IDENTITIES)
@@ -1921,7 +2020,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const liveTask3ConstructorUses = allConstructorUses.filter((item) => task3CanonicalPairs.has(
     `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
   )).map(task2ConstructorUseKey).sort();
-  const exactTask3ConstructorUses = TASK3_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const exactTask3ConstructorUses = projectR12cConstructorUses(TASK3_EXACT_CONSTRUCTOR_USES, r12cManifest).map(task2ConstructorUseKey).sort();
   const task3ConstructorInventoryPresent = JSON.stringify(liveTask3ConstructorUses)
     === JSON.stringify(exactTask3ConstructorUses);
   const task4CanonicalPairs = new Set(Object.values(TASK4_CANONICAL_INJECTION_IDENTITIES)
@@ -1929,7 +2028,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const liveTask4ConstructorUses = allConstructorUses.filter((item) => task4CanonicalPairs.has(
     `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
   )).map(task2ConstructorUseKey).sort();
-  const exactTask4ConstructorUses = TASK4_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const exactTask4ConstructorUses = projectR12cConstructorUses(TASK4_EXACT_CONSTRUCTOR_USES, r12cManifest).map(task2ConstructorUseKey).sort();
   const task4ConstructorInventoryPresent = JSON.stringify(liveTask4ConstructorUses)
     === JSON.stringify(exactTask4ConstructorUses);
   const task5CanonicalPairs = new Set(Object.values(TASK5_CANONICAL_INJECTION_IDENTITIES)
@@ -1937,7 +2036,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const liveTask5ConstructorUses = allConstructorUses.filter((item) => task5CanonicalPairs.has(
     `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
   )).map(task2ConstructorUseKey).sort();
-  const exactTask5ConstructorUses = TASK5_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const exactTask5ConstructorUses = projectR12cConstructorUses(TASK5_EXACT_CONSTRUCTOR_USES, r12cManifest).map(task2ConstructorUseKey).sort();
   const task5ConstructorInventoryPresent = JSON.stringify(liveTask5ConstructorUses)
     === JSON.stringify(exactTask5ConstructorUses);
   const r6CanonicalPairs = new Set(Object.values(R6_CANONICAL_INJECTION_IDENTITIES)
@@ -1945,7 +2044,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const liveR6ConstructorUses = allConstructorUses.filter((item) => r6CanonicalPairs.has(
     `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
   )).map(task2ConstructorUseKey).sort();
-  const exactR6ConstructorUses = R6_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const exactR6ConstructorUses = projectR12cConstructorUses(R6_EXACT_CONSTRUCTOR_USES, r12cManifest).map(task2ConstructorUseKey).sort();
   const r6ConstructorInventoryPresent = JSON.stringify(liveR6ConstructorUses)
     === JSON.stringify(exactR6ConstructorUses);
   const r4CanonicalPairs = new Set(Object.values(R4_CANONICAL_INJECTION_IDENTITIES)
@@ -1953,7 +2052,7 @@ function collectLiveInventory(repoRoot, backendRoot, contractDefinitions, initia
   const liveR4ConstructorUses = allConstructorUses.filter((item) => r4CanonicalPairs.has(
     `${item.injectionTokenIdentity}|${item.parameterTypeIdentity}`,
   )).map(task2ConstructorUseKey).sort();
-  const exactR4ConstructorUses = R4_EXACT_CONSTRUCTOR_USES.map(task2ConstructorUseKey).sort();
+  const exactR4ConstructorUses = projectR12cConstructorUses(R4_EXACT_CONSTRUCTOR_USES, r12cManifest).map(task2ConstructorUseKey).sort();
   const r4ConstructorInventoryPresent = JSON.stringify(liveR4ConstructorUses)
     === JSON.stringify(exactR4ConstructorUses);
   const retiredEdges = initialRetiredEdges.filter((edge) => {
@@ -2043,7 +2142,11 @@ function scanR12cPredecessorContexts(options, successorManifest) {
 
 function scanR3Contexts(options) {
   const successorPath = path.join(options.repoRoot, 'backend/architecture/r12c-zero-cross-context-dependencies.json');
-  if (fs.existsSync(successorPath)) {
+  // While R12C is open, the live command proves the successor and then
+  // replays the R3 law over the reconstructed predecessor; once R12C is
+  // closed, the R3 law applies to the live tree again.
+  if (fs.existsSync(successorPath)
+      && !require('./modular-monolith-closure.cjs').readClosure(options.repoRoot)) {
     return scanR12cPredecessorContexts(options, JSON.parse(fs.readFileSync(successorPath, 'utf8')));
   }
   const r12aManifest = options.r12aManifest === undefined
@@ -2077,14 +2180,23 @@ function scanR3Contexts(options) {
   const contractDefinitions = manifest.providerContracts.map(({ token, methods, implementations }) => ({
     token, methods, implementations,
   }));
+  // Fixtures pass the closed R12C manifest explicitly (they are not Git
+  // repositories); the live command detects the closure from the tree.
+  const r12cManifest = options.r12cManifest !== undefined
+    ? require('./r12c-zero-cross-context-dependencies-scan.cjs').validateR12cManifest(options.r12cManifest)
+    : r12cSuccessor(options.repoRoot);
   const sourceLawScan = options.sourceLawScan || scanR3SourceLaws;
   const sourceLaws = sourceLawScan({
     repoRoot: options.repoRoot,
     backendRoot: options.backendRoot,
     providerContracts: contractDefinitions,
     r12aManifest,
+    r12cManifest,
   });
-  const projectedHistoricalManifest = projectR12aInventory(manifest, r12aManifest);
+  const projectedHistoricalManifest = projectR12aInventory(
+    { ...manifest, legacyModules: projectR12cModules(manifest.legacyModules, r12cManifest) },
+    r12aManifest,
+  );
   const projectedSourceLaws = projectR12aSourceLaws(sourceLaws, r12aManifest);
   const duplicateDiagnostics = projectedSourceLaws.diagnostics
     .filter((item) => item.kind === 'duplicate-provider' && typeof item.provider === 'string');
@@ -2104,6 +2216,7 @@ function scanR3Contexts(options) {
     contractDefinitions,
     manifest.initialRetiredLegacyProviderEdges,
     r12aManifest,
+    r12cManifest,
   ), r12aManifest);
   const ports = scanPorts({ repoRoot: options.repoRoot, backendRoot: options.backendRoot });
   const exactRemainingDuplicates = manifest.remainingDuplicateProviders.every((provider) => {

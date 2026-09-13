@@ -37,6 +37,14 @@ Reviews for Tasks 5-7 were performed by the implementing agent and are
 recorded as such. Local completion does not authorize R13 or any external
 action.
 
+The byte-lineage governance is closed (spec section 19): the closure record
+`backend/architecture/modular-monolith-closure.json` freezes the three
+manifests by hash and names lineage commit `4bae5c6d`; R12A/R12B/R12C, R3 and
+R5 now verify live invariants (`stage=strict (closed)`), the lineage gates
+are re-run at the lineage commit by the governance-portability suite, and
+governed files are ordinary reviewed code from here on. Nothing is baselined
+or ignored by the closure.
+
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
 R12B is complete locally.

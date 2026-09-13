@@ -90,6 +90,16 @@ const createActivatedR12bReader = (): ((relative: string) => Buffer) => {
     return Buffer.from(bytes);
   };
 };
+// Closure. After the R12C closure record exists the R12B gate proves its live
+// invariants and the byte-lineage machinery (predecessor projection, inverse
+// payloads, documentation states, receipts) is verified at the recorded
+// lineage commit by architecture-governance-portability.test.ts; tests of that
+// machinery are lineage-only in the live suite.
+const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot);
+const lineageOnly = closure
+  ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
+  : false;
+
 const mutate = (manifest: Manifest, change: (value: Manifest) => void): Manifest => {
   const value = structuredClone(manifest);
   change(value);
@@ -446,7 +456,7 @@ const projectFixture = (
   return { files, statusRows };
 };
 
-test('R12B fixture construction projects R12C once per fixture and isolates projected buffers', () => {
+test('R12B fixture construction projects R12C once per fixture and isolates projected buffers', { skip: lineageOnly }, () => {
   const successorScannerPath = path.join(
     backendRoot,
     'scripts',
@@ -518,6 +528,10 @@ test('R12B design authority freezes repository, predecessor, stages, and complet
     'runCli',
     'applyR12bHunkTransform',
     'verifyApprovedSecurityPrerequisite',
+    // Closed-mode surface (spec section 19).
+    'verifyR12bClosedSecurityPrerequisite',
+    'versionAtLeast',
+    'scanR12bClosed',
   ]);
 
   const manifest = api.validateR12bManifest(loadManifest());
@@ -721,20 +735,23 @@ test('R12B strict scan consumes R12A immutable authority and reports exact DTO r
   assert.deepEqual(result, {
     ok: true,
     stage: 'strict',
+    ...(closure ? { closed: true } : {}),
     documentationStage: liveDocumentationState,
     receipts: liveContract.receipts,
     dependencyRecords: 0,
     ownershipRecords: 385,
     ownershipOccurrences: 781,
     approvedSecurityPrerequisite: 1,
-    unapprovedProtected: 0,
+    // The protected-surface count belongs to the lineage stage; closed mode
+    // pins the package and lock through the security checker instead.
+    ...(closure ? {} : { unapprovedProtected: 0 }),
   });
 });
 
 test('R12B CLI is bounded to --check and hides diagnostics by default', () => {
   const output = execFileSync(process.execPath, [scannerPath, '--check'], { cwd: backendRoot, encoding: 'utf8' });
   const liveContract = documentationStageContract[liveDocumentationState];
-  assert.match(output, new RegExp(`stage=strict, dependency=0, documentation=${liveDocumentationState}, receipts=${liveContract.receipts}, ownership=385/781, approvedSecurityPrerequisite=1, unapprovedProtected=0`, 'u'));
+  assert.match(output, new RegExp(`stage=strict${closure ? ' \\(closed\\)' : ''}, dependency=0, documentation=${liveDocumentationState}, receipts=${liveContract.receipts}, ownership=385/781, approvedSecurityPrerequisite=1${closure ? '\\n' : ', unapprovedProtected=0'}`, 'u'));
   assert.throws(() => execFileSync(process.execPath, [scannerPath, '--unknown'], {
     cwd: backendRoot,
     encoding: 'utf8',
@@ -742,7 +759,7 @@ test('R12B CLI is bounded to --check and hides diagnostics by default', () => {
   }), (error: any) => error.status === 2 && /validation failed/u.test(error.stderr) && !/stack|at /u.test(error.stderr));
 });
 
-test('R12B projection executes every inverse payload against live bytes before accepting predecessor hashes', () => {
+test('R12B projection executes every inverse payload against live bytes before accepting predecessor hashes', { skip: lineageOnly }, () => {
   const api = scanner();
   const manifest = loadManifest();
   assert.equal(manifest.r12bPaths.length, 11);
@@ -767,7 +784,7 @@ test('R12B projection executes every inverse payload against live bytes before a
   }
 });
 
-test('R12B rejects a changed file with the wrong registered final hash', () => {
+test('R12B rejects a changed file with the wrong registered final hash', { skip: lineageOnly }, () => {
   const api = scanner();
   const manifest = strictProjection(loadManifest());
   const fixture = projectFixture(manifest);
@@ -861,7 +878,7 @@ test('R12B bounded hunk schema rejects obsolete, partial, malformed, and unregis
   assert.throws(() => api.validateR12bManifest(oldKind), /kind/u);
 });
 
-test('R12B hunk preregistration accepts entry and exact final bytes but rejects tampering', () => {
+test('R12B hunk preregistration accepts entry and exact final bytes but rejects tampering', { skip: lineageOnly }, () => {
   const api = scanner();
   const manifest = strictProjection(loadManifest());
   const fixture = projectFixture(manifest);
@@ -887,7 +904,7 @@ test('R12B hunk preregistration accepts entry and exact final bytes but rejects 
   }), /final.*hash|hash.*final|result|input/u);
 });
 
-test('R12B preregistration validates a registered candidate while its entry bytes remain published', () => {
+test('R12B preregistration validates a registered candidate while its entry bytes remain published', { skip: lineageOnly }, () => {
   const api = scanner();
   const pending = strictProjection(loadManifest());
   const pendingFixture = projectFixture(pending);
@@ -970,7 +987,7 @@ test('R12B replays adjacent deletions and unequal replacement byte lengths in bo
   assert.throws(() => api.applyR12bHunkTransform({ bytes: Buffer.from('é', 'utf8'), inverse: splitUtf8, direction: 'forward' }), /exact UTF-8/u);
 });
 
-test('R12B projection derives and reconstructs entry bytes at all five documentation states', () => {
+test('R12B projection derives and reconstructs entry bytes at all five documentation states', { skip: lineageOnly }, () => {
   const api = scanner();
   const base = loadManifest();
   const states: DocumentationState[] = ['entry', 'candidate-prepared', 'candidate', 'activation-prepared', 'activated'];
@@ -1006,7 +1023,7 @@ test('R12B projection derives and reconstructs entry bytes at all five documenta
   }
 });
 
-test('R12B final report classifier is activated-only, exact, and status-bound', () => {
+test('R12B final report classifier is activated-only, exact, and status-bound', { skip: lineageOnly }, () => {
   const api = scanner();
   const base = loadManifest();
   const createCase = (state: DocumentationState, reportPath = finalReportPath, status = '??', materialize: 'file' | 'directory' | 'symlink' | 'junction' | 'none' = 'file') => {
@@ -1073,7 +1090,7 @@ test('R12B final report classifier is activated-only, exact, and status-bound', 
 
 });
 
-test('R12B final report classifier reaches the plain-file boundary for directories, links, and reparse points', () => {
+test('R12B final report classifier reaches the plain-file boundary for directories, links, and reparse points', { skip: lineageOnly }, () => {
   const api = scanner();
   const base = loadManifest();
   const createCase = (materialize: 'directory' | 'symlink' | 'junction') => {
@@ -1136,7 +1153,7 @@ test('R12B final report classifier reaches the plain-file boundary for directori
   assert.deepEqual(boundaryFailures, []);
 });
 
-test('R12B PRODUCT freshness prerequisite is exact, stage-bound, status-bound, and byte-bound', () => {
+test('R12B PRODUCT freshness prerequisite is exact, stage-bound, status-bound, and byte-bound', { skip: lineageOnly }, () => {
   const api = scanner();
   const base = loadManifest();
   const createCase = (
@@ -1211,7 +1228,7 @@ test('R12B PRODUCT freshness prerequisite is exact, stage-bound, status-bound, a
   }
 });
 
-test('R12B PRODUCT freshness prerequisite reaches the plain-file boundary for missing targets, directories, links, and reparse points', () => {
+test('R12B PRODUCT freshness prerequisite reaches the plain-file boundary for missing targets, directories, links, and reparse points', { skip: lineageOnly }, () => {
   const api = scanner();
   const base = loadManifest();
   const createCase = (materialize: 'missing' | 'directory' | 'symlink' | 'junction') => {
@@ -1264,7 +1281,7 @@ test('R12B PRODUCT freshness prerequisite reaches the plain-file boundary for mi
   assert.deepEqual(boundaryFailures, []);
 });
 
-test('R12B-only path contracts fail on live byte, whitespace, or normalized-self ambiguity drift', () => {
+test('R12B-only path contracts fail on live byte, whitespace, or normalized-self ambiguity drift', { skip: lineageOnly }, () => {
   const api = scanner();
   const manifest = loadManifest();
   const fixture = projectFixture(manifest);
@@ -1324,7 +1341,7 @@ test('R12B-only contracts are exact-key, status-bound, and cover precisely eleve
   ]) assert.throws(() => api.validateR12bManifest(mutate(manifest, change)));
 });
 
-test('R12B admits only the exact qs security prerequisite and rejects every other protected drift', () => {
+test('R12B admits only the exact qs security prerequisite and rejects every other protected drift', { skip: lineageOnly }, () => {
   const api = scanner();
   const manifest = loadManifest();
   const fixture = projectFixture(manifest);
@@ -1383,6 +1400,52 @@ test('R12B admits only the exact qs security prerequisite and rejects every othe
   assert.throws(() => api.projectR12bWorkingTreeToPredecessor(input()), /undeclared|protected/u);
 });
 
+test('R12B closed mode measures the qs security prerequisite on the live lock and rejects regression, duplication and an unapproved lock', () => {
+  // The closed gate reports approvedSecurityPrerequisite=1 only after reading
+  // the live package and lock: one qs copy at or above the approved version,
+  // and a package graph the Prisma security checker accepts. A temporary root
+  // carrying copies of the two files stands in for the repository.
+  const api = scanner();
+  const manifest = loadManifest();
+  const root = mkdtempSync(path.join(require('node:os').tmpdir(), 'aarast-r12b-closed-security-'));
+  const write = (relative: string, bytes: Buffer | string) => {
+    const target = path.join(root, ...relative.split('/'));
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, bytes);
+  };
+  const lockBytes = readFileSync(path.join(repositoryRoot, ...packageLockRelative.split('/')));
+  const lock = JSON.parse(lockBytes.toString('utf8'));
+  try {
+    write('backend/package.json', readFileSync(path.join(backendRoot, 'package.json')));
+    write(packageLockRelative, lockBytes);
+    assert.equal(api.verifyR12bClosedSecurityPrerequisite(root, api.validateR12bManifest(manifest)), 1);
+    const cases: Array<[string, (value: any) => void, RegExp]> = [
+      ['qs regressed below the approved version', (value) => { value.packages['node_modules/qs'].version = '6.15.3'; }, /regressed below the approved remediation/u],
+      ['qs is not a release version', (value) => { value.packages['node_modules/qs'].version = '6.16.0-rc.1'; }, /not a release version/u],
+      ['additional qs copy', (value) => { value.packages['node_modules/nested/node_modules/qs'] = structuredClone(value.packages['node_modules/qs']); }, /qs copy count changed/u],
+      ['lock outside the approved lineage', (value) => { value.probe = true; }, /invalid Prisma config merge security state/u],
+    ];
+    for (const [label, change, reason] of cases) {
+      const changed = structuredClone(lock);
+      change(changed);
+      write(packageLockRelative, `${JSON.stringify(changed, null, 2)}\n`);
+      assert.throws(() => api.verifyR12bClosedSecurityPrerequisite(root, api.validateR12bManifest(manifest)), reason, label);
+    }
+    // A later qs release stays acceptable only together with an approved lock;
+    // the version comparison itself must not be the part that rejects it.
+    const bumped = structuredClone(lock);
+    bumped.packages['node_modules/qs'].version = '6.17.0';
+    write(packageLockRelative, `${JSON.stringify(bumped, null, 2)}\n`);
+    assert.throws(() => api.verifyR12bClosedSecurityPrerequisite(root, api.validateR12bManifest(manifest)), /invalid Prisma config merge security state/u);
+    assert.equal(api.versionAtLeast('6.17.0', '6.16.0'), true);
+    assert.equal(api.versionAtLeast('7.0.0', '6.16.0'), true);
+    assert.equal(api.versionAtLeast('6.16.0', '6.16.0'), true);
+    assert.equal(api.versionAtLeast('6.9.9', '6.16.0'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('R12B documentation transition planning accepts the strict dependency stage', () => {
   const runnerPath = path.join(backendRoot, 'scripts', 'architecture', 'r12b-documentation-transition.cjs');
   const api = require(runnerPath);
@@ -1421,7 +1484,7 @@ test('R12B documentation transition planning accepts the strict dependency stage
   }
 });
 
-test('R12B projection uses injected fixture I/O and executes each declared inverse payload', () => {
+test('R12B projection uses injected fixture I/O and executes each declared inverse payload', { skip: lineageOnly }, () => {
   const api = scanner();
   const manifest = strictProjection(loadManifest());
   const fixture = projectFixture(manifest);

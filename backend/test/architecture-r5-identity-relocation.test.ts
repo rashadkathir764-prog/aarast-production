@@ -1458,6 +1458,37 @@ function r12cPredecessor(): any {
     'architecture',
     'r12c-zero-cross-context-dependencies.json',
   ), 'utf8')));
+  const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs'));
+  if (closure.readClosure(repositoryRoot())) {
+    // R12C is closed: fixtures double the live tree in the form R5's law
+    // reads it — the Task 4 policy import normalized back for
+    // contexts.service.ts and the approved Task 3 QA-harness records
+    // reconstructed — exactly the two R12C projections the live R5 scan applies.
+    const records = new Map([
+      ...manifest.messagingLifecycleCandidate.records,
+      ...manifest.marketplacePublicCandidate.records,
+    ].map((record: any) => [record.path, record]));
+    cachedR12cPredecessor = {
+      readWorkingFile(relative: string): Buffer {
+        const absolute = path.join(repositoryRoot(), ...relative.split('/'));
+        const bytes = readFileSync(absolute);
+        if (relative === 'backend/src/modules/identity/internal/profile/contexts.service.ts') {
+          return Buffer.from(bytes.toString('utf8').replace(
+            '../../../marketplace/public/provider-access-policy',
+            '../../../../provider-dashboard/provider-access-policy',
+          ), 'utf8');
+        }
+        const record = records.get(relative);
+        if (record && relative.startsWith('backend/scripts/smoke/')) {
+          const entry = scanner.reconstructCandidateRecord(bytes, record);
+          return entry === null ? bytes : entry;
+        }
+        return bytes;
+      },
+      pathExists: (relative: string) => existsSync(path.join(repositoryRoot(), ...relative.split('/'))),
+    };
+    return cachedR12cPredecessor;
+  }
   cachedR12cPredecessor = scanner.projectR12cWorkingTreeToPredecessor({
     repositoryRoot: repositoryRoot(),
     manifest,

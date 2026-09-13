@@ -29,6 +29,32 @@ test('R12C Task 5 strict import command preserves the pinned package graph witho
     assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(packageJson), packageLock));
   }
 });
+test('the package fingerprint covers the dependency surface, so ordinary npm scripts never fail the checkpoint', () => {
+  // The checkpoint guards the deepmerge-ts / Prisma dependency graph. A new
+  // or edited npm script that is not part of the architecture chain (the
+  // chain has its own exact projections) is not a security event; a
+  // dependency, override or engine change still is.
+  const checker = require(checkerPath);
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  assert.doesNotThrow(() => checker.validatePackageGraph(checker.projectR12BArchitectureScripts(packageJson), packageLock));
+  const withScript = structuredClone(packageJson);
+  withScript.scripts['smoke:added-later'] = 'node scripts/smoke/run-isolated-smoke.js added-later-smoke.js';
+  assert.doesNotThrow(() => checker.validatePackageGraph(checker.projectR12BArchitectureScripts(withScript), packageLock));
+  assert.equal(checker.fingerprintPlainJson(checker.packageSecuritySurface(withScript)), checker.fingerprintPlainJson(checker.packageSecuritySurface(packageJson)));
+  for (const mutate of [
+    (copy: any) => { copy.dependencies['left-pad'] = '1.3.0'; },
+    (copy: any) => { copy.devDependencies.typescript = '0.0.1'; },
+    (copy: any) => { copy.overrides['deepmerge-ts'] = '7.1.5'; },
+    (copy: any) => { copy.engines = { node: '>=0' }; },
+    (copy: any) => { copy.name = 'renamed'; },
+  ]) {
+    const drifted = structuredClone(packageJson);
+    mutate(drifted);
+    assert.throws(() => checker.validatePackageGraph(checker.projectR12BArchitectureScripts(drifted), packageLock), new RegExp(checker.SECURITY_FAILURE, 'u'));
+  }
+});
+
 test('R12C security prerequisite projects the multer override and accepts only the approved lock lineage', () => {
   const checker = require(checkerPath);
   const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));

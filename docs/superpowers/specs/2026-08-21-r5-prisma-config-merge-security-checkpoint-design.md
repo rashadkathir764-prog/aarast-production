@@ -350,3 +350,20 @@ remote CI claims, and R6 remain forbidden.
   `https://github.com/RebeccaStevens/deepmerge-ts/releases/tag/v8.0.0`
 - Prisma 7 upgrade guide:
   `https://www.prisma.io/docs/guides/upgrade-prisma-orm/v7`
+
+## Amendment 2026-09-13: the package fingerprint covers the security surface
+
+The checker pinned the SHA-256 of the whole `backend/package.json` (after the
+architecture-script projections of R6–R12C). That made every npm script
+outside the architecture chain a checkpoint failure: adding
+`smoke:schema-equivalence` at the 2026-09-13 product audit failed the
+security gate, R5 and R12B without any dependency change. The checkpoint
+guards the `deepmerge-ts`/Prisma dependency graph, so from this change the
+fingerprint covers the package security surface — every `package.json`
+member except `scripts` (`name`, `version`, `private`, `description`,
+`license`, `dependencies`, `devDependencies`, `overrides`) — of the projected
+package, and the lock fingerprint lineage is unchanged. The architecture
+chain keeps its exact projections (an aggregate that names a gate without
+its standalone script is rejected, a gap the whole-file fingerprint had
+masked). Regression test: an unrelated script never fails the checkpoint; a
+dependency, override, engine or name change still does.

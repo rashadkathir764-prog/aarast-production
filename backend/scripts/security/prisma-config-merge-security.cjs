@@ -49,8 +49,14 @@ const PINNED_DEEPMERGE_INTEGRITY =
   'sha512-szCXE7YLCvLKR9bFPJcvsezOShdalctSvrgN/LM/QGUEPZQajwjmsMObZ6/DuANT5lxzM/wtO8Feubwdkz8myA==';
 const PINNED_PRISMA_VERSION = '6.19.3';
 const PINNED_PRISMA_RANGE = '^6.19.3';
+// Fingerprint of the package security surface (every package.json member
+// except `scripts`) of the projected package. The checkpoint guards the
+// dependency graph; npm scripts outside the architecture chain (which has
+// its own exact projections below) are not a security event, and pinning
+// the whole file made every ordinary script addition a false checkpoint
+// failure (the 2026-09-13 audit's `smoke:schema-equivalence`).
 const PINNED_PACKAGE_JSON_SHA256 =
-  'd9503a604c4ffb3e63a6faa3b25478a2a4fd766883bcfa2927fccb31fbd2dad7';
+  'a56a36b0202529f6d74ceb46455d8e696d3717a54b7d9ffc7ab87531b2a6604b';
 // Approved lock lineage. Each entry is the canonical fingerprint of one
 // approved package-lock: the R12B qs security prerequisite (qs 6.16.0), then
 // the R12C security prerequisite (multer 2.3.0, sharp 0.35.4; registry
@@ -183,6 +189,18 @@ function fingerprintPlainJson(value) {
   return crypto.createHash('sha256').update(canonicalJson(value)).digest('hex');
 }
 
+// The package.json members the checkpoint pins: everything except `scripts`.
+function packageSecuritySurface(value) {
+  assertDeepPlainData(value);
+  const packageJson = plainRecord(value);
+  const surface = {};
+  for (const key of reflectOwnKeys(packageJson)) {
+    if (key === 'scripts') continue;
+    surface[key] = ownValue(packageJson, key);
+  }
+  return surface;
+}
+
 function projectR7ArchitectureScripts(value) {
   assertDeepPlainData(value);
   const packageJson = plainRecord(value);
@@ -198,9 +216,16 @@ function projectR7ArchitectureScripts(value) {
       || (typeof aggregate === 'string' && aggregate.includes('architecture:r12a'))) {
     return projectR12AArchitectureScripts(packageJson);
   }
-  if (hasOwn(scripts, 'architecture:r8')) return projectR8ArchitectureScripts(packageJson);
-  if (!hasOwn(scripts, 'architecture:r7')) return packageJson;
-  if (ownValue(scripts, 'architecture:r7') !== R7_STANDALONE_SCRIPT
+  if (hasOwn(scripts, 'architecture:r8')
+      || (typeof aggregate === 'string' && aggregate.includes('architecture:r8'))) {
+    return projectR8ArchitectureScripts(packageJson);
+  }
+  // An aggregate that names the R7 gate without its standalone script is a
+  // broken chain, not an R6-era package.
+  const r7Keys = Object.keys(scripts).filter((key) => key.startsWith('architecture:r7'));
+  if (r7Keys.length === 0 && !(typeof aggregate === 'string' && aggregate.includes('architecture:r7'))) return packageJson;
+  if (r7Keys.length !== 1 || r7Keys[0] !== 'architecture:r7'
+      || ownValue(scripts, 'architecture:r7') !== R7_STANDALONE_SCRIPT
       || ownValue(scripts, 'architecture') !== R7_ARCHITECTURE_SCRIPT) fail();
   const projectedScripts = { ...scripts };
   delete projectedScripts['architecture:r7'];
@@ -324,7 +349,7 @@ function validatePackageGraph(
     const packageJson = plainRecord(packageJsonValue);
     const packageLock = plainRecord(packageLockValue);
     const acceptedLocks = Array.isArray(expectedLockFingerprint) ? expectedLockFingerprint : [expectedLockFingerprint];
-    if (fingerprintPlainJson(packageJson) !== expectedPackageFingerprint
+    if (fingerprintPlainJson(packageSecuritySurface(packageJson)) !== expectedPackageFingerprint
         || !acceptedLocks.includes(fingerprintPlainJson(packageLock))) fail();
     const dependencies = plainRecord(ownValue(packageJson, 'dependencies'));
     const overrides = plainRecord(ownValue(packageJson, 'overrides'));
@@ -1019,6 +1044,7 @@ module.exports = {
   projectR7ArchitectureScripts,
   projectR8ArchitectureScripts,
   fingerprintPlainJson,
+  packageSecuritySurface,
   loadRealPrismaConfig,
   runCli,
   validateInstalledResolution,

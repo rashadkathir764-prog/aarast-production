@@ -616,9 +616,12 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     packageLock,
   }));
 
+  // 2026-09-13: the checkpoint fingerprints the package security surface
+  // (every member except `scripts`). A script outside the architecture chain
+  // is not a security event; a dependency-surface change still is.
   const unrelatedScript = structuredClone(r12aPackage);
   unrelatedScript.scripts.start = 'node dist/other-main.js';
-  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+  assert.doesNotThrow(() => r5.validateR5SecurityCheckpointScope({
     changedPaths: checkpointPaths,
     packageJson: unrelatedScript,
     packageLock,

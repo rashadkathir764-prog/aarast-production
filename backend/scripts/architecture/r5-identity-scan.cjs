@@ -411,8 +411,10 @@ const R8_STANDALONE_SCRIPT =
   'node scripts/architecture/r8-global-module-removal-scan.cjs --check';
 const R12A_STANDALONE_SCRIPT =
   'node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check';
+// The security checkpoint fingerprints the package security surface (every
+// member except `scripts`); the R5-era surface equals the projected live one.
 const R5_SECURITY_PACKAGE_JSON_SHA256 =
-  '6db5c9fc4f6b6f7b3088cf351e61917d6dc62dfbeee6f816ffacb957f8d883ef';
+  'a56a36b0202529f6d74ceb46455d8e696d3717a54b7d9ffc7ab87531b2a6604b';
 const R6_IDENTITY_MODULE_IMPORT =
   'import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";';
 const R6_IDENTITY_MODULE_REGISTRATION =

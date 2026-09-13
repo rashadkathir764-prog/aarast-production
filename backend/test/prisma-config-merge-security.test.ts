@@ -280,6 +280,8 @@ test('R8 architecture delegation projects exactly through R7 to the pinned packa
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   const validR8 = structuredClone(livePackage);
   (validR8.scripts as JsonRecord)['architecture:imports'] = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  // The R8-era package still carried the baseline generator that Task 5 retired.
+  (validR8.scripts as JsonRecord)['architecture:imports:baseline'] = 'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
   delete (validR8.scripts as JsonRecord)['architecture:r12c'];
   delete (validR8.scripts as JsonRecord)['architecture:r12b'];
   delete (validR8.scripts as JsonRecord)['architecture:r12a'];
@@ -829,6 +831,9 @@ test('R12B package wiring and security projection are exact and fail closed', ()
   livePackage.scripts.architecture = r12bArchitectureScript;
   livePackage.scripts['architecture:imports'] =
     'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  // The R12B-era package still carried the baseline generator that Task 5 retired.
+  livePackage.scripts['architecture:imports:baseline'] =
+    'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);
   assert.equal((livePackage.scripts as JsonRecord).architecture, r12bArchitectureScript);
@@ -858,12 +863,20 @@ test('R12C package-script successor is exact and cannot admit prefixes, omission
   const script = 'node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check';
   assert.equal(packageJson.scripts['architecture:r12c'], script);
   assert.equal(packageJson.scripts.architecture, r12bArchitectureScript + ' && npm run architecture:r12c');
+  // Task 5 retired the dependency baseline generator: strict zero has no ledger
+  // to regenerate, and the scanner rejects the ledger's existence. The
+  // projection restores the historical command so the R12B fingerprint chain
+  // still closes; a live package that reintroduces it fails.
+  const retiredGenerator = 'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
+  assert.equal('architecture:imports:baseline' in packageJson.scripts, false, 'strict zero retires the baseline generator');
   const predecessor = structuredClone(packageJson);
   delete predecessor.scripts['architecture:r12c'];
   predecessor.scripts.architecture = r12bArchitectureScript;
   predecessor.scripts['architecture:imports'] =
     'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  predecessor.scripts['architecture:imports:baseline'] = retiredGenerator;
   assert.deepEqual(checker.projectR12CArchitectureScripts(packageJson), checker.projectR12BArchitectureScripts(predecessor));
+  assert.equal(checker.projectR12CArchitectureScripts(packageJson).scripts['architecture:imports:baseline'], retiredGenerator);
   for (const mutate of [
     (copy: any) => { delete copy.scripts['architecture:r12c']; },
     (copy: any) => { copy.scripts['architecture:r12c'] += ' --skip'; },
@@ -871,6 +884,8 @@ test('R12C package-script successor is exact and cannot admit prefixes, omission
     (copy: any) => { copy.scripts.architecture += ' && npm run architecture:r12c'; },
     (copy: any) => { copy.scripts.architecture = r12bArchitectureScript; },
     (copy: any) => { copy.scripts['architecture:imports'] += ' --ignore-known other.json'; },
+    (copy: any) => { copy.scripts['architecture:imports:baseline'] = retiredGenerator; },
+    (copy: any) => { copy.scripts['architecture:imports:baseline'] = 'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to other.json src'; },
   ]) {
     const copy = structuredClone(packageJson); mutate(copy);
     assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'))));

@@ -651,3 +651,26 @@ depend on the registration.
 above by running the real gate commands inside a fresh, renamed clone on a
 different branch, both with the work committed and with it uncommitted, after a
 clean dependency install, and by probing each rejection.
+
+### Task 5 decisions recorded on completion (2026-09-13)
+
+- **Baseline generator retired.** `architecture:imports:baseline` is removed
+  from `backend/package.json`. At strict zero there is no ledger to regenerate
+  and the scanner rejects the ledger's existence, so the command could only
+  produce a rejected artifact or invite `--ignore-known` back. The R12C strict
+  projection and the Prisma security checker fail if a strict package carries
+  it, and the security projection restores the historical command so the
+  R5–R12B fingerprint chain still closes. Historical package fixtures in the
+  security test restore it explicitly.
+- **Stage record encoding.** The approved Task 3/4 records were re-encoded
+  losslessly from one whole-span splice each (which carried every unchanged
+  byte between the first and last edit twice, 1.7 MB) to the bounded
+  multi-splice form Task 5 already used. Path, entry and candidate
+  fingerprints, statuses and entry lengths are unchanged for all 48 records
+  and every record still reconstructs its exact entry bytes; only the
+  preregistered candidate hashes in the scanner were rebound. The manifest
+  fell from 2.16 MB to 0.58 MB, inside the raised 8 MiB JSON authority bound
+  without relying on it.
+- **Historical fixtures projected.** The R12B generated-catalog mirrors build
+  from the R12B-era `backend/package.json` reconstructed by the R12C
+  predecessor projection, and no fixture probe targets a real repository file.

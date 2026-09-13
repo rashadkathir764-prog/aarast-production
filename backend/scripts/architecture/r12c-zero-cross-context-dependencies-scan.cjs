@@ -41,7 +41,7 @@ const DEPENDENCY_SHA = 'fe4d3bfe23cf0400266bbfea8bd0357d578b93cad005c77af0814ec5
 const OWNERSHIP_SHA = '5f42f33300a9727f587e62327c5261a88a6ce5928437241c9e7c20f726906496';
 // Immutable design-entry identity, records, complete predecessor overlay and
 // contract registry. Generated live file fingerprints are deliberately separate.
-const AUTHORITY_SHA = '9a56f36736fede7ae71a20883ac952954d3b2021abbcb1b7ddd5fedb5e2b62aa';
+const AUTHORITY_SHA = '87fc957542abbc39fe2875df28abb86d6f26246060c8b8dfada1add0931b872b';
 const HASH = /^[0-9a-f]{64}$/u;
 const INVERSE_PATHS = Object.freeze([
   'backend/package.json',
@@ -84,6 +84,9 @@ const STRICT_CANDIDATE_PATHS = Object.freeze([
   'backend/test/architecture-r8-global-module-removal.test.ts',
   'backend/test/architecture-r12a-backoffice-catalog-public-contracts.test.ts',
   'backend/test/architecture-r12b-planning-public-contracts.test.ts',
+  // Task 5 successor projection (2026-09-13): the R12B generated-catalog
+  // mirrors must build from the R12B-era package commands once R12C exists.
+  'backend/test/architecture-r12b-documentation-transition.test.ts',
   'backend/test/architecture-r12c-zero-cross-context-dependencies.test.ts',
   'backend/test/architecture-governance-portability.test.ts',
   'backend/test/prisma-config-merge-security.test.ts',
@@ -325,21 +328,21 @@ function verifyR12cFinanceProjection(input) {
 
 function validateMessagingLifecycleCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== 'a46dbbbf7496cef00ab4e38155ef745ac685cf489940b509a47e7f55c71fd52a') {
+  if (sha(JSON.stringify(candidate)) !== '47da8e8485b8603aa6ea5118299516d9207d6c88c95c74382570ddf81862bbc6') {
     throw new Error('R12C preregistered Messaging lifecycle candidate changed');
   }
 }
 
 function validateMarketplacePublicCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== 'cc238a9001cf360765b3168b68611fe9d56760ac2527bf4ce3a02c7eeeee3adc') {
+  if (sha(JSON.stringify(candidate)) !== 'e7d660af30c78893742437d270d0904fce94eb87985c34b4a757fa1467fd7161') {
     throw new Error('R12C preregistered Marketplace public candidate changed');
   }
 }
 
 function validateStrictCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== '574d873ea91041ebc7b812080c081be73ef2b496ea5b52f4f75d1da82c1aec90') {
+  if (sha(JSON.stringify(candidate)) !== '7d7b82527706799bcb22d996dd087f248bd4918535d7c74b7e9795decbcaaac4') {
     throw new Error('R12C preregistered strict candidate changed');
   }
   const seen = new Set();
@@ -367,6 +370,10 @@ function strictPredecessorFiles(read, exists, manifest) {
   const packageJson = JSON.parse(read('backend/package.json').toString('utf8'));
   if (packageJson.scripts['architecture:imports'] !== 'depcruise --config .dependency-cruiser.cjs src') {
     throw new Error('R12C strict import command changed');
+  }
+  // Strict zero has no ledger to regenerate; no command may recreate one.
+  if (Object.prototype.hasOwnProperty.call(packageJson.scripts, 'architecture:imports:baseline')) {
+    throw new Error('R12C strict retired the dependency baseline generator');
   }
   security.projectR12CArchitectureScripts(packageJson);
   reconstructed.set(DEPENDENCY_PATH, empty);
@@ -610,19 +617,10 @@ function verifyMessagingLifecycleFiles(read, exists, manifest) {
     if (!Buffer.isBuffer(bytes) || sha(bytes) !== row.candidateSha256) {
       throw new Error('R12C Messaging lifecycle candidate bytes changed: ' + row.path);
     }
-    const before = chunksToBytes(row.beforeBase64);
-    const after = chunksToBytes(row.afterBase64);
-    if (row.kind === 'new-file') {
-      if (!bytes.equals(after) || before.length !== 0 || row.entrySha256 !== null) throw new Error('R12C Messaging new-file inverse changed');
-      continue;
-    }
-    if (bytes.length !== row.entryByteLength - before.length + after.length
-        || !bytes.subarray(row.offset, row.offset + after.length).equals(after)) {
-      throw new Error('R12C Messaging lifecycle bounded inverse range changed');
-    }
-    const entry = Buffer.concat([bytes.subarray(0, row.offset), before, bytes.subarray(row.offset + after.length)]);
-    if (sha(entry) !== row.entrySha256) throw new Error('R12C Messaging lifecycle entry bytes changed: ' + row.path);
-    reconstructed.set(row.path, entry);
+    // Every stage record shares one reconstructor (new-file, bounded splices,
+    // line-ending normalization); the entry hash proves the exact bytes.
+    const entry = reconstructMarketplaceCandidateRecord(bytes, row);
+    if (entry !== null) reconstructed.set(row.path, entry);
   }
   const records = JSON.parse(read(DEPENDENCY_PATH).toString('utf8'));
   const expectedRecords = manifest.dependencyRecords

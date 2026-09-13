@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
   readFileSync,
@@ -29,6 +30,7 @@ test('R12C Task 5 strict gate has no dependency ledger or ignored canonical comm
   assert.equal(existsSync(path.join(root, dependencyPath)), false, 'strict must delete the independently reviewed empty ledger');
   const packageJson = JSON.parse(readFileSync(path.join(root, 'backend/package.json'), 'utf8'));
   assert.equal(packageJson.scripts['architecture:imports'], 'depcruise --config .dependency-cruiser.cjs src');
+  assert.equal('architecture:imports:baseline' in packageJson.scripts, false, 'strict zero retires the baseline generator: nothing may recreate a ledger');
   assert.equal(packageJson.scripts.architecture.split(' && ').filter((entry: string) => entry === 'npm run architecture:r12c').length, 1);
   assert.equal(packageJson.scripts.architecture.split(' && ').at(-1), 'npm run architecture:r12c');
 });
@@ -154,6 +156,36 @@ test('R12C rejects forged predecessor hash, receipts, documentation and entry pr
     /repository identity/u,
     'a nested directory is never resolved up to its repository',
   );
+});
+
+test('R12C stage and strict records use the compact reversible encodings and reconstruct their exact entries', () => {
+  const { api, manifest } = load();
+  // A single whole-span splice carried every unchanged byte between the first
+  // and last edit twice; the approved Task 3/4 records were re-encoded
+  // losslessly and no record may return to that form.
+  const stages = [manifest.marketplacePublicCandidate, manifest.messagingLifecycleCandidate, manifest.strictCandidate];
+  for (const stage of stages) {
+    for (const record of stage.records) {
+      assert.ok(['new-file', 'bounded-byte-splices', 'line-ending-normalization'].includes(record.kind), `${record.path}: ${record.kind}`);
+      if (record.kind !== 'new-file') assert.ok(record.entrySha256 && record.entryByteLength > 0, record.path);
+    }
+  }
+  const read = (relative: string) => readFileSync(path.join(root, relative));
+  const exists = (relative: string) => existsSync(path.join(root, relative));
+  const strict = api.strictPredecessorFiles(read, exists, manifest);
+  const marketplace = api.verifyMarketplacePublicFiles(strict.read, strict.exists, manifest, root);
+  for (const record of manifest.marketplacePublicCandidate.records) {
+    const entry = api.reconstructCandidateRecord(strict.read(record.path), record);
+    if (record.kind === 'new-file') assert.equal(entry, null);
+    else assert.equal(hash(entry), record.entrySha256, record.path);
+  }
+  for (const record of manifest.messagingLifecycleCandidate.records) {
+    const candidate = marketplace.reconstructed.get(record.path) || strict.read(record.path);
+    const entry = api.reconstructCandidateRecord(candidate, record);
+    if (record.kind === 'new-file') assert.equal(entry, null);
+    else assert.equal(hash(entry), record.entrySha256, record.path);
+  }
+  assert.ok(statSync(path.join(root, manifestPath)).size < 1024 * 1024, 'the manifest must stay well inside its JSON authority bound');
 });
 
 test('R12C strict candidate registers only its declared scope and reconstructs line-ending normalization exactly', () => {

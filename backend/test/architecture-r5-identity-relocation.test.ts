@@ -482,6 +482,9 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
     .join(' && ');
   packageJson.scripts['architecture:imports'] =
     'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  // The R12A-era package still carried the baseline generator that R12C Task 5 retired.
+  packageJson.scripts['architecture:imports:baseline'] =
+    'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
   delete packageJson.scripts['architecture:r12b'];
   packageJson.scripts.architecture = packageJson.scripts.architecture
     .split(' && ')

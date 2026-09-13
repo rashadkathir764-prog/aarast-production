@@ -228,6 +228,44 @@ function main(argv) {
   const strictHash = sha(JSON.stringify(strictCandidate));
 
   const manifest = { ...liveManifest, strictCandidate };
+
+  // Lossless re-encoding of the approved Task 3/4 stage records. Their original
+  // single whole-span splice carried the unchanged bytes between the first and
+  // last edit twice; the multi-splice form keeps the same entry and candidate
+  // fingerprints, statuses and paths, and reconstructs the identical entry
+  // bytes, so the approved evidence is unchanged while the manifest shrinks.
+  // Runs against a consistent registration: register first, then re-encode.
+  const stageHashes = {};
+  if (argv.includes('--reencode-stage-candidates')) {
+    const readLive = (relative) => {
+      const bytes = readWorking(relative);
+      if (bytes === null) throw new Error(`stage re-encoding needs ${relative}`);
+      return bytes;
+    };
+    const strict = scanner.strictPredecessorFiles(readLive, (relative) => readWorking(relative) !== null, liveManifest);
+    const marketplace = scanner.verifyMarketplacePublicFiles(strict.read, strict.exists, liveManifest, repositoryRoot);
+    const reencode = (row, candidate) => {
+      if (row.kind !== 'bounded-byte-splice') return row;
+      const entry = scanner.reconstructCandidateRecord(candidate, row);
+      const record = {
+        path: row.path, kind: 'bounded-byte-splices', entrySha256: row.entrySha256, candidateSha256: row.candidateSha256,
+        entryByteLength: row.entryByteLength, entryStatus: row.entryStatus, candidateStatus: row.candidateStatus,
+        splices: exactSplices(entry, candidate),
+      };
+      if (!scanner.reconstructCandidateRecord(candidate, record).equals(entry)) throw new Error(`stage re-encoding does not reconstruct ${row.path}`);
+      return record;
+    };
+    manifest.marketplacePublicCandidate = {
+      ...liveManifest.marketplacePublicCandidate,
+      records: liveManifest.marketplacePublicCandidate.records.map((row) => reencode(row, strict.read(row.path))),
+    };
+    manifest.messagingLifecycleCandidate = {
+      ...liveManifest.messagingLifecycleCandidate,
+      records: liveManifest.messagingLifecycleCandidate.records.map((row) => reencode(row, marketplace.reconstructed.get(row.path) || strict.read(row.path))),
+    };
+    stageHashes.marketplace = sha(JSON.stringify(manifest.marketplacePublicCandidate));
+    stageHashes.messaging = sha(JSON.stringify(manifest.messagingLifecycleCandidate));
+  }
   const entrySha = (relative) => {
     const record = records.find((row) => row.path === relative);
     if (record) return record.entrySha256;
@@ -243,6 +281,10 @@ function main(argv) {
 
   let scannerSource = readWorking(SCANNER_PATH).toString('utf8');
   scannerSource = patchConstant(scannerSource, 'function validateStrictCandidate(candidate) {\n  plainData(candidate);\n  if (sha(JSON.stringify(candidate)) !== ', strictHash);
+  if (stageHashes.marketplace) {
+    scannerSource = patchConstant(scannerSource, 'function validateMarketplacePublicCandidate(candidate) {\n  plainData(candidate);\n  if (sha(JSON.stringify(candidate)) !== ', stageHashes.marketplace);
+    scannerSource = patchConstant(scannerSource, 'function validateMessagingLifecycleCandidate(candidate) {\n  plainData(candidate);\n  if (sha(JSON.stringify(candidate)) !== ', stageHashes.messaging);
+  }
   if (authorityAfter !== authorityBefore) scannerSource = patchConstant(scannerSource, 'const AUTHORITY_SHA = ', authorityAfter);
   const scannerBytes = Buffer.from(scannerSource, 'utf8');
 

@@ -24,6 +24,19 @@ const runnerPath = path.join(backendRoot, 'scripts', 'architecture', 'r12b-docum
 const manifestPath = path.join(backendRoot, 'architecture', 'r12b-planning-public-contracts.json');
 const manifestRelative = 'backend/architecture/r12b-planning-public-contracts.json';
 const packagePaths = ['backend/package.json', 'admin-web/package.json'];
+
+function r12bEraBackendPackage(): Buffer {
+  const successorManifest = path.join(backendRoot, 'architecture', 'r12c-zero-cross-context-dependencies.json');
+  if (!existsSync(successorManifest)) return readFileSync(path.join(backendRoot, 'package.json'));
+  const r12c = require(path.join(backendRoot, 'scripts', 'architecture', 'r12c-zero-cross-context-dependencies-scan.cjs'));
+  const projection = r12c.projectR12cWorkingTreeToPredecessor({
+    repositoryRoot,
+    manifest: JSON.parse(readFileSync(successorManifest, 'utf8')),
+  });
+  const bytes = projection.readWorkingFile('backend/package.json');
+  assert.equal(Buffer.isBuffer(bytes), true, 'R12C predecessor projection must reconstruct the R12B-era backend/package.json');
+  return Buffer.from(bytes);
+}
 const genesisSha256 = 'e60fbd3d8820a9bfa00199937e0ce44025a32a73f41454786a3d53aef1adf4ad';
 const documentPaths = [
   'ARCHITECTURE.md',
@@ -390,6 +403,13 @@ test('R12B generated scripts are canonical and byte-identical in both outside-re
       copyFile(candidateRoot, repositoryRoot, relative);
       copyFile(activatedRoot, repositoryRoot, relative);
     }
+    // R12B's generated catalog was produced from the R12B-era package
+    // commands. With the R12C successor present, the mirrors take that exact
+    // predecessor package.json from the successor projection; without it the
+    // live file is already the R12B-era file.
+    for (const root of [candidateRoot, activatedRoot]) {
+      writeFileSync(path.join(root, 'backend', 'package.json'), r12bEraBackendPackage());
+    }
     for (const root of [candidateRoot, activatedRoot]) {
       writeFileSync(path.join(root, 'docs', 'SCRIPTS.md'), portableDocumentAuthority.entry.get('docs/SCRIPTS.md')!);
       assert.equal(sha256(readFileSync(path.join(root, 'docs', 'SCRIPTS.md'))), documentRecords('entry').find((item) => item.path === 'docs/SCRIPTS.md')!.sha256);
@@ -404,10 +424,13 @@ test('R12B generated scripts are canonical and byte-identical in both outside-re
         stdio: 'pipe',
       });
     }
+    // docs-sync must never rewrite the package files it reads.
     for (const relative of packagePaths) {
-      const live = readFileSync(path.join(repositoryRoot, ...relative.split('/')));
-      assert.deepEqual(readFileSync(path.join(candidateRoot, ...relative.split('/'))), live, `${relative} candidate`);
-      assert.deepEqual(readFileSync(path.join(activatedRoot, ...relative.split('/'))), live, `${relative} activated`);
+      const expected = relative === 'backend/package.json'
+        ? r12bEraBackendPackage()
+        : readFileSync(path.join(repositoryRoot, ...relative.split('/')));
+      assert.deepEqual(readFileSync(path.join(candidateRoot, ...relative.split('/'))), expected, `${relative} candidate`);
+      assert.deepEqual(readFileSync(path.join(activatedRoot, ...relative.split('/'))), expected, `${relative} activated`);
     }
     const entryScripts = portableDocumentAuthority.entry.get('docs/SCRIPTS.md')!;
     const candidateScripts = readFileSync(path.join(candidateRoot, 'docs', 'SCRIPTS.md'));
@@ -450,9 +473,13 @@ test('R12B transition validation rejects jumps, stale manifests, reordered docum
     } finally {
       cleanup(outside);
     }
+    // The symlink target is a fixture-local copy: a probe must never give the
+    // code under test a write path into the real repository.
     const link = path.join(f.candidateRoot, 'ARCHITECTURE.md');
+    const linkTarget = path.join(f.root, 'symlink-target-ARCHITECTURE.md');
+    writeFileSync(linkTarget, readFileSync(link));
     rmSync(link);
-    symlinkSync(path.join(repositoryRoot, 'ARCHITECTURE.md'), link);
+    symlinkSync(linkTarget, link);
     assert.throws(() => api.runDocumentationTransition({
       repositoryRoot: f.root,
       to: 'candidate-prepared',

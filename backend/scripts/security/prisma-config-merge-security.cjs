@@ -71,6 +71,8 @@ const R12B_STANDALONE_SCRIPT =
 const R12C_ARCHITECTURE_SCRIPT = R12B_ARCHITECTURE_SCRIPT + ' && npm run architecture:r12c';
 const R12C_STANDALONE_SCRIPT =
   'node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check';
+const R12C_RETIRED_BASELINE_GENERATOR =
+  'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
 const SECURITY_FAILURE = 'invalid Prisma config merge security state';
 const MAX_DEPTH = 32;
 const MAX_PROPERTIES = 100_000;
@@ -278,6 +280,13 @@ function projectR12CArchitectureScripts(value) {
   const predecessorImports = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
   if (imports !== predecessorImports && imports !== 'depcruise --config .dependency-cruiser.cjs src') fail();
   projectedScripts['architecture:imports'] = predecessorImports;
+  // R12C Task 5 retired the dependency baseline generator once the strict
+  // command was unbaselined: a live package that still (or again) carries it
+  // fails, and the projection restores the historical command for the chain.
+  if (imports === 'depcruise --config .dependency-cruiser.cjs src') {
+    if (Object.prototype.hasOwnProperty.call(scripts, 'architecture:imports:baseline')) fail();
+    projectedScripts['architecture:imports:baseline'] = R12C_RETIRED_BASELINE_GENERATOR;
+  }
   return projectR12BArchitectureScripts({ ...packageJson, scripts: projectedScripts });
 }
 

@@ -143,6 +143,13 @@ changing behavior.
     `db4232f9795b5211532c454f838996af7e50d5aefee13a20d5e3e513539845f4`, the
     bytes the R11 reconciliation recorded from its external location). It
     is the requirement source; it does not describe the current state.
+- `docs/superpowers/reports/2026-09-13-product-forensic-audit.md`
+  - the full product forensic audit after the exit audit: inventory and
+    coverage per area, backend domains, database/migration integrity (the
+    ContributionEvent index-name drift, fixed without a migration), Flutter,
+    Admin, bidirectional backend/frontend contracts (0 unmatched client
+    calls), advisories, tests-as-truth; four defects fixed in their own
+    commits; three product decisions recorded.
 - `docs/superpowers/reports/2026-09-13-architecture-exit-audit.md`
   - the architecture exit audit after the R12C closure: sixteen findings
     (gates that pinned product bytes and inventories, a silent R3 CLI, an

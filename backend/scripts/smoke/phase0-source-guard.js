@@ -109,6 +109,7 @@ const managedCommandArguments = new Map([
   ['smoke:account-deletion', 'account-deletion-smoke.ts'],
   ['smoke:contributor-history-migration', '--contributor-history-migration'],
   ['smoke:guest-phone-migration', '--guest-phone-migration'],
+  ['smoke:schema-equivalence', '--schema-equivalence'],
   ['smoke:phase0-fixtures', 'phase0-fixtures-smoke.js'],
   ['smoke:phase1-identity', 'phase1-identity-smoke.ts'],
   ['smoke:phase2-admin-mutation-authorization', 'phase2-admin-mutation-authorization-smoke.ts'],

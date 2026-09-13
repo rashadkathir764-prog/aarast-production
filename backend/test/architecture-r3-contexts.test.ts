@@ -39,7 +39,7 @@ const liveLegacyModules = 53 + (r12cClosed ? 2 : 0);
 // Full-source fixtures resolve the Nest closure through an isolated copy; the
 // real installation is fingerprinted before the first fixture and after the last.
 const sentinelPackages = ['@nestjs/common', '@nestjs/core', '@nestjs/jwt', '@nestjs/schedule', '@nestjs/throttler'];
-let surface: DependencySurface;
+let surface: DependencySurface | undefined;
 let installationBefore: Record<string, string>;
 
 before(() => {
@@ -48,6 +48,8 @@ before(() => {
 });
 
 after(() => {
+  // When the surface could not be built, the before-hook failure is the
+  // report; the sentinel comparison still runs and nothing else masks it.
   try {
     assert.deepEqual(
       installationSentinel(backendRoot, sentinelPackages),
@@ -55,9 +57,14 @@ after(() => {
       'R3 fixtures must leave the real dependency installation byte-identical',
     );
   } finally {
-    surface.dispose();
+    surface?.dispose();
   }
 });
+
+function dependencySurface(): DependencySurface {
+  assert.ok(surface, 'the isolated dependency surface was not created');
+  return surface;
+}
 const historicalFixtureScanners = new Map<string, Scanner>();
 
 type Scanner = {
@@ -325,7 +332,7 @@ function fullSourceFixture(replacements: Array<{
 }>) {
   // Beneath the isolated surface: package resolution walks up plain
   // directories into the copied closure; nothing links to the real install.
-  const root = surface.fixtureRoot('aarast-r3-consumer-identity-');
+  const root = dependencySurface().fixtureRoot('aarast-r3-consumer-identity-');
   temporaryRoots.push(root);
   const fixtureBackend = path.join(root, 'backend');
   mkdirSync(fixtureBackend, { recursive: true });

@@ -128,20 +128,76 @@ export function installationSentinel(backendRoot: string, packages: readonly str
   return sentinel;
 }
 
-export function createDependencySurface(backendRoot: string, prefix = 'aarast-dependency-surface-'): DependencySurface {
+// Copying ~5k files while the rest of the suite runs in parallel can hit
+// transient operating-system conditions (Windows ERROR_NO_SYSTEM_RESOURCES
+// 1450 while the kernel pools are under pressure, sharing violations from a
+// virus scanner, descriptor exhaustion). These are retried with a bounded
+// backoff; every other error is the caller's problem and surfaces at once.
+const TRANSIENT_ERRNO = new Set([1450]);
+const TRANSIENT_CODES = new Set(['EBUSY', 'EPERM', 'EMFILE', 'ENFILE', 'EAGAIN', 'ENOTEMPTY']);
+export const COPY_ATTEMPTS = 6;
+
+export function isTransientCopyError(error: unknown): boolean {
+  const { errno, code } = (error ?? {}) as { errno?: unknown; code?: unknown };
+  return (typeof errno === 'number' && TRANSIENT_ERRNO.has(Math.abs(errno)))
+    || (typeof code === 'string' && TRANSIENT_CODES.has(code));
+}
+
+function sleepSync(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+export interface SurfaceCopyOptions {
+  /** Copies one package tree; defaults to a dereferencing recursive copy. */
+  copy?: (from: string, to: string) => void;
+  /** Blocks for the backoff delay; defaults to a real synchronous wait. */
+  sleep?: (milliseconds: number) => void;
+  attempts?: number;
+}
+
+function copyPackageTree(from: string, to: string): void {
+  // Real copies only: links are dereferenced into files, never recreated.
+  cpSync(from, to, { recursive: true, dereference: true, errorOnExist: false, force: true });
+}
+
+export function copyWithTransientRetry(name: string, from: string, to: string, options: SurfaceCopyOptions = {}): number {
+  const copy = options.copy ?? copyPackageTree;
+  const sleep = options.sleep ?? sleepSync;
+  const attempts = options.attempts ?? COPY_ATTEMPTS;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      copy(from, to);
+      return attempt;
+    } catch (error) {
+      if (!isTransientCopyError(error) || attempt >= attempts) {
+        const failure = new Error(`dependency surface copy of ${name} failed after ${attempt} attempt(s): ${(error as Error).message}`);
+        (failure as { cause?: unknown }).cause = error;
+        throw failure;
+      }
+      rmSync(to, { recursive: true, force: true });
+      sleep(50 * 2 ** (attempt - 1));
+    }
+  }
+}
+
+export function createDependencySurface(backendRoot: string, prefix = 'aarast-dependency-surface-', options: SurfaceCopyOptions = {}): DependencySurface {
   const root = mkdtempSync(path.join(tmpdir(), prefix));
   const nodeModules = path.join(root, 'node_modules');
   const packages = lockfileClosure(backendRoot);
   const source = path.join(backendRoot, 'node_modules');
-  for (const name of packages) {
-    const from = path.join(source, ...name.split('/'));
-    if (!existsSync(from)) throw new Error(`dependency surface package is not installed: ${name}`);
-    const to = path.join(nodeModules, ...name.split('/'));
-    mkdirSync(path.dirname(to), { recursive: true });
-    // Real copies only: links are dereferenced into files, never recreated.
-    cpSync(from, to, { recursive: true, dereference: true, errorOnExist: false, force: true });
+  try {
+    for (const name of packages) {
+      const from = path.join(source, ...name.split('/'));
+      if (!existsSync(from)) throw new Error(`dependency surface package is not installed: ${name}`);
+      const to = path.join(nodeModules, ...name.split('/'));
+      mkdirSync(path.dirname(to), { recursive: true });
+      copyWithTransientRetry(name, from, to, options);
+    }
+    assertNoReparsePoints(root);
+  } catch (error) {
+    rmSync(root, { recursive: true, force: true });
+    throw error;
   }
-  assertNoReparsePoints(root);
   const fixtures = path.join(root, 'fixtures');
   mkdirSync(fixtures, { recursive: true });
   return Object.freeze({

@@ -35,7 +35,7 @@ const backendRoot = path.resolve(__dirname, '..');
 // Packages the external-identity fixtures stub out. Their real installation
 // is fingerprinted before the first fixture and re-checked after the last one.
 const sentinelPackages = ['@nestjs/schedule', '@nestjs/throttler', '@nestjs/common', '@nestjs/core'];
-let surface: DependencySurface;
+let surface: DependencySurface | undefined;
 let installationBefore: Record<string, string>;
 
 before(() => {
@@ -44,6 +44,8 @@ before(() => {
 });
 
 after(() => {
+  // When the surface could not be built, the before-hook failure is the
+  // report; the sentinel comparison still runs and nothing else masks it.
   try {
     assert.deepEqual(
       installationSentinel(backendRoot, sentinelPackages),
@@ -51,9 +53,14 @@ after(() => {
       'R8 fixtures must leave the real dependency installation byte-identical',
     );
   } finally {
-    surface.dispose();
+    surface?.dispose();
   }
 });
+
+function dependencySurface(): DependencySurface {
+  assert.ok(surface, 'the isolated dependency surface was not created');
+  return surface;
+}
 const manifestPath = path.join(
   backendRoot,
   'architecture',
@@ -462,7 +469,7 @@ function writeFixtureFile(root: string, relativePath: string, contents: string):
 // closure, and any package a fixture writes under its own backend/node_modules
 // shadows that copy locally. Nothing links to the real installation.
 function sourceFixture(files: Record<string, string>): string {
-  const root = surface.fixtureRoot('aarast-r8-architecture-fixture-');
+  const root = dependencySurface().fixtureRoot('aarast-r8-architecture-fixture-');
   temporaryRoots.push(root);
   writeFixtureFile(root, 'backend/tsconfig.json', JSON.stringify({
     compilerOptions: {
@@ -1901,7 +1908,7 @@ test('R8 external verifier accepts only the locked Schedule root forwarding shim
     }
   `);
   writeFixtureFile(root, `${packageRoot}/index.js`, readFileSync(
-    path.join(surface.nodeModules, '@nestjs', 'schedule', 'index.js'),
+    path.join(dependencySurface().nodeModules, '@nestjs', 'schedule', 'index.js'),
     'utf8',
   ));
   writeFixtureFile(root, `${packageRoot}/dist/index.js`, runtime);
@@ -1915,7 +1922,7 @@ test('R8 fixtures own an isolated dependency surface and cannot reach the real i
   // The verifier resolves the copied closure through plain directories.
   assert.doesNotThrow(() => scanner().verifyExternalGlobalIdentities(root, manifestWithContract()));
   const resolvedFromFixture = require('node:module').createRequire(path.join(root, 'backend', 'package.json')).resolve('@nestjs/schedule');
-  assert.equal(path.relative(surface.root, realpathSync.native(resolvedFromFixture)).startsWith('..'), false, 'fixtures resolve packages inside the surface');
+  assert.equal(path.relative(dependencySurface().root, realpathSync.native(resolvedFromFixture)).startsWith('..'), false, 'fixtures resolve packages inside the surface');
   assert.notEqual(realpathSync.native(path.dirname(resolvedFromFixture)).toLowerCase(), realpathSync.native(realSchedule).toLowerCase());
 
   // Writing a stub package the way the negative fixtures do stays inside its

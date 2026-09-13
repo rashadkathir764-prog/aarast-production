@@ -6,6 +6,21 @@ This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
 
+## Closeout Mission — Governance Closed, Product Audited — 2026-09-13
+
+The 2026-09-13 closeout mission (recovery branch
+`recovery/r12c-t5-takeover-20260913`, final verified commit `053166bd`)
+closed the byte-lineage governance of R3–R8 and R12A–R12C into live
+invariants, passed the architecture exit audit (0 open), completed the full
+product forensic audit, remediated 26 engineering defects in their own
+commits, and passed a clean-room verification of every surface from a fresh
+clone (77/77 gates, tree clean). MODULAR MONOLITH MISSION: NOT CLOSED —
+ownership 385/781 and R13–R20 remain. PROJECT READY FOR NEXT PRODUCT PHASE:
+READY (engineering). Three product decisions are recorded (unreferenced
+routes, FK indexes, desktop targets). Reviews were same-agent. No push,
+merge, deployment, remote CI, provider delivery, or release is claimed. See
+`docs/superpowers/reports/2026-09-13-modular-monolith-and-product-readiness-final-report.md`.
+
 ## Modular Monolith R12C — Local Completion — 2026-09-13
 
 R12C is complete locally.

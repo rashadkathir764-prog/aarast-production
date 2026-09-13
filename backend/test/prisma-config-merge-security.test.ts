@@ -29,6 +29,37 @@ test('R12C Task 5 strict import command preserves the pinned package graph witho
     assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(packageJson), packageLock));
   }
 });
+test('R12C security prerequisite projects the multer override and accepts only the approved lock lineage', () => {
+  const checker = require(checkerPath);
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
+  // Registry advisories GHSA-wc9g-mqfw-jrwm, GHSA-qfvm-cv95-jqjf, GHSA-535w-7cp7-47q4,
+  // GHSA-qvfw-j98x-7q72 (multer < 2.3.0) and GHSA-rgj7-g3m4-5g8c (sharp < 0.35.4).
+  assert.equal(packageJson.overrides.multer, '2.3.0');
+  assert.equal(packageLock.packages['node_modules/multer'].version, '2.3.0');
+  assert.equal(packageLock.packages['node_modules/sharp'].version, '0.35.4');
+  const projected = checker.projectR12CArchitectureScripts(packageJson);
+  assert.equal(projected.overrides.multer, '2.2.0', 'the historical fingerprint chain sees the R12B-era override');
+  assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
+  assert.equal(checker.fingerprintPlainJson(packageLock), checker.PINNED_PACKAGE_LOCK_SHA256, 'the live lock is the current approved lock');
+  assert.deepEqual(checker.PACKAGE_LOCK_LINEAGE, [checker.R12B_PACKAGE_LOCK_SHA256, checker.PINNED_PACKAGE_LOCK_SHA256]);
+  assert.notEqual(checker.R12B_PACKAGE_LOCK_SHA256, checker.PINNED_PACKAGE_LOCK_SHA256);
+  for (const value of ['2.2.0', '2.4.0', '^2.3.0', '3.0.0-alpha.2', undefined]) {
+    const copy = structuredClone(packageJson);
+    if (value === undefined) delete copy.overrides.multer; else copy.overrides.multer = value;
+    assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), packageLock), new RegExp(checker.SECURITY_FAILURE, 'u'), `override ${value}`);
+  }
+  const drifted = structuredClone(packageLock);
+  drifted.packages['node_modules/sharp'].version = '0.35.3';
+  assert.throws(() => checker.validatePackageGraph(projected, drifted), new RegExp(checker.SECURITY_FAILURE, 'u'));
+  const historicalPackage = structuredClone(packageJson);
+  historicalPackage.scripts['architecture:imports'] = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
+  historicalPackage.scripts['architecture:imports:baseline'] = 'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
+  assert.throws(() => checker.projectR12CArchitectureScripts(historicalPackage), new RegExp(checker.SECURITY_FAILURE, 'u'), 'a pre-strict package may not carry the R12C override');
+  historicalPackage.overrides.multer = '2.2.0';
+  assert.doesNotThrow(() => checker.projectR12CArchitectureScripts(historicalPackage));
+});
+
 type InstalledResolution = {
   backendRoot: string;
   prismaConfigPackageRoot: string;
@@ -282,6 +313,8 @@ test('R8 architecture delegation projects exactly through R7 to the pinned packa
   (validR8.scripts as JsonRecord)['architecture:imports'] = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
   // The R8-era package still carried the baseline generator that Task 5 retired.
   (validR8.scripts as JsonRecord)['architecture:imports:baseline'] = 'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
+  // ...and the R12B-era multer override that the R12C security prerequisite replaced.
+  (validR8.overrides as JsonRecord).multer = '2.2.0';
   delete (validR8.scripts as JsonRecord)['architecture:r12c'];
   delete (validR8.scripts as JsonRecord)['architecture:r12b'];
   delete (validR8.scripts as JsonRecord)['architecture:r12a'];
@@ -834,6 +867,7 @@ test('R12B package wiring and security projection are exact and fail closed', ()
   // The R12B-era package still carried the baseline generator that Task 5 retired.
   livePackage.scripts['architecture:imports:baseline'] =
     'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
+  livePackage.overrides.multer = '2.2.0';
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);
   assert.equal((livePackage.scripts as JsonRecord).architecture, r12bArchitectureScript);
@@ -875,6 +909,7 @@ test('R12C package-script successor is exact and cannot admit prefixes, omission
   predecessor.scripts['architecture:imports'] =
     'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
   predecessor.scripts['architecture:imports:baseline'] = retiredGenerator;
+  predecessor.overrides.multer = '2.2.0';
   assert.deepEqual(checker.projectR12CArchitectureScripts(packageJson), checker.projectR12BArchitectureScripts(predecessor));
   assert.equal(checker.projectR12CArchitectureScripts(packageJson).scripts['architecture:imports:baseline'], retiredGenerator);
   for (const mutate of [

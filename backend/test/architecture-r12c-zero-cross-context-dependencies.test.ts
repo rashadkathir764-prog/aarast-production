@@ -239,6 +239,11 @@ test('R12C successor reconstructs activated R12B bytes and preserves its full hi
   assert.deepEqual(projected.statusRows, item.manifest.predecessor.overlayLedger.map(({ sha256, ...row }: any) => row));
   for (const inverse of item.manifest.inverseTransforms) assert.equal(hash(projected.readWorkingFile(inverse.path)), inverse.entrySha256);
   assert.equal(hash(projected.readWorkingFile(r12bPath)), '1bf0c2d00886f1ec442187f2719c4d604b0ebcc57a3ada56d97006015c029845');
+  // The R12C security prerequisite (multer 2.3.0, sharp 0.35.4) is a strict
+  // record; R12B keeps validating its own approved lock through the projection.
+  assert.equal(hash(projected.readWorkingFile('backend/package-lock.json')), '650bc45c00cd3cdf8298e33570481bb969fdbae78a63167cca9f8ff243b25f60');
+  assert.notEqual(hash(read('backend/package-lock.json')), '650bc45c00cd3cdf8298e33570481bb969fdbae78a63167cca9f8ff243b25f60');
+  assert.equal(JSON.parse(read('backend/package-lock.json').toString('utf8')).packages['node_modules/multer'].version, '2.3.0');
   const r12b = require(path.join(root, 'backend/scripts/architecture/r12b-planning-public-contracts-scan.cjs'));
   const predecessor = JSON.parse(read(r12bPath).toString('utf8'));
   assert.deepEqual(r12b.projectR12bWorkingTreeToPredecessor({ repositoryRoot: root, manifest: predecessor, ...projected }), predecessor.predecessor.overlayLedger);

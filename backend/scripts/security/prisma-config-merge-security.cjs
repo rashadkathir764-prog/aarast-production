@@ -51,8 +51,20 @@ const PINNED_PRISMA_VERSION = '6.19.3';
 const PINNED_PRISMA_RANGE = '^6.19.3';
 const PINNED_PACKAGE_JSON_SHA256 =
   'd9503a604c4ffb3e63a6faa3b25478a2a4fd766883bcfa2927fccb31fbd2dad7';
-const PINNED_PACKAGE_LOCK_SHA256 =
+// Approved lock lineage. Each entry is the canonical fingerprint of one
+// approved package-lock: the R12B qs security prerequisite (qs 6.16.0), then
+// the R12C security prerequisite (multer 2.3.0, sharp 0.35.4; registry
+// advisories GHSA-wc9g-mqfw-jrwm, GHSA-qfvm-cv95-jqjf, GHSA-535w-7cp7-47q4,
+// GHSA-qvfw-j98x-7q72, GHSA-rgj7-g3m4-5g8c). Live callers validate the current
+// lock; historical projections re-validate the lock of their own era, so the
+// default accepts exactly this lineage and nothing else.
+const R12B_PACKAGE_LOCK_SHA256 =
   '6d3f757db4c2ec3f6d5d97168d325a6eae418e0038b3da7dc057340352c2dea3';
+const PINNED_PACKAGE_LOCK_SHA256 =
+  'c1980760454f8ff757b2545fa39b40cee3a233cd28ba88343d16901d339123cb';
+const PACKAGE_LOCK_LINEAGE = Object.freeze([R12B_PACKAGE_LOCK_SHA256, PINNED_PACKAGE_LOCK_SHA256]);
+const R12B_MULTER_OVERRIDE = '2.2.0';
+const R12C_MULTER_OVERRIDE = '2.3.0';
 const R6_ARCHITECTURE_SCRIPT =
   'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6';
 const R7_ARCHITECTURE_SCRIPT = R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
@@ -283,11 +295,18 @@ function projectR12CArchitectureScripts(value) {
   // R12C Task 5 retired the dependency baseline generator once the strict
   // command was unbaselined: a live package that still (or again) carries it
   // fails, and the projection restores the historical command for the chain.
+  const overrides = plainRecord(ownValue(packageJson, 'overrides'));
+  const multer = ownValue(overrides, 'multer');
+  const projectedOverrides = { ...overrides };
   if (imports === 'depcruise --config .dependency-cruiser.cjs src') {
     if (Object.prototype.hasOwnProperty.call(scripts, 'architecture:imports:baseline')) fail();
     projectedScripts['architecture:imports:baseline'] = R12C_RETIRED_BASELINE_GENERATOR;
-  }
-  return projectR12BArchitectureScripts({ ...packageJson, scripts: projectedScripts });
+    // R12C security prerequisite: the strict package pins multer 2.3.0; the
+    // historical chain fingerprints the R12B-era override.
+    if (multer !== R12C_MULTER_OVERRIDE) fail();
+    projectedOverrides.multer = R12B_MULTER_OVERRIDE;
+  } else if (multer !== R12B_MULTER_OVERRIDE) fail();
+  return projectR12BArchitectureScripts({ ...packageJson, scripts: projectedScripts, overrides: projectedOverrides });
 }
 
 function validatePackageGraph(
@@ -296,7 +315,7 @@ function validatePackageGraph(
   {
     expectedIntegrity = PINNED_DEEPMERGE_INTEGRITY,
     expectedPackageFingerprint = PINNED_PACKAGE_JSON_SHA256,
-    expectedLockFingerprint = PINNED_PACKAGE_LOCK_SHA256,
+    expectedLockFingerprint = PACKAGE_LOCK_LINEAGE,
   } = {},
 ) {
   try {
@@ -304,8 +323,9 @@ function validatePackageGraph(
     assertDeepPlainData(packageLockValue);
     const packageJson = plainRecord(packageJsonValue);
     const packageLock = plainRecord(packageLockValue);
+    const acceptedLocks = Array.isArray(expectedLockFingerprint) ? expectedLockFingerprint : [expectedLockFingerprint];
     if (fingerprintPlainJson(packageJson) !== expectedPackageFingerprint
-        || fingerprintPlainJson(packageLock) !== expectedLockFingerprint) fail();
+        || !acceptedLocks.includes(fingerprintPlainJson(packageLock))) fail();
     const dependencies = plainRecord(ownValue(packageJson, 'dependencies'));
     const overrides = plainRecord(ownValue(packageJson, 'overrides'));
     if (ownValue(dependencies, 'prisma') !== PINNED_PRISMA_RANGE
@@ -975,10 +995,12 @@ async function runCli({
 }
 
 module.exports = {
+  PACKAGE_LOCK_LINEAGE,
   PINNED_DEEPMERGE_INTEGRITY,
   PINNED_DEEPMERGE_VERSION,
   PINNED_PACKAGE_JSON_SHA256,
   PINNED_PACKAGE_LOCK_SHA256,
+  R12B_PACKAGE_LOCK_SHA256,
   R12A_ARCHITECTURE_SCRIPT,
   R12A_STANDALONE_SCRIPT,
   R12B_ARCHITECTURE_SCRIPT,

@@ -65,6 +65,10 @@ const NEW_PATHS = Object.freeze([
 const STRICT_CANDIDATE_PATHS = Object.freeze([
   '.gitattributes',
   'backend/package.json',
+  // R12C security prerequisite (2026-09-13): multer 2.3.0 and sharp 0.35.4
+  // registered as an exact reversible splice, so the R12B receipt still
+  // validates its own lock through the predecessor projection.
+  'backend/package-lock.json',
   'backend/scripts/architecture/ports-scan.cjs',
   'backend/scripts/architecture/r3-context-scan.cjs',
   'backend/scripts/architecture/r5-identity-scan.cjs',
@@ -342,7 +346,7 @@ function validateMarketplacePublicCandidate(candidate) {
 
 function validateStrictCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== '7d7b82527706799bcb22d996dd087f248bd4918535d7c74b7e9795decbcaaac4') {
+  if (sha(JSON.stringify(candidate)) !== 'bcdf3c0a0eb95e093f4779b8b2df1f57932ef1fe314e60c8fe10287c500c0049') {
     throw new Error('R12C preregistered strict candidate changed');
   }
   const seen = new Set();

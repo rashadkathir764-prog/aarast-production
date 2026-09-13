@@ -407,7 +407,9 @@ const projectFixture = (
   for (const contract of manifest.r12bPaths) {
     if (contract.path !== manifestRelative) files.set(contract.path, readActivatedR12bFile(contract.path));
   }
-  files.set(packageLockRelative, readFileSync(path.join(repositoryRoot, ...packageLockRelative.split('/'))));
+  // The approved R12B lock is reconstructed by the R12C successor projection
+  // once the R12C security prerequisite has moved the live lock past it.
+  files.set(packageLockRelative, readActivatedR12bFile(packageLockRelative));
   const portableStates = freshPortableDocumentStates();
   const portableState = documentationStageContract[manifest.documentationStage as DocumentationState].bytes;
   for (const relative of documentPaths) {

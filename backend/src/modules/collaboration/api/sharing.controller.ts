@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import { CurrentUser } from "../../identity/public/current-user.decorator";
@@ -26,7 +27,10 @@ import { SharingService } from "../internal/sharing.service";
 export class ApiV1InviteAccessController {
   constructor(private readonly inviteAccess: InviteAccessService) {}
 
+  // Invite OTP dispatch and verification carry the same per-IP ceilings as
+  // the auth OTP routes; the dispatch quota applies underneath as well.
   @Post(":token/request-otp")
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   requestOtp(
     @Param("token") token: string,
     @Body() dto: RequestInviteOtpDto,
@@ -36,6 +40,7 @@ export class ApiV1InviteAccessController {
   }
 
   @Post(":token/verify-otp")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   verifyOtp(@Param("token") token: string, @Body() dto: VerifyInviteOtpDto) {
     return this.inviteAccess.verifyOtp(token, dto);
   }

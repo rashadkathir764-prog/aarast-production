@@ -97,6 +97,9 @@ const STRICT_CANDIDATE_PATHS = Object.freeze([
   // Isolated dependency surface shared by the R3/R8 fixtures (2026-09-13):
   // replaces the junctions those fixtures made into the live node_modules.
   'backend/test/support/isolated-dependency-surface.ts',
+  // Task 6 root-cause correction (2026-09-13): the Marketplace service growth
+  // guard moves by exactly the approved Task 3 port-injection delta.
+  'backend/test/marketplace-presenter.test.ts',
 ]);
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const serialize = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -346,7 +349,7 @@ function validateMarketplacePublicCandidate(candidate) {
 
 function validateStrictCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== 'bcdf3c0a0eb95e093f4779b8b2df1f57932ef1fe314e60c8fe10287c500c0049') {
+  if (sha(JSON.stringify(candidate)) !== '74a56f53839002abb4705719b2d6746d55a9288a2abf232a5c87f49ea1177d71') {
     throw new Error('R12C preregistered strict candidate changed');
   }
   const seen = new Set();

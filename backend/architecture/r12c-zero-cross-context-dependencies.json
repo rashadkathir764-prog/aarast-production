@@ -6579,6 +6579,26 @@
         ],
         "entryStatus": null,
         "candidateStatus": "??"
+      },
+      {
+        "path": "backend/test/marketplace-presenter.test.ts",
+        "kind": "bounded-byte-splices",
+        "entrySha256": "8be14e1f1daeb74853f866bd05d11ab59b477bc14600c41f9a4855080bdf7cad",
+        "candidateSha256": "a3a12213cadbc65a22ec5451031dc445e6d963df163222cc97c5ddfb02f43897",
+        "entryByteLength": 10126,
+        "entryStatus": null,
+        "candidateStatus": " M",
+        "splices": [
+          {
+            "offset": 4273,
+            "beforeBase64": [
+              "YXNzZXJ0Lm9rKHNlcnZpY2Uuc3BsaXQoIlxuIikubGVuZ3RoIDw9IDk1MA=="
+            ],
+            "afterBase64": [
+              "Ly8gR3Jvd3RoIGd1YXJkLiBSMTJDIFRhc2sgMyByZXBsYWNlZCBmaXZlIGRpcmVjdCBNZXNzYWdpbmcgaW1wb3J0cyB3aXRoIG9uZQogIC8vIGluamVjdGVkIGxpZmVjeWNsZSBwb3J0OiArMSBpbXBvcnQsICsyIGNvbnN0cnVjdG9yIGxpbmVzLCArNSBjYWxsLXNpdGUKICAvLyBhcmd1bWVudHMgKDk1NyBsaW5lcykuIFRoZSBidWRnZXQgbW92ZXMgYnkgZXhhY3RseSB0aGF0IGFwcHJvdmVkIGRlbHRhLgogIGFzc2VydC5vayhzZXJ2aWNlLnNwbGl0KCJcbiIpLmxlbmd0aCA8PSA5NTg="
+            ]
+          }
+        ]
       }
     ]
   },
@@ -6716,7 +6736,7 @@
       "path": "backend/scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs",
       "status": "??",
       "hashMode": "raw",
-      "sha256": "92d05321b229def703792a82e5aeb74d7b6f522b077a22d11fb961b6650ea877"
+      "sha256": "f9cae461d3013efc329672e5c6ce3be2e4349b496f1cec19559313c90fe642d8"
     },
     {
       "path": "backend/test/architecture-r12c-zero-cross-context-dependencies.test.ts",
@@ -6867,5 +6887,5 @@
       ]
     }
   ],
-  "normalizedSelfSha256": "694c81169440e895be7de68e09223a9bdbe360a323de5567f31528cef7f61df3"
+  "normalizedSelfSha256": "d52605546ccb8e491775c98fb862cc9fca9c81d29aeecae25d015c441f8de3a1"
 }

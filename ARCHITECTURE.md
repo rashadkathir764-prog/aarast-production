@@ -1,6 +1,6 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-09-06
+Snapshot date: 2026-09-13
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
@@ -8,13 +8,41 @@ ownership, Mobile boundaries, test-change policy, and phase gates. R0 is a
 governance phase: it moves no application source and changes no runtime
 behavior, route, database schema, migration, or deployment artifact.
 
+## Modular Monolith R12C — Local Completion — 2026-09-13
+
+R12C is complete locally.
+Dependency debt is 0; the dependency baseline is deleted and the import gate
+is strict and unbaselined.
+Ownership remains 385/781.
+The architecture target remains incomplete; R13–R18 remain.
+Commits exist only on the local recovery branch
+`recovery/r12c-t5-takeover-20260913`. No push, merge, deployment, production
+mutation, remote CI, provider delivery, phone acceptance, or release is
+claimed.
+
+The Finance wedding-cost response projection, the transaction-bound Messaging
+conversation-lifecycle port, and the pure Marketplace provider-access policy
+now exist once each under their owner public boundaries, and every declared
+consumer (3, 5, 7) uses those contracts. The nine R11 dependency records
+`10`, `12-17`, `19-20` are retired; `depcruise --config .dependency-cruiser.cjs src`
+reports 353 modules, 1,420 dependencies, 0 violations without any allowance;
+ownership bytes are unchanged. Governance identity is repository identity
+(Git top level extending the immutable base commit `4d0d3ee9`), no longer an
+absolute path, branch or dirty working tree, so every gate runs from any
+checkout; fixtures never touch the live dependency installation; the
+`multer`/`sharp` advisories are remediated as a registered security
+prerequisite. Task 6 passed focused `133/133`, full Backend `1499` with
+`1498` passing and one declared Windows skip, aggregate smokes `30/30`, six
+phase-2 concurrency smokes, and both audits at zero. See
+`docs/superpowers/reports/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-report.md`.
+
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
 R12B is complete locally.
 Dependency debt is 9.
 Ownership remains 385/781.
 The architecture target remains incomplete.
-R12C implementation has not begun.
+R12C implementation followed on 2026-09-13 (see above).
 No commit, push, merge, deployment, production mutation, remote CI,
 provider delivery, phone acceptance, or release is claimed.
 

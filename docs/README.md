@@ -1,10 +1,30 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-09-06
+Snapshot date: 2026-09-13
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
 old files are preserved as `.md.txt` archive references.
+
+## Modular Monolith R12C — Local Completion — 2026-09-13
+
+R12C is complete locally.
+Dependency debt is 0; the dependency baseline is deleted and the import gate
+is strict and unbaselined.
+Ownership remains 385/781.
+The architecture target remains incomplete; R13–R18 remain.
+Commits exist only on the local recovery branch
+`recovery/r12c-t5-takeover-20260913`. No push, merge, deployment, production
+mutation, remote CI, provider delivery, phone acceptance, or release is
+claimed.
+
+The active architecture, status, decisions, execution plan, changelog, and
+generated scripts reference describe the same R12C local-completion state.
+The Finance projection, Messaging lifecycle port, and Marketplace
+provider-access policy passed Tasks 2-6 and the final gate; the final report
+is
+`docs/superpowers/reports/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-report.md`.
+Local completion does not authorize R13 or any external action.
 
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
@@ -12,7 +32,7 @@ R12B is complete locally.
 Dependency debt is 9.
 Ownership remains 385/781.
 The architecture target remains incomplete.
-R12C implementation has not begun.
+R12C implementation followed on 2026-09-13 (see above).
 No commit, push, merge, deployment, production mutation, remote CI,
 provider delivery, phone acceptance, or release is claimed.
 
@@ -114,6 +134,25 @@ changing behavior.
 
 ## Modular Monolith Status And Plans
 
+- `docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md`,
+  `docs/superpowers/plans/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies.md`,
+  and
+  `docs/superpowers/reports/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-report.md`
+  - locally completed R12C from the same immutable base commit. Three
+    contracts moved to owner public slices (Finance projection, Messaging
+    lifecycle port, Marketplace provider-access policy), dependency IDs `10`,
+    `12-17`, `19-20` retired, the dependency baseline deleted, the import gate
+    strict, and ownership unchanged at 385/781. The spec's section 18 records
+    the governance-portability amendment. Commits exist only on the local
+    recovery branch; no push, merge, deployment, provider delivery, or release
+    is claimed.
+- `docs/superpowers/specs/2026-09-02-modular-monolith-r12b-planning-public-contracts-design.md`,
+  `docs/superpowers/plans/2026-09-02-modular-monolith-r12b-planning-public-contracts.md`,
+  and
+  `docs/superpowers/reports/2026-09-02-modular-monolith-r12b-planning-public-contracts-report.md`
+  - locally completed R12B: the Planning wedding-location public move, two
+    Onboarding local DTO re-expressions, dependency IDs `7-9`, `11`, `18`,
+    `21-22` retired (16 -> 9), and the qs 6.16.0 security prerequisite.
 - `docs/superpowers/specs/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts-design.md`,
   `docs/superpowers/plans/2026-09-01-modular-monolith-r12a-backoffice-catalog-public-contracts.md`,
   and

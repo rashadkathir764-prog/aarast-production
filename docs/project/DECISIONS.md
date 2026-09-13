@@ -1,12 +1,36 @@
 # Decisions
 
+## Modular Monolith R12C — Local Completion — 2026-09-13
+
+R12C is complete locally.
+Dependency debt is 0; the dependency baseline is deleted and the import gate
+is strict and unbaselined.
+Ownership remains 385/781.
+The architecture target remains incomplete; R13–R18 remain.
+Commits exist only on the local recovery branch
+`recovery/r12c-t5-takeover-20260913`. No push, merge, deployment, production
+mutation, remote CI, provider delivery, phone acceptance, or release is
+claimed.
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Close IDs 10 and 13 by publishing the unchanged Finance wedding-cost projection from the Finance owner public boundary. | Local Completion | Three consumers use the public path; exports and behavior are byte-identical; no facade or duplicate remains. |
+| Close IDs 12 and 14-17 with one synchronous, transaction-bound Messaging lifecycle port backed by the existing private implementation via a single `useExisting` alias. | Local Completion | Five consumers hold the port; nine calls pass the exact `tx`; no direct lifecycle import, dual path, or fallback exists. |
+| Close IDs 19 and 20 by publishing the pure Marketplace provider-access policy and retiring the historical Identity exception. | Local Completion | Seven consumers use the public path; copies, re-exports, and alternate paths are rejected; exception authorities are 0. |
+| Delete the dependency baseline, make `architecture:imports` strict, and retire the `architecture:imports:baseline` generator. | Local Completion | Direct unignored depcruise is 353/1420/0; the scanner rejects the ledger's existence, so a generator could only produce a rejected artifact or invite `--ignore-known` back. |
+| Bind governance gates to repository identity (Git top level extending the immutable base commit, base-relative overlay) instead of absolute path, directory name, branch, exact HEAD and dirty working tree. | Accepted; spec section 18 | The pinned environment could not be reproduced by any other checkout or after any commit, so the laws were not independently verifiable; every governed byte stays fingerprinted and every rejection is re-proven from a fresh clone. |
+| Canonicalize governance scripts to LF and register the historical mixed-ending bytes as reversible line-ending records. | Accepted | Git could not reproduce the registered bytes; the records prove nothing beyond line endings and registered splices changed. |
+| Isolate architecture fixtures from the live dependency installation with a real, link-free copy of the Nest closure. | Accepted | Junctions from temp fixtures into the live `node_modules` had stubbed out installed packages in the original worktree. |
+| Apply multer 2.3.0 and sharp 0.35.4 as a registered R12C security prerequisite with an approved lock lineage. | Local Completion | Registry advisories published after the R12B audit; fixes are within declared ranges; both audits are zero; R12B keeps validating its own approved lock. |
+| Keep R12C local completion distinct from architecture-target and release completion. | Accepted boundary | Physical-ownership debt 385/781 remains for R13-R18; nothing left this machine. |
+
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
 R12B is complete locally.
 Dependency debt is 9.
 Ownership remains 385/781.
 The architecture target remains incomplete.
-R12C implementation has not begun.
+R12C implementation followed on 2026-09-13 (see above).
 No commit, push, merge, deployment, production mutation, remote CI,
 provider delivery, phone acceptance, or release is claimed.
 

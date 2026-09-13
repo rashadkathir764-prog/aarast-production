@@ -1,10 +1,41 @@
 # Current Status
 
-Snapshot date: 2026-09-06
+Snapshot date: 2026-09-13
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith R12C — Local Completion — 2026-09-13
+
+R12C is complete locally.
+Dependency debt is 0; the dependency baseline is deleted and the import gate
+is strict and unbaselined.
+Ownership remains 385/781.
+The architecture target remains incomplete; R13–R18 remain.
+Commits exist only on the local recovery branch
+`recovery/r12c-t5-takeover-20260913`. No push, merge, deployment, production
+mutation, remote CI, provider delivery, phone acceptance, or release is
+claimed.
+
+The Finance wedding-cost projection, the Messaging conversation-lifecycle
+port, and the Marketplace provider-access policy each have one owner public
+contract; their legacy paths are absent; the declared consumers (3, 5, 7) use
+the public contracts. Dependency IDs `10`, `12-17`, `19-20` are retired, so
+the ledger is `9 -> 0` and `depcruise --config .dependency-cruiser.cjs src`
+reports 0 violations without any allowance; ownership remains byte-identical
+at `385/781`.
+
+Task 5 passed the combined 16-file architecture/security run `682/682`. Task 6
+passed focused `133/133`, full Backend `1499` with `1498` passing, zero
+failures and one declared Windows skip, aggregate smokes `30/30`, six phase-2
+concurrency smokes, architecture/check/build/security at zero, and both
+audits at zero. Governance gates now bind to repository identity and run from
+any checkout; fixtures are isolated from the live dependency installation;
+multer `2.3.0` and sharp `0.35.4` are the registered security prerequisite.
+Reviews for Tasks 5-7 were performed by the implementing agent and are
+recorded as such. Local completion does not authorize R13 or any external
+action.
 
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
@@ -12,7 +43,7 @@ R12B is complete locally.
 Dependency debt is 9.
 Ownership remains 385/781.
 The architecture target remains incomplete.
-R12C implementation has not begun.
+R12C implementation followed on 2026-09-13 (see above).
 No commit, push, merge, deployment, production mutation, remote CI,
 provider delivery, phone acceptance, or release is claimed.
 

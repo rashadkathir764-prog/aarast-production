@@ -15,13 +15,13 @@
 | `admin-web` | `npm run test:container-config` | `node --test scripts/runtime-config-guard.contract.mjs` |
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |
-| `backend` | `npm run architecture` | `npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a && npm run architecture:r12b` |
-| `backend` | `npm run architecture:imports` | `depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src` |
-| `backend` | `npm run architecture:imports:baseline` | `depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src` |
+| `backend` | `npm run architecture` | `npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a && npm run architecture:r12b && npm run architecture:r12c` |
+| `backend` | `npm run architecture:imports` | `depcruise --config .dependency-cruiser.cjs src` |
 | `backend` | `npm run architecture:ownership` | `node scripts/architecture/ownership-scan.cjs --check` |
 | `backend` | `npm run architecture:ports` | `node scripts/architecture/ports-scan.cjs --check` |
 | `backend` | `npm run architecture:r12a` | `node scripts/architecture/r12a-backoffice-catalog-public-contracts-scan.cjs --check` |
 | `backend` | `npm run architecture:r12b` | `node scripts/architecture/r12b-planning-public-contracts-scan.cjs --check` |
+| `backend` | `npm run architecture:r12c` | `node scripts/architecture/r12c-zero-cross-context-dependencies-scan.cjs --check` |
 | `backend` | `npm run architecture:r3` | `node scripts/architecture/r3-context-scan.cjs --check --stage strict` |
 | `backend` | `npm run architecture:r4` | `node --test -r ts-node/register test/architecture-r4-planning-finance-boundary.test.ts` |
 | `backend` | `npm run architecture:r5` | `node scripts/architecture/r5-identity-scan.cjs --check` |

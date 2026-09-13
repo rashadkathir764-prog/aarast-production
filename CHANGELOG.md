@@ -1,12 +1,50 @@
 # Changelog
 
+## 2026-09-13 - Modular Monolith R12C Local Completion
+
+R12C is complete locally.
+Dependency debt is 0; the dependency baseline is deleted and the import gate
+is strict and unbaselined.
+Ownership remains 385/781.
+The architecture target remains incomplete; R13–R18 remain.
+Commits exist only on the local recovery branch
+`recovery/r12c-t5-takeover-20260913`. No push, merge, deployment, production
+mutation, remote CI, provider delivery, phone acceptance, or release is
+claimed.
+
+- Published the unchanged Finance wedding-cost response projection under
+  `modules/finance/public`, replaced five direct Marketplace-to-Messaging
+  lifecycle imports with one transaction-bound public port backed by the
+  existing implementation, and published the pure Marketplace provider-access
+  policy under `modules/marketplace/public`; every declared consumer (3, 5, 7)
+  uses those contracts and no legacy path, facade, fallback, or duplicate
+  remains.
+- Retired exactly dependency IDs `10`, `12-17`, `19-20`, moving the ledger
+  from `9` to `0`; deleted `.dependency-cruiser-known-violations.json`; made
+  `architecture:imports` strict; removed the `architecture:imports:baseline`
+  generator. Ownership remains byte-identical at `385/781`.
+- Bound the R12 governance gates to repository identity (Git top level
+  extending base commit `4d0d3ee9`, base-relative overlay) instead of an
+  absolute path, directory name, branch, exact HEAD and dirty working tree, so
+  every gate runs from any checkout; canonicalized governance scripts to LF;
+  isolated the R8/R3 fixtures from the live dependency installation.
+- Applied the registered R12C security prerequisite: multer `2.3.0` and sharp
+  `0.35.4` (registry advisories published after 2026-09-05); both audits are
+  at zero.
+- Task 5 passed the combined 16-file architecture/security run `682/682`;
+  Task 6 passed focused `133/133`, full Backend `1499` with `1498` passing and
+  one declared Windows skip, aggregate smokes `30/30`, six phase-2
+  concurrency smokes, architecture/check/build/security at zero.
+- No Product, API, schema, migration, Mobile, Admin Web, deployment, or
+  release behavior changed.
+
 ## 2026-09-06 - Modular Monolith R12B Local Completion
 
 R12B is complete locally.
 Dependency debt is 9.
 Ownership remains 385/781.
 The architecture target remains incomplete.
-R12C implementation has not begun.
+R12C implementation followed on 2026-09-13 (see above).
 No commit, push, merge, deployment, production mutation, remote CI,
 provider delivery, phone acceptance, or release is claimed.
 

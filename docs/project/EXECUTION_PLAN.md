@@ -1,11 +1,32 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-09-06
+Snapshot date: 2026-09-13
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
 notes. Product, API, database, privacy, and phase boundaries remain governed by
 the current source documents listed in `docs/README.md`.
+
+## Modular Monolith R12C — Local Completion — 2026-09-13
+
+R12C is complete locally.
+Dependency debt is 0; the dependency baseline is deleted and the import gate
+is strict and unbaselined.
+Ownership remains 385/781.
+The architecture target remains incomplete; R13–R18 remain.
+Commits exist only on the local recovery branch
+`recovery/r12c-t5-takeover-20260913`. No push, merge, deployment, production
+mutation, remote CI, provider delivery, phone acceptance, or release is
+claimed.
+
+R12C has completed its three bounded moves (Finance projection, Messaging
+lifecycle port, Marketplace provider-access policy), retired dependency IDs
+`10`, `12-17`, `19-20` to a strict unbaselined zero, and passed Tasks 5-7
+with the full verification gate (`npm test` 1499 with 1498 passing and one
+declared Windows skip, smokes 30/30 plus six phase-2 packages, audits 0/0).
+Governance gates are portable across checkouts and fixtures are isolated from
+the live installation. The next implementation phase is R13 ownership
+retirement only after separate owner authorization.
 
 ## Modular Monolith R12B — Local Completion — 2026-09-06
 
@@ -13,7 +34,7 @@ R12B is complete locally.
 Dependency debt is 9.
 Ownership remains 385/781.
 The architecture target remains incomplete.
-R12C implementation has not begun.
+R12C implementation followed on 2026-09-13 (see above).
 No commit, push, merge, deployment, production mutation, remote CI,
 provider delivery, phone acceptance, or release is claimed.
 
@@ -594,8 +615,8 @@ edit source code.
 | --- | --- | --- |
 | R11 | Locally complete: reconcile the original target, current state, debt ledger, and future order | Nine Markdown paths agree; live debt remains 22 and 385/781 |
 | R12A | Locally complete: replace Backoffice/Catalog authority and mutation deep imports | Records 1-6 retired; 22 -> 16; ownership remains 385/781; Task 5/6 reviews approved |
-| R12B | Replace Planning DTO reuse and Planning-location read-model deep imports | Records 7-9, 11, 18, 21-22 retired; 16 -> 9 |
-| R12C | Replace Finance presenter, Messaging lifecycle, and Marketplace access-policy deep imports | Records 10, 12-17, 19-20 retired; 9 -> 0; strict dependency baseline deleted |
+| R12B | Locally complete: replace Planning DTO reuse and Planning-location read-model deep imports | Records 7-9, 11, 18, 21-22 retired; 16 -> 9; ownership remains 385/781 |
+| R12C | Locally complete: replace Finance presenter, Messaging lifecycle, and Marketplace access-policy deep imports | Records 10, 12-17, 19-20 retired; 9 -> 0; strict dependency baseline deleted; ownership remains 385/781 |
 | R13 | Complete Planning and Finance internals | Ownership 44/85 retired |
 | R14A | Complete Identity internals and preserve the invite OTP owner port | Identity ownership 60/78 retired |
 | R14B | Complete Collaboration internals after R14A exits | Collaboration ownership 28/80 retired; combined R14 total 88/158 |

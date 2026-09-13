@@ -64,6 +64,16 @@ const NEW_PATHS = Object.freeze([
 // attributes, and the ports scanner whose canonical LF bytes they require.
 const STRICT_CANDIDATE_PATHS = Object.freeze([
   '.gitattributes',
+  // Task 7 documentation candidate set (2026-09-13): the active documents,
+  // the generated scripts catalog, and the R12C final report.
+  'ARCHITECTURE.md',
+  'CHANGELOG.md',
+  'docs/README.md',
+  'docs/SCRIPTS.md',
+  'docs/project/DECISIONS.md',
+  'docs/project/EXECUTION_PLAN.md',
+  'docs/project/STATUS.md',
+  'docs/superpowers/reports/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-report.md',
   'backend/package.json',
   // R12C security prerequisite (2026-09-13): multer 2.3.0 and sharp 0.35.4
   // registered as an exact reversible splice, so the R12B receipt still
@@ -349,7 +359,7 @@ function validateMarketplacePublicCandidate(candidate) {
 
 function validateStrictCandidate(candidate) {
   plainData(candidate);
-  if (sha(JSON.stringify(candidate)) !== '74a56f53839002abb4705719b2d6746d55a9288a2abf232a5c87f49ea1177d71') {
+  if (sha(JSON.stringify(candidate)) !== '7eb8584c062bef05119cfe3b07c2032570ff796dfae2c88e0714a934619f6a53') {
     throw new Error('R12C preregistered strict candidate changed');
   }
   const seen = new Set();

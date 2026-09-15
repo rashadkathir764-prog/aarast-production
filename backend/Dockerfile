@@ -1,4 +1,4 @@
-FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS build
+FROM node@sha256:e961046fec20896e8904f2b4a8b4c7e5ca91826d84d8d33d83dbaa61f942069e AS build
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ RUN npm run build
 RUN npm prune --omit=dev
 RUN npx prisma generate
 
-FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runtime
+FROM node@sha256:e961046fec20896e8904f2b4a8b4c7e5ca91826d84d8d33d83dbaa61f942069e AS runtime
 
 ARG AARAST_GIT_REVISION=development-unversioned
 

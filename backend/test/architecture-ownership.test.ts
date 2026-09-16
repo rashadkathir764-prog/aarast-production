@@ -700,6 +700,17 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
       'const where: Prisma.ProviderWhereInput = { id: "p" };',
       'await prisma.provider.findMany({ where });',
     ].join('\n')),
+    // An interface the product declares names its keys exactly like an
+    // object type alias; a library interface (here from lib.d.ts) does not.
+    'marketplace/typed-interface.ts': prismaFixture([
+      'interface ProviderArgs { where: { cityId: string }; include: { city: boolean } }',
+      'declare const args: ProviderArgs;',
+      'await prisma.provider.findMany(args);',
+      'declare const own: { where: OwnWhere };',
+      'await prisma.provider.count(own);',
+      'declare const library: { where: ErrorOptions };',
+      'await prisma.provider.count(library);',
+    ].join('\n'), 'interface OwnWhere { id: string; status?: string }'),
   });
   const records = scanOwnershipViolations(options);
   assert.deepEqual(records.filter((record) => record.file === 'backend/src/marketplace/typed-local.ts'), []);
@@ -713,6 +724,16 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
     file: 'backend/src/marketplace/typed-declared.ts', model: '<dynamic>', owner: null, mode: 'unknown',
     source: 'relation', reason: 'unknown-relation-shape',
   });
+  assertExactRecords(records.filter((record) => record.file === 'backend/src/marketplace/typed-interface.ts'), [
+    {
+      file: 'backend/src/marketplace/typed-interface.ts', model: 'City', owner: 'catalog', operation: 'city',
+      mode: 'read', source: 'relation', reason: 'foreign-model', count: 1,
+    },
+    {
+      file: 'backend/src/marketplace/typed-interface.ts', model: '<dynamic>', owner: null, operation: 'count',
+      mode: 'unknown', source: 'relation', reason: 'unknown-relation-shape', count: 1,
+    },
+  ]);
 });
 
 test('static const arguments resolve while call, mutable import, and computed spread fail closed', () => {

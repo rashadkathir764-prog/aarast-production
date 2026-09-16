@@ -717,12 +717,15 @@ function resolveTypeShape(type, location, checker, depth = 0) {
   const symbol = type.getSymbol && type.getSymbol();
   if (symbol && (symbol.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface)) && symbol.getName() !== '__type') {
     // Class instances (Date, Buffer, Set, Map, Decimal, ...) are scalar values
-    // in a Prisma argument shape; a declared interface is not an exact
-    // literal shape.
+    // in a Prisma argument shape. An interface the product declares in its
+    // own sources names its keys exactly like an object type alias does and
+    // is walked the same way; a library interface is not a proof.
     if (SCALAR_CLASS_NAMES.has(symbol.getName()) || (symbol.flags & ts.SymbolFlags.Class)) {
       return { kind: 'scalar', unknown: false };
     }
-    return { kind: 'unknown', unknown: true };
+    const declaredInSource = (symbol.declarations || []).length !== 0
+      && symbol.declarations.every((declaration) => !declaration.getSourceFile().isDeclarationFile);
+    if (!declaredInSource) return { kind: 'unknown', unknown: true };
   }
   if (checker.getIndexInfosOfType(type).length !== 0) return { kind: 'unknown', unknown: true };
   const properties = [];
@@ -1520,6 +1523,7 @@ function classifyOwnershipAccesses(options) {
         }
       }
       if (ts.isCallExpression(node)) {
+        const firstAccess = accesses.length;
         const rawOperation = rawOperationForExpression(
           node.expression,
           checker,
@@ -1555,6 +1559,13 @@ function classifyOwnershipAccesses(options) {
                 delegate.operation,
               ));
             }
+          }
+        }
+        if (process.env.ARCHITECTURE_DEBUG) {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+          for (const access of accesses.slice(firstAccess)) {
+            if (!access.reason || access.reason === 'unknown-relation-shape') continue;
+            console.error(`[ownership] ${access.reason} at ${file}:${line + 1} ${access.model}.${access.operation} (${access.mode}/${access.source}, owner ${access.owner})`);
           }
         }
       }

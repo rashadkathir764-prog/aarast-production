@@ -2607,18 +2607,6 @@
       "count": 20
     },
     {
-      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
-      "context": "collaboration",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
       "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
       "context": "collaboration",
@@ -2641,30 +2629,6 @@
       "source": "relation",
       "reason": "unknown-relation-shape",
       "count": 3
-    },
-    {
-      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|updateMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
-      "context": "collaboration",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "updateMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
-      "context": "collaboration",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
     },
     {
       "key": "backend/src/modules/identity/internal/auth/auth.service.ts|identity|collaboration|PlanInvite|findFirst|read|delegate|foreign-model",
@@ -4095,18 +4059,6 @@
       "count": 2
     },
     {
-      "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
       "file": "backend/src/wedding-costs/wedding-costs.service.ts",
       "context": "finance",
@@ -4129,18 +4081,6 @@
       "source": "relation",
       "reason": "unknown-relation-shape",
       "count": 5
-    },
-    {
-      "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
     },
     {
       "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning|collaboration|ContributorHistoryScope|create|write|delegate|foreign-model",

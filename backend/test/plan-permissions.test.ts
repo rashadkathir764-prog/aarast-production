@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 
 const archivedPlan = {
   id: "archived-plan",
@@ -81,7 +82,7 @@ test("viewer role is read-only and owner retains every permission", () => {
 });
 
 test("stored provider permission overrides role defaults everywhere", () => {
-  const service = new PermissionService({} as any);
+  const service = new PermissionService({} as any, new PlanReadService());
   const context = (role: SharedMemberRole, canManageProviders: boolean) =>
     ({
       plan: { ownerUserId: "owner-1" },
@@ -107,7 +108,7 @@ test("stored provider permission overrides role defaults everywhere", () => {
 });
 
 test("an archived plan remains readable for an authorized owner", async () => {
-  const service = new PermissionService(archivedPlanPrisma() as any);
+  const service = new PermissionService(archivedPlanPrisma() as any, new PlanReadService());
   const currentUser = { id: archivedPlan.ownerUserId } as any;
 
   const planAccess = await service.assertPlanReadable(
@@ -158,7 +159,7 @@ const archivedWriteAssertions = [
 
 for (const assertion of archivedWriteAssertions) {
   test(`an archived plan rejects ${assertion.label}`, async () => {
-    const service = new PermissionService(archivedPlanPrisma() as any);
+    const service = new PermissionService(archivedPlanPrisma() as any, new PlanReadService());
     const currentUser = { id: archivedPlan.ownerUserId } as any;
 
     await assert.rejects(
@@ -210,7 +211,7 @@ const archivedTransactionalWriteAssertions = [
 for (const assertion of archivedTransactionalWriteAssertions) {
   test(`an archived plan rejects ${assertion.label}`, async () => {
     const tx = archivedPlanPrisma();
-    const service = new PermissionService(tx as any);
+    const service = new PermissionService(tx as any, new PlanReadService());
     const currentUser = { id: archivedPlan.ownerUserId } as any;
 
     await assert.rejects(

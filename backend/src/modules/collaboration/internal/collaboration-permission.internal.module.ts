@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../../platform/database/prisma.module';
+import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 import { PermissionService } from './permission.service';
 
 export const COLLABORATION_PERMISSION_IMPLEMENTATION = Symbol(
@@ -7,7 +8,7 @@ export const COLLABORATION_PERMISSION_IMPLEMENTATION = Symbol(
 );
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, PlanReadPublicModule],
   providers: [
     PermissionService,
     {

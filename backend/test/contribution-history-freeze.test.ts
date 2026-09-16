@@ -10,6 +10,7 @@ import {
   SharedMemberRole,
 } from "@prisma/client";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 function memberLockWithoutPendingInvites(query: unknown, memberId: string) {
@@ -68,7 +69,7 @@ test("task revocation records only an authority boundary and never rebuilds hist
     },
     planInvite: { updateMany: async () => ({ count: 1 }) },
   };
-  const permissionService = new PermissionService({} as any);
+  const permissionService = new PermissionService({} as any, new PlanReadService());
   (permissionService as any).assertMemberManageableInTransaction =
     async () => ({
       plan: { id: "plan-1", ownerUserId: "owner-1" },
@@ -163,7 +164,7 @@ test("changing a role never re-grants an explicitly revoked stored permission", 
     },
     planInvite: { updateMany: async () => ({ count: 1 }) },
   };
-  const permissionService = new PermissionService({} as any);
+  const permissionService = new PermissionService({} as any, new PlanReadService());
   (permissionService as any).assertMemberManageableInTransaction =
     async () => ({
       plan: { id: "plan-1", ownerUserId: "owner-1" },
@@ -227,7 +228,7 @@ test("revoking money management keeps live money access and does not freeze the 
     },
     planInvite: { updateMany: async () => ({ count: 1 }) },
   };
-  const permissionService = new PermissionService({} as any);
+  const permissionService = new PermissionService({} as any, new PlanReadService());
   (permissionService as any).assertMemberManageableInTransaction =
     async () => ({
       plan: { id: "plan-1", ownerUserId: "owner-1" },
@@ -341,7 +342,7 @@ test("revoking every permission records section boundaries without recapturing l
     },
     conversation: { findMany: async () => [] },
   };
-  const permissionService = new PermissionService({} as any);
+  const permissionService = new PermissionService({} as any, new PlanReadService());
   (permissionService as any).assertMemberManageableInTransaction =
     async () => ({
       plan: { id: "plan-1", ownerUserId: "owner-1" },

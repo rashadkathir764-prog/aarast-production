@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { ForbiddenException } from "@nestjs/common";
 import { SharedMemberRole, WeddingPlanStatus } from "@prisma/client";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
 const taskRevokedMessage = "لم تعد لديك صلاحية لتنفيذ هذه المهمة";
@@ -33,7 +34,7 @@ function contributorContext() {
 }
 
 test("stored false contributor permissions override every role default at runtime", () => {
-  const permissions = new PermissionService({} as any);
+  const permissions = new PermissionService({} as any, new PlanReadService());
   const context = contributorContext();
 
   assert.equal(permissions.canViewMoney(context), false);
@@ -48,7 +49,7 @@ test("stored false contributor permissions override every role default at runtim
 test("direct member creation is fail-closed and never derives omitted permissions from role", () => {
   const service = new SharingService(
     {} as any,
-    new PermissionService({} as any),
+    new PermissionService({} as any, new PlanReadService()),
     {} as any,
     {} as any,
     {} as any,
@@ -101,7 +102,7 @@ test("a known contributor whose task permission was revoked receives the stable 
   const permissions = new PermissionService({
     weddingPlan: { findUnique: async () => plan },
     sharedMember: { findUnique: async () => member },
-  } as any);
+  } as any, new PlanReadService());
 
   await assert.rejects(
     () =>

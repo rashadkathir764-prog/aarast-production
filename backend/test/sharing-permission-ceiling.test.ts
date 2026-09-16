@@ -17,10 +17,11 @@ import {
   PlanAccessContext,
 } from "../src/modules/collaboration/public/collaboration-permission.port";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
 import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
 
-const permissions = new PermissionService({} as any);
+const permissions = new PermissionService({} as any, new PlanReadService());
 const noOpContributionHistory = {
   ensureTenureInTransaction: async () => undefined,
   recordInTransaction: async () => undefined,
@@ -449,7 +450,7 @@ function inviteHarness(
     sharedMember: null,
   };
   let transactionalAccess = currentAccess;
-  const permissionService = new PermissionService({} as any);
+  const permissionService = new PermissionService({} as any, new PlanReadService());
   (permissionService as any).assertPlanReadable = async () => currentAccess;
   (permissionService as any).assertMemberManageable = async () => currentAccess;
   (permissionService as any).assertMemberManageableInTransaction = async () => {
@@ -1357,7 +1358,7 @@ test("accepted invite contribution uses the persisted acceptance instant on the 
   const recorded: Array<Record<string, any>> = [];
   const service = new SharingService(
     {} as any,
-    new PermissionService({} as any),
+    new PermissionService({} as any, new PlanReadService()),
     {} as any,
     {} as any,
     {
@@ -1524,7 +1525,7 @@ test("member removal locks pending invitations before the target member and revo
   const lockOrder: string[] = [];
   const revokedWrites: Array<Record<string, any>> = [];
   let memberDeleted = false;
-  const permissionService = new PermissionService({} as any);
+  const permissionService = new PermissionService({} as any, new PlanReadService());
   (permissionService as any).assertMemberManageableInTransaction = async () => {
     lockOrder.push("Plan");
     return {

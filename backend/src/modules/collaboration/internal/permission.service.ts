@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -8,6 +9,10 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
+import {
+  PLAN_READ_PORT,
+  PlanReadPort,
+} from "../../planning/public/plan-read.port";
 import {
   assertWeddingPlanWritable,
   CollaborationPermissionPort,
@@ -25,7 +30,10 @@ import {
 
 @Injectable()
 export class PermissionService implements CollaborationPermissionPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PLAN_READ_PORT) private readonly plans: PlanReadPort,
+  ) {}
 
   async getPlanAccessContext(
     weddingPlanId: string,
@@ -43,9 +51,7 @@ export class PermissionService implements CollaborationPermissionPort {
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext> {
-    const plan = await client.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
+    const plan = await this.plans.getPlan(client, weddingPlanId);
 
     if (!plan) {
       throw new NotFoundException("Wedding plan not found");
@@ -435,20 +441,14 @@ export class PermissionService implements CollaborationPermissionPort {
     // Take the plan lifecycle lock before any permission or domain-row lock.
     // A concurrent archive either commits first and is observed below, or
     // waits until the authorized transaction has finished.
-    const planLock = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "WeddingPlan"
-        WHERE "id" = ${weddingPlanId}
-        FOR SHARE
-      `,
+    const planLock = await this.plans.lockPlanRowForShareInTransaction(
+      tx,
+      weddingPlanId,
     );
     if (planLock.length !== 1) {
       throw new NotFoundException("Wedding plan not found");
     }
-    const plan = await tx.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
+    const plan = await this.plans.getPlan(tx, weddingPlanId);
     if (!plan || plan.ownerUserId !== ownerUserId) {
       throw new NotFoundException("Wedding plan not found");
     }
@@ -492,20 +492,14 @@ export class PermissionService implements CollaborationPermissionPort {
 
     // Plan mutations need an UPDATE lock from the start. Taking SHARE and then
     // upgrading would allow a lock-order inversion with other plan writers.
-    const planLock = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "WeddingPlan"
-        WHERE "id" = ${weddingPlanId}
-        FOR UPDATE
-      `,
+    const planLock = await this.plans.lockPlanRowForUpdateInTransaction(
+      tx,
+      weddingPlanId,
     );
     if (planLock.length !== 1) {
       throw new NotFoundException("Wedding plan not found");
     }
-    const plan = await tx.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
+    const plan = await this.plans.getPlan(tx, weddingPlanId);
     if (!plan || plan.ownerUserId !== ownerUserId) {
       throw new NotFoundException("Wedding plan not found");
     }
@@ -540,10 +534,7 @@ export class PermissionService implements CollaborationPermissionPort {
     additionalLifecycleUserIds: readonly string[] = [],
     forUpdate = false,
   ): Promise<string> {
-    const seed = await tx.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-      select: { ownerUserId: true },
-    });
+    const seed = await this.plans.getPlan(tx, weddingPlanId);
     if (!seed) {
       throw new NotFoundException("Wedding plan not found");
     }

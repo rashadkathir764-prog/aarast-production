@@ -2427,30 +2427,6 @@
       "count": 1
     },
     {
-      "key": "backend/src/modules/collaboration/internal/permission.service.ts|collaboration|planning|WeddingPlan|findUnique|read|delegate|foreign-model",
-      "file": "backend/src/modules/collaboration/internal/permission.service.ts",
-      "context": "collaboration",
-      "owner": "planning",
-      "model": "WeddingPlan",
-      "operation": "findUnique",
-      "mode": "read",
-      "source": "delegate",
-      "reason": "foreign-model",
-      "count": 4
-    },
-    {
-      "key": "backend/src/modules/collaboration/internal/permission.service.ts|collaboration|planning|WeddingPlan|select|read|sql|foreign-model",
-      "file": "backend/src/modules/collaboration/internal/permission.service.ts",
-      "context": "collaboration",
-      "owner": "planning",
-      "model": "WeddingPlan",
-      "operation": "select",
-      "mode": "read",
-      "source": "sql",
-      "reason": "foreign-model",
-      "count": 2
-    },
-    {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration|identity|User|findFirst|read|delegate|foreign-model",
       "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
       "context": "collaboration",

@@ -14,11 +14,12 @@ import { SharedMemberRole } from "@prisma/client";
 import { NotFoundException } from "@nestjs/common";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 
 const backendRoot = join(__dirname, "..");
 
 test("the final live read predicate revalidates current stored membership and permission", () => {
-  const service = new PermissionService({} as any);
+  const service = new PermissionService({} as any, new PlanReadService());
   const context = {
     plan: { id: "plan-1", ownerUserId: "owner-1" },
     isOwner: false,

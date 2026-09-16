@@ -22,6 +22,7 @@ import {
 } from "../src/modules/identity/internal/profile/contexts.service";
 import { ValidateContextDto } from "../src/modules/identity/api/context-dto/validate-context.dto";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-profile.dto";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
 
@@ -151,7 +152,7 @@ class FakeContextsPrisma {
 
 function contextsHarness() {
   const prisma = new FakeContextsPrisma();
-  const permissions = new PermissionService({} as any);
+  const permissions = new PermissionService({} as any, new PlanReadService());
   return {
     prisma,
     service: new ContextsService(prisma as any, permissions),

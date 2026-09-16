@@ -26,6 +26,7 @@ import { FinancePortService } from '../src/modules/finance/internal/finance-port
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
 import { SharingService } from '../src/modules/collaboration/internal/sharing.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
+import { collaborationHistory, collaborationPermissions, planningOwnerPorts } from './support/owner-ports';
 
 const now = new Date('2026-07-26T00:00:00.000Z');
 const weddingPlanId = '11111111-1111-4111-8111-111111111111';
@@ -146,7 +147,7 @@ test('archiving a plan revokes every live pending invitation in the same transac
         return result;
       },
     } as any,
-    {
+    collaborationPermissions({
       assertPlanManageableForUpdateInTransaction: async (
         client: unknown,
         id: string,
@@ -163,10 +164,11 @@ test('archiving a plan revokes every live pending invitation in the same transac
         };
       },
       canViewMoney: () => true,
-    } as any,
-    {
+    }) as any,
+    collaborationHistory({
       recordForContextInTransaction: async () => null,
-    } as any,
+    }) as any,
+    ...planningOwnerPorts,
   );
 
   const result = await service.archive(requester, weddingPlanId);
@@ -207,14 +209,15 @@ test('an archived plan cannot be selected as active under the stable lifecycle c
       $transaction: async (operation: (client: any) => Promise<unknown>) =>
         operation(tx),
     } as any,
-    {
+    collaborationPermissions({
       assertPlanReadableForUserUpdateInTransaction: async () => ({
         plan: archivedPlan,
         isOwner: true,
         sharedMember: null,
       }),
-    } as any,
-    {} as any,
+    }) as any,
+    collaborationHistory({}) as any,
+    ...planningOwnerPorts,
   );
 
   await assert.rejects(

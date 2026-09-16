@@ -10,10 +10,12 @@ import {
   ContributionEvent,
   ContributionPermission,
   ContributionProvenance,
+  ContributionScopeStatus,
   ContributionSection,
   ContributorTenure,
   Prisma,
   SharedMember,
+  WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import {
@@ -123,6 +125,38 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
       weddingPlanId: context.plan.id,
       actorUserId: context.sharedMember.userId,
       authorityVersion: context.sharedMember.authorityVersion,
+    });
+  }
+
+  async createHistoryScopeInTransaction(
+    tx: Prisma.TransactionClient,
+    plan: Pick<WeddingPlan, "id" | "createdAt">,
+  ): Promise<void> {
+    await tx.contributorHistoryScope.create({
+      data: {
+        weddingPlanId: plan.id,
+        status: ContributionScopeStatus.ACTIVE,
+        historyCoverageStartsAt: plan.createdAt,
+      },
+    });
+  }
+
+  async archiveHistoryScopeInTransaction(
+    tx: Prisma.TransactionClient,
+    plan: Pick<WeddingPlan, "id" | "updatedAt">,
+  ): Promise<void> {
+    await tx.contributorHistoryScope.upsert({
+      where: { weddingPlanId: plan.id },
+      create: {
+        weddingPlanId: plan.id,
+        status: ContributionScopeStatus.ARCHIVED,
+        archivedAt: plan.updatedAt,
+        historyCoverageStartsAt: plan.updatedAt,
+      },
+      update: {
+        status: ContributionScopeStatus.ARCHIVED,
+        archivedAt: plan.updatedAt,
+      },
     });
   }
 

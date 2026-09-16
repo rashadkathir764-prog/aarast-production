@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { type BudgetCategory, Prisma, WeddingCostStatus } from '@prisma/client';
 import {
   findLogicalBudgetCategory,
   findOtherBudgetCategory,
@@ -9,6 +9,8 @@ import {
 import type {
   CreateCostFromAcceptedOfferInput,
   FinancePort,
+  ImportedCostInput,
+  PlanImportCounts,
 } from '../public/finance.port';
 import {
   weddingCostResponseInclude,
@@ -17,6 +19,90 @@ import {
 
 @Injectable()
 export class FinancePortService implements FinancePort {
+  async createBudgetCategoriesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    names: readonly string[],
+  ): Promise<BudgetCategory[]> {
+    if (names.length > 0) {
+      await tx.budgetCategory.createMany({
+        data: names.map((name) => ({
+          weddingPlanId,
+          name,
+          normalizedName: normalizeBudgetCategoryName(name),
+        })),
+      });
+    }
+    return this.listBudgetCategories(tx, weddingPlanId);
+  }
+
+  async listBudgetCategories(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<BudgetCategory[]> {
+    return client.budgetCategory.findMany({
+      where: { weddingPlanId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createImportedCostInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    cost: ImportedCostInput,
+  ): Promise<void> {
+    const status = cost.paidAmount.isZero()
+      ? WeddingCostStatus.OPEN
+      : cost.paidAmount.eq(cost.totalAmount)
+        ? WeddingCostStatus.PAID
+        : WeddingCostStatus.PARTIALLY_PAID;
+    await tx.weddingCost.create({
+      data: {
+        weddingPlanId,
+        budgetCategoryId: cost.budgetCategoryId,
+        title: cost.title,
+        partyName: cost.partyName,
+        partyPhone: cost.partyPhone,
+        totalAmount: cost.totalAmount,
+        paidAmount: cost.paidAmount,
+        agreementDate: cost.agreementDate,
+        status,
+        note: cost.note,
+        payments: {
+          create: cost.payments.map((payment) => ({
+            amount: payment.amount,
+            paidAt: payment.paidAt,
+            method: payment.method,
+            note: payment.note,
+          })),
+        },
+        paymentSchedules: {
+          create: cost.paymentSchedules.map((schedule) => ({
+            amount: schedule.amount,
+            dueDate: schedule.dueDate,
+            note: schedule.note,
+          })),
+        },
+      },
+    });
+  }
+
+  async getPlanImportCounts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<PlanImportCounts> {
+    const [costs, payments, paymentSchedules] = await Promise.all([
+      client.weddingCost.count({ where: { weddingPlanId } }),
+      client.costPayment.count({
+        where: { weddingCost: { weddingPlanId } },
+      }),
+      client.paymentSchedule.count({
+        where: { weddingCost: { weddingPlanId } },
+      }),
+    ]);
+    return { costs, payments, paymentSchedules };
+  }
+
   async findCostForAcceptedOffer(
     tx: Prisma.TransactionClient,
     quoteOfferId: string,

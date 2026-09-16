@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  NotFoundException,
 } from "@nestjs/common";
 import {
   AppRole,
@@ -9,7 +10,6 @@ import {
   ContributionAction,
   ContributionEntityType,
   ContributionPermission,
-  ContributionScopeStatus,
   ContributionSection,
   GuestAttendanceStatus,
   GuestInvitationStatus,
@@ -18,14 +18,27 @@ import {
   OnboardingPath,
   Prisma,
   WeddingPersona,
-  WeddingCostStatus,
   WeddingPlan,
   WeddingPlanStatus,
   WeddingTaskPriority,
   WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
-import { SafeUser, toSafeUser } from "../modules/identity/public/safe-user";
+import { SafeUser } from "../modules/identity/public/safe-user";
+import {
+  ACTIVE_PLAN_PORT,
+  type ActivePlanPort,
+} from "../modules/identity/public/active-plan.port";
+import {
+  USER_READ_PORT,
+  type UserReadPort,
+} from "../modules/identity/public/user-read.port";
+import {
+  FINANCE_PORT,
+  type FinancePort,
+} from "../modules/finance/public/finance.port";
+import { GUESTS_PORT, type GuestsPort } from "../modules/guests/public/guests.port";
+import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
@@ -105,6 +118,16 @@ export class WeddingPlansService {
     private readonly permissions: PermissionService,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory: ContributionHistoryService,
+    @Inject(USER_READ_PORT)
+    private readonly users: UserReadPort,
+    @Inject(ACTIVE_PLAN_PORT)
+    private readonly activePlan: ActivePlanPort,
+    @Inject(FINANCE_PORT)
+    private readonly finance: FinancePort,
+    @Inject(TASKS_PORT)
+    private readonly tasks: TasksPort,
+    @Inject(GUESTS_PORT)
+    private readonly guests: GuestsPort,
   ) {}
 
   async create(
@@ -140,25 +163,26 @@ export class WeddingPlansService {
           currency: this.normalizedCurrency(dto.currency),
           onboardingPath: dto.onboardingPath ?? null,
           persona: dto.persona ?? null,
-          ...(selectedCategories.length > 0
-            ? {
-                budgetCategories: {
-                  create: selectedCategories.map((name) => ({
-                    name,
-                    normalizedName: this.normalizedCategoryName(name),
-                  })),
-                },
-              }
-            : {}),
         },
       });
+      if (selectedCategories.length > 0) {
+        await this.finance.createBudgetCategoriesInTransaction(
+          tx,
+          created.id,
+          selectedCategories,
+        );
+      }
 
-      await this.createContributorHistoryScopeInTransaction(tx, created);
+      await this.contributionHistory.createHistoryScopeInTransaction(
+        tx,
+        created,
+      );
 
-      await tx.user.update({
-        where: { id: currentUser.id },
-        data: { activeWeddingPlanId: created.id },
-      });
+      await this.activePlan.setActivePlanPointerInTransaction(
+        tx,
+        currentUser.id,
+        created.id,
+      );
 
       return created;
     });
@@ -181,7 +205,7 @@ export class WeddingPlansService {
     currentUser: AuthenticatedUser,
   ): Promise<WeddingPlanResponse[]> {
     const plans = await this.prisma.weddingPlan.findMany({
-      where: this.accessiblePlansWhere(currentUser.id),
+      where: await this.accessiblePlansWhere(this.prisma, currentUser.id),
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
 
@@ -193,15 +217,15 @@ export class WeddingPlansService {
   async findActive(
     currentUser: AuthenticatedUser,
   ): Promise<WeddingPlanResponse | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: currentUser.id },
-      select: { activeWeddingPlanId: true },
-    });
+    const activeWeddingPlanId = await this.users.getActivePlanPointer(
+      this.prisma,
+      currentUser.id,
+    );
 
-    if (user?.activeWeddingPlanId) {
+    if (activeWeddingPlanId) {
       const activePlan = await this.findAccessiblePlanningPlan(
         currentUser,
-        user.activeWeddingPlanId,
+        activeWeddingPlanId,
       );
       if (activePlan) {
         return this.toReadableResponse(activePlan, currentUser);
@@ -301,35 +325,21 @@ export class WeddingPlansService {
       // The permission assertion above holds the plan's UPDATE lock. Invite
       // acceptance takes the same lifecycle lock before claiming an invite, so
       // either acceptance commits first or it observes the archived plan.
-      await tx.planInvite.updateMany({
-        where: {
-          weddingPlanId: id,
-          acceptedAt: null,
-          declinedAt: null,
-          revokedAt: null,
-          expiresAt: { gt: archivedAt },
-        },
-        data: { revokedAt: archivedAt },
-      });
+      await this.permissions.revokeLivePlanInvitesInTransaction(
+        tx,
+        id,
+        archivedAt,
+      );
       await this.recordPlanContribution(
         tx,
         context,
         plan,
         ContributionAction.STATUS_CHANGED,
       );
-      await tx.contributorHistoryScope.upsert({
-        where: { weddingPlanId: id },
-        create: {
-          weddingPlanId: id,
-          status: ContributionScopeStatus.ARCHIVED,
-          archivedAt: plan.updatedAt,
-          historyCoverageStartsAt: plan.updatedAt,
-        },
-        update: {
-          status: ContributionScopeStatus.ARCHIVED,
-          archivedAt: plan.updatedAt,
-        },
-      });
+      await this.contributionHistory.archiveHistoryScopeInTransaction(
+        tx,
+        plan,
+      );
       return { context, plan };
     });
 
@@ -353,10 +363,11 @@ export class WeddingPlansService {
             currentUser,
           );
         assertWeddingPlanWritable(transactionalContext.plan);
-        await tx.user.update({
-          where: { id: currentUser.id },
-          data: { activeWeddingPlanId: id },
-        });
+        await this.activePlan.setActivePlanPointerInTransaction(
+          tx,
+          currentUser.id,
+          id,
+        );
         return transactionalContext;
       },
     );
@@ -405,43 +416,34 @@ export class WeddingPlansService {
         },
       });
 
-      await this.createContributorHistoryScopeInTransaction(tx, plan);
+      await this.contributionHistory.createHistoryScopeInTransaction(tx, plan);
 
-      if (selectedCategories.length > 0) {
-        await tx.budgetCategory.createMany({
-          data: selectedCategories.map((name) => ({
-            weddingPlanId: plan.id,
-            name,
-            normalizedName: this.normalizedCategoryName(name),
-          })),
-        });
-      }
-
-      const [budgetCategories, user] = await Promise.all([
-        tx.budgetCategory.findMany({
-          where: { weddingPlanId: plan.id },
-          orderBy: { createdAt: "asc" },
-        }),
-        tx.user.update({
-          where: { id: currentUser.id },
-          data: {
-            activeWeddingPlanId: plan.id,
-            appRole:
-              path === OnboardingPath.PROVIDER
-                ? AppRole.PROVIDER
-                : AppRole.WEDDING_USER,
-            onboardingPath: path,
-            persona: dto.persona ?? null,
-            onboardingCompletedAt: now,
-          },
-        }),
-      ]);
+      const budgetCategories =
+        await this.finance.createBudgetCategoriesInTransaction(
+          tx,
+          plan.id,
+          selectedCategories,
+        );
+      const user = await this.activePlan.completeOnboardingInTransaction(
+        tx,
+        currentUser.id,
+        {
+          activeWeddingPlanId: plan.id,
+          appRole:
+            path === OnboardingPath.PROVIDER
+              ? AppRole.PROVIDER
+              : AppRole.WEDDING_USER,
+          onboardingPath: path,
+          persona: dto.persona ?? null,
+          onboardingCompletedAt: now,
+        },
+      );
 
       return { budgetCategories, plan, user };
     });
 
     return {
-      user: toSafeUser(result.user),
+      user: result.user,
       activeWeddingPlan: this.toResponse(result.plan),
       budgetCategories: result.budgetCategories.map((category) =>
         this.toBudgetCategoryResponse(category),
@@ -629,21 +631,17 @@ export class WeddingPlansService {
           },
         });
 
-        await this.createContributorHistoryScopeInTransaction(tx, createdPlan);
+        await this.contributionHistory.createHistoryScopeInTransaction(
+          tx,
+          createdPlan,
+        );
 
-        if (categoryNames.length > 0) {
-          await tx.budgetCategory.createMany({
-            data: categoryNames.map((name) => ({
-              weddingPlanId: createdPlan.id,
-              name,
-              normalizedName: this.normalizedCategoryName(name),
-            })),
-          });
-        }
-
-        const categories = await tx.budgetCategory.findMany({
-          where: { weddingPlanId: createdPlan.id },
-        });
+        const categories =
+          await this.finance.createBudgetCategoriesInTransaction(
+            tx,
+            createdPlan.id,
+            categoryNames,
+          );
         const categoryIdByName = new Map(
           categories.map((category) => [category.normalizedName, category.id]),
         );
@@ -657,14 +655,10 @@ export class WeddingPlansService {
               `costs[${index}].categoryName must map to a budget category`,
             );
           }
-          const status = cost.paidAmount.isZero()
-            ? WeddingCostStatus.OPEN
-            : cost.paidAmount.eq(cost.totalAmount)
-              ? WeddingCostStatus.PAID
-              : WeddingCostStatus.PARTIALLY_PAID;
-          await tx.weddingCost.create({
-            data: {
-              weddingPlanId: createdPlan.id,
+          await this.finance.createImportedCostInTransaction(
+            tx,
+            createdPlan.id,
+            {
               budgetCategoryId,
               title: cost.title,
               partyName: cost.partyName,
@@ -672,45 +666,29 @@ export class WeddingPlansService {
               totalAmount: cost.totalAmount,
               paidAmount: cost.paidAmount,
               agreementDate: cost.agreementDate,
-              status,
               note: cost.note,
-              payments: {
-                create: cost.payments.map((payment) => ({
-                  amount: payment.amount,
-                  paidAt: payment.paidAt,
-                  method: payment.method,
-                  note: payment.note,
-                })),
-              },
-              paymentSchedules: {
-                create: cost.paymentSchedules,
-              },
+              payments: cost.payments,
+              paymentSchedules: cost.paymentSchedules,
             },
-          });
+          );
         }
 
-        if (tasks.length > 0) {
-          await tx.weddingTask.createMany({
-            data: tasks.map((task) => ({
-              weddingPlanId: createdPlan.id,
-              ...task,
-            })),
-          });
-        }
+        await this.tasks.createImportedTasksInTransaction(
+          tx,
+          createdPlan.id,
+          tasks,
+        );
 
-        if (guests.length > 0) {
-          await tx.guest.createMany({
-            data: guests.map((guest) => ({
-              weddingPlanId: createdPlan.id,
-              ...guest,
-            })),
-            skipDuplicates: true,
-          });
-        }
+        await this.guests.createImportedGuestsInTransaction(
+          tx,
+          createdPlan.id,
+          guests,
+        );
 
-        await tx.user.update({
-          where: { id: currentUser.id },
-          data: {
+        await this.activePlan.completeOnboardingInTransaction(
+          tx,
+          currentUser.id,
+          {
             activeWeddingPlanId: createdPlan.id,
             appRole:
               path === OnboardingPath.PROVIDER
@@ -720,7 +698,7 @@ export class WeddingPlansService {
             persona: dto.persona ?? null,
             onboardingCompletedAt: now,
           },
-        });
+        );
 
         return createdPlan;
       });
@@ -752,41 +730,28 @@ export class WeddingPlansService {
     currentUser: AuthenticatedUser,
     alreadyImported: boolean,
   ): Promise<LocalPlanImportResponse> {
-    const [
-      user,
-      budgetCategories,
-      costsCount,
-      paymentsCount,
-      paymentSchedulesCount,
-      tasksCount,
-      guestsCount,
-    ] = await Promise.all([
-      this.prisma.user.findUniqueOrThrow({ where: { id: currentUser.id } }),
-      this.prisma.budgetCategory.findMany({
-        where: { weddingPlanId: plan.id },
-        orderBy: { createdAt: "asc" },
-      }),
-      this.prisma.weddingCost.count({ where: { weddingPlanId: plan.id } }),
-      this.prisma.costPayment.count({
-        where: { weddingCost: { weddingPlanId: plan.id } },
-      }),
-      this.prisma.paymentSchedule.count({
-        where: { weddingCost: { weddingPlanId: plan.id } },
-      }),
-      this.prisma.weddingTask.count({ where: { weddingPlanId: plan.id } }),
-      this.prisma.guest.count({ where: { weddingPlanId: plan.id } }),
-    ]);
+    const [user, budgetCategories, moneyCounts, tasksCount, guestsCount] =
+      await Promise.all([
+        this.users.getSafeUser(this.prisma, currentUser.id),
+        this.finance.listBudgetCategories(this.prisma, plan.id),
+        this.finance.getPlanImportCounts(this.prisma, plan.id),
+        this.tasks.countPlanTasks(this.prisma, plan.id),
+        this.guests.countPlanGuests(this.prisma, plan.id),
+      ]);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
 
     return {
-      user: toSafeUser(user),
+      user,
       activeWeddingPlan: this.toResponse(plan),
       budgetCategories: budgetCategories.map((category) =>
         this.toBudgetCategoryResponse(category),
       ),
       imported: {
-        costs: costsCount,
-        payments: paymentsCount,
-        paymentSchedules: paymentSchedulesCount,
+        costs: moneyCounts.costs,
+        payments: moneyCounts.payments,
+        paymentSchedules: moneyCounts.paymentSchedules,
         tasks: tasksCount,
         guests: guestsCount,
       },
@@ -918,9 +883,18 @@ export class WeddingPlansService {
     return city ? `${base} - ${city}` : base;
   }
 
-  private accessiblePlansWhere(userId: string): Prisma.WeddingPlanWhereInput {
+  // A plan is accessible to its owner and to its shared members; the
+  // membership is collaboration's and is read through its port.
+  private async accessiblePlansWhere(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ) {
+    const memberPlanIds = await this.permissions.listMemberPlanIds(
+      client,
+      userId,
+    );
     return {
-      OR: [{ ownerUserId: userId }, { sharedMembers: { some: { userId } } }],
+      OR: [{ ownerUserId: userId }, { id: { in: memberPlanIds } }],
     };
   }
 
@@ -932,7 +906,7 @@ export class WeddingPlansService {
       where: {
         id,
         status: WeddingPlanStatus.PLANNING,
-        ...this.accessiblePlansWhere(currentUser.id),
+        ...(await this.accessiblePlansWhere(this.prisma, currentUser.id)),
       },
     });
   }
@@ -967,19 +941,6 @@ export class WeddingPlansService {
       dedupeKey: `plan:${plan.id}:${action.toLowerCase()}:${plan.updatedAt.toISOString()}`,
       requiredPermission: ContributionPermission.MANAGE_PLAN,
       occurredAt: plan.updatedAt,
-    });
-  }
-
-  private async createContributorHistoryScopeInTransaction(
-    tx: Prisma.TransactionClient,
-    plan: Pick<WeddingPlan, "id" | "createdAt">,
-  ): Promise<void> {
-    await tx.contributorHistoryScope.create({
-      data: {
-        weddingPlanId: plan.id,
-        status: ContributionScopeStatus.ACTIVE,
-        historyCoverageStartsAt: plan.createdAt,
-      },
     });
   }
 

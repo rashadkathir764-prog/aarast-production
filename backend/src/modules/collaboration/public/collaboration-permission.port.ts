@@ -166,6 +166,17 @@ export interface CollaborationPermissionPort {
     currentUserId: string,
     requiredPermissions?: readonly LivePlanPermission[],
   ): Promise<LiveAuthorizationFilter>;
+  /** Ids of the plans the user is a shared member of. */
+  listMemberPlanIds(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<string[]>;
+  /** Revokes the plan's live pending invitations (planning archives the plan under its UPDATE lock). */
+  revokeLivePlanInvitesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    revokedAt: Date,
+  ): Promise<void>;
 }
 
 /**

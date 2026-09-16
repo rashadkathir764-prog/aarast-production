@@ -464,6 +464,34 @@ export class PermissionService implements CollaborationPermissionPort {
     return live ? {} : NEVER_MATCHING_ROW_FILTER;
   }
 
+  async listMemberPlanIds(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<string[]> {
+    const memberships = await client.sharedMember.findMany({
+      where: { userId },
+      select: { weddingPlanId: true },
+    });
+    return memberships.map((membership) => membership.weddingPlanId);
+  }
+
+  async revokeLivePlanInvitesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    revokedAt: Date,
+  ): Promise<void> {
+    await tx.planInvite.updateMany({
+      where: {
+        weddingPlanId,
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: revokedAt },
+      },
+      data: { revokedAt },
+    });
+  }
+
   private async getLockedPlanAccessContext(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

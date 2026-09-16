@@ -346,7 +346,7 @@ describe('governance portability', () => {
     // 1. A new Nest module wired into an existing context, and a new consumer
     //    of a public port: legal evolution, every gate passes.
     create('backend/src/tasks/task-probe.module.ts', 'import { Module } from "@nestjs/common";\n\n@Module({})\nexport class TaskProbeModule {}\n');
-    replace('backend/src/modules/tasks/tasks.module.ts', 'imports: [TasksServiceInternalModule],', 'imports: [TasksServiceInternalModule, TaskProbeModule],');
+    replace('backend/src/modules/tasks/tasks.module.ts', 'imports: [TasksPublicModule, TasksServiceInternalModule],', 'imports: [TasksPublicModule, TasksServiceInternalModule, TaskProbeModule],');
     replace('backend/src/modules/tasks/tasks.module.ts', 'import { TasksServiceInternalModule } from "./internal/tasks-service.internal.module";', 'import { TasksServiceInternalModule } from "./internal/tasks-service.internal.module";\nimport { TaskProbeModule } from "../../tasks/task-probe.module";');
     replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', '    CollaborationScopePublicModule,\n  ],', '    CollaborationScopePublicModule,\n    NotificationsPublicModule,\n  ],');
     replace('backend/src/modules/guests/internal/guests-service.internal.module.ts', 'import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";', 'import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";\nimport { NotificationsPublicModule } from "../../notifications/public/notifications-public.module";');

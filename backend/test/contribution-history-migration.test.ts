@@ -8,6 +8,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
+import { collaborationHistory, collaborationPermissions, planningOwnerPorts } from "./support/owner-ports";
 import { readLivePrismaSchema } from './support/live-prisma-schema';
 
 const read = (path: string) =>
@@ -122,18 +123,25 @@ test("every runtime WeddingPlan creation adds its history scope in the same tran
       /const\s+(\w+)\s*=\s*await\s+tx\.weddingPlan\.create\s*\(/g,
     ),
   ].map((match) => match[1]);
+  // The history scope is collaboration's row: planning opens it through the
+  // collaboration history port on the same transaction, and the owner's
+  // implementation creates it ACTIVE from the plan's creation instant.
   const scopedPlanVariables = [
     ...service.matchAll(
-      /await\s+this\.createContributorHistoryScopeInTransaction\(tx,\s*(\w+)\);/g,
+      /await\s+this\.contributionHistory\.createHistoryScopeInTransaction\(\s*tx,\s*(\w+),?\s*\);/g,
     ),
   ].map((match) => match[1]);
 
   assert.equal(createdPlanVariables.length, 3);
   assert.deepEqual(scopedPlanVariables.sort(), createdPlanVariables.sort());
   assert.doesNotMatch(service, /this\.prisma\.weddingPlan\.create\s*\(/);
+  assert.doesNotMatch(service, /contributorHistoryScope/);
+  const history = read(
+    "src/modules/collaboration/internal/contribution-history.service.ts",
+  );
   assert.match(
-    service,
-    /createContributorHistoryScopeInTransaction\([\s\S]*tx:\s*Prisma\.TransactionClient[\s\S]*tx\.contributorHistoryScope\.create\([\s\S]*weddingPlanId:\s*plan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*plan\.createdAt/,
+    history,
+    /createHistoryScopeInTransaction\([\s\S]*tx:\s*Prisma\.TransactionClient[\s\S]*tx\.contributorHistoryScope\.create\([\s\S]*weddingPlanId:\s*plan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*plan\.createdAt/,
   );
 });
 
@@ -193,8 +201,9 @@ test("create persists plan, ACTIVE history scope, and active selection in one tr
         return result;
       },
     } as any,
-    {} as any,
-    {} as any,
+    collaborationPermissions({}) as any,
+    collaborationHistory({}) as any,
+    ...planningOwnerPorts,
   );
 
   await service.create(

@@ -277,8 +277,21 @@ test("creating a wedding plan makes it the account active plan", () => {
   assert.ok(createBlock);
   assert.match(createBlock, /runSerializableTransaction/);
   assert.match(createBlock, /weddingPlan\.create/);
-  assert.match(createBlock, /user\.update/);
-  assert.match(createBlock, /activeWeddingPlanId:\s*created\.id/);
+  // `User.activeWeddingPlanId` is identity's column: planning sets the
+  // pointer through the identity port on the same transaction, and the
+  // owner's implementation writes it with `user.update`.
+  assert.match(
+    createBlock,
+    /activePlan\.setActivePlanPointerInTransaction\(\s*tx,\s*currentUser\.id,\s*created\.id,?\s*\)/,
+  );
+  const identityPort = readFileSync(
+    join(process.cwd(), "src/modules/identity/internal/identity-user-port.service.ts"),
+    "utf8",
+  );
+  assert.match(
+    identityPort,
+    /setActivePlanPointerInTransaction\([\s\S]*?tx\.user\.update\([\s\S]*?activeWeddingPlanId:\s*weddingPlanId/,
+  );
 });
 
 test("reusing a rotated refresh token outside grace revokes its descendant", async () => {

@@ -25,6 +25,7 @@ import { PermissionService } from "../src/modules/collaboration/internal/permiss
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-profile.dto";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
+import { collaborationHistory, collaborationPermissions, planningOwnerPorts } from "./support/owner-ports";
 
 const currentUser = { id: "user-1" } as any;
 const now = new Date("2026-07-25T12:00:00.000Z");
@@ -552,6 +553,7 @@ test("findActive returns null when the stored plan no longer exists", async () =
     user: {
       findUnique: async () => ({ activeWeddingPlanId: "plan-missing" }),
     },
+    sharedMember: { findMany: async () => [] },
     weddingPlan: {
       findFirst: async () => {
         planQueries += 1;
@@ -561,8 +563,9 @@ test("findActive returns null when the stored plan no longer exists", async () =
   };
   const service = new WeddingPlansService(
     prisma as any,
-    {} as any,
-    {} as any,
+    collaborationPermissions({}) as any,
+    collaborationHistory({}) as any,
+    ...planningOwnerPorts,
   );
 
   const active = await service.findActive(currentUser);
@@ -578,6 +581,7 @@ test("findActive never chooses another available plan after access loss", async 
     user: {
       findUnique: async () => ({ activeWeddingPlanId: "plan-revoked" }),
     },
+    sharedMember: { findMany: async () => [] },
     weddingPlan: {
       findFirst: async () => {
         planQueries += 1;
@@ -595,8 +599,9 @@ test("findActive never chooses another available plan after access loss", async 
   };
   const service = new WeddingPlansService(
     prisma as any,
-    permissions as any,
-    {} as any,
+    collaborationPermissions(permissions) as any,
+    collaborationHistory({}) as any,
+    ...planningOwnerPorts,
   );
 
   const active = await service.findActive(currentUser);

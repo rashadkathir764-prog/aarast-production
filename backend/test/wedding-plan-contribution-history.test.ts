@@ -10,6 +10,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
+import { collaborationHistory, collaborationPermissions, planningOwnerPorts } from "./support/owner-ports";
 
 const planId = "plan-contribution-history";
 const ownerUserId = "owner-user";
@@ -83,14 +84,14 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
         return result;
       },
     } as any,
-    {
+    collaborationPermissions({
       assertPlanManageableForUpdateInTransaction: async () => {
         operations.push("plan:locked");
         return context;
       },
       canViewMoney: () => false,
-    } as any,
-    {
+    }) as any,
+    collaborationHistory({
       recordForContextInTransaction: async (
         client: unknown,
         accessContext: unknown,
@@ -102,7 +103,8 @@ test("a contributor plan update records one privacy-safe PLAN event inside the p
         recorded = input;
         return {};
       },
-    } as any,
+    }) as any,
+    ...planningOwnerPorts,
   );
 
   await service.update(actor, planId, {
@@ -177,14 +179,14 @@ test("a contributor archive records the frozen PLAN event and archives its histo
         return result;
       },
     } as any,
-    {
+    collaborationPermissions({
       assertPlanManageableForUpdateInTransaction: async () => {
         operations.push("plan:locked");
         return context;
       },
       canViewMoney: () => false,
-    } as any,
-    {
+    }) as any,
+    collaborationHistory({
       recordForContextInTransaction: async (
         client: unknown,
         accessContext: unknown,
@@ -196,7 +198,8 @@ test("a contributor archive records the frozen PLAN event and archives its histo
         recorded = input;
         return {};
       },
-    } as any,
+    }) as any,
+    ...planningOwnerPorts,
   );
 
   await service.archive(actor, planId);

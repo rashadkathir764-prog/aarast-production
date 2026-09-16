@@ -64,6 +64,20 @@ const closure = closureModule.readClosure(root);
 const lineageOnly = closure
   ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
   : false;
+// Closed: files the R12C manifest hashed are history at the lineage commit
+// (the product keeps editing them), and the ownership baseline shrinks by
+// exact subtraction under the ownership program, so live results carry the
+// live counts.
+const lineageRead = (relative: string): Buffer => closure
+  ? execFileSync('git', ['show', `${closure.lineageCommit}:${relative}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
+  : read(relative);
+const liveOwnershipCounts = () => {
+  const baseline = JSON.parse(read(ownershipPath).toString('utf8')) as { violations: Array<{ count: number }> };
+  return {
+    ownershipRecords: baseline.violations.length,
+    ownershipOccurrences: baseline.violations.reduce((sum, entry) => sum + entry.count, 0),
+  };
+};
 
 const changed = (value: any, mutation: (copy: any) => void) => {
   const copy = structuredClone(value);
@@ -81,7 +95,7 @@ test('R12C closure record binds the phase, the frozen manifests and real history
   assert.ok(closure.lineageGates.some((gate: string) => gate.includes('run architecture')));
   // Closed mode: the live gate proves the invariants without any lineage replay.
   const result = api.scanR12cZeroCrossContextDependencies({ repositoryRoot: root, manifest });
-  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 7, ownershipRecords: 385, ownershipOccurrences: 781 });
+  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 7, ...liveOwnershipCounts() });
   assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
   assert.throws(() => api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }), /R12C is closed/u);
   // The record is validated exactly: shape, phase, frozen manifests, history.
@@ -188,7 +202,7 @@ test('R12C binds exactly three approved contract families, consumer inventories 
     // implementation, which Task 3 then edited; while R12C is open it is
     // re-proven through the predecessor projection, after closure it is
     // history and the live wiring is proven by the Task 3 behavior tests.
-    if (family.owner !== 'messaging') assert.equal(hash(read(livePath)), family.sourceSha256);
+    if (family.owner !== 'messaging') assert.equal(hash(lineageRead(livePath)), family.sourceSha256);
     else if (!closure) assert.equal(hash(api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }).readWorkingFile(livePath)), family.sourceSha256);
     for (const consumer of family.consumers) assert.equal(existsSync(path.join(root, consumer)), true, consumer);
     for (const behavior of family.behaviorTests) assert.equal(existsSync(path.join(root, behavior)), true, behavior);
@@ -296,7 +310,7 @@ test('R12C rejects non-plain manifest and scanner input without invoking getters
 
 test('R12C ownership raw bytes and 385/781 counts are exact and immutable', () => {
   const { api, manifest } = load();
-  const bytes = read(ownershipPath);
+  const bytes = lineageRead(ownershipPath);
   assert.equal(hash(bytes), '5f42f33300a9727f587e62327c5261a88a6ce5928437241c9e7c20f726906496');
   assert.deepEqual(api.verifyR12cOwnership(bytes, manifest), { ownershipRecords: 385, ownershipOccurrences: 781 });
   assert.throws(() => api.verifyR12cOwnership(Buffer.concat([bytes, Buffer.from(' ')]), manifest));
@@ -445,7 +459,8 @@ test('R12C Finance projection publishes one byte-identical public presenter and 
 test('R12C CLI accepts only --check and reports strict/dependency0/ownership385/781', () => {
   load();
   const output = execFileSync(process.execPath, [path.join(root, scannerPath), '--check'], { cwd: root, encoding: 'utf8' });
-  assert.match(output, closure ? /stage=strict \(closed\), dependency=0, ownership=385\/781/u : /stage=strict, dependency=0, ownership=385\/781/u);
+  const live = liveOwnershipCounts();
+  assert.match(output, closure ? new RegExp(`stage=strict \\(closed\\), dependency=0, ownership=${live.ownershipRecords}/${live.ownershipOccurrences}`, 'u') : /stage=strict, dependency=0, ownership=385\/781/u);
   assert.throws(() => execFileSync(process.execPath, [path.join(root, scannerPath), '--unknown'], { cwd: root, stdio: 'pipe' }));
 });
 

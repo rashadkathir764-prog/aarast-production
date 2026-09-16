@@ -266,6 +266,14 @@ function copyProtectedFixture(root: string): void {
   ]) {
     const target = path.join(root, ...relativePath.split('/'));
     mkdirSync(path.dirname(target), { recursive: true });
+    // Closed: the fixture exercises the lineage law, whose ownership baseline
+    // is the one recorded at the lineage commit; the live baseline shrinks by
+    // exact subtraction under the ownership program.
+    if (closed && relativePath === 'backend/architecture/ownership-baseline.json') {
+      const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot) as { lineageCommit: string };
+      writeFileSync(target, readImmutableFile(closure.lineageCommit, relativePath), 'utf8');
+      continue;
+    }
     copyFileSync(path.join(repositoryRoot, ...relativePath.split('/')), target);
   }
   const r12a = require(path.join(

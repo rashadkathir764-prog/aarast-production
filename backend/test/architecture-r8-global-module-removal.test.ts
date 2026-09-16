@@ -315,6 +315,20 @@ const repositoryRoot = path.resolve(backendRoot, '..');
 // providers; every consumer imports PrismaModule) instead of the exact
 // importer inventories; fixture-based tests of the lineage law keep running.
 const closed = Boolean(require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot));
+
+// Closed: the ownership baseline shrinks by exact subtraction under the
+// ownership program; the closed scan reports the live counts, so the
+// expectation reads them from the live baseline instead of pinning the
+// counts recorded when the phase closed.
+const liveOwnershipCounts = () => {
+  const baseline = JSON.parse(readFileSync(path.join(backendRoot, 'architecture', 'ownership-baseline.json'), 'utf8')) as {
+    violations: Array<{ count: number }>;
+  };
+  return {
+    ownershipRecords: baseline.violations.length,
+    ownershipOccurrences: baseline.violations.reduce((sum, entry) => sum + entry.count, 0),
+  };
+};
 const strictPrismaImporters = [
   'backend/src/app.module.ts',
   'backend/src/application-composition/application-outbox-runtime.module.ts',
@@ -854,8 +868,7 @@ test('R8 strict scan reports zero project globals and the complete live DI closu
         nestModuleCycles: 0,
         externalIdentities: 2,
         dependencyRecords: 0,
-        ownershipRecords: 385,
-        ownershipOccurrences: 781,
+        ...liveOwnershipCounts(),
       }
       : {
         ok: true,
@@ -1064,7 +1077,7 @@ test('R8 CLI and result validator are fixed, bounded, and sanitized', () => {
   }), 0);
   assert.equal(stdout.length, 1);
   assert.match(stdout[0], closed
-    ? /^PASS - R8 global removal: stage=strict \(closed\), globals=0, Prisma=\d+, missing=0, Realtime=\d+, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=385\/781$/u
+    ? new RegExp(`^PASS - R8 global removal: stage=strict \\(closed\\), globals=0, Prisma=\\d+, missing=0, Realtime=\\d+, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=${liveOwnershipCounts().ownershipRecords}/${liveOwnershipCounts().ownershipOccurrences}$`, 'u')
     : /^PASS - R8 global removal: stage=strict, globals=0, Prisma=21\/21, missing=0, Realtime=2, duplicates=0, forwardRef=0, cycles=0, dependency=0, ownership=385\/781$/u);
   assert.deepEqual(stderr, []);
 

@@ -36,6 +36,20 @@ const repositoryRoot = path.resolve(backendRoot, '..');
 // verified at the recorded lineage commit by
 // architecture-governance-portability.test.ts and are lineage-only here.
 const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot);
+
+// Closed: the ownership baseline shrinks by exact subtraction under the
+// ownership program; the closed scan reports the live counts, so the
+// expectation reads them from the live baseline instead of pinning the
+// counts recorded when the phase closed.
+const liveOwnershipCounts = () => {
+  const baseline = JSON.parse(readFileSync(path.join(backendRoot, 'architecture', 'ownership-baseline.json'), 'utf8')) as {
+    violations: Array<{ count: number }>;
+  };
+  return {
+    ownershipRecords: baseline.violations.length,
+    ownershipOccurrences: baseline.violations.reduce((sum, entry) => sum + entry.count, 0),
+  };
+};
 const lineageOnly = closure
   ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
   : false;
@@ -151,7 +165,7 @@ test('R12A strict-stage contract exports the scanner and freezes the approved pr
   assert.deepEqual(
     scanner.scanR12aBackofficeCatalogPublicContracts({ repositoryRoot: path.resolve(backendRoot, '..'), manifest }),
     closure
-      ? { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, ownershipRecords: 385, ownershipOccurrences: 781, legacyPaths: [] }
+      ? { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, ...liveOwnershipCounts(), legacyPaths: [] }
       : { ok: true, stage: 'strict', dependencyRecords: 0, ownershipRecords: 385, ownershipOccurrences: 781, legacyPaths: [] },
   );
   for (const move of manifest.moves) {
@@ -174,8 +188,9 @@ test('R12A strict projection activates M1 and retires exactly six dependency rec
 
   assert.equal(result.stage, 'strict');
   assert.equal(result.dependencyRecords, 0);
-  assert.equal(result.ownershipRecords, 385);
-  assert.equal(result.ownershipOccurrences, 781);
+  const expectedOwnership = closure ? liveOwnershipCounts() : { ownershipRecords: 385, ownershipOccurrences: 781 };
+  assert.equal(result.ownershipRecords, expectedOwnership.ownershipRecords);
+  assert.equal(result.ownershipOccurrences, expectedOwnership.ownershipOccurrences);
   assert.equal(strict.stages.strict.retiredDependencyIds.length, 6);
   assert.deepEqual(strict.stages.strict.activeMoveIds, ['B1', 'B2', 'B3', 'B4', 'M1']);
 });

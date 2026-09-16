@@ -108,6 +108,20 @@ const createActivatedR12bReader = (): ((relative: string) => Buffer) => {
 // lineage commit by architecture-governance-portability.test.ts; tests of that
 // machinery are lineage-only in the live suite.
 const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot);
+
+// Closed: the ownership baseline shrinks by exact subtraction under the
+// ownership program; the closed scan reports the live counts, so the
+// expectation reads them from the live baseline instead of pinning the
+// counts recorded when the phase closed.
+const liveOwnershipCounts = () => {
+  const baseline = JSON.parse(readFileSync(path.join(backendRoot, 'architecture', 'ownership-baseline.json'), 'utf8')) as {
+    violations: Array<{ count: number }>;
+  };
+  return {
+    ownershipRecords: baseline.violations.length,
+    ownershipOccurrences: baseline.violations.reduce((sum, entry) => sum + entry.count, 0),
+  };
+};
 const lineageOnly = closure
   ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
   : false;
@@ -751,8 +765,7 @@ test('R12B strict scan consumes R12A immutable authority and reports exact DTO r
     documentationStage: liveDocumentationState,
     receipts: liveContract.receipts,
     dependencyRecords: 0,
-    ownershipRecords: 385,
-    ownershipOccurrences: 781,
+    ...(closure ? liveOwnershipCounts() : { ownershipRecords: 385, ownershipOccurrences: 781 }),
     approvedSecurityPrerequisite: 1,
     // The protected-surface count belongs to the lineage stage; closed mode
     // pins the package and lock through the security checker instead.
@@ -763,7 +776,8 @@ test('R12B strict scan consumes R12A immutable authority and reports exact DTO r
 test('R12B CLI is bounded to --check and hides diagnostics by default', () => {
   const output = execFileSync(process.execPath, [scannerPath, '--check'], { cwd: backendRoot, encoding: 'utf8' });
   const liveContract = documentationStageContract[liveDocumentationState];
-  assert.match(output, new RegExp(`stage=strict${closure ? ' \\(closed\\)' : ''}, dependency=0, documentation=${liveDocumentationState}, receipts=${liveContract.receipts}, ownership=385/781, approvedSecurityPrerequisite=1${closure ? '\\n' : ', unapprovedProtected=0'}`, 'u'));
+  const ownership = closure ? liveOwnershipCounts() : { ownershipRecords: 385, ownershipOccurrences: 781 };
+  assert.match(output, new RegExp(`stage=strict${closure ? ' \\(closed\\)' : ''}, dependency=0, documentation=${liveDocumentationState}, receipts=${liveContract.receipts}, ownership=${ownership.ownershipRecords}/${ownership.ownershipOccurrences}, approvedSecurityPrerequisite=1${closure ? '\\n' : ', unapprovedProtected=0'}`, 'u'));
   assert.throws(() => execFileSync(process.execPath, [scannerPath, '--unknown'], {
     cwd: backendRoot,
     encoding: 'utf8',

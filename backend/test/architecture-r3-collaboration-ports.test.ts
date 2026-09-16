@@ -40,8 +40,20 @@ function interfaceMethods(path: string, name: string): string[] {
     .sort();
 }
 
+// After the R12C closure the Task 3 surfaces are the frozen minimum the
+// closed R3 law keeps present; the owner may add methods for later phases.
+const closed = Boolean(require(join(process.cwd(), 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(join(process.cwd(), '..')));
+
+function assertSurface(actual: string[], frozen: string[]): void {
+  if (closed) {
+    assert.deepEqual(frozen.filter((method) => !actual.includes(method)), []);
+    return;
+  }
+  assert.deepEqual(actual, frozen);
+}
+
 test('Task 3 publishes the exact collaboration port surfaces', () => {
-  assert.deepEqual(
+  assertSurface(
     interfaceMethods(
       'modules/collaboration/public/collaboration-permission.port.ts',
       'CollaborationPermissionPort',
@@ -73,7 +85,7 @@ test('Task 3 publishes the exact collaboration port surfaces', () => {
       'livePlanAuthorizationWhere',
     ],
   );
-  assert.deepEqual(
+  assertSurface(
     interfaceMethods(
       'modules/collaboration/public/collaboration-history.port.ts',
       'CollaborationHistoryPort',
@@ -85,7 +97,7 @@ test('Task 3 publishes the exact collaboration port surfaces', () => {
       'summary',
     ],
   );
-  assert.deepEqual(
+  assertSurface(
     interfaceMethods(
       'modules/collaboration/public/collaboration-scope.port.ts',
       'CollaborationScopePort',

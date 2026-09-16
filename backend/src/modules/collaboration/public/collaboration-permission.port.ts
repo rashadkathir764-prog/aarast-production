@@ -177,6 +177,44 @@ export interface CollaborationPermissionPort {
     weddingPlanId: string,
     revokedAt: Date,
   ): Promise<void>;
+  /** The user's membership row in the plan, if any. */
+  getMembership(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+  ): Promise<SharedMember | null>;
+  /** All of the user's membership rows. */
+  listMemberships(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<SharedMember[]>;
+  /**
+   * The live invitation an invite-OTP flow addresses: not declined, not
+   * revoked, not expired at `now`, matching the token hash and phone;
+   * `accepted` narrows to accepted (true) or pending (false) invitations.
+   */
+  findLivePlanInvite(
+    client: Prisma.TransactionClient,
+    lookup: LivePlanInviteLookup,
+  ): Promise<LivePlanInviteSeed | null>;
+  lockPlanInviteForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    planInviteId: string,
+  ): Promise<boolean>;
+}
+
+export interface LivePlanInviteLookup {
+  id?: string;
+  tokenHash: string;
+  normalizedPhone: string;
+  now: Date;
+  accepted?: boolean;
+}
+
+export interface LivePlanInviteSeed {
+  id: string;
+  acceptedAt: Date | null;
+  weddingPlanId: string;
 }
 
 /**

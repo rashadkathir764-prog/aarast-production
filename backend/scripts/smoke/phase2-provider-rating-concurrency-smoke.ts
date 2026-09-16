@@ -21,6 +21,7 @@ import {
 import { AdminService } from "../../src/admin/admin.service";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
 import { UsersService } from "../../src/modules/identity/internal/profile/users.service";
+import { identityErasurePorts, ownerPorts } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
@@ -86,7 +87,7 @@ async function main(): Promise<void> {
   const marketplace = new MarketplaceService(
     prisma as any,
     {} as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, ownerPorts.finance,
   );
   const admin = new AdminService(prisma as any, {} as any, {
     createNotificationInTransaction: async () => null,
@@ -242,7 +243,9 @@ async function main(): Promise<void> {
       {
         lockAccountDeletionBoundary: async () => undefined,
         scheduleAllOwnedMediaDeletion: async () => [],
+        scheduleChatAttachmentDeletion: async () => undefined,
       } as any,
+      ...identityErasurePorts,
     );
     await usersService.deleteMe(
       deletionReviewer as any,

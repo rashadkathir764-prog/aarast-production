@@ -24,6 +24,7 @@ import {
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
 import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts } from "./support/owner-ports";
 import { buildContributionSnapshot } from "../../src/modules/collaboration/public/contribution-snapshot.builder";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -78,9 +79,9 @@ function authenticatedUser(user: {
 function marketplaceService(): MarketplaceService {
   return new MarketplaceService(
     prisma as any,
-    new PermissionService(prisma as any),
+    new PermissionService(prisma as any, ownerPorts.plans),
     notifications as any,
-    lifecycle, contributionHistory,
+    lifecycle, ownerPorts.finance, contributionHistory,
   );
 }
 

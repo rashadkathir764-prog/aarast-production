@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AuthSessionScope, OtpPurpose } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
-import { AuthService } from '../src/modules/identity/internal/auth/auth.service';
+import { authService } from './support/owner-ports';
 import { otpVerificationsTotal } from '../src/platform/observability/metrics';
 
 async function otpOutcomeCount(outcome: string): Promise<number> {
@@ -201,7 +201,7 @@ function createHarness(options?: {
 
   const jwtService = { sign: () => 'test-token' };
   const realtimeDisconnects: string[] = [];
-  const service = new AuthService(prisma as any, jwtService as any, {
+  const service = authService(prisma as any, jwtService as any, {
     clear: async () => undefined,
   } as any, { consume: async () => undefined } as any, {
     disconnectUser: (userId: string) => {

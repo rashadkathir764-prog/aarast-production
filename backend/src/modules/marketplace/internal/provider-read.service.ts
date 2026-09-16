@@ -31,6 +31,14 @@ export class ProviderReadService implements ProviderReadPort {
     return client.provider.findUnique({ where: { userId } });
   }
 
+  async findOwnedProvider(
+    client: Prisma.TransactionClient,
+    providerId: string,
+    userId: string,
+  ): Promise<Provider | null> {
+    return client.provider.findFirst({ where: { id: providerId, userId } });
+  }
+
   async filterProviderIdsByBusinessName(
     client: Prisma.TransactionClient,
     providerIds: readonly string[],

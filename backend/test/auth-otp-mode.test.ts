@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { OtpPurpose, Prisma } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { AuthService } from '../src/modules/identity/internal/auth/auth.service';
+import { authService } from './support/owner-ports';
 import { RequestOtpDto } from '../src/modules/identity/api/auth-dto/request-otp.dto';
 import { VerifyOtpDto } from '../src/modules/identity/api/auth-dto/verify-otp.dto';
 import { getJwtSecret } from '../src/modules/identity/internal/auth/jwt-secret';
@@ -148,7 +148,7 @@ function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise
     $transaction: async (action: any) => action(prisma),
   };
   const jwtService = { sign: () => 'test-token' };
-  return new AuthService(
+  return authService(
     prisma as any,
     jwtService as any,
     {} as any,

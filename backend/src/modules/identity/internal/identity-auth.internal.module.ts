@@ -13,6 +13,7 @@ import {
   OtpDispatchQuotaService,
 } from './auth/otp-dispatch-quota.service';
 import { PrismaModule } from '../../../platform/database/prisma.module';
+import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
 import { MessagingRealtimePublicModule } from '../../messaging/public/messaging-realtime-public.module';
 
 export const IDENTITY_AUTH_IMPLEMENTATION = Symbol(
@@ -23,6 +24,7 @@ export const IDENTITY_AUTH_IMPLEMENTATION = Symbol(
   imports: [
     PrismaModule,
     MessagingRealtimePublicModule,
+    CollaborationPermissionPublicModule,
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => ({

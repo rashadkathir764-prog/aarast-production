@@ -29,6 +29,14 @@ import {
   canonicalPlanContextKey,
   canonicalProviderContextKey,
 } from "../../public/context-key";
+import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../../../planning/public/plan-read.port";
+import {
+  PROVIDER_READ_PORT,
+  type ProviderReadPort,
+} from "../../../marketplace/public/provider-read.port";
 
 export enum AvailableContextRole {
   OWNER = "OWNER",
@@ -85,21 +93,27 @@ export class ContextsService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans: PlanReadPort,
+    @Inject(PROVIDER_READ_PORT)
+    private readonly providers: ProviderReadPort,
   ) {}
 
   async list(currentUser: AuthenticatedUser): Promise<AvailableContext[]> {
     const [ownedPlans, memberships, provider] = await Promise.all([
-      this.prisma.weddingPlan.findMany({
-        where: { ownerUserId: currentUser.id },
-      }),
-      this.prisma.sharedMember.findMany({
-        where: { userId: currentUser.id },
-        include: { weddingPlan: true },
-      }),
-      this.prisma.provider.findUnique({
-        where: { userId: currentUser.id },
-      }),
+      this.plans.listOwnedPlans(this.prisma, currentUser.id),
+      this.permissions.listMemberships(this.prisma, currentUser.id),
+      this.providers.getProviderByUserId(this.prisma, currentUser.id),
     ]);
+    // The membership rows are collaboration's; their plans are planning's.
+    const memberPlans = new Map(
+      (
+        await this.plans.getPlans(
+          this.prisma,
+          memberships.map((membership) => membership.weddingPlanId),
+        )
+      ).map((plan) => [plan.id, plan]),
+    );
 
     const contexts: AvailableContext[] = [];
     const ownedPlanIds = new Set<string>();
@@ -111,18 +125,21 @@ export class ContextsService {
 
     const contributorMemberships = memberships
       .filter((membership) => !ownedPlanIds.has(membership.weddingPlanId))
+      .map((membership) => ({
+        membership,
+        plan: memberPlans.get(membership.weddingPlanId),
+      }))
+      .filter(
+        (entry): entry is { membership: SharedMember; plan: WeddingPlan } =>
+          entry.plan !== undefined,
+      )
       .sort(
         (left, right) =>
-          right.weddingPlan.updatedAt.getTime() -
-          left.weddingPlan.updatedAt.getTime(),
+          right.plan.updatedAt.getTime() - left.plan.updatedAt.getTime(),
       );
-    for (const membership of contributorMemberships) {
+    for (const { membership, plan } of contributorMemberships) {
       contexts.push(
-        this.planContext(
-          membership.weddingPlan,
-          AvailableContextRole.CONTRIBUTOR,
-          membership,
-        ),
+        this.planContext(plan, AvailableContextRole.CONTRIBUTOR, membership),
       );
     }
 
@@ -141,12 +158,11 @@ export class ContextsService {
     let context: AvailableContext | null = null;
 
     if (parsed.role === AvailableContextRole.OWNER) {
-      const plan = await this.prisma.weddingPlan.findFirst({
-        where: {
-          id: parsed.weddingPlanId,
-          ownerUserId: currentUser.id,
-        },
-      });
+      const plan = await this.plans.findOwnedPlan(
+        this.prisma,
+        parsed.weddingPlanId,
+        currentUser.id,
+      );
       if (plan) {
         context = this.planContext(
           plan,
@@ -155,32 +171,27 @@ export class ContextsService {
         );
       }
     } else if (parsed.role === AvailableContextRole.CONTRIBUTOR) {
-      const membership = await this.prisma.sharedMember.findUnique({
-        where: {
-          weddingPlanId_userId: {
-            weddingPlanId: parsed.weddingPlanId,
-            userId: currentUser.id,
-          },
-        },
-        include: { weddingPlan: true },
-      });
-      if (
-        membership &&
-        membership.weddingPlan.ownerUserId !== currentUser.id
-      ) {
+      const membership = await this.permissions.getMembership(
+        this.prisma,
+        parsed.weddingPlanId,
+        currentUser.id,
+      );
+      const plan = membership
+        ? await this.plans.getPlan(this.prisma, membership.weddingPlanId)
+        : null;
+      if (membership && plan && plan.ownerUserId !== currentUser.id) {
         context = this.planContext(
-          membership.weddingPlan,
+          plan,
           AvailableContextRole.CONTRIBUTOR,
           membership,
         );
       }
     } else if ("providerId" in parsed) {
-      const provider = await this.prisma.provider.findFirst({
-        where: {
-          id: parsed.providerId,
-          userId: currentUser.id,
-        },
-      });
+      const provider = await this.providers.findOwnedProvider(
+        this.prisma,
+        parsed.providerId,
+        currentUser.id,
+      );
       if (provider) {
         context = this.providerContext(provider);
       }

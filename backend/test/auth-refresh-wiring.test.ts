@@ -14,6 +14,7 @@ import {
   refreshTokenExpiry,
 } from "../src/modules/identity/internal/auth/refresh-token-policy";
 import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
+import { authService } from "./support/owner-ports";
 
 test("refresh token policy creates opaque hashed expiring tokens", () => {
   const applicationToken = createRefreshTokenValue();
@@ -41,7 +42,7 @@ test("refresh token policy creates opaque hashed expiring tokens", () => {
 
 test("an application refresh token can never be upgraded into an admin session", async () => {
   let transactionCalls = 0;
-  const service = new AuthService(
+  const service = authService(
     {
       $transaction: async () => {
         transactionCalls += 1;
@@ -66,7 +67,7 @@ test("an application refresh token can never be upgraded into an admin session",
 
 test("an admin refresh token cannot cross into the application refresh flow", async () => {
   let transactionCalls = 0;
-  const service = new AuthService(
+  const service = authService(
     {
       $transaction: async () => {
         transactionCalls += 1;
@@ -153,7 +154,7 @@ test("admin MFA refresh rotates only into another admin-scoped session", async (
       update: async () => ({}),
     },
   };
-  const service = new AuthService(
+  const service = authService(
     { $transaction: async (fn: any) => fn(tx) } as any,
     {
       sign: (payload: any) => {
@@ -194,7 +195,7 @@ test("changing an application token prefix cannot recover its database session",
   );
   const storedHash = hashRefreshToken(applicationToken);
   let lookedUpHash = "";
-  const service = new AuthService(
+  const service = authService(
     {
       $transaction: async (fn: any) =>
         fn({
@@ -351,7 +352,7 @@ test("reusing a rotated refresh token outside grace revokes its descendant", asy
       },
     },
   };
-  const service = new AuthService(
+  const service = authService(
     { $transaction: async (fn: any) => fn(tx) } as any,
     {} as any,
     {} as any,
@@ -424,7 +425,7 @@ test("reusing an admin refresh token does not disconnect application sockets", a
       updateMany: async () => ({ count: 1 }),
     },
   };
-  const service = new AuthService(
+  const service = authService(
     { $transaction: async (fn: any) => fn(tx) } as any,
     {} as any,
     {} as any,
@@ -443,7 +444,7 @@ test("reusing an admin refresh token does not disconnect application sockets", a
 test("logging out one application session disconnects only that realtime session", async () => {
   const refreshToken = createRefreshTokenValue("application");
   const disconnectedSessions: string[] = [];
-  const service = new AuthService(
+  const service = authService(
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation({
@@ -654,7 +655,7 @@ function createRefreshFamilyHarness(rows: RefreshFamilyRow[]) {
     $transaction: async (operation: (client: any) => Promise<unknown>) =>
       operation(tx),
   };
-  const service = new AuthService(
+  const service = authService(
     prisma,
     { sign: () => "access-token" } as any,
     {} as any,

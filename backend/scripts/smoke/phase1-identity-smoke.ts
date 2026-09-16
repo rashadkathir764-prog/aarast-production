@@ -16,6 +16,8 @@ import { AdminService } from '../../src/admin/admin.service';
 import { AuthService } from '../../src/modules/identity/internal/auth/auth.service';
 import { LoginThrottleService } from '../../src/modules/identity/internal/auth/login-throttle.service';
 import { toAuthenticatedUser } from '../../src/modules/identity/public/safe-user';
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts } from './support/owner-ports';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   assertManagedSmokeEnvironment: (
@@ -57,6 +59,7 @@ const authService = new AuthService(
   loginThrottle,
   { consume: async () => undefined } as any,
   realtime as any,
+  new PermissionService(prisma as any, ownerPorts.plans),
 );
 
 function authenticatedAdmin(user: any) {

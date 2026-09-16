@@ -18,6 +18,7 @@ import { NotificationsService } from "../../src/notifications/notifications.serv
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { SharingService } from "../../src/modules/collaboration/internal/sharing.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -48,7 +49,7 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const outbox = new OutboxService();
-const permissions = new PermissionService(prisma as any);
+const permissions = new PermissionService(prisma as any, ownerPorts.plans);
 const history = new ContributionHistoryService(prisma as any);
 const notifications = new NotificationsService(
   prisma as any,

@@ -11,6 +11,7 @@ import {
   UsersService,
   accountDeletionReceiptHash,
 } from "../src/modules/identity/internal/profile/users.service";
+import { usersService } from "./support/owner-ports";
 
 test("DELETE /users/me rejects a missing client request id before deletion", () => {
   let calls = 0;
@@ -84,7 +85,7 @@ test("public status exposes only DELETED PENDING or NOT_STARTED from one snapsho
 
   for (const fixture of statuses) {
     let options: unknown;
-    const service = new UsersService(
+    const service = usersService(
       {
         $transaction: async (operation: (tx: unknown) => unknown, value: unknown) => {
           options = value;
@@ -123,7 +124,7 @@ test("public status exposes only DELETED PENDING or NOT_STARTED from one snapsho
 
 test("stale crashed reservation is reclaimed only after locking a live user and rechecking receipt", async () => {
   const events: string[] = [];
-  const service = new UsersService(
+  const service = usersService(
     {
       $transaction: async (operation: (tx: unknown) => unknown) =>
         operation({
@@ -166,7 +167,7 @@ test("stale crashed reservation is reclaimed only after locking a live user and 
 test("a receipt committed while the stale-status request waits wins the race", async () => {
   let receiptReads = 0;
   let reclaimed = false;
-  const service = new UsersService(
+  const service = usersService(
     {
       $transaction: async (operation: (tx: unknown) => unknown) =>
         operation({

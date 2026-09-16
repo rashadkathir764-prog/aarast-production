@@ -25,7 +25,7 @@ import { PermissionService } from "../src/modules/collaboration/internal/permiss
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { UpdateProfileDto } from "../src/modules/identity/api/user-dto/update-profile.dto";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
-import { collaborationHistory, collaborationPermissions, planningOwnerPorts } from "./support/owner-ports";
+import { collaborationHistory, collaborationPermissions, ownerPorts, planningOwnerPorts } from "./support/owner-ports";
 
 const currentUser = { id: "user-1" } as any;
 const now = new Date("2026-07-25T12:00:00.000Z");
@@ -115,9 +115,22 @@ class FakeContextsPrisma {
   weddingPlan: any;
 
   constructor() {
+    // Planning reads its rows through its port: owned plans by owner, the
+    // membership plans by id list, one plan by id. A fixture attaches the
+    // shared plan to its membership; the planning table sees it too.
+    const knownPlans = () => [
+      ...this.plans,
+      ...this.memberships
+        .map((item) => item.weddingPlan)
+        .filter((item) => !this.plans.some((known) => known.id === item.id)),
+    ];
     this.weddingPlan = {
       findMany: async ({ where }: any) =>
-        this.plans.filter((item) => item.ownerUserId === where.ownerUserId),
+        where.id
+          ? knownPlans().filter((item) => where.id.in.includes(item.id))
+          : this.plans.filter((item) => item.ownerUserId === where.ownerUserId),
+      findUnique: async ({ where }: any) =>
+        knownPlans().find((item) => item.id === where.id) ?? null,
       findFirst: async ({ where }: any) =>
         this.plans.find(
           (item) =>
@@ -156,7 +169,7 @@ function contextsHarness() {
   const permissions = new PermissionService({} as any, new PlanReadService());
   return {
     prisma,
-    service: new ContextsService(prisma as any, permissions),
+    service: new ContextsService(prisma as any, permissions, ownerPorts.plans, ownerPorts.providers),
   };
 }
 

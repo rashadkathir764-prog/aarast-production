@@ -18,7 +18,7 @@ import {
 } from "@prisma/client";
 import { AdminService } from "../src/admin/admin.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
-import { UsersService } from "../src/modules/identity/internal/profile/users.service";
+import { usersService } from "./support/owner-ports";
 
 test("an administrator app profile cannot overwrite the administrator identity", async () => {
   const now = new Date();
@@ -60,7 +60,7 @@ test("an administrator app profile cannot overwrite the administrator identity",
       update: async ({ data }: any) => Object.assign(stored, data),
     },
   };
-  const service = new UsersService(
+  const service = usersService(
     { $transaction: async (operation: any) => operation(tx) } as any,
     {} as any,
     {

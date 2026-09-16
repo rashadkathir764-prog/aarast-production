@@ -17,7 +17,7 @@ import {
   normalizeOwnedMediaUrl,
   requireOwnedMediaUrl,
 } from "../src/media/media-upload-policy";
-import { UsersService } from "../src/modules/identity/internal/profile/users.service";
+import { usersService } from "./support/owner-ports";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import { createStrongRuntimeJwtSecret } from "./support/runtime-secrets";
@@ -245,7 +245,7 @@ test("profile update rejects an external avatar and stores an owned one", async 
           user: txUser,
         }),
     };
-    const svc = new UsersService(
+    const svc = usersService(
       prisma as any,
       {} as any,
       {

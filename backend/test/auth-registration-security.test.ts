@@ -7,7 +7,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { OtpPurpose, Prisma } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
-import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
+import { authService } from "./support/owner-ports";
 import { RegisterDto } from "../src/modules/identity/api/auth-dto/register.dto";
 import { JwtStrategy } from "../src/modules/identity/internal/auth/jwt.strategy";
 
@@ -247,7 +247,7 @@ function createHarness() {
   };
 
   return {
-    service: new AuthService(
+    service: authService(
       prisma,
       {
         sign: (payload: any) => {

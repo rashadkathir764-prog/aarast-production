@@ -8,7 +8,7 @@ import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { OtpPurpose, UserRole } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AdminGuard } from "../src/modules/backoffice/public/admin.guard";
-import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
+import { authService } from "./support/owner-ports";
 import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
 import { resolveJwtSessionScope } from "../src/modules/identity/public/access-token-scope";
 import {
@@ -411,7 +411,7 @@ test("admin login completion rollback preserves OTP and follows canonical lock o
       }
     },
   };
-  const service = new AuthService(
+  const service = authService(
     prisma,
     { sign: () => "admin-access-token" } as any,
     {} as any,

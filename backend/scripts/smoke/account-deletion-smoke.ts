@@ -19,6 +19,7 @@ import sharp from 'sharp';
 import { MediaStorageService } from '../../src/media/media-storage.service';
 import { MediaUploadTicketService } from '../../src/media/media-upload-ticket.service';
 import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
+import { identityErasurePorts } from './support/owner-ports';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   assertManagedSmokeEnvironment: (environment?: NodeJS.ProcessEnv) => unknown;
@@ -69,7 +70,12 @@ async function main() {
   const prisma = new PrismaClient();
   const tickets = new MediaUploadTicketService(prisma as never);
   const media = new MediaStorageService(tickets);
-  const users = new UsersService(prisma as never, {} as never, media);
+  const users = new UsersService(
+    prisma as never,
+    {} as never,
+    media,
+    ...identityErasurePorts,
+  );
   const tag = `deltest-${Date.now()}`;
   const phone = `+96771${String(Date.now()).slice(-7)}`;
   let userId = '';

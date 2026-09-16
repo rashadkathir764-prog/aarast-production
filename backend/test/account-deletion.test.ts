@@ -3,7 +3,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma, UserRole } from "@prisma/client";
-import { UsersService } from "../src/modules/identity/internal/profile/users.service";
+import { usersService } from "./support/owner-ports";
 
 const PLAN_CHILDREN = [
   "costPayment",
@@ -263,7 +263,7 @@ const serviceFor = (
   },
   realtime?: { disconnectUser: (userId: string) => void },
 ) =>
-  new UsersService(
+  usersService(
     {
       user: { findUnique: async () => ({ role: UserRole.USER }) },
       $transaction: async (fn: any) => fn(tx),
@@ -280,7 +280,7 @@ const serviceFor = (
 test("application account deletion erases only the administrator's application identity", async () => {
   const { tx, calls } = recordingTx([], {}, UserRole.ADMIN);
   let adminMediaDeletes = 0;
-  const service = new UsersService(
+  const service = usersService(
     {
       user: { findUnique: async () => ({ role: UserRole.ADMIN }) },
       $transaction: async (operation: (value: any) => Promise<unknown>) =>
@@ -546,7 +546,7 @@ test("account deletion retries a deadlock without changing its read-committed me
       return operation(tx);
     },
   };
-  const service = new UsersService(
+  const service = usersService(
     prisma as any,
     {} as any,
     {

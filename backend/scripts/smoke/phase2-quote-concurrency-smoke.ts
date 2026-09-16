@@ -24,6 +24,7 @@ import {
 import { MarketplaceService } from '../../src/marketplace/marketplace.service';
 import { ContributionHistoryService } from '../../src/modules/collaboration/internal/contribution-history.service';
 import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
+import { ownerPorts } from './support/owner-ports';
 import { buildContributionSnapshot } from '../../src/modules/collaboration/public/contribution-snapshot.builder';
 import { ProviderDashboardService } from '../../src/provider-dashboard/provider-dashboard.service';
 
@@ -286,7 +287,7 @@ function marketplaceWithPermissionSignal(): {
   service: MarketplaceService;
   permissionChecked: Promise<void>;
 } {
-  const permissions = new PermissionService(prisma as any);
+  const permissions = new PermissionService(prisma as any, ownerPorts.plans);
   const permissionChecked = deferred();
   const original = permissions.assertMoneyManageable.bind(permissions);
   permissions.assertMoneyManageable = async (...args) => {
@@ -299,7 +300,7 @@ function marketplaceWithPermissionSignal(): {
       prisma as any,
       permissions,
       notifications as any,
-      lifecycle, contributionHistory,
+      lifecycle, ownerPorts.finance, contributionHistory,
     ),
     permissionChecked: permissionChecked.promise,
   };

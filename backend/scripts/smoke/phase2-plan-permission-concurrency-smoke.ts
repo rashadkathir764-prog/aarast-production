@@ -9,6 +9,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts, planningOwnerPorts } from "./support/owner-ports";
 import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { WeddingPlansService } from "../../src/wedding-plans/wedding-plans.service";
 
@@ -33,12 +34,13 @@ const { createPermissionRevocationFixture, withFixture } =
 assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
-const permissions = new PermissionService(prisma as any);
+const permissions = new PermissionService(prisma as any, ownerPorts.plans);
 const contributionHistory = new ContributionHistoryService(prisma as any);
 const weddingPlans = new WeddingPlansService(
   prisma as any,
   permissions,
   contributionHistory,
+  ...planningOwnerPorts,
 );
 
 function authenticatedUser(user: {

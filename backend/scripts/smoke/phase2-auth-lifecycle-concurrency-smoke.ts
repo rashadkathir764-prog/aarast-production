@@ -17,6 +17,8 @@ import {
   hashRefreshToken,
 } from "../../src/modules/identity/internal/auth/refresh-token-policy";
 import { InviteAccessService } from "../../src/modules/collaboration/internal/invite-access.service";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => {
@@ -51,6 +53,7 @@ const auth = new AuthService(
     disconnectUser: () => undefined,
     disconnectSession: () => undefined,
   } as any,
+  new PermissionService(prisma as any, ownerPorts.plans),
 );
 const inviteAccess = new InviteAccessService(prisma as any, auth);
 

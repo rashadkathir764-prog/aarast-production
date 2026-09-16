@@ -172,7 +172,13 @@ test("every product review mutation uses the shared locked aggregate boundary", 
   assert.doesNotMatch(admin, /recalculateProviderRating/);
   assert.match(aggregate, /runSerializableTransaction/);
   assert.match(aggregate, /ORDER BY "id" ASC\s+FOR UPDATE/);
-  assert.match(accountDeletion, /providerReview\.deleteMany/);
+  // The review purge is marketplace's row: account deletion calls the
+  // marketplace erasure port, whose implementation runs the deleteMany.
+  assert.match(accountDeletion, /marketplaceErasure\.deleteUserReviewsInTransaction/);
+  assert.match(
+    source("modules/marketplace/internal/marketplace-erasure.service.ts"),
+    /deleteUserReviewsInTransaction\([\s\S]*?providerReview\.deleteMany\(\{ where: \{ userId \} \}\)/,
+  );
   assert.match(accountDeletion, /refreshProviderRating/);
 });
 

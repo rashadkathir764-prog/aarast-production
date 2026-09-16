@@ -21,6 +21,7 @@ import {
   TASK_PERMISSION_REVOKED_MESSAGE,
 } from "../../src/modules/collaboration/public/collaboration-permission.port";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts } from "./support/owner-ports";
 import { TasksService } from "../../src/tasks/tasks.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -44,7 +45,7 @@ const { createPermissionRevocationFixture, withFixture } =
 assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
-const permissions = new PermissionService(prisma as any);
+const permissions = new PermissionService(prisma as any, ownerPorts.plans);
 const contributionHistory = new ContributionHistoryService(prisma as any);
 const contributorScope = new ContributorScopeService(contributionHistory);
 const tasks = new TasksService(

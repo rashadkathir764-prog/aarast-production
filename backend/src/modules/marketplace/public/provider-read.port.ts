@@ -23,6 +23,12 @@ export interface ProviderReadPort {
     client: Prisma.TransactionClient,
     userId: string,
   ): Promise<Provider | null>;
+  /** The provider only when the user owns it. */
+  findOwnedProvider(
+    client: Prisma.TransactionClient,
+    providerId: string,
+    userId: string,
+  ): Promise<Provider | null>;
   /** The subset of `providerIds` whose business name contains `search` (case-insensitive). */
   filterProviderIdsByBusinessName(
     client: Prisma.TransactionClient,

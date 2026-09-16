@@ -11,6 +11,10 @@ import {
   MessagingRealtimePort,
 } from "../../../messaging/public/messaging-realtime.port";
 import {
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort,
+} from "../../../collaboration/public/collaboration-permission.port";
+import {
   IdentityAuthPort,
   InviteOtpVerifyInput,
   OtpDispatchContext,
@@ -195,6 +199,8 @@ export class AuthService implements IdentityAuthPort {
     private readonly otpDispatchQuota: OtpDispatchQuotaService,
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime: MessagingRealtimePort,
+    @Inject(COLLABORATION_PERMISSION_PORT)
+    private readonly collaboration: CollaborationPermissionPort,
   ) {}
 
   async startRegistration(
@@ -1509,16 +1515,10 @@ export class AuthService implements IdentityAuthPort {
     const hasAccountSetup = name.length > 0 && password.length > 0;
     const now = new Date();
     const tokenHash = createHash("sha256").update(cleanToken).digest("hex");
-    const inviteSeed = await this.prisma.planInvite.findFirst({
-      where: {
-        tokenHash,
-        normalizedPhone: phone,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: now },
-      },
-      select: { id: true, acceptedAt: true, weddingPlanId: true },
-    });
+    const inviteSeed = await this.collaboration.findLivePlanInvite(
+      this.prisma,
+      { tokenHash, normalizedPhone: phone, now },
+    );
     if (!inviteSeed) {
       throw this.inviteNotFoundForPhone();
     }
@@ -1531,15 +1531,11 @@ export class AuthService implements IdentityAuthPort {
       if (!existingUser || existingUser.appPasswordConfiguredAt) {
         throw this.inviteNotFoundForPhone();
       }
-      const existingMembership = await this.prisma.sharedMember.findUnique({
-        where: {
-          weddingPlanId_userId: {
-            weddingPlanId: inviteSeed.weddingPlanId,
-            userId: existingUser.id,
-          },
-        },
-        select: { id: true },
-      });
+      const existingMembership = await this.collaboration.getMembership(
+        this.prisma,
+        inviteSeed.weddingPlanId,
+        existingUser.id,
+      );
       if (!existingMembership) throw this.inviteNotFoundForPhone();
     }
     const accountSetupRequired =
@@ -1571,23 +1567,18 @@ export class AuthService implements IdentityAuthPort {
             user = await tx.user.findUnique({ where: { id: user.id } });
           }
           const inviteLocked =
-            await this.lockPlanInviteForUpdateInTransaction(
+            await this.collaboration.lockPlanInviteForUpdateInTransaction(
               tx,
               inviteSeed.id,
             );
           if (!inviteLocked) {
             return { error: this.inviteNotFoundForPhone() };
           }
-          const invite = await tx.planInvite.findFirst({
-            where: {
-              id: inviteSeed.id,
-              tokenHash,
-              normalizedPhone: phone,
-              declinedAt: null,
-              revokedAt: null,
-              expiresAt: { gt: now },
-            },
-            select: { id: true, acceptedAt: true, weddingPlanId: true },
+          const invite = await this.collaboration.findLivePlanInvite(tx, {
+            id: inviteSeed.id,
+            tokenHash,
+            normalizedPhone: phone,
+            now,
           });
           if (!invite) {
             return { error: this.inviteNotFoundForPhone() };
@@ -1596,15 +1587,11 @@ export class AuthService implements IdentityAuthPort {
             if (!user || user.appPasswordConfiguredAt) {
               return { error: this.inviteNotFoundForPhone() };
             }
-            const existingMembership = await tx.sharedMember.findUnique({
-              where: {
-                weddingPlanId_userId: {
-                  weddingPlanId: invite.weddingPlanId,
-                  userId: user.id,
-                },
-              },
-              select: { id: true },
-            });
+            const existingMembership = await this.collaboration.getMembership(
+              tx,
+              invite.weddingPlanId,
+              user.id,
+            );
             if (!existingMembership) {
               return { error: this.inviteNotFoundForPhone() };
             }
@@ -2271,21 +2258,6 @@ export class AuthService implements IdentityAuthPort {
     return this.jwtService.sign(payload);
   }
 
-  private async lockPlanInviteForUpdateInTransaction(
-    tx: Pick<Prisma.TransactionClient, "$queryRaw">,
-    planInviteId: string,
-  ): Promise<boolean> {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "PlanInvite"
-        WHERE "id" = ${planInviteId}
-        FOR UPDATE
-      `,
-    );
-    return locked.length === 1;
-  }
-
   private async replaceActiveOtp(
     data: Pick<
       Prisma.OtpCodeUncheckedCreateInput,
@@ -2309,27 +2281,23 @@ export class AuthService implements IdentityAuthPort {
                 throw this.inviteNotFoundForPhone();
               }
               const inviteLocked =
-                await this.lockPlanInviteForUpdateInTransaction(
+                await this.collaboration.lockPlanInviteForUpdateInTransaction(
                   tx,
                   data.planInviteId,
                 );
               if (!inviteLocked) {
                 throw this.inviteNotFoundForPhone();
               }
-              const activeInvite = await tx.planInvite.findFirst({
-                where: {
+              const activeInvite = await this.collaboration.findLivePlanInvite(
+                tx,
+                {
                   id: data.planInviteId,
                   tokenHash: expectedInviteTokenHash,
                   normalizedPhone: data.phone,
-                  acceptedAt: allowAcceptedCredentialRecovery
-                    ? { not: null }
-                    : null,
-                  declinedAt: null,
-                  revokedAt: null,
-                  expiresAt: { gt: now },
+                  now,
+                  accepted: allowAcceptedCredentialRecovery,
                 },
-                select: { id: true },
-              });
+              );
               if (!activeInvite) {
                 throw this.inviteNotFoundForPhone();
               }

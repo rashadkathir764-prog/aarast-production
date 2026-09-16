@@ -10,8 +10,6 @@ import { createHash } from "node:crypto";
 import {
   AppRole,
   AuthSessionScope,
-  ContributionScopeStatus,
-  MediaUploadStatus,
   NotificationPreference,
   OtpPurpose,
   Prisma,
@@ -30,6 +28,39 @@ import {
   MediaStoragePort,
 } from "../../../media/public/media-storage.port";
 import { enqueueUserSessionsRevoked } from "../../../../platform/outbox/realtime-revocation";
+import { purgeOutboxEventsForAggregatesInTransaction } from "../../../../platform/outbox/outbox-purge";
+import {
+  deleteApplicationIdempotencyKeysForUser,
+  deleteIdempotencyKeysForUser,
+  deleteStaleIdempotencyReservation,
+  findIdempotencyReservation,
+} from "../../../../platform/idempotency/idempotency-keys";
+import {
+  COLLABORATION_ERASURE_PORT,
+  type CollaborationErasurePort,
+} from "../../../collaboration/public/collaboration-erasure.port";
+import {
+  FINANCE_PORT,
+  type FinancePort,
+} from "../../../finance/public/finance.port";
+import { GUESTS_PORT, type GuestsPort } from "../../../guests/public/guests.port";
+import {
+  MARKETPLACE_ERASURE_PORT,
+  type MarketplaceErasurePort,
+} from "../../../marketplace/public/marketplace-erasure.port";
+import {
+  MESSAGING_ERASURE_PORT,
+  type MessagingErasurePort,
+} from "../../../messaging/public/messaging-erasure.port";
+import {
+  NOTIFICATIONS_ERASURE_PORT,
+  type NotificationsErasurePort,
+} from "../../../notifications/public/notifications-erasure.port";
+import {
+  PLAN_ERASURE_PORT,
+  type PlanErasurePort,
+} from "../../../planning/public/plan-erasure.port";
+import { TASKS_PORT, type TasksPort } from "../../../tasks/public/tasks.port";
 import {
   PUSH_CAPABILITY_PORT,
   PushCapabilityPort,
@@ -127,6 +158,22 @@ export class UsersService {
     private readonly permissionService: PermissionService,
     @Inject(MEDIA_STORAGE_PORT)
     private readonly mediaStorage: MediaStoragePort,
+    @Inject(PLAN_ERASURE_PORT)
+    private readonly planErasure: PlanErasurePort,
+    @Inject(MARKETPLACE_ERASURE_PORT)
+    private readonly marketplaceErasure: MarketplaceErasurePort,
+    @Inject(MESSAGING_ERASURE_PORT)
+    private readonly messagingErasure: MessagingErasurePort,
+    @Inject(NOTIFICATIONS_ERASURE_PORT)
+    private readonly notificationsErasure: NotificationsErasurePort,
+    @Inject(COLLABORATION_ERASURE_PORT)
+    private readonly collaborationErasure: CollaborationErasurePort,
+    @Inject(FINANCE_PORT)
+    private readonly finance: FinancePort,
+    @Inject(TASKS_PORT)
+    private readonly tasks: TasksPort,
+    @Inject(GUESTS_PORT)
+    private readonly guests: GuestsPort,
     @Optional()
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime?: MessagingRealtimePort,
@@ -307,33 +354,23 @@ export class UsersService {
         // Parent rows are locked in a deterministic order before any child is
         // purged. This blocks new FK children while this transaction deletes
         // the complete account graph and avoids cross-context lock inversions.
-        const ownedPlans = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "WeddingPlan"
-            WHERE "ownerUserId" = ${userId}
-            ORDER BY "id" ASC
-            FOR UPDATE
-          `,
-        );
-        const planIds = ownedPlans.map((plan) => plan.id);
+        // Every statement below runs in its table's owner, on this
+        // transaction, in this order — the order is the FK-safe, deadlock-safe
+        // specification of the saga.
+        const planIds =
+          await this.planErasure.lockOwnedPlanIdsForUpdateInTransaction(
+            tx,
+            userId,
+          );
 
-        const ownedProviders = await tx.provider.findMany({
-          where: { userId },
-          orderBy: { id: "asc" },
-          select: { id: true },
-        });
-        const providerIds = ownedProviders.map((provider) => provider.id);
-        const reviewedProviders = await tx.providerReview.findMany({
-          where: { userId },
-          distinct: ["providerId"],
-          orderBy: { providerId: "asc" },
-          select: { providerId: true },
-        });
+        const providerIds =
+          await this.marketplaceErasure.listOwnedProviderIds(tx, userId);
+        const reviewedProviderIds =
+          await this.marketplaceErasure.listReviewedProviderIds(tx, userId);
         const ownedProviderIds = new Set(providerIds);
-        const externalRatedProviderIds = reviewedProviders
-          .map((review) => review.providerId)
-          .filter((providerId) => !ownedProviderIds.has(providerId));
+        const externalRatedProviderIds = reviewedProviderIds.filter(
+          (providerId) => !ownedProviderIds.has(providerId),
+        );
         const lockedProviderIds = new Set(
           await lockProviderRatingRows(tx, [
             ...providerIds,
@@ -344,242 +381,124 @@ export class UsersService {
           lockedProviderIds.has(providerId),
         );
 
-        if (reviewedProviders.length > 0) {
+        if (reviewedProviderIds.length > 0) {
           // ProviderReview cascades from User, but the provider cache does not.
           // Remove these rows explicitly while every affected provider is
           // locked, then refresh each surviving external provider before the
           // account transaction can commit.
-          await tx.providerReview.deleteMany({ where: { userId } });
+          await this.marketplaceErasure.deleteUserReviewsInTransaction(
+            tx,
+            userId,
+          );
           for (const providerId of ratingsToRefresh) {
             await refreshProviderRating(tx, providerId);
           }
         }
 
-        if (planIds.length > 0) {
-          // Every money mutation locks WeddingCost before CostPayment. Account
-          // erasure follows the same order, so reversePayment can never hold a
-          // cost while this path holds its payment and waits in the opposite
-          // direction.
-          await tx.$queryRaw<Array<{ id: string }>>(
-            Prisma.sql`
-              SELECT "id"
-              FROM "WeddingCost"
-              WHERE "weddingPlanId" IN (${Prisma.join(planIds)})
-              ORDER BY "id" ASC
-              FOR UPDATE
-            `,
-          );
-        }
+        // Every money mutation locks WeddingCost before CostPayment. Account
+        // erasure follows the same order, so reversePayment can never hold a
+        // cost while this path holds its payment and waits in the opposite
+        // direction.
+        await this.finance.lockPlanCostsForUpdateInTransaction(tx, planIds);
 
-        const conversationPredicates: Prisma.Sql[] = [
-          Prisma.sql`"accountRequesterUserId" = ${userId}`,
-        ];
-        if (planIds.length > 0) {
-          conversationPredicates.push(
-            Prisma.sql`"weddingPlanId" IN (${Prisma.join(planIds)})`,
+        const conversationIds =
+          await this.messagingErasure.lockOwnedConversationIdsForUpdateInTransaction(
+            tx,
+            { userId, weddingPlanIds: planIds, providerIds },
           );
-        }
-        if (providerIds.length > 0) {
-          conversationPredicates.push(
-            Prisma.sql`"providerId" IN (${Prisma.join(providerIds)})`,
-          );
-        }
-        // Only contexts owned by the account are selected here. Merely being
-        // a Participant or creator in somebody else's PLAN conversation does
-        // not make that conversation eligible for deletion.
-        const conversationsToDelete = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "Conversation"
-            WHERE ${Prisma.join(conversationPredicates, " OR ")}
-            ORDER BY "id" ASC
-            FOR UPDATE
-          `,
-        );
-        const conversationIds = conversationsToDelete.map(
-          (conversation) => conversation.id,
-        );
 
-        const quoteRequestPredicates: Prisma.Sql[] = [
-          Prisma.sql`"userId" = ${userId}`,
-        ];
-        if (planIds.length > 0) {
-          quoteRequestPredicates.push(
-            Prisma.sql`"weddingPlanId" IN (${Prisma.join(planIds)})`,
-          );
-        }
-        if (providerIds.length > 0) {
-          quoteRequestPredicates.push(
-            Prisma.sql`"providerId" IN (${Prisma.join(providerIds)})`,
-          );
-        }
-        if (conversationIds.length > 0) {
-          quoteRequestPredicates.push(
-            Prisma.sql`"conversationId" IN (${Prisma.join(conversationIds)})`,
-          );
-        }
-        const quoteRequestsToDelete = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "QuoteRequest"
-            WHERE ${Prisma.join(quoteRequestPredicates, " OR ")}
-            ORDER BY "id" ASC
-            FOR UPDATE
-          `,
-        );
-        const quoteRequestIds = quoteRequestsToDelete.map((quote) => quote.id);
-
-        const attachmentRows =
-          conversationIds.length > 0
-            ? await tx.chatAttachment.findMany({
-                where: {
-                  message: { conversationId: { in: conversationIds } },
-                },
-                orderBy: { id: "asc" },
-                select: { id: true },
-              })
-            : [];
-        const attachmentIds = attachmentRows.map((attachment) => attachment.id);
-        if (attachmentIds.length > 0) {
-          // A conversation can contain media uploaded by the other party. Its
-          // durable ticket must survive the cascade as a deletion job too.
-          await tx.mediaUploadTicket.updateMany({
-            where: {
-              consumedByType: "CHAT_ATTACHMENT",
-              consumedById: { in: attachmentIds },
-              status: MediaUploadStatus.VERIFIED,
+        const quoteRequestIds =
+          await this.marketplaceErasure.lockOwnedQuoteRequestIdsForUpdateInTransaction(
+            tx,
+            {
+              userId,
+              weddingPlanIds: planIds,
+              providerIds,
+              conversationIds,
             },
-            data: { status: MediaUploadStatus.DELETE_PENDING },
-          });
-        }
+          );
 
-        const notificationConditions: Prisma.NotificationWhereInput[] = [
-          { userId },
-        ];
-        if (planIds.length > 0) {
-          notificationConditions.push({ weddingPlanId: { in: planIds } });
-        }
-        if (quoteRequestIds.length > 0) {
-          notificationConditions.push({
-            entityType: "quote_request",
-            entityId: { in: quoteRequestIds },
+        const attachmentIds =
+          await this.messagingErasure.listAttachmentIdsForConversations(
+            tx,
+            conversationIds,
+          );
+        await this.mediaStorage.scheduleChatAttachmentDeletion(
+          attachmentIds,
+          tx,
+        );
+
+        const notificationIds =
+          await this.notificationsErasure.listOwnedNotificationIds(tx, {
+            userId,
+            weddingPlanIds: planIds,
+            quoteRequestIds,
           });
-        }
-        const notificationRows = await tx.notification.findMany({
-          where: { OR: notificationConditions },
-          select: { id: true },
+        await purgeOutboxEventsForAggregatesInTransaction(tx, {
+          notificationIds,
+          conversationIds,
         });
-        const notificationIds = notificationRows.map((row) => row.id);
-        if (notificationIds.length > 0 || conversationIds.length > 0) {
-          await tx.outboxEvent.deleteMany({
-            where: {
-              OR: [
-                ...(notificationIds.length > 0
-                  ? [
-                      {
-                        aggregateType: "notification",
-                        aggregateId: { in: notificationIds },
-                      },
-                    ]
-                  : []),
-                ...(conversationIds.length > 0
-                  ? [
-                      {
-                        aggregateType: "conversation",
-                        aggregateId: { in: conversationIds },
-                      },
-                    ]
-                  : []),
-              ],
-            },
-          });
-        }
-        if (notificationIds.length > 0) {
-          await tx.notification.deleteMany({
-            where: { id: { in: notificationIds } },
-          });
-        }
+        await this.notificationsErasure.deleteNotificationsInTransaction(
+          tx,
+          notificationIds,
+        );
 
         // QuoteRequest.conversationId is Restrict by design so ordinary quote
         // removal can never erase a shared thread. Account purge is the one
         // explicit path that removes all requests in owned contexts first,
         // then removes only those contexts.
-        if (quoteRequestIds.length > 0) {
-          await tx.quoteRequest.deleteMany({
-            where: { id: { in: quoteRequestIds } },
-          });
-        }
-        if (conversationIds.length > 0) {
-          await tx.conversation.deleteMany({
-            where: { id: { in: conversationIds } },
-          });
-        }
+        await this.marketplaceErasure.deleteQuoteRequestsInTransaction(
+          tx,
+          quoteRequestIds,
+        );
+        await this.messagingErasure.deleteConversationsInTransaction(
+          tx,
+          conversationIds,
+        );
         const tenureEndedAt = new Date();
         if (planIds.length > 0) {
           // Contribution history is retained independently from the live plan.
           // Close every active tenure before the plan/member graph disappears;
           // the append-only events and detached history scope remain intact.
-          await tx.contributorTenure.updateMany({
-            where: {
-              endedAt: null,
-              historyScope: { weddingPlanId: { in: planIds } },
-            },
-            data: {
-              endedAt: tenureEndedAt,
-              endReason: "PLAN_DELETED",
-              sharedMemberId: null,
-            },
-          });
-          await tx.contributorHistoryScope.updateMany({
-            where: { weddingPlanId: { in: planIds } },
-            data: {
-              status: ContributionScopeStatus.DELETED,
-              deletedAt: tenureEndedAt,
-            },
-          });
+          await this.collaborationErasure.markPlansDeletedInTransaction(
+            tx,
+            planIds,
+            tenureEndedAt,
+          );
         }
         // A contributor deleting the central account closes their tenures in
         // plans owned by other users without deleting the plan's audit trail.
-        await tx.contributorTenure.updateMany({
-          where: { actorUserId: userId, endedAt: null },
-          data: {
-            endedAt: tenureEndedAt,
-            endReason: "ACCOUNT_DELETED",
-            sharedMemberId: null,
-          },
-        });
+        await this.collaborationErasure.closeActorTenuresInTransaction(
+          tx,
+          userId,
+          tenureEndedAt,
+        );
         if (planIds.length > 0) {
-          const inPlans = { weddingPlanId: { in: planIds } };
-          // CostPayment is append-only during normal product work. Account
-          // erasure is the one explicit, transaction-local purge path.
-          await tx.$executeRaw`
-            SELECT set_config('aarast.allow_ledger_purge', 'on', true)
-          `;
-          await tx.costPayment.deleteMany({
-            where: { weddingCost: inPlans },
-          });
-          await tx.paymentSchedule.deleteMany({
-            where: { weddingCost: inPlans },
-          });
-          await tx.weddingCost.deleteMany({ where: inPlans });
-          await tx.weddingTask.deleteMany({ where: inPlans }); // cascades checklist items
-          await tx.guest.deleteMany({ where: inPlans });
-          await tx.guestGroup.deleteMany({ where: inPlans });
-          await tx.planProviderLink.deleteMany({ where: inPlans });
-          await tx.sharedMember.deleteMany({ where: inPlans });
-          await tx.planInvite.deleteMany({ where: inPlans });
-          await tx.budgetCategory.deleteMany({ where: inPlans });
-          await tx.weddingPlan.deleteMany({ where: { id: { in: planIds } } });
+          await this.finance.purgePlanLedgerInTransaction(tx, planIds);
+          await this.tasks.deletePlanTasksInTransaction(tx, planIds); // cascades checklist items
+          await this.guests.deletePlanGuestsInTransaction(tx, planIds);
+          await this.marketplaceErasure.deletePlanProviderLinksInTransaction(
+            tx,
+            planIds,
+          );
+          await this.collaborationErasure.deletePlanMembersAndInvitesInTransaction(
+            tx,
+            planIds,
+          );
+          await this.finance.deletePlanBudgetCategoriesInTransaction(
+            tx,
+            planIds,
+          );
+          await this.planErasure.deletePlansInTransaction(tx, planIds);
         }
 
         // A provider profile would otherwise be orphaned (owner SetNull). Its
         // customer requests/conversations were purged above; other owners'
         // plans and costs remain through the existing SetNull relations.
-        if (providerIds.length > 0) {
-          await tx.provider.deleteMany({
-            where: { id: { in: providerIds } },
-          });
-        }
+        await this.marketplaceErasure.deleteProvidersInTransaction(
+          tx,
+          providerIds,
+        );
 
         if (preservesAdministratorIdentity) {
           await this.eraseAdministratorApplicationIdentity(
@@ -598,7 +517,7 @@ export class UsersService {
 
         if (!preservesAdministratorIdentity) {
           // Keyed by userId / phone with no User foreign key: never cascades.
-          await tx.idempotencyKey.deleteMany({ where: { userId } });
+          await deleteIdempotencyKeysForUser(tx, userId);
           if (currentUser.phone) {
             await tx.otpCode.deleteMany({
               where: { phone: currentUser.phone },
@@ -633,59 +552,19 @@ export class UsersService {
     // These are the explicit equivalents of User cascades/SetNull relations.
     // The User row itself is retained because it is also the administrator
     // identity; admin review/audit relations and admin challenges stay linked.
-    await tx.weddingTask.updateMany({
-      where: { assigneeUserId: userId },
-      data: { assigneeUserId: null },
-    });
-    await tx.contributorTenure.updateMany({
-      where: { actorUserId: userId },
-      data: { actorUserId: null },
-    });
-    await tx.sharedMember.deleteMany({ where: { userId } });
-    await tx.planInvite.deleteMany({ where: { inviterUserId: userId } });
-    await tx.planInvite.updateMany({
-      where: { inviteeUserId: userId },
-      data: { inviteeUserId: null },
-    });
-    await tx.notificationPreference.deleteMany({ where: { userId } });
-    await tx.pushInstallation.deleteMany({ where: { userId } });
-    await tx.favoriteProvider.deleteMany({ where: { userId } });
-    await tx.conversationParticipant.deleteMany({ where: { userId } });
-    await tx.chatMessage.deleteMany({ where: { senderUserId: userId } });
-    await tx.conversationReport.deleteMany({
-      where: { reporterUserId: userId },
-    });
-    await tx.conversationEvent.updateMany({
-      where: { actorUserId: userId },
-      data: { actorUserId: null },
-    });
-    await tx.conversation.updateMany({
-      where: { createdByUserId: userId },
-      data: { createdByUserId: null },
-    });
-    await tx.conversation.updateMany({
-      where: { customerSideBlockedById: userId },
-      data: { customerSideBlockedById: null },
-    });
+    await this.tasks.unassignUserTasksInTransaction(tx, userId);
+    await this.collaborationErasure.detachUserInTransaction(tx, userId);
+    await this.notificationsErasure.deleteUserPreferencesAndInstallationsInTransaction(
+      tx,
+      userId,
+    );
+    await this.marketplaceErasure.deleteUserFavoritesInTransaction(tx, userId);
+    await this.messagingErasure.eraseUserParticipationInTransaction(tx, userId);
 
     await tx.refreshToken.deleteMany({
       where: { userId, scope: AuthSessionScope.APPLICATION },
     });
-    await tx.idempotencyKey.deleteMany({
-      where: {
-        userId,
-        NOT: {
-          OR: [
-            { path: "/admin" },
-            { path: { startsWith: "/admin/" } },
-            { path: "/api/v1/admin" },
-            { path: { startsWith: "/api/v1/admin/" } },
-            { path: "/api/v1/auth/admin" },
-            { path: { startsWith: "/api/v1/auth/admin/" } },
-          ],
-        },
-      },
-    });
+    await deleteApplicationIdempotencyKeysForUser(tx, userId);
     if (phone) {
       await tx.otpCode.deleteMany({
         where: {
@@ -733,16 +612,11 @@ export class UsersService {
         });
         if (receipt) return { status: "DELETED" as const };
 
-        const reservation = await tx.idempotencyKey.findUnique({
-          where: { userId_key: { userId, key: clientRequestId } },
-          select: {
-            id: true,
-            method: true,
-            path: true,
-            completedAt: true,
-            createdAt: true,
-          },
-        });
+        const reservation = await findIdempotencyReservation(
+          tx,
+          userId,
+          clientRequestId,
+        );
         if (
           reservation?.method === "DELETE" &&
           reservation.path === "/api/v1/users/me"
@@ -774,17 +648,11 @@ export class UsersService {
             if (lockedUser.length === 0) {
               return { status: "NOT_STARTED" as const };
             }
-            await tx.idempotencyKey.deleteMany({
-              where: {
-                id: reservation.id,
-                completedAt: null,
-                createdAt: {
-                  lte: new Date(
-                    Date.now() - ACCOUNT_DELETION_STALE_RESERVATION_MS,
-                  ),
-                },
-              },
-            });
+            await deleteStaleIdempotencyReservation(
+              tx,
+              reservation.id,
+              new Date(Date.now() - ACCOUNT_DELETION_STALE_RESERVATION_MS),
+            );
             return { status: "NOT_STARTED" as const };
           }
           return { status: "PENDING" as const };
@@ -836,11 +704,10 @@ export class UsersService {
   ): Promise<NotificationPreferenceResponse> {
     const settings = await runRetryableTransaction(this.prisma, async (tx) => {
       await this.lockNotificationSettingsUser(tx, currentUser.id);
-      return tx.notificationPreference.upsert({
-        where: { userId: currentUser.id },
-        update: {},
-        create: { userId: currentUser.id },
-      });
+      return this.notificationsErasure.ensurePreferenceInTransaction(
+        tx,
+        currentUser.id,
+      );
     });
 
     return this.toSettingsResponse(settings);
@@ -883,14 +750,11 @@ export class UsersService {
     };
     const settings = await runRetryableTransaction(this.prisma, async (tx) => {
       await this.lockNotificationSettingsUser(tx, currentUser.id);
-      return tx.notificationPreference.upsert({
-        where: { userId: currentUser.id },
-        create: {
-          userId: currentUser.id,
-          ...update,
-        },
+      return this.notificationsErasure.upsertPreferenceInTransaction(
+        tx,
+        currentUser.id,
         update,
-      });
+      );
     });
 
     return this.toSettingsResponse(settings);

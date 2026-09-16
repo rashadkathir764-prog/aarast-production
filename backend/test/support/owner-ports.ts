@@ -59,3 +59,76 @@ export const planningOwnerPorts = [
   ownerPorts.tasks,
   ownerPorts.guests,
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Identity services. `UsersService` and `AuthService` take the owner ports the
+// account-deletion saga, the invite-OTP flow and the settings endpoints call;
+// these constructors keep every fixture's original argument list and add the
+// real owner implementations (each runs the same statements against the
+// fixture's fake client).
+import { AuthService } from '../../src/modules/identity/internal/auth/auth.service';
+import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
+import { MessagingErasureService } from '../../src/modules/messaging/internal/messaging-erasure.service';
+import { MarketplaceErasureService } from '../../src/modules/marketplace/internal/marketplace-erasure.service';
+import { NotificationsErasureService } from '../../src/modules/notifications/internal/notifications-erasure.service';
+import { CollaborationErasureService } from '../../src/modules/collaboration/internal/collaboration-erasure.service';
+import { PlanErasureService } from '../../src/modules/planning/internal/plan-erasure.service';
+import { MediaStorageService } from '../../src/media/media-storage.service';
+import { MediaUploadTicketService } from '../../src/media/media-upload-ticket.service';
+
+const realMediaStorage = new MediaStorageService(new MediaUploadTicketService({} as any));
+
+/** A media storage fake completed with the chat-attachment deletion step the saga calls. */
+export function mediaStorageWithOwners<T extends object>(fake: T) {
+  return {
+    scheduleChatAttachmentDeletion: (attachmentIds: readonly string[], transaction: unknown) =>
+      realMediaStorage.scheduleChatAttachmentDeletion(attachmentIds, transaction as any),
+    ...fake,
+  };
+}
+
+export const identityErasurePorts = [
+  new PlanErasureService(),
+  new MarketplaceErasureService(),
+  new MessagingErasureService(),
+  new NotificationsErasureService(),
+  new CollaborationErasureService(),
+  ownerPorts.finance,
+  ownerPorts.tasks,
+  ownerPorts.guests,
+] as const;
+
+type UsersServiceOptional = [realtime?: unknown, firebasePush?: unknown];
+
+export function usersService(
+  prisma: unknown,
+  permissions: unknown,
+  mediaStorage: object,
+  ...optional: UsersServiceOptional
+): UsersService {
+  return new UsersService(
+    prisma as any,
+    permissions as any,
+    mediaStorageWithOwners(mediaStorage) as any,
+    ...identityErasurePorts,
+    optional[0] as any,
+    optional[1] as any,
+  );
+}
+
+export function authService(
+  prisma: unknown,
+  jwtService: unknown,
+  loginThrottle: unknown,
+  otpDispatchQuota: unknown,
+  realtime: unknown,
+): AuthService {
+  return new AuthService(
+    prisma as any,
+    jwtService as any,
+    loginThrottle as any,
+    otpDispatchQuota as any,
+    realtime as any,
+    realPermissions,
+  );
+}

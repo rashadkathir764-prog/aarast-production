@@ -26,6 +26,7 @@ import { AdminService } from "../../src/admin/admin.service";
 import { ContextsService } from "../../src/modules/identity/internal/profile/contexts.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
+import { ownerPorts } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -36,8 +37,13 @@ const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
 assertManagedSmokeEnvironment(process.env);
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const prisma = new PrismaClient();
-const permissions = new PermissionService(prisma as any);
-const contexts = new ContextsService(prisma as any, permissions);
+const permissions = new PermissionService(prisma as any, ownerPorts.plans);
+const contexts = new ContextsService(
+  prisma as any,
+  permissions,
+  ownerPorts.plans,
+  ownerPorts.providers,
+);
 const notifications = {
   createNotificationInTransaction: async () => ({ id: "phase3-notification" }),
 };

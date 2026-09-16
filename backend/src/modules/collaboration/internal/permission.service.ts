@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import {
   Prisma,
+  SharedMember,
   UserStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
@@ -17,6 +18,8 @@ import {
   assertWeddingPlanWritable,
   CollaborationPermissionPort,
   LiveAuthorizationFilter,
+  LivePlanInviteLookup,
+  LivePlanInviteSeed,
   livePlanAuthorizationWhere,
   LivePlanPermission,
   NEVER_MATCHING_ROW_FILTER,
@@ -473,6 +476,58 @@ export class PermissionService implements CollaborationPermissionPort {
       select: { weddingPlanId: true },
     });
     return memberships.map((membership) => membership.weddingPlanId);
+  }
+
+  async getMembership(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+  ): Promise<SharedMember | null> {
+    return client.sharedMember.findUnique({
+      where: { weddingPlanId_userId: { weddingPlanId, userId } },
+    });
+  }
+
+  async listMemberships(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<SharedMember[]> {
+    return client.sharedMember.findMany({ where: { userId } });
+  }
+
+  async findLivePlanInvite(
+    client: Prisma.TransactionClient,
+    lookup: LivePlanInviteLookup,
+  ): Promise<LivePlanInviteSeed | null> {
+    return client.planInvite.findFirst({
+      where: {
+        ...(lookup.id === undefined ? {} : { id: lookup.id }),
+        tokenHash: lookup.tokenHash,
+        normalizedPhone: lookup.normalizedPhone,
+        ...(lookup.accepted === undefined
+          ? {}
+          : { acceptedAt: lookup.accepted ? { not: null } : null }),
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: lookup.now },
+      },
+      select: { id: true, acceptedAt: true, weddingPlanId: true },
+    });
+  }
+
+  async lockPlanInviteForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    planInviteId: string,
+  ): Promise<boolean> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "PlanInvite"
+        WHERE "id" = ${planInviteId}
+        FOR UPDATE
+      `,
+    );
+    return locked.length === 1;
   }
 
   async revokeLivePlanInvitesInTransaction(

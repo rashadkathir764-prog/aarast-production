@@ -1299,6 +1299,19 @@ function scanR3SourceLaws(options) {
     new Set(contract.implementations),
   ]));
   const enforceManifestImplementations = options.providerContracts !== undefined;
+  // The frozen manifest names the contracts the relocation phases created;
+  // every one of them must keep its exact implementation. After the R12C
+  // closure the law also governs contracts the product adds later: a public
+  // token is a contract when it is a declared `_PORT` Symbol of the owner's
+  // public slice bound, `useExisting`, to the owner's `_IMPLEMENTATION` token
+  // registered exactly once in an internal module the public module imports.
+  // The R12C lifecycle contract keeps its own approved value-provider shape
+  // and is governed by the R12C scanner, not by this law.
+  const closedLiveContracts = Boolean(options.closed);
+  const liveContractToken = (identity) => Boolean(identity
+    && (!enforceManifestImplementations || closedLiveContracts)
+    && identity.name.endsWith('_PORT')
+    && !r12cAllowances.tokens.has(identity.key));
   const classIdentitiesByName = new Map();
   const sourceFiles = program.getSourceFiles().filter((sourceFile) => {
     if (sourceFile.isDeclarationFile) return false;
@@ -1443,7 +1456,7 @@ function scanR3SourceLaws(options) {
       const provide = properties.get('provide');
       const identity = provide && symbolIdentity(provide.initializer, checker, repoRoot);
       if (!identity || !(contractsByToken.has(identity.name)
-          || (!enforceManifestImplementations && identity.name.endsWith('_PORT')))) continue;
+          || liveContractToken(identity))) continue;
       const registrations = publicContractBindings.get(identity.name) || [];
       registrations.push({ module, provider, identity });
       publicContractBindings.set(identity.name, registrations);
@@ -1479,7 +1492,7 @@ function scanR3SourceLaws(options) {
       }
       const manifestImplementations = publicToken && contractsByToken.get(publicToken.name);
       const isPublicContractToken = Boolean(publicToken && (
-        manifestImplementations || (!enforceManifestImplementations && publicToken.name.endsWith('_PORT'))
+        manifestImplementations || liveContractToken(publicToken)
       ));
       if (isPublicContractToken) {
         const useExisting = properties.get('useExisting');
@@ -1519,8 +1532,10 @@ function scanR3SourceLaws(options) {
           const targetProperty = internalProperties.get('useExisting');
           const target = targetProperty && symbolIdentity(targetProperty.initializer, checker, repoRoot);
           if (!target) return false;
-          const exactManifestTarget = !enforceManifestImplementations || Boolean(manifestImplementations
-            && expectedImplementationIdentities.some((identity) => identity.key === target.key));
+          const exactManifestTarget = !enforceManifestImplementations
+            || (closedLiveContracts && !manifestImplementations)
+            || Boolean(manifestImplementations
+              && expectedImplementationIdentities.some((identity) => identity.key === target.key));
           const registrations = providers.get(target.key) || [];
           const registeredExactlyOnce = registrations.length === 1
             && registrations[0].module === internalModule;
@@ -1545,9 +1560,11 @@ function scanR3SourceLaws(options) {
         const publicBindingIdentityIsExact = publicBindingCount === 1
           && publicBindingIdentityCount === 1
           && publicTokenBindings[0].identity.key === publicToken.key;
-        const manifestIdentityIsExact = !enforceManifestImplementations || Boolean(
-          manifestImplementations && expectedImplementationIdentities.length === manifestImplementations.size,
-        );
+        const manifestIdentityIsExact = !enforceManifestImplementations
+          || (closedLiveContracts && !manifestImplementations)
+          || Boolean(
+            manifestImplementations && expectedImplementationIdentities.length === manifestImplementations.size,
+          );
         const externalContract = EXTERNAL_PROVIDER_CONTRACTS.get(publicToken.name);
         let exactBinding = Boolean(implementationToken
           && implementationToken.name === expectedImplementation
@@ -1587,7 +1604,7 @@ function scanR3SourceLaws(options) {
       const identity = symbolIdentity(exported, checker, repoRoot);
       const isPublicContractToken = Boolean(identity && (
         contractsByToken.has(identity.name)
-        || (!enforceManifestImplementations && identity.name.endsWith('_PORT'))
+        || liveContractToken(identity)
         || r12cAllowances.tokens.has(identity.key)
       ));
       if (identity && isPublicContractToken && isDeclaredSymbolToken(identity)
@@ -2232,6 +2249,9 @@ function scanR3Contexts(options) {
   const r12cManifest = options.r12cManifest !== undefined
     ? require('./r12c-zero-cross-context-dependencies-scan.cjs').validateR12cManifest(options.r12cManifest)
     : r12cSuccessor(options.repoRoot);
+  const closed = options.r12cManifest !== undefined
+    ? Boolean(options.closed)
+    : Boolean(require('./modular-monolith-closure.cjs').readClosure(options.repoRoot));
   const sourceLawScan = options.sourceLawScan || scanR3SourceLaws;
   const sourceLaws = sourceLawScan({
     repoRoot: options.repoRoot,
@@ -2239,6 +2259,7 @@ function scanR3Contexts(options) {
     providerContracts: contractDefinitions,
     r12aManifest,
     r12cManifest,
+    closed,
   });
   const projectedHistoricalManifest = projectR12aInventory(
     { ...manifest, legacyModules: projectR12cModules(manifest.legacyModules, r12cManifest) },
@@ -2283,9 +2304,6 @@ function scanR3Contexts(options) {
   // no cross-context injection, no remaining platform debt or retired legacy
   // edge, every public contract surface present, no duplicate provider, no
   // project global, and the injection-identity law below.
-  const closed = options.r12cManifest !== undefined
-    ? Boolean(options.closed)
-    : Boolean(require('./modular-monolith-closure.cjs').readClosure(options.repoRoot));
   const identityDrift = closed ? injectionIdentityDiagnostics(live.constructorUses) : [];
   const crossContextInjections = closed
     ? live.injections.map((item) => ({ kind: 'cross-context-injection', path: item.source, line: 1 }))

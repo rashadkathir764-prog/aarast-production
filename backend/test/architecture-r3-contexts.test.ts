@@ -2206,3 +2206,68 @@ test('R12B successor handoff preserves historical 16/9 and selects exact R12C ze
     ),
   }).length, 0);
 });
+
+test('closed R3 governs a port the product adds later by the live contract law', { skip: !r12cClosed && 'R12C closure only' }, () => {
+  // The frozen manifest names the contracts the relocation phases created;
+  // a port added after the closure is legal when it follows the same law
+  // (declared `_PORT` Symbol in the owner's public slice, `useExisting` to
+  // the owner's `_IMPLEMENTATION` token registered once in an internal
+  // module the public module imports) and illegal in every other shape.
+  const port = [
+    "export const GUEST_READ_PORT = Symbol('GUEST_READ_PORT');",
+    'export interface GuestReadPort { count(): Promise<number>; }',
+  ].join('\n');
+  const service = [
+    "import { Injectable } from '@nestjs/common';",
+    "import type { GuestReadPort } from '../public/guest-read.port';",
+    '@Injectable()',
+    'export class GuestReadService implements GuestReadPort { async count(): Promise<number> { return 0; } }',
+  ].join('\n');
+  const internalModule = [
+    "import { Module } from '@nestjs/common';",
+    "import { GuestReadService } from './guest-read.service';",
+    "export const GUEST_READ_IMPLEMENTATION = Symbol('GUEST_READ_IMPLEMENTATION');",
+    '@Module({ providers: [GuestReadService, { provide: GUEST_READ_IMPLEMENTATION, useExisting: GuestReadService }], exports: [GuestReadService, GUEST_READ_IMPLEMENTATION] })',
+    'export class GuestReadInternalModule {}',
+  ].join('\n');
+  const lawfulPublicModule = [
+    "import { Module } from '@nestjs/common';",
+    "import { GUEST_READ_IMPLEMENTATION, GuestReadInternalModule } from '../internal/guest-read.internal.module';",
+    "import { GUEST_READ_PORT } from './guest-read.port';",
+    '@Module({ imports: [GuestReadInternalModule], providers: [{ provide: GUEST_READ_PORT, useExisting: GUEST_READ_IMPLEMENTATION }], exports: [GUEST_READ_PORT] })',
+    'export class GuestReadPublicModule {}',
+  ].join('\n');
+  const hollowPublicModule = [
+    "import { Module } from '@nestjs/common';",
+    "import { GUEST_READ_PORT } from './guest-read.port';",
+    '@Module({ providers: [], exports: [GUEST_READ_PORT] })',
+    'export class GuestReadPublicModule {}',
+  ].join('\n');
+  const concretePublicModule = [
+    "import { Module } from '@nestjs/common';",
+    "import { GuestReadInternalModule } from '../internal/guest-read.internal.module';",
+    "import { GuestReadService } from '../internal/guest-read.service';",
+    '@Module({ imports: [GuestReadInternalModule], providers: [], exports: [GuestReadService] })',
+    'export class GuestReadPublicModule {}',
+  ].join('\n');
+  const guestReadKinds = (publicModule: string) => {
+    const options = fullSourceFixture([]);
+    const write = (relative: string, content: string) => {
+      const target = path.join(options.backendRoot, 'src', 'modules', 'guests', relative);
+      mkdirSync(path.dirname(target), { recursive: true });
+      writeFileSync(target, `${content}\n`, 'utf8');
+    };
+    write('public/guest-read.port.ts', port);
+    write('internal/guest-read.service.ts', service);
+    write('internal/guest-read.internal.module.ts', internalModule);
+    write('public/guest-read-public.module.ts', publicModule);
+    return scanner().scanR3Contexts(options).diagnostics
+      .filter((item: any) => String(item.path).includes('guest-read'))
+      .map((item: any) => item.kind)
+      .sort();
+  };
+
+  assert.deepEqual(guestReadKinds(lawfulPublicModule), []);
+  assert.deepEqual(guestReadKinds(hollowPublicModule), ['hollow-public-token']);
+  assert.deepEqual(guestReadKinds(concretePublicModule), ['concrete-public-export']);
+});

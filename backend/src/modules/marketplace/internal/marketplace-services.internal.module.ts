@@ -5,6 +5,7 @@ import { ProviderDashboardService } from '../../../provider-dashboard/provider-d
 import { PrismaModule } from '../../../platform/database/prisma.module';
 import { CollaborationHistoryPublicModule } from '../../collaboration/public/collaboration-history-public.module';
 import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
+import { FinancePublicModule } from '../../finance/public/finance-public.module';
 import { MediaStoragePublicModule } from '../../media/public/media-storage-public.module';
 import { NotificationsPublicModule } from '../../notifications/public/notifications-public.module';
 
@@ -16,6 +17,7 @@ import { NotificationsPublicModule } from '../../notifications/public/notificati
     CollaborationHistoryPublicModule,
     NotificationsPublicModule,
     MediaStoragePublicModule,
+    FinancePublicModule,
   ],
   providers: [MarketplaceService, ProviderDashboardService],
   exports: [MarketplaceService, ProviderDashboardService],

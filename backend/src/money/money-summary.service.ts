@@ -15,6 +15,10 @@ import {
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../modules/planning/public/plan-read.port";
+import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
@@ -32,6 +36,8 @@ export class MoneySummaryService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans: PlanReadPort,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
   ) {}
@@ -71,6 +77,7 @@ export class MoneySummaryService {
         return buildMoneySummaryInTransaction(
           tx,
           this.permissions,
+          this.plans,
           access,
           contributionScope,
         );
@@ -90,6 +97,7 @@ export class MoneySummaryService {
 export async function buildMoneySummaryInTransaction(
   tx: Prisma.TransactionClient,
   permissions: PermissionService,
+  plans: PlanReadPort,
   access: PlanAccessContext,
   contributionScope: {
     costIds: readonly string[];
@@ -98,10 +106,7 @@ export async function buildMoneySummaryInTransaction(
 ) {
   const weddingPlanId = access.plan.id;
   const [plan, categories, costs, payments, schedules] = await Promise.all([
-    tx.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-      select: { estimatedBudget: true, currency: true },
-    }),
+    plans.getPlan(tx, weddingPlanId),
     tx.budgetCategory.findMany({
       where: {
         weddingPlanId,

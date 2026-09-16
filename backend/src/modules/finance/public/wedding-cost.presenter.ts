@@ -1,9 +1,10 @@
 import { CostPaymentType, Prisma, WeddingCostStatus } from "@prisma/client";
 
+// Finance's own relations only. The provider name on a cost belongs to
+// marketplace and is read through its port by whoever presents the cost.
 export const weddingCostResponseInclude =
   Prisma.validator<Prisma.WeddingCostInclude>()({
     budgetCategory: { select: { name: true } },
-    provider: { select: { businessName: true } },
     _count: {
       select: {
         payments: {
@@ -46,6 +47,7 @@ export interface WeddingCostResponse {
 
 export function toWeddingCostResponse(
   cost: WeddingCostWithDetails,
+  providerName: string | null,
 ): WeddingCostResponse {
   return {
     id: cost.id,
@@ -53,7 +55,7 @@ export function toWeddingCostResponse(
     budgetCategoryId: cost.budgetCategoryId,
     categoryName: cost.budgetCategory.name,
     providerId: cost.providerId,
-    providerName: cost.provider?.businessName ?? null,
+    providerName,
     quoteOfferId: cost.quoteOfferId,
     title: cost.title,
     partyName: cost.partyName,

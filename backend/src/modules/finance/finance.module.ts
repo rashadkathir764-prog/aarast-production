@@ -13,9 +13,10 @@ import {
   WeddingPlanPaymentSchedulesController,
 } from "../../wedding-costs/wedding-costs.controller";
 import { FinanceServicesInternalModule } from "./internal/finance-services.internal.module";
+import { FinancePublicModule } from "./public/finance-public.module";
 
 @Module({
-  imports: [FinanceServicesInternalModule],
+  imports: [FinancePublicModule, FinanceServicesInternalModule],
   controllers: [
     MoneySummaryController,
     WeddingPlanBudgetCategoriesController,

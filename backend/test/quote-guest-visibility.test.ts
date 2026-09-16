@@ -11,6 +11,7 @@ import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { GuestsService } from "../src/guests/guests.service";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 
 const user = (id: string) =>
   ({ id, name: "Tester", phone: "+967700000000" }) as any;
@@ -244,7 +245,7 @@ const marketplace = (
       ...perms,
     } as any,
     {} as any,
-    lifecycle, contributionHistory as any,
+    lifecycle, new FinancePortService(), contributionHistory as any,
   );
 
 test("plan quote live data is denied after provider permission revocation", async () => {
@@ -292,7 +293,7 @@ test("plan owner sees the full plan quote context", async () => {
       canViewMoney: (context: any) => context.isOwner,
       canManageProviders: (context: any) => context.isOwner,
     } as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, new FinancePortService(),
   );
   const [q] = await svc.findPlanQuoteRequests(user("owner"), "p1");
   assert.equal(q.contactPhone, "+967733333333");

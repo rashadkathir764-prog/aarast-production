@@ -12,6 +12,7 @@ import { test } from "node:test";
 import { ConflictException } from "@nestjs/common";
 import { Prisma, QuoteRequestStatus } from "@prisma/client";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { createQuoteRequestInTransaction } from "../src/marketplace/quote-request-creation";
 import { isQuoteOfferExpired } from "../src/marketplace/quote-offer-expiry";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
@@ -261,6 +262,7 @@ test("backend rejects acceptance of an expired pending offer", async () => {
       return [{ id: offer.id, quoteRequestId: quoteId }];
     },
     quoteOffer: { findUnique: async () => offer },
+    weddingCost: { findFirst: async () => null },
   };
   const service = new MarketplaceService(
     {
@@ -279,7 +281,7 @@ test("backend rejects acceptance of an expired pending offer", async () => {
       canManageProviders: () => true,
     } as any,
     {} as any,
-    lifecycle, {} as any,
+    lifecycle, new FinancePortService(), {} as any,
   );
   await assert.rejects(
     service.acceptQuoteOffer(requester, offer.id),

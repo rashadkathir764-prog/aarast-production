@@ -64,6 +64,10 @@ import {
 import { YemenAdministrativePresenter } from "./yemen-administrative.presenter";
 import { acceptQuoteOfferInTransaction } from "./quote-offer-acceptance";
 import {
+  FINANCE_PORT,
+  type FinancePort,
+} from "../modules/finance/public/finance.port";
+import {
   assertProviderSectionLive,
   buildMyQuoteAccessWhere,
   findAccessiblePlanQuoteRequest,
@@ -83,6 +87,8 @@ export class MarketplaceService {
     private readonly notifications: NotificationsPort,
     @Inject(CONVERSATION_LIFECYCLE_PORT)
     private readonly lifecycle: ConversationLifecyclePort,
+    @Inject(FINANCE_PORT)
+    private readonly finance: FinancePort,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
@@ -595,6 +601,7 @@ export class MarketplaceService {
       this.lifecycle,
       this.permissions,
       this.notifications,
+      this.finance,
       {
         id,
         weddingPlanId,
@@ -616,7 +623,10 @@ export class MarketplaceService {
         createdAt: result.link.createdAt,
         updatedAt: result.link.updatedAt,
       },
-      weddingCost: toWeddingCostResponse(result.cost),
+      weddingCost: toWeddingCostResponse(
+        result.cost,
+        result.offer.provider.businessName,
+      ),
       automaticCostCreated: true,
       costSuggestion: {
         suggestedAction: "VIEW_COST",

@@ -35,6 +35,14 @@ import {
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
+  PROVIDER_READ_PORT,
+  type ProviderReadPort,
+} from "../modules/marketplace/public/provider-read.port";
+import {
+  QUOTE_READ_PORT,
+  type QuoteReadPort,
+} from "../modules/marketplace/public/quote-read.port";
+import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
@@ -52,13 +60,13 @@ import {
   toWeddingCostResponse,
   weddingCostResponseInclude,
   type WeddingCostResponse,
+  type WeddingCostWithDetails,
 } from "../modules/finance/public/wedding-cost.presenter";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {
     include: {
       budgetCategory: { select: { name: true } },
-      provider: { select: { businessName: true } },
     },
   },
   reversedBy: { select: { id: true } },
@@ -68,7 +76,6 @@ const scheduleInclude = Prisma.validator<Prisma.PaymentScheduleInclude>()({
   weddingCost: {
     include: {
       budgetCategory: { select: { name: true } },
-      provider: { select: { businessName: true } },
     },
   },
 });
@@ -148,6 +155,10 @@ export class WeddingCostsService {
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly permissions: PermissionService,
+    @Inject(PROVIDER_READ_PORT)
+    private readonly providers: ProviderReadPort,
+    @Inject(QUOTE_READ_PORT)
+    private readonly quotes: QuoteReadPort,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
     @Inject(COLLABORATION_HISTORY_PORT)
@@ -244,7 +255,7 @@ export class WeddingCostsService {
         });
       });
       if (initialPayment.gt(0)) paymentsRecordedTotal.inc();
-      return toWeddingCostResponse(cost);
+      return this.presentCost(this.prisma, cost);
     } catch (error) {
       this.rethrowKnownPrismaError(error);
     }
@@ -271,15 +282,17 @@ export class WeddingCostsService {
           tx,
           access,
         );
-        const where: Prisma.WeddingCostWhereInput = {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
+        const searchedProviderIds = search
+          ? await this.providerIdsMatchingSearch(tx, weddingPlanId, search)
+          : [];
+        const where = {
           weddingPlanId,
-          weddingPlan: {
-            is: this.permissions.livePlanAuthorizationWhere(
-              access,
-              currentUser.id,
-              ["canViewMoney"],
-            ),
-          },
           ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
           ...(query.status ? { status: query.status } : {}),
           ...(query.categoryId?.trim()
@@ -290,11 +303,7 @@ export class WeddingCostsService {
                 OR: [
                   { title: { contains: search, mode: "insensitive" } },
                   { partyName: { contains: search, mode: "insensitive" } },
-                  {
-                    provider: {
-                      businessName: { contains: search, mode: "insensitive" },
-                    },
-                  },
+                  { providerId: { in: searchedProviderIds } },
                   {
                     budgetCategory: {
                       name: { contains: search, mode: "insensitive" },
@@ -303,7 +312,8 @@ export class WeddingCostsService {
                 ],
               }
             : {}),
-        };
+          ...liveFilter,
+        } satisfies Prisma.WeddingCostWhereInput;
         const [costs, total] = await Promise.all([
           tx.weddingCost.findMany({
             where,
@@ -315,7 +325,7 @@ export class WeddingCostsService {
           tx.weddingCost.count({ where }),
         ]);
         return {
-          items: costs.map(toWeddingCostResponse),
+          items: await this.presentCosts(tx, costs),
           page,
           pageSize,
           total,
@@ -347,22 +357,22 @@ export class WeddingCostsService {
         if (scopedCostIds && !scopedCostIds.includes(id)) {
           throw new NotFoundException("Wedding cost not found");
         }
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
         const cost = await tx.weddingCost.findFirst({
           where: {
             id,
             weddingPlanId: identity.weddingPlanId,
-            weddingPlan: {
-              is: this.permissions.livePlanAuthorizationWhere(
-                access,
-                currentUser.id,
-                ["canViewMoney"],
-              ),
-            },
+            ...liveFilter,
           },
           include: weddingCostResponseInclude,
         });
         if (!cost) throw new NotFoundException("Wedding cost not found");
-        return toWeddingCostResponse(cost);
+        return this.presentCost(tx, cost);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -501,7 +511,7 @@ export class WeddingCostsService {
           },
           occurredAt: updated.updatedAt,
         });
-        return toWeddingCostResponse(updated);
+        return this.presentCost(tx, updated);
       });
     } catch (error) {
       this.rethrowKnownPrismaError(error);
@@ -562,7 +572,8 @@ export class WeddingCostsService {
       await this.assertScopedCostInTransaction(tx, context, id);
       const locked = await this.lockCost(tx, id);
       if (locked.status === WeddingCostStatus.CANCELLED) {
-        return toWeddingCostResponse(
+        return this.presentCost(
+          tx,
           await tx.weddingCost.findUniqueOrThrow({
             where: { id },
             include: weddingCostResponseInclude,
@@ -599,7 +610,7 @@ export class WeddingCostsService {
         },
         occurredAt: cancelled.updatedAt,
       });
-      return toWeddingCostResponse(cancelled);
+      return this.presentCost(tx, cancelled);
     });
   }
 
@@ -663,7 +674,7 @@ export class WeddingCostsService {
           },
           occurredAt: payment.paidAt,
         });
-        return this.paymentResponse(payment);
+        return this.presentPayment(tx, payment);
       },
     );
     paymentsRecordedTotal.inc();
@@ -691,25 +702,25 @@ export class WeddingCostsService {
         if (scopedCostIds && !scopedCostIds.includes(costId)) {
           throw new NotFoundException("Wedding cost not found");
         }
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
         const payments = await tx.costPayment.findMany({
           where: {
             weddingCostId: costId,
             weddingCost: {
               weddingPlanId: identity.weddingPlanId,
-              weddingPlan: {
-                is: this.permissions.livePlanAuthorizationWhere(
-                  access,
-                  currentUser.id,
-                  ["canViewMoney"],
-                ),
-              },
               ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
             },
+            ...liveFilter,
           },
           include: paymentInclude,
           orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
         });
-        return payments.map((payment) => this.paymentResponse(payment));
+        return this.presentPayments(tx, payments);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -735,19 +746,19 @@ export class WeddingCostsService {
           tx,
           access,
         );
-        const where: Prisma.CostPaymentWhereInput = {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
+        const where = {
           weddingCost: {
             weddingPlanId,
-            weddingPlan: {
-              is: this.permissions.livePlanAuthorizationWhere(
-                access,
-                currentUser.id,
-                ["canViewMoney"],
-              ),
-            },
             ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
           },
-        };
+          ...liveFilter,
+        } satisfies Prisma.CostPaymentWhereInput;
         const [payments, total] = await Promise.all([
           tx.costPayment.findMany({
             where,
@@ -759,7 +770,7 @@ export class WeddingCostsService {
           tx.costPayment.count({ where }),
         ]);
         return {
-          items: payments.map((payment) => this.paymentResponse(payment)),
+          items: await this.presentPayments(tx, payments),
           page,
           pageSize,
           total,
@@ -788,26 +799,26 @@ export class WeddingCostsService {
           tx,
           access,
         );
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
         const payment = await tx.costPayment.findFirst({
           where: {
             id,
             weddingCostId: identity.weddingCostId,
             weddingCost: {
               weddingPlanId: identity.weddingPlanId,
-              weddingPlan: {
-                is: this.permissions.livePlanAuthorizationWhere(
-                  access,
-                  currentUser.id,
-                  ["canViewMoney"],
-                ),
-              },
               ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
             },
+            ...liveFilter,
           },
           include: paymentInclude,
         });
         if (!payment) throw new NotFoundException("Cost payment not found");
-        return this.paymentResponse(payment);
+        return this.presentPayment(tx, payment);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -887,7 +898,7 @@ export class WeddingCostsService {
         },
         occurredAt: reversal.paidAt,
       });
-      return this.paymentResponse(reversal);
+      return this.presentPayment(tx, reversal);
     });
   }
 
@@ -936,7 +947,7 @@ export class WeddingCostsService {
         },
         occurredAt: schedule.createdAt,
       });
-      return this.scheduleResponse(schedule);
+      return this.presentSchedule(tx, schedule);
     });
   }
 
@@ -961,25 +972,25 @@ export class WeddingCostsService {
         if (scopedCostIds && !scopedCostIds.includes(costId)) {
           throw new NotFoundException("Wedding cost not found");
         }
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
         const schedules = await tx.paymentSchedule.findMany({
           where: {
             weddingCostId: costId,
             weddingCost: {
               weddingPlanId: identity.weddingPlanId,
-              weddingPlan: {
-                is: this.permissions.livePlanAuthorizationWhere(
-                  access,
-                  currentUser.id,
-                  ["canViewMoney"],
-                ),
-              },
               ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
             },
+            ...liveFilter,
           },
           include: scheduleInclude,
           orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
         });
-        return schedules.map((schedule) => this.scheduleResponse(schedule));
+        return this.presentSchedules(tx, schedules);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -1005,27 +1016,27 @@ export class WeddingCostsService {
           tx,
           access,
         );
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canViewMoney"],
+        );
         const schedules = await tx.paymentSchedule.findMany({
           where: {
             weddingCost: {
               weddingPlanId,
-              weddingPlan: {
-                is: this.permissions.livePlanAuthorizationWhere(
-                  access,
-                  currentUser.id,
-                  ["canViewMoney"],
-                ),
-              },
               ...(scopedCostIds ? { id: { in: scopedCostIds } } : {}),
               status: { not: WeddingCostStatus.CANCELLED },
             },
             status: PaymentScheduleStatus.PENDING,
             dueDate: { lte: through },
+            ...liveFilter,
           },
           include: scheduleInclude,
           orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
         });
-        return schedules.map((schedule) => this.scheduleResponse(schedule));
+        return this.presentSchedules(tx, schedules);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -1104,7 +1115,7 @@ export class WeddingCostsService {
         },
         occurredAt: updated.updatedAt,
       });
-      return this.scheduleResponse(updated);
+      return this.presentSchedule(tx, updated);
     });
   }
 
@@ -1183,7 +1194,8 @@ export class WeddingCostsService {
         where: { id },
       });
       if (schedule.status === PaymentScheduleStatus.CANCELLED) {
-        return this.scheduleResponse(
+        return this.presentSchedule(
+          tx,
           await tx.paymentSchedule.findUniqueOrThrow({
             where: { id },
             include: scheduleInclude,
@@ -1228,7 +1240,7 @@ export class WeddingCostsService {
         },
         occurredAt: cancelled.updatedAt,
       });
-      return this.scheduleResponse(cancelled);
+      return this.presentSchedule(tx, cancelled);
     });
   }
 
@@ -1272,8 +1284,8 @@ export class WeddingCostsService {
           include: scheduleInclude,
         });
         return {
-          payment: this.paymentResponse(existing),
-          schedule: this.scheduleResponse(paidSchedule),
+          payment: await this.presentPayment(tx, existing),
+          schedule: await this.presentSchedule(tx, paidSchedule),
           created: false,
         };
       }
@@ -1346,8 +1358,8 @@ export class WeddingCostsService {
         occurredAt: paidAt,
       });
       return {
-        payment: this.paymentResponse(payment),
-        schedule: this.scheduleResponse(paidSchedule),
+        payment: await this.presentPayment(tx, payment),
+        schedule: await this.presentSchedule(tx, paidSchedule),
         created: true,
       };
     });
@@ -1374,10 +1386,10 @@ export class WeddingCostsService {
     const partyPhone = this.optionalText(input.partyPhone);
 
     if (quoteOfferId) {
-      const offer = await tx.quoteOffer.findUnique({
-        where: { id: quoteOfferId },
-        include: { quoteRequest: true, provider: true, weddingCosts: true },
-      });
+      const offer = await this.quotes.getQuoteOfferWithRequest(
+        tx,
+        quoteOfferId,
+      );
       if (
         !offer ||
         offer.status !== QuoteOfferStatus.ACCEPTED ||
@@ -1387,7 +1399,11 @@ export class WeddingCostsService {
           "quoteOfferId must reference an accepted offer for this plan",
         );
       }
-      if (offer.provider.status !== ProviderStatus.ACTIVE) {
+      const offerProvider = await this.providers.getProvider(
+        tx,
+        offer.providerId,
+      );
+      if (offerProvider?.status !== ProviderStatus.ACTIVE) {
         throw new BadRequestException("The quote provider is not active");
       }
       if (providerId && providerId !== offer.providerId) {
@@ -1405,7 +1421,10 @@ export class WeddingCostsService {
           "totalAmount must match the accepted quote amount",
         );
       }
-      const otherCost = offer.weddingCosts.find(
+      const linkedCosts = await tx.weddingCost.findMany({
+        where: { quoteOfferId: offer.id },
+      });
+      const otherCost = linkedCosts.find(
         (cost) => cost.id !== input.currentCostId,
       );
       if (otherCost) {
@@ -1415,9 +1434,7 @@ export class WeddingCostsService {
       }
       providerId = offer.providerId;
     } else if (providerId) {
-      const provider = await tx.provider.findUnique({
-        where: { id: providerId },
-      });
+      const provider = await this.providers.getProvider(tx, providerId);
       if (!provider || provider.status !== ProviderStatus.ACTIVE) {
         throw new BadRequestException(
           "providerId must reference an active provider",
@@ -1447,13 +1464,10 @@ export class WeddingCostsService {
           .filter((id): id is string => id !== null),
       ),
     ].sort();
-    const discoveredOffers =
-      quoteOfferIds.length === 0
-        ? []
-        : await tx.quoteOffer.findMany({
-            where: { id: { in: quoteOfferIds } },
-            select: { id: true, providerId: true },
-          });
+    const discoveredOffers = await this.quotes.getQuoteOfferProviders(
+      tx,
+      quoteOfferIds,
+    );
     const providerIds = [
       ...new Set(
         [
@@ -1463,29 +1477,16 @@ export class WeddingCostsService {
       ),
     ].sort();
 
-    if (providerIds.length > 0) {
-      await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "Provider"
-          WHERE "id" IN (${Prisma.join(providerIds)})
-          ORDER BY "id" ASC
-          FOR SHARE
-        `,
-      );
-    }
+    await this.providers.lockProviderRowsForShareInTransaction(
+      tx,
+      providerIds,
+    );
     if (quoteOfferIds.length > 0) {
-      const lockedOffers = await tx.$queryRaw<
-        Array<{ id: string; providerId: string }>
-      >(
-        Prisma.sql`
-          SELECT "id", "providerId"
-          FROM "QuoteOffer"
-          WHERE "id" IN (${Prisma.join(quoteOfferIds)})
-          ORDER BY "id" ASC
-          FOR UPDATE
-        `,
-      );
+      const lockedOffers =
+        await this.quotes.lockQuoteOfferRowsForUpdateInTransaction(
+          tx,
+          quoteOfferIds,
+        );
       const lockedProviderByOffer = new Map(
         lockedOffers.map((offer) => [offer.id, offer.providerId]),
       );
@@ -1703,7 +1704,118 @@ export class WeddingCostsService {
     return schedule;
   }
 
-  private paymentResponse(payment: PaymentWithDetails): CostPaymentResponse {
+  // Marketplace owns the provider name shown on costs, payments and
+  // schedules; it is read once per response through the provider port.
+  private async providerNamesFor(
+    client: Tx,
+    providerIds: ReadonlyArray<string | null>,
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(providerIds.filter((id): id is string => id !== null)),
+    ];
+    const providers = await this.providers.getProviders(client, ids);
+    return new Map(
+      providers.map((provider) => [provider.id, provider.businessName]),
+    );
+  }
+
+  private async providerIdsMatchingSearch(
+    client: Tx,
+    weddingPlanId: string,
+    search: string,
+  ): Promise<string[]> {
+    const costs = await client.weddingCost.findMany({
+      where: { weddingPlanId, providerId: { not: null } },
+      select: { providerId: true },
+      distinct: ["providerId"],
+    });
+    return this.providers.filterProviderIdsByBusinessName(
+      client,
+      costs.map((cost) => cost.providerId).filter((id): id is string => id !== null),
+      search,
+    );
+  }
+
+  private async presentCosts(
+    client: Tx,
+    costs: WeddingCostWithDetails[],
+  ): Promise<WeddingCostResponse[]> {
+    const names = await this.providerNamesFor(
+      client,
+      costs.map((cost) => cost.providerId),
+    );
+    return costs.map((cost) =>
+      toWeddingCostResponse(
+        cost,
+        cost.providerId === null ? null : (names.get(cost.providerId) ?? null),
+      ),
+    );
+  }
+
+  private async presentCost(
+    client: Tx,
+    cost: WeddingCostWithDetails,
+  ): Promise<WeddingCostResponse> {
+    const [response] = await this.presentCosts(client, [cost]);
+    return response;
+  }
+
+  private async presentPayments(
+    client: Tx,
+    payments: PaymentWithDetails[],
+  ): Promise<CostPaymentResponse[]> {
+    const names = await this.providerNamesFor(
+      client,
+      payments.map((payment) => payment.weddingCost.providerId),
+    );
+    return payments.map((payment) =>
+      this.paymentResponse(
+        payment,
+        payment.weddingCost.providerId === null
+          ? null
+          : (names.get(payment.weddingCost.providerId) ?? null),
+      ),
+    );
+  }
+
+  private async presentPayment(
+    client: Tx,
+    payment: PaymentWithDetails,
+  ): Promise<CostPaymentResponse> {
+    const [response] = await this.presentPayments(client, [payment]);
+    return response;
+  }
+
+  private async presentSchedules(
+    client: Tx,
+    schedules: ScheduleWithDetails[],
+  ): Promise<PaymentScheduleResponse[]> {
+    const names = await this.providerNamesFor(
+      client,
+      schedules.map((schedule) => schedule.weddingCost.providerId),
+    );
+    return schedules.map((schedule) =>
+      this.scheduleResponse(
+        schedule,
+        schedule.weddingCost.providerId === null
+          ? null
+          : (names.get(schedule.weddingCost.providerId) ?? null),
+      ),
+    );
+  }
+
+  private async presentSchedule(
+    client: Tx,
+    schedule: ScheduleWithDetails,
+  ): Promise<PaymentScheduleResponse> {
+    const [response] = await this.presentSchedules(client, [schedule]);
+    return response;
+  }
+
+  private paymentResponse(
+    payment: PaymentWithDetails,
+    providerName: string | null,
+  ): CostPaymentResponse {
     return {
       id: payment.id,
       costId: payment.weddingCostId,
@@ -1711,7 +1823,7 @@ export class WeddingCostsService {
       budgetCategoryId: payment.weddingCost.budgetCategoryId,
       categoryName: payment.weddingCost.budgetCategory.name,
       providerId: payment.weddingCost.providerId,
-      providerName: payment.weddingCost.provider?.businessName ?? null,
+      providerName,
       costTitle: payment.weddingCost.title,
       amount: payment.amount.toString(),
       entryType: payment.entryType,
@@ -1730,6 +1842,7 @@ export class WeddingCostsService {
 
   private scheduleResponse(
     schedule: ScheduleWithDetails,
+    providerName: string | null,
   ): PaymentScheduleResponse {
     return {
       id: schedule.id,
@@ -1739,7 +1852,7 @@ export class WeddingCostsService {
       budgetCategoryId: schedule.weddingCost.budgetCategoryId,
       categoryName: schedule.weddingCost.budgetCategory.name,
       providerId: schedule.weddingCost.providerId,
-      providerName: schedule.weddingCost.provider?.businessName ?? null,
+      providerName,
       costTitle: schedule.weddingCost.title,
       amount: schedule.amount.toString(),
       dueDate: schedule.dueDate,

@@ -23,7 +23,7 @@ import type { NotificationsPort } from "../modules/notifications/public/notifica
 import { PrismaService } from "../platform/database/prisma.service";
 import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
-import { weddingCostResponseInclude } from "../modules/finance/public/wedding-cost.presenter";
+import type { FinancePort } from "../modules/finance/public/finance.port";
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
@@ -32,12 +32,6 @@ import {
   assertProviderAccountUnchanged,
   lockMarketplaceMutationUsers,
 } from "./marketplace-write-locks";
-import {
-  findLogicalBudgetCategory,
-  findOtherBudgetCategory,
-  normalizeBudgetCategoryName,
-  OTHER_BUDGET_CATEGORY_NAME,
-} from "./quote-cost-category";
 import {
   offerAcceptedProviderNotification,
   offerAcceptedRequesterNotification,
@@ -55,6 +49,7 @@ export async function acceptQuoteOfferInTransaction(
   lifecycle: ConversationLifecyclePort,
   permissions: PermissionService,
   notifications: NotificationsPort,
+  finance: FinancePort,
   input: AcceptQuoteOfferInput,
   history?: ContributionHistoryService,
 ) {
@@ -131,7 +126,6 @@ export async function acceptQuoteOfferInTransaction(
         },
         provider: { select: { businessName: true, userId: true } },
         providerLinks: { where: { weddingPlanId } },
-        weddingCosts: { include: weddingCostResponseInclude },
       },
     });
     if (!current) throw new NotFoundException("Quote offer not found");
@@ -196,7 +190,9 @@ export async function acceptQuoteOfferInTransaction(
     }
 
     if (!acceptedNow) {
-      const cost = current.weddingCosts[0] ?? null;
+      // The cost an accepted offer is linked to is finance's row, read
+      // through its port on this transaction.
+      const cost = await finance.findCostForAcceptedOffer(tx, id);
       const link = current.providerLinks[0] ?? null;
       if (
         !cost ||
@@ -222,55 +218,19 @@ export async function acceptQuoteOfferInTransaction(
     }
     assertProviderOperational(provider);
 
-    let cost = current.weddingCosts[0] ?? null;
+    let cost = await finance.findCostForAcceptedOffer(tx, id);
     if (!cost) {
-      const categories = await tx.budgetCategory.findMany({
-        where: { weddingPlanId },
-        select: { id: true, name: true, normalizedName: true },
-      });
-      const providerCategoryName =
-        current.quoteRequest.service?.category.nameAr ?? null;
-      let category = findLogicalBudgetCategory(
-        categories,
-        providerCategoryName,
-      );
-      category ??= findOtherBudgetCategory(categories);
-      if (!category) {
-        category = await tx.budgetCategory.upsert({
-          where: {
-            weddingPlanId_normalizedName: {
-              weddingPlanId,
-              normalizedName: normalizeBudgetCategoryName(
-                OTHER_BUDGET_CATEGORY_NAME,
-              ),
-            },
-          },
-          update: {},
-          create: {
-            weddingPlanId,
-            name: OTHER_BUDGET_CATEGORY_NAME,
-            normalizedName: normalizeBudgetCategoryName(
-              OTHER_BUDGET_CATEGORY_NAME,
-            ),
-          },
-          select: { id: true, name: true, normalizedName: true },
-        });
-      }
-
       const title =
         current.quoteRequest.service?.title.trim() ||
         current.provider.businessName.trim();
-      cost = await tx.weddingCost.create({
-        data: {
-          weddingPlanId,
-          budgetCategoryId: category.id,
-          providerId: current.providerId,
-          quoteOfferId: current.id,
-          title,
-          totalAmount: current.amount,
-          paidAmount: new Prisma.Decimal(0),
-        },
-        include: weddingCostResponseInclude,
+      cost = await finance.createCostFromAcceptedOffer(tx, {
+        weddingPlanId,
+        providerId: current.providerId,
+        quoteOfferId: current.id,
+        title,
+        amount: current.amount,
+        providerCategoryName:
+          current.quoteRequest.service?.category.nameAr ?? null,
       });
     }
 
@@ -295,7 +255,6 @@ export async function acceptQuoteOfferInTransaction(
           },
           provider: { select: { businessName: true, userId: true } },
           providerLinks: { where: { weddingPlanId } },
-          weddingCosts: { include: weddingCostResponseInclude },
         },
       });
       const rejectedOffers = await tx.quoteOffer.findMany({

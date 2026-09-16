@@ -13,6 +13,7 @@ import { test } from "node:test";
 import { SharedMemberRole } from "@prisma/client";
 import { NotFoundException } from "@nestjs/common";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 
@@ -91,7 +92,11 @@ test("every wedding-cost live read locks authority and revalidates canViewMoney 
     assert.ok(start >= 0 && end > start, startToken);
     assert.match(method, /runRetryableTransaction/, startToken);
     assert.match(method, /assertMoneyReadableInTransaction/, startToken);
-    assert.match(method, /livePlanAuthorizationWhere/, startToken);
+    // The live re-check runs through the collaboration port on the same
+    // transaction (the owners of the plan and membership rows evaluate it)
+    // and its result is applied to the final own-table query.
+    assert.match(method, /liveAuthorizationFilter\(\s*tx/, startToken);
+    assert.match(method, /\.\.\.liveFilter/, startToken);
     assert.match(method, /canViewMoney/, startToken);
   }
 });
@@ -191,7 +196,7 @@ test("quote detail rejects a stale authorized seed when the final live predicate
       canManageProviders: () => true,
       canViewMoney: () => true,
     } as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, new FinancePortService(),
   );
 
   await assert.rejects(

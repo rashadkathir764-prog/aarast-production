@@ -19,6 +19,10 @@ import { BudgetCategoriesService } from "../src/budget-categories/budget-categor
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
 import { buildMoneySummaryInTransaction } from "../src/money/money-summary.service";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
+import { ProviderReadService } from "../src/modules/marketplace/internal/provider-read.service";
+import { QuoteReadService } from "../src/modules/marketplace/internal/quote-read.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 
 const contributorContext = {
   plan: {
@@ -61,20 +65,19 @@ test("contributor cost list locks authority and carries the live permission into
     $transaction: async (operation: (client: typeof tx) => unknown) =>
       operation(tx),
   };
+  // The live re-check of stored membership and `canViewMoney` runs through
+  // the collaboration port on the same transaction (the owners evaluate it);
+  // its result is applied to the final own-table queries.
+  const liveChecks: unknown[][] = [];
   const permissions = {
     assertMoneyReadableInTransaction: async (client: unknown) => {
       assert.equal(client, tx);
       return contributorContext;
     },
-    livePlanAuthorizationWhere: () => ({
-      sharedMembers: {
-        some: {
-          id: "member-1",
-          userId: "contributor-1",
-          canViewMoney: true,
-        },
-      },
-    }),
+    liveAuthorizationFilter: async (...args: unknown[]) => {
+      liveChecks.push(args);
+      return { id: { in: [] } };
+    },
   };
   const scope = {
     qualifyingEntityIdsInTransaction: async (client: unknown) => {
@@ -85,6 +88,8 @@ test("contributor cost list locks authority and carries the live permission into
   const service = new WeddingCostsService(
     prisma as any,
     permissions as any,
+    new ProviderReadService(),
+    new QuoteReadService(),
     scope as any,
     {} as any,
   );
@@ -95,20 +100,13 @@ test("contributor cost list locks authority and carries the live permission into
     {} as any,
   );
 
+  assert.deepEqual(liveChecks, [
+    [tx, contributorContext, "contributor-1", ["canViewMoney"]],
+  ]);
   assert.equal(wheres.length, 2);
   for (const where of wheres) {
-    assert.deepEqual((where as any).id, { in: ["cost-mine"] });
-    assert.deepEqual((where as any).weddingPlan, {
-      is: {
-        sharedMembers: {
-          some: {
-            id: "member-1",
-            userId: "contributor-1",
-            canViewMoney: true,
-          },
-        },
-      },
-    });
+    assert.equal("weddingPlan" in (where as object), false);
+    assert.deepEqual((where as any).id, { in: [] });
   }
 });
 
@@ -138,6 +136,8 @@ test("contributor cost detail rejects an id outside the actor contribution scope
   const service = new WeddingCostsService(
     prisma as any,
     permissions as any,
+    new ProviderReadService(),
+    new QuoteReadService(),
     scope as any,
     {} as any,
   );
@@ -175,7 +175,7 @@ test("plan quote list restricts a contributor to requests they submitted", async
     prisma as any,
     permissions as any,
     {} as any,
-    lifecycle, {} as any,
+    lifecycle, new FinancePortService(), {} as any,
   );
 
   await service.findPlanQuoteRequests(
@@ -305,6 +305,7 @@ test("money summary applies contributor cost and category ids to every aggregate
   const result = await buildMoneySummaryInTransaction(
     tx as any,
     { canViewMoney: () => true, canManageMoney: () => true } as any,
+    new PlanReadService(),
     contributorContext as any,
     { costIds: ["cost-mine"], categoryIds: ["category-mine"] },
   );
@@ -476,6 +477,8 @@ test("an existing own cost never authorizes reusing a foreign category for a new
   const service = new WeddingCostsService(
     {} as any,
     {} as any,
+    new ProviderReadService(),
+    new QuoteReadService(),
     scope as any,
     {} as any,
   );

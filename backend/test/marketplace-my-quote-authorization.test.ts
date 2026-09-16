@@ -19,6 +19,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 
 const contributorAId = "11111111-1111-4111-8111-111111111111";
 const contributorBId = "22222222-2222-4222-8222-222222222222";
@@ -81,7 +82,7 @@ test("my quote list filters plan-linked requests by the caller's current stored 
       },
     } as any,
     {} as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, new FinancePortService(),
   );
 
   await service.findMyQuoteRequests(currentUser(contributorAId));
@@ -124,7 +125,7 @@ test("my quote detail keeps contributor A and B isolated and checks current plan
       },
     } as any,
     {} as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, new FinancePortService(),
   );
 
   await assert.rejects(
@@ -313,7 +314,7 @@ function cancellationHarness(options: {
   const service = new MarketplaceService(
     prisma as any,
     permissions as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, new FinancePortService(),
   );
 
   return {

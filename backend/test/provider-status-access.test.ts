@@ -22,6 +22,7 @@ import {
 } from '@prisma/client';
 import { ConversationsService } from '../src/conversations/conversations.service';
 import { acceptQuoteOfferInTransaction } from '../src/marketplace/quote-offer-acceptance';
+import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
 
 const providerUserId = '11111111-1111-4111-8111-111111111111';
@@ -849,6 +850,7 @@ test('a customer cannot accept an offer after the provider becomes inactive', as
         }),
       } as any,
       {} as any,
+      new FinancePortService(),
       {
         id: offerId,
         weddingPlanId: currentOffer.quoteRequest.weddingPlanId,

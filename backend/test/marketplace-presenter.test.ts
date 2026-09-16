@@ -149,8 +149,12 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
 
   // Growth guard. R12C Task 3 replaced five direct Messaging imports with one
   // injected lifecycle port: +1 import, +2 constructor lines, +5 call-site
-  // arguments (957 lines). The budget moves by exactly that approved delta.
-  assert.ok(service.split("\n").length <= 958);
+  // arguments (957 lines). The ownership program then routed quote
+  // acceptance's cost creation through the injected Finance port: +4 import
+  // lines, +2 constructor lines, +1 call-site argument, +3 lines passing the
+  // marketplace-owned provider name to the finance presenter (967 lines).
+  // The budget moves by exactly those approved deltas.
+  assert.ok(service.split("\n").length <= 968);
   assert.match(service, /MarketplacePresenter\.toQuoteResponse/);
   assert.match(service, /this\.prisma\.\$transaction/);
   assert.doesNotMatch(service, /private toQuoteResponse/);

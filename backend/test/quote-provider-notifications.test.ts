@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { acceptQuoteOfferInTransaction } from "../src/marketplace/quote-offer-acceptance";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 
@@ -175,7 +176,7 @@ test("a new quote request notifies the provider account too", async () => {
   const service = new MarketplaceService(
     prisma as any,
     {} as any,
-    notifications as any, lifecycle,
+    notifications as any, lifecycle, new FinancePortService(),
   );
 
   await service.createQuoteRequest(requester, PROVIDER_ID, {} as any);
@@ -237,7 +238,7 @@ test("a provider without a linked user account is skipped silently", async () =>
   const service = new MarketplaceService(
     prisma as any,
     {} as any,
-    notifications as any, lifecycle,
+    notifications as any, lifecycle, new FinancePortService(),
   );
 
   await service.createQuoteRequest(requester, PROVIDER_ID, {} as any);
@@ -441,6 +442,7 @@ function acceptanceHarness({
       },
     },
     weddingCost: {
+      findFirst: async () => createdCost ?? null,
       create: async ({ data }: any) => {
         costCreates += 1;
         const category =
@@ -514,7 +516,7 @@ function acceptanceHarness({
   const service = new MarketplaceService(
     prisma as any,
     permissions as any,
-    notifications as any, lifecycle,
+    notifications as any, lifecycle, new FinancePortService(),
   );
 
   return {
@@ -635,7 +637,10 @@ function acceptedReplayIntegrityHarness({
       findMany: async () => [],
       upsert: writeAttempt,
     },
-    weddingCost: { create: writeAttempt },
+    weddingCost: {
+      findFirst: async () => weddingCosts[0] ?? null,
+      create: writeAttempt,
+    },
     planProviderLink: { upsert: writeAttempt },
     conversationEvent: {
       createMany: writeAttempt,
@@ -656,6 +661,7 @@ function acceptedReplayIntegrityHarness({
       {
         createNotificationInTransaction: writeAttempt,
       } as any,
+      new FinancePortService(),
       {
         id: OFFER_ID,
         weddingPlanId: PLAN_ID,
@@ -941,7 +947,7 @@ test("rejecting an offer notifies the provider rather than the requester", async
   const service = new MarketplaceService(
     prisma as any,
     permissions as any,
-    notifications as any, lifecycle,
+    notifications as any, lifecycle, new FinancePortService(),
   );
 
   await service.rejectQuoteOffer(requester, OFFER_ID);
@@ -999,7 +1005,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
       assertProviderManageable: async () => ({}),
       assertProviderManageableInTransaction: async () => ({}),
     } as any,
-    notifications as any, lifecycle,
+    notifications as any, lifecycle, new FinancePortService(),
   );
 
   const result = await service.rejectQuoteOffer(requester, OFFER_ID);

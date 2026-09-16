@@ -22,6 +22,7 @@ import {
 } from '@prisma/client';
 import { ConversationsService } from '../src/conversations/conversations.service';
 import { MarketplaceService } from '../src/marketplace/marketplace.service';
+import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
 import { SharingService } from '../src/modules/collaboration/internal/sharing.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
@@ -391,7 +392,7 @@ test('a requester cannot cancel a quote linked to an archived plan', async () =>
       }),
       canManageProviders: () => true,
     } as any,
-    {} as any, lifecycle,
+    {} as any, lifecycle, new FinancePortService(),
   );
 
   await assert.rejects(

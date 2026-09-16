@@ -26,8 +26,11 @@ import {
   findLogicalBudgetCategory,
   findOtherBudgetCategory,
   normalizeBudgetCategoryName,
-} from "../src/marketplace/quote-cost-category";
+} from "../src/modules/finance/domain/cost-category-matching";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
+import { ProviderReadService } from "../src/modules/marketplace/internal/provider-read.service";
+import { QuoteReadService } from "../src/modules/marketplace/internal/quote-read.service";
+import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 
 test("money validation accepts bounded amounts and rejects unsafe values", () => {
   assert.equal(requiredMoneyAmount("1500000", "amount"), "1500000");
@@ -51,7 +54,7 @@ test("money validation accepts bounded amounts and rejects unsafe values", () =>
     updateBudgetInTransaction: async () => {
       throw new Error("validation-only fixture must not write a plan");
     },
-  });
+  }, new PlanReadService());
   assert.throws(() => (budget as any).totalBudget([]), BadRequestException);
   assert.throws(
     () =>
@@ -63,7 +66,7 @@ test("money validation accepts bounded amounts and rejects unsafe values", () =>
   );
   assert.throws(
     () =>
-      (new WeddingCostsService({} as any, {} as any) as any).optionalAmount(
+      (new WeddingCostsService({} as any, {} as any, new ProviderReadService(), new QuoteReadService()) as any).optionalAmount(
         [],
         "initialPaymentAmount",
       ),
@@ -95,7 +98,7 @@ test("money-budget rejects ambiguous categories and impossible allocations befor
     updateBudgetInTransaction: async () => {
       throw new Error("invalid input must not write a plan");
     },
-  });
+  }, new PlanReadService());
   const user = { id: "user-1" } as any;
 
   await assert.rejects(
@@ -220,6 +223,7 @@ test("money budget accepts an empty category list but still protects categories 
     prisma as any,
     permissions as any,
     planningBudgetWriter,
+    new PlanReadService(),
   );
   const cleared = await service.replace(
     { id: "owner-1" } as any,
@@ -253,6 +257,7 @@ test("money budget accepts an empty category list but still protects categories 
     } as any,
     permissions as any,
     planningBudgetWriter,
+    new PlanReadService(),
   );
   await assert.rejects(
     () => usedService.replace({ id: "owner-1" } as any, "plan-1", dto),
@@ -312,6 +317,7 @@ test("money budget delegates the Planning write through the same serializable tr
     prisma,
     permissions,
     planningBudgetWriter,
+    new PlanReadService(),
   ) as MoneyBudgetService;
 
   const result = await service.replace(
@@ -325,7 +331,7 @@ test("money budget delegates the Planning write through the same serializable tr
 });
 
 test("strict finance dates reject impossible and ambiguous calendar input", () => {
-  const service = new WeddingCostsService({} as any, {} as any);
+  const service = new WeddingCostsService({} as any, {} as any, new ProviderReadService(), new QuoteReadService());
   const requiredDate = (value: string) =>
     (service as any).requiredDate(value, "dueDate") as Date;
   assert.equal(
@@ -356,7 +362,7 @@ test("quote service categories match budget categories logically and preserve th
 });
 
 test("an accepted quote offer cannot be linked to a second cost", async () => {
-  const service = new WeddingCostsService({} as any, {} as any);
+  const service = new WeddingCostsService({} as any, {} as any, new ProviderReadService(), new QuoteReadService());
   const tx = {
     $queryRaw: async () => [{ id: "locked-reference" }],
     quoteOffer: {
@@ -367,9 +373,10 @@ test("an accepted quote offer cannot be linked to a second cost", async () => {
         currency: "YER",
         amount: new Prisma.Decimal("250000"),
         quoteRequest: { weddingPlanId: "plan-1" },
-        provider: { status: "ACTIVE" },
-        weddingCosts: [{ id: "cost-existing" }],
       }),
+    },
+    weddingCost: {
+      findMany: async () => [{ id: "cost-existing" }],
     },
     provider: {
       findUnique: async () => ({ id: "provider-1", status: "ACTIVE" }),
@@ -462,6 +469,8 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
   const result = await new WeddingCostsService(
     prisma as any,
     permissions as any,
+    new ProviderReadService(),
+    new QuoteReadService(),
   ).createPayment({ id: "owner-1" } as any, cost.id, { amount: "200" });
 
   assert.equal(result.id, payment.id);
@@ -535,7 +544,7 @@ test("each payment reminder is bounded by the current remaining cost without res
       plan: { id: "plan-1", currency: "YER" },
     }),
   };
-  const service = new WeddingCostsService(prisma as any, permissions as any);
+  const service = new WeddingCostsService(prisma as any, permissions as any, new ProviderReadService(), new QuoteReadService());
 
   const created = await service.createSchedule(
     { id: "owner-1" } as any,
@@ -629,6 +638,7 @@ test("money summary uses cost totals and the net append-only ledger exactly once
   const summary = await new MoneySummaryService(
     prisma as any,
     permissions as any,
+    new PlanReadService(),
   ).getSummary({ id: "user-1" } as any, "plan-1");
 
   assert.equal(summary.budget.total, "1000");
@@ -692,6 +702,7 @@ test("payment schedule warnings expose counts without adding overlapping reminde
   const summary = await new MoneySummaryService(
     prisma as any,
     permissions as any,
+    new PlanReadService(),
   ).getSummary({ id: "owner-1" } as any, "plan-1");
   const scheduleWarnings = summary.warnings.filter((warning) =>
     warning.type.startsWith("PAYMENT_SCHEDULE_"),
@@ -732,6 +743,7 @@ test("money access remains fail-closed when the plan is not visible", async () =
       },
     } as any,
     permissions as any,
+    new PlanReadService(),
   );
   await assert.rejects(
     () => service.getSummary({ id: "outsider" } as any, "plan-1"),
@@ -766,6 +778,7 @@ test("money summary fails closed if the plan disappears before its snapshot is r
         operation(snapshot),
     } as any,
     permissions as any,
+    new PlanReadService(),
   );
 
   await assert.rejects(

@@ -19,6 +19,10 @@ import {
   type PlanningBudgetWritePort,
 } from "../modules/planning/public/planning-budget-write.port";
 import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../modules/planning/public/plan-read.port";
+import {
   MoneyBudgetCategoryDto,
   ReplaceMoneyBudgetDto,
 } from "./dto/replace-money-budget.dto";
@@ -51,6 +55,8 @@ export class MoneyBudgetService {
     private readonly permissions: PermissionService,
     @Inject(PLANNING_BUDGET_WRITE_PORT)
     private readonly planningBudgetWriter: PlanningBudgetWritePort,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans: PlanReadPort,
   ) {}
 
   async replace(
@@ -175,6 +181,7 @@ export class MoneyBudgetService {
         const summary = await buildMoneySummaryInTransaction(
           tx,
           this.permissions,
+          this.plans,
           context,
         );
         return {

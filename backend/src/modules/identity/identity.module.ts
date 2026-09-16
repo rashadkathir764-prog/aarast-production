@@ -6,8 +6,10 @@ import { MeController } from "./api/me.controller";
 import { UsersController } from "./api/users.controller";
 import { IdentityAuthInternalModule } from "./internal/identity-auth.internal.module";
 import { IdentityProfileInternalModule } from "./internal/identity-profile.internal.module";
+import { ActivePlanPublicModule } from "./public/active-plan-public.module";
 import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";
 import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";
+import { UserReadPublicModule } from "./public/user-read-public.module";
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { IdentityTransientDeliveryPublicModule } from "./public/identity-transie
     IdentityProfileInternalModule,
     IdentityAuthPublicModule,
     IdentityTransientDeliveryPublicModule,
+    UserReadPublicModule,
+    ActivePlanPublicModule,
   ],
   controllers: [
     AuthController,

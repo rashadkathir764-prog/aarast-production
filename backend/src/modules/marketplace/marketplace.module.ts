@@ -16,6 +16,7 @@ import {
   ProviderDashboardController,
 } from '../../provider-dashboard/provider-dashboard.controller';
 import { MarketplaceServicesInternalModule } from './internal/marketplace-services.internal.module';
+import { MarketplaceErasurePublicModule } from './public/marketplace-erasure-public.module';
 import { ProviderReadPublicModule } from './public/provider-read-public.module';
 import { QuoteReadPublicModule } from './public/quote-read-public.module';
 
@@ -23,6 +24,7 @@ import { QuoteReadPublicModule } from './public/quote-read-public.module';
   imports: [
     ProviderReadPublicModule,
     QuoteReadPublicModule,
+    MarketplaceErasurePublicModule,
     MarketplaceServicesInternalModule,
   ],
   controllers: [

@@ -29,4 +29,14 @@ export interface TasksPort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<number>;
+  /** Account erasure: deletes the plans' tasks (checklist items cascade). */
+  deletePlanTasksInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void>;
+  /** Retained administrator identity: clears the user from the tasks assigned to them. */
+  unassignUserTasksInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void>;
 }

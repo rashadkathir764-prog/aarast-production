@@ -245,6 +245,16 @@ export class MediaStorageService implements MediaStoragePort {
     return this.tickets.lockAccountDeletionBoundary(transaction, userId);
   }
 
+  scheduleChatAttachmentDeletion(
+    attachmentIds: readonly string[],
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.tickets.scheduleChatAttachmentDeletion(
+      transaction,
+      attachmentIds,
+    );
+  }
+
   async deleteScheduledObjects(
     keys: string[],
   ): Promise<{ deleted: number; failed: number }> {

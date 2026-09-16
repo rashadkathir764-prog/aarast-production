@@ -4,9 +4,10 @@ import {
   QuoteRequestConversationsController,
 } from '../../conversations/conversations.controller';
 import { MessagingConversationsInternalModule } from './internal/messaging-conversations.internal.module';
+import { MessagingErasurePublicModule } from './public/messaging-erasure-public.module';
 
 @Module({
-  imports: [MessagingConversationsInternalModule],
+  imports: [MessagingErasurePublicModule, MessagingConversationsInternalModule],
   controllers: [ConversationsController, QuoteRequestConversationsController],
 })
 export class MessagingModule {}

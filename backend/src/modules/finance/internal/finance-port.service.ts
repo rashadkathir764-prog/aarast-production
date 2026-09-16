@@ -103,6 +103,46 @@ export class FinancePortService implements FinancePort {
     return { costs, payments, paymentSchedules };
   }
 
+  async lockPlanCostsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void> {
+    if (weddingPlanIds.length === 0) return;
+    await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingCost"
+        WHERE "weddingPlanId" IN (${Prisma.join([...weddingPlanIds])})
+        ORDER BY "id" ASC
+        FOR UPDATE
+      `,
+    );
+  }
+
+  async purgePlanLedgerInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void> {
+    const inPlans = { weddingPlanId: { in: [...weddingPlanIds] } };
+    // CostPayment is append-only during normal product work. Account
+    // erasure is the one explicit, transaction-local purge path.
+    await tx.$executeRaw`
+      SELECT set_config('aarast.allow_ledger_purge', 'on', true)
+    `;
+    await tx.costPayment.deleteMany({ where: { weddingCost: inPlans } });
+    await tx.paymentSchedule.deleteMany({ where: { weddingCost: inPlans } });
+    await tx.weddingCost.deleteMany({ where: inPlans });
+  }
+
+  async deletePlanBudgetCategoriesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void> {
+    await tx.budgetCategory.deleteMany({
+      where: { weddingPlanId: { in: [...weddingPlanIds] } },
+    });
+  }
+
   async findCostForAcceptedOffer(
     tx: Prisma.TransactionClient,
     quoteOfferId: string,

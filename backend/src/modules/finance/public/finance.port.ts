@@ -72,6 +72,20 @@ export interface FinancePort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<PlanImportCounts>;
+  /** Account erasure: locks the plans' costs (`FOR UPDATE`, ascending) before any purge, in the money mutation order. */
+  lockPlanCostsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void>;
+  /** Account erasure: the one explicit ledger purge — payments, schedules, then costs of the plans. */
+  purgePlanLedgerInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void>;
+  deletePlanBudgetCategoriesInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void>;
   findCostForAcceptedOffer(
     tx: Prisma.TransactionClient,
     quoteOfferId: string,

@@ -4,9 +4,11 @@ import { PushController } from '../../push/push.controller';
 import { NotificationsLifecycleInternalModule } from './internal/notifications-lifecycle.internal.module';
 import { NotificationsInternalModule } from './internal/notifications-service.internal.module';
 import { PushInstallationsInternalModule } from './internal/push-installations.internal.module';
+import { NotificationsErasurePublicModule } from './public/notifications-erasure-public.module';
 
 @Module({
   imports: [
+    NotificationsErasurePublicModule,
     NotificationsInternalModule,
     NotificationsLifecycleInternalModule,
     PushInstallationsInternalModule,

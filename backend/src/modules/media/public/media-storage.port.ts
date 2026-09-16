@@ -76,5 +76,14 @@ export interface MediaStoragePort {
     userId: string,
     transaction: Prisma.TransactionClient,
   ): Promise<void>;
+  /**
+   * Account erasure: the verified tickets consumed by these chat attachments
+   * become deletion jobs (a conversation can contain media uploaded by the
+   * other party; its durable ticket must survive the cascade as a job).
+   */
+  scheduleChatAttachmentDeletion(
+    attachmentIds: readonly string[],
+    transaction: Prisma.TransactionClient,
+  ): Promise<void>;
   checkReadiness(): Promise<void>;
 }

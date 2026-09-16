@@ -5,7 +5,9 @@ import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import type { Prisma } from '@prisma/client';
 import { PlanReadService } from '../src/modules/planning/internal/plan-read.service';
+import { PlanErasureService } from '../src/modules/planning/internal/plan-erasure.service';
 import {
+  PLAN_ERASURE_IMPLEMENTATION,
   PLAN_READ_IMPLEMENTATION,
   PlanReadInternalModule,
 } from '../src/modules/planning/internal/plan-read.internal.module';
@@ -84,6 +86,8 @@ test('the plan read public module exposes only the port token bound to the inter
   const internalProviders = Reflect.getMetadata(MODULE_METADATA.PROVIDERS, PlanReadInternalModule);
   assert.deepEqual(internalProviders, [
     PlanReadService,
+    PlanErasureService,
     { provide: PLAN_READ_IMPLEMENTATION, useExisting: PlanReadService },
+    { provide: PLAN_ERASURE_IMPLEMENTATION, useExisting: PlanErasureService },
   ]);
 });

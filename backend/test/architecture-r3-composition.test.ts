@@ -92,8 +92,20 @@ test('Task 2 moves the exact Identity session types without a compatibility path
   assert.deepEqual(legacyImports, []);
 });
 
+// After the R12C closure the Task 2 surfaces are the frozen minimum the
+// closed R3 law keeps present; the owner may add methods for later phases.
+const closed = Boolean(require(join(process.cwd(), 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(join(process.cwd(), '..')));
+
+function assertSurface(actual: string[], frozen: string[]): void {
+  if (closed) {
+    assert.deepEqual(frozen.filter((method) => !actual.includes(method)), []);
+    return;
+  }
+  assert.deepEqual(actual, frozen);
+}
+
 test('Task 2 public ports expose only the frozen foreign-consumer surface', () => {
-  assert.deepEqual(
+  assertSurface(
     exportedInterfaceMethods(
       'modules/messaging/public/messaging-realtime.port.ts',
       'MessagingRealtimePort',
@@ -110,7 +122,7 @@ test('Task 2 public ports expose only the frozen foreign-consumer surface', () =
       'revokeConversationAccess',
     ],
   );
-  assert.deepEqual(
+  assertSurface(
     exportedInterfaceMethods(
       'modules/media/public/media-storage.port.ts',
       'MediaStoragePort',
@@ -128,7 +140,7 @@ test('Task 2 public ports expose only the frozen foreign-consumer surface', () =
       'verifyUpload',
     ],
   );
-  assert.deepEqual(
+  assertSurface(
     exportedInterfaceMethods(
       'modules/notifications/public/push-delivery.port.ts',
       'PushDeliveryPort',

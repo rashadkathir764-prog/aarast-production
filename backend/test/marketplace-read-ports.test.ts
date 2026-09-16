@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import type { Prisma } from '@prisma/client';
+import { MarketplaceErasureService } from '../src/modules/marketplace/internal/marketplace-erasure.service';
 import {
+  MARKETPLACE_ERASURE_IMPLEMENTATION,
   MarketplaceReadInternalModule,
   PROVIDER_READ_IMPLEMENTATION,
   QUOTE_READ_IMPLEMENTATION,
@@ -101,7 +103,9 @@ test('the marketplace read public modules expose only their port tokens bound to
   assert.deepEqual(metadata(MarketplaceReadInternalModule, MODULE_METADATA.PROVIDERS), [
     ProviderReadService,
     QuoteReadService,
+    MarketplaceErasureService,
     { provide: PROVIDER_READ_IMPLEMENTATION, useExisting: ProviderReadService },
     { provide: QUOTE_READ_IMPLEMENTATION, useExisting: QuoteReadService },
+    { provide: MARKETPLACE_ERASURE_IMPLEMENTATION, useExisting: MarketplaceErasureService },
   ]);
 });

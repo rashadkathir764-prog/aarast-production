@@ -21,4 +21,23 @@ export class TasksPortService implements TasksPort {
   ): Promise<number> {
     return client.weddingTask.count({ where: { weddingPlanId } });
   }
+
+  async deletePlanTasksInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void> {
+    await tx.weddingTask.deleteMany({
+      where: { weddingPlanId: { in: [...weddingPlanIds] } },
+    });
+  }
+
+  async unassignUserTasksInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    await tx.weddingTask.updateMany({
+      where: { assigneeUserId: userId },
+      data: { assigneeUserId: null },
+    });
+  }
 }

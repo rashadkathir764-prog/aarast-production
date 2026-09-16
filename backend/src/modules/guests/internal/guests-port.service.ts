@@ -22,4 +22,13 @@ export class GuestsPortService implements GuestsPort {
   ): Promise<number> {
     return client.guest.count({ where: { weddingPlanId } });
   }
+
+  async deletePlanGuestsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void> {
+    const inPlans = { weddingPlanId: { in: [...weddingPlanIds] } };
+    await tx.guest.deleteMany({ where: inPlans });
+    await tx.guestGroup.deleteMany({ where: inPlans });
+  }
 }

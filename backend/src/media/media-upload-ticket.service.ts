@@ -260,6 +260,21 @@ export class MediaUploadTicketService {
     return this.lockAccount(transaction, userId);
   }
 
+  async scheduleChatAttachmentDeletion(
+    transaction: Prisma.TransactionClient,
+    attachmentIds: readonly string[],
+  ): Promise<void> {
+    if (attachmentIds.length === 0) return;
+    await transaction.mediaUploadTicket.updateMany({
+      where: {
+        consumedByType: 'CHAT_ATTACHMENT',
+        consumedById: { in: [...attachmentIds] },
+        status: MediaUploadStatus.VERIFIED,
+      },
+      data: { status: MediaUploadStatus.DELETE_PENDING },
+    });
+  }
+
   private async scheduleOwnedDeletion(
     userId: string,
     where: Prisma.MediaUploadTicketWhereInput,

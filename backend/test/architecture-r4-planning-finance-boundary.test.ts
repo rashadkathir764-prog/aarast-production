@@ -322,11 +322,26 @@ test('the strict ownership baseline is exactly R4 base minus one frozen debt', (
   ], { cwd: repositoryRoot, encoding: 'utf8' })) as {
     violations: Array<Record<string, unknown>>;
   };
-  const current = JSON.parse(readFileSync(path.join(
+  // The R4 subtraction is relocation history. Once R12C is closed it is
+  // proven at the recorded lineage commit, never against the live baseline,
+  // which the ownership program shrinks by exact subtraction until it is
+  // deleted at strict zero.
+  const closure = require(path.join(
     backendRoot,
+    'scripts',
     'architecture',
-    'ownership-baseline.json',
-  ), 'utf8')) as {
+    'modular-monolith-closure.cjs',
+  )).readClosure(repositoryRoot) as { lineageCommit: string } | null;
+  const current = JSON.parse(closure
+    ? execFileSync('git', [
+      'show',
+      `${closure.lineageCommit}:backend/architecture/ownership-baseline.json`,
+    ], { cwd: repositoryRoot, encoding: 'utf8' })
+    : readFileSync(path.join(
+      backendRoot,
+      'architecture',
+      'ownership-baseline.json',
+    ), 'utf8')) as {
     violations: Array<Record<string, unknown>>;
   };
   assertStrictOwnershipDelta(base, current);

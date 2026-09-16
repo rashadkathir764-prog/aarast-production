@@ -6,9 +6,10 @@ import {
   WeddingPlanGuestsController,
 } from "../../guests/guests.controller";
 import { GuestsServiceInternalModule } from "./internal/guests-service.internal.module";
+import { GuestsPublicModule } from "./public/guests-public.module";
 
 @Module({
-  imports: [GuestsServiceInternalModule],
+  imports: [GuestsPublicModule, GuestsServiceInternalModule],
   controllers: [
     WeddingPlanGuestsController,
     WeddingPlanGuestGroupsController,

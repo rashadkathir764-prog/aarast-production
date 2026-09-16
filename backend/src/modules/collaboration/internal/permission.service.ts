@@ -16,8 +16,10 @@ import {
 import {
   assertWeddingPlanWritable,
   CollaborationPermissionPort,
+  LiveAuthorizationFilter,
   livePlanAuthorizationWhere,
   LivePlanPermission,
+  NEVER_MATCHING_ROW_FILTER,
   PlanAccessContext,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
@@ -418,6 +420,48 @@ export class PermissionService implements CollaborationPermissionPort {
       currentUserId,
       requiredPermissions,
     );
+  }
+
+  /**
+   * The same predicate, evaluated now by the owners of the rows it reads:
+   * planning still records the plan under this owner, or collaboration still
+   * holds the same membership row for this user with every required flag.
+   * The caller applies the result to its own table right before its final
+   * read, so a removed member or a committed revocation still cannot pass on
+   * a stale role/default cached by application code.
+   */
+  async liveAuthorizationFilter(
+    client: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    currentUserId: string,
+    requiredPermissions: readonly LivePlanPermission[] = [],
+  ): Promise<LiveAuthorizationFilter> {
+    if (context.isOwner) {
+      const plan = await this.plans.findOwnedPlan(
+        client,
+        context.plan.id,
+        currentUserId,
+      );
+      return plan ? {} : NEVER_MATCHING_ROW_FILTER;
+    }
+    const member = context.sharedMember;
+    if (!member || member.userId !== currentUserId) {
+      throw new NotFoundException("Wedding plan not found");
+    }
+    const requiredFlags: Partial<Record<LivePlanPermission, true>> = {};
+    for (const permission of requiredPermissions) {
+      requiredFlags[permission] = true;
+    }
+    const live = await client.sharedMember.findFirst({
+      where: {
+        id: member.id,
+        weddingPlanId: context.plan.id,
+        userId: currentUserId,
+        ...requiredFlags,
+      },
+      select: { id: true },
+    });
+    return live ? {} : NEVER_MATCHING_ROW_FILTER;
   }
 
   private async getLockedPlanAccessContext(

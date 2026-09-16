@@ -160,4 +160,23 @@ export interface CollaborationPermissionPort {
     currentUserId: string,
     requiredPermissions?: readonly LivePlanPermission[],
   ): Prisma.WeddingPlanWhereInput;
+  liveAuthorizationFilter(
+    client: Prisma.TransactionClient,
+    context: PlanAccessContext,
+    currentUserId: string,
+    requiredPermissions?: readonly LivePlanPermission[],
+  ): Promise<LiveAuthorizationFilter>;
 }
+
+/**
+ * Result of the owners' live re-check for a caller's final read. `{}` keeps
+ * the caller's own-table query as it is; the never-matching filter makes the
+ * same statement return nothing — exactly what the embedded
+ * `weddingPlan: { is: ... }` join returned once ownership or membership was
+ * gone. Every Prisma model here has a string `id`, and an empty `in` list is
+ * a false predicate.
+ */
+export type LiveAuthorizationFilter = { id?: { in: string[] } };
+
+export const NEVER_MATCHING_ROW_FILTER: Readonly<LiveAuthorizationFilter> =
+  Object.freeze({ id: Object.freeze({ in: [] as string[] }) });

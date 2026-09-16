@@ -673,6 +673,48 @@ test('_count preserves the current model and classifies selected relations', () 
   }
 });
 
+test('dynamic arguments resolve through their inferred object types; declared Prisma input types still fail closed', () => {
+  // Product code builds `where`/`select` objects with conditional spreads and
+  // helper results. TypeScript infers an exact property set for such object
+  // literal types, so the scanner can prove the shape: same-owner shapes are
+  // not counted, a foreign relation inside a typed shape still is, and a
+  // variable declared with a Prisma input type (every key possible) stays
+  // unresolvable.
+  const options = fixtureProject({
+    'marketplace/typed-local.ts': prismaFixture([
+      'declare const flag: boolean;',
+      'declare const id: string;',
+      'const where = { cityId: id, ...(flag ? { status: "ACTIVE" } : {}) };',
+      'await prisma.provider.findMany({ where, orderBy: { createdAt: "desc" }, ...pageArgs() });',
+      'await prisma.provider.count({ where: whereFor(id) });',
+    ].join('\n'), [
+      'declare function pageArgs(): { take: number; skip?: number };',
+      'declare function whereFor(value: string): { id: string; status?: string };',
+    ].join('\n')),
+    'marketplace/typed-foreign.ts': prismaFixture([
+      'declare const flag: boolean;',
+      'const include = flag ? { city: true } : {};',
+      'await prisma.provider.findMany({ include });',
+    ].join('\n')),
+    'marketplace/typed-declared.ts': prismaFixture([
+      'const where: Prisma.ProviderWhereInput = { id: "p" };',
+      'await prisma.provider.findMany({ where });',
+    ].join('\n')),
+  });
+  const records = scanOwnershipViolations(options);
+  assert.deepEqual(records.filter((record) => record.file === 'backend/src/marketplace/typed-local.ts'), []);
+  assertExactRecords(records.filter((record) => record.file === 'backend/src/marketplace/typed-foreign.ts'), [
+    {
+      file: 'backend/src/marketplace/typed-foreign.ts', model: 'City', owner: 'catalog', operation: 'city',
+      mode: 'read', source: 'relation', reason: 'foreign-model', count: 1,
+    },
+  ]);
+  assertRecord(records, {
+    file: 'backend/src/marketplace/typed-declared.ts', model: '<dynamic>', owner: null, mode: 'unknown',
+    source: 'relation', reason: 'unknown-relation-shape',
+  });
+});
+
 test('static const arguments resolve while call, mutable import, and computed spread fail closed', () => {
   const options = fixtureProject({
     'marketplace/static.ts': prismaFixture([

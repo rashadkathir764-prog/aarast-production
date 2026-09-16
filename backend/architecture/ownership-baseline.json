@@ -27,6 +27,18 @@
       "count": 1
     },
     {
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|catalog|City|city|read|relation|foreign-model",
+      "file": "backend/src/admin/admin-mutation-executor.ts",
+      "context": "backoffice",
+      "owner": "catalog",
+      "model": "City",
+      "operation": "city",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 8
+    },
+    {
       "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|catalog|City|create|write|delegate|foreign-model",
       "file": "backend/src/admin/admin-mutation-executor.ts",
       "context": "backoffice",
@@ -63,6 +75,18 @@
       "count": 2
     },
     {
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|catalog|ProviderCategory|category|read|relation|foreign-model",
+      "file": "backend/src/admin/admin-mutation-executor.ts",
+      "context": "backoffice",
+      "owner": "catalog",
+      "model": "ProviderCategory",
+      "operation": "category",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
       "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|catalog|ProviderCategory|create|write|delegate|foreign-model",
       "file": "backend/src/admin/admin-mutation-executor.ts",
       "context": "backoffice",
@@ -87,6 +111,18 @@
       "count": 1
     },
     {
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|catalog|ProviderCategory|primaryCategory|read|relation|foreign-model",
+      "file": "backend/src/admin/admin-mutation-executor.ts",
+      "context": "backoffice",
+      "owner": "catalog",
+      "model": "ProviderCategory",
+      "operation": "primaryCategory",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 5
+    },
+    {
       "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|catalog|ProviderCategory|select|read|sql|foreign-model",
       "file": "backend/src/admin/admin-mutation-executor.ts",
       "context": "backoffice",
@@ -109,6 +145,18 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 2
+    },
+    {
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|identity|User|user|read|relation|foreign-model",
+      "file": "backend/src/admin/admin-mutation-executor.ts",
+      "context": "backoffice",
+      "owner": "identity",
+      "model": "User",
+      "operation": "user",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 4
     },
     {
       "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|marketplace|ProviderReview|findUnique|read|delegate|foreign-model",
@@ -145,6 +193,18 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 2
+    },
+    {
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|marketplace|ProviderServiceImage|images|read|relation|foreign-model",
+      "file": "backend/src/admin/admin-mutation-executor.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "ProviderServiceImage",
+      "operation": "images",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
     },
     {
       "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|marketplace|ProviderService|create|write|delegate|foreign-model",
@@ -219,6 +279,18 @@
       "count": 6
     },
     {
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|marketplace|Provider|provider|read|relation|foreign-model",
+      "file": "backend/src/admin/admin-mutation-executor.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "Provider",
+      "operation": "provider",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 5
+    },
+    {
       "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|marketplace|Provider|select|read|sql|foreign-model",
       "file": "backend/src/admin/admin-mutation-executor.ts",
       "context": "backoffice",
@@ -291,28 +363,16 @@
       "count": 2
     },
     {
-      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice||<dynamic>|create|unknown|relation|unknown-relation-shape",
+      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice|planning|WeddingPlan|weddingPlan|read|relation|foreign-model",
       "file": "backend/src/admin/admin-mutation-executor.ts",
       "context": "backoffice",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
+      "owner": "planning",
+      "model": "WeddingPlan",
+      "operation": "weddingPlan",
+      "mode": "read",
       "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/admin/admin-mutation-executor.ts|backoffice||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/admin/admin-mutation-executor.ts",
-      "context": "backoffice",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 8
+      "reason": "foreign-model",
+      "count": 2
     },
     {
       "key": "backend/src/admin/admin-user-status.ts|backoffice|collaboration|PlanInvite|updateMany|write|delegate|foreign-model",
@@ -339,6 +399,18 @@
       "count": 1
     },
     {
+      "key": "backend/src/admin/admin.service.ts|backoffice|catalog|City|city|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "catalog",
+      "model": "City",
+      "operation": "city",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 18
+    },
+    {
       "key": "backend/src/admin/admin.service.ts|backoffice|catalog|City|count|read|delegate|foreign-model",
       "file": "backend/src/admin/admin.service.ts",
       "context": "backoffice",
@@ -363,6 +435,18 @@
       "count": 1
     },
     {
+      "key": "backend/src/admin/admin.service.ts|backoffice|catalog|ProviderCategory|category|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "catalog",
+      "model": "ProviderCategory",
+      "operation": "category",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
       "key": "backend/src/admin/admin.service.ts|backoffice|catalog|ProviderCategory|count|read|delegate|foreign-model",
       "file": "backend/src/admin/admin.service.ts",
       "context": "backoffice",
@@ -385,6 +469,18 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 1
+    },
+    {
+      "key": "backend/src/admin/admin.service.ts|backoffice|catalog|ProviderCategory|primaryCategory|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "catalog",
+      "model": "ProviderCategory",
+      "operation": "primaryCategory",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 15
     },
     {
       "key": "backend/src/admin/admin.service.ts|backoffice|identity|RefreshToken|updateMany|write|delegate|foreign-model",
@@ -447,6 +543,18 @@
       "count": 1
     },
     {
+      "key": "backend/src/admin/admin.service.ts|backoffice|identity|User|reviewedBy|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "identity",
+      "model": "User",
+      "operation": "reviewedBy",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
       "key": "backend/src/admin/admin.service.ts|backoffice|identity|User|select|read|sql|foreign-model",
       "file": "backend/src/admin/admin.service.ts",
       "context": "backoffice",
@@ -481,6 +589,30 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 2
+    },
+    {
+      "key": "backend/src/admin/admin.service.ts|backoffice|identity|User|user|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "identity",
+      "model": "User",
+      "operation": "user",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 5
+    },
+    {
+      "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|ProviderPackage|packages|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "ProviderPackage",
+      "operation": "packages",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 5
     },
     {
       "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|ProviderReview|aggregate|read|delegate|foreign-model",
@@ -519,6 +651,30 @@
       "count": 1
     },
     {
+      "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|ProviderReview|reviews|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "ProviderReview",
+      "operation": "reviews",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
+      "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|ProviderServiceImage|images|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "ProviderServiceImage",
+      "operation": "images",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
       "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|ProviderService|count|read|delegate|foreign-model",
       "file": "backend/src/admin/admin.service.ts",
       "context": "backoffice",
@@ -549,6 +705,18 @@
       "owner": "marketplace",
       "model": "ProviderService",
       "operation": "services",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 7
+    },
+    {
+      "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|ProviderService|service|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "ProviderService",
+      "operation": "service",
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
@@ -591,6 +759,18 @@
       "count": 4
     },
     {
+      "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|Provider|providerProfile|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "marketplace",
+      "model": "Provider",
+      "operation": "providerProfile",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 10
+    },
+    {
       "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|Provider|providers|read|relation|foreign-model",
       "file": "backend/src/admin/admin.service.ts",
       "context": "backoffice",
@@ -612,7 +792,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 3
     },
     {
       "key": "backend/src/admin/admin.service.ts|backoffice|marketplace|Provider|select|read|sql|foreign-model",
@@ -660,7 +840,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 4
     },
     {
       "key": "backend/src/admin/admin.service.ts|backoffice|messaging|ConversationReport|count|read|delegate|foreign-model",
@@ -747,6 +927,18 @@
       "count": 2
     },
     {
+      "key": "backend/src/admin/admin.service.ts|backoffice|planning|WeddingPlan|weddingPlan|read|relation|foreign-model",
+      "file": "backend/src/admin/admin.service.ts",
+      "context": "backoffice",
+      "owner": "planning",
+      "model": "WeddingPlan",
+      "operation": "weddingPlan",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 1
+    },
+    {
       "key": "backend/src/admin/admin.service.ts|backoffice||<dynamic>|count|unknown|relation|unknown-relation-shape",
       "file": "backend/src/admin/admin.service.ts",
       "context": "backoffice",
@@ -769,102 +961,6 @@
       "source": "relation",
       "reason": "unknown-relation-shape",
       "count": 6
-    },
-    {
-      "key": "backend/src/admin/admin.service.ts|backoffice||<dynamic>|findUnique|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/admin/admin.service.ts",
-      "context": "backoffice",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUnique",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/admin/admin.service.ts|backoffice||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/admin/admin.service.ts",
-      "context": "backoffice",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
-    },
-    {
-      "key": "backend/src/budget-categories/budget-categories.service.ts|finance||<dynamic>|aggregate|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/budget-categories/budget-categories.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "aggregate",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/budget-categories/budget-categories.service.ts|finance||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/budget-categories/budget-categories.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/budget-categories/budget-categories.service.ts|finance||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/budget-categories/budget-categories.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/catalogs/administrative-catalog.service.ts|catalog||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/catalogs/administrative-catalog.service.ts",
-      "context": "catalog",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findFirst",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/catalogs/administrative-catalog.service.ts|catalog||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/catalogs/administrative-catalog.service.ts",
-      "context": "catalog",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
-    },
-    {
-      "key": "backend/src/catalogs/reference-catalog.service.ts|catalog||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/catalogs/reference-catalog.service.ts",
-      "context": "catalog",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
     },
     {
       "key": "backend/src/conversations/conversation-lifecycle.ts|messaging|marketplace|Provider|findUnique|read|delegate|foreign-model",
@@ -912,7 +1008,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 2
+      "count": 1
     },
     {
       "key": "backend/src/conversations/conversations.gateway.ts|messaging|identity|RefreshToken|findFirst|read|delegate|foreign-model",
@@ -960,7 +1056,19 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 5
+    },
+    {
+      "key": "backend/src/conversations/conversations.service.ts|messaging|identity|User|accountRequester|read|relation|foreign-model",
+      "file": "backend/src/conversations/conversations.service.ts",
+      "context": "messaging",
+      "owner": "identity",
+      "model": "User",
+      "operation": "accountRequester",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 4
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|identity|User|sender|read|relation|foreign-model",
@@ -972,7 +1080,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 3
+      "count": 7
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|identity|User|user|read|relation|foreign-model",
@@ -984,7 +1092,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 13
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|marketplace|ProviderService|service|read|relation|foreign-model",
@@ -996,7 +1104,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 5
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|marketplace|Provider|findUnique|read|delegate|foreign-model",
@@ -1020,7 +1128,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 2
+      "count": 6
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|marketplace|Provider|select|read|sql|foreign-model",
@@ -1056,7 +1164,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 5
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|marketplace|QuoteRequest|findMany|read|delegate|foreign-model",
@@ -1081,6 +1189,18 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 1
+    },
+    {
+      "key": "backend/src/conversations/conversations.service.ts|messaging|marketplace|QuoteRequest|quoteRequests|read|relation|foreign-model",
+      "file": "backend/src/conversations/conversations.service.ts",
+      "context": "messaging",
+      "owner": "marketplace",
+      "model": "QuoteRequest",
+      "operation": "quoteRequests",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 8
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging|marketplace|QuoteRequest|quoteRequest|read|relation|foreign-model",
@@ -1128,7 +1248,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 5
     },
     {
       "key": "backend/src/conversations/conversations.service.ts|messaging||<dynamic>|createMany|unknown|relation|unknown-relation-shape",
@@ -1137,18 +1257,6 @@
       "owner": null,
       "model": "<dynamic>",
       "operation": "createMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/conversations/conversations.service.ts|messaging||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/conversations/conversations.service.ts",
-      "context": "messaging",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
@@ -1173,30 +1281,6 @@
       "owner": null,
       "model": "<dynamic>",
       "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 5
-    },
-    {
-      "key": "backend/src/conversations/conversations.service.ts|messaging||<dynamic>|findUnique|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/conversations/conversations.service.ts",
-      "context": "messaging",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUnique",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
-    },
-    {
-      "key": "backend/src/conversations/conversations.service.ts|messaging||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/conversations/conversations.service.ts",
-      "context": "messaging",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
@@ -1548,7 +1632,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 20
+      "count": 7
     },
     {
       "key": "backend/src/dashboard/dashboard.service.ts|insights||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
@@ -1569,54 +1653,6 @@
       "owner": null,
       "model": "<dynamic>",
       "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 5
-    },
-    {
-      "key": "backend/src/guests/guests.service.ts|guests||<dynamic>|count|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/guests/guests.service.ts",
-      "context": "guests",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "count",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/guests/guests.service.ts|guests||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/guests/guests.service.ts",
-      "context": "guests",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findFirst",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/guests/guests.service.ts|guests||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/guests/guests.service.ts",
-      "context": "guests",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
-    },
-    {
-      "key": "backend/src/guests/guests.service.ts|guests||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/guests/guests.service.ts",
-      "context": "guests",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
@@ -1971,18 +2007,6 @@
       "count": 4
     },
     {
-      "key": "backend/src/marketplace/marketplace.service.ts|marketplace||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/marketplace/marketplace.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/marketplace/quote-lifecycle.ts|marketplace|messaging|Conversation|select|read|sql|foreign-model",
       "file": "backend/src/marketplace/quote-lifecycle.ts",
       "context": "marketplace",
@@ -2007,6 +2031,18 @@
       "count": 2
     },
     {
+      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace|finance|BudgetCategory|budgetCategory|read|relation|foreign-model",
+      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
+      "context": "marketplace",
+      "owner": "finance",
+      "model": "BudgetCategory",
+      "operation": "budgetCategory",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
       "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace|finance|BudgetCategory|findMany|read|delegate|foreign-model",
       "file": "backend/src/marketplace/quote-offer-acceptance.ts",
       "context": "marketplace",
@@ -2029,6 +2065,42 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 1
+    },
+    {
+      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace|finance|CostPayment|payments|read|relation|foreign-model",
+      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
+      "context": "marketplace",
+      "owner": "finance",
+      "model": "CostPayment",
+      "operation": "payments",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
+      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace|finance|CostPayment|reversedBy|read|relation|foreign-model",
+      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
+      "context": "marketplace",
+      "owner": "finance",
+      "model": "CostPayment",
+      "operation": "reversedBy",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
+    },
+    {
+      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace|finance|PaymentSchedule|paymentSchedules|read|relation|foreign-model",
+      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
+      "context": "marketplace",
+      "owner": "finance",
+      "model": "PaymentSchedule",
+      "operation": "paymentSchedules",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 3
     },
     {
       "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace|finance|WeddingCost|create|write|delegate|foreign-model",
@@ -2065,42 +2137,6 @@
       "source": "relation",
       "reason": "foreign-model",
       "count": 3
-    },
-    {
-      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace||<dynamic>|findUniqueOrThrow|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUniqueOrThrow",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/marketplace/quote-offer-acceptance.ts|marketplace||<dynamic>|findUnique|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/marketplace/quote-offer-acceptance.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUnique",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
     },
     {
       "key": "backend/src/marketplace/quote-offer-rejection.ts|marketplace|planning|WeddingPlan|weddingPlan|read|relation|foreign-model",
@@ -2209,18 +2245,6 @@
       "source": "relation",
       "reason": "foreign-model",
       "count": 3
-    },
-    {
-      "key": "backend/src/marketplace/quote-request-cancellation.ts|marketplace||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/marketplace/quote-request-cancellation.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findFirst",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
     },
     {
       "key": "backend/src/marketplace/quote-request-creation.ts|marketplace|catalog|City|city|read|relation|foreign-model",
@@ -2451,6 +2475,30 @@
       "count": 7
     },
     {
+      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration|identity|User|invitee|read|relation|foreign-model",
+      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
+      "context": "collaboration",
+      "owner": "identity",
+      "model": "User",
+      "operation": "invitee",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 14
+    },
+    {
+      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration|identity|User|inviter|read|relation|foreign-model",
+      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
+      "context": "collaboration",
+      "owner": "identity",
+      "model": "User",
+      "operation": "inviter",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 14
+    },
+    {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration|identity|User|owner|read|relation|foreign-model",
       "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
       "context": "collaboration",
@@ -2580,19 +2628,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 5
-    },
-    {
-      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|createMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
-      "context": "collaboration",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "createMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
+      "count": 20
     },
     {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|create|unknown|relation|unknown-relation-shape",
@@ -2616,7 +2652,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 4
+      "count": 1
     },
     {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
@@ -2628,19 +2664,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 4
-    },
-    {
-      "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|findUnique|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/collaboration/internal/sharing.service.ts",
-      "context": "collaboration",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUnique",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 9
+      "count": 3
     },
     {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|updateMany|unknown|relation|unknown-relation-shape",
@@ -2652,7 +2676,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 5
+      "count": 1
     },
     {
       "key": "backend/src/modules/collaboration/internal/sharing.service.ts|collaboration||<dynamic>|update|unknown|relation|unknown-relation-shape",
@@ -2700,42 +2724,6 @@
       "mode": "read",
       "source": "delegate",
       "reason": "foreign-model",
-      "count": 2
-    },
-    {
-      "key": "backend/src/modules/identity/internal/auth/auth.service.ts|identity||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/identity/internal/auth/auth.service.ts",
-      "context": "identity",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
-    },
-    {
-      "key": "backend/src/modules/identity/internal/auth/auth.service.ts|identity||<dynamic>|updateMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/identity/internal/auth/auth.service.ts",
-      "context": "identity",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "updateMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/modules/identity/internal/auth/auth.service.ts|identity||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/identity/internal/auth/auth.service.ts",
-      "context": "identity",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
       "count": 2
     },
     {
@@ -3363,30 +3351,6 @@
       "count": 2
     },
     {
-      "key": "backend/src/modules/identity/internal/profile/users.service.ts|identity||<dynamic>|deleteMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/identity/internal/profile/users.service.ts",
-      "context": "identity",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "deleteMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/modules/identity/internal/profile/users.service.ts|identity||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/modules/identity/internal/profile/users.service.ts",
-      "context": "identity",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/money/money-summary.service.ts|finance|planning|WeddingPlan|findUnique|read|delegate|foreign-model",
       "file": "backend/src/money/money-summary.service.ts",
       "context": "finance",
@@ -3397,18 +3361,6 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 1
-    },
-    {
-      "key": "backend/src/money/money-summary.service.ts|finance||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/money/money-summary.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 4
     },
     {
       "key": "backend/src/notifications/notifications.service.ts|notifications|collaboration|ContributionEvent|findMany|read|delegate|foreign-model",
@@ -3540,7 +3492,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 6
+      "count": 7
     },
     {
       "key": "backend/src/notifications/notifications.service.ts|notifications|identity|User|select|read|sql|foreign-model",
@@ -3744,7 +3696,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 4
+      "count": 3
     },
     {
       "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace|catalog|City|city|read|relation|foreign-model",
@@ -3756,7 +3708,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 3
+      "count": 9
     },
     {
       "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace|catalog|City|findFirst|read|delegate|foreign-model",
@@ -3781,6 +3733,18 @@
       "source": "sql",
       "reason": "foreign-model",
       "count": 1
+    },
+    {
+      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace|catalog|ProviderCategory|category|read|relation|foreign-model",
+      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
+      "context": "marketplace",
+      "owner": "catalog",
+      "model": "ProviderCategory",
+      "operation": "category",
+      "mode": "read",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 9
     },
     {
       "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace|catalog|ProviderCategory|count|read|delegate|foreign-model",
@@ -3864,7 +3828,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 4
     },
     {
       "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace|messaging|Conversation|select|read|sql|foreign-model",
@@ -3912,91 +3876,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 3
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findFirst",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|findUniqueOrThrow|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUniqueOrThrow",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|findUnique|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUnique",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|updateMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "updateMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
-      "key": "backend/src/provider-dashboard/provider-dashboard.service.ts|marketplace||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/provider-dashboard/provider-dashboard.service.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 5
+      "count": 6
     },
     {
       "key": "backend/src/push/push-delivery.service.ts|notifications|identity|User|user|read|relation|foreign-model",
@@ -4008,18 +3888,6 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
-    },
-    {
-      "key": "backend/src/push/push-delivery.service.ts|notifications||<dynamic>|deleteMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/push/push-delivery.service.ts",
-      "context": "notifications",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "deleteMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
       "count": 1
     },
     {
@@ -4081,18 +3949,6 @@
       "source": "relation",
       "reason": "unknown-relation-shape",
       "count": 2
-    },
-    {
-      "key": "backend/src/tasks/tasks.service.ts|tasks||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/tasks/tasks.service.ts",
-      "context": "tasks",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 3
     },
     {
       "key": "backend/src/timeline/timeline.service.ts|insights|finance|PaymentSchedule|findMany|read|delegate|foreign-model",
@@ -4176,7 +4032,7 @@
       "mode": "read",
       "source": "relation",
       "reason": "foreign-model",
-      "count": 1
+      "count": 26
     },
     {
       "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance|marketplace|Provider|select|read|sql|foreign-model",
@@ -4272,7 +4128,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 5
+      "count": 1
     },
     {
       "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
@@ -4284,7 +4140,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 3
+      "count": 2
     },
     {
       "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
@@ -4299,30 +4155,6 @@
       "count": 5
     },
     {
-      "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|findUniqueOrThrow|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUniqueOrThrow",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 4
-    },
-    {
-      "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|findUnique|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-costs/wedding-costs.service.ts",
-      "context": "finance",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findUnique",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 4
-    },
-    {
       "key": "backend/src/wedding-costs/wedding-costs.service.ts|finance||<dynamic>|update|unknown|relation|unknown-relation-shape",
       "file": "backend/src/wedding-costs/wedding-costs.service.ts",
       "context": "finance",
@@ -4332,7 +4164,7 @@
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",
-      "count": 5
+      "count": 1
     },
     {
       "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning|collaboration|ContributorHistoryScope|create|write|delegate|foreign-model",
@@ -4381,6 +4213,18 @@
       "source": "delegate",
       "reason": "foreign-model",
       "count": 2
+    },
+    {
+      "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning|finance|BudgetCategory|create|write|relation|foreign-model",
+      "file": "backend/src/wedding-plans/wedding-plans.service.ts",
+      "context": "planning",
+      "owner": "finance",
+      "model": "BudgetCategory",
+      "operation": "create",
+      "mode": "write",
+      "source": "relation",
+      "reason": "foreign-model",
+      "count": 1
     },
     {
       "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning|finance|BudgetCategory|findMany|read|delegate|foreign-model",
@@ -4563,30 +4407,6 @@
       "count": 1
     },
     {
-      "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning||<dynamic>|createMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-plans/wedding-plans.service.ts",
-      "context": "planning",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "createMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 4
-    },
-    {
-      "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-plans/wedding-plans.service.ts",
-      "context": "planning",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 4
-    },
-    {
       "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
       "file": "backend/src/wedding-plans/wedding-plans.service.ts",
       "context": "planning",
@@ -4605,18 +4425,6 @@
       "owner": null,
       "model": "<dynamic>",
       "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/wedding-plans/wedding-plans.service.ts|planning||<dynamic>|update|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/wedding-plans/wedding-plans.service.ts",
-      "context": "planning",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "update",
       "mode": "unknown",
       "source": "relation",
       "reason": "unknown-relation-shape",

@@ -614,13 +614,133 @@ function constInitializer(identifier, checker, visitedSymbols) {
   return { symbol, initializer: declaration.initializer };
 }
 
+// Type-backed shapes. Product code builds Prisma arguments from conditional
+// spreads, helper results and locals. Where the literal walk stops,
+// TypeScript's inferred type of the expression names every property the
+// value can carry (an object literal type is exact, a union of literal types
+// is the union of their keys), so the shape stays provable. A type declared
+// by name from the generated Prisma client (`Prisma.ProviderWhereInput`)
+// admits every key and is never trusted; index signatures, `any` and
+// `unknown` are unresolvable. A shape node carries the type instead of an
+// AST node and flows through the same walk.
+const TYPE_SHAPE = Symbol('type-shape');
+
+function typeShapeNode(types, location) {
+  return { [TYPE_SHAPE]: true, types: Array.isArray(types) ? types : [types], location };
+}
+
+// Union constituents are merged by property name: TypeScript normalizes
+// `{ city: true } | {}` to `{ city: boolean } | { city?: undefined }`, and one
+// relation reached through either branch is one access, walked once with
+// the union of its constituent types.
+function mergeShapes(parts) {
+  if (parts.some((part) => part.kind === 'unknown')) return { kind: 'unknown', unknown: true };
+  const objects = parts.filter((part) => part.kind === 'object');
+  const arrays = parts.filter((part) => part.kind === 'array');
+  if (objects.length === 0 && arrays.length === 0) return { kind: 'scalar', unknown: false };
+  if (arrays.length !== 0 && objects.length === 0) {
+    return { kind: 'array', elements: arrays.flatMap((part) => part.elements), unknown: arrays.some((part) => part.unknown) };
+  }
+  if (arrays.length !== 0) return { kind: 'unknown', unknown: true };
+  const byName = new Map();
+  for (const part of objects) {
+    for (const property of part.properties) {
+      const entry = byName.get(property.name);
+      if (!entry) {
+        byName.set(property.name, { name: property.name, value: property.value });
+        continue;
+      }
+      if (isTypeShapeNode(entry.value) && isTypeShapeNode(property.value)) {
+        entry.value = typeShapeNode([...entry.value.types, ...property.value.types], entry.value.location);
+      } else {
+        // Mixed literal and type-backed values for one name: keep the
+        // literal walk exact and let the type walk remain unresolvable.
+        entry.value = typeShapeNode([], entry.value.location || property.value.location);
+      }
+    }
+  }
+  return { kind: 'object', properties: [...byName.values()], unknown: objects.some((part) => part.unknown) };
+}
+
+function isTypeShapeNode(node) {
+  return Boolean(node) && typeof node === 'object' && node[TYPE_SHAPE] === true;
+}
+
+function typeIsGeneratedPrismaDeclaration(type) {
+  const symbols = [type.aliasSymbol, type.getSymbol && type.getSymbol()].filter(Boolean);
+  return symbols.some((symbol) => (symbol.declarations || []).some(declarationIsGeneratedPrisma));
+}
+
+const SCALAR_CLASS_NAMES = new Set(['Date', 'Buffer', 'Uint8Array', 'Set', 'Map', 'Decimal', 'RegExp']);
+
+function resolveTypeShape(type, location, checker, depth = 0) {
+  if (Array.isArray(type)) {
+    if (type.length === 0) return { kind: 'unknown', unknown: true };
+    return mergeShapes(type.map((part) => resolveTypeShape(part, location, checker, depth + 1)));
+  }
+  if (!type || depth > 12) return { kind: 'unknown', unknown: true };
+  const flags = type.flags;
+  if (flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never)) {
+    return { kind: 'unknown', unknown: true };
+  }
+  if (flags & (ts.TypeFlags.StringLike | ts.TypeFlags.NumberLike | ts.TypeFlags.BooleanLike
+      | ts.TypeFlags.BigIntLike | ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
+      | ts.TypeFlags.EnumLike | ts.TypeFlags.ESSymbolLike)) {
+    return { kind: 'scalar', unknown: false };
+  }
+  if (type.isUnion && type.isUnion()) {
+    return mergeShapes(type.types.map((part) => resolveTypeShape(part, location, checker, depth + 1)));
+  }
+  if (type.isIntersection && type.isIntersection()) {
+    const parts = type.types.map((part) => resolveTypeShape(part, location, checker, depth + 1));
+    if (parts.some((part) => part.kind !== 'object')) return { kind: 'unknown', unknown: true };
+    return mergeShapes(parts);
+  }
+  if (!(flags & ts.TypeFlags.Object)) return { kind: 'unknown', unknown: true };
+  if (typeIsGeneratedPrismaDeclaration(type)) {
+    // Generated value classes (Decimal) are scalar values; generated input
+    // and output object types admit every key and are never a proof.
+    const symbol = type.getSymbol && type.getSymbol();
+    if (symbol && (symbol.flags & ts.SymbolFlags.Class)) return { kind: 'scalar', unknown: false };
+    return { kind: 'unknown', unknown: true };
+  }
+  if (checker.isArrayType(type) || checker.isTupleType(type)) {
+    const elementTypes = checker.isTupleType(type)
+      ? checker.getTypeArguments(type)
+      : [checker.getTypeArguments(type)[0]];
+    return {
+      kind: 'array',
+      elements: elementTypes.filter(Boolean).map((element) => typeShapeNode(element, location)),
+      unknown: false,
+    };
+  }
+  const symbol = type.getSymbol && type.getSymbol();
+  if (symbol && (symbol.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface)) && symbol.getName() !== '__type') {
+    // Class instances (Date, Buffer, Set, Map, Decimal, ...) are scalar values
+    // in a Prisma argument shape; a declared interface is not an exact
+    // literal shape.
+    if (SCALAR_CLASS_NAMES.has(symbol.getName()) || (symbol.flags & ts.SymbolFlags.Class)) {
+      return { kind: 'scalar', unknown: false };
+    }
+    return { kind: 'unknown', unknown: true };
+  }
+  if (checker.getIndexInfosOfType(type).length !== 0) return { kind: 'unknown', unknown: true };
+  const properties = [];
+  for (const property of type.getProperties()) {
+    const propertyType = checker.getTypeOfSymbolAtLocation(property, location);
+    properties.push({ name: property.getName(), value: typeShapeNode(propertyType, location) });
+  }
+  return { kind: 'object', properties, unknown: false };
+}
+
 function resolveStaticObject(node, checker, visitedSymbols = new Set()) {
+  if (isTypeShapeNode(node)) return resolveTypeShape(node.types, node.location, checker);
   const current = unwrapExpression(node);
   if (!current) return { kind: 'unknown', unknown: true };
 
   if (ts.isIdentifier(current)) {
     const resolved = constInitializer(current, checker, visitedSymbols);
-    if (!resolved) return { kind: 'unknown', unknown: true };
+    if (!resolved) return resolveTypeShape(checker.getTypeAtLocation(current), current, checker);
     const nextVisited = new Set(visitedSymbols);
     nextVisited.add(resolved.symbol);
     return resolveStaticObject(resolved.initializer, checker, nextVisited);
@@ -687,14 +807,21 @@ function resolveStaticObject(node, checker, visitedSymbols = new Set()) {
     return { kind: 'scalar', unknown: false };
   }
 
-  return { kind: 'unknown', unknown: true };
+  // Calls, conditionals, member accesses and every other non-literal
+  // expression: the inferred type names the shape or nothing does.
+  return resolveTypeShape(checker.getTypeAtLocation(current), current, checker);
 }
 
 function relationAccesses(argument, rootModel, checker, schemaMetadata, makeAccess, operation) {
   const accesses = [];
   let unknownEmitted = false;
 
-  function emitUnknown() {
+  function emitUnknown(node) {
+    if (process.env.ARCHITECTURE_DEBUG && node && !isTypeShapeNode(node)) {
+      const sourceFile = node.getSourceFile();
+      const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      console.error(`[ownership] unknown relation shape at ${sourceFile.fileName}:${line + 1} (${operation})`);
+    }
     if (unknownEmitted) return;
     unknownEmitted = true;
     accesses.push(makeAccess({
@@ -714,10 +841,10 @@ function relationAccesses(argument, rootModel, checker, schemaMetadata, makeAcce
       return;
     }
     if (resolved.kind !== 'object') {
-      if (zone === 'root' || zone === 'read' || zone === 'data') emitUnknown();
+      if (zone === 'root' || zone === 'read' || zone === 'data') emitUnknown(node);
       return;
     }
-    if (resolved.unknown) emitUnknown();
+    if (resolved.unknown) emitUnknown(node);
 
     for (const property of resolved.properties) {
       const name = property.name;

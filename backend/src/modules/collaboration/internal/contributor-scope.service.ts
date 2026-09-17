@@ -56,4 +56,28 @@ export class ContributorScopeService implements CollaborationScopePort {
       event.entityId ? [event.entityId] : [],
     );
   }
+
+  async qualifyingEntityIdsForActorInTransaction(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    entityTypes: readonly ContributionEntityType[],
+    actions: readonly ContributionAction[],
+    entityId?: string,
+  ): Promise<string[]> {
+    const events = await tx.contributionEvent.findMany({
+      where: {
+        contributorTenure: {
+          actorReference: contributorActorReference(actorUserId),
+        },
+        entityType: { in: [...entityTypes] },
+        action: { in: [...actions] },
+        entityId: entityId ? entityId : { not: null },
+      },
+      select: { entityId: true },
+      distinct: ["entityId"],
+    });
+    return events.flatMap((event) =>
+      event.entityId ? [event.entityId] : [],
+    );
+  }
 }

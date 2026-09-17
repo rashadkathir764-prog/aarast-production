@@ -52,4 +52,17 @@ export interface ConversationLifecyclePort {
     tx: ConversationLifecycleClient,
     input: RecordConversationEventInput,
   ): Promise<RecordConversationEventResult>;
+  /**
+   * Quote transitions record events on the conversation row; they lock it
+   * first (before their request and offer rows) so their order matches
+   * account deletion. True when the row exists.
+   */
+  lockConversationForUpdateInTransaction(
+    tx: ConversationLifecycleClient,
+    conversationId: string,
+  ): Promise<boolean>;
+  lockConversationForShareInTransaction(
+    tx: ConversationLifecycleClient,
+    conversationId: string,
+  ): Promise<boolean>;
 }

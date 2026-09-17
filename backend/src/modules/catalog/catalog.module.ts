@@ -6,9 +6,10 @@ import {
   DistrictLocalitiesController,
 } from '../../catalogs/catalogs.controller';
 import { CatalogServicesInternalModule } from './internal/catalog-services.internal.module';
+import { CatalogReadPublicModule } from './public/catalog-read-public.module';
 
 @Module({
-  imports: [CatalogServicesInternalModule],
+  imports: [CatalogReadPublicModule, CatalogServicesInternalModule],
   controllers: [
     CatalogsController,
     DistrictLocalitiesController,

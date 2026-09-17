@@ -1,9 +1,11 @@
 import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
-import { ensureConversationContext, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
+import { ensureConversationContext, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext,
   recordConversationEvent,
+  lockConversationForUpdateInTransaction: lockConversationForUpdate,
+  lockConversationForShareInTransaction: lockConversationForShare,
 };
 import 'reflect-metadata';
 

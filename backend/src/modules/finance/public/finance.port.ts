@@ -90,6 +90,11 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     quoteOfferId: string,
   ): Promise<WeddingCostWithDetails | null>;
+  /** The costs linked to any of the offers (a quote shows whether its accepted offer already has one). */
+  listCostsForOffers(
+    client: Prisma.TransactionClient,
+    quoteOfferIds: readonly string[],
+  ): Promise<Array<{ id: string; quoteOfferId: string }>>;
   createCostFromAcceptedOffer(
     tx: Prisma.TransactionClient,
     input: CreateCostFromAcceptedOfferInput,

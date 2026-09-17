@@ -487,7 +487,15 @@ test('R12C Task 3 lifecycle port exposes one runtime token and one singleton pub
     const publicIdentity = application.get(port.CONVERSATION_LIFECYCLE_PORT);
     const internalIdentity = application.get(internalModule.CONVERSATION_LIFECYCLE_IMPLEMENTATION);
     assert.equal(publicIdentity, internalIdentity);
-    assert.deepEqual(Object.keys(publicIdentity), ['ensureConversationContext', 'recordConversationEvent']);
+    // The R12C surface is the frozen pair; the ownership program added the
+    // conversation row locks quote transitions used to take with their own
+    // raw joins (the row is messaging's). Frozen surfaces stay, may grow.
+    assert.deepEqual(Object.keys(publicIdentity), [
+      'ensureConversationContext',
+      'recordConversationEvent',
+      'lockConversationForUpdateInTransaction',
+      'lockConversationForShareInTransaction',
+    ]);
     assert.deepEqual(Reflect.getMetadata('exports', publicModule.ConversationLifecyclePublicModule), [port.CONVERSATION_LIFECYCLE_PORT]);
     const providers = Reflect.getMetadata('providers', publicModule.ConversationLifecyclePublicModule);
     assert.deepEqual(providers, [{ provide: port.CONVERSATION_LIFECYCLE_PORT, useExisting: internalModule.CONVERSATION_LIFECYCLE_IMPLEMENTATION }]);
@@ -501,8 +509,14 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
   const { internalModule } = requireLifecycle();
   const implementation = Reflect.getMetadata('providers', internalModule.ConversationLifecycleInternalModule)[0].useValue;
   const legacy = require(path.join(root, 'backend/src/conversations/conversation-lifecycle.ts'));
-  for (const method of ['ensureConversationContext', 'recordConversationEvent']) {
-    const original = legacy[method];
+  const delegates = {
+    ensureConversationContext: 'ensureConversationContext',
+    recordConversationEvent: 'recordConversationEvent',
+    lockConversationForUpdateInTransaction: 'lockConversationForUpdate',
+    lockConversationForShareInTransaction: 'lockConversationForShare',
+  } as const;
+  for (const [method, legacyName] of Object.entries(delegates)) {
+    const original = legacy[legacyName];
     const tx = Object.freeze({ transactionIdentity: Symbol(method) });
     const input = Object.freeze({ inputIdentity: Symbol(method) });
     const value = Object.freeze({ resultIdentity: Symbol(method) });
@@ -510,7 +524,7 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
     const error = new Error('same error ' + method);
     const calls: unknown[][] = [];
     try {
-      legacy[method] = (...args: unknown[]) => { calls.push(args); return expected; };
+      legacy[legacyName] = (...args: unknown[]) => { calls.push(args); return expected; };
       const result = implementation[method](tx, input);
       assert.equal(result, expected);
       assert.equal(await result, value);
@@ -518,15 +532,15 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
       assert.equal(calls[0][0], tx);
       assert.equal(calls[0][1], input);
       assert.equal(calls[0].length, 2);
-      legacy[method] = () => { throw error; };
+      legacy[legacyName] = () => { throw error; };
       assert.throws(() => implementation[method](tx, input), caught => caught === error);
       const rejection = Promise.reject(error);
-      legacy[method] = () => rejection;
+      legacy[legacyName] = () => rejection;
       const rejected = implementation[method](tx, input);
       assert.equal(rejected, rejection);
       await assert.rejects(rejected, caught => caught === error);
     } finally {
-      legacy[method] = original;
+      legacy[legacyName] = original;
     }
   }
 });

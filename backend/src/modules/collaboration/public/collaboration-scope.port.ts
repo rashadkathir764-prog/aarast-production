@@ -20,4 +20,12 @@ export interface CollaborationScopePort {
     entityTypes: readonly ContributionEntityType[],
     actions?: readonly ContributionAction[],
   ): Promise<string[]>;
+  /** The actor's qualifying entity ids across every plan (a user's own quote list spans plans). */
+  qualifyingEntityIdsForActorInTransaction(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    entityTypes: readonly ContributionEntityType[],
+    actions: readonly ContributionAction[],
+    entityId?: string,
+  ): Promise<string[]>;
 }

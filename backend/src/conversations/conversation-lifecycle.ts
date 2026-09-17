@@ -83,6 +83,32 @@ export async function ensureConversationContext(
   return { id: conversation.id, scope };
 }
 
+export async function lockConversationForUpdate(
+  tx: ConversationLifecycleClient,
+  conversationId: string,
+): Promise<boolean> {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT "id"
+    FROM "Conversation"
+    WHERE "id" = ${conversationId}
+    FOR UPDATE
+  `);
+  return rows.length === 1;
+}
+
+export async function lockConversationForShare(
+  tx: ConversationLifecycleClient,
+  conversationId: string,
+): Promise<boolean> {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT "id"
+    FROM "Conversation"
+    WHERE "id" = ${conversationId}
+    FOR SHARE
+  `);
+  return rows.length === 1;
+}
+
 export async function recordConversationEvent(
   tx: ConversationLifecycleClient,
   input: RecordConversationEventInput,

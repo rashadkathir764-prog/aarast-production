@@ -153,6 +153,20 @@ export class FinancePortService implements FinancePort {
     });
   }
 
+  async listCostsForOffers(
+    client: Prisma.TransactionClient,
+    quoteOfferIds: readonly string[],
+  ): Promise<Array<{ id: string; quoteOfferId: string }>> {
+    if (quoteOfferIds.length === 0) return [];
+    const costs = await client.weddingCost.findMany({
+      where: { quoteOfferId: { in: [...quoteOfferIds] } },
+      select: { id: true, quoteOfferId: true },
+    });
+    return costs.flatMap((cost) =>
+      cost.quoteOfferId ? [{ id: cost.id, quoteOfferId: cost.quoteOfferId }] : [],
+    );
+  }
+
   async createCostFromAcceptedOffer(
     tx: Prisma.TransactionClient,
     input: CreateCostFromAcceptedOfferInput,

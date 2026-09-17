@@ -307,12 +307,35 @@ test("live scope accepts qualifying events from current and previous tenures aft
     [ContributionAction.CREATED],
   );
 
-  assert.equal(observed.length, 2);
+  await scope.qualifyingEntityIdsForActorInTransaction(
+    prisma,
+    "contributor-a",
+    [ContributionEntityType.QUOTE_REQUEST],
+    [ContributionAction.CREATED, ContributionAction.LEGACY_CAPTURED],
+  );
+  await scope.qualifyingEntityIdsForActorInTransaction(
+    prisma,
+    "contributor-a",
+    [ContributionEntityType.QUOTE_REQUEST],
+    [ContributionAction.CREATED],
+    "quote-1",
+  );
+
+  assert.equal(observed.length, 4);
   for (const where of observed) {
     assert.deepEqual(where.contributorTenure, {
       actorReference: createHash("sha256").update("contributor-a").digest("hex"),
     });
   }
+  // The actor-wide scope spans plans: no history-scope predicate, the
+  // requested entity types and actions, and an exact entity id when asked.
+  assert.deepEqual(observed[2], {
+    contributorTenure: observed[2].contributorTenure,
+    entityType: { in: [ContributionEntityType.QUOTE_REQUEST] },
+    action: { in: [ContributionAction.CREATED, ContributionAction.LEGACY_CAPTURED] },
+    entityId: { not: null },
+  });
+  assert.equal(observed[3].entityId, "quote-1");
 });
 
 test("guest list and summary only use the contributor guest scope", async () => {

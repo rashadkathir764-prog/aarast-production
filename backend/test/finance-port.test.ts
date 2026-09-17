@@ -41,6 +41,27 @@ test('the accepted-offer cost is looked up by the offer it links to', async () =
   ]);
 });
 
+test('the costs linked to a set of offers are read by offer id, none for an empty set', async () => {
+  const calls: unknown[] = [];
+  const client = {
+    weddingCost: {
+      findMany: async (args: unknown) => {
+        calls.push(args);
+        return [{ id: 'cost-1', quoteOfferId: 'offer-1' }, { id: 'cost-2', quoteOfferId: null }];
+      },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new FinancePortService();
+
+  assert.deepEqual(await service.listCostsForOffers(client, []), []);
+  assert.deepEqual(await service.listCostsForOffers(client, ['offer-1', 'offer-2']), [
+    { id: 'cost-1', quoteOfferId: 'offer-1' },
+  ]);
+  assert.deepEqual(calls, [
+    { where: { quoteOfferId: { in: ['offer-1', 'offer-2'] } }, select: { id: true, quoteOfferId: true } },
+  ]);
+});
+
 test('an accepted offer creates its cost under the matching plan category', async () => {
   const hall = { id: 'cat-hall', name: 'صالة الأفراح', normalizedName: 'صالة الأفراح' };
   const { tx, calls } = harness([hall]);

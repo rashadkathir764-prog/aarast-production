@@ -1,6 +1,7 @@
 // Real owner port implementations for the managed smokes. Every one runs its
 // statements on the client the calling service passes (the smoke's Prisma
 // client or its transaction), exactly as the Nest wiring does.
+import { CatalogReadService } from '../../../src/modules/catalog/internal/catalog-read.service';
 import { CollaborationErasureService } from '../../../src/modules/collaboration/internal/collaboration-erasure.service';
 import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
 import type { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
@@ -20,6 +21,7 @@ import { TasksPortService } from '../../../src/modules/tasks/internal/tasks-port
 
 export const ownerPorts = {
   plans: new PlanReadService(),
+  catalog: new CatalogReadService(),
   planErasure: new PlanErasureService(),
   users: new IdentityUserPortService(),
   finance: new FinancePortService(),

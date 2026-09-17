@@ -3,6 +3,7 @@
 // against whatever fake client the test passes in, so a fixture that stubbed
 // `tx.budgetCategory.createMany` keeps working after the call moved to the
 // owner (the R4 precedent for supplying a new owner collaborator).
+import { CatalogReadService } from '../../src/modules/catalog/internal/catalog-read.service';
 import { ContributionHistoryService } from '../../src/modules/collaboration/internal/contribution-history.service';
 import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
 import { FinancePortService } from '../../src/modules/finance/internal/finance-port.service';
@@ -15,6 +16,7 @@ import { TasksPortService } from '../../src/modules/tasks/internal/tasks-port.se
 
 export const ownerPorts = {
   plans: new PlanReadService(),
+  catalog: new CatalogReadService(),
   users: new IdentityUserPortService(),
   finance: new FinancePortService(),
   tasks: new TasksPortService(),

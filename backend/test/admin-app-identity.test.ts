@@ -20,8 +20,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { AdminService } from "../src/admin/admin.service";
-import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
-import { usersService } from "./support/owner-ports";
+import { providerDashboardService, usersService } from "./support/owner-ports";
 
 test("an administrator app profile cannot overwrite the administrator identity", async () => {
   const now = new Date();
@@ -193,7 +192,7 @@ test("an administrator app session can create a provider profile without changin
     providerCategory: { count: async () => 0 },
     $transaction: async (operation: any) => operation(tx),
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     prisma as any,
     {} as any,
     {} as any, lifecycle,

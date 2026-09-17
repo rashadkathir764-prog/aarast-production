@@ -13,11 +13,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ConflictException } from "@nestjs/common";
 import { Prisma, QuoteRequestStatus } from "@prisma/client";
-import { marketplaceRelations, marketplaceService, withOwnerTables } from "./support/owner-ports";
+import { marketplaceRelations, marketplaceService, providerDashboardService, withOwnerTables } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { createQuoteRequestInTransaction } from "../src/marketplace/quote-request-creation";
 import { isQuoteOfferExpired } from "../src/marketplace/quote-offer-expiry";
-import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 
 const now = new Date("2026-07-22T12:00:00.000Z");
 const requester = {
@@ -397,7 +396,7 @@ test("concurrent provider submissions create exactly one offer", async () => {
     ) => requestedUserId,
     createNotificationInTransaction: async (_tx: any, input: any) => input,
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     prisma as any,
     notifications as any,
     {} as any, lifecycle,

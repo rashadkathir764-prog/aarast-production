@@ -7,11 +7,14 @@ import { AppRole, OnboardingPath, UserRole, UserStatus, type Prisma } from '@pri
 import {
   ACTIVE_PLAN_IMPLEMENTATION,
   IdentityUserInternalModule,
+  PROVIDER_ACCOUNT_IMPLEMENTATION,
   USER_READ_IMPLEMENTATION,
 } from '../src/modules/identity/internal/identity-user.internal.module';
 import { IdentityUserPortService } from '../src/modules/identity/internal/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
 import { ACTIVE_PLAN_PORT } from '../src/modules/identity/public/active-plan.port';
+import { ProviderAccountPublicModule } from '../src/modules/identity/public/provider-account-public.module';
+import { PROVIDER_ACCOUNT_PORT } from '../src/modules/identity/public/provider-account.port';
 import { UserReadPublicModule } from '../src/modules/identity/public/user-read-public.module';
 import { appIdentitySelect, USER_READ_PORT } from '../src/modules/identity/public/user-read.port';
 
@@ -213,6 +216,41 @@ test('the active plan port writes the pointer and the onboarding columns identit
   ]);
 });
 
+// The provider application used to change the applicant's role columns
+// itself. Identity decides eligibility and performs the promotion: an
+// ordinary user or provider gains the PROVIDER roles; an admin keeps ADMIN
+// and gains the PROVIDER app role only with an application password.
+test('the provider account port promotes an eligible application identity and refuses the rest', async () => {
+  const attempts: unknown[] = [];
+  const outcomes = [1, 0, 1, 0, 0];
+  const tx = {
+    user: {
+      updateMany: async (args: unknown) => { attempts.push(args); return { count: outcomes.shift() ?? 0 }; },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new IdentityUserPortService();
+
+  assert.equal(await service.promoteToProviderInTransaction(tx, 'user-1'), true);
+  assert.equal(await service.promoteToProviderInTransaction(tx, 'admin-1'), true);
+  assert.equal(await service.promoteToProviderInTransaction(tx, 'user-9'), false);
+
+  const userPromotion = (id: string) => ({
+    where: { id, status: UserStatus.ACTIVE, role: { in: [UserRole.USER, UserRole.PROVIDER] } },
+    data: { role: UserRole.PROVIDER, appRole: AppRole.PROVIDER },
+  });
+  const adminPromotion = (id: string) => ({
+    where: { id, status: UserStatus.ACTIVE, role: UserRole.ADMIN, appPasswordHash: { not: null } },
+    data: { appRole: AppRole.PROVIDER },
+  });
+  assert.deepEqual(attempts, [
+    userPromotion('user-1'),
+    userPromotion('admin-1'),
+    adminPromotion('admin-1'),
+    userPromotion('user-9'),
+    adminPromotion('user-9'),
+  ]);
+});
+
 test('the identity user public modules expose only their port tokens bound to the internal implementation', () => {
   const metadata = (module: unknown, key: string) => Reflect.getMetadata(key, module as object);
   assert.deepEqual(metadata(UserReadPublicModule, MODULE_METADATA.PROVIDERS), [
@@ -223,9 +261,14 @@ test('the identity user public modules expose only their port tokens bound to th
     { provide: ACTIVE_PLAN_PORT, useExisting: ACTIVE_PLAN_IMPLEMENTATION },
   ]);
   assert.deepEqual(metadata(ActivePlanPublicModule, MODULE_METADATA.EXPORTS), [ACTIVE_PLAN_PORT]);
+  assert.deepEqual(metadata(ProviderAccountPublicModule, MODULE_METADATA.PROVIDERS), [
+    { provide: PROVIDER_ACCOUNT_PORT, useExisting: PROVIDER_ACCOUNT_IMPLEMENTATION },
+  ]);
+  assert.deepEqual(metadata(ProviderAccountPublicModule, MODULE_METADATA.EXPORTS), [PROVIDER_ACCOUNT_PORT]);
   assert.deepEqual(metadata(IdentityUserInternalModule, MODULE_METADATA.PROVIDERS), [
     IdentityUserPortService,
     { provide: USER_READ_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: ACTIVE_PLAN_IMPLEMENTATION, useExisting: IdentityUserPortService },
+    { provide: PROVIDER_ACCOUNT_IMPLEMENTATION, useExisting: IdentityUserPortService },
   ]);
 });

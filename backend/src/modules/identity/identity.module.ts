@@ -9,6 +9,7 @@ import { IdentityProfileInternalModule } from "./internal/identity-profile.inter
 import { ActivePlanPublicModule } from "./public/active-plan-public.module";
 import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";
 import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";
+import { ProviderAccountPublicModule } from "./public/provider-account-public.module";
 import { UserReadPublicModule } from "./public/user-read-public.module";
 
 @Module({
@@ -19,6 +20,7 @@ import { UserReadPublicModule } from "./public/user-read-public.module";
     IdentityTransientDeliveryPublicModule,
     UserReadPublicModule,
     ActivePlanPublicModule,
+    ProviderAccountPublicModule,
   ],
   controllers: [
     AuthController,

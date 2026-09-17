@@ -3,6 +3,9 @@ import { IdentityUserPortService } from "./identity-user-port.service";
 
 export const USER_READ_IMPLEMENTATION = Symbol("USER_READ_IMPLEMENTATION");
 export const ACTIVE_PLAN_IMPLEMENTATION = Symbol("ACTIVE_PLAN_IMPLEMENTATION");
+export const PROVIDER_ACCOUNT_IMPLEMENTATION = Symbol(
+  "PROVIDER_ACCOUNT_IMPLEMENTATION",
+);
 
 @Module({
   providers: [
@@ -15,11 +18,16 @@ export const ACTIVE_PLAN_IMPLEMENTATION = Symbol("ACTIVE_PLAN_IMPLEMENTATION");
       provide: ACTIVE_PLAN_IMPLEMENTATION,
       useExisting: IdentityUserPortService,
     },
+    {
+      provide: PROVIDER_ACCOUNT_IMPLEMENTATION,
+      useExisting: IdentityUserPortService,
+    },
   ],
   exports: [
     IdentityUserPortService,
     USER_READ_IMPLEMENTATION,
     ACTIVE_PLAN_IMPLEMENTATION,
+    PROVIDER_ACCOUNT_IMPLEMENTATION,
   ],
 })
 export class IdentityUserInternalModule {}

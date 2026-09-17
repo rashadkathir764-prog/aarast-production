@@ -9,6 +9,7 @@ import { CollaborationHistoryPublicModule } from '../../collaboration/public/col
 import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
 import { CollaborationScopePublicModule } from '../../collaboration/public/collaboration-scope-public.module';
 import { FinancePublicModule } from '../../finance/public/finance-public.module';
+import { ProviderAccountPublicModule } from '../../identity/public/provider-account-public.module';
 import { UserReadPublicModule } from '../../identity/public/user-read-public.module';
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 import { MediaStoragePublicModule } from '../../media/public/media-storage-public.module';
@@ -27,6 +28,7 @@ import { NotificationsPublicModule } from '../../notifications/public/notificati
     CollaborationScopePublicModule,
     PlanReadPublicModule,
     UserReadPublicModule,
+    ProviderAccountPublicModule,
   ],
   providers: [
     MarketplaceRelationsService,

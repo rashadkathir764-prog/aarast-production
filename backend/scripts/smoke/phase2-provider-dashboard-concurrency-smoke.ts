@@ -23,6 +23,7 @@ import {
 } from "@prisma/client";
 import { AdminService } from "../../src/admin/admin.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
+import { providerDashboardService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -163,10 +164,11 @@ async function providerSuspensionWinsQuoteUpdate() {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = new ProviderDashboardService(
-        prisma as any,
-        notifications as any,
-        media as any, lifecycle,
+      const service = providerDashboardService(
+        prisma,
+        notifications,
+        media,
+        lifecycle,
       );
       const before = await prisma.quoteOffer.findUniqueOrThrow({
         where: { id: fixture.offer.id },
@@ -206,10 +208,11 @@ async function planArchiveWinsQuoteUpdate() {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = new ProviderDashboardService(
-        prisma as any,
-        notifications as any,
-        media as any, lifecycle,
+      const service = providerDashboardService(
+        prisma,
+        notifications,
+        media,
+        lifecycle,
       );
       const archive = await holdMutation(async (tx) => {
         await tx.weddingPlan.update({
@@ -246,10 +249,11 @@ async function conversationPrecedesQuoteRow() {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = new ProviderDashboardService(
-        prisma as any,
-        notifications as any,
-        media as any, lifecycle,
+      const service = providerDashboardService(
+        prisma,
+        notifications,
+        media,
+        lifecycle,
       );
       const blocker = await holdMutation(async (tx) => {
         await tx.$queryRaw(
@@ -298,10 +302,11 @@ async function imagePrecedesMediaTarget() {
           imageUrl: "https://media.invalid/old.webp",
         },
       });
-      const service = new ProviderDashboardService(
-        prisma as any,
-        notifications as any,
-        media as any, lifecycle,
+      const service = providerDashboardService(
+        prisma,
+        notifications,
+        media,
+        lifecycle,
       );
       const blocker = await holdMutation(async (tx) => {
         await tx.$queryRaw(
@@ -345,10 +350,11 @@ async function userDisableWinsServiceCreate() {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = new ProviderDashboardService(
-        prisma as any,
-        notifications as any,
-        media as any, lifecycle,
+      const service = providerDashboardService(
+        prisma,
+        notifications,
+        media,
+        lifecycle,
       );
       const before = await prisma.providerService.count({
         where: { providerId: fixture.provider.id },

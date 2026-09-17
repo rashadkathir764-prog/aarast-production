@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { type Prisma, UserRole } from '@prisma/client';
+import { AppRole, type Prisma, UserRole, UserStatus } from '@prisma/client';
 import type {
   ActivePlanPort,
   CompleteOnboardingInput,
 } from '../public/active-plan.port';
+import type { ProviderAccountPort } from '../public/provider-account.port';
 import { type SafeUser, toSafeUser } from '../public/safe-user';
 import {
   type AppIdentity,
@@ -13,7 +14,9 @@ import {
 } from '../public/user-read.port';
 
 @Injectable()
-export class IdentityUserPortService implements UserReadPort, ActivePlanPort {
+export class IdentityUserPortService
+  implements UserReadPort, ActivePlanPort, ProviderAccountPort
+{
   async getSafeUser(
     client: Prisma.TransactionClient,
     userId: string,
@@ -123,6 +126,35 @@ export class IdentityUserPortService implements UserReadPort, ActivePlanPort {
       where: { id: userId },
       data: { activeWeddingPlanId: weddingPlanId },
     });
+  }
+
+  async promoteToProviderInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<boolean> {
+    let promoted = await tx.user.updateMany({
+      where: {
+        id: userId,
+        status: UserStatus.ACTIVE,
+        role: { in: [UserRole.USER, UserRole.PROVIDER] },
+      },
+      data: {
+        role: UserRole.PROVIDER,
+        appRole: AppRole.PROVIDER,
+      },
+    });
+    if (promoted.count === 0) {
+      promoted = await tx.user.updateMany({
+        where: {
+          id: userId,
+          status: UserStatus.ACTIVE,
+          role: UserRole.ADMIN,
+          appPasswordHash: { not: null },
+        },
+        data: { appRole: AppRole.PROVIDER },
+      });
+    }
+    return promoted.count === 1;
   }
 
   async completeOnboardingInTransaction(

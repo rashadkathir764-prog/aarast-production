@@ -20,8 +20,7 @@ import {
   normalizeOwnedMediaUrl,
   requireOwnedMediaUrl,
 } from "../src/media/media-upload-policy";
-import { usersService } from "./support/owner-ports";
-import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
+import { providerDashboardService, usersService } from "./support/owner-ports";
 import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import { createStrongRuntimeJwtSecret } from "./support/runtime-secrets";
 import { getJwtSecret } from "../src/modules/identity/internal/auth/jwt-secret";
@@ -297,7 +296,7 @@ test("service image creation rejects an external URL before persisting", async (
         },
       },
     };
-    const svc = new ProviderDashboardService(
+    const svc = providerDashboardService(
       prisma as any,
       {} as any,
       {

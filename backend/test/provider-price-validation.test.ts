@@ -14,7 +14,7 @@ import test from "node:test";
 import { BadRequestException } from "@nestjs/common";
 import { ProviderStatus } from "@prisma/client";
 import { optionalMoneyAmount } from "../src/shared-kernel/money/money";
-import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
+import { providerDashboardService } from "./support/owner-ports";
 
 test("provider service prices fail at validation before Prisma can round or overflow", async () => {
   let writes = 0;
@@ -36,7 +36,7 @@ test("provider service prices fail at validation before Prisma can round or over
       },
     },
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     prisma as any,
     {} as any,
     {} as any, lifecycle,

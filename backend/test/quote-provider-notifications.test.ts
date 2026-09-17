@@ -12,10 +12,9 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
-import { marketplaceRelations, marketplaceService, withOwnerTables } from "./support/owner-ports";
+import { marketplaceRelations, marketplaceService, providerDashboardService, withOwnerTables } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { acceptQuoteOfferInTransaction } from "../src/marketplace/quote-offer-acceptance";
-import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
 
 // عقد المرحلة الأولى: المورد طرف في الصفقة ويجب أن يُنبَّه عند وصول طلب جديد
 // وعند قبول عرضه — لا طلبات صامتة ولا قبول لا يعلم به المورد.
@@ -295,7 +294,7 @@ test("provider rejection notifies the requester with the exact quote route", asy
     provider: { findUnique: async () => providerRow(PROVIDER_USER_ID) },
     $transaction: async (fn: any) => fn(tx),
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     prisma as any,
     notifications as any,
     {} as any, lifecycle,
@@ -1080,7 +1079,7 @@ test("a received provider offer opens its exact marketplace quote", async () => 
     quoteRequest: { findFirst: async () => quote },
     $transaction: async (fn: any) => fn(tx),
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     prisma as any,
     notifications as any,
     {} as any, lifecycle,

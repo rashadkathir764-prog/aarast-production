@@ -234,6 +234,7 @@ export function tasksService(
 // return are attached through MarketplaceRelationsService; fixtures keep the
 // five-to-six-argument list of MarketplaceService and the script helpers.
 import { MarketplaceService } from '../../src/marketplace/marketplace.service';
+import { ProviderDashboardService } from '../../src/provider-dashboard/provider-dashboard.service';
 import { MarketplaceRelationsService } from '../../src/marketplace/marketplace-relations';
 import { ContributorScopeService } from '../../src/modules/collaboration/internal/contributor-scope.service';
 import type { FinancePort } from '../../src/modules/finance/public/finance.port';
@@ -266,6 +267,24 @@ export function marketplaceService(
     contributorScope(client),
     marketplaceRelations(finance),
     history as any,
+  );
+}
+
+/** `ProviderDashboardService` with the catalog and provider-account ports and the relations service. */
+export function providerDashboardService(
+  prisma: unknown,
+  notifications: unknown,
+  mediaStorage: unknown,
+  lifecycle: unknown,
+): ProviderDashboardService {
+  return new ProviderDashboardService(
+    withOwnerTables(prisma as any),
+    notifications as any,
+    mediaStorage as any,
+    lifecycle as any,
+    ownerPorts.catalog,
+    ownerPorts.users,
+    marketplaceRelations(),
   );
 }
 

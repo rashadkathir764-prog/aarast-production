@@ -25,9 +25,8 @@ import {
 } from '@prisma/client';
 import { ConversationsService } from '../src/conversations/conversations.service';
 import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
-import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
-import { collaborationHistory, collaborationPermissions, marketplaceService, planningOwnerPorts, sharingService } from './support/owner-ports';
+import { collaborationHistory, collaborationPermissions, marketplaceService, planningOwnerPorts, providerDashboardService, sharingService } from './support/owner-ports';
 
 const now = new Date('2026-07-26T00:00:00.000Z');
 const weddingPlanId = '11111111-1111-4111-8111-111111111111';
@@ -460,7 +459,7 @@ test('an active provider cannot transition a quote linked to an archived plan', 
       },
     },
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     {
       provider: {
         findUnique: async () => provider,
@@ -568,7 +567,7 @@ test('an active provider cannot create or update an offer for an archived plan',
       },
     },
   };
-  const service = new ProviderDashboardService(
+  const service = providerDashboardService(
     {
       provider: {
         findUnique: async () => provider,

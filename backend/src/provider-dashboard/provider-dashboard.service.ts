@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  AppRole,
   City,
   ConversationEventType,
   Prisma,
@@ -22,7 +21,6 @@ import {
   QuoteRequest,
   QuoteRequestStatus,
   User,
-  UserRole,
   UserStatus,
   WeddingPlan,
 } from '@prisma/client';
@@ -57,9 +55,16 @@ import {
 import { PrismaService } from '../platform/database/prisma.service';
 import { assertWeddingPlanWritable } from '../modules/collaboration/public/collaboration-permission.port';
 import {
-  applicationNameFields,
-  toApplicationUserContact,
-} from '../shared-kernel/privacy/application-user-identity';
+  CATALOG_READ_PORT,
+  type CatalogReadPort,
+} from '../modules/catalog/public/catalog-read.port';
+import {
+  PROVIDER_ACCOUNT_PORT,
+  type ProviderAccountPort,
+} from '../modules/identity/public/provider-account.port';
+import { lockUserLifecycleRowsForUpdateInTransaction } from '../modules/identity/public/user-lifecycle-lock';
+import { MarketplaceRelationsService } from '../marketplace/marketplace-relations';
+import { toApplicationUserContact } from '../shared-kernel/privacy/application-user-identity';
 import { weddingLocationResponse } from '../modules/planning/public/wedding-location';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';
@@ -118,6 +123,11 @@ export class ProviderDashboardService {
     private readonly mediaStorage: MediaStoragePort,
     @Inject(CONVERSATION_LIFECYCLE_PORT)
     private readonly lifecycle: ConversationLifecyclePort,
+    @Inject(CATALOG_READ_PORT)
+    private readonly catalog: CatalogReadPort,
+    @Inject(PROVIDER_ACCOUNT_PORT)
+    private readonly providerAccount: ProviderAccountPort,
+    private readonly relations: MarketplaceRelationsService,
   ) {}
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {
@@ -128,22 +138,10 @@ export class ProviderDashboardService {
     const description = this.optionalText(dto.description);
 
     const provider = await runSerializableTransaction(this.prisma, async (tx) => {
-      const users = await tx.$queryRaw<
-        Array<{
-          id: string;
-          role: UserRole;
-          status: UserStatus;
-          appPasswordHash: string | null;
-        }>
-      >(
-        Prisma.sql`
-          SELECT "id", "role", "status", "appPasswordHash"
-          FROM "User"
-          WHERE "id" = ${currentUser.id}
-          FOR UPDATE
-        `,
-      );
-      const actor = users[0];
+      // The applicant's lifecycle row is identity's: locked for update there.
+      const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
+        currentUser.id,
+      ]);
       if (!actor || actor.status !== UserStatus.ACTIVE) {
         throw new NotFoundException('User not found');
       }
@@ -165,29 +163,13 @@ export class ProviderDashboardService {
       await this.lockActiveCategoriesInTransaction(tx, categoryIds);
       await this.lockActiveCityInTransaction(tx, dto.cityId);
 
-      let applicationIdentity = await tx.user.updateMany({
-        where: {
-          id: currentUser.id,
-          status: UserStatus.ACTIVE,
-          role: { in: [UserRole.USER, UserRole.PROVIDER] },
-        },
-        data: {
-          role: UserRole.PROVIDER,
-          appRole: AppRole.PROVIDER,
-        },
-      });
-      if (applicationIdentity.count === 0) {
-        applicationIdentity = await tx.user.updateMany({
-          where: {
-            id: currentUser.id,
-            status: UserStatus.ACTIVE,
-            role: UserRole.ADMIN,
-            appPasswordHash: { not: null },
-          },
-          data: { appRole: AppRole.PROVIDER },
-        });
-      }
-      if (applicationIdentity.count !== 1) {
+      // Eligibility and the role change are identity's decision.
+      if (
+        !(await this.providerAccount.promoteToProviderInTransaction(
+          tx,
+          currentUser.id,
+        ))
+      ) {
         throw new ConflictException(
           'The application identity is not eligible for a provider account',
         );
@@ -203,10 +185,9 @@ export class ProviderDashboardService {
           description,
           status: ProviderStatus.PENDING,
         },
-        include: { city: true, primaryCategory: true },
       });
 
-      return created;
+      return this.withProviderCatalog(tx, created);
     });
 
     return this.toProviderProfileResponse(provider);
@@ -283,9 +264,11 @@ export class ProviderDashboardService {
           );
         }
       }
-      return tx.provider.update({
-        where: { id: provider.id },
-        data: {
+      return this.withProviderCatalog(
+        tx,
+        await tx.provider.update({
+          where: { id: provider.id },
+          data: {
         ...(dto.businessName !== undefined
           ? { businessName: this.requiredText(dto.businessName, 'businessName') }
           : {}),
@@ -319,9 +302,9 @@ export class ProviderDashboardService {
           : {}),
         ...(dto.logoUrl !== undefined ? { logoUrl } : {}),
         ...(dto.coverUrl !== undefined ? { coverUrl } : {}),
-        },
-        include: { city: true, primaryCategory: true },
-      });
+          },
+        }),
+      );
     });
 
     return this.toProviderProfileResponse(updated);
@@ -357,11 +340,14 @@ export class ProviderDashboardService {
 
   async findServices(currentUser: AuthenticatedUser) {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
-    const services = await this.prisma.providerService.findMany({
-      where: { providerId: provider.id },
-      include: this.serviceInclude(),
-      orderBy: { createdAt: 'desc' },
-    });
+    const services = await this.relations.attachServiceCatalog(
+      this.prisma,
+      await this.prisma.providerService.findMany({
+        where: { providerId: provider.id },
+        include: this.serviceInclude(),
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
 
     return services.map((service) => this.toServiceResponse(service));
   }
@@ -382,19 +368,22 @@ export class ProviderDashboardService {
         await this.lockActiveCityInTransaction(tx, dto.cityId);
       }
 
-      return tx.providerService.create({
-        data: {
-          providerId: provider.id,
-          categoryId: dto.categoryId,
-          title: this.requiredText(dto.title, 'title'),
-          description: this.optionalText(dto.description),
-          basePrice,
-          priceUnit: this.optionalText(dto.priceUnit),
-          currency: this.optionalText(dto.currency) ?? 'YER',
-          cityId: this.optionalText(dto.cityId),
-        },
-        include: this.serviceInclude(),
-      });
+      return this.withServiceCatalog(
+        tx,
+        await tx.providerService.create({
+          data: {
+            providerId: provider.id,
+            categoryId: dto.categoryId,
+            title: this.requiredText(dto.title, 'title'),
+            description: this.optionalText(dto.description),
+            basePrice,
+            priceUnit: this.optionalText(dto.priceUnit),
+            currency: this.optionalText(dto.currency) ?? 'YER',
+            cityId: this.optionalText(dto.cityId),
+          },
+          include: this.serviceInclude(),
+        }),
+      );
     });
 
     return this.toServiceResponse(service);
@@ -429,7 +418,9 @@ export class ProviderDashboardService {
       }
       await this.lockOwnedServiceInTransaction(tx, provider.id, id, 'UPDATE');
 
-      return tx.providerService.update({
+      return this.withServiceCatalog(
+        tx,
+        await tx.providerService.update({
         where: { id },
         data: {
           ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
@@ -454,7 +445,8 @@ export class ProviderDashboardService {
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
         include: this.serviceInclude(),
-      });
+        }),
+      );
     });
 
     return this.toServiceResponse(service);
@@ -469,11 +461,14 @@ export class ProviderDashboardService {
         'OPERATIONAL',
       );
       await this.lockOwnedServiceInTransaction(tx, provider.id, id, 'UPDATE');
-      return tx.providerService.update({
-        where: { id },
-        data: { isActive: false },
-        include: this.serviceInclude(),
-      });
+      return this.withServiceCatalog(
+        tx,
+        await tx.providerService.update({
+          where: { id },
+          data: { isActive: false },
+          include: this.serviceInclude(),
+        }),
+      );
     });
 
     return this.toServiceResponse(service);
@@ -761,11 +756,14 @@ export class ProviderDashboardService {
 
   async findQuoteRequests(currentUser: AuthenticatedUser) {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
-    const quotes = await this.prisma.quoteRequest.findMany({
-      where: { providerId: provider.id },
-      include: this.quoteInclude(),
-      orderBy: { createdAt: 'desc' },
-    });
+    const quotes = await this.relations.attachDashboardQuoteRelations(
+      this.prisma,
+      await this.prisma.quoteRequest.findMany({
+        where: { providerId: provider.id },
+        include: this.quoteInclude(),
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
 
     return quotes.map((quote) => this.toQuoteResponse(quote));
   }
@@ -773,14 +771,18 @@ export class ProviderDashboardService {
   async findQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteRequestId');
-    const quote = await this.prisma.quoteRequest.findFirst({
+    const quoteRow = await this.prisma.quoteRequest.findFirst({
       where: { id, providerId: provider.id },
       include: this.quoteInclude(),
     });
 
-    if (!quote) {
+    if (!quoteRow) {
       throw new NotFoundException('Quote request not found');
     }
+    const [quote] = await this.relations.attachDashboardQuoteRelations(
+      this.prisma,
+      [quoteRow],
+    );
 
     return this.toQuoteResponse(quote);
   }
@@ -814,16 +816,11 @@ export class ProviderDashboardService {
       }
       const existing = await tx.quoteRequest.findFirst({
         where: { id, providerId: provider.id },
-        include: {
-          weddingPlan: { select: { status: true } },
-        },
       });
       if (!existing) {
         throw new NotFoundException('Quote request not found');
       }
-      if (existing.weddingPlan) {
-        assertWeddingPlanWritable(existing.weddingPlan);
-      }
+      await this.assertQuotePlanWritable(tx, existing.weddingPlanId);
       assertQuoteRequestTransition(existing.status, dto.status, 'provider');
 
       const transition = await tx.quoteRequest.updateMany({
@@ -838,10 +835,15 @@ export class ProviderDashboardService {
       if (transition.count !== 1) {
         throw new ConflictException('Quote request status changed');
       }
-      const updated = await tx.quoteRequest.findUniqueOrThrow({
-        where: { id },
-        include: this.quoteInclude(),
-      });
+      const [updated] = await this.relations.attachDashboardQuoteRelations(
+        tx,
+        [
+          await tx.quoteRequest.findUniqueOrThrow({
+            where: { id },
+            include: this.quoteInclude(),
+          }),
+        ],
+      );
       if (dto.status === QuoteRequestStatus.REJECTED) {
         await this.lifecycle.recordConversationEvent(tx, {
           conversationId: existing.conversationId,
@@ -904,16 +906,14 @@ export class ProviderDashboardService {
       }
       const quote = await tx.quoteRequest.findFirst({
         where: { id: quoteRequestId, providerId: provider.id },
-        include: {
-          weddingPlan: { select: { status: true, currency: true } },
-        },
       });
       if (!quote) {
         throw new NotFoundException('Quote request not found');
       }
-      if (quote.weddingPlan) {
-        assertWeddingPlanWritable(quote.weddingPlan);
-      }
+      const quotePlan = await this.assertQuotePlanWritable(
+        tx,
+        quote.weddingPlanId,
+      );
       assertQuoteRequestTransition(
         quote.status,
         QuoteRequestStatus.RESPONDED,
@@ -932,7 +932,7 @@ export class ProviderDashboardService {
       }
       const currency = this.quoteOfferCurrency(
         dto.currency,
-        quote.weddingPlan?.currency,
+        quotePlan?.currency,
       );
 
       const created = await tx.quoteOffer.create({
@@ -1030,20 +1030,16 @@ export class ProviderDashboardService {
       const existing = await tx.quoteOffer.findFirst({
         where: { id, providerId: provider.id },
         include: {
-          quoteRequest: {
-            select: {
-              status: true,
-              weddingPlan: { select: { status: true, currency: true } },
-            },
-          },
+          quoteRequest: { select: { status: true, weddingPlanId: true } },
         },
       });
       if (!existing) {
         throw new NotFoundException('Quote offer not found');
       }
-      if (existing.quoteRequest.weddingPlan) {
-        assertWeddingPlanWritable(existing.quoteRequest.weddingPlan);
-      }
+      const offerPlan = await this.assertQuotePlanWritable(
+        tx,
+        existing.quoteRequest.weddingPlanId,
+      );
       if (
         existing.status !== QuoteOfferStatus.PENDING ||
         existing.quoteRequest.status !== QuoteRequestStatus.RESPONDED
@@ -1058,7 +1054,7 @@ export class ProviderDashboardService {
         );
       const currency = this.quoteOfferCurrency(
         dto.currency ?? existing.currency,
-        existing.quoteRequest.weddingPlan?.currency,
+        offerPlan?.currency,
       );
 
       const transition = await tx.quoteOffer.updateMany({
@@ -1090,13 +1086,13 @@ export class ProviderDashboardService {
 
   async findReviews(currentUser: AuthenticatedUser) {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
-    const reviews = await this.prisma.providerReview.findMany({
-      where: { providerId: provider.id },
-      include: {
-        user: { select: { id: true, ...applicationNameFields } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const reviews = await this.relations.attachReviewUsers(
+      this.prisma,
+      await this.prisma.providerReview.findMany({
+        where: { providerId: provider.id },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
 
     return reviews.map((review) => this.toReviewResponse(review));
   }
@@ -1126,21 +1122,15 @@ export class ProviderDashboardService {
     );
 
     if (seed.weddingPlanId) {
-      const plans = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "WeddingPlan"
-          WHERE "id" = ${seed.weddingPlanId}
-          FOR SHARE
-        `,
+      // The plan row is planning's: locked for share and read there.
+      const plans = await this.relations.plans.lockPlanRowForShareInTransaction(
+        tx,
+        seed.weddingPlanId,
       );
       if (plans.length !== 1) {
         throw new NotFoundException('Quote request not found');
       }
-      const plan = await tx.weddingPlan.findUnique({
-        where: { id: seed.weddingPlanId },
-        select: { status: true },
-      });
+      const plan = await this.relations.plans.getPlan(tx, seed.weddingPlanId);
       if (!plan) {
         throw new NotFoundException('Quote request not found');
       }
@@ -1155,18 +1145,27 @@ export class ProviderDashboardService {
       seed.providerId,
     );
 
-    const conversations = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "Conversation"
-        WHERE "id" = ${seed.conversationId}
-        FOR SHARE
-      `,
-    );
-    if (conversations.length !== 1) {
+    // The conversation row is messaging's: locked for share there.
+    if (
+      !(await this.lifecycle.lockConversationForShareInTransaction(
+        tx,
+        seed.conversationId,
+      ))
+    ) {
       throw new NotFoundException('Quote request not found');
     }
     return provider;
+  }
+
+  /** A quote's plan (planning's row) must still be writable; null for a plan-less quote. */
+  private async assertQuotePlanWritable(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string | null,
+  ): Promise<WeddingPlan | null> {
+    if (!weddingPlanId) return null;
+    const plan = await this.relations.plans.getPlan(tx, weddingPlanId);
+    if (plan) assertWeddingPlanWritable(plan);
+    return plan;
   }
 
   private async lockActiveCategoriesInTransaction(
@@ -1179,24 +1178,14 @@ export class ProviderDashboardService {
     }
     if (uniqueIds.length === 0) return;
 
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "ProviderCategory"
-        WHERE "id" IN (${Prisma.join(uniqueIds)})
-        ORDER BY "id" ASC
-        FOR SHARE
-      `,
-    );
-    if (rows.length !== uniqueIds.length) {
-      throw new BadRequestException(
-        'categoryIds must reference active categories',
-      );
-    }
-    const activeCount = await tx.providerCategory.count({
-      where: { id: { in: uniqueIds }, isActive: true },
-    });
-    if (activeCount !== uniqueIds.length) {
+    // The category rows are catalog's: locked for share and confirmed
+    // active there.
+    if (
+      !(await this.catalog.lockActiveCategoriesForShareInTransaction(
+        tx,
+        uniqueIds,
+      ))
+    ) {
       throw new BadRequestException(
         'categoryIds must reference active categories',
       );
@@ -1224,21 +1213,11 @@ export class ProviderDashboardService {
     cityId: string,
   ): Promise<void> {
     this.assertUuid(cityId, 'cityId');
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "City"
-        WHERE "id" = ${cityId}
-        FOR SHARE
-      `,
+    // The city row is catalog's: locked for share and confirmed active there.
+    const city = await this.catalog.lockActiveCityForShareInTransaction(
+      tx,
+      cityId,
     );
-    if (rows.length !== 1) {
-      throw new BadRequestException('cityId must reference an active city');
-    }
-    const city = await tx.city.findFirst({
-      where: { id: cityId, isActive: true },
-      select: { id: true },
-    });
     if (!city) {
       throw new BadRequestException('cityId must reference an active city');
     }
@@ -1278,7 +1257,7 @@ export class ProviderDashboardService {
     if (!service || service.providerId !== providerId) {
       throw new NotFoundException('Provider service not found');
     }
-    return service;
+    return this.withServiceCatalog(tx, service);
   }
 
   private async lockOwnedServiceImageInTransaction(
@@ -1345,12 +1324,11 @@ export class ProviderDashboardService {
   ): Promise<ProviderProfile> {
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
-      include: { city: true, primaryCategory: true },
     });
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
     }
-    return provider;
+    return this.withProviderCatalog(this.prisma, provider);
   }
 
   private async findOwnedServiceOrThrow(
@@ -1368,7 +1346,7 @@ export class ProviderDashboardService {
       throw new NotFoundException('Provider service not found');
     }
 
-    return service;
+    return this.withServiceCatalog(this.prisma, service);
   }
 
   private async findOwnedPackageOrThrow(
@@ -1386,68 +1364,41 @@ export class ProviderDashboardService {
     return providerPackage;
   }
 
-  private async findActiveCityOrThrow(cityId: string): Promise<City> {
-    this.assertUuid(cityId, 'cityId');
-    const city = await this.prisma.city.findFirst({
-      where: { id: cityId, isActive: true },
-    });
-    if (!city) {
-      throw new BadRequestException('cityId must reference an active city');
-    }
-    return city;
+  // The catalog rows a provider profile and its services show are
+  // catalog's; the requester and the plan a quote shows are identity's and
+  // planning's. They are attached through the marketplace relations
+  // service after the own-table read.
+  private async withProviderCatalog(
+    client: Prisma.TransactionClient,
+    provider: Provider,
+  ): Promise<ProviderProfile> {
+    const [profile] = await this.relations.attachProviderCatalog(client, [
+      provider,
+    ]);
+    return profile;
   }
 
-  private async findActiveCategoryOrThrow(
-    categoryId: string,
-  ): Promise<ProviderCategory> {
-    this.assertUuid(categoryId, 'categoryId');
-    const category = await this.prisma.providerCategory.findFirst({
-      where: { id: categoryId, isActive: true },
-    });
-    if (!category) {
-      throw new BadRequestException('categoryId must reference an active category');
-    }
-    return category;
-  }
-
-  private async assertActiveCategories(categoryIds: string[]): Promise<void> {
-    const uniqueIds = [...new Set(categoryIds)];
-    for (const categoryId of uniqueIds) {
-      this.assertUuid(categoryId, 'categoryId');
-    }
-    if (uniqueIds.length === 0) return;
-
-    const count = await this.prisma.providerCategory.count({
-      where: { id: { in: uniqueIds }, isActive: true },
-    });
-    if (count !== uniqueIds.length) {
-      throw new BadRequestException('categoryIds must reference active categories');
-    }
+  private async withServiceCatalog<
+    T extends ProviderService & { images: ProviderServiceImage[] },
+  >(
+    client: Prisma.TransactionClient,
+    service: T,
+  ): Promise<ProviderDashboardServiceRecord> {
+    const [record] = await this.relations.attachServiceCatalog(client, [
+      service,
+    ]);
+    return record;
   }
 
   private serviceInclude() {
     return {
-      category: true,
-      city: true,
       images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
     } satisfies Prisma.ProviderServiceInclude;
   }
 
   private quoteInclude() {
     return {
-      user: {
-        select: { id: true, phone: true, ...applicationNameFields },
-      },
-      service: { include: { category: true } },
-      weddingPlan: {
-        select: {
-          id: true,
-          title: true,
-          city: true,
-          weddingDate: true,
-          currency: true,
-        },
-      },
+      service: true,
       offers: { orderBy: { createdAt: 'desc' } },
     } satisfies Prisma.QuoteRequestInclude;
   }

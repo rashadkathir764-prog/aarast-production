@@ -8,6 +8,7 @@ import type {
   ProviderService,
   QuoteOffer,
   QuoteRequest,
+  WeddingPlan,
 } from "@prisma/client";
 import {
   CATALOG_READ_PORT,
@@ -18,6 +19,7 @@ import {
   type FinancePort,
 } from "../modules/finance/public/finance.port";
 import {
+  type AppIdentity,
   USER_READ_PORT,
   type UserReadPort,
 } from "../modules/identity/public/user-read.port";
@@ -96,6 +98,76 @@ export class MarketplaceRelationsService {
       ...favorite,
       provider: providers[index],
     }));
+  }
+
+  /** A provider's own services with their catalog rows (the dashboard shape, no provider). */
+  async attachServiceCatalog<T extends ProviderService>(
+    client: Prisma.TransactionClient,
+    services: T[],
+  ): Promise<Array<T & { category: ProviderCategory; city: City | null }>> {
+    const { cities, categories } = await this.catalogFor(client, services, services);
+    return services.map((service) => ({
+      ...service,
+      category: this.required(categories.get(service.categoryId), "Provider category"),
+      city: service.cityId ? (cities.get(service.cityId) ?? null) : null,
+    }));
+  }
+
+  /** The provider dashboard's quotes: the requester, the service category and the plan (with its currency). */
+  async attachDashboardQuoteRelations<
+    T extends QuoteRequest & { service: ProviderService | null },
+  >(
+    client: Prisma.TransactionClient,
+    quotes: T[],
+  ): Promise<
+    Array<
+      T & {
+        user: AppIdentity;
+        service: (ProviderService & { category: ProviderCategory }) | null;
+        weddingPlan: Pick<WeddingPlan, "id" | "title" | "city" | "weddingDate" | "currency"> | null;
+      }
+    >
+  > {
+    const { categories } = await this.catalogFor(
+      client,
+      [],
+      quotes.flatMap((quote) => (quote.service ? [quote.service] : [])),
+    );
+    const users = new Map(
+      (
+        await this.users.getAppIdentities(client, unique(quotes.map((quote) => quote.userId)))
+      ).map((user) => [user.id, user]),
+    );
+    const plans = new Map(
+      (
+        await this.plans.getPlans(
+          client,
+          unique(quotes.flatMap((quote) => (quote.weddingPlanId ? [quote.weddingPlanId] : []))),
+        )
+      ).map((plan) => [plan.id, plan]),
+    );
+    return quotes.map((quote) => {
+      const plan = quote.weddingPlanId ? plans.get(quote.weddingPlanId) : undefined;
+      return {
+        ...quote,
+        user: this.required(users.get(quote.userId), "Quote requester"),
+        service: quote.service
+          ? {
+              ...quote.service,
+              category: this.required(categories.get(quote.service.categoryId), "Provider category"),
+            }
+          : null,
+        weddingPlan: plan
+          ? {
+              id: plan.id,
+              title: plan.title,
+              city: plan.city,
+              weddingDate: plan.weddingDate,
+              currency: plan.currency,
+            }
+          : null,
+      };
+    });
   }
 
   async attachServiceDetails<

@@ -15,6 +15,7 @@ import { ProviderReadService } from '../../../src/modules/marketplace/internal/p
 import { QuoteReadService } from '../../../src/modules/marketplace/internal/quote-read.service';
 import { MarketplaceRelationsService } from '../../../src/marketplace/marketplace-relations';
 import { MarketplaceService } from '../../../src/marketplace/marketplace.service';
+import { ProviderDashboardService } from '../../../src/provider-dashboard/provider-dashboard.service';
 import { MessagingErasureService } from '../../../src/modules/messaging/internal/messaging-erasure.service';
 import { MessagingParticipationService } from '../../../src/modules/messaging/internal/messaging-participation.service';
 import { NotificationsErasureService } from '../../../src/modules/notifications/internal/notifications-erasure.service';
@@ -111,6 +112,24 @@ export function marketplaceService(
     scope,
     marketplaceRelations,
     history,
+  );
+}
+
+/** `ProviderDashboardService` with the catalog and provider-account ports and the relations service. */
+export function providerDashboardService(
+  prisma: unknown,
+  notifications: unknown,
+  mediaStorage: unknown,
+  lifecycle: unknown,
+): ProviderDashboardService {
+  return new ProviderDashboardService(
+    prisma as any,
+    notifications as any,
+    mediaStorage as any,
+    lifecycle as any,
+    ownerPorts.catalog,
+    ownerPorts.users,
+    marketplaceRelations,
   );
 }
 

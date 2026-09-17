@@ -8,7 +8,7 @@ import {
   NotificationType,
   UserStatus,
 } from "@prisma/client";
-import { NotificationsService } from "../src/notifications/notifications.service";
+import { notificationsService } from "./support/owner-ports";
 import { OutboxService } from "../src/platform/outbox/outbox.service";
 
 const now = new Date("2026-08-02T00:00:00.000Z");
@@ -98,16 +98,7 @@ function directReadHarness(
     canManageTasks: () => true,
     canViewMoney: () => true,
   };
-  const contributorScope = {
-    qualifyingEntityIds: async () => [],
-    qualifyingEntityIdsInTransaction: async () => [],
-  };
-  const service = new (NotificationsService as any)(
-    prisma,
-    permissions,
-    new OutboxService(),
-    contributorScope,
-  ) as NotificationsService;
+  const service = notificationsService(prisma, permissions, new OutboxService());
   return { service };
 }
 
@@ -183,11 +174,13 @@ test("list visibility carries live task and qualifying cost scope into the datab
           entityId: "task-created",
           entityType: ContributionEntityType.TASK,
           historyScope: { weddingPlanId: "plan-1" },
+          contributorTenure: { actorUserId: "contributor-1" },
         },
         {
           entityId: "cost-contributed",
           entityType: ContributionEntityType.WEDDING_COST,
           historyScope: { weddingPlanId: "plan-1" },
+          contributorTenure: { actorUserId: "contributor-1" },
         },
         ];
       },
@@ -201,7 +194,7 @@ test("list visibility carries live task and qualifying cost scope into the datab
       ],
     },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     {} as any,
     new OutboxService(),
@@ -213,8 +206,19 @@ test("list visibility carries live task and qualifying cost scope into the datab
   assert.match(serialized, /task-assigned/);
   assert.match(serialized, /task-created/);
   assert.match(serialized, /schedule-for-contributed-cost/);
-  assert.match(serialized, /canManageTasks/);
-  assert.match(serialized, /canViewMoney/);
+  // The task and money permissions used to be re-checked by a join on the
+  // membership row; they are read from the membership through the port
+  // when the predicate is built and scope the entity clauses to the plan.
+  const entityVisibility = predicate?.AND.find(
+    (clause) => "OR" in clause && Array.isArray(clause.OR) && clause.OR.length === 4,
+  ) as { OR: any[] } | undefined;
+  assert.ok(entityVisibility);
+  assert.deepEqual(entityVisibility.OR[2].AND[1].OR[1], {
+    AND: [{ weddingPlanId: "plan-1" }, { entityId: { in: ["task-assigned", "task-created"] } }],
+  });
+  assert.deepEqual(entityVisibility.OR[3].AND[1].OR[1], {
+    AND: [{ weddingPlanId: "plan-1" }, { entityId: { in: ["schedule-for-contributed-cost"] } }],
+  });
   assert.doesNotMatch(serialized, /task-from-another-contributor/);
   assert.doesNotMatch(serialized, /schedule-for-another-cost/);
   assert.doesNotMatch(JSON.stringify(contributionWhere), /endedAt/);
@@ -359,7 +363,7 @@ test("scheduled reminders target only each contributor's current task or qualify
     },
     outboxEvent: { create: async () => ({ id: "outbox" }) },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) =>
         operation(tx),
@@ -406,12 +410,13 @@ test("immediate task-due notifications use the same contributor scope as the sch
     updatedAt: now,
   };
   const plan = {
+    id: "plan-1",
     ownerUserId: "owner-1",
     status: "PLANNING",
     sharedMembers: [
-      { userId: "member-a", canManageTasks: true },
-      { userId: "member-b", canManageTasks: true },
-      { userId: "member-c", canManageTasks: false },
+      { userId: "member-a", canManageTasks: true, receiveNotifications: true },
+      { userId: "member-b", canManageTasks: true, receiveNotifications: true },
+      { userId: "member-c", canManageTasks: false, receiveNotifications: true },
     ],
   };
   const recipients: string[] = [];
@@ -422,8 +427,10 @@ test("immediate task-due notifications use the same contributor scope as the sch
         ? query.strings.join(" ")
         : String(query);
       if (sql.includes('FROM "User"')) {
-        if (sql.includes('WHERE "id" =')) {
-          return [{ id: query.values?.[0] ?? "recipient" }];
+        // Every lifecycle lock is identity's `IN (...)` statement: the
+        // recipient lock names one user, the participant lock all four.
+        if (query.values?.length === 1) {
+          return [{ id: query.values[0], status: UserStatus.ACTIVE }];
         }
         return ["owner-1", "member-a", "member-b", "member-c"].map(
           (id) => ({ id, status: UserStatus.ACTIVE }),
@@ -437,8 +444,8 @@ test("immediate task-due notifications use the same contributor scope as the sch
       findMany: async ({ where }: { where: unknown }) => {
         contributionWhere = where;
         return [
-          { contributorTenure: { actorUserId: "member-b" } },
-          { contributorTenure: { actorUserId: "member-c" } },
+          { entityId: task.id, entityType: ContributionEntityType.TASK, historyScope: { weddingPlanId: "plan-1" }, contributorTenure: { actorUserId: "member-b" } },
+          { entityId: task.id, entityType: ContributionEntityType.TASK, historyScope: { weddingPlanId: "plan-1" }, contributorTenure: { actorUserId: "member-c" } },
         ];
       },
     },
@@ -465,7 +472,7 @@ test("immediate task-due notifications use the same contributor scope as the sch
     },
     outboxEvent: { create: async () => ({ id: "outbox" }) },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) =>
         operation(tx),
@@ -508,15 +515,10 @@ test("provider quote updates fall back to the plan owner after requester provide
       }),
     },
   };
-  const service = new (NotificationsService as any)(
-    {} as any,
-    {} as any,
-    new OutboxService(),
-    {} as any,
-  );
+  const service = notificationsService({} as any, {} as any, new OutboxService());
 
   const resolved = await service.resolveProviderUpdateRecipientInTransaction(
-    tx,
+    tx as any,
     "plan-1",
     "contributor-1",
   );

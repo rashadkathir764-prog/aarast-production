@@ -9,7 +9,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { NotificationsService } from "../src/notifications/notifications.service";
+import { notificationsService } from "./support/owner-ports";
 import { OutboxService } from "../src/platform/outbox/outbox.service";
 
 const user = {
@@ -97,7 +97,7 @@ test("financial mark-read rechecks live money access inside the transaction", as
     }),
     canViewMoney: () => false,
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     permissions as any,
     new OutboxService(),
@@ -156,7 +156,7 @@ test("provider suspension committed before archive wins without a notification w
     $transaction: async (operation: (client: typeof tx) => unknown) =>
       operation(tx),
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     {} as any,
     new OutboxService(),
@@ -217,7 +217,7 @@ test("plan-scoped mark-all fails closed when membership was revoked", async () =
     $transaction: async (operation: (client: typeof tx) => unknown) =>
       operation(tx),
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     {} as any,
     new OutboxService(),
@@ -290,7 +290,7 @@ test("plan participant generation re-reads membership after lifecycle locks", as
     $transaction: async (operation: (client: typeof tx) => unknown) =>
       operation(tx),
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     {} as any,
     new OutboxService(),
@@ -377,7 +377,7 @@ test("scheduler re-reads recipients after member revocation", async () => {
     $transaction: async (operation: (client: typeof tx) => unknown) =>
       operation(tx),
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     {} as any,
     new OutboxService(),
@@ -422,7 +422,7 @@ test("list and unread count include defensive live task and money predicates", a
         ? (operation as (client: unknown) => unknown)(prisma)
         : Promise.all(operation as unknown[]),
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     {} as any,
     new OutboxService(),
@@ -436,9 +436,13 @@ test("list and unread count include defensive live task and money predicates", a
     const serialized = JSON.stringify(where);
     assert.match(serialized, /payment_schedule/);
     assert.match(serialized, /task/);
-    assert.match(serialized, /sharedMembers/);
-    assert.match(serialized, /canManageTasks/);
-    assert.match(serialized, /canViewMoney/);
+    // The membership flags used to be re-checked by a join on the
+    // membership row; they are read through the port when the predicate
+    // is built and scope the plan clauses: the member's plan for tasks
+    // and money, the live task the member may see.
+    assert.ok(serialized.includes(`"weddingPlanId":{"in":["${planId}"]}`));
+    assert.ok(serialized.includes(`{"weddingPlanId":"${planId}"},{"entityId":{"in":["task-live"]}}`));
+    assert.doesNotMatch(serialized, /sharedMembers|"weddingPlan":\{/);
     assert.match(serialized, /SHARING_INVITATION/);
     assert.match(serialized, /plan_invite/);
   }
@@ -491,7 +495,7 @@ test("a plan-invite notification remains mutable before membership exists", asyn
       throw new NotFoundException("Wedding plan not found");
     },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma as any,
     permissions as any,
     new OutboxService(),
@@ -575,7 +579,7 @@ test("scheduler re-reads task and schedule lifecycle rows after locking", async 
     },
     outboxEvent: { create: async () => ({ id: "outbox-1" }) },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) =>
         operation(tx),
@@ -636,7 +640,7 @@ test("notifyTaskDue re-reads the locked task instead of trusting its argument", 
     notificationPreference: { findUnique: async () => null },
     outboxEvent: { create: async () => ({ id: "outbox-1" }) },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) =>
         operation(tx),
@@ -694,7 +698,7 @@ test("notifyTaskDue stops before reading the task when the locked plan is archiv
     notificationPreference: { findUnique: async () => null },
     outboxEvent: { create: async () => ({ id: "outbox-1" }) },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) =>
         operation(tx),

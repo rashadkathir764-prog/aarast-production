@@ -10,10 +10,9 @@ import {
   WeddingPlanStatus,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
+import { ownerPorts, notificationsService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -43,8 +42,8 @@ const {
 assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
-const notifications = new NotificationsService(
-  prisma as any,
+const notifications = notificationsService(
+  prisma,
   new PermissionService(prisma as any, ownerPorts.plans),
   new OutboxService(),
 );

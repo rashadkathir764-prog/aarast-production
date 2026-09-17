@@ -6,6 +6,8 @@ import { CollaborationErasureService } from '../../../src/modules/collaboration/
 import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
 import { ContributorScopeService } from '../../../src/modules/collaboration/internal/contributor-scope.service';
 import { ConversationRelationsService } from '../../../src/conversations/conversation-relations';
+import { ConversationLifecycleService } from '../../../src/modules/messaging/internal/conversation-lifecycle.internal.module';
+import { NotificationsService } from '../../../src/notifications/notifications.service';
 import type { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
 import { SharingService } from '../../../src/modules/collaboration/internal/sharing.service';
 import { FinancePortService } from '../../../src/modules/finance/internal/finance-port.service';
@@ -142,6 +144,25 @@ export function conversationRelations(prisma: unknown, permissions: PermissionSe
     ownerPorts.plans,
     permissions,
     ownerPorts.quotes,
+  );
+}
+
+/** `NotificationsService` with the plan, scope, task, finance, provider and conversation ports; the scope runs over the given permission service. */
+export function notificationsService(
+  prisma: unknown,
+  permissions: PermissionService,
+  outbox: unknown,
+): NotificationsService {
+  return new NotificationsService(
+    prisma as any,
+    permissions,
+    outbox as any,
+    ownerPorts.plans,
+    new ContributorScopeService(contributionHistoryService(prisma, permissions)),
+    ownerPorts.tasks,
+    ownerPorts.finance,
+    ownerPorts.providers,
+    new ConversationLifecycleService(ownerPorts.plans, ownerPorts.providers),
   );
 }
 

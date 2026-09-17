@@ -39,26 +39,74 @@ export interface CreateNotificationInput {
   dedupeKey?: string;
 }
 
-export type NotificationPurgeClient = Pick<
-  Prisma.TransactionClient,
-  'notification' | 'outboxEvent'
->;
+// The caller's transaction (or the shared client). Notifications reads the
+// other contexts' rows through their ports on it, so the whole client is
+// required; the earlier picks named the foreign tables notifications read
+// itself, which are gone.
+export type NotificationPurgeClient = Prisma.TransactionClient;
+export type NotificationCreateClient = Prisma.TransactionClient;
+export type NotificationVisibilityClient = Prisma.TransactionClient;
 
-export type NotificationCreateClient = Pick<
-  Prisma.TransactionClient,
-  '$queryRaw' | 'notification' | 'notificationPreference' | 'outboxEvent'
->;
-
-export type NotificationVisibilityClient = Pick<
-  Prisma.TransactionClient,
-  | 'conversation'
-  | 'contributionEvent'
-  | 'notification'
-  | 'paymentSchedule'
-  | 'provider'
-  | 'sharedMember'
-  | 'weddingTask'
->;
+// The visibility filter a reader's notifications must satisfy, declared by
+// its exact keys: plan visibility, money visibility, entity visibility and
+// (for a non-operational provider account) the provider-audience
+// exclusions. Ownership and membership are planning's and collaboration's
+// rows, read through their ports and applied to the notification table by
+// plan id; the shape is declared so the ownership scan can prove it.
+type JsonPathEquals = { data: { path: string[]; equals: string } };
+type JsonPathPresent = { data: { path: string[]; not: typeof Prisma.AnyNull } };
+export interface ProviderAudienceWhere {
+  AND: [JsonPathEquals, JsonPathEquals];
+}
+export interface PlanVisibilityWhere {
+  OR: Array<
+    | { weddingPlanId: null }
+    | { type: NotificationType; entityType: string }
+    | ProviderAudienceWhere
+    | { weddingPlanId: { in: string[] } }
+  >;
+}
+export interface MoneyVisibilityWhere {
+  OR: [
+    {
+      AND: [
+        { type: { notIn: NotificationType[] } },
+        { OR: [{ entityType: null }, { entityType: { not: string } }] },
+      ];
+    },
+    { weddingPlanId: { in: string[] } },
+  ];
+}
+export type ScopedEntityClause =
+  | { weddingPlanId: { in: string[] } }
+  | { AND: [{ weddingPlanId: string }, { entityId: { in: string[] } }] };
+export interface EntityVisibilityWhere {
+  OR: [
+    { entityType: null },
+    { entityType: { notIn: string[] } },
+    { AND: [{ entityType: string }, { OR: ScopedEntityClause[] }] },
+    { AND: [{ entityType: string }, { OR: ScopedEntityClause[] }] },
+  ];
+}
+export type ProviderExclusionClause =
+  | JsonPathEquals
+  | JsonPathPresent
+  | { entityType: { not: null } }
+  | { entityType: string }
+  | { routeTarget: { not: null } }
+  | { routeTarget: string }
+  | { type: NotificationType };
+export interface ProviderVisibilityWhere {
+  AND: Array<{ NOT: { AND: ProviderExclusionClause[] } }>;
+}
+export interface NotificationVisibilityWhere {
+  AND: Array<
+    | PlanVisibilityWhere
+    | MoneyVisibilityWhere
+    | EntityVisibilityWhere
+    | ProviderVisibilityWhere
+  >;
+}
 
 export interface NotificationsPort {
   createNotificationInTransaction(
@@ -79,7 +127,7 @@ export interface NotificationsPort {
   visibilityWhereForUser(
     userId: string,
     client?: NotificationVisibilityClient,
-  ): Promise<Prisma.NotificationWhereInput | null>;
+  ): Promise<NotificationVisibilityWhere | null>;
   /** Whether each recipient still accepts provider-message notifications (missing rows accept). */
   listProviderMessagePreferences(
     client: Prisma.TransactionClient,

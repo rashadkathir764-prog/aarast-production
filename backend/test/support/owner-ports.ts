@@ -160,7 +160,10 @@ export function completePermissions<T extends object>(fake: T, client: unknown):
     'getMembership',
     'listMemberships',
     'listMemberPlanIds',
+    'listPlanMembers',
     'lockMembershipForShareInTransaction',
+    'lockMembershipsForShareInTransaction',
+    'lockPlanMembershipsForShareInTransaction',
   ] as const) {
     if (typeof (fake as Record<string, unknown>)[method] !== 'function') {
       owned[method] = (live[method] as (...args: unknown[]) => unknown).bind(live);
@@ -341,6 +344,32 @@ export function conversationsGateway(
     realtimeSessions(prisma),
     conversations as any,
     realtime as any,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Notifications: the plans, members, due tasks and schedules, contributions,
+// provider and conversation rows the reminders and the visibility rules
+// read are the owners'; fixtures keep their three-argument list.
+import { NotificationsService } from '../../src/notifications/notifications.service';
+import { ConversationLifecycleService } from '../../src/modules/messaging/internal/conversation-lifecycle.internal.module';
+
+export function notificationsService(
+  prisma: unknown,
+  permissions: unknown,
+  outbox: unknown,
+): NotificationsService {
+  const client = withOwnerTables(prisma as any);
+  return new NotificationsService(
+    client,
+    completePermissions(permissions as object, client) as any,
+    outbox as any,
+    ownerPorts.plans,
+    contributorScope(client),
+    ownerPorts.tasks,
+    ownerPorts.finance,
+    ownerPorts.providers,
+    new ConversationLifecycleService(ownerPorts.plans, ownerPorts.providers),
   );
 }
 

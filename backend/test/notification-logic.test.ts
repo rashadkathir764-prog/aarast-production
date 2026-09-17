@@ -14,7 +14,7 @@ import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../src/platform/outbox/outbox.service";
 import { PrismaService } from "../src/platform/database/prisma.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { sharingService } from "./support/owner-ports";
+import { notificationsService, sharingService } from "./support/owner-ports";
 
 const user = { id: "user-1" } as AuthenticatedUser;
 
@@ -142,7 +142,7 @@ function createHarness() {
   } as unknown as PrismaService;
   const permissions = {} as PermissionService;
   return {
-    service: new NotificationsService(prisma, permissions, new OutboxService()),
+    service: notificationsService(prisma, permissions, new OutboxService()),
     records,
   };
 }
@@ -205,7 +205,7 @@ test("transaction-scoped notification creation reuses the caller transaction", a
       throw new Error("nested transaction must not be opened");
     },
   } as unknown as PrismaService;
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma,
     {} as PermissionService,
     new OutboxService(),
@@ -236,7 +236,7 @@ test("the provider-message preferences of a recipient set are read by their owne
       },
     },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {} as PrismaService,
     {} as PermissionService,
     new OutboxService(),
@@ -278,7 +278,7 @@ test("disabled provider-message preference suppresses quote notifications and ou
       },
     },
   };
-  const service = new NotificationsService(
+  const service = notificationsService(
     {} as PrismaService,
     {} as PermissionService,
     new OutboxService(),
@@ -491,7 +491,7 @@ test("scheduled reminders respect notification and financial permissions", async
     }) =>
       context.sharedMember.canViewMoney || context.sharedMember.canManageMoney,
   } as unknown as PermissionService;
-  const service = new NotificationsService(
+  const service = notificationsService(
     prisma,
     permissions,
     new OutboxService(),

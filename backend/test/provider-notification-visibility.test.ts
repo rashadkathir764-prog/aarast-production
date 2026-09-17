@@ -12,7 +12,7 @@ import {
   WeddingPlanStatus,
 } from '@prisma/client';
 import { DashboardService } from '../src/dashboard/dashboard.service';
-import { NotificationsService } from '../src/notifications/notifications.service';
+import { notificationsService } from './support/owner-ports';
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const providerId = '22222222-2222-4222-8222-222222222222';
@@ -374,7 +374,7 @@ function createHarness(
   };
 
   return {
-    service: new NotificationsService(
+    service: notificationsService(
       prisma as any,
       {
         assertPlanReadable: async (planId: string) => {

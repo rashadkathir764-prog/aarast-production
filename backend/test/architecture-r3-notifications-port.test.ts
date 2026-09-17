@@ -71,14 +71,25 @@ test('Task 4 publishes the exact notifications service contract and signature ty
     'resolveProviderUpdateRecipientInTransaction',
     'visibilityWhereForUser',
   ]);
+  // The visibility filter the port returns is declared by its exact keys
+  // (plan, money, entity and provider clauses) so the ownership scan can
+  // prove the notification reads that carry it; the client aliases stay.
   assert.deepEqual(exportedTypeNames(path), [
     'CreateNotificationInput',
+    'EntityVisibilityWhere',
+    'MoneyVisibilityWhere',
     'NotificationCreateClient',
     'NotificationPurgeClient',
     'NotificationResponse',
     'NotificationVisibilityClient',
+    'NotificationVisibilityWhere',
     'NotificationsPort',
+    'PlanVisibilityWhere',
+    'ProviderAudienceWhere',
+    'ProviderExclusionClause',
     'ProviderMessagePreference',
+    'ProviderVisibilityWhere',
+    'ScopedEntityClause',
   ]);
 });
 

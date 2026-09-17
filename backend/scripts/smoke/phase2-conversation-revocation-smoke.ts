@@ -13,10 +13,9 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { ConversationsService } from "../../src/conversations/conversations.service";
-import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts, contributionHistoryService, sharingService, conversationRelations } from "./support/owner-ports";
+import { ownerPorts, contributionHistoryService, sharingService, conversationRelations, notificationsService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -49,11 +48,7 @@ const prisma = new PrismaClient();
 const outbox = new OutboxService();
 const permissions = new PermissionService(prisma as any, ownerPorts.plans);
 const history = contributionHistoryService(prisma, permissions);
-const notifications = new NotificationsService(
-  prisma as any,
-  permissions,
-  outbox,
-);
+const notifications = notificationsService(prisma, permissions, outbox);
 const repetitions = Number(
   process.env.PHASE2_CHAT_RACE_REPETITIONS ?? "1",
 );

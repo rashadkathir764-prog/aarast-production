@@ -27,32 +27,25 @@ export class PushDeliveryService implements PushDeliveryPort {
   async dispatchNotification(notificationId: string): Promise<void> {
     if (!this.firebase.enabled) return;
 
+    // The push preference and the installations are notifications' own
+    // rows keyed by the recipient; they used to be reached through
+    // identity's user row.
     const notification = await this.prisma.notification.findUnique({
       where: { id: notificationId },
-      include: {
-        user: {
-          select: {
-            notificationPreference: {
-              select: { pushEnabled: true },
-            },
-            pushInstallations: {
-              where: { enabled: true },
-              orderBy: { createdAt: "asc" },
-              select: { id: true, fid: true, updatedAt: true },
-            },
-          },
-        },
-      },
     });
-    if (
-      !notification ||
-      !isPushNotificationType(notification.type) ||
-      notification.user.notificationPreference?.pushEnabled !== true
-    ) {
-      return;
-    }
+    if (!notification || !isPushNotificationType(notification.type)) return;
+    const preference = await this.prisma.notificationPreference.findUnique({
+      where: { userId: notification.userId },
+      select: { pushEnabled: true },
+    });
+    if (preference?.pushEnabled !== true) return;
 
-    const fids = notification.user.pushInstallations.map((item) => item.fid);
+    const installations = await this.prisma.pushInstallation.findMany({
+      where: { userId: notification.userId, enabled: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, fid: true, updatedAt: true },
+    });
+    const fids = installations.map((item) => item.fid);
     if (fids.length === 0) return;
 
     const permanentFailures = new Set<string>();
@@ -79,7 +72,7 @@ export class PushDeliveryService implements PushDeliveryPort {
     }
 
     if (permanentFailures.size > 0) {
-      const failedInstallations = notification.user.pushInstallations.filter(
+      const failedInstallations = installations.filter(
         (installation) => permanentFailures.has(installation.fid),
       );
       await runSerializableTransaction(this.prisma, async (tx) => {

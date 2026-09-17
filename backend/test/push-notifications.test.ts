@@ -144,6 +144,9 @@ test("delivery removes permanent invalid installations and retries transient fai
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation(transaction),
+      // The push preference and the installations are notifications' own
+      // rows keyed by the recipient (they used to be reached through the
+      // user include).
       notification: {
         findUnique: async () => ({
           id: "notification-1",
@@ -162,22 +165,27 @@ test("delivery removes permanent invalid installations and retries transient fai
           dedupeKey: "dedupe",
           createdAt: new Date(),
           updatedAt: new Date(),
-          user: {
-            notificationPreference: { pushEnabled: true },
-            pushInstallations: [
-              {
-                id: "installation-permanent",
-                fid: "fid-permanent",
-                updatedAt: new Date("2026-07-29T00:00:00.000Z"),
-              },
-              {
-                id: "installation-transient",
-                fid: "fid-transient",
-                updatedAt: new Date("2026-07-29T00:00:00.000Z"),
-              },
-            ],
-          },
         }),
+      },
+      notificationPreference: {
+        findUnique: async () => ({ pushEnabled: true }),
+      },
+      pushInstallation: {
+        findMany: async ({ where }: any) => {
+          assert.deepEqual(where, { userId: "user-1", enabled: true });
+          return [
+            {
+              id: "installation-permanent",
+              fid: "fid-permanent",
+              updatedAt: new Date("2026-07-29T00:00:00.000Z"),
+            },
+            {
+              id: "installation-transient",
+              fid: "fid-transient",
+              updatedAt: new Date("2026-07-29T00:00:00.000Z"),
+            },
+          ];
+        },
       },
     } as never,
     {
@@ -255,17 +263,19 @@ test("delivery disables push when every registered installation is permanently i
           id: "notification-2",
           userId: "user-2",
           type: NotificationType.TASK_ASSIGNED,
-          user: {
-            notificationPreference: { pushEnabled: true },
-            pushInstallations: [
-              {
-                id: "installation-only",
-                fid: "fid-only",
-                updatedAt: new Date("2026-07-29T00:00:00.000Z"),
-              },
-            ],
-          },
         }),
+      },
+      notificationPreference: {
+        findUnique: async () => ({ pushEnabled: true }),
+      },
+      pushInstallation: {
+        findMany: async () => [
+          {
+            id: "installation-only",
+            fid: "fid-only",
+            updatedAt: new Date("2026-07-29T00:00:00.000Z"),
+          },
+        ],
       },
     } as never,
     {

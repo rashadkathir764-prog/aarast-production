@@ -11,7 +11,8 @@ import {
 } from "@prisma/client";
 import { ForbiddenException } from "@nestjs/common";
 import { AdminService } from "../../src/admin/admin.service";
-import { NotificationsService } from "../../src/notifications/notifications.service";
+import { notificationsService, ownerPorts } from "./support/owner-ports";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -111,9 +112,9 @@ async function main(): Promise<void> {
   });
   const revokedConversationIds: string[][] = [];
   const disconnectedUsers: string[] = [];
-  const notifications = new NotificationsService(
-    prisma as any,
-    {} as any,
+  const notifications = notificationsService(
+    prisma,
+    new PermissionService(prisma as any, ownerPorts.plans),
     new OutboxService(),
   );
   const service = new AdminService(

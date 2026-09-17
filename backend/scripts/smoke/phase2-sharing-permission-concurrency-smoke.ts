@@ -8,12 +8,10 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
-import { SharingService } from "../../src/modules/collaboration/internal/sharing.service";
+import { ownerPorts, contributionHistoryService, sharingService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -39,14 +37,14 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any, ownerPorts.plans);
-const history = new ContributionHistoryService(prisma as any);
+const history = contributionHistoryService(prisma, permissions);
 const notifications = new NotificationsService(
   prisma as any,
   permissions,
   new OutboxService(),
 );
-const sharing = new SharingService(
-  prisma as any,
+const sharing = sharingService(
+  prisma,
   permissions,
   notifications,
   {
@@ -480,8 +478,8 @@ async function assertCancellationSupersedesInFlightDelivery(): Promise<void> {
       const releaseDelivery = deferred();
       let deliveryCalls = 0;
       let deliveredToken: string | null = null;
-      const deliverySharing = new SharingService(
-        prisma as any,
+      const deliverySharing = sharingService(
+        prisma,
         permissions,
         notifications,
         {

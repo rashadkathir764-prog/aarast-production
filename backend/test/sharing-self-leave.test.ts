@@ -7,6 +7,7 @@ import { METHOD_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { SharedMemberRole } from "@prisma/client";
 import { ApiV1WeddingPlanMembersController } from "../src/modules/collaboration/api/sharing.controller";
 import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { sharingService } from "./support/owner-ports";
 
 test("the members controller exposes DELETE me and forwards the authenticated membership precondition", async () => {
   const prototype = ApiV1WeddingPlanMembersController.prototype;
@@ -122,7 +123,7 @@ test("a contributor leaves one plan transactionally while history remains retain
     recordInTransaction: async () => calls.push("membership-end-recorded"),
     closeTenureInTransaction: async () => calls.push("tenure-closed"),
   };
-  const service = new SharingService(
+  const service = sharingService(
     {
       weddingPlan: { findUnique: async () => ({ ownerUserId: "owner-a" }) },
       sharedMember: { findUnique: async () => member },
@@ -193,7 +194,7 @@ test("a delayed leave request cannot delete a newly accepted membership", async 
       },
     },
   };
-  const service = new SharingService(
+  const service = sharingService(
     {
       weddingPlan: { findUnique: async () => ({ ownerUserId: "owner-a" }) },
       $transaction: async (operation: (client: typeof tx) => unknown) =>
@@ -250,7 +251,7 @@ test("self-leave is idempotent only for a previously completed MEMBER_LEFT tenur
       findFirst: async () => ({ id: "old-tenure", endReason: "MEMBER_LEFT" }),
     },
   };
-  const service = new SharingService(
+  const service = sharingService(
     {
       weddingPlan: { findUnique: async () => ({ ownerUserId: "owner-a" }) },
       sharedMember: { findUnique: async () => null },
@@ -328,7 +329,7 @@ test("revoking member-management authority atomically revokes invitations create
     }),
     canViewMoney: () => false,
   };
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => member },
       $transaction: async (operation: (client: typeof tx) => unknown) =>
@@ -358,7 +359,7 @@ test("revoking member-management authority atomically revokes invitations create
 });
 
 test("the plan owner cannot use the contributor self-leave operation", async () => {
-  const service = new SharingService(
+  const service = sharingService(
     {
       weddingPlan: { findUnique: async () => ({ ownerUserId: "owner-a" }) },
     } as any,

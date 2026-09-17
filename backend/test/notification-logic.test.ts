@@ -14,7 +14,7 @@ import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../src/platform/outbox/outbox.service";
 import { PrismaService } from "../src/platform/database/prisma.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { sharingService } from "./support/owner-ports";
 
 const user = { id: "user-1" } as AuthenticatedUser;
 
@@ -584,7 +584,7 @@ test("revoking financial access purges stored financial notifications atomically
         weddingPlanId === existing.weddingPlanId;
     },
   };
-  const sharing = new SharingService(
+  const sharing = sharingService(
     prisma,
     permissions,
     notifications as unknown as NotificationsService,

@@ -24,7 +24,7 @@ export const ownerPorts = {
 };
 
 const realPermissions = new PermissionService({} as any, ownerPorts.plans);
-const realHistory = new ContributionHistoryService({} as any);
+const realHistory = new ContributionHistoryService({} as any, ownerPorts.plans, realPermissions);
 
 /**
  * A collaboration permission fake completed with the owner-side methods a
@@ -131,4 +131,162 @@ export function authService(
     realtime as any,
     realPermissions,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Collaboration services: the same rule — the fixture's argument list stays,
+// the real owner ports are appended.
+import { InviteAccessService } from '../../src/modules/collaboration/internal/invite-access.service';
+import { SharingService } from '../../src/modules/collaboration/internal/sharing.service';
+import { MessagingParticipationService } from '../../src/modules/messaging/internal/messaging-participation.service';
+
+export const messagingParticipation = new MessagingParticipationService(
+  ownerPorts.providers,
+  ownerPorts.plans,
+);
+
+export function sharingService(
+  prisma: unknown,
+  permissions: unknown,
+  notifications: unknown,
+  invitationDelivery: unknown,
+  history: unknown,
+  realtime?: unknown,
+): SharingService {
+  const client = withOwnerTables(prisma as any);
+  // A permission fake without the live re-check gets the real one over the
+  // fixture's client; the fake's own methods win.
+  const livePermissions = new PermissionService(client, ownerPorts.plans);
+  const completedPermissions = permissions && typeof (permissions as any).liveAuthorizationFilter === 'function'
+    ? permissions
+    : Object.assign(
+        Object.create(Object.getPrototypeOf(permissions ?? {})),
+        { liveAuthorizationFilter: livePermissions.liveAuthorizationFilter.bind(livePermissions) },
+        permissions,
+      );
+  return new SharingService(
+    client,
+    completedPermissions as any,
+    notifications as any,
+    invitationDelivery as any,
+    history as any,
+    ownerPorts.plans,
+    ownerPorts.users,
+    ownerPorts.users,
+    messagingParticipation,
+    realtime as any,
+  );
+}
+
+/** A history service over the fixture's client; the live re-check runs through a permission service over the same client. */
+export function contributionHistoryService(prisma: unknown): ContributionHistoryService {
+  const client = withOwnerTables(prisma as any);
+  return new ContributionHistoryService(
+    client,
+    ownerPorts.plans,
+    new PermissionService(client, ownerPorts.plans),
+  );
+}
+
+export function inviteAccessService(prisma: unknown, auth: unknown): InviteAccessService {
+  return new InviteAccessService(withOwnerTables(prisma as any), auth as any, ownerPorts.users);
+}
+
+// ---------------------------------------------------------------------------
+// Fixture relation tables. Sharing fixtures describe their invite and member
+// rows with the related plan and people inline — the shape the old Prisma
+// includes returned. The owners now read those rows through their ports
+// (`user.findMany`, `weddingPlan.findMany`, `sharedMember.findFirst`, ...).
+// This shim completes a fixture client *in place* (fixtures compare client
+// identity) with owner-table methods that serve exactly the inline rows the
+// fixture already returned, and only where the fixture defines no such method.
+type FakeClient = Record<string, any>;
+
+function isRow(value: unknown): value is Record<string, any> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date);
+}
+
+const OWNER_TABLES = new WeakSet<object>();
+
+type Rows = Map<string, Record<string, any>>;
+interface OwnerStore { users: Rows; plans: Rows; members: Rows }
+
+export function withOwnerTables<T extends FakeClient>(fake: T): T {
+  return install(fake, { users: new Map(), plans: new Map(), members: new Map() });
+}
+
+function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
+  if (!fake || typeof fake !== 'object' || OWNER_TABLES.has(fake)) return fake;
+  OWNER_TABLES.add(fake);
+  const { users, plans, members } = store;
+  const remember = (rows: Rows, row: Record<string, any>) => rows.set(row.id, { ...rows.get(row.id), ...row });
+  const harvest = (table: string, value: unknown, depth = 0): void => {
+    if (depth > 3) return;
+    if (Array.isArray(value)) { for (const item of value) harvest(table, item, depth); return; }
+    if (!isRow(value)) return;
+    for (const key of ['inviter', 'invitee', 'user', 'owner'] as const) {
+      const related = value[key];
+      if (isRow(related) && typeof related.id === 'string') remember(users, related);
+    }
+    const plan = value.weddingPlan;
+    if (isRow(plan) && typeof plan.id === 'string') remember(plans, plan);
+    if (table === 'sharedMember' && typeof value.id === 'string' && typeof value.weddingPlanId === 'string' && typeof value.userId === 'string') {
+      remember(members, value);
+    }
+  };
+  const ids = (where: any): string[] | null => (where?.id?.in ? [...where.id.in] : typeof where?.id === 'string' ? [where.id] : null);
+  const matches = (row: Record<string, any>, where: Record<string, any>) => Object.entries(where ?? {}).every(([key, expected]) => (
+    key === 'id' && isRow(expected) ? (expected.in as string[]).includes(row.id) : row[key] === expected
+  ));
+  const registries: Record<string, Record<string, (args: any) => Promise<unknown>>> = {
+    user: {
+      findMany: async ({ where }: any) => { const wanted = ids(where); return [...users.values()].filter((row) => (wanted ? wanted.includes(row.id) : true)); },
+      findUnique: async ({ where }: any) => users.get(where.id) ?? null,
+      findFirst: async ({ where }: any) => [...users.values()].find((row) => matches(row, where)) ?? null,
+    },
+    weddingPlan: {
+      findMany: async ({ where }: any) => [...plans.values()].filter((row) => matches(row, where)),
+      findUnique: async ({ where }: any) => plans.get(where.id) ?? null,
+      findFirst: async ({ where }: any) => [...plans.values()].find((row) => matches(row, where)) ?? null,
+    },
+    sharedMember: {
+      findFirst: async ({ where }: any) => [...members.values()].find((row) => matches(row, where)) ?? null,
+      findMany: async ({ where }: any) => [...members.values()].filter((row) => matches(row, where)),
+    },
+  };
+  for (const table of ['planInvite', 'sharedMember', 'user', 'weddingPlan']) {
+    const delegate = fake[table];
+    if (!isRow(delegate)) continue;
+    for (const method of Object.keys(delegate)) {
+      const own = delegate[method];
+      if (typeof own !== 'function') continue;
+      delegate[method] = async (...args: unknown[]) => { const result = await own.apply(delegate, args); harvest(table, result); return result; };
+    }
+  }
+  for (const [table, methods] of Object.entries(registries)) {
+    if (fake[table] === undefined) (fake as FakeClient)[table] = {};
+    if (!isRow(fake[table])) continue;
+    for (const [method, implementation] of Object.entries(methods)) {
+      if (fake[table][method] === undefined) fake[table][method] = implementation;
+    }
+  }
+  // Rows read or written inside a transaction are the rows the client serves
+  // afterwards, so the transaction client shares the store. The wrapping is an
+  // accessor because some fixtures replace `$transaction` after the service
+  // was built; the replacement is wrapped the same way.
+  let transaction: unknown = fake.$transaction;
+  if (typeof transaction === 'function') {
+    const wrapped = (operation: unknown, ...rest: unknown[]) => (transaction as (...args: unknown[]) => unknown).call(
+      fake,
+      typeof operation === 'function' ? (tx: FakeClient) => (operation as (client: unknown) => unknown)(install(tx, store)) : operation,
+      ...rest,
+    );
+    Object.defineProperty(fake, '$transaction', {
+      configurable: true,
+      enumerable: true,
+      get: () => wrapped,
+      set: (value: unknown) => { transaction = value; },
+    });
+  }
+  return fake;
 }

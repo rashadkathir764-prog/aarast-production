@@ -2,6 +2,9 @@
 // statements on the client the calling service passes (the smoke's Prisma
 // client or its transaction), exactly as the Nest wiring does.
 import { CollaborationErasureService } from '../../../src/modules/collaboration/internal/collaboration-erasure.service';
+import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
+import type { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
+import { SharingService } from '../../../src/modules/collaboration/internal/sharing.service';
 import { FinancePortService } from '../../../src/modules/finance/internal/finance-port.service';
 import { GuestsPortService } from '../../../src/modules/guests/internal/guests-port.service';
 import { IdentityUserPortService } from '../../../src/modules/identity/internal/identity-user-port.service';
@@ -9,6 +12,7 @@ import { MarketplaceErasureService } from '../../../src/modules/marketplace/inte
 import { ProviderReadService } from '../../../src/modules/marketplace/internal/provider-read.service';
 import { QuoteReadService } from '../../../src/modules/marketplace/internal/quote-read.service';
 import { MessagingErasureService } from '../../../src/modules/messaging/internal/messaging-erasure.service';
+import { MessagingParticipationService } from '../../../src/modules/messaging/internal/messaging-participation.service';
 import { NotificationsErasureService } from '../../../src/modules/notifications/internal/notifications-erasure.service';
 import { PlanErasureService } from '../../../src/modules/planning/internal/plan-erasure.service';
 import { PlanReadService } from '../../../src/modules/planning/internal/plan-read.service';
@@ -37,6 +41,42 @@ export const planningOwnerPorts = [
   ownerPorts.tasks,
   ownerPorts.guests,
 ] as const;
+
+export const messagingParticipation = new MessagingParticipationService(
+  ownerPorts.providers,
+  ownerPorts.plans,
+);
+
+/** The history service over the smoke's client; the live re-check runs through the given permission service. */
+export function contributionHistoryService(
+  prisma: unknown,
+  permissions: PermissionService,
+): ContributionHistoryService {
+  return new ContributionHistoryService(prisma as any, ownerPorts.plans, permissions);
+}
+
+/** `SharingService` with the four owner ports it takes after the history service. */
+export function sharingService(
+  prisma: unknown,
+  permissions: PermissionService,
+  notifications: unknown,
+  invitationDelivery: unknown,
+  history: ContributionHistoryService,
+  realtime?: unknown,
+): SharingService {
+  return new SharingService(
+    prisma as any,
+    permissions,
+    notifications as any,
+    invitationDelivery as any,
+    history,
+    ownerPorts.plans,
+    ownerPorts.users,
+    ownerPorts.users,
+    messagingParticipation,
+    realtime as any,
+  );
+}
 
 /** The eight owner ports `UsersService` takes after the media storage port. */
 export const identityErasurePorts = [

@@ -13,7 +13,6 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { ContributorScopeService } from "../../src/modules/collaboration/internal/contributor-scope.service";
 import { GuestsService } from "../../src/guests/guests.service";
 import {
@@ -21,7 +20,7 @@ import {
   TASK_PERMISSION_REVOKED_MESSAGE,
 } from "../../src/modules/collaboration/public/collaboration-permission.port";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
+import { ownerPorts, contributionHistoryService } from "./support/owner-ports";
 import { TasksService } from "../../src/tasks/tasks.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -46,7 +45,7 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any, ownerPorts.plans);
-const contributionHistory = new ContributionHistoryService(prisma as any);
+const contributionHistory = contributionHistoryService(prisma, permissions);
 const contributorScope = new ContributorScopeService(contributionHistory);
 const tasks = new TasksService(
   prisma as any,

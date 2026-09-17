@@ -19,12 +19,11 @@ import {
 } from "@prisma/client";
 import ts from "typescript";
 import { BudgetCategoriesService } from "../../src/budget-categories/budget-categories.service";
-import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { ContributorScopeService } from "../../src/modules/collaboration/internal/contributor-scope.service";
 import { MoneyBudgetService } from "../../src/money/money-budget.service";
 import { WeddingPlanBudgetWriter } from "../../src/modules/planning/internal/wedding-plan-budget-writer";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
+import { ownerPorts, contributionHistoryService } from "./support/owner-ports";
 import { WeddingCostsService } from "../../src/wedding-costs/wedding-costs.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -49,7 +48,7 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const permissions = new PermissionService(prisma as any, ownerPorts.plans);
-const contributionHistory = new ContributionHistoryService(prisma as any);
+const contributionHistory = contributionHistoryService(prisma, permissions);
 const contributorScope = new ContributorScopeService(contributionHistory);
 const weddingCosts = new WeddingCostsService(
   prisma as any,

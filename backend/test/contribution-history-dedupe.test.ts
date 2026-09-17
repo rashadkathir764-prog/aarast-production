@@ -11,7 +11,7 @@ import {
   canonicalJson,
   hashContributionSnapshot,
 } from "../src/modules/collaboration/public/contribution-snapshot.builder";
-import { ContributionHistoryService } from "../src/modules/collaboration/internal/contribution-history.service";
+import { contributionHistoryService } from "./support/owner-ports";
 
 test("canonical snapshot JSON and SHA-256 do not depend on object key order", () => {
   const left = { status: "DONE", title: "Task", priority: "HIGH" };
@@ -72,7 +72,7 @@ test("recordInTransaction uses an append-only createManyAndReturn race-safe repl
       },
     },
   };
-  const service = new ContributionHistoryService({} as any);
+  const service = contributionHistoryService({} as any);
 
   const created = await service.recordInTransaction(tx as any, contributionInput() as any);
   const replayed = await service.recordInTransaction(tx as any, contributionInput() as any);
@@ -101,7 +101,7 @@ test("recordInTransaction rejects a conflicting fingerprint for the same tenure 
       findUnique: async () => stored,
     },
   };
-  const service = new ContributionHistoryService({} as any);
+  const service = contributionHistoryService({} as any);
   await service.recordInTransaction(tx as any, contributionInput() as any);
 
   await assert.rejects(
@@ -128,7 +128,7 @@ test("the same dedupe key is independent across tenures and fingerprints bind te
       findUnique: async () => null,
     },
   };
-  const service = new ContributionHistoryService({} as any);
+  const service = contributionHistoryService({} as any);
 
   await service.recordInTransaction(tx as any, contributionInput() as any);
   actor = { id: "tenure-1", actorReference: "b".repeat(64) };

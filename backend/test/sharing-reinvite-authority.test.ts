@@ -10,7 +10,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { sharingService } from "./support/owner-ports";
 
 const plan = {
   id: "plan-1",
@@ -252,7 +252,7 @@ function inviteAcceptanceHarness(options: {
       writes.notifications += 1;
     },
   };
-  const service = new SharingService(
+  const service = sharingService(
     prisma as any,
     permissions as any,
     notifications as any,
@@ -437,7 +437,7 @@ test("narrowing a delegated inviter permission revokes only pending grants above
     },
   };
   const access = { plan, isOwner: true, sharedMember: null };
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => currentMember },
       $transaction: async (operation: (client: typeof tx) => unknown) =>
@@ -510,7 +510,7 @@ test("direct member creation cannot reopen a tenure that ended with MEMBER_LEFT"
     $transaction: async (operation: (client: typeof tx) => unknown) =>
       operation(tx),
   };
-  const service = new SharingService(
+  const service = sharingService(
     prisma as any,
     {
       assertMemberManageable: async () => access,

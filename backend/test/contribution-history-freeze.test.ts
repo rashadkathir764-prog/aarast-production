@@ -11,7 +11,7 @@ import {
 } from "@prisma/client";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
-import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { sharingService } from "./support/owner-ports";
 
 function memberLockWithoutPendingInvites(query: unknown, memberId: string) {
   const sql = (query as { strings?: readonly string[] }).strings?.join(" ") ?? "";
@@ -76,7 +76,7 @@ test("task revocation records only an authority boundary and never rebuilds hist
       isOwner: true,
       sharedMember: null,
     });
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => member },
       $transaction: async (operation: (client: typeof tx) => unknown) =>
@@ -171,7 +171,7 @@ test("changing a role never re-grants an explicitly revoked stored permission", 
       isOwner: true,
       sharedMember: null,
     });
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => member },
       $transaction: async (operation: (client: typeof tx) => unknown) =>
@@ -235,7 +235,7 @@ test("revoking money management keeps live money access and does not freeze the 
       isOwner: true,
       sharedMember: null,
     });
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => member },
       $transaction: async (operation: (client: typeof tx) => unknown) =>
@@ -349,7 +349,7 @@ test("revoking every permission records section boundaries without recapturing l
       isOwner: true,
       sharedMember: null,
     });
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => member },
       $transaction: async (operation: (client: typeof tx) => unknown) =>

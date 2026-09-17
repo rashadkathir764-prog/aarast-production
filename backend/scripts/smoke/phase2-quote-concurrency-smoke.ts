@@ -22,9 +22,8 @@ import {
   WeddingPlanStatus,
 } from '@prisma/client';
 import { MarketplaceService } from '../../src/marketplace/marketplace.service';
-import { ContributionHistoryService } from '../../src/modules/collaboration/internal/contribution-history.service';
 import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
-import { ownerPorts } from './support/owner-ports';
+import { ownerPorts, contributionHistoryService } from './support/owner-ports';
 import { buildContributionSnapshot } from '../../src/modules/collaboration/public/contribution-snapshot.builder';
 import { ProviderDashboardService } from '../../src/provider-dashboard/provider-dashboard.service';
 
@@ -56,7 +55,10 @@ const {
 assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
-const contributionHistory = new ContributionHistoryService(prisma as any);
+const contributionHistory = contributionHistoryService(
+  prisma,
+  new PermissionService(prisma as any, ownerPorts.plans),
+);
 const notifications = {
   createNotification: async (input: unknown) => input,
   createNotificationInTransaction: async (

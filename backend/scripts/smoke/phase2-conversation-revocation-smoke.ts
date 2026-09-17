@@ -12,13 +12,11 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { ContributionHistoryService } from "../../src/modules/collaboration/internal/contribution-history.service";
 import { ConversationsService } from "../../src/conversations/conversations.service";
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
-import { SharingService } from "../../src/modules/collaboration/internal/sharing.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
+import { ownerPorts, contributionHistoryService, sharingService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -50,7 +48,7 @@ assertManagedSmokeEnvironment(process.env);
 const prisma = new PrismaClient();
 const outbox = new OutboxService();
 const permissions = new PermissionService(prisma as any, ownerPorts.plans);
-const history = new ContributionHistoryService(prisma as any);
+const history = contributionHistoryService(prisma, permissions);
 const notifications = new NotificationsService(
   prisma as any,
   permissions,
@@ -327,8 +325,8 @@ async function assertRevocationWinsBeforeMessage(): Promise<void> {
         dependencies.realtime,
         dependencies.mediaStorage,
       );
-      const sharing = new SharingService(
-        prisma as any,
+      const sharing = sharingService(
+        prisma,
         permissions,
         notifications,
         {} as any,
@@ -522,8 +520,8 @@ async function assertIndependentProviderAuthoritySurvivesMemberRevocation(): Pro
         data: { userId: fixture.member.id },
       });
       const dependencies = serviceDependencies();
-      const sharing = new SharingService(
-        prisma as any,
+      const sharing = sharingService(
+        prisma,
         permissions,
         notifications,
         {} as any,

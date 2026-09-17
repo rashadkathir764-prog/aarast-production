@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { createHash } from "node:crypto";
 import { AuthErrorCode, authError } from "../../identity/public/auth-error";
 import {
@@ -9,6 +9,10 @@ import {
 } from "../../identity/public/identity-auth.port";
 import { PhoneNormalizer } from "../../../shared-kernel/phone/phone-normalizer";
 import { PrismaService } from "../../../platform/database/prisma.service";
+import {
+  USER_READ_PORT,
+  type UserReadPort,
+} from "../../identity/public/user-read.port";
 import { RequestInviteOtpDto } from "../api/dto/request-invite-otp.dto";
 import { VerifyInviteOtpDto } from "../api/dto/verify-invite-otp.dto";
 
@@ -18,6 +22,8 @@ export class InviteAccessService {
     private readonly prisma: PrismaService,
     @Inject(IDENTITY_AUTH_PORT)
     private readonly auth: IdentityAuthPort,
+    @Inject(USER_READ_PORT)
+    private readonly users: UserReadPort,
   ) {}
 
   async requestOtp(
@@ -47,18 +53,14 @@ export class InviteAccessService {
     });
     if (!invite) throw this.inviteNotFound();
 
-    const account = await this.prisma.user.findFirst({
-      where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
-      select: {
-        id: true,
-        role: true,
-        phoneVerifiedAt: true,
-        appPasswordHash: true,
-        appPasswordConfiguredAt: true,
-      },
-    });
+    // Whether the invited phone's account still needs its setup step is
+    // identity's decision; collaboration only learns the outcome.
+    const account = await this.users.findInviteAccountByPhoneVariants(
+      this.prisma,
+      PhoneNormalizer.lookupVariants(phone),
+    );
     if (invite.acceptedAt) {
-      if (!account || account.appPasswordConfiguredAt) {
+      if (!account || account.appPasswordConfigured) {
         throw this.inviteNotFound();
       }
       const existingMembership = await this.prisma.sharedMember.findUnique({
@@ -72,11 +74,7 @@ export class InviteAccessService {
       });
       if (!existingMembership) throw this.inviteNotFound();
     }
-    const accountSetupRequired =
-      !account ||
-      !account.appPasswordConfiguredAt ||
-      (!account.phoneVerifiedAt && account.role !== UserRole.ADMIN) ||
-      (account.role === UserRole.ADMIN && !account.appPasswordHash);
+    const accountSetupRequired = !account || account.accountSetupRequired;
     let otp;
     try {
       otp = await this.auth.requestInviteOtp(

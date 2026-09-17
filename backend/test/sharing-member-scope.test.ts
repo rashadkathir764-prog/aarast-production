@@ -7,7 +7,8 @@ import {
   SharedMemberRole,
   UserRole,
 } from "@prisma/client";
-import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { NEVER_MATCHING_ROW_FILTER } from "../src/modules/collaboration/public/collaboration-permission.port";
+import { sharingService } from "./support/owner-ports";
 
 function member(id: string, userId: string, phone: string) {
   return {
@@ -36,6 +37,13 @@ function member(id: string, userId: string, phone: string) {
   };
 }
 
+// The final list queries used to embed the live membership check as a
+// `weddingPlan: { is: ... }` join. Collaboration no longer joins planning's
+// table: the live re-check is asked of the permission port and its result is
+// spread into the own-table where, so these tests pin that call and the
+// own-table where it guards.
+type LiveCheck = { memberId: string | undefined; userId: string; permissions: readonly string[] };
+
 test("a contributor member list contains only self and members created by that contributor", async () => {
   const self = member("member-self", "contributor-a", "+967700000001");
   const created = member("member-created", "contributor-b", "+967700000002");
@@ -46,7 +54,8 @@ test("a contributor member list contains only self and members created by that c
   );
   let capturedWhere: unknown;
   let contributionWhere: unknown;
-  const service = new SharingService(
+  const liveChecks: LiveCheck[] = [];
+  const service = sharingService(
     {
       sharedMember: {
         findMany: async ({ where }: { where: unknown }) => {
@@ -70,6 +79,15 @@ test("a contributor member list contains only self and members created by that c
         sharedMember: self,
       }),
       canManageMembers: () => true,
+      liveAuthorizationFilter: async (
+        _client: unknown,
+        access: { sharedMember?: { id: string } },
+        userId: string,
+        permissions: readonly string[] = [],
+      ) => {
+        liveChecks.push({ memberId: access.sharedMember?.id, userId, permissions });
+        return {};
+      },
     } as any,
     {} as any,
     {} as any,
@@ -86,35 +104,67 @@ test("a contributor member list contains only self and members created by that c
     [self.id, created.id],
   );
   assert.doesNotMatch(JSON.stringify(result), /\+967700000003/);
+  assert.deepEqual(liveChecks, [
+    { memberId: self.id, userId: self.userId, permissions: [] },
+    { memberId: self.id, userId: self.userId, permissions: ["canInviteMembers"] },
+  ]);
   assert.deepEqual(capturedWhere, {
     weddingPlanId: "plan-1",
-    weddingPlan: {
-      is: {
-        sharedMembers: {
-          some: { id: self.id, userId: self.userId },
-        },
-      },
-    },
-    OR: [
-      { userId: self.userId },
-      {
-        id: { in: [created.id] },
-        weddingPlan: {
-          is: {
-            sharedMembers: {
-              some: {
-                id: self.id,
-                userId: self.userId,
-                canInviteMembers: true,
-              },
-            },
-          },
-        },
-      },
-    ],
+    OR: [{ userId: self.userId }, { id: { in: [created.id] } }],
   });
   assert.deepEqual((contributionWhere as any).contributorTenure, {
     actorUserId: self.userId,
+  });
+});
+
+test("a revoked inviter authority empties the created-member branch of the member list", async () => {
+  const self = member("member-self", "contributor-a", "+967700000001");
+  const created = member("member-created", "contributor-b", "+967700000002");
+  let capturedWhere: unknown;
+  const service = sharingService(
+    {
+      sharedMember: {
+        findMany: async ({ where }: { where: unknown }) => {
+          capturedWhere = where;
+          return [self];
+        },
+      },
+      contributionEvent: { findMany: async () => [{ entityId: created.id }] },
+    } as any,
+    {
+      assertPlanReadable: async () => ({
+        plan: { id: "plan-1", ownerUserId: "owner-a" },
+        isOwner: false,
+        sharedMember: self,
+      }),
+      canManageMembers: () => true,
+      liveAuthorizationFilter: async (
+        _client: unknown,
+        _access: unknown,
+        _userId: string,
+        permissions: readonly string[] = [],
+      ) => (permissions.includes("canInviteMembers") ? NEVER_MATCHING_ROW_FILTER : {}),
+    } as any,
+    {} as any,
+    {} as any,
+    {} as any,
+  );
+
+  const result = await service.findMembersForPlan(
+    { id: self.userId } as any,
+    "plan-1",
+  );
+
+  assert.deepEqual(
+    result.map(({ id }) => id),
+    [self.id],
+  );
+  assert.deepEqual(capturedWhere, {
+    weddingPlanId: "plan-1",
+    OR: [
+      { userId: self.userId },
+      { id: { in: [created.id] }, ...NEVER_MATCHING_ROW_FILTER },
+    ],
   });
 });
 
@@ -126,7 +176,7 @@ test("a contributor without member permission receives only their own member row
     "contributor-c",
     "+967700000003",
   );
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findMany: async () => [self, unrelated] },
       contributionEvent: {
@@ -198,7 +248,8 @@ test("a contributor invite list cannot leak invites created by another contribut
     "+967700000099",
   );
   let capturedWhere: unknown;
-  const service = new SharingService(
+  const liveChecks: LiveCheck[] = [];
+  const service = sharingService(
     {
       planInvite: {
         findMany: async ({ where }: { where: unknown }) => {
@@ -218,6 +269,15 @@ test("a contributor invite list cannot leak invites created by another contribut
         },
       }),
       canManageMembers: () => true,
+      liveAuthorizationFilter: async (
+        _client: unknown,
+        access: { sharedMember?: { id: string } },
+        userId: string,
+        permissions: readonly string[] = [],
+      ) => {
+        liveChecks.push({ memberId: access.sharedMember?.id, userId, permissions });
+        return {};
+      },
     } as any,
     {} as any,
     {} as any,
@@ -233,19 +293,11 @@ test("a contributor invite list cannot leak invites created by another contribut
     [own.id],
   );
   assert.doesNotMatch(JSON.stringify(result), /\+967700000099/);
+  assert.deepEqual(liveChecks, [
+    { memberId: "member-a", userId: "contributor-a", permissions: ["canInviteMembers"] },
+  ]);
   assert.deepEqual(capturedWhere, {
     weddingPlanId: "plan-1",
-    weddingPlan: {
-      is: {
-        sharedMembers: {
-          some: {
-            id: "member-a",
-            userId: "contributor-a",
-            canInviteMembers: true,
-          },
-        },
-      },
-    },
     inviterUserId: "contributor-a",
   });
 });
@@ -270,7 +322,7 @@ test("a delegated contributor cannot mutate a member created by somebody else", 
     },
     contributionEvent: { findFirst: async () => null },
   };
-  const service = new SharingService(
+  const service = sharingService(
     {
       sharedMember: { findFirst: async () => target },
       $transaction: async (operation: (client: typeof tx) => unknown) =>

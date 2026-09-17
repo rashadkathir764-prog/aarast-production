@@ -8,7 +8,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { SharedMemberRole, WeddingPlanStatus } from "@prisma/client";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
-import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { sharingService } from "./support/owner-ports";
 
 const taskRevokedMessage = "لم تعد لديك صلاحية لتنفيذ هذه المهمة";
 
@@ -47,7 +47,7 @@ test("stored false contributor permissions override every role default at runtim
 });
 
 test("direct member creation is fail-closed and never derives omitted permissions from role", () => {
-  const service = new SharingService(
+  const service = sharingService(
     {} as any,
     new PermissionService({} as any, new PlanReadService()),
     {} as any,

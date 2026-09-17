@@ -9,7 +9,7 @@ import { IdentityTransientDeliveryAdapter } from "../src/modules/identity/intern
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
 import { IdentityTransientDeliveryPort } from "../src/modules/identity/public/identity-transient-delivery.port";
 import { invitationDeliveryOutcomesTotal } from "../src/platform/observability/metrics";
-import { InviteAccessService } from "../src/modules/collaboration/internal/invite-access.service";
+import { inviteAccessService } from "./support/owner-ports";
 import {
   buildInvitationMessage,
   InvitationDeliveryService,
@@ -273,7 +273,7 @@ test("invite OTP is sent only when the bearer token and canonical phone match", 
     expectedTokenHash: string;
     context: Record<string, unknown>;
   }> = [];
-  const service = new InviteAccessService(
+  const service = inviteAccessService(
     {
       planInvite: {
         findFirst: async ({ where }: any) =>
@@ -330,7 +330,7 @@ test("invite OTP is sent only when the bearer token and canonical phone match", 
 test("invite deletion during OTP issuance returns the private not-found contract", async () => {
   const token = TEST_INVITE_TOKEN;
   const expectedHash = createHash("sha256").update(token).digest("hex");
-  const service = new InviteAccessService(
+  const service = inviteAccessService(
     {
       planInvite: {
         findFirst: async ({ where }: any) =>
@@ -383,7 +383,7 @@ test("invite deletion during OTP issuance returns the private not-found contract
 test("invite OTP verification stays bound to the exact private token", async () => {
   const token = TEST_INVITE_TOKEN;
   const verifyCalls: Array<Record<string, unknown>> = [];
-  const service = new InviteAccessService(
+  const service = inviteAccessService(
     {} as any,
     {
       verifyInviteOtp: async (input: Record<string, unknown>) => {
@@ -416,7 +416,7 @@ test("accepted invite OTP is limited to legacy accounts missing a real app passw
   const token = TEST_INVITE_TOKEN;
   const expectedHash = createHash("sha256").update(token).digest("hex");
   const authCalls: unknown[][] = [];
-  const legacyService = new InviteAccessService(
+  const legacyService = inviteAccessService(
     {
       planInvite: {
         findFirst: async () => ({
@@ -462,7 +462,7 @@ test("accepted invite OTP is limited to legacy accounts missing a real app passw
   assert.equal(authCalls[0][4], true);
 
   let configuredAuthCalls = 0;
-  const configuredService = new InviteAccessService(
+  const configuredService = inviteAccessService(
     {
       planInvite: {
         findFirst: async () => ({
@@ -536,7 +536,7 @@ test("invite OTP never dispatches for declined, cancelled, or expired links", as
 
   for (const row of terminalRows) {
     let authCalls = 0;
-    const service = new InviteAccessService(
+    const service = inviteAccessService(
       {
         planInvite: {
           findFirst: async ({ where }: any) => {

@@ -13,10 +13,18 @@ import {
   ContributionHistoryService,
   contributorActorReference,
 } from "../src/modules/collaboration/internal/contribution-history.service";
+import { contributionHistoryService } from "./support/owner-ports";
 
+// The page and total used to carry the live membership check as a
+// `weddingPlan: { is: ... }` join on planning's table. The check is now a
+// separate member-row read through the permission port inside the same
+// repeatable-read transaction, and its result is spread into both history
+// queries; the fixture therefore serves that read on `tx` and refuses it
+// outside the snapshot like every other read.
 test("history page and total are read from one repeatable-read authorization snapshot", async () => {
   const calls: string[] = [];
   const observedWhere: unknown[] = [];
+  let liveWhere: unknown;
   let transactionOptions: unknown;
   const liveMember = {
     id: "member-1",
@@ -40,6 +48,11 @@ test("history page and total are read from one repeatable-read authorization sna
       findUnique: async () => {
         calls.push("tx:member");
         return liveMember;
+      },
+      findFirst: async ({ where }: { where: unknown }) => {
+        calls.push("tx:member-live");
+        liveWhere = where;
+        return { id: liveMember.id };
       },
     },
     contributorHistoryScope: {
@@ -89,7 +102,7 @@ test("history page and total are read from one repeatable-read authorization sna
       return result;
     },
     weddingPlan: { findUnique: outsideSnapshot },
-    sharedMember: { findUnique: outsideSnapshot },
+    sharedMember: { findUnique: outsideSnapshot, findFirst: outsideSnapshot },
     contributorHistoryScope: { findFirst: outsideSnapshot },
     contributionEvent: {
       findMany: outsideSnapshot,
@@ -97,7 +110,7 @@ test("history page and total are read from one repeatable-read authorization sna
     },
   };
 
-  const result = await new ContributionHistoryService(prisma as any).list(
+  const result = await contributionHistoryService(prisma as any).list(
     { id: "contributor-1" } as any,
     "plan-1",
     { limit: 20, offset: 0 },
@@ -110,28 +123,22 @@ test("history page and total are read from one repeatable-read authorization sna
     "transaction:start",
     "tx:plan",
     "tx:member",
+    "tx:member-live",
     "tx:scope",
     "tx:page",
     "tx:total",
     "transaction:end",
   ]);
+  assert.deepEqual(liveWhere, {
+    id: "member-1",
+    weddingPlanId: "plan-1",
+    userId: "contributor-1",
+  });
   assert.equal(result.total, result.events.length);
   assert.equal(observedWhere.length, 2);
   assert.deepEqual(observedWhere[0], observedWhere[1]);
   assert.deepEqual(observedWhere[0], {
-    historyScope: {
-      id: "scope-1",
-      weddingPlan: {
-        is: {
-          sharedMembers: {
-            some: {
-              id: "member-1",
-              userId: "contributor-1",
-            },
-          },
-        },
-      },
-    },
+    historyScope: { id: "scope-1" },
     contributorTenure: {
       actorReference: contributorActorReference("contributor-1"),
     },

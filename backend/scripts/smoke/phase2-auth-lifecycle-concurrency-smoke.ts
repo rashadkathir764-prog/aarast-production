@@ -55,7 +55,11 @@ const auth = new AuthService(
   } as any,
   new PermissionService(prisma as any, ownerPorts.plans),
 );
-const inviteAccess = new InviteAccessService(prisma as any, auth);
+const inviteAccess = new InviteAccessService(
+  prisma as any,
+  auth,
+  ownerPorts.users,
+);
 
 function deferred(): {
   promise: Promise<void>;

@@ -740,14 +740,10 @@ test('R6 Task 4 rejects boundary bypasses, concrete injection, and token lookali
 
   const internalModuleImport = fullSourceFixture([{
     relativePath: 'modules/collaboration/internal/collaboration-services.internal.module.ts',
-    before: [
-      'import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";',
-      'import { MessagingRealtimePublicModule }',
-    ].join('\n'),
-    after: [
-      'import { IdentityTransientDeliveryInternalModule as IdentityTransientDeliveryPublicModule } from "../../identity/internal/identity-transient-delivery.internal.module";',
-      'import { MessagingRealtimePublicModule }',
-    ].join('\n'),
+    // Anchored on the one import line the plant replaces; the imports that
+    // follow it are the live module's own business.
+    before: 'import { IdentityTransientDeliveryPublicModule } from "../../identity/public/identity-transient-delivery-public.module";',
+    after: 'import { IdentityTransientDeliveryInternalModule as IdentityTransientDeliveryPublicModule } from "../../identity/internal/identity-transient-delivery.internal.module";',
   }]);
   assert.notDeepEqual(scanner().scanR3Contexts({
     ...internalModuleImport,

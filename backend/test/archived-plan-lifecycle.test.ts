@@ -24,9 +24,8 @@ import { ConversationsService } from '../src/conversations/conversations.service
 import { MarketplaceService } from '../src/marketplace/marketplace.service';
 import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
-import { SharingService } from '../src/modules/collaboration/internal/sharing.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
-import { collaborationHistory, collaborationPermissions, planningOwnerPorts } from './support/owner-ports';
+import { collaborationHistory, collaborationPermissions, planningOwnerPorts, sharingService } from './support/owner-ports';
 
 const now = new Date('2026-07-26T00:00:00.000Z');
 const weddingPlanId = '11111111-1111-4111-8111-111111111111';
@@ -318,7 +317,7 @@ test('accepting an invitation cannot create membership on an archived plan', asy
       },
     },
   };
-  const service = new SharingService(
+  const service = sharingService(
     {
       planInvite: {
         findUnique: async () => invite,

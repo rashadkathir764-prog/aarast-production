@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -23,12 +24,14 @@ import {
   ContributionHistorySummaryResponse,
   RecordContributionInput,
 } from "../public/collaboration-history.port";
-import {
-  livePlanAuthorizationWhere,
-  PlanAccessContext,
-} from "../public/collaboration-permission.port";
+import { PlanAccessContext } from "../public/collaboration-permission.port";
 import { runRetryableTransaction } from "../../../platform/database/serializable-transaction";
 import { PrismaService } from "../../../platform/database/prisma.service";
+import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../../planning/public/plan-read.port";
+import { PermissionService } from "./permission.service";
 import {
   canonicalJson,
   hashContributionSnapshot,
@@ -43,7 +46,11 @@ const PERMISSION_POLICY_VERSION = 1;
 
 @Injectable()
 export class ContributionHistoryService implements CollaborationHistoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PLAN_READ_PORT) private readonly plans: PlanReadPort,
+    private readonly permissions: PermissionService,
+  ) {}
 
   async recordInTransaction(
     tx: Prisma.TransactionClient,
@@ -271,30 +278,31 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
             ? contributorActorReference(query.contributorUserId)
             : undefined
           : contributorActorReference(currentUser.id);
-        const livePlanWhere = livePlanAuthorizationWhere(
+        // The final reads re-check current ownership/membership through
+        // the owners and apply the result to the history tables themselves.
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
           access,
           currentUser.id,
         );
         const scope = await tx.contributorHistoryScope.findFirst({
           where: {
             weddingPlanId,
-            weddingPlan: { is: livePlanWhere },
+            ...liveFilter,
           },
         });
         if (!scope) {
           throw new NotFoundException("Contribution history not found");
         }
 
-        const where: Prisma.ContributionEventWhereInput = {
-          historyScope: {
-            id: scope.id,
-            weddingPlan: { is: livePlanWhere },
-          },
+        const where = {
+          historyScope: { id: scope.id },
           ...(contributorReference
             ? { contributorTenure: { actorReference: contributorReference } }
             : {}),
           ...(query.section ? { section: query.section } : {}),
-        };
+          ...liveFilter,
+        } satisfies Prisma.ContributionEventWhereInput;
         const [events, total] = await Promise.all([
           tx.contributionEvent.findMany({
             where,
@@ -341,20 +349,19 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
         ? contributorActorReference(contributorUserId)
         : undefined
       : contributorActorReference(currentUser.id);
-    const livePlanWhere = livePlanAuthorizationWhere(
+    const liveFilter = await this.permissions.liveAuthorizationFilter(
+      this.prisma,
       access,
       currentUser.id,
     );
     const events = await this.prisma.contributionEvent.findMany({
       where: {
-        historyScope: {
-          weddingPlanId,
-          weddingPlan: { is: livePlanWhere },
-        },
+        historyScope: { weddingPlanId },
         ...(contributorReference
           ? { contributorTenure: { actorReference: contributorReference } }
           : {}),
         entityId: { not: null },
+        ...liveFilter,
       },
       select: { section: true, entityId: true },
     });
@@ -374,9 +381,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     weddingPlanId: string,
     client: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<PlanAccessContext> {
-    const plan = await client.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
+    const plan = await this.plans.getPlan(client, weddingPlanId);
     if (!plan) throw new NotFoundException("Wedding plan not found");
     if (plan.ownerUserId === currentUser.id) {
       return { plan, isOwner: true, sharedMember: null };

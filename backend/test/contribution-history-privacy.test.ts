@@ -14,7 +14,7 @@ import {
   buildContributionSnapshot,
   validateContributionSnapshot,
 } from "../src/modules/collaboration/public/contribution-snapshot.builder";
-import { ContributionHistoryService } from "../src/modules/collaboration/internal/contribution-history.service";
+import { contributionHistoryService } from "./support/owner-ports";
 import { TasksService } from "../src/tasks/tasks.service";
 
 test("each contribution snapshot type emits only its explicit privacy allowlist", () => {
@@ -298,7 +298,7 @@ test("history listing requires current access and removes live ids from revoked 
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
-  const service = new ContributionHistoryService(prisma as any);
+  const service = contributionHistoryService(prisma as any);
 
   const result = await service.list(
     { id: "contributor-1" } as any,
@@ -362,7 +362,7 @@ test("owner history filters deleted contributors by durable reference and allows
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
-  const service = new ContributionHistoryService(prisma as any);
+  const service = contributionHistoryService(prisma as any);
 
   const filtered = await service.list({ id: "owner-1" } as any, "plan-1", {
     contributorUserId: "deleted-user-1",

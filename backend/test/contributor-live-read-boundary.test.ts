@@ -101,27 +101,37 @@ test("every wedding-cost live read locks authority and revalidates canViewMoney 
   }
 });
 
+// Contexts that no longer join planning's table carry the live check as the
+// permission port's filter spread into their own-table where; the others
+// still embed the predicate until their own conversion.
 test("task, plan quote, and contribution-history final queries carry live DB authorization", () => {
   const contracts = [
-    ["tasks/tasks.service.ts", "async findForPlan", "async findOne"],
+    [
+      "tasks/tasks.service.ts",
+      "async findForPlan",
+      "async findOne",
+      [/livePlanAuthorizationWhere/],
+    ],
     [
       "marketplace/marketplace.service.ts",
       "async findPlanQuoteRequests",
       "/**",
+      [/livePlanAuthorizationWhere/],
     ],
     [
       "modules/collaboration/internal/contribution-history.service.ts",
       "async list",
       "async summary",
+      [/liveAuthorizationFilter\(\s*tx/, /\.\.\.liveFilter/],
     ],
   ] as const;
 
-  for (const [relative, startToken, endToken] of contracts) {
+  for (const [relative, startToken, endToken, patterns] of contracts) {
     const source = readFileSync(join(backendRoot, "src", relative), "utf8");
     const start = source.indexOf(startToken);
     const end = source.indexOf(endToken, start + startToken.length);
     const method = source.slice(start, end);
-    assert.match(method, /livePlanAuthorizationWhere/, relative);
+    for (const pattern of patterns) assert.match(method, pattern, relative);
   }
 });
 
@@ -237,14 +247,19 @@ test("member and invite list final queries carry current membership and stored m
   const invitesEnd = source.indexOf("async cancelInvite", invitesStart);
   const invitesMethod = source.slice(invitesStart, invitesEnd);
 
-  assert.match(membersMethod, /livePlanAuthorizationWhere/);
-  assert.match(membersMethod, /weddingPlan:\s*\{\s*is: liveMembershipWhere/);
+  // The member and invite tables are collaboration's own; the live
+  // membership/permission re-check is asked of the permission port and its
+  // result spread into each final where.
+  assert.match(membersMethod, /liveAuthorizationFilter\(/);
+  assert.match(membersMethod, /\.\.\.liveMembershipFilter,/);
   assert.match(
     membersMethod,
-    /livePlanAuthorizationWhere\([\s\S]*"canInviteMembers"/,
+    /liveAuthorizationFilter\([\s\S]*\["canInviteMembers"\]/,
   );
+  assert.match(membersMethod, /\.\.\.inviterAuthorityFilter,/);
   assert.match(
     invitesMethod,
-    /livePlanAuthorizationWhere\([\s\S]*"canInviteMembers"/,
+    /liveAuthorizationFilter\([\s\S]*\["canInviteMembers"\]/,
   );
+  assert.match(invitesMethod, /\.\.\.liveFilter,/);
 });

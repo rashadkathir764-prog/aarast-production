@@ -19,7 +19,7 @@ import {
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
-import { SharingService } from "../src/modules/collaboration/internal/sharing.service";
+import { sharingService } from "./support/owner-ports";
 
 const permissions = new PermissionService({} as any, new PlanReadService());
 const noOpContributionHistory = {
@@ -28,7 +28,7 @@ const noOpContributionHistory = {
   recordForContextInTransaction: async () => undefined,
   closeTenureInTransaction: async () => undefined,
 };
-const sharing = new SharingService(
+const sharing = sharingService(
   {} as any,
   permissions,
   {} as any,
@@ -473,7 +473,7 @@ function inviteHarness(
       return { id: "notification-1" };
     },
   } as unknown as NotificationsService;
-  const service = new SharingService(
+  const service = sharingService(
     db as any,
     permissionService,
     notificationService,
@@ -1100,7 +1100,7 @@ test("current-user invite context requires one live membership batch without rew
       },
     },
   };
-  const service = new SharingService(
+  const service = sharingService(
     prisma as any,
     {} as any,
     {} as any,
@@ -1356,7 +1356,7 @@ test("a lost invite-accept response can be retried without changing newer member
 
 test("accepted invite contribution uses the persisted acceptance instant on the first write", async () => {
   const recorded: Array<Record<string, any>> = [];
-  const service = new SharingService(
+  const service = sharingService(
     {} as any,
     new PermissionService({} as any, new PlanReadService()),
     {} as any,
@@ -1588,7 +1588,7 @@ test("member removal locks pending invitations before the target member and revo
   const notifications = {
     purgeMoneyForMember: async () => undefined,
   };
-  const service = new SharingService(
+  const service = sharingService(
     prisma as any,
     permissionService,
     notifications as any,

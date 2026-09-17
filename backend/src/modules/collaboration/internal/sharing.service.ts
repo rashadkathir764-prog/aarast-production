@@ -22,7 +22,6 @@ import {
   Prisma,
   SharedMember,
   SharedMemberRole,
-  User,
   UserStatus,
   WeddingPlan,
 } from "@prisma/client";
@@ -45,9 +44,25 @@ import {
 import { enqueueConversationAccessRevoked } from "../../../platform/outbox/realtime-revocation";
 import { PrismaService } from "../../../platform/database/prisma.service";
 import {
+  ACTIVE_PLAN_PORT,
+  type ActivePlanPort,
+} from "../../identity/public/active-plan.port";
+import {
+  type AppIdentity,
+  USER_READ_PORT,
+  type UserReadPort,
+} from "../../identity/public/user-read.port";
+import {
+  MESSAGING_PARTICIPATION_PORT,
+  type MessagingParticipationPort,
+} from "../../messaging/public/messaging-participation.port";
+import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../../planning/public/plan-read.port";
+import {
   ApplicationNameSource,
   applicationDisplayName,
-  applicationNameFields,
   toApplicationUserContact,
 } from "../../../shared-kernel/privacy/application-user-identity";
 import {
@@ -64,7 +79,6 @@ import {
 } from "./invitation-delivery.service";
 import {
   assertWeddingPlanWritable,
-  livePlanAuthorizationWhere,
   PlanAccessContext,
 } from "../public/collaboration-permission.port";
 import { PermissionService } from "./permission.service";
@@ -277,6 +291,14 @@ export class SharingService {
     private readonly notifications: NotificationsPort,
     private readonly invitationDelivery: InvitationDeliveryService,
     private readonly history: ContributionHistoryService,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans: PlanReadPort,
+    @Inject(USER_READ_PORT)
+    private readonly users: UserReadPort,
+    @Inject(ACTIVE_PLAN_PORT)
+    private readonly activePlan: ActivePlanPort,
+    @Inject(MESSAGING_PARTICIPATION_PORT)
+    private readonly participation: MessagingParticipationPort,
     @Optional()
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime?: MessagingRealtimePort,
@@ -320,10 +342,7 @@ export class SharingService {
           [userId],
         );
       this.assertPermissionCeiling(transactionalAccess, role, permissionData);
-      const lockedTarget = await tx.user.findUnique({
-        where: { id: userId },
-        select: { status: true },
-      });
+      const lockedTarget = await this.users.getAppIdentity(tx, userId);
       if (!lockedTarget || lockedTarget.status !== UserStatus.ACTIVE) {
         throw new BadRequestException("userId must reference an active user");
       }
@@ -352,19 +371,17 @@ export class SharingService {
           HttpStatus.CONFLICT,
         );
       }
-      const created = await tx.sharedMember.create({
-        data: {
-          weddingPlanId,
-          userId,
-          role,
-          ...permissionData,
-        },
-        include: {
-          user: {
-            select: { id: true, phone: true, ...applicationNameFields },
+      const created = await this.withMemberUser(
+        tx,
+        await tx.sharedMember.create({
+          data: {
+            weddingPlanId,
+            userId,
+            role,
+            ...permissionData,
           },
-        },
-      });
+        }),
+      );
       await this.history.ensureTenureInTransaction(tx, created);
       await this.history.recordForContextInTransaction(
         tx,
@@ -377,7 +394,9 @@ export class SharingService {
           snapshot: buildContributionSnapshot(
             ContributionEntityType.MEMBER_ITEM,
             {
-              displayName: applicationDisplayName(created.user),
+              displayName: applicationDisplayName(
+                created.user ?? lockedTarget,
+              ),
               role: created.role,
               permissionLabels: this.permissionLabels(created),
             },
@@ -388,7 +407,7 @@ export class SharingService {
         },
       );
       if (created.canManageProviders) {
-        await this.setProviderConversationParticipation(
+        await this.participation.setPlanConversationParticipationInTransaction(
           tx,
           weddingPlanId,
           userId,
@@ -421,20 +440,26 @@ export class SharingService {
   async findSharedPlans(
     currentUser: AuthenticatedUser,
   ): Promise<SharedWeddingPlanResponse[]> {
-    const members = await this.prisma.sharedMember.findMany({
-      where: { userId: currentUser.id },
-      include: {
-        weddingPlan: true,
-        user: {
-          select: { id: true, phone: true, ...applicationNameFields },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return members.map((member) =>
-      this.toSharedPlanResponse(member.weddingPlan, member),
+    const members = await this.withMemberUsers(
+      this.prisma,
+      await this.prisma.sharedMember.findMany({
+        where: { userId: currentUser.id },
+        orderBy: { createdAt: "desc" },
+      }),
     );
+    const plans = new Map(
+      (
+        await this.plans.getPlans(
+          this.prisma,
+          members.map((member) => member.weddingPlanId),
+        )
+      ).map((plan) => [plan.id, plan]),
+    );
+
+    return members.flatMap((member) => {
+      const plan = plans.get(member.weddingPlanId);
+      return plan ? [this.toSharedPlanResponse(plan, member)] : [];
+    });
   }
 
   async findMembersForPlan(
@@ -445,36 +470,38 @@ export class SharingService {
       weddingPlanId,
       currentUser,
     );
-    const liveMembershipWhere = livePlanAuthorizationWhere(
+    // The final reads re-check current membership through the owners
+    // (planning for ownership, this context for the member row) and apply
+    // the result to the member table itself.
+    const liveMembershipFilter = await this.permissions.liveAuthorizationFilter(
+      this.prisma,
       access,
       currentUser.id,
     );
     if (access.isOwner) {
-      const plan = await this.prisma.weddingPlan.findFirst({
-        where: { id: weddingPlanId, ...liveMembershipWhere },
-        include: {
-          owner: {
-            select: { id: true, phone: true, ...applicationNameFields },
-          },
-        },
-      });
-      if (!plan) {
+      const plan = await this.plans.findOwnedPlan(
+        this.prisma,
+        weddingPlanId,
+        currentUser.id,
+      );
+      const owner = plan
+        ? await this.users.getAppIdentity(this.prisma, plan.ownerUserId)
+        : null;
+      if (!plan || !owner) {
         throw new NotFoundException("Wedding plan not found");
       }
-      const members = await this.prisma.sharedMember.findMany({
-        where: {
-          weddingPlanId,
-          weddingPlan: { is: liveMembershipWhere },
-        },
-        include: {
-          user: {
-            select: { id: true, phone: true, ...applicationNameFields },
+      const members = await this.withMemberUsers(
+        this.prisma,
+        await this.prisma.sharedMember.findMany({
+          where: {
+            weddingPlanId,
+            ...liveMembershipFilter,
           },
-        },
-        orderBy: { createdAt: "asc" },
-      });
+          orderBy: { createdAt: "asc" },
+        }),
+      );
       return [
-        this.toOwnerMemberResponse(plan),
+        this.toOwnerMemberResponse({ ...plan, owner }),
         ...members.map((member) => this.toPlanMemberResponse(member)),
       ];
     }
@@ -488,35 +515,36 @@ export class SharingService {
         )
       : [];
     const allowedMemberIds = new Set(createdMemberIds);
-    const members = await this.prisma.sharedMember.findMany({
-      where: {
-        weddingPlanId,
-        weddingPlan: { is: liveMembershipWhere },
-        OR: [
-          { userId: currentUser.id },
-          ...(createdMemberIds.length > 0
-            ? [
-                {
-                  id: { in: createdMemberIds },
-                  weddingPlan: {
-                    is: livePlanAuthorizationWhere(
-                      access,
-                      currentUser.id,
-                      ["canInviteMembers"],
-                    ),
+    const inviterAuthorityFilter =
+      createdMemberIds.length > 0
+        ? await this.permissions.liveAuthorizationFilter(
+            this.prisma,
+            access,
+            currentUser.id,
+            ["canInviteMembers"],
+          )
+        : {};
+    const members = await this.withMemberUsers(
+      this.prisma,
+      await this.prisma.sharedMember.findMany({
+        where: {
+          weddingPlanId,
+          OR: [
+            { userId: currentUser.id },
+            ...(createdMemberIds.length > 0
+              ? [
+                  {
+                    id: { in: createdMemberIds },
+                    ...inviterAuthorityFilter,
                   },
-                },
-              ]
-            : []),
-        ],
-      },
-      include: {
-        user: {
-          select: { id: true, phone: true, ...applicationNameFields },
+                ]
+              : []),
+          ],
+          ...liveMembershipFilter,
         },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+        orderBy: { createdAt: "asc" },
+      }),
+    );
     return members
       .filter(
         (member) =>
@@ -557,10 +585,10 @@ export class SharingService {
           );
         this.assertPermissionCeiling(transactionalAccess, role, permissionData);
         if (target.user) {
-          const lockedTarget = await tx.user.findUnique({
-            where: { id: target.user.id },
-            select: { status: true },
-          });
+          const lockedTarget = await this.users.getAppIdentity(
+            tx,
+            target.user.id,
+          );
           if (!lockedTarget || lockedTarget.status !== UserStatus.ACTIVE) {
             throw new BadRequestException(
               "userId must reference an active user",
@@ -630,7 +658,6 @@ export class SharingService {
             deliveryStatus: PlanInviteDeliveryStatus.PENDING,
             deliveryAttemptedAt: now,
           },
-          include: this.inviteIncludes(),
         });
 
         await this.history.recordForContextInTransaction(
@@ -689,7 +716,7 @@ export class SharingService {
       delivery,
     );
     return this.toInviteResponse(
-      finalized,
+      await this.withInviteRelations(this.prisma, finalized),
       finalized.tokenHash === attempt.tokenHash ? created.token : undefined,
     );
   }
@@ -700,16 +727,18 @@ export class SharingService {
     const normalizedPhone = PhoneNormalizer.normalizeOptional(
       currentUser.phone,
     );
-    const invites = await this.prisma.planInvite.findMany({
-      where: {
-        OR: [
-          { inviteeUserId: currentUser.id },
-          ...(normalizedPhone ? [{ normalizedPhone }] : []),
-        ],
-      },
-      include: this.inviteIncludes(),
-      orderBy: { createdAt: "desc" },
-    });
+    const invites = await this.withInvitesRelations(
+      this.prisma,
+      await this.prisma.planInvite.findMany({
+        where: {
+          OR: [
+            { inviteeUserId: currentUser.id },
+            ...(normalizedPhone ? [{ normalizedPhone }] : []),
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    );
     const acceptedPlanIds = [
       ...new Set(
         invites
@@ -763,7 +792,7 @@ export class SharingService {
           })
         : null;
     return this.toCurrentUserInviteResponse(
-      invite,
+      await this.withInviteRelations(this.prisma, invite),
       currentUser.id,
       Boolean(liveMembership),
     );
@@ -780,19 +809,23 @@ export class SharingService {
     if (!this.permissions.canManageMembers(access)) {
       throw new NotFoundException("Wedding plan not found");
     }
-    const invites = await this.prisma.planInvite.findMany({
-      where: {
-        weddingPlanId,
-        weddingPlan: {
-          is: livePlanAuthorizationWhere(access, currentUser.id, [
-            "canInviteMembers",
-          ]),
+    const liveFilter = await this.permissions.liveAuthorizationFilter(
+      this.prisma,
+      access,
+      currentUser.id,
+      ["canInviteMembers"],
+    );
+    const invites = await this.withInvitesRelations(
+      this.prisma,
+      await this.prisma.planInvite.findMany({
+        where: {
+          weddingPlanId,
+          ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
+          ...liveFilter,
         },
-        ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
-      },
-      include: this.inviteIncludes(),
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      }),
+    );
     return invites
       .filter(
         (invite) => access.isOwner || invite.inviterUserId === currentUser.id,
@@ -818,7 +851,6 @@ export class SharingService {
           );
         const invite = await tx.planInvite.findFirst({
           where: { id: inviteId, weddingPlanId },
-          include: this.inviteIncludes(),
         });
         if (!invite) throw new NotFoundException("Invite not found");
         if (
@@ -852,12 +884,11 @@ export class SharingService {
 
         const updated = await tx.planInvite.findUnique({
           where: { id: invite.id },
-          include: this.inviteIncludes(),
         });
         if (!updated) {
           throw new ConflictException("Invite is no longer pending");
         }
-        return updated;
+        return this.withInviteRelations(tx, updated);
       },
     );
     return this.toInviteResponse(cancelled);
@@ -881,7 +912,6 @@ export class SharingService {
           );
         const invite = await tx.planInvite.findFirst({
           where: { id: inviteId, weddingPlanId },
-          include: this.inviteIncludes(),
         });
         if (!invite) {
           throw new NotFoundException("Invite not found");
@@ -939,7 +969,6 @@ export class SharingService {
 
         const rotated = await tx.planInvite.findUnique({
           where: { id: invite.id },
-          include: this.inviteIncludes(),
         });
         if (!rotated) {
           throw new ConflictException("Invite is no longer pending");
@@ -957,7 +986,7 @@ export class SharingService {
       delivery,
     );
     return this.toInviteResponse(
-      finalized,
+      await this.withInviteRelations(this.prisma, finalized),
       finalized.tokenHash === attempt.tokenHash ? reissued.token : undefined,
     );
   }
@@ -975,10 +1004,10 @@ export class SharingService {
 
     const acceptedAt = new Date();
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
-      const planSeed = await tx.weddingPlan.findUnique({
-        where: { id: resolvedInvite.weddingPlanId },
-        select: { ownerUserId: true },
-      });
+      const planSeed = await this.plans.getPlan(
+        tx,
+        resolvedInvite.weddingPlanId,
+      );
       if (!planSeed) {
         throw new NotFoundException("Wedding plan not found");
       }
@@ -1008,20 +1037,14 @@ export class SharingService {
       ) {
         throw this.inviteAuthorityInactive();
       }
-      const lockedPlan = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "WeddingPlan"
-          WHERE "id" = ${resolvedInvite.weddingPlanId}
-          FOR SHARE
-        `,
+      const lockedPlan = await this.plans.lockPlanRowForShareInTransaction(
+        tx,
+        resolvedInvite.weddingPlanId,
       );
       if (lockedPlan.length !== 1) {
         throw new NotFoundException("Wedding plan not found");
       }
-      const plan = await tx.weddingPlan.findUnique({
-        where: { id: resolvedInvite.weddingPlanId },
-      });
+      const plan = await this.plans.getPlan(tx, resolvedInvite.weddingPlanId);
       if (!plan || plan.ownerUserId !== planSeed.ownerUserId) {
         throw new NotFoundException("Wedding plan not found");
       }
@@ -1047,7 +1070,6 @@ export class SharingService {
       }
       const invite = await tx.planInvite.findUnique({
         where: { id: resolvedInvite.id },
-        include: this.inviteIncludes(),
       });
       if (!invite) {
         throw new ConflictException("Invite is no longer pending");
@@ -1065,24 +1087,20 @@ export class SharingService {
         if (!presentedTokenStillMatches) {
           throw new ConflictException("Invite is no longer pending");
         }
-        const member = await tx.sharedMember.findUnique({
+        const existingMember = await tx.sharedMember.findUnique({
           where: {
             weddingPlanId_userId: {
               weddingPlanId: invite.weddingPlanId,
               userId: currentUser.id,
             },
           },
-          include: {
-            user: {
-              select: { id: true, phone: true, ...applicationNameFields },
-            },
-          },
         });
-        if (!member) {
+        if (!existingMember) {
           throw new ConflictException(
             "Accepted invitation membership is no longer active",
           );
         }
+        const member = await this.withMemberUser(tx, existingMember);
         await this.history.ensureTenureInTransaction(tx, member);
         await this.recordAcceptedInviteMemberForInviterInTransaction(
           tx,
@@ -1090,7 +1108,10 @@ export class SharingService {
           member,
           invite.acceptedAt,
         );
-        return { member, acceptedInvite: invite };
+        return {
+          member,
+          acceptedInvite: await this.withInviteRelations(tx, invite),
+        };
       }
       this.assertInviteCanBeAccepted(invite, currentUser);
       this.assertPendingInviteAuthority(
@@ -1117,7 +1138,7 @@ export class SharingService {
         throw new ConflictException("Invite is no longer pending");
       }
 
-      const member = await tx.sharedMember.upsert({
+      const upsertedMember = await tx.sharedMember.upsert({
         where: {
           weddingPlanId_userId: {
             weddingPlanId: invite.weddingPlanId,
@@ -1138,12 +1159,8 @@ export class SharingService {
           canManageMoney: invite.canManageMoney,
           receiveNotifications: invite.receiveNotifications,
         },
-        include: {
-          user: {
-            select: { id: true, phone: true, ...applicationNameFields },
-          },
-        },
       });
+      const member = await this.withMemberUser(tx, upsertedMember);
       await this.history.ensureTenureInTransaction(tx, member);
       await this.recordAcceptedInviteMemberForInviterInTransaction(
         tx,
@@ -1152,7 +1169,7 @@ export class SharingService {
         acceptedAt,
       );
       if (member.canManageProviders) {
-        await this.setProviderConversationParticipation(
+        await this.participation.setPlanConversationParticipationInTransaction(
           tx,
           invite.weddingPlanId,
           currentUser.id,
@@ -1160,13 +1177,16 @@ export class SharingService {
         );
       }
 
-      const acceptedInvite = await tx.planInvite.findUnique({
+      const acceptedInviteRow = await tx.planInvite.findUnique({
         where: { id: invite.id },
-        include: this.inviteIncludes(),
       });
-      if (!acceptedInvite) {
+      if (!acceptedInviteRow) {
         throw new ConflictException("Invite is no longer pending");
       }
+      const acceptedInvite = await this.withInviteRelations(
+        tx,
+        acceptedInviteRow,
+      );
 
       await this.notifications.createNotificationInTransaction(tx, {
         userId: invite.inviterUserId,
@@ -1210,10 +1230,7 @@ export class SharingService {
     const declined = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
-        const planSeed = await tx.weddingPlan.findUnique({
-          where: { id: invite.weddingPlanId },
-          select: { ownerUserId: true },
-        });
+        const planSeed = await this.plans.getPlan(tx, invite.weddingPlanId);
         if (!planSeed) {
           throw new NotFoundException("Wedding plan not found");
         }
@@ -1231,21 +1248,17 @@ export class SharingService {
         ) {
           throw new NotFoundException("Invite not found");
         }
-        const lockedPlan = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-          SELECT "id"
-          FROM "WeddingPlan"
-          WHERE "id" = ${invite.weddingPlanId}
-          FOR SHARE
-        `,
+        const lockedPlan = await this.plans.lockPlanRowForShareInTransaction(
+          tx,
+          invite.weddingPlanId,
         );
         if (lockedPlan.length !== 1) {
           throw new NotFoundException("Wedding plan not found");
         }
-        const lockedPlanState = await tx.weddingPlan.findUnique({
-          where: { id: invite.weddingPlanId },
-          select: { ownerUserId: true },
-        });
+        const lockedPlanState = await this.plans.getPlan(
+          tx,
+          invite.weddingPlanId,
+        );
         if (
           !lockedPlanState ||
           lockedPlanState.ownerUserId !== planSeed.ownerUserId
@@ -1265,7 +1278,6 @@ export class SharingService {
         }
         const currentInvite = await tx.planInvite.findUnique({
           where: { id: invite.id },
-          include: this.inviteIncludes(),
         });
         if (!currentInvite) {
           throw new ConflictException("Invite is no longer pending");
@@ -1283,7 +1295,7 @@ export class SharingService {
           if (!presentedTokenStillMatches) {
             throw new ConflictException("Invite is no longer pending");
           }
-          return currentInvite;
+          return this.withInviteRelations(tx, currentInvite);
         }
         this.assertInviteCanBeAccepted(currentInvite, currentUser);
         const claimed = await tx.planInvite.updateMany({
@@ -1303,13 +1315,13 @@ export class SharingService {
         if (claimed.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
         }
-        const updated = await tx.planInvite.findUnique({
+        const updatedRow = await tx.planInvite.findUnique({
           where: { id: currentInvite.id },
-          include: this.inviteIncludes(),
         });
-        if (!updated) {
+        if (!updatedRow) {
           throw new ConflictException("Invite is no longer pending");
         }
+        const updated = await this.withInviteRelations(tx, updatedRow);
 
         await this.notifications.createNotificationInTransaction(tx, {
           userId: currentInvite.inviterUserId,
@@ -1431,21 +1443,19 @@ export class SharingService {
         revocationDescriptors.some(
           ({ key }) => existing[key] !== permissionData[key],
         );
-      const updated = await tx.sharedMember.update({
-        where: { id: existing.id },
-        data: {
-          ...(dto.role !== undefined ? { role } : {}),
-          ...permissionData,
-          ...(authorityChanged
-            ? { authorityVersion: authorityVersion + 1 }
-            : {}),
-        },
-        include: {
-          user: {
-            select: { id: true, phone: true, ...applicationNameFields },
+      const updated = await this.withMemberUser(
+        tx,
+        await tx.sharedMember.update({
+          where: { id: existing.id },
+          data: {
+            ...(dto.role !== undefined ? { role } : {}),
+            ...permissionData,
+            ...(authorityChanged
+              ? { authorityVersion: authorityVersion + 1 }
+              : {}),
           },
-        },
-      });
+        }),
+      );
       if (hadFinancialAccess && !keepsFinancialAccess) {
         await this.notifications.purgeMoneyForMember(
           tx,
@@ -1456,14 +1466,14 @@ export class SharingService {
       let revokedConversationIds: string[] = [];
       if (hadProviderConversationAccess && !keepsProviderConversationAccess) {
         revokedConversationIds =
-          await this.setProviderConversationParticipation(
+          await this.participation.setPlanConversationParticipationInTransaction(
             tx,
             weddingPlanId,
             existing.userId,
             false,
           );
       } else if (gainsProviderConversationAccess) {
-        await this.setProviderConversationParticipation(
+        await this.participation.setPlanConversationParticipationInTransaction(
           tx,
           weddingPlanId,
           existing.userId,
@@ -1518,10 +1528,10 @@ export class SharingService {
       if (memberId === access.plan.ownerUserId) {
         throw new BadRequestException("Last owner cannot be removed");
       }
-      const targetUser = await tx.user.findUnique({
-        where: { id: targetSeed.userId },
-        select: { phone: true },
-      });
+      const targetUser = await this.users.getAppIdentity(
+        tx,
+        targetSeed.userId,
+      );
       if (!targetUser) {
         throw new NotFoundException("Shared member not found");
       }
@@ -1630,16 +1640,14 @@ export class SharingService {
         roleAtEnd: existing.role,
         endedAt: revokedAt,
       });
-      await tx.user.updateMany({
-        where: {
-          id: existing.userId,
-          activeWeddingPlanId: weddingPlanId,
-        },
-        data: { activeWeddingPlanId: null },
-      });
+      await this.activePlan.clearActivePlanPointerInTransaction(
+        tx,
+        existing.userId,
+        weddingPlanId,
+      );
       await tx.sharedMember.delete({ where: { id: existing.id } });
       const revokedConversationIds =
-        await this.setProviderConversationParticipation(
+        await this.participation.setPlanConversationParticipationInTransaction(
           tx,
           weddingPlanId,
           existing.userId,
@@ -1679,10 +1687,7 @@ export class SharingService {
     deleted: true;
     alreadyLeft: boolean;
   }> {
-    const planSeed = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-      select: { ownerUserId: true },
-    });
+    const planSeed = await this.plans.getPlan(this.prisma, weddingPlanId);
     if (!planSeed) throw new NotFoundException("Wedding plan not found");
     if (planSeed.ownerUserId === currentUser.id) {
       throw new HttpException(
@@ -1703,10 +1708,7 @@ export class SharingService {
       if (lockedUsers.length !== 1) {
         throw new NotFoundException("Wedding plan not found");
       }
-      const plan = await tx.weddingPlan.findUnique({
-        where: { id: weddingPlanId },
-        select: { ownerUserId: true },
-      });
+      const plan = await this.plans.getPlan(tx, weddingPlanId);
       if (!plan) throw new NotFoundException("Wedding plan not found");
       if (plan.ownerUserId === currentUser.id) {
         throw new HttpException(
@@ -1775,10 +1777,7 @@ export class SharingService {
         );
       }
 
-      const user = await tx.user.findUnique({
-        where: { id: currentUser.id },
-        select: { phone: true },
-      });
+      const user = await this.users.getAppIdentity(tx, currentUser.id);
       if (!user) throw new NotFoundException("Wedding plan not found");
       const leftAt = new Date();
       await this.revokePendingInvitesForUserInTransaction(
@@ -1811,13 +1810,14 @@ export class SharingService {
         roleAtEnd: existing.role,
         endedAt: leftAt,
       });
-      await tx.user.updateMany({
-        where: { id: currentUser.id, activeWeddingPlanId: weddingPlanId },
-        data: { activeWeddingPlanId: null },
-      });
+      await this.activePlan.clearActivePlanPointerInTransaction(
+        tx,
+        currentUser.id,
+        weddingPlanId,
+      );
       await tx.sharedMember.delete({ where: { id: existing.id } });
       const revokedConversationIds =
-        await this.setProviderConversationParticipation(
+        await this.participation.setPlanConversationParticipationInTransaction(
           tx,
           weddingPlanId,
           currentUser.id,
@@ -1879,24 +1879,9 @@ export class SharingService {
     return member;
   }
 
-  private async findPlanWithOwnerOrThrow(
-    weddingPlanId: string,
-  ): Promise<WeddingPlan & { owner: ApplicationContactRecord }> {
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-      include: {
-        owner: {
-          select: { id: true, phone: true, ...applicationNameFields },
-        },
-      },
-    });
-    if (!plan) {
-      throw new NotFoundException("Wedding plan not found");
-    }
-    return plan;
-  }
-
-  private async findTargetUser(dto: CreateSharedMemberDto): Promise<User> {
+  private async findTargetUser(
+    dto: CreateSharedMemberDto,
+  ): Promise<AppIdentity> {
     const userId = dto.userId?.trim();
     const phone = dto.phone
       ? PhoneNormalizer.normalizeRequired(dto.phone)
@@ -1910,13 +1895,14 @@ export class SharingService {
       throw new BadRequestException("Provide either userId or phone");
     }
 
-    let user: User | null;
+    let user: AppIdentity | null;
     if (userId) {
-      user = await this.prisma.user.findUnique({ where: { id: userId } });
+      user = await this.users.getAppIdentity(this.prisma, userId);
     } else if (phone) {
-      user = await this.prisma.user.findFirst({
-        where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
-      });
+      user = await this.users.findAppIdentityByPhoneVariants(
+        this.prisma,
+        PhoneNormalizer.lookupVariants(phone),
+      );
     } else {
       user = null;
     }
@@ -1933,7 +1919,7 @@ export class SharingService {
   }
 
   private async findInviteTarget(dto: CreatePlanInviteDto): Promise<{
-    user: User | null;
+    user: AppIdentity | null;
     phone: string | null;
     normalizedPhone: string | null;
     email: string | null;
@@ -1962,7 +1948,7 @@ export class SharingService {
     }
 
     if (userId) {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      const user = await this.users.getAppIdentity(this.prisma, userId);
       if (!user) {
         throw new BadRequestException("userId must reference an existing user");
       }
@@ -1976,16 +1962,13 @@ export class SharingService {
     }
 
     const user = phone
-      ? ((await this.prisma.user.findUnique({ where: { phone } })) ??
-        (await this.prisma.user.findFirst({
-          where: {
-            phone: {
-              in: PhoneNormalizer.lookupVariants(phone).filter(
-                (candidate) => candidate !== phone,
-              ),
-            },
-          },
-        })))
+      ? await this.users.findAppIdentityByPhone(
+          this.prisma,
+          phone,
+          PhoneNormalizer.lookupVariants(phone).filter(
+            (candidate) => candidate !== phone,
+          ),
+        )
       : null;
     return {
       user,
@@ -2068,7 +2051,6 @@ export class SharingService {
 
       const finalized = await tx.planInvite.findUnique({
         where: { id: attempt.inviteId },
-        include: this.inviteIncludes(),
       });
       if (!finalized) {
         throw new NotFoundException("Invite not found");
@@ -2149,13 +2131,11 @@ export class SharingService {
   ): Promise<PlanInviteWithRelations> {
     const inviteByHash = await this.prisma.planInvite.findUnique({
       where: { tokenHash: this.hashInviteToken(token) },
-      include: this.inviteIncludes(),
     });
     const invite =
       inviteByHash ??
       (await this.prisma.planInvite.findUnique({
         where: { id: token },
-        include: this.inviteIncludes(),
       }));
     if (!invite) {
       throw new NotFoundException("Invite not found");
@@ -2180,24 +2160,80 @@ export class SharingService {
       : { tokenHash: this.hashInviteToken(presentedToken) };
   }
 
-  private inviteIncludes() {
-    return {
-      weddingPlan: {
-        select: {
-          id: true,
-          title: true,
-          city: true,
-          weddingDate: true,
-          status: true,
+  // Planning owns the plan an invitation or membership shows and identity
+  // owns the people; both are read through their ports on the client the
+  // caller is working with, then attached exactly as the includes were.
+  private async withInvitesRelations(
+    client: Prisma.TransactionClient,
+    invites: PlanInvite[],
+  ): Promise<PlanInviteWithRelations[]> {
+    const planIds = [...new Set(invites.map((invite) => invite.weddingPlanId))];
+    const userIds = [
+      ...new Set(
+        invites
+          .flatMap((invite) => [invite.inviterUserId, invite.inviteeUserId])
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const [plans, users] = await Promise.all([
+      this.plans.getPlans(client, planIds),
+      this.users.getAppIdentities(client, userIds),
+    ]);
+    const planById = new Map(
+      plans.map((plan) => [
+        plan.id,
+        {
+          id: plan.id,
+          title: plan.title,
+          city: plan.city,
+          weddingDate: plan.weddingDate,
+          status: plan.status,
         },
-      },
-      inviter: {
-        select: { id: true, phone: true, ...applicationNameFields },
-      },
-      invitee: {
-        select: { id: true, phone: true, ...applicationNameFields },
-      },
-    } satisfies Prisma.PlanInviteInclude;
+      ]),
+    );
+    const userById = new Map(users.map((user) => [user.id, user]));
+    return invites.map((invite) => ({
+      ...invite,
+      weddingPlan: planById.get(invite.weddingPlanId),
+      inviter: userById.get(invite.inviterUserId),
+      invitee: invite.inviteeUserId
+        ? (userById.get(invite.inviteeUserId) ?? null)
+        : null,
+    }));
+  }
+
+  private async withInviteRelations(
+    client: Prisma.TransactionClient,
+    invite: PlanInvite,
+  ): Promise<PlanInviteWithRelations> {
+    const [hydrated] = await this.withInvitesRelations(client, [invite]);
+    return hydrated;
+  }
+
+  private async withMemberUsers<T extends SharedMember>(
+    client: Prisma.TransactionClient,
+    members: T[],
+  ): Promise<Array<T & { user?: ApplicationContactRecord }>> {
+    const users = new Map(
+      (
+        await this.users.getAppIdentities(
+          client,
+          [...new Set(members.map((member) => member.userId))],
+        )
+      ).map((user) => [user.id, user]),
+    );
+    return members.map((member) => ({
+      ...member,
+      user: users.get(member.userId),
+    }));
+  }
+
+  private async withMemberUser<T extends SharedMember>(
+    client: Prisma.TransactionClient,
+    member: T,
+  ): Promise<T & { user?: ApplicationContactRecord }> {
+    const [hydrated] = await this.withMemberUsers(client, [member]);
+    return hydrated;
   }
 
   private assertInviteCanBeAccepted(
@@ -2672,58 +2708,6 @@ export class SharingService {
         "Invitation state changed during authority revocation",
       );
     }
-  }
-
-  private async setProviderConversationParticipation(
-    tx: Prisma.TransactionClient,
-    weddingPlanId: string,
-    userId: string,
-    active: boolean,
-  ): Promise<string[]> {
-    const conversations = await tx.conversation.findMany({
-      where: { weddingPlanId },
-      select: {
-        id: true,
-        provider: { select: { userId: true } },
-        weddingPlan: { select: { ownerUserId: true } },
-      },
-    });
-    const conversationIds = conversations
-      .filter(
-        (conversation) =>
-          active ||
-          (conversation.provider.userId !== userId &&
-            conversation.weddingPlan?.ownerUserId !== userId),
-      )
-      .map((conversation) => conversation.id);
-    if (conversationIds.length === 0) return [];
-
-    if (active) {
-      await tx.conversationParticipant.updateMany({
-        where: {
-          userId,
-          conversationId: { in: conversationIds },
-        },
-        data: { revokedAt: null },
-      });
-      await tx.conversationParticipant.createMany({
-        data: conversationIds.map((conversationId) => ({
-          conversationId,
-          userId,
-        })),
-        skipDuplicates: true,
-      });
-    } else {
-      await tx.conversationParticipant.updateMany({
-        where: {
-          userId,
-          conversationId: { in: conversationIds },
-          revokedAt: null,
-        },
-        data: { revokedAt: new Date() },
-      });
-    }
-    return conversationIds;
   }
 
   private assignableRole(role: SharedMemberRole): SharedMemberRole {

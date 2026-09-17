@@ -17,7 +17,7 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { GuestsService } from "../src/guests/guests.service";
-import { ContributionHistoryService } from "../src/modules/collaboration/internal/contribution-history.service";
+import { contributionHistoryService } from "./support/owner-ports";
 import { ContributorScopeService } from "../src/modules/collaboration/internal/contributor-scope.service";
 import { TasksService } from "../src/tasks/tasks.service";
 import { TimelineService } from "../src/timeline/timeline.service";
@@ -290,7 +290,7 @@ test("live scope accepts qualifying events from current and previous tenures aft
       },
     },
   } as any;
-  const history = new ContributionHistoryService(prisma);
+  const history = contributionHistoryService(prisma);
   const scope = new ContributorScopeService(history);
 
   await scope.qualifyingEntityIds(

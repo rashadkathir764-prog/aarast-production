@@ -60,8 +60,12 @@ function exportedTypeNames(path: string): string[] {
 
 test('Task 4 publishes the exact notifications service contract and signature types', () => {
   const path = 'modules/notifications/public/notifications.port.ts';
+  // The R3 surface is the frozen five; the ownership program added the
+  // provider-message preference read messaging used to run on the
+  // notification preference table itself. Frozen surfaces stay, may grow.
   assert.deepEqual(interfaceMethods(path, 'NotificationsPort'), [
     'createNotificationInTransaction',
+    'listProviderMessagePreferences',
     'notifyTaskDue',
     'purgeMoneyForMember',
     'resolveProviderUpdateRecipientInTransaction',
@@ -74,6 +78,7 @@ test('Task 4 publishes the exact notifications service contract and signature ty
     'NotificationResponse',
     'NotificationVisibilityClient',
     'NotificationsPort',
+    'ProviderMessagePreference',
   ]);
 });
 

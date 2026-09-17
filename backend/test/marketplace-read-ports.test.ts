@@ -88,6 +88,57 @@ test('the quote read port reads offers with their request and locks offer rows f
   ]);
 });
 
+// Messaging used to include the quote requests, offers and expired offers of
+// a conversation on its own queries; marketplace serves them on the caller's
+// client with the same ordering, one row per conversation for the list.
+test('the quote read port serves the quote requests, counts and lapsed offers a conversation shows', async () => {
+  const calls: Array<[string, unknown]> = [];
+  const before = new Date('2026-09-17T10:00:00.000Z');
+  const client = {
+    quoteRequest: {
+      findUnique: async (args: unknown) => { calls.push(['quoteRequest.findUnique', args]); return { conversationId: 'conversation-1' }; },
+      findMany: async (args: unknown) => { calls.push(['quoteRequest.findMany', args]); return [{ id: 'quote-1' }]; },
+      groupBy: async (args: unknown) => { calls.push(['quoteRequest.groupBy', args]); return [{ conversationId: 'conversation-1', _count: { _all: 2 } }]; },
+    },
+    quoteOffer: {
+      findMany: async (args: unknown) => { calls.push(['quoteOffer.findMany', args]); return [{ id: 'offer-1', quoteRequestId: 'quote-1', validUntil: before }]; },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new QuoteReadService();
+  const include = {
+    service: { select: { id: true, title: true } },
+    offers: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
+  };
+
+  assert.equal(await service.getQuoteRequestConversationId(client, 'quote-1'), 'conversation-1');
+  assert.deepEqual(await service.listConversationQuoteRequests(client, 'conversation-1'), [{ id: 'quote-1' }]);
+  assert.deepEqual(await service.getLatestConversationQuoteRequests(client, []), []);
+  assert.deepEqual(await service.getLatestConversationQuoteRequests(client, ['conversation-1']), [{ id: 'quote-1' }]);
+  assert.deepEqual(await service.countConversationQuoteRequests(client, []), []);
+  assert.deepEqual(await service.countConversationQuoteRequests(client, ['conversation-1']), [{ conversationId: 'conversation-1', count: 2 }]);
+  assert.deepEqual(await service.listExpiredPendingOffersForConversation(client, 'conversation-1', before, 21), [
+    { id: 'offer-1', quoteRequestId: 'quote-1', validUntil: before },
+  ]);
+
+  assert.deepEqual(calls, [
+    ['quoteRequest.findUnique', { where: { id: 'quote-1' }, select: { conversationId: true } }],
+    ['quoteRequest.findMany', { where: { conversationId: 'conversation-1' }, include, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }],
+    ['quoteRequest.findMany', {
+      where: { conversationId: { in: ['conversation-1'] } },
+      include,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      distinct: ['conversationId'],
+    }],
+    ['quoteRequest.groupBy', { by: ['conversationId'], where: { conversationId: { in: ['conversation-1'] } }, _count: { _all: true } }],
+    ['quoteOffer.findMany', {
+      where: { quoteRequest: { conversationId: 'conversation-1' }, status: 'PENDING', validUntil: { not: null, lte: before } },
+      select: { id: true, quoteRequestId: true, validUntil: true },
+      orderBy: [{ validUntil: 'desc' }, { id: 'desc' }],
+      take: 21,
+    }],
+  ]);
+});
+
 test('the marketplace read public modules expose only their port tokens bound to the internal implementations', () => {
   const metadata = (module: unknown, key: string) => Reflect.getMetadata(key, module as object);
   assert.deepEqual(metadata(ProviderReadPublicModule, MODULE_METADATA.PROVIDERS), [

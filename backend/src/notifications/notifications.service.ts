@@ -47,6 +47,7 @@ import {
   type NotificationResponse,
   type NotificationsPort,
   type NotificationVisibilityClient,
+  type ProviderMessagePreference,
 } from "../modules/notifications/public/notifications.port";
 
 type PlanParticipantNotificationInput = Omit<
@@ -386,6 +387,17 @@ export class NotificationsService implements NotificationsPort {
     });
     await this.enqueueNotificationDelivery(client, created);
     return this.toResponse(created);
+  }
+
+  async listProviderMessagePreferences(
+    client: Prisma.TransactionClient,
+    userIds: readonly string[],
+  ): Promise<ProviderMessagePreference[]> {
+    if (userIds.length === 0) return [];
+    return client.notificationPreference.findMany({
+      where: { userId: { in: [...userIds] } },
+      select: { userId: true, providerMessagesEnabled: true },
+    });
   }
 
   async resolveProviderUpdateRecipientInTransaction(

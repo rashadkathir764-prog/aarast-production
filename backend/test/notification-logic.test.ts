@@ -224,6 +224,33 @@ test("transaction-scoped notification creation reuses the caller transaction", a
   assert.equal(outboxRows, 1);
 });
 
+// Chat used to read the provider-message preference rows itself before
+// notifying recipients; notifications serves them on the caller's client.
+test("the provider-message preferences of a recipient set are read by their owner, none for an empty set", async () => {
+  const calls: unknown[] = [];
+  const client = {
+    notificationPreference: {
+      findMany: async (args: unknown) => {
+        calls.push(args);
+        return [{ userId: user.id, providerMessagesEnabled: false }];
+      },
+    },
+  };
+  const service = new NotificationsService(
+    {} as PrismaService,
+    {} as PermissionService,
+    new OutboxService(),
+  );
+
+  assert.deepEqual(await service.listProviderMessagePreferences(client as any, []), []);
+  assert.deepEqual(await service.listProviderMessagePreferences(client as any, [user.id]), [
+    { userId: user.id, providerMessagesEnabled: false },
+  ]);
+  assert.deepEqual(calls, [
+    { where: { userId: { in: [user.id] } }, select: { userId: true, providerMessagesEnabled: true } },
+  ]);
+});
+
 test("disabled provider-message preference suppresses quote notifications and outbox work", async () => {
   let notificationRows = 0;
   let outboxRows = 0;

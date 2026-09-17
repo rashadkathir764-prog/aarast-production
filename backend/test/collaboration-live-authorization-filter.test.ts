@@ -96,6 +96,36 @@ test('the never-matching filter is an empty id list so Prisma returns no rows fo
   assert.deepEqual(NEVER_MATCHING_ROW_FILTER, { id: { in: [] } });
 });
 
+// Messaging used to include a plan's members on its conversation reads and
+// lock their membership rows itself; collaboration lists the members of the
+// given plans and locks the given users' rows in user-id order.
+test('a plan\'s members are listed and the recipients\' membership rows locked for share by their owner', async () => {
+  const calls: Array<[string, unknown]> = [];
+  const tx = {
+    sharedMember: {
+      findMany: async (args: unknown) => { calls.push(['findMany', args]); return [{ id: 'member-a' }]; },
+    },
+    $queryRaw: async (query: { strings: string[]; values: unknown[] }) => {
+      calls.push(['$queryRaw', { sql: query.strings.join('?').replace(/\s+/g, ' ').trim(), values: query.values }]);
+      return [];
+    },
+  } as any;
+  const service = new PermissionService({} as any, new PlanReadService());
+
+  assert.deepEqual(await service.listPlanMembers(tx, []), []);
+  assert.deepEqual(await service.listPlanMembers(tx, ['plan-1']), [{ id: 'member-a' }]);
+  await service.lockMembershipsForShareInTransaction(tx, 'plan-1', []);
+  await service.lockMembershipsForShareInTransaction(tx, 'plan-1', ['user-b', 'user-a', 'user-b']);
+
+  assert.deepEqual(calls, [
+    ['findMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
+    ['$queryRaw', {
+      sql: 'SELECT "id" FROM "SharedMember" WHERE "weddingPlanId" = ? AND "userId" = ANY(?::text[]) ORDER BY "userId" ASC FOR SHARE',
+      values: ['plan-1', ['user-a', 'user-b']],
+    }],
+  ]);
+});
+
 // Tasks used to lock the assignee's membership row itself (`SELECT ... FROM
 // "SharedMember" ... FOR SHARE`) before reading it; the member row is
 // collaboration's, so the lock-and-read is one port call on the caller's

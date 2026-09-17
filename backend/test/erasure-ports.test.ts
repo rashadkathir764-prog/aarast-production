@@ -18,6 +18,8 @@ import {
   findIdempotencyReservation,
 } from '../src/platform/idempotency/idempotency-keys';
 import { purgeOutboxEventsForAggregatesInTransaction } from '../src/platform/outbox/outbox-purge';
+import { OutboxEventTypes } from '../src/platform/outbox/outbox.constants';
+import { enqueueOutboxEventInTransaction } from '../src/platform/outbox/outbox.service';
 
 // The account-deletion saga used to run these statements itself. Each owner
 // now runs them on the saga's transaction; the shapes, options and internal
@@ -231,6 +233,12 @@ test('tasks and guests delete the plan rows (groups after guests) and tasks unas
 
 test('platform purges outbox events by aggregate and owns the idempotency key statements', async () => {
   const { tx, calls } = recorder();
+  await enqueueOutboxEventInTransaction(tx, {
+    type: OutboxEventTypes.conversationActivityAvailable,
+    aggregateType: 'conversation',
+    aggregateId: 'conversation-1',
+    payload: { conversationId: 'conversation-1' },
+  });
   await purgeOutboxEventsForAggregatesInTransaction(tx, { notificationIds: ['n-1'], conversationIds: [] });
   await purgeOutboxEventsForAggregatesInTransaction(tx, { notificationIds: [], conversationIds: [] });
   assert.equal(await findIdempotencyReservation(tx, 'user-1', 'request-1'), null);
@@ -239,6 +247,14 @@ test('platform purges outbox events by aggregate and owns the idempotency key st
   await deleteIdempotencyKeysForUser(tx, 'user-1');
   await deleteApplicationIdempotencyKeysForUser(tx, 'user-1');
   assert.deepEqual(calls, [
+    ['outboxEvent.create', {
+      data: {
+        type: OutboxEventTypes.conversationActivityAvailable,
+        aggregateType: 'conversation',
+        aggregateId: 'conversation-1',
+        payload: { conversationId: 'conversation-1' },
+      },
+    }],
     ['outboxEvent.deleteMany', { where: { OR: [{ aggregateType: 'notification', aggregateId: { in: ['n-1'] } }] } }],
     ['idempotencyKey.findUnique', {
       where: { userId_key: { userId: 'user-1', key: 'request-1' } },

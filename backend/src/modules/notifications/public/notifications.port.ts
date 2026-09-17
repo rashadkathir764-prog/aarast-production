@@ -80,4 +80,14 @@ export interface NotificationsPort {
     userId: string,
     client?: NotificationVisibilityClient,
   ): Promise<Prisma.NotificationWhereInput | null>;
+  /** Whether each recipient still accepts provider-message notifications (missing rows accept). */
+  listProviderMessagePreferences(
+    client: Prisma.TransactionClient,
+    userIds: readonly string[],
+  ): Promise<ProviderMessagePreference[]>;
+}
+
+export interface ProviderMessagePreference {
+  userId: string;
+  providerMessagesEnabled: boolean;
 }

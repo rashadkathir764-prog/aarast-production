@@ -6,10 +6,12 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AppRole, OnboardingPath, UserRole, UserStatus, type Prisma } from '@prisma/client';
 import {
   ACTIVE_PLAN_IMPLEMENTATION,
+  IDENTITY_REALTIME_SESSION_IMPLEMENTATION,
   IdentityUserInternalModule,
   PROVIDER_ACCOUNT_IMPLEMENTATION,
   USER_READ_IMPLEMENTATION,
 } from '../src/modules/identity/internal/identity-user.internal.module';
+import { IdentityRealtimeSessionService } from '../src/modules/identity/internal/identity-realtime-session.service';
 import { IdentityUserPortService } from '../src/modules/identity/internal/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
 import { ACTIVE_PLAN_PORT } from '../src/modules/identity/public/active-plan.port';
@@ -267,8 +269,10 @@ test('the identity user public modules expose only their port tokens bound to th
   assert.deepEqual(metadata(ProviderAccountPublicModule, MODULE_METADATA.EXPORTS), [PROVIDER_ACCOUNT_PORT]);
   assert.deepEqual(metadata(IdentityUserInternalModule, MODULE_METADATA.PROVIDERS), [
     IdentityUserPortService,
+    IdentityRealtimeSessionService,
     { provide: USER_READ_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: ACTIVE_PLAN_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: PROVIDER_ACCOUNT_IMPLEMENTATION, useExisting: IdentityUserPortService },
+    { provide: IDENTITY_REALTIME_SESSION_IMPLEMENTATION, useExisting: IdentityRealtimeSessionService },
   ]);
 });

@@ -8,6 +8,7 @@ import { IdentityAuthInternalModule } from "./internal/identity-auth.internal.mo
 import { IdentityProfileInternalModule } from "./internal/identity-profile.internal.module";
 import { ActivePlanPublicModule } from "./public/active-plan-public.module";
 import { IdentityAuthPublicModule } from "./public/identity-auth-public.module";
+import { IdentityRealtimeSessionPublicModule } from "./public/identity-realtime-session-public.module";
 import { IdentityTransientDeliveryPublicModule } from "./public/identity-transient-delivery-public.module";
 import { ProviderAccountPublicModule } from "./public/provider-account-public.module";
 import { UserReadPublicModule } from "./public/user-read-public.module";
@@ -21,6 +22,7 @@ import { UserReadPublicModule } from "./public/user-read-public.module";
     UserReadPublicModule,
     ActivePlanPublicModule,
     ProviderAccountPublicModule,
+    IdentityRealtimeSessionPublicModule,
   ],
   controllers: [
     AuthController,

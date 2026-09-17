@@ -4,7 +4,11 @@ import {
   ContributionEntityType,
   Prisma,
 } from "@prisma/client";
-import { CollaborationScopePort } from "../public/collaboration-scope.port";
+import {
+  CollaborationScopePort,
+  type QualifyingContribution,
+  type QualifyingContributionRule,
+} from "../public/collaboration-scope.port";
 import {
   ContributionHistoryService,
   contributorActorReference,
@@ -54,6 +58,48 @@ export class ContributorScopeService implements CollaborationScopePort {
     });
     return events.flatMap((event) =>
       event.entityId ? [event.entityId] : [],
+    );
+  }
+
+  async listQualifyingContributionsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+    actorUserIds: readonly string[],
+    rules: readonly QualifyingContributionRule[],
+  ): Promise<QualifyingContribution[]> {
+    if (weddingPlanIds.length === 0 || actorUserIds.length === 0 || rules.length === 0) {
+      return [];
+    }
+    const events = await tx.contributionEvent.findMany({
+      where: {
+        historyScope: { weddingPlanId: { in: [...weddingPlanIds] } },
+        contributorTenure: { actorUserId: { in: [...actorUserIds] } },
+        entityId: { not: null },
+        OR: rules.map((rule) => ({
+          entityType: rule.entityType,
+          action: { in: [...rule.actions] },
+        })),
+      },
+      select: {
+        entityId: true,
+        entityType: true,
+        historyScope: { select: { weddingPlanId: true } },
+        contributorTenure: { select: { actorUserId: true } },
+      },
+    });
+    return events.flatMap((event) =>
+      event.entityId &&
+      event.historyScope.weddingPlanId &&
+      event.contributorTenure.actorUserId
+        ? [
+            {
+              entityId: event.entityId,
+              entityType: event.entityType,
+              weddingPlanId: event.historyScope.weddingPlanId,
+              actorUserId: event.contributorTenure.actorUserId,
+            },
+          ]
+        : [],
     );
   }
 

@@ -113,6 +113,17 @@ export async function lockConversationForShare(
   return rows.length === 1;
 }
 
+export async function findConversationProviderId(
+  client: ConversationLifecycleClient,
+  conversationId: string,
+): Promise<string | null> {
+  const conversation = await client.conversation.findUnique({
+    where: { id: conversationId },
+    select: { providerId: true },
+  });
+  return conversation?.providerId ?? null;
+}
+
 export async function recordConversationEvent(
   tx: ConversationLifecycleClient,
   input: RecordConversationEventInput,

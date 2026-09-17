@@ -505,6 +505,23 @@ export class PermissionService implements CollaborationPermissionPort {
     });
   }
 
+  async lockPlanMembershipsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void> {
+    const sortedPlanIds = [...new Set(weddingPlanIds)].sort();
+    if (sortedPlanIds.length === 0) return;
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "SharedMember"
+        WHERE "weddingPlanId" = ANY(${sortedPlanIds}::text[])
+        ORDER BY "weddingPlanId" ASC, "id" ASC
+        FOR SHARE
+      `,
+    );
+  }
+
   async lockMembershipsForShareInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

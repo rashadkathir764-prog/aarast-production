@@ -1,4 +1,4 @@
-import type { BudgetCategory, Prisma } from '@prisma/client';
+import type { BudgetCategory, PaymentSchedule, Prisma } from '@prisma/client';
 import type { WeddingCostWithDetails } from './wedding-cost.presenter';
 
 export const FINANCE_PORT = Symbol('FINANCE_PORT');
@@ -34,6 +34,23 @@ export interface PlanImportCounts {
   costs: number;
   payments: number;
   paymentSchedules: number;
+}
+
+/** A pending payment schedule a reminder names, with the cost it belongs to (the provider is marketplace's, by id). */
+export type DuePaymentSchedule = PaymentSchedule & {
+  weddingCost: {
+    weddingPlanId: string;
+    title: string;
+    partyName: string | null;
+    providerId: string | null;
+  };
+};
+
+export interface DuePaymentScheduleQuery {
+  weddingPlanIds: readonly string[];
+  dueBefore: Date;
+  /** Narrows to these schedules (the re-read under the row locks). */
+  scheduleIds?: readonly string[];
 }
 
 export interface CreateCostFromAcceptedOfferInput {
@@ -90,6 +107,33 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     quoteOfferId: string,
   ): Promise<WeddingCostWithDetails | null>;
+  /** Pending schedules of non-cancelled costs in the plans, due at or before `dueBefore`. */
+  listDuePaymentSchedules(
+    client: Prisma.TransactionClient,
+    query: DuePaymentScheduleQuery,
+  ): Promise<DuePaymentSchedule[]>;
+  /** The schedules of the given costs of the plan (a contributor's payment reminders). */
+  listPaymentScheduleIdsForCosts(
+    client: Prisma.TransactionClient,
+    scopes: ReadonlyArray<{ weddingPlanId: string; costIds: readonly string[] }>,
+  ): Promise<Array<{ id: string; weddingPlanId: string }>>;
+  /** Whether the schedule belongs to one of the plan's given costs. */
+  isPaymentScheduleOfCosts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scheduleId: string,
+    costIds: readonly string[],
+  ): Promise<boolean>;
+  /** Locks the cost rows for share in id order. */
+  lockCostRowsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    costIds: readonly string[],
+  ): Promise<void>;
+  /** Locks the schedule rows for share in id order. */
+  lockPaymentScheduleRowsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    scheduleIds: readonly string[],
+  ): Promise<void>;
   /** The costs linked to any of the offers (a quote shows whether its accepted offer already has one). */
   listCostsForOffers(
     client: Prisma.TransactionClient,

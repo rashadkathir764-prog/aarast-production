@@ -497,6 +497,7 @@ test('R12C Task 3 lifecycle port exposes one runtime token and one singleton pub
         'recordConversationEvent',
         'lockConversationForUpdateInTransaction',
         'lockConversationForShareInTransaction',
+        'findConversationProviderId',
       ],
     );
     assert.deepEqual(Reflect.getMetadata('exports', publicModule.ConversationLifecyclePublicModule), [port.CONVERSATION_LIFECYCLE_PORT]);
@@ -526,6 +527,7 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
     recordConversationEvent: 'recordConversationEvent',
     lockConversationForUpdateInTransaction: 'lockConversationForUpdate',
     lockConversationForShareInTransaction: 'lockConversationForShare',
+    findConversationProviderId: 'findConversationProviderId',
   } as const;
   for (const [method, legacyName] of Object.entries(delegates)) {
     const original = legacy[legacyName];

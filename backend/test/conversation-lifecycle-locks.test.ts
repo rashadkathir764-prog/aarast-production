@@ -54,6 +54,7 @@ test('the lifecycle implementation binds the locks next to the two lifecycle ope
     Object.getOwnPropertyNames(ConversationLifecycleService.prototype).filter((name) => name !== 'constructor').sort(),
     [
       'ensureConversationContext',
+      'findConversationProviderId',
       'lockConversationForShareInTransaction',
       'lockConversationForUpdateInTransaction',
       'recordConversationEvent',

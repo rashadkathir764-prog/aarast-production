@@ -1,4 +1,4 @@
-import type { Prisma, WeddingPlan } from '@prisma/client';
+import type { Prisma, WeddingPlan, WeddingPlanStatus } from '@prisma/client';
 
 export const PLAN_READ_PORT = Symbol('PLAN_READ_PORT');
 
@@ -44,4 +44,14 @@ export interface PlanReadPort {
     client: Prisma.TransactionClient,
     ownerUserId: string,
   ): Promise<string[]>;
+  /** Every plan in the status (the reminder scan walks the planning plans). */
+  listPlansInStatus(
+    client: Prisma.TransactionClient,
+    status: WeddingPlanStatus,
+  ): Promise<WeddingPlan[]>;
+  /** Locks the plan rows for share in id order. */
+  lockPlanRowsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<LockedWeddingPlanRow[]>;
 }

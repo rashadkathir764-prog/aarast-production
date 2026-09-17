@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { type BudgetCategory, Prisma, WeddingCostStatus } from '@prisma/client';
+import {
+  type BudgetCategory,
+  PaymentScheduleStatus,
+  Prisma,
+  WeddingCostStatus,
+} from '@prisma/client';
 import {
   findLogicalBudgetCategory,
   findOtherBudgetCategory,
@@ -8,6 +13,8 @@ import {
 } from '../domain/cost-category-matching';
 import type {
   CreateCostFromAcceptedOfferInput,
+  DuePaymentSchedule,
+  DuePaymentScheduleQuery,
   FinancePort,
   ImportedCostInput,
   PlanImportCounts,
@@ -151,6 +158,107 @@ export class FinancePortService implements FinancePort {
       where: { quoteOfferId },
       include: weddingCostResponseInclude,
     });
+  }
+
+  async listDuePaymentSchedules(
+    client: Prisma.TransactionClient,
+    query: DuePaymentScheduleQuery,
+  ): Promise<DuePaymentSchedule[]> {
+    if (query.weddingPlanIds.length === 0 || query.scheduleIds?.length === 0) {
+      return [];
+    }
+    return client.paymentSchedule.findMany({
+      where: {
+        ...(query.scheduleIds ? { id: { in: [...query.scheduleIds] } } : {}),
+        dueDate: { lte: query.dueBefore },
+        status: PaymentScheduleStatus.PENDING,
+        weddingCost: {
+          weddingPlanId: { in: [...query.weddingPlanIds] },
+          status: { not: WeddingCostStatus.CANCELLED },
+        },
+      },
+      include: {
+        weddingCost: {
+          select: {
+            weddingPlanId: true,
+            title: true,
+            partyName: true,
+            providerId: true,
+          },
+        },
+      },
+    });
+  }
+
+  async listPaymentScheduleIdsForCosts(
+    client: Prisma.TransactionClient,
+    scopes: ReadonlyArray<{ weddingPlanId: string; costIds: readonly string[] }>,
+  ): Promise<Array<{ id: string; weddingPlanId: string }>> {
+    const clauses = scopes.flatMap((scope) =>
+      scope.costIds.length === 0
+        ? []
+        : [{ weddingCost: { weddingPlanId: scope.weddingPlanId, id: { in: [...scope.costIds] } } }],
+    );
+    if (clauses.length === 0) return [];
+    const schedules = await client.paymentSchedule.findMany({
+      where: { OR: clauses },
+      select: { id: true, weddingCost: { select: { weddingPlanId: true } } },
+    });
+    return schedules.map((schedule) => ({
+      id: schedule.id,
+      weddingPlanId: schedule.weddingCost.weddingPlanId,
+    }));
+  }
+
+  async isPaymentScheduleOfCosts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scheduleId: string,
+    costIds: readonly string[],
+  ): Promise<boolean> {
+    if (costIds.length === 0) return false;
+    const schedule = await client.paymentSchedule.findFirst({
+      where: {
+        id: scheduleId,
+        weddingCost: { weddingPlanId, id: { in: [...costIds] } },
+      },
+      select: { id: true },
+    });
+    return schedule !== null;
+  }
+
+  async lockCostRowsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    costIds: readonly string[],
+  ): Promise<void> {
+    const sortedIds = [...new Set(costIds)].sort();
+    if (sortedIds.length === 0) return;
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingCost"
+        WHERE "id" = ANY(${sortedIds}::text[])
+        ORDER BY "id" ASC
+        FOR SHARE
+      `,
+    );
+  }
+
+  async lockPaymentScheduleRowsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    scheduleIds: readonly string[],
+  ): Promise<void> {
+    const sortedIds = [...new Set(scheduleIds)].sort();
+    if (sortedIds.length === 0) return;
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "PaymentSchedule"
+        WHERE "id" = ANY(${sortedIds}::text[])
+        ORDER BY "id" ASC
+        FOR SHARE
+      `,
+    );
   }
 
   async listCostsForOffers(

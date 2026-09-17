@@ -55,6 +55,21 @@ export class ProviderReadService implements ProviderReadPort {
     return providers.map((provider) => provider.id);
   }
 
+  async lockOwnedProviderForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<Provider | null> {
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "Provider"
+        WHERE "userId" = ${userId}
+        FOR SHARE
+      `,
+    );
+    return this.getProviderByUserId(tx, userId);
+  }
+
   async lockProviderRowsForShareInTransaction(
     tx: Prisma.TransactionClient,
     providerIds: readonly string[],

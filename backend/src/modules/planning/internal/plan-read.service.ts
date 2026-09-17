@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type WeddingPlan } from '@prisma/client';
+import { Prisma, type WeddingPlan, type WeddingPlanStatus } from '@prisma/client';
 import type {
   LockedWeddingPlanRow,
   PlanReadPort,
@@ -67,6 +67,30 @@ export class PlanReadService implements PlanReadPort {
     ownerUserId: string,
   ): Promise<WeddingPlan[]> {
     return client.weddingPlan.findMany({ where: { ownerUserId } });
+  }
+
+  async listPlansInStatus(
+    client: Prisma.TransactionClient,
+    status: WeddingPlanStatus,
+  ): Promise<WeddingPlan[]> {
+    return client.weddingPlan.findMany({ where: { status } });
+  }
+
+  async lockPlanRowsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<LockedWeddingPlanRow[]> {
+    const sortedIds = [...new Set(weddingPlanIds)].sort();
+    if (sortedIds.length === 0) return [];
+    return tx.$queryRaw<LockedWeddingPlanRow[]>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingPlan"
+        WHERE "id" = ANY(${sortedIds}::text[])
+        ORDER BY "id" ASC
+        FOR SHARE
+      `,
+    );
   }
 
   async listOwnedPlanIds(

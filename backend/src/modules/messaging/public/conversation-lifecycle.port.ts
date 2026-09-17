@@ -60,4 +60,9 @@ export interface ConversationLifecyclePort {
     tx: ConversationLifecycleClient,
     conversationId: string,
   ): Promise<boolean>;
+  /** The provider a conversation belongs to (a chat notification is checked against it). */
+  findConversationProviderId(
+    client: ConversationLifecycleClient,
+    conversationId: string,
+  ): Promise<string | null>;
 }

@@ -39,4 +39,9 @@ export interface ProviderReadPort {
     tx: Prisma.TransactionClient,
     providerIds: readonly string[],
   ): Promise<LockedProviderRow[]>;
+  /** Locks the user's provider row (if any) for share and returns it. */
+  lockOwnedProviderForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<Provider | null>;
 }

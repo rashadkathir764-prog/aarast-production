@@ -193,6 +193,11 @@ export interface CollaborationPermissionPort {
     client: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<SharedMember[]>;
+  /** Locks every membership row of the given plans for share, in plan-id then id order. */
+  lockPlanMembershipsForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<void>;
   /** Locks the given users' membership rows in the plan for share, in user-id order. */
   lockMembershipsForShareInTransaction(
     tx: Prisma.TransactionClient,

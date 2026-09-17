@@ -20,6 +20,17 @@ export interface AppIdentity {
   status: UserStatus;
 }
 
+/**
+ * What the invite-OTP flow needs to know about the account registered under
+ * an invited phone, decided by identity: whether its application password is
+ * configured and whether the account still needs its setup step.
+ */
+export interface InviteAccountState {
+  id: string;
+  appPasswordConfigured: boolean;
+  accountSetupRequired: boolean;
+}
+
 export const appIdentitySelect = {
   id: true,
   name: true,
@@ -51,4 +62,19 @@ export interface UserReadPort {
     client: Prisma.TransactionClient,
     userId: string,
   ): Promise<string | null>;
+  /** The user registered under exactly `phone`, else under one of its other lookup variants. */
+  findAppIdentityByPhone(
+    client: Prisma.TransactionClient,
+    phone: string,
+    otherVariants: readonly string[],
+  ): Promise<AppIdentity | null>;
+  /** The first user registered under any of the phone variants. */
+  findAppIdentityByPhoneVariants(
+    client: Prisma.TransactionClient,
+    variants: readonly string[],
+  ): Promise<AppIdentity | null>;
+  findInviteAccountByPhoneVariants(
+    client: Prisma.TransactionClient,
+    variants: readonly string[],
+  ): Promise<InviteAccountState | null>;
 }

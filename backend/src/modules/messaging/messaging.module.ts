@@ -5,9 +5,14 @@ import {
 } from '../../conversations/conversations.controller';
 import { MessagingConversationsInternalModule } from './internal/messaging-conversations.internal.module';
 import { MessagingErasurePublicModule } from './public/messaging-erasure-public.module';
+import { MessagingParticipationPublicModule } from './public/messaging-participation-public.module';
 
 @Module({
-  imports: [MessagingErasurePublicModule, MessagingConversationsInternalModule],
+  imports: [
+    MessagingErasurePublicModule,
+    MessagingParticipationPublicModule,
+    MessagingConversationsInternalModule,
+  ],
   controllers: [ConversationsController, QuoteRequestConversationsController],
 })
 export class MessagingModule {}

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { type Prisma, UserRole } from '@prisma/client';
 import type {
   ActivePlanPort,
   CompleteOnboardingInput,
@@ -8,6 +8,7 @@ import { type SafeUser, toSafeUser } from '../public/safe-user';
 import {
   type AppIdentity,
   appIdentitySelect,
+  type InviteAccountState,
   type UserReadPort,
 } from '../public/user-read.port';
 
@@ -51,6 +52,66 @@ export class IdentityUserPortService implements UserReadPort, ActivePlanPort {
       select: { activeWeddingPlanId: true },
     });
     return user?.activeWeddingPlanId ?? null;
+  }
+
+  async findAppIdentityByPhone(
+    client: Prisma.TransactionClient,
+    phone: string,
+    otherVariants: readonly string[],
+  ): Promise<AppIdentity | null> {
+    return (
+      (await client.user.findUnique({
+        where: { phone },
+        select: appIdentitySelect,
+      })) ??
+      (await this.findAppIdentityByPhoneVariants(client, otherVariants))
+    );
+  }
+
+  async findAppIdentityByPhoneVariants(
+    client: Prisma.TransactionClient,
+    variants: readonly string[],
+  ): Promise<AppIdentity | null> {
+    return client.user.findFirst({
+      where: { phone: { in: [...variants] } },
+      select: appIdentitySelect,
+    });
+  }
+
+  async findInviteAccountByPhoneVariants(
+    client: Prisma.TransactionClient,
+    variants: readonly string[],
+  ): Promise<InviteAccountState | null> {
+    const account = await client.user.findFirst({
+      where: { phone: { in: [...variants] } },
+      select: {
+        id: true,
+        role: true,
+        phoneVerifiedAt: true,
+        appPasswordHash: true,
+        appPasswordConfiguredAt: true,
+      },
+    });
+    if (!account) return null;
+    return {
+      id: account.id,
+      appPasswordConfigured: account.appPasswordConfiguredAt !== null,
+      accountSetupRequired:
+        !account.appPasswordConfiguredAt ||
+        (!account.phoneVerifiedAt && account.role !== UserRole.ADMIN) ||
+        (account.role === UserRole.ADMIN && !account.appPasswordHash),
+    };
+  }
+
+  async clearActivePlanPointerInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanId: string,
+  ): Promise<void> {
+    await tx.user.updateMany({
+      where: { id: userId, activeWeddingPlanId: weddingPlanId },
+      data: { activeWeddingPlanId: null },
+    });
   }
 
   async setActivePlanPointerInTransaction(

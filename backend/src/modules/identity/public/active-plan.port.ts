@@ -31,4 +31,10 @@ export interface ActivePlanPort {
     userId: string,
     input: CompleteOnboardingInput,
   ): Promise<SafeUser>;
+  /** Clears the pointer only while it still points at this plan (a member leaves or is removed). */
+  clearActivePlanPointerInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanId: string,
+  ): Promise<void>;
 }

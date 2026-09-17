@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import {
   MESSAGING_ERASURE_IMPLEMENTATION,
-  MessagingErasureInternalModule,
-} from '../internal/messaging-erasure.internal.module';
+  MessagingPortsInternalModule,
+} from '../internal/messaging-ports.internal.module';
 import { MESSAGING_ERASURE_PORT } from './messaging-erasure.port';
 
 @Module({
-  imports: [MessagingErasureInternalModule],
+  imports: [MessagingPortsInternalModule],
   providers: [
     {
       provide: MESSAGING_ERASURE_PORT,

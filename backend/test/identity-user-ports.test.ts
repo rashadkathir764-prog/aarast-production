@@ -78,6 +78,104 @@ test('the user read port projects users to the application identity, never a cre
   ]);
 });
 
+test('the user read port resolves an invited phone to its identity, exact number first', async () => {
+  const calls: Array<[string, unknown]> = [];
+  const byPhone = new Map<string, typeof userRow>([
+    ['+967700000001', { ...userRow, id: 'canonical', phone: '+967700000001' }],
+    ['700000002', { ...userRow, id: 'legacy', phone: '700000002' }],
+  ]);
+  const client = {
+    user: {
+      findUnique: async (args: { where: { phone: string } }) => {
+        calls.push(['findUnique', args]);
+        return byPhone.get(args.where.phone) ?? null;
+      },
+      findFirst: async (args: { where: { phone: { in: string[] } } }) => {
+        calls.push(['findFirst', args]);
+        return args.where.phone.in.map((phone) => byPhone.get(phone)).find(Boolean) ?? null;
+      },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new IdentityUserPortService();
+
+  const exact = await service.findAppIdentityByPhone(client, '+967700000001', ['700000001']);
+  assert.equal(exact?.id, 'canonical');
+  const variant = await service.findAppIdentityByPhone(client, '+967700000002', ['700000002']);
+  assert.equal(variant?.id, 'legacy');
+  const first = await service.findAppIdentityByPhoneVariants(client, ['+967700000002', '700000002']);
+  assert.equal(first?.id, 'legacy');
+  assert.equal(await service.findAppIdentityByPhoneVariants(client, ['+967700000009']), null);
+
+  assert.deepEqual(calls, [
+    ['findUnique', { where: { phone: '+967700000001' }, select: appIdentitySelect }],
+    ['findUnique', { where: { phone: '+967700000002' }, select: appIdentitySelect }],
+    ['findFirst', { where: { phone: { in: ['700000002'] } }, select: appIdentitySelect }],
+    ['findFirst', { where: { phone: { in: ['+967700000002', '700000002'] } }, select: appIdentitySelect }],
+    ['findFirst', { where: { phone: { in: ['+967700000009'] } }, select: appIdentitySelect }],
+  ]);
+});
+
+test('the user read port decides the invite account setup state without exposing the credential columns', async () => {
+  const accounts: Array<Record<string, unknown>> = [];
+  let selected: unknown;
+  const client = {
+    user: {
+      findFirst: async (args: { select: unknown }) => { selected = args.select; return accounts.shift() ?? null; },
+    },
+  } as unknown as Prisma.TransactionClient;
+  const service = new IdentityUserPortService();
+  const account = (overrides: Record<string, unknown>) => ({
+    id: 'user-1',
+    role: UserRole.USER,
+    phoneVerifiedAt: now,
+    appPasswordHash: 'hash',
+    appPasswordConfiguredAt: now,
+    ...overrides,
+  });
+
+  accounts.push(
+    account({}),
+    account({ appPasswordConfiguredAt: null, appPasswordHash: null }),
+    account({ phoneVerifiedAt: null }),
+    account({ role: UserRole.ADMIN, phoneVerifiedAt: null }),
+    account({ role: UserRole.ADMIN, appPasswordHash: null }),
+  );
+  const states = [];
+  for (let index = 0; index < 5; index += 1) {
+    states.push(await service.findInviteAccountByPhoneVariants(client, ['+967700000001']));
+  }
+  assert.deepEqual(states, [
+    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: false },
+    { id: 'user-1', appPasswordConfigured: false, accountSetupRequired: true },
+    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: true },
+    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: false },
+    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: true },
+  ]);
+  assert.equal(await service.findInviteAccountByPhoneVariants(client, ['+967700000001']), null);
+  assert.deepEqual(selected, {
+    id: true,
+    role: true,
+    phoneVerifiedAt: true,
+    appPasswordHash: true,
+    appPasswordConfiguredAt: true,
+  });
+});
+
+test('the active plan port clears the pointer only while it still points at the plan', async () => {
+  const updates: unknown[] = [];
+  const tx = {
+    user: {
+      updateMany: async (args: unknown) => { updates.push(args); return { count: 1 }; },
+    },
+  } as unknown as Prisma.TransactionClient;
+
+  await new IdentityUserPortService().clearActivePlanPointerInTransaction(tx, 'user-1', 'plan-1');
+
+  assert.deepEqual(updates, [
+    { where: { id: 'user-1', activeWeddingPlanId: 'plan-1' }, data: { activeWeddingPlanId: null } },
+  ]);
+});
+
 test('the active plan port writes the pointer and the onboarding columns identity owns', async () => {
   const updates: unknown[] = [];
   const tx = {

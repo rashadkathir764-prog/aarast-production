@@ -963,18 +963,6 @@
       "count": 6
     },
     {
-      "key": "backend/src/conversations/conversation-lifecycle.ts|messaging||<dynamic>|createMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/conversations/conversation-lifecycle.ts",
-      "context": "messaging",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "createMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/conversations/conversations.service.ts|messaging||<dynamic>|createMany|unknown|relation|unknown-relation-shape",
       "file": "backend/src/conversations/conversations.service.ts",
       "context": "messaging",
@@ -1693,18 +1681,6 @@
       "source": "relation",
       "reason": "unknown-relation-shape",
       "count": 2
-    },
-    {
-      "key": "backend/src/notifications/notifications.service.ts|notifications||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/notifications/notifications.service.ts",
-      "context": "notifications",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
     },
     {
       "key": "backend/src/notifications/notifications.service.ts|notifications||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",

@@ -654,6 +654,30 @@ test('logical relation filters, static array spreads, and scalar nested writes k
   assert.equal(records.some((record) => record.reason === 'unknown-relation-shape'), false);
 });
 
+// `data` names the write container only at the root of a delegate call. A
+// column named `data` (Notification.data, a JSON value) inside that container
+// or inside a select is a field of the current model, never a nested write.
+test('a column named data inside a write or a select is a field, not the write container', () => {
+  const options = fixtureProject({
+    'notifications/json-column.ts': prismaFixture([
+      'declare const payload: Prisma.InputJsonValue;',
+      'await prisma.notification.create({ data: { userId: "u", type: "TASK_DUE_SOON", title: "t", body: "b", data: payload } });',
+      'await prisma.notification.findMany({ where: { userId: "u" }, select: { id: true, data: true } });',
+      'await prisma.notification.updateMany({ where: { id: "n" }, data: { data: payload } });',
+    ].join('\n')),
+    // A nested to-many mutation keeps its `{ where, data }` wrapper: the
+    // inner `data` is the write container of the related model.
+    'wedding-plans/nested-update.ts': prismaFixture(
+      'await prisma.weddingPlan.update({ where: { id: "p" }, data: { sharedMembers: { update: { where: { id: "m" }, data: { canViewMoney: true } } } } });',
+    ),
+  });
+  const records = scanOwnershipViolations(options);
+  assert.deepEqual(records.map(pick), [{
+    file: 'backend/src/wedding-plans/nested-update.ts', model: 'SharedMember', owner: 'collaboration', mode: 'write',
+    source: 'relation', reason: 'foreign-model',
+  }]);
+});
+
 test('_count preserves the current model and classifies selected relations', () => {
   const options = fixtureProject({
     'money/count.ts': prismaFixture(

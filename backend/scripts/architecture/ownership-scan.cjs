@@ -866,7 +866,13 @@ function relationAccesses(argument, rootModel, checker, schemaMetadata, makeAcce
         walk(property.value, model, 'read');
         continue;
       }
-      if (name === 'data') {
+      // `data` is the write container at the root of the delegate call and
+      // in a nested to-many mutation (`update: { where, data }`), where it
+      // sits beside `where`. Anywhere else — inside a write's fields or a
+      // read — it is a column of the current model (a JSON value such as
+      // Notification.data), classified below like every other field.
+      if (name === 'data' && (zone === 'root' || (zone === 'data'
+        && resolved.properties.some((sibling) => sibling.name === 'where')))) {
         walk(property.value, model, 'data');
         continue;
       }

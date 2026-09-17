@@ -1,8 +1,9 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
 import { ensureConversationContext, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables } from "./support/owner-ports";
 
 const lifecycle: ConversationLifecyclePort = {
-  ensureConversationContext,
+  ensureConversationContext: (tx, input) => ensureConversationContext(tx, input, { plans: ownerPorts.plans, providers: ownerPorts.providers }),
   recordConversationEvent,
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
@@ -13,7 +14,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ConflictException } from "@nestjs/common";
 import { Prisma, QuoteRequestStatus } from "@prisma/client";
-import { marketplaceRelations, marketplaceService, providerDashboardService, withOwnerTables } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { createQuoteRequestInTransaction } from "../src/marketplace/quote-request-creation";
 import { isQuoteOfferExpired } from "../src/marketplace/quote-offer-expiry";

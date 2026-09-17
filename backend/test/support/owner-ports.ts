@@ -289,6 +289,62 @@ export function providerDashboardService(
 }
 
 // ---------------------------------------------------------------------------
+// Messaging: the provider, plan, members, identities and quote requests a
+// conversation shows are attached through ConversationRelationsService; the
+// gateway asks identity whether a socket's account may hold a channel.
+import { ConversationRelationsService } from '../../src/conversations/conversation-relations';
+import { ConversationsGateway } from '../../src/conversations/conversations.gateway';
+import { ConversationsService } from '../../src/conversations/conversations.service';
+import { IdentityRealtimeSessionService } from '../../src/modules/identity/internal/identity-realtime-session.service';
+
+export function conversationRelations(client: unknown): ConversationRelationsService {
+  return new ConversationRelationsService(
+    ownerPorts.providers,
+    ownerPorts.users,
+    ownerPorts.plans,
+    new PermissionService(client as any, ownerPorts.plans),
+    ownerPorts.quotes,
+  );
+}
+
+export function conversationsService(
+  prisma: unknown,
+  notifications: unknown,
+  realtime: unknown,
+  mediaStorage: unknown,
+  outbox: unknown,
+): ConversationsService {
+  const client = withOwnerTables(prisma as any);
+  return new ConversationsService(
+    client,
+    notifications as any,
+    realtime as any,
+    mediaStorage as any,
+    outbox as any,
+    conversationRelations(client),
+  );
+}
+
+/** The realtime session decision over the fixture's client (the same user and session statements the gateway ran). */
+export function realtimeSessions(prisma: unknown): IdentityRealtimeSessionService {
+  return new IdentityRealtimeSessionService(prisma as any);
+}
+
+export function conversationsGateway(
+  jwt: unknown,
+  prisma: unknown,
+  conversations: unknown,
+  realtime: unknown,
+): ConversationsGateway {
+  return new ConversationsGateway(
+    jwt as any,
+    realtimeSessions(prisma),
+    conversations as any,
+    realtime as any,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Fixture relation tables. Sharing fixtures describe their invite and member
 // rows with the related plan and people inline — the shape the old Prisma
 // includes returned. The owners now read those rows through their ports
@@ -305,21 +361,23 @@ function isRow(value: unknown): value is Record<string, any> {
 const OWNER_TABLES = new WeakSet<object>();
 
 type Rows = Map<string, Record<string, any>>;
-type OwnerTable = 'user' | 'weddingPlan' | 'sharedMember' | 'city' | 'providerCategory' | 'weddingCost';
-type OwnerStore = Record<OwnerTable, Rows>;
+type OwnerTable = 'user' | 'weddingPlan' | 'sharedMember' | 'city' | 'providerCategory' | 'weddingCost' | 'provider' | 'quoteRequest';
+type OwnerStore = Record<OwnerTable, Rows> & { quoteCounts: Map<string, number> };
 
 // Which inline relation keys carry which owner's rows.
 const RELATION_TABLES: Record<string, OwnerTable> = {
-  inviter: 'user', invitee: 'user', user: 'user', owner: 'user',
+  inviter: 'user', invitee: 'user', user: 'user', owner: 'user', sender: 'user', accountRequester: 'user',
   weddingPlan: 'weddingPlan',
   city: 'city',
   primaryCategory: 'providerCategory', category: 'providerCategory',
+  provider: 'provider',
 };
 
 export function withOwnerTables<T extends FakeClient>(fake: T): T {
   return install(fake, {
     user: new Map(), weddingPlan: new Map(), sharedMember: new Map(),
     city: new Map(), providerCategory: new Map(), weddingCost: new Map(),
+    provider: new Map(), quoteRequest: new Map(), quoteCounts: new Map(),
   });
 }
 
@@ -335,14 +393,26 @@ function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
     if (Array.isArray(value)) { for (const item of value) harvest(table, item, depth); return; }
     if (!isRow(value)) return;
     if (table === 'sharedMember' && typeof value.weddingPlanId === 'string' && typeof value.userId === 'string') remember('sharedMember', value);
+    if (table === 'quoteRequest' && typeof value.conversationId === 'string') remember('quoteRequest', value);
     for (const [key, related] of Object.entries(value)) {
       const owner = RELATION_TABLES[key];
       if (owner && isRow(related)) remember(owner, related);
-      // A cost linked to an offer arrives inline on the offer (`offers[].weddingCosts`).
+      // Rows the old includes nested under a parent carry the parent's id
+      // the way the real rows do: a plan's members, an offer's costs, a
+      // conversation's quote requests and their count.
       if (key === 'weddingCosts' && Array.isArray(related) && typeof value.id === 'string') {
         for (const cost of related) if (isRow(cost)) remember('weddingCost', { ...cost, quoteOfferId: value.id });
       }
-      if (isRow(related) || Array.isArray(related)) harvest(key === 'sharedMembers' ? 'sharedMember' : key, related, depth + 1);
+      if (key === 'sharedMembers' && Array.isArray(related) && typeof value.id === 'string') {
+        for (const member of related) if (isRow(member)) remember('sharedMember', { id: `${value.id}:${member.userId}`, weddingPlanId: value.id, ...member });
+      }
+      if (key === 'quoteRequests' && Array.isArray(related) && typeof value.id === 'string') {
+        for (const quote of related) if (isRow(quote)) remember('quoteRequest', { conversationId: value.id, ...quote });
+      }
+      if (key === '_count' && isRow(related) && typeof related.quoteRequests === 'number' && typeof value.id === 'string') {
+        store.quoteCounts.set(value.id, related.quoteRequests);
+      }
+      if (isRow(related) || Array.isArray(related)) harvest(key === 'sharedMembers' ? 'sharedMember' : key === 'quoteRequests' ? 'quoteRequest' : key, related, depth + 1);
     }
   };
   const matches = (row: Record<string, any>, where: Record<string, any>) => Object.entries(where ?? {}).every(([key, expected]) => (
@@ -350,8 +420,24 @@ function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
   ));
   const registry = (table: OwnerTable) => ({
     findMany: async ({ where }: any = {}) => [...store[table].values()].filter((row) => matches(row, where)),
-    findUnique: async ({ where }: any) => store[table].get(where.id) ?? null,
+    findUnique: async ({ where }: any) => (
+      where.id ? (store[table].get(where.id) ?? null) : ([...store[table].values()].find((row) => matches(row, where)) ?? null)
+    ),
     findFirst: async ({ where }: any) => [...store[table].values()].find((row) => matches(row, where)) ?? null,
+    ...(table === 'quoteRequest'
+      ? {
+          groupBy: async ({ where }: any) => {
+            const ids: string[] = where?.conversationId?.in ?? [];
+            return ids.map((conversationId) => ({
+              conversationId,
+              _count: {
+                _all: store.quoteCounts.get(conversationId)
+                  ?? [...store.quoteRequest.values()].filter((row) => row.conversationId === conversationId).length,
+              },
+            }));
+          },
+        }
+      : {}),
   });
   for (const [table, delegate] of Object.entries(fake)) {
     if (table.startsWith('$') || !isRow(delegate)) continue;
@@ -361,7 +447,7 @@ function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
       delegate[method] = async (...args: unknown[]) => { const result = await own.apply(delegate, args); harvest(table, result); return result; };
     }
   }
-  for (const table of Object.keys(store) as OwnerTable[]) {
+  for (const table of Object.keys(store).filter((name) => name !== 'quoteCounts') as OwnerTable[]) {
     if (fake[table] === undefined) (fake as FakeClient)[table] = {};
     if (!isRow(fake[table])) continue;
     for (const [method, implementation] of Object.entries(registry(table))) {

@@ -9,16 +9,11 @@ export const CONVERSATION_LIFECYCLE_PORT = Symbol(
   'CONVERSATION_LIFECYCLE_PORT',
 );
 
-export type ConversationLifecycleClient = Pick<
-  Prisma.TransactionClient,
-  | '$queryRaw'
-  | 'conversation'
-  | 'conversationEvent'
-  | 'conversationParticipant'
-  | 'outboxEvent'
-  | 'provider'
-  | 'weddingPlan'
->;
+// The caller's transaction. The lifecycle reads planning's and
+// marketplace's rows through their ports on it, so the whole client is
+// required (the earlier pick named those tables for the lifecycle's own
+// reads, which are gone).
+export type ConversationLifecycleClient = Prisma.TransactionClient;
 
 export interface EnsureConversationContextInput {
   requesterUserId: string;

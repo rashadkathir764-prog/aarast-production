@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { NotFoundException } from '@nestjs/common';
 import { ConversationRealtimePublisher } from '../src/conversations/conversation-realtime.publisher';
 import { ConversationsGateway } from '../src/conversations/conversations.gateway';
+import { conversationsGateway } from './support/owner-ports';
 
 interface FakeSocket {
   id: string;
@@ -68,7 +69,7 @@ function createGateway(options: {
   } as any;
   const conversations = (options.conversations ?? {}) as any;
   const realtime = { attach: () => undefined } as any;
-  return new ConversationsGateway(jwt, prisma, conversations, realtime);
+  return conversationsGateway(jwt, prisma, conversations, realtime);
 }
 
 function eligibleUser(overrides: Record<string, unknown> = {}) {
@@ -369,7 +370,7 @@ test('a realm-less legacy token cannot open the application chat socket', async 
 
 test('conversation join rechecks access after joining and leaves when revocation wins the gap', async () => {
   let authorizationCalls = 0;
-  const gateway = new ConversationsGateway(
+  const gateway = conversationsGateway(
     {} as any,
     {
       refreshToken: {

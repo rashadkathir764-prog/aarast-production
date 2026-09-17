@@ -13,6 +13,11 @@ import {
   ProviderStatus,
   UserStatus,
 } from '@prisma/client';
+import {
+  type ConversationRecord,
+  ConversationRelationsService,
+  conversationOwnInclude,
+} from './conversation-relations';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import {
@@ -36,7 +41,6 @@ import {
 } from '../modules/collaboration/public/collaboration-permission.port';
 import {
   ApplicationAvatarSource,
-  applicationAvatarFields,
   toApplicationUserSummary,
 } from '../shared-kernel/privacy/application-user-identity';
 import { lockUserLifecycleRowsInTransaction } from '../modules/identity/public/user-lifecycle-lock';
@@ -49,66 +53,20 @@ import {
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
 import { SendMessageDto } from './dto/send-message.dto';
 
-const conversationInclude = Prisma.validator<Prisma.ConversationInclude>()({
-  provider: {
-    select: {
-      id: true,
-      userId: true,
-      status: true,
-      businessName: true,
-      logoUrl: true,
-      user: { select: { id: true, appRole: true, ...applicationAvatarFields } },
-    },
-  },
-  weddingPlan: {
-    select: {
-      id: true,
-      title: true,
-      ownerUserId: true,
-      status: true,
-      sharedMembers: {
-        select: {
-          userId: true,
-          role: true,
-          canManageProviders: true,
-          canViewMoney: true,
-          canManageMoney: true,
-        },
-      },
-    },
-  },
-  accountRequester: {
-    select: { id: true, appRole: true, ...applicationAvatarFields },
-  },
-  participants: {
-    include: {
-      user: { select: { id: true, appRole: true, ...applicationAvatarFields } },
-    },
-  },
-  quoteRequests: {
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    take: 1,
-    include: {
-      service: { select: { id: true, title: true } },
-      user: { select: { id: true, ...applicationAvatarFields } },
-      offers: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
-    },
-  },
-  messages: {
-    where: { deletedAt: null },
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    take: 1,
-    include: {
-      sender: { select: { id: true, ...applicationAvatarFields } },
-      attachments: { orderBy: { createdAt: 'asc' } },
-    },
-  },
-  _count: { select: { quoteRequests: true } },
-});
+// The conversations the user may open: as the account of an active
+// provider, as the account requester, or through a plan the user owns or
+// still manages providers for. Ownership and membership are planning's and
+// collaboration's rows, read through their ports and applied to the
+// conversation table by id (the shape is declared so the ownership scan can
+// prove it).
+interface ConversationAccessWhere {
+  OR: [
+    { providerId: { in: string[] } },
+    { scope: typeof ConversationScope.ACCOUNT; accountRequesterUserId: string },
+    { scope: typeof ConversationScope.PLAN; weddingPlanId: { in: string[] } },
+  ];
+}
 
-type ConversationRecord = Prisma.ConversationGetPayload<{
-  include: typeof conversationInclude;
-}>;
 type ConversationSide = 'CUSTOMER' | 'PROVIDER';
 
 interface ConversationAccess {
@@ -146,15 +104,17 @@ export class ConversationsService {
     @Inject(MEDIA_STORAGE_PORT)
     private readonly mediaStorage: MediaStoragePort,
     private readonly outbox: OutboxService,
+    private readonly relations: ConversationRelationsService,
   ) {}
 
   async getForQuote(currentUser: AuthenticatedUser, quoteRequestId: string) {
-    const quote = await this.prisma.quoteRequest.findUnique({
-      where: { id: quoteRequestId },
-      select: { conversationId: true },
-    });
-    if (!quote) throw new NotFoundException('Quote request not found');
-    return this.findConversation(currentUser, quote.conversationId);
+    const conversationId =
+      await this.relations.quotes.getQuoteRequestConversationId(
+        this.prisma,
+        quoteRequestId,
+      );
+    if (!conversationId) throw new NotFoundException('Quote request not found');
+    return this.findConversation(currentUser, conversationId);
   }
 
   async authorize(currentUser: AuthenticatedUser, conversationId: string) {
@@ -178,14 +138,14 @@ export class ConversationsService {
 
   async list(currentUser: AuthenticatedUser, cursor?: string, limitValue?: string) {
     const limit = normalizeMessagePageSize(limitValue);
-    const accessWhere = this.accessWhere(currentUser.id);
+    const accessWhere = await this.accessWhere(currentUser.id);
     await this.assertConversationCursor(accessWhere, cursor);
     const candidates = await this.prisma.conversation.findMany({
       where: accessWhere,
       orderBy: [{ lastActivityAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      select: { id: true, provider: { select: { userId: true } } },
+      select: { id: true },
     });
     const hasMore = candidates.length > limit;
     const page = candidates.slice(0, limit);
@@ -197,15 +157,18 @@ export class ConversationsService {
     );
     const ids = page.map((conversation) => conversation.id);
     const conversations = ids.length
-      ? await this.prisma.conversation.findMany({
-          where: { id: { in: ids } },
-          orderBy: [
-            { lastActivityAt: 'desc' },
-            { createdAt: 'desc' },
-            { id: 'desc' },
-          ],
-          include: conversationInclude,
-        })
+      ? await this.relations.attachConversationRelations(
+          this.prisma,
+          await this.prisma.conversation.findMany({
+            where: { id: { in: ids } },
+            orderBy: [
+              { lastActivityAt: 'desc' },
+              { createdAt: 'desc' },
+              { id: 'desc' },
+            ],
+            include: conversationOwnInclude,
+          }),
+        )
       : [];
     const unread = await this.unreadCounts(currentUser.id, ids);
     return {
@@ -224,15 +187,14 @@ export class ConversationsService {
 
   async quoteRequests(currentUser: AuthenticatedUser, conversationId: string) {
     const { access } = await this.assertAccess(currentUser, conversationId);
-    const quoteRequests = await this.prisma.quoteRequest.findMany({
-      where: { conversationId },
-      include: {
-        service: { select: { id: true, title: true } },
-        user: { select: { id: true, ...applicationAvatarFields } },
-        offers: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    });
+    // The quote requests are marketplace's rows, their requester identity's.
+    const quoteRequests = await this.relations.attachQuoteRequesters(
+      this.prisma,
+      await this.relations.quotes.listConversationQuoteRequests(
+        this.prisma,
+        conversationId,
+      ),
+    );
     return {
       items: quoteRequests.map((quote) => this.toQuoteRequestResponse(quote, access)),
     };
@@ -247,16 +209,16 @@ export class ConversationsService {
     await this.assertAccess(currentUser, conversationId);
     const limit = normalizeMessagePageSize(limitValue);
     await this.assertMessageCursor(conversationId, cursor);
-    const messages = await this.prisma.chatMessage.findMany({
-      where: { conversationId, deletedAt: null },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: {
-        sender: { select: { id: true, ...applicationAvatarFields } },
-        attachments: { orderBy: { createdAt: 'asc' } },
-      },
-    });
+    const messages = await this.relations.attachMessageSenders(
+      this.prisma,
+      await this.prisma.chatMessage.findMany({
+        where: { conversationId, deletedAt: null },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        include: { attachments: { orderBy: { createdAt: 'asc' } } },
+      }),
+    );
     const hasMore = messages.length > limit;
     const page = messages.slice(0, limit);
     return {
@@ -276,19 +238,19 @@ export class ConversationsService {
     const cursor = this.decodeTimelineCursor(cursorValue);
     const before = cursor ? new Date(cursor.occurredAt) : undefined;
     const [messages, events, expiredOffers] = await Promise.all([
-      this.prisma.chatMessage.findMany({
-        where: {
-          conversationId,
-          deletedAt: null,
-          ...(before ? { createdAt: { lte: before } } : {}),
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: limit + 1,
-        include: {
-          sender: { select: { id: true, ...applicationAvatarFields } },
-          attachments: { orderBy: { createdAt: 'asc' } },
-        },
-      }),
+      this.relations.attachMessageSenders(
+        this.prisma,
+        await this.prisma.chatMessage.findMany({
+          where: {
+            conversationId,
+            deletedAt: null,
+            ...(before ? { createdAt: { lte: before } } : {}),
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: limit + 1,
+          include: { attachments: { orderBy: { createdAt: 'asc' } } },
+        }),
+      ),
       this.prisma.conversationEvent.findMany({
         where: {
           conversationId,
@@ -297,16 +259,13 @@ export class ConversationsService {
         orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
         take: limit + 1,
       }),
-      this.prisma.quoteOffer.findMany({
-        where: {
-          quoteRequest: { conversationId },
-          status: 'PENDING',
-          validUntil: { not: null, lte: before ?? new Date() },
-        },
-        select: { id: true, quoteRequestId: true, validUntil: true },
-        orderBy: [{ validUntil: 'desc' }, { id: 'desc' }],
-        take: limit + 1,
-      }),
+      // The lapsed pending offers are marketplace's rows.
+      this.relations.quotes.listExpiredPendingOffersForConversation(
+        this.prisma,
+        conversationId,
+        before ?? new Date(),
+        limit + 1,
+      ),
     ]);
     const merged = [
       ...messages.map((message) => ({
@@ -439,24 +398,23 @@ export class ConversationsService {
             recipientId,
           ),
       );
-      const created = await tx.chatMessage.create({
-        data: {
-          conversationId,
-          senderUserId: currentUser.id,
-          body,
-          attachments: {
-            create: verifiedAttachments.map((attachment) => ({
-              storageKey: attachment.key,
-              contentType: attachment.contentType,
-              byteSize: attachment.byteSize,
-            })),
+      const [created] = await this.relations.attachMessageSenders(tx, [
+        await tx.chatMessage.create({
+          data: {
+            conversationId,
+            senderUserId: currentUser.id,
+            body,
+            attachments: {
+              create: verifiedAttachments.map((attachment) => ({
+                storageKey: attachment.key,
+                contentType: attachment.contentType,
+                byteSize: attachment.byteSize,
+              })),
+            },
           },
-        },
-        include: {
-          sender: { select: { id: true, ...applicationAvatarFields } },
-          attachments: true,
-        },
-      });
+          include: { attachments: true },
+        }),
+      ]);
       for (const attachment of verifiedAttachments) {
         const createdAttachment = created.attachments.find(
           (item) => item.storageKey === attachment.key,
@@ -504,11 +462,10 @@ export class ConversationsService {
         },
       });
       if (recipientIds.length > 0) {
+        // Whether a recipient still accepts provider messages is
+        // notifications' row, read through its port on this transaction.
         const [preferences, participantStates] = await Promise.all([
-          tx.notificationPreference.findMany({
-            where: { userId: { in: recipientIds } },
-            select: { userId: true, providerMessagesEnabled: true },
-          }),
+          this.notifications.listProviderMessagePreferences(tx, recipientIds),
           tx.conversationParticipant.findMany({
             where: { conversationId, userId: { in: recipientIds }, revokedAt: null },
             select: { userId: true, mutedAt: true },
@@ -721,10 +678,10 @@ export class ConversationsService {
     conversationId: string,
     ensureCurrentParticipant = true,
   ) {
-    let conversation = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: conversationInclude,
-    });
+    let conversation = await this.findConversationRecord(
+      this.prisma,
+      conversationId,
+    );
     if (!conversation) throw new NotFoundException('Conversation not found');
     let access = this.accessFor(conversation, currentUser.id);
     if (!access) {
@@ -739,10 +696,10 @@ export class ConversationsService {
       await this.ensureParticipants([
         { conversationId, userId: currentUser.id },
       ]);
-      const refreshed = await this.prisma.conversation.findUnique({
-        where: { id: conversationId },
-        include: conversationInclude,
-      });
+      const refreshed = await this.findConversationRecord(
+        this.prisma,
+        conversationId,
+      );
       if (!refreshed) {
         throw new NotFoundException('Conversation not found');
       }
@@ -782,23 +739,10 @@ export class ConversationsService {
     // takes no row lock; all locks below follow the global lifecycle order:
     // User(s) -> WeddingPlan -> SharedMember -> Provider -> Conversation ->
     // ConversationParticipant.
-    const identity = await tx.conversation.findUnique({
-      where: { id: conversationId },
-      select: {
-        scope: true,
-        weddingPlanId: true,
-        accountRequesterUserId: true,
-        provider: { select: { id: true, userId: true, status: true } },
-        weddingPlan: {
-          select: {
-            ownerUserId: true,
-            sharedMembers: {
-              select: { userId: true, canManageProviders: true },
-            },
-          },
-        },
-      },
-    });
+    const identity = await this.relations.conversationIdentity(
+      tx,
+      conversationId,
+    );
     if (!identity) {
       throw new NotFoundException('Conversation not found');
     }
@@ -845,13 +789,10 @@ export class ConversationsService {
     }
 
     if (identity.weddingPlanId) {
-      const planLock = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "WeddingPlan"
-          WHERE "id" = ${identity.weddingPlanId}
-          FOR SHARE
-        `,
+      // The plan row is planning's: locked for share there.
+      const planLock = await this.relations.plans.lockPlanRowForShareInTransaction(
+        tx,
+        identity.weddingPlanId,
       );
       if (planLock.length !== 1) {
         throw new NotFoundException('Conversation not found');
@@ -879,37 +820,28 @@ export class ConversationsService {
       }
     }
     if (identity.weddingPlanId && memberUserIds.size > 0) {
-      const sortedMemberUserIds = [...memberUserIds].sort();
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT "id"
-          FROM "SharedMember"
-          WHERE "weddingPlanId" = ${identity.weddingPlanId}
-            AND "userId" IN (${Prisma.join(sortedMemberUserIds)})
-          ORDER BY "userId" ASC
-          FOR SHARE
-        `,
+      // The membership rows are collaboration's: locked for share there.
+      await this.relations.permissions.lockMembershipsForShareInTransaction(
+        tx,
+        identity.weddingPlanId,
+        [...memberUserIds],
       );
     }
 
     // Keep the provider lifecycle stable through every conversation mutation.
     // If a suspension commits first, the serializable retry observes the
     // non-active status before any message, notification, or outbox write.
-    const providerLock = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "Provider"
-        WHERE "id" = ${identity.provider.id}
-        FOR SHARE
-      `,
+    const providerLock = await this.relations.providers.lockProviderRowsForShareInTransaction(
+      tx,
+      [identity.provider.id],
     );
     if (providerLock.length !== 1) {
       throw new NotFoundException('Conversation not found');
     }
-    const provider = await tx.provider.findUnique({
-      where: { id: identity.provider.id },
-      select: { userId: true, status: true },
-    });
+    const provider = await this.relations.providers.getProvider(
+      tx,
+      identity.provider.id,
+    );
     if (!provider) {
       throw new NotFoundException('Conversation not found');
     }
@@ -978,10 +910,7 @@ export class ConversationsService {
       );
     }
 
-    const conversation = await tx.conversation.findUnique({
-      where: { id: conversationId },
-      include: conversationInclude,
-    });
+    const conversation = await this.findConversationRecord(tx, conversationId);
     const access = conversation
       ? this.accessFor(conversation, currentUser.id)
       : null;
@@ -1083,31 +1012,55 @@ export class ConversationsService {
     };
   }
 
-  private accessWhere(currentUserId: string): Prisma.ConversationWhereInput {
+  private async accessWhere(
+    currentUserId: string,
+  ): Promise<ConversationAccessWhere> {
+    const provider = await this.relations.providers.getProviderByUserId(
+      this.prisma,
+      currentUserId,
+    );
+    const ownedPlanIds = await this.relations.plans.listOwnedPlanIds(
+      this.prisma,
+      currentUserId,
+    );
+    const managingPlanIds = (
+      await this.relations.permissions.listMemberships(this.prisma, currentUserId)
+    )
+      .filter((membership) => membership.canManageProviders)
+      .map((membership) => membership.weddingPlanId);
     return {
       OR: [
         {
-          provider: {
-            is: { userId: currentUserId, status: ProviderStatus.ACTIVE },
+          providerId: {
+            in:
+              provider && provider.status === ProviderStatus.ACTIVE
+                ? [provider.id]
+                : [],
           },
         },
         { scope: ConversationScope.ACCOUNT, accountRequesterUserId: currentUserId },
         {
           scope: ConversationScope.PLAN,
-          weddingPlan: { is: { ownerUserId: currentUserId } },
-        },
-        {
-          scope: ConversationScope.PLAN,
-          weddingPlan: {
-            is: {
-              sharedMembers: {
-                some: { userId: currentUserId, canManageProviders: true },
-              },
-            },
-          },
+          weddingPlanId: { in: [...new Set([...ownedPlanIds, ...managingPlanIds])] },
         },
       ],
     };
+  }
+
+  private async findConversationRecord(
+    client: Prisma.TransactionClient,
+    conversationId: string,
+  ): Promise<ConversationRecord | null> {
+    const row = await client.conversation.findUnique({
+      where: { id: conversationId },
+      include: conversationOwnInclude,
+    });
+    if (!row) return null;
+    const [conversation] = await this.relations.attachConversationRelations(
+      client,
+      [row],
+    );
+    return conversation;
   }
 
   private async ensureParticipants(
@@ -1144,7 +1097,7 @@ export class ConversationsService {
   }
 
   private async assertConversationCursor(
-    accessWhere: Prisma.ConversationWhereInput,
+    accessWhere: ConversationAccessWhere,
     cursor?: string,
   ) {
     if (!cursor) return;

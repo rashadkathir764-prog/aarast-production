@@ -5,16 +5,26 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
+import { enqueueOutboxEventInTransaction } from '../platform/outbox/outbox.service';
 
 import type {
   ConversationLifecycleClient,
   EnsureConversationContextInput,
   RecordConversationEventInput,
 } from '../modules/messaging/public/conversation-lifecycle.port';
+import type { ProviderReadPort } from '../modules/marketplace/public/provider-read.port';
+import type { PlanReadPort } from '../modules/planning/public/plan-read.port';
+
+/** The owners a new conversation's core participants are read from: planning for the plan owner, marketplace for the provider account. */
+export interface ConversationContextOwners {
+  plans: PlanReadPort;
+  providers: ProviderReadPort;
+}
 
 export async function ensureConversationContext(
   tx: ConversationLifecycleClient,
   input: EnsureConversationContextInput,
+  owners: ConversationContextOwners,
 ): Promise<{ id: string; scope: ConversationScope }> {
   const activityAt = input.activityAt ?? new Date();
   const scope = input.weddingPlanId
@@ -58,19 +68,13 @@ export async function ensureConversationContext(
 
   const coreUserIds = new Set<string>();
   if (input.weddingPlanId) {
-    const plan = await tx.weddingPlan.findUnique({
-      where: { id: input.weddingPlanId },
-      select: { ownerUserId: true },
-    });
+    const plan = await owners.plans.getPlan(tx, input.weddingPlanId);
     if (!plan) throw new Error('ConversationWeddingPlanMissing');
     coreUserIds.add(plan.ownerUserId);
   } else {
     coreUserIds.add(input.requesterUserId);
   }
-  const provider = await tx.provider.findUnique({
-    where: { id: input.providerId },
-    select: { userId: true },
-  });
+  const provider = await owners.providers.getProvider(tx, input.providerId);
   if (provider?.userId) coreUserIds.add(provider.userId);
   await tx.conversationParticipant.createMany({
     data: [...coreUserIds].map((userId) => ({
@@ -138,16 +142,14 @@ export async function recordConversationEvent(
     where: { id: input.conversationId },
     data: { lastActivityAt: occurredAt },
   });
-  await tx.outboxEvent.create({
-    data: {
-      type: OutboxEventTypes.conversationActivityAvailable,
-      aggregateType: 'conversation',
-      aggregateId: input.conversationId,
-      payload: {
-        conversationId: input.conversationId,
-        eventId: event.id,
-        activityKind: 'EVENT',
-      },
+  await enqueueOutboxEventInTransaction(tx, {
+    type: OutboxEventTypes.conversationActivityAvailable,
+    aggregateType: 'conversation',
+    aggregateId: input.conversationId,
+    payload: {
+      conversationId: input.conversationId,
+      eventId: event.id,
+      activityKind: 'EVENT',
     },
   });
   return { event, created: true };

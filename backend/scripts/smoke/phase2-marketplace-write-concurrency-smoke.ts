@@ -2,7 +2,7 @@ import type { ConversationLifecyclePort } from "../../src/modules/messaging/publ
 import { ensureConversationContext, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
-  ensureConversationContext,
+  ensureConversationContext: (tx, input) => ensureConversationContext(tx, input, { plans: ownerPorts.plans, providers: ownerPorts.providers }),
   recordConversationEvent,
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,

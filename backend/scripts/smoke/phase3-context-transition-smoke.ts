@@ -29,7 +29,7 @@ import { AdminService } from "../../src/admin/admin.service";
 import { ContextsService } from "../../src/modules/identity/internal/profile/contexts.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from "./support/owner-ports";
+import { ownerPorts, providerDashboardService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -50,10 +50,11 @@ const contexts = new ContextsService(
 const notifications = {
   createNotificationInTransaction: async () => ({ id: "phase3-notification" }),
 };
-const providerDashboard = new ProviderDashboardService(
-  prisma as any,
-  notifications as any,
-  {} as any, lifecycle,
+const providerDashboard = providerDashboardService(
+  prisma,
+  notifications,
+  {},
+  lifecycle,
 );
 const admin = new AdminService(prisma as any, {
   disconnectUser: () => undefined,

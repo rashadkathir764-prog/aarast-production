@@ -1,5 +1,4 @@
 import { Inject, Logger } from '@nestjs/common';
-import { AuthSessionScope } from '@prisma/client';
 import {
   ConnectedSocket,
   MessageBody,
@@ -17,10 +16,12 @@ import {
   IdentityAccessTokenVerifier,
 } from '../modules/identity/public/identity-auth.port';
 import { resolveJwtSessionScope } from '../modules/identity/public/access-token-scope';
+import {
+  IDENTITY_REALTIME_SESSION_PORT,
+  type IdentityRealtimeSessionPort,
+} from '../modules/identity/public/identity-realtime-session.port';
 import type { JwtPayload } from '../modules/identity/public/jwt-payload.interface';
-import { toAuthenticatedUser } from '../modules/identity/public/safe-user';
 import { getCorsOrigins } from '../platform/config/cors-origins';
-import { PrismaService } from '../platform/database/prisma.service';
 import {
   conversationRoom,
   sessionRoom,
@@ -66,7 +67,8 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
   constructor(
     @Inject(IDENTITY_ACCESS_TOKEN_VERIFIER)
     private readonly jwt: IdentityAccessTokenVerifier,
-    private readonly prisma: PrismaService,
+    @Inject(IDENTITY_REALTIME_SESSION_PORT)
+    private readonly sessions: IdentityRealtimeSessionPort,
     private readonly conversations: ConversationsService,
     private readonly realtime: ConversationRealtimePublisher,
   ) {}
@@ -89,33 +91,18 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
       ) {
         throw new Error('Missing required token claims');
       }
-      const [user, session] = await Promise.all([
-        this.prisma.user.findUnique({
-          where: { id: payload.sub },
-        }),
-        this.prisma.refreshToken.findFirst({
-          where: {
-            id: payload.sid!,
-            userId: payload.sub,
-            scope: AuthSessionScope.APPLICATION,
-            revokedAt: null,
-            expiresAt: { gt: new Date() },
-          },
-          select: { id: true },
-        }),
-      ]);
-      // Mirror the HTTP JwtStrategy exactly: a disabled or phone-unverified
-      // account must never hold a realtime channel either.
-      if (
-        !user ||
-        user.status === 'DISABLED' ||
-        !user.phoneVerifiedAt ||
-        !session
-      ) {
+      // Whether the account may hold a realtime channel (not disabled,
+      // phone-verified, with a live application session) is identity's
+      // decision, mirroring the HTTP JwtStrategy.
+      const user = await this.sessions.findRealtimeSessionUser(
+        payload.sub,
+        payload.sid!,
+      );
+      if (!user) {
         throw new Error('Ineligible user');
       }
       socket.data.user = {
-        ...toAuthenticatedUser(user),
+        ...user,
         adminMfa: false,
         sessionScope: 'application',
       };
@@ -237,17 +224,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
       socket.disconnect(true);
       throw new WsException('Session is invalid or expired');
     }
-    const session = await this.prisma.refreshToken.findFirst({
-      where: {
-        id: sessionId,
-        userId: user.id,
-        scope: AuthSessionScope.APPLICATION,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      select: { id: true },
-    });
-    if (!session) {
+    if (!(await this.sessions.isApplicationSessionLive(user.id, sessionId))) {
       socket.disconnect(true);
       throw new WsException('Session is invalid or expired');
     }

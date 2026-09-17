@@ -490,16 +490,27 @@ test('R12C Task 3 lifecycle port exposes one runtime token and one singleton pub
     // The R12C surface is the frozen pair; the ownership program added the
     // conversation row locks quote transitions used to take with their own
     // raw joins (the row is messaging's). Frozen surfaces stay, may grow.
-    assert.deepEqual(Object.keys(publicIdentity), [
-      'ensureConversationContext',
-      'recordConversationEvent',
-      'lockConversationForUpdateInTransaction',
-      'lockConversationForShareInTransaction',
-    ]);
+    assert.deepEqual(
+      Object.getOwnPropertyNames(Object.getPrototypeOf(publicIdentity)).filter((name) => name !== 'constructor'),
+      [
+        'ensureConversationContext',
+        'recordConversationEvent',
+        'lockConversationForUpdateInTransaction',
+        'lockConversationForShareInTransaction',
+      ],
+    );
     assert.deepEqual(Reflect.getMetadata('exports', publicModule.ConversationLifecyclePublicModule), [port.CONVERSATION_LIFECYCLE_PORT]);
     const providers = Reflect.getMetadata('providers', publicModule.ConversationLifecyclePublicModule);
     assert.deepEqual(providers, [{ provide: port.CONVERSATION_LIFECYCLE_PORT, useExisting: internalModule.CONVERSATION_LIFECYCLE_IMPLEMENTATION }]);
-    assert.equal(Reflect.getMetadata('providers', internalModule.ConversationLifecycleInternalModule).length, 1);
+    // The implementation became an injectable class (a new conversation's
+    // core participants are planning's owner and marketplace's provider,
+    // read through their ports); the internal module registers it once and
+    // aliases the implementation token to it.
+    assert.deepEqual(Reflect.getMetadata('providers', internalModule.ConversationLifecycleInternalModule), [
+      internalModule.ConversationLifecycleService,
+      { provide: internalModule.CONVERSATION_LIFECYCLE_IMPLEMENTATION, useExisting: internalModule.ConversationLifecycleService },
+    ]);
+    assert.ok(publicIdentity instanceof internalModule.ConversationLifecycleService);
   } finally {
     await application.close();
   }
@@ -507,7 +518,8 @@ test('R12C Task 3 lifecycle port exposes one runtime token and one singleton pub
 
 test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return and error identity', async () => {
   const { internalModule } = requireLifecycle();
-  const implementation = Reflect.getMetadata('providers', internalModule.ConversationLifecycleInternalModule)[0].useValue;
+  const owners = { plans: Object.freeze({ plansIdentity: Symbol('plans') }), providers: Object.freeze({ providersIdentity: Symbol('providers') }) };
+  const implementation = new internalModule.ConversationLifecycleService(owners.plans, owners.providers);
   const legacy = require(path.join(root, 'backend/src/conversations/conversation-lifecycle.ts'));
   const delegates = {
     ensureConversationContext: 'ensureConversationContext',
@@ -531,7 +543,13 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
       assert.equal(calls.length, 1);
       assert.equal(calls[0][0], tx);
       assert.equal(calls[0][1], input);
-      assert.equal(calls[0].length, 2);
+      // ensureConversationContext alone carries the owner ports it reads.
+      if (method === 'ensureConversationContext') {
+        assert.equal(calls[0].length, 3);
+        assert.deepEqual(calls[0][2], owners);
+      } else {
+        assert.equal(calls[0].length, 2);
+      }
       legacy[legacyName] = () => { throw error; };
       assert.throws(() => implementation[method](tx, input), caught => caught === error);
       const rejection = Promise.reject(error);

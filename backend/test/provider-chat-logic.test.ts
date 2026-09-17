@@ -88,8 +88,10 @@ test('authorization uses live plan ownership and explicit canManageProviders', (
   assert.match(service, /if \(!member\?\.canManageProviders\) return null/);
   assert.match(service, /revokedAt: new Date\(\)/);
   assert.match(service, /assertActiveAccessInTransaction/);
-  assert.match(service, /FROM "Provider"[\s\S]*FOR SHARE/);
-  assert.match(service, /FROM "SharedMember"[\s\S]*FOR SHARE/);
+  // The provider and membership rows are locked for share by their owners
+  // (marketplace's and collaboration's ports) in the same lifecycle order.
+  assert.match(service, /providers\.lockProviderRowsForShareInTransaction\(/);
+  assert.match(service, /permissions\.lockMembershipsForShareInTransaction\(/);
   assert.match(service, /PROVIDER_NOT_JOINED/);
   assert.match(service, /customerSideBlockedAt/);
   assert.match(service, /providerSideBlockedAt/);

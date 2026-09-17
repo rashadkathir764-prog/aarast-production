@@ -6,8 +6,11 @@ import {
   lockConversationForShare,
   lockConversationForUpdate,
 } from '../src/conversations/conversation-lifecycle';
-import { CONVERSATION_LIFECYCLE_IMPLEMENTATION } from '../src/modules/messaging/internal/conversation-lifecycle.internal.module';
-import { ConversationLifecycleInternalModule } from '../src/modules/messaging/internal/conversation-lifecycle.internal.module';
+import {
+  CONVERSATION_LIFECYCLE_IMPLEMENTATION,
+  ConversationLifecycleInternalModule,
+  ConversationLifecycleService,
+} from '../src/modules/messaging/internal/conversation-lifecycle.internal.module';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 
 // Marketplace and the provider dashboard used to lock the conversation row
@@ -42,13 +45,18 @@ test('the conversation row is locked for update or for share by id and its prese
 });
 
 test('the lifecycle implementation binds the locks next to the two lifecycle operations', () => {
-  const providers = Reflect.getMetadata(MODULE_METADATA.PROVIDERS, ConversationLifecycleInternalModule) as Array<{ provide: symbol; useValue: Record<string, unknown> }>;
-  const implementation = providers.find((provider) => provider.provide === CONVERSATION_LIFECYCLE_IMPLEMENTATION);
-  assert.ok(implementation);
-  assert.deepEqual(Object.keys(implementation.useValue).sort(), [
-    'ensureConversationContext',
-    'lockConversationForShareInTransaction',
-    'lockConversationForUpdateInTransaction',
-    'recordConversationEvent',
+  const providers = Reflect.getMetadata(MODULE_METADATA.PROVIDERS, ConversationLifecycleInternalModule) as Array<unknown>;
+  assert.deepEqual(providers, [
+    ConversationLifecycleService,
+    { provide: CONVERSATION_LIFECYCLE_IMPLEMENTATION, useExisting: ConversationLifecycleService },
   ]);
+  assert.deepEqual(
+    Object.getOwnPropertyNames(ConversationLifecycleService.prototype).filter((name) => name !== 'constructor').sort(),
+    [
+      'ensureConversationContext',
+      'lockConversationForShareInTransaction',
+      'lockConversationForUpdateInTransaction',
+      'recordConversationEvent',
+    ],
+  );
 });

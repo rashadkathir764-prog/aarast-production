@@ -75,9 +75,12 @@ test('Task 8 Messaging metadata owns conversation controllers and providers exac
     metadataNames(full, MODULE_METADATA.CONTROLLERS),
     ['ConversationsController', 'QuoteRequestConversationsController'],
   );
+  // The ownership program added messaging's private relations service: it
+  // attaches the provider, plan, members, identities and quote requests a
+  // conversation shows through their owners' ports (its includes are gone).
   assert.deepEqual(
     metadataNames(internal, MODULE_METADATA.PROVIDERS),
-    ['ConversationsGateway', 'ConversationsService'],
+    ['ConversationRelationsService', 'ConversationsGateway', 'ConversationsService'],
   );
 });
 

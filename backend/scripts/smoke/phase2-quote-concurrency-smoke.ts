@@ -2,7 +2,7 @@ import type { ConversationLifecyclePort } from "../../src/modules/messaging/publ
 import { ensureConversationContext, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
-  ensureConversationContext,
+  ensureConversationContext: (tx, input) => ensureConversationContext(tx, input, { plans: ownerPorts.plans, providers: ownerPorts.providers }),
   recordConversationEvent,
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
@@ -25,7 +25,7 @@ import {
 } from '@prisma/client';
 import { MarketplaceService } from '../../src/marketplace/marketplace.service';
 import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
-import { ownerPorts, contributionHistoryService, marketplaceService } from './support/owner-ports';
+import { ownerPorts, contributionHistoryService, marketplaceService, providerDashboardService } from './support/owner-ports';
 import { buildContributionSnapshot } from '../../src/modules/collaboration/public/contribution-snapshot.builder';
 import { ProviderDashboardService } from '../../src/provider-dashboard/provider-dashboard.service';
 
@@ -388,10 +388,11 @@ async function assertAcceptWinsUpdateRace(): Promise<void> {
     async (fixture) => {
       const { service, permissionChecked } =
         marketplaceWithPermissionSignal();
-      const providerDashboard = new ProviderDashboardService(
-        prisma as any,
-        notifications as any,
-        {} as any, lifecycle,
+      const providerDashboard = providerDashboardService(
+        prisma,
+        notifications,
+        {},
+        lifecycle,
       );
       const blocker = await holdOfferLock(fixture.offer.id);
       const accept = service.acceptQuoteOffer(

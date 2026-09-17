@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import { ConversationScope, UserRole } from '@prisma/client';
-import { ConversationsService } from '../src/conversations/conversations.service';
+import { conversationsService } from './support/owner-ports';
 
 const currentUser = { id: 'user-1', name: 'User One' };
 const userIdentity = (id: string, name: string, appRole = 'WEDDING_USER') => ({
@@ -187,7 +187,7 @@ function conversationHarness() {
   const harness = basePrisma(records);
   return {
     ...harness,
-    service: new ConversationsService(
+    service: conversationsService(
       harness.prisma as never,
       {} as never,
       { revokeConversationAccess() {} } as never,
@@ -270,7 +270,7 @@ function messageHarness() {
     },
   };
   return {
-    service: new ConversationsService(
+    service: conversationsService(
       prisma as never,
       {} as never,
       { revokeConversationAccess() {} } as never,

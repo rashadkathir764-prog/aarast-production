@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NotFoundException } from '@nestjs/common';
 import { ConversationScope, UserRole } from '@prisma/client';
-import { ConversationsService } from '../src/conversations/conversations.service';
+import { conversationsService } from './support/owner-ports';
 
 const identity = (id: string, name: string) => ({
   id,
@@ -133,7 +133,7 @@ function serviceFor(userCanReadAttachment = true) {
     },
   };
   return {
-    service: new ConversationsService(
+    service: conversationsService(
       prisma as never,
       {} as never,
       { revokeConversationAccess() {} } as never,

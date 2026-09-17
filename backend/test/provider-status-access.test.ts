@@ -22,10 +22,9 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
-import { ConversationsService } from '../src/conversations/conversations.service';
 import { acceptQuoteOfferInTransaction } from '../src/marketplace/quote-offer-acceptance';
 import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
-import { marketplaceRelations, providerDashboardService, withOwnerTables } from './support/owner-ports';
+import { conversationsService, marketplaceRelations, providerDashboardService, withOwnerTables } from './support/owner-ports';
 
 const providerUserId = '11111111-1111-4111-8111-111111111111';
 const providerId = '22222222-2222-4222-8222-222222222222';
@@ -392,19 +391,16 @@ function createConversations(status: ProviderStatus) {
       findUnique: async () => conversation,
       findUniqueOrThrow: async () => conversation,
       findMany: async ({ where, select }: any) => {
-        const requiresActiveProvider = JSON.stringify(where).includes(
-          `"status":"${ProviderStatus.ACTIVE}"`,
-        );
-        if (status !== ProviderStatus.ACTIVE && requiresActiveProvider) {
+        // The inbox used to join the provider row (`provider: { is: {
+        // status: ACTIVE } }`); the provider's id is now read through
+        // marketplace's port and applied to the conversation table, so an
+        // inactive provider's inbox names no provider id at all.
+        const accessibleProviderIds: string[] = where?.OR?.[0]?.providerId?.in ?? [];
+        if (select && !accessibleProviderIds.includes(providerId)) {
           return [];
         }
         if (select) {
-          return [
-            {
-              id: conversationId,
-              provider: { userId: providerUserId },
-            },
-          ];
+          return [{ id: conversationId }];
         }
         return [conversation];
       },
@@ -417,7 +413,7 @@ function createConversations(status: ProviderStatus) {
     $transaction: async (operation: (client: any) => Promise<unknown>) =>
       operation(tx),
   };
-  return new ConversationsService(
+  return conversationsService(
     prisma as any,
     { createNotificationInTransaction: async () => undefined } as any,
     {

@@ -5,6 +5,7 @@ import { CatalogReadService } from '../../../src/modules/catalog/internal/catalo
 import { CollaborationErasureService } from '../../../src/modules/collaboration/internal/collaboration-erasure.service';
 import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
 import { ContributorScopeService } from '../../../src/modules/collaboration/internal/contributor-scope.service';
+import { ConversationRelationsService } from '../../../src/conversations/conversation-relations';
 import type { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
 import { SharingService } from '../../../src/modules/collaboration/internal/sharing.service';
 import { FinancePortService } from '../../../src/modules/finance/internal/finance-port.service';
@@ -130,6 +131,17 @@ export function providerDashboardService(
     ownerPorts.catalog,
     ownerPorts.users,
     marketplaceRelations,
+  );
+}
+
+/** The relations a conversation shows, read through the owners' ports; the live membership reads run over the given client. */
+export function conversationRelations(prisma: unknown, permissions: PermissionService): ConversationRelationsService {
+  return new ConversationRelationsService(
+    ownerPorts.providers,
+    ownerPorts.users,
+    ownerPorts.plans,
+    permissions,
+    ownerPorts.quotes,
   );
 }
 

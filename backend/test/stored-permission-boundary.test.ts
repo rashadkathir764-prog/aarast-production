@@ -3,11 +3,11 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ConversationScope, SharedMemberRole } from "@prisma/client";
-import { ConversationsService } from "../src/conversations/conversations.service";
+import { conversationsService } from "./support/owner-ports";
 import { NotificationsService } from "../src/notifications/notifications.service";
 
 test("finance role cannot restore a stored money permission in conversations", () => {
-  const service = new ConversationsService(
+  const service = conversationsService(
     {} as any,
     {} as any,
     {} as any,

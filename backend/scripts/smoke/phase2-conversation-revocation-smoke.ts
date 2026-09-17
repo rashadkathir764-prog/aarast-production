@@ -16,7 +16,7 @@ import { ConversationsService } from "../../src/conversations/conversations.serv
 import { NotificationsService } from "../../src/notifications/notifications.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts, contributionHistoryService, sharingService } from "./support/owner-ports";
+import { ownerPorts, contributionHistoryService, sharingService, conversationRelations } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -297,6 +297,7 @@ function conversationsService(
     realtime,
     mediaStorage,
     outbox,
+    conversationRelations(prismaClient, permissions),
   );
 }
 

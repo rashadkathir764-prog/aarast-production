@@ -18,6 +18,8 @@ import type { ConversationLifecyclePort } from "../modules/messaging/public/conv
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import type { CatalogReadPort } from "../modules/catalog/public/catalog-read.port";
+import type { MarketplaceRelationsService } from "./marketplace-relations";
 import { MARKETPLACE_QUOTE_INCLUDE } from "./marketplace.contracts";
 import {
   assertMarketplaceProviderActive,
@@ -41,6 +43,8 @@ interface CreateQuoteRequestTransactionInput {
 export interface QuoteRequestMutationGuard {
   currentUser: AuthenticatedUser;
   permissions: PermissionService;
+  /** Catalog locks the requested city; planning's owner is read for the user locks. */
+  catalog: CatalogReadPort;
   history?: ContributionHistoryService;
 }
 
@@ -48,6 +52,7 @@ export function createQuoteRequestInTransaction(
   prisma: PrismaService,
   lifecycle: ConversationLifecyclePort,
   notifications: NotificationsPort,
+  relations: MarketplaceRelationsService,
   input: CreateQuoteRequestTransactionInput,
   guard?: QuoteRequestMutationGuard,
 ) {
@@ -69,10 +74,7 @@ export function createQuoteRequestInTransaction(
       : null;
     const planSeed =
       guard && weddingPlanId
-        ? await tx.weddingPlan.findUnique({
-            where: { id: weddingPlanId },
-            select: { ownerUserId: true },
-          })
+        ? await relations.plans.getPlan(tx, weddingPlanId)
         : null;
 
     if (weddingPlanId && !guard) {
@@ -103,7 +105,7 @@ export function createQuoteRequestInTransaction(
         await lockActiveProviderService(tx, serviceId, providerId);
       }
       if (cityId) {
-        await lockActiveMarketplaceCity(tx, cityId);
+        await lockActiveMarketplaceCity(tx, guard.catalog, cityId);
       }
     } else {
       // Kept only for the isolated plan-less domain harness. Production calls
@@ -169,10 +171,13 @@ export function createQuoteRequestInTransaction(
       });
     }
 
-    const quote = await tx.quoteRequest.create({
-      data: { ...input.data, conversationId: conversation.id },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-    });
+    const quote = await relations.attachQuoteRelation(
+      tx,
+      await tx.quoteRequest.create({
+        data: { ...input.data, conversationId: conversation.id },
+        include: MARKETPLACE_QUOTE_INCLUDE,
+      }),
+    );
     if (planContext && guard?.history) {
       await guard.history.recordForContextInTransaction(tx, planContext, {
         section: ContributionSection.PROVIDERS,

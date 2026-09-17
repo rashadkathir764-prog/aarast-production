@@ -21,6 +21,9 @@ import {
   assertWeddingPlanWritable,
   type CollaborationPermissionPort as PermissionService,
 } from "../modules/collaboration/public/collaboration-permission.port";
+import type { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
+import { findContributorProviderQuoteIds } from "./marketplace-contributor-quote-scope";
+import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
   assertQuoteRequestTransition,
   lockQuoteRequestTransitionRow,
@@ -44,6 +47,8 @@ export function cancelQuoteRequestInTransaction(
   prisma: PrismaService,
   lifecycle: ConversationLifecyclePort,
   permissions: PermissionService,
+  scope: CollaborationScopePort,
+  relations: MarketplaceRelationsService,
   currentUser: AuthenticatedUser,
   id: string,
   access: QuoteCancellationAccess,
@@ -60,18 +65,22 @@ export function cancelQuoteRequestInTransaction(
         weddingPlanId: true,
         providerId: true,
         conversationId: true,
-        weddingPlan: { select: { ownerUserId: true } },
         provider: { select: { userId: true } },
       },
     });
     if (!seed) {
       throw new NotFoundException("Quote request not found");
     }
+    // The plan owner is planning's row, read through its port for the
+    // user lock set.
+    const planSeed = seed.weddingPlanId
+      ? await relations.plans.getPlan(tx, seed.weddingPlanId)
+      : null;
 
     const lockedUserIds = await lockMarketplaceMutationUsers(
       tx,
       currentUser.id,
-      [seed.userId, seed.weddingPlan?.ownerUserId, seed.provider.userId],
+      [seed.userId, planSeed?.ownerUserId, seed.provider.userId],
     );
     let visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY;
     let planContext: Awaited<
@@ -99,27 +108,16 @@ export function cancelQuoteRequestInTransaction(
       ) {
         throw new NotFoundException("Quote request not found");
       }
-      if (!context.isOwner) {
-        const currentTenureEvent = await tx.contributionEvent.findFirst({
-          where: {
-            historyScope: { weddingPlanId: seed.weddingPlanId },
-            contributorTenure: {
-              actorUserId: currentUser.id,
-            },
-            entityType: ContributionEntityType.QUOTE_REQUEST,
-            entityId: id,
-            action: {
-              in: [
-                ContributionAction.CREATED,
-                ContributionAction.LEGACY_CAPTURED,
-              ],
-            },
-          },
-          select: { id: true },
-        });
-        if (!currentTenureEvent) {
-          throw new NotFoundException("Quote request not found");
-        }
+      if (
+        !context.isOwner &&
+        !(await findContributorProviderQuoteIds(
+          tx,
+          scope,
+          seed.weddingPlanId,
+          currentUser.id,
+        )).includes(id)
+      ) {
+        throw new NotFoundException("Quote request not found");
       }
       if (seed.userId !== currentUser.id) {
         visibility = {
@@ -140,13 +138,19 @@ export function cancelQuoteRequestInTransaction(
       seed.provider.userId,
       lockedUserIds,
     );
-    if (!(await lockQuoteRequestTransitionRow(tx, id))) {
+    if (!(await lockQuoteRequestTransitionRow(tx, lifecycle, id))) {
       throw new NotFoundException("Quote request not found");
     }
 
     const existing = await tx.quoteRequest.findUnique({
       where: { id },
-      include: MARKETPLACE_QUOTE_INCLUDE,
+      select: {
+        userId: true,
+        weddingPlanId: true,
+        providerId: true,
+        conversationId: true,
+        status: true,
+      },
     });
     if (!existing) {
       throw new NotFoundException("Quote request not found");
@@ -176,17 +180,20 @@ export function cancelQuoteRequestInTransaction(
       throw new ConflictException("Quote request cannot be cancelled");
     }
 
-    const quote = await tx.quoteRequest.findUniqueOrThrow({
-      where: { id },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-    });
+    const quote = await relations.attachQuoteRelation(
+      tx,
+      await tx.quoteRequest.findUniqueOrThrow({
+        where: { id },
+        include: MARKETPLACE_QUOTE_INCLUDE,
+      }),
+    );
     await lifecycle.recordConversationEvent(tx, {
       conversationId: existing.conversationId,
-      quoteRequestId: existing.id,
+      quoteRequestId: quote.id,
       actorUserId: currentUser.id,
       type: ConversationEventType.QUOTE_REQUEST_CANCELLED,
       occurredAt: cancelledAt,
-      dedupeKey: `quote-request:${existing.id}:cancelled`,
+      dedupeKey: `quote-request:${quote.id}:cancelled`,
       data: { status: QuoteRequestStatus.CANCELLED },
     });
     if (planContext && history) {

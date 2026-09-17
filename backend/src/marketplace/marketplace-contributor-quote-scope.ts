@@ -7,21 +7,24 @@ import {
 } from "@prisma/client";
 import {
   type CollaborationPermissionPort as PermissionService,
-  livePlanAuthorizationWhere,
   type PlanAccessContext,
 } from "../modules/collaboration/public/collaboration-permission.port";
+import type { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
+import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
   FULL_QUOTE_VISIBILITY,
   MARKETPLACE_QUOTE_INCLUDE,
+  type MyQuoteAccessWhere,
   type QuoteVisibility,
   type QuoteWithRelations,
 } from "./marketplace.contracts";
 
-type ContributionReader = Pick<Prisma.TransactionClient, "contributionEvent">;
-type PlanQuoteReader = Pick<
-  Prisma.TransactionClient,
-  "contributionEvent" | "quoteRequest"
->;
+/** The owners a plan-scoped quote read asks: membership and its live re-check, the contribution scope, and the related rows. */
+export interface QuoteScopePorts {
+  permissions: PermissionService;
+  scope: CollaborationScopePort;
+  relations: MarketplaceRelationsService;
+}
 
 const QUOTE_OWNERSHIP_ACTIONS = [
   ContributionAction.CREATED,
@@ -53,29 +56,26 @@ export function quoteVisibilityForPlan(
   };
 }
 
-export async function findContributorProviderQuoteIds(
-  client: ContributionReader,
+/** The quote requests the contributor created in the plan, by collaboration's contribution history. */
+export function findContributorProviderQuoteIds(
+  client: Prisma.TransactionClient,
+  scope: CollaborationScopePort,
   weddingPlanId: string,
   actorUserId: string,
 ): Promise<string[]> {
-  const events = await client.contributionEvent.findMany({
-    where: {
-      historyScope: { weddingPlanId },
-      contributorTenure: { actorUserId },
-      entityType: ContributionEntityType.QUOTE_REQUEST,
-      action: { in: [...QUOTE_OWNERSHIP_ACTIONS] },
-      entityId: { not: null },
-    },
-    select: { entityId: true },
-    distinct: ["entityId"],
-  });
-  return events.flatMap((event) => (event.entityId ? [event.entityId] : []));
+  return scope.qualifyingEntityIdsInTransaction(
+    client,
+    weddingPlanId,
+    actorUserId,
+    [ContributionEntityType.QUOTE_REQUEST],
+    QUOTE_OWNERSHIP_ACTIONS,
+  );
 }
 
 export async function findAccessiblePlanQuoteRequest(
-  client: PlanQuoteReader,
+  client: Prisma.TransactionClient,
+  ports: QuoteScopePorts,
   context: PlanAccessContext,
-  permissions: PermissionService,
   currentUserId: string,
   quoteRequestId: string,
   weddingPlanId: string,
@@ -84,68 +84,77 @@ export async function findAccessiblePlanQuoteRequest(
     !context.isOwner &&
     !(await findContributorProviderQuoteIds(
       client,
+      ports.scope,
       weddingPlanId,
       currentUserId,
     )).includes(quoteRequestId)
   ) {
     throw new NotFoundException("Quote request not found");
   }
+  // The final read re-checks current ownership/membership and the provider
+  // (and money) permission through the owners and applies the result to
+  // the quote table itself.
+  const liveFilter = await ports.permissions.liveAuthorizationFilter(
+    client,
+    context,
+    currentUserId,
+    [
+      "canManageProviders",
+      ...(ports.permissions.canViewMoney(context)
+        ? (["canViewMoney"] as const)
+        : []),
+    ],
+  );
   const quote = await client.quoteRequest.findFirst({
     where: {
       id: quoteRequestId,
       weddingPlanId,
-      weddingPlan: {
-        is: livePlanAuthorizationWhere(
-          context,
-          currentUserId,
-          [
-            "canManageProviders",
-            ...(permissions.canViewMoney(context)
-              ? (["canViewMoney"] as const)
-              : []),
-          ],
-        ),
-      },
+      ...liveFilter,
     },
     include: MARKETPLACE_QUOTE_INCLUDE,
   });
   if (!quote) throw new NotFoundException("Quote request not found");
-  return quote;
+  return ports.relations.attachQuoteRelation(client, quote);
 }
 
+/**
+ * The user's own quote requests: plan-less ones, those of the plans the user
+ * owns, and those the user created as a member who still manages providers.
+ * Ownership and membership are planning's and collaboration's rows, read
+ * through their ports and applied to the quote table by plan id.
+ */
 export async function buildMyQuoteAccessWhere(
-  client: ContributionReader,
+  client: Prisma.TransactionClient,
+  ports: QuoteScopePorts,
   userId: string,
   id?: string,
-): Promise<Prisma.QuoteRequestWhereInput> {
-  const qualifyingEvents = await client.contributionEvent.findMany({
-    where: {
-      contributorTenure: { actorUserId: userId },
-      entityType: ContributionEntityType.QUOTE_REQUEST,
-      action: { in: [...QUOTE_OWNERSHIP_ACTIONS] },
-      entityId: id ? id : { not: null },
-    },
-    select: { entityId: true },
-    distinct: ["entityId"],
-  });
-  const qualifyingQuoteIds = qualifyingEvents.flatMap((event) =>
-    event.entityId ? [event.entityId] : [],
+): Promise<MyQuoteAccessWhere> {
+  const qualifyingQuoteIds =
+    await ports.scope.qualifyingEntityIdsForActorInTransaction(
+      client,
+      userId,
+      [ContributionEntityType.QUOTE_REQUEST],
+      QUOTE_OWNERSHIP_ACTIONS,
+      id,
+    );
+  const ownedPlanIds = await ports.relations.plans.listOwnedPlanIds(
+    client,
+    userId,
   );
+  const providerManagingPlanIds = (
+    await ports.permissions.listMemberships(client, userId)
+  )
+    .filter((membership) => membership.canManageProviders)
+    .map((membership) => membership.weddingPlanId);
   return {
     ...(id ? { id } : {}),
     userId,
     OR: [
       { weddingPlanId: null },
-      { weddingPlan: { is: { ownerUserId: userId } } },
+      { weddingPlanId: { in: ownedPlanIds } },
       {
         id: { in: qualifyingQuoteIds },
-        weddingPlan: {
-          is: {
-            sharedMembers: {
-              some: { userId, canManageProviders: true },
-            },
-          },
-        },
+        weddingPlanId: { in: providerManagingPlanIds },
       },
     ],
   };

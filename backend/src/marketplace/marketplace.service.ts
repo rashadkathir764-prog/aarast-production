@@ -8,20 +8,13 @@ import {
 } from "@nestjs/common";
 import {
   City,
-  FavoriteProvider,
   Prisma,
   Provider,
-  ProviderCategory,
-  ProviderPackage,
-  ProviderReview,
   ProviderService,
-  ProviderServiceImage,
   ProviderStatus,
-  PlanProviderLink,
   QuoteOffer,
   QuoteRequest,
   ReviewStatus,
-  User,
   WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
@@ -30,7 +23,10 @@ import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { NOTIFICATIONS_PORT, type NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
-import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService, livePlanAuthorizationWhere } from "../modules/collaboration/public/collaboration-permission.port";
+import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import { COLLABORATION_SCOPE_PORT, type CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
+import { CATALOG_READ_PORT, type CatalogReadPort } from "../modules/catalog/public/catalog-read.port";
+import { MarketplaceRelationsService } from "./marketplace-relations";
 import { normalizeWeddingLocationInput } from "../modules/planning/public/wedding-location";
 import { toWeddingCostResponse } from "../modules/finance/public/wedding-cost.presenter";
 import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
@@ -72,6 +68,7 @@ import {
   buildMyQuoteAccessWhere,
   findAccessiblePlanQuoteRequest,
   findContributorProviderQuoteIds,
+  type QuoteScopePorts,
   quoteVisibilityForPlan,
 } from "./marketplace-contributor-quote-scope";
 
@@ -89,31 +86,24 @@ export class MarketplaceService {
     private readonly lifecycle: ConversationLifecyclePort,
     @Inject(FINANCE_PORT)
     private readonly finance: FinancePort,
+    @Inject(CATALOG_READ_PORT)
+    private readonly catalog: CatalogReadPort,
+    @Inject(COLLABORATION_SCOPE_PORT)
+    private readonly scope: CollaborationScopePort,
+    private readonly relations: MarketplaceRelationsService,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
   ) {}
 
+  // The catalogs are catalog's tables, listed through its port.
   async findCities() {
-    const cities = await this.prisma.city.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
-    });
+    const cities = await this.catalog.listActiveCities(this.prisma);
 
     return cities.map((city) => MarketplacePresenter.toCityResponse(city));
   }
 
   async findGovernorates() {
-    const governorates = await this.prisma.governorate.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
-      include: {
-        _count: {
-          select: {
-            districts: { where: { isActive: true } },
-          },
-        },
-      },
-    });
+    const governorates = await this.catalog.listActiveGovernorates(this.prisma);
 
     return governorates.map((governorate) =>
       YemenAdministrativePresenter.toGovernorateResponse(governorate),
@@ -121,10 +111,10 @@ export class MarketplaceService {
   }
 
   async findGovernorateDistricts(governorateId: string) {
-    const governorate = await this.prisma.governorate.findFirst({
-      where: { id: governorateId, isActive: true },
-      select: { id: true },
-    });
+    const governorate = await this.catalog.findActiveGovernorate(
+      this.prisma,
+      governorateId,
+    );
     if (!governorate) {
       throw new NotFoundException({
         statusCode: 404,
@@ -132,10 +122,10 @@ export class MarketplaceService {
         message: "Governorate not found",
       });
     }
-    const districts = await this.prisma.district.findMany({
-      where: { governorateId, isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
-    });
+    const districts = await this.catalog.listActiveDistricts(
+      this.prisma,
+      governorateId,
+    );
 
     return districts.map((district) =>
       YemenAdministrativePresenter.toDistrictResponse(district),
@@ -143,28 +133,31 @@ export class MarketplaceService {
   }
 
   async findCategories() {
-    const categories = await this.prisma.providerCategory.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
-    });
+    const categories = await this.catalog.listActiveCategories(this.prisma);
 
     return categories.map((category) =>
       MarketplacePresenter.toCategoryResponse(category),
     );
   }
 
+  private get quoteScopePorts(): QuoteScopePorts {
+    return {
+      permissions: this.permissions,
+      scope: this.scope,
+      relations: this.relations,
+    };
+  }
+
   async findProviders(query: ListProvidersQueryDto) {
     const { pagination, where } = MarketplaceQuery.providerSearch(query);
-    const [total, providers] = await this.prisma.$transaction([
+    const [total, providerRows] = await this.prisma.$transaction([
       this.prisma.provider.count({ where }),
       this.prisma.provider.findMany({
         where,
         include: {
-          city: true,
-          primaryCategory: true,
           services: {
             where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-            select: { title: true, basePrice: true, currency: true, category: true },
+            select: { title: true, basePrice: true, currency: true, categoryId: true },
           },
         },
         orderBy: [
@@ -176,12 +169,14 @@ export class MarketplaceService {
         take: pagination.limit,
       }),
     ]);
+    // Catalog's city and category rows are attached after the own-table read.
+    const providers = await this.relations.attachProviderListCatalog(
+      this.prisma,
+      providerRows,
+    );
     return MarketplaceQuery.paginate(
-      providers.map(({ services, ...provider }) =>
-        MarketplacePresenter.toProviderListResponse({
-          ...provider,
-          servicePreviews: services,
-        }),
+      providers.map((provider) =>
+        MarketplacePresenter.toProviderListResponse(provider),
       ),
       total,
       pagination,
@@ -190,15 +185,12 @@ export class MarketplaceService {
 
   async findProvider(id: string) {
     MarketplaceQuery.assertUuid(id, "providerId");
-    const provider = await this.prisma.provider.findFirst({
+    const providerRow = await this.prisma.provider.findFirst({
       where: { id, status: ProviderStatus.ACTIVE },
       include: {
-        city: true,
-        primaryCategory: true,
         services: {
           where: { isActive: true },
           include: {
-            category: true,
             images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           },
           orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
@@ -206,25 +198,38 @@ export class MarketplaceService {
       },
     });
 
-    if (!provider) {
+    if (!providerRow) {
       throw new NotFoundException("Provider not found");
     }
+    const { services, ...providerOnly } = providerRow;
+    const [provider] = await this.relations.attachProviderCatalog(
+      this.prisma,
+      [providerOnly],
+    );
+    const providerServices = await this.relations.attachServiceDetails(
+      this.prisma,
+      services.map((service) => ({ ...service, provider: providerOnly })),
+    );
 
-    return MarketplacePresenter.toProviderResponse(provider);
+    return MarketplacePresenter.toProviderResponse({
+      ...provider,
+      services: providerServices,
+    });
   }
 
   async findProviderServices(providerId: string) {
     await this.findActiveProviderOrThrow(providerId);
-    const services = await this.prisma.providerService.findMany({
-      where: { providerId, isActive: true },
-      include: {
-        provider: { include: { city: true, primaryCategory: true } },
-        category: true,
-        city: true,
-        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-      },
-      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    });
+    const services = await this.relations.attachServiceDetails(
+      this.prisma,
+      await this.prisma.providerService.findMany({
+        where: { providerId, isActive: true },
+        include: {
+          provider: true,
+          images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+        },
+        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+      }),
+    );
 
     return services.map((service) =>
       MarketplacePresenter.toServiceResponse(service),
@@ -234,14 +239,12 @@ export class MarketplaceService {
   async findServices(query: ListServicesQueryDto) {
     const { pagination, where } = MarketplaceQuery.serviceSearch(query);
 
-    const [total, services] = await this.prisma.$transaction([
+    const [total, serviceRows] = await this.prisma.$transaction([
       this.prisma.providerService.count({ where }),
       this.prisma.providerService.findMany({
         where,
         include: {
-          provider: { include: { city: true, primaryCategory: true } },
-          category: true,
-          city: true,
+          provider: true,
           images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
         },
         orderBy: [
@@ -253,6 +256,10 @@ export class MarketplaceService {
         take: pagination.limit,
       }),
     ]);
+    const services = await this.relations.attachServiceDetails(
+      this.prisma,
+      serviceRows,
+    );
 
     return MarketplaceQuery.paginate(
       services.map((service) =>
@@ -265,23 +272,24 @@ export class MarketplaceService {
 
   async findService(id: string) {
     MarketplaceQuery.assertUuid(id, "serviceId");
-    const service = await this.prisma.providerService.findFirst({
+    const serviceRow = await this.prisma.providerService.findFirst({
       where: {
         id,
         isActive: true,
         provider: { status: ProviderStatus.ACTIVE },
       },
       include: {
-        provider: { include: { city: true, primaryCategory: true } },
-        category: true,
-        city: true,
+        provider: true,
         images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
       },
     });
 
-    if (!service) {
+    if (!serviceRow) {
       throw new NotFoundException("Service not found");
     }
+    const [service] = await this.relations.attachServiceDetails(this.prisma, [
+      serviceRow,
+    ]);
 
     return MarketplacePresenter.toServiceResponse(service);
   }
@@ -301,15 +309,13 @@ export class MarketplaceService {
 
   async findProviderReviews(providerId: string) {
     await this.findActiveProviderOrThrow(providerId);
-    const reviews = await this.prisma.providerReview.findMany({
-      where: { providerId, status: ReviewStatus.PUBLISHED },
-      include: {
-        user: {
-          select: { id: true, name: true, appName: true, role: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const reviews = await this.relations.attachReviewUsers(
+      this.prisma,
+      await this.prisma.providerReview.findMany({
+        where: { providerId, status: ReviewStatus.PUBLISHED },
+        orderBy: { createdAt: "desc" },
+      }),
+    );
 
     return reviews.map((review) =>
       MarketplacePresenter.toReviewResponse(review),
@@ -337,26 +343,26 @@ export class MarketplaceService {
           lockedUserIds,
         );
         assertMarketplaceProviderActive(provider);
-        return tx.favoriteProvider.upsert({
-          where: {
-            userId_providerId: {
+        return this.relations.attachFavoriteProviders(tx, [
+          await tx.favoriteProvider.upsert({
+            where: {
+              userId_providerId: {
+                userId: currentUser.id,
+                providerId,
+              },
+            },
+            create: {
               userId: currentUser.id,
               providerId,
             },
-          },
-          create: {
-            userId: currentUser.id,
-            providerId,
-          },
-          update: {},
-          include: {
-            provider: { include: { city: true, primaryCategory: true } },
-          },
-        });
+            update: {},
+            include: { provider: true },
+          }),
+        ]);
       },
     );
 
-    return MarketplacePresenter.toFavoriteResponse(favorite);
+    return MarketplacePresenter.toFavoriteResponse(favorite[0]);
   }
 
   async unfavoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
@@ -375,14 +381,17 @@ export class MarketplaceService {
   }
 
   async findMyFavoriteProviders(currentUser: AuthenticatedUser) {
-    const favorites = await this.prisma.favoriteProvider.findMany({
-      where: {
-        userId: currentUser.id,
-        provider: { status: ProviderStatus.ACTIVE },
-      },
-      include: { provider: { include: { city: true, primaryCategory: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const favorites = await this.relations.attachFavoriteProviders(
+      this.prisma,
+      await this.prisma.favoriteProvider.findMany({
+        where: {
+          userId: currentUser.id,
+          provider: { status: ProviderStatus.ACTIVE },
+        },
+        include: { provider: true },
+        orderBy: { createdAt: "desc" },
+      }),
+    );
 
     return favorites.map((favorite) =>
       MarketplacePresenter.toFavoriteResponse(favorite),
@@ -462,6 +471,7 @@ export class MarketplaceService {
       this.prisma,
       this.lifecycle,
       this.notifications,
+      this.relations,
       {
         requesterId: currentUser.id,
         data: {
@@ -484,6 +494,7 @@ export class MarketplaceService {
       {
         currentUser,
         permissions: this.permissions,
+        catalog: this.catalog,
         history: this.contributionHistory,
       },
     );
@@ -515,29 +526,36 @@ export class MarketplaceService {
       ? null
       : await findContributorProviderQuoteIds(
           this.prisma,
+          this.scope,
           weddingPlanId,
           currentUser.id,
         );
-    const quotes = await this.prisma.quoteRequest.findMany({
-      where: {
-        weddingPlanId,
-        weddingPlan: {
-          is: livePlanAuthorizationWhere(
-            context,
-            currentUser.id,
-            [
-              "canManageProviders",
-              ...(this.permissions.canViewMoney(context)
-                ? (["canViewMoney"] as const)
-                : []),
-            ],
-          ),
+    // The final read re-checks current ownership/membership and the
+    // provider (and money) permission through the owners and applies the
+    // result to the quote table itself.
+    const liveFilter = await this.permissions.liveAuthorizationFilter(
+      this.prisma,
+      context,
+      currentUser.id,
+      [
+        "canManageProviders",
+        ...(this.permissions.canViewMoney(context)
+          ? (["canViewMoney"] as const)
+          : []),
+      ],
+    );
+    const quotes = await this.relations.attachQuoteRelations(
+      this.prisma,
+      await this.prisma.quoteRequest.findMany({
+        where: {
+          weddingPlanId,
+          ...(quoteIds ? { id: { in: quoteIds } } : {}),
+          ...liveFilter,
         },
-        ...(quoteIds ? { id: { in: quoteIds } } : {}),
-      },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-      orderBy: { createdAt: "desc" },
-    });
+        include: MARKETPLACE_QUOTE_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      }),
+    );
 
     return quotes.map((quote) =>
       MarketplacePresenter.toQuoteResponse(
@@ -572,6 +590,8 @@ export class MarketplaceService {
       this.prisma,
       this.lifecycle,
       this.permissions,
+      this.scope,
+      this.relations,
       currentUser,
       id,
       "PLAN_OR_REQUESTER",
@@ -602,6 +622,7 @@ export class MarketplaceService {
       this.permissions,
       this.notifications,
       this.finance,
+      this.relations,
       {
         id,
         weddingPlanId,
@@ -654,6 +675,7 @@ export class MarketplaceService {
       this.lifecycle,
       this.permissions,
       this.notifications,
+      this.relations,
       { id, currentUser },
       this.contributionHistory,
     );
@@ -663,11 +685,18 @@ export class MarketplaceService {
 
   async findMyQuoteRequests(currentUser: AuthenticatedUser) {
     const quotes = await runSerializableTransaction(this.prisma, async (tx) =>
-      tx.quoteRequest.findMany({
-        where: await buildMyQuoteAccessWhere(tx, currentUser.id),
-        include: MARKETPLACE_QUOTE_INCLUDE,
-        orderBy: { createdAt: "desc" },
-      }),
+      this.relations.attachQuoteRelations(
+        tx,
+        await tx.quoteRequest.findMany({
+          where: await buildMyQuoteAccessWhere(
+            tx,
+            this.quoteScopePorts,
+            currentUser.id,
+          ),
+          include: MARKETPLACE_QUOTE_INCLUDE,
+          orderBy: { createdAt: "desc" },
+        }),
+      ),
     );
 
     return quotes.map((quote) => MarketplacePresenter.toQuoteResponse(quote));
@@ -675,12 +704,18 @@ export class MarketplaceService {
 
   async findMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const quote = await runSerializableTransaction(this.prisma, async (tx) =>
-      tx.quoteRequest.findFirst({
-        where: await buildMyQuoteAccessWhere(tx, currentUser.id, id),
+    const quote = await runSerializableTransaction(this.prisma, async (tx) => {
+      const row = await tx.quoteRequest.findFirst({
+        where: await buildMyQuoteAccessWhere(
+          tx,
+          this.quoteScopePorts,
+          currentUser.id,
+          id,
+        ),
         include: MARKETPLACE_QUOTE_INCLUDE,
-      }),
-    );
+      });
+      return row ? this.relations.attachQuoteRelation(tx, row) : null;
+    });
 
     if (!quote) {
       throw new NotFoundException("Quote request not found");
@@ -695,6 +730,8 @@ export class MarketplaceService {
       this.prisma,
       this.lifecycle,
       this.permissions,
+      this.scope,
+      this.relations,
       currentUser,
       id,
       "REQUESTER_ONLY",
@@ -737,19 +774,16 @@ export class MarketplaceService {
           throw new ConflictException("You already reviewed this provider");
         }
 
-        const review = await tx.providerReview.create({
-          data: {
-            userId: currentUser.id,
-            providerId,
-            rating: dto.rating,
-            comment: MarketplaceQuery.optionalText(dto.comment),
-          },
-          include: {
-            user: {
-              select: { id: true, name: true, appName: true, role: true },
+        const [review] = await this.relations.attachReviewUsers(tx, [
+          await tx.providerReview.create({
+            data: {
+              userId: currentUser.id,
+              providerId,
+              rating: dto.rating,
+              comment: MarketplaceQuery.optionalText(dto.comment),
             },
-          },
-        });
+          }),
+        ]);
         return MarketplacePresenter.toReviewResponse(review);
       },
     );
@@ -779,20 +813,17 @@ export class MarketplaceService {
         if (!current) {
           throw new NotFoundException("Review not found");
         }
-        const review = await tx.providerReview.update({
-          where: { id },
-          data: {
-            ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
-            ...(dto.comment !== undefined
-              ? { comment: MarketplaceQuery.optionalText(dto.comment) }
-              : {}),
-          },
-          include: {
-            user: {
-              select: { id: true, name: true, appName: true, role: true },
+        const [review] = await this.relations.attachReviewUsers(tx, [
+          await tx.providerReview.update({
+            where: { id },
+            data: {
+              ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
+              ...(dto.comment !== undefined
+                ? { comment: MarketplaceQuery.optionalText(dto.comment) }
+                : {}),
             },
-          },
-        });
+          }),
+        ]);
         return MarketplacePresenter.toReviewResponse(review);
       },
     );
@@ -864,9 +895,7 @@ export class MarketplaceService {
 
   private async findActiveCityOrThrow(cityId: string): Promise<City> {
     MarketplaceQuery.assertUuid(cityId, "cityId");
-    const city = await this.prisma.city.findFirst({
-      where: { id: cityId, isActive: true },
-    });
+    const city = await this.catalog.findActiveCity(this.prisma, cityId);
 
     if (!city) {
       throw new BadRequestException("cityId must reference an active city");
@@ -896,8 +925,8 @@ export class MarketplaceService {
       assertProviderSectionLive(context, this.permissions);
       const quote = await findAccessiblePlanQuoteRequest(
         this.prisma,
+        this.quoteScopePorts,
         context,
-        this.permissions,
         currentUser.id,
         quoteSeed.id,
         quoteSeed.weddingPlanId,
@@ -913,7 +942,7 @@ export class MarketplaceService {
       };
     }
 
-    const quote = await this.prisma.quoteRequest.findFirst({
+    const quoteRow = await this.prisma.quoteRequest.findFirst({
       where: {
         id: quoteSeed.id,
         userId: currentUser.id,
@@ -921,9 +950,10 @@ export class MarketplaceService {
       },
       include: MARKETPLACE_QUOTE_INCLUDE,
     });
-    if (!quote) {
+    if (!quoteRow) {
       throw new NotFoundException("Quote request not found");
     }
+    const quote = await this.relations.attachQuoteRelation(this.prisma, quoteRow);
 
     return { quote, visibility: FULL_QUOTE_VISIBILITY };
   }
@@ -951,6 +981,7 @@ export class MarketplaceService {
         !context.isOwner &&
         !(await findContributorProviderQuoteIds(
           this.prisma,
+          this.scope,
           offer.quoteRequest.weddingPlanId,
           currentUser.id,
         )).includes(offer.quoteRequestId)

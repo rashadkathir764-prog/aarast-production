@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ConflictException } from "@nestjs/common";
 import { Prisma, QuoteRequestStatus } from "@prisma/client";
-import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { marketplaceRelations, marketplaceService, withOwnerTables } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { createQuoteRequestInTransaction } from "../src/marketplace/quote-request-creation";
 import { isQuoteOfferExpired } from "../src/marketplace/quote-offer-expiry";
@@ -47,6 +47,9 @@ function creationHarness(
     userId: "provider-user",
     businessName: "Provider",
     status: "ACTIVE",
+    cityId: "city-1",
+    primaryCategoryId: null,
+    city: { id: "city-1", nameAr: "صنعاء" },
   };
   const created = {
     id: quoteId,
@@ -61,6 +64,9 @@ function creationHarness(
     status: QuoteRequestStatus.SENT,
     createdAt: now,
     provider,
+    service: null,
+    offers: [],
+    providerLinks: [],
   };
   const existing = options.existingStatus
     ? {
@@ -139,8 +145,9 @@ function creationHarness(
   return {
     run: () =>
       createQuoteRequestInTransaction(
-        prisma as any,
+        withOwnerTables(prisma as any),
         lifecycle, notificationService as any,
+        marketplaceRelations(),
         input,
       ),
     get creates() {
@@ -266,7 +273,7 @@ test("backend rejects acceptance of an expired pending offer", async () => {
     quoteOffer: { findUnique: async () => offer },
     weddingCost: { findFirst: async () => null },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     {
       contributionEvent: {
         findMany: async () => [{ entityId: quoteId }],

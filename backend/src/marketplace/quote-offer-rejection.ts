@@ -16,6 +16,7 @@ import type { ConversationLifecyclePort } from "../modules/messaging/public/conv
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
@@ -38,6 +39,7 @@ export async function rejectQuoteOfferInTransaction(
   lifecycle: ConversationLifecyclePort,
   permissions: PermissionService,
   notifications: NotificationsPort,
+  relations: MarketplaceRelationsService,
   input: RejectQuoteOfferInput,
   history?: ContributionHistoryService,
 ) {
@@ -56,7 +58,6 @@ export async function rejectQuoteOfferInTransaction(
           select: {
             userId: true,
             weddingPlanId: true,
-            weddingPlan: { select: { ownerUserId: true } },
           },
         },
       },
@@ -64,12 +65,17 @@ export async function rejectQuoteOfferInTransaction(
     if (!seed) {
       throw new NotFoundException("Quote offer not found");
     }
+    // The plan owner is planning's row, read through its port for the
+    // user lock set.
+    const planSeed = seed.quoteRequest.weddingPlanId
+      ? await relations.plans.getPlan(tx, seed.quoteRequest.weddingPlanId)
+      : null;
     const lockedUserIds = await lockMarketplaceMutationUsers(
       tx,
       currentUser.id,
       [
         seed.quoteRequest.userId,
-        seed.quoteRequest.weddingPlan?.ownerUserId,
+        planSeed?.ownerUserId,
         seed.provider.userId,
       ],
     );
@@ -92,7 +98,7 @@ export async function rejectQuoteOfferInTransaction(
       lockedUserIds,
     );
 
-    const locked = await lockQuoteOfferTransitionRows(tx, id);
+    const locked = await lockQuoteOfferTransitionRows(tx, lifecycle, id);
     if (!locked) {
       throw new NotFoundException("Quote offer not found");
     }

@@ -230,6 +230,46 @@ export function tasksService(
 }
 
 // ---------------------------------------------------------------------------
+// Marketplace: the catalog, plan, user and cost rows its includes used to
+// return are attached through MarketplaceRelationsService; fixtures keep the
+// five-to-six-argument list of MarketplaceService and the script helpers.
+import { MarketplaceService } from '../../src/marketplace/marketplace.service';
+import { MarketplaceRelationsService } from '../../src/marketplace/marketplace-relations';
+import { ContributorScopeService } from '../../src/modules/collaboration/internal/contributor-scope.service';
+import type { FinancePort } from '../../src/modules/finance/public/finance.port';
+
+export function marketplaceRelations(finance: FinancePort = ownerPorts.finance): MarketplaceRelationsService {
+  return new MarketplaceRelationsService(ownerPorts.catalog, ownerPorts.plans, ownerPorts.users, finance);
+}
+
+/** The contribution scope over the fixture's client (the same statements the scope service runs). */
+export function contributorScope(prisma: unknown): ContributorScopeService {
+  return new ContributorScopeService(contributionHistoryService(prisma));
+}
+
+export function marketplaceService(
+  prisma: unknown,
+  permissions: unknown,
+  notifications: unknown,
+  lifecycle: unknown,
+  finance: FinancePort,
+  history?: unknown,
+): MarketplaceService {
+  const client = withOwnerTables(prisma as any);
+  return new MarketplaceService(
+    client,
+    completePermissions(permissions as object, client) as any,
+    notifications as any,
+    lifecycle as any,
+    finance,
+    ownerPorts.catalog,
+    contributorScope(client),
+    marketplaceRelations(finance),
+    history as any,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Fixture relation tables. Sharing fixtures describe their invite and member
 // rows with the related plan and people inline — the shape the old Prisma
 // includes returned. The owners now read those rows through their ports
@@ -246,64 +286,66 @@ function isRow(value: unknown): value is Record<string, any> {
 const OWNER_TABLES = new WeakSet<object>();
 
 type Rows = Map<string, Record<string, any>>;
-interface OwnerStore { users: Rows; plans: Rows; members: Rows }
+type OwnerTable = 'user' | 'weddingPlan' | 'sharedMember' | 'city' | 'providerCategory' | 'weddingCost';
+type OwnerStore = Record<OwnerTable, Rows>;
+
+// Which inline relation keys carry which owner's rows.
+const RELATION_TABLES: Record<string, OwnerTable> = {
+  inviter: 'user', invitee: 'user', user: 'user', owner: 'user',
+  weddingPlan: 'weddingPlan',
+  city: 'city',
+  primaryCategory: 'providerCategory', category: 'providerCategory',
+};
 
 export function withOwnerTables<T extends FakeClient>(fake: T): T {
-  return install(fake, { users: new Map(), plans: new Map(), members: new Map() });
+  return install(fake, {
+    user: new Map(), weddingPlan: new Map(), sharedMember: new Map(),
+    city: new Map(), providerCategory: new Map(), weddingCost: new Map(),
+  });
 }
 
 function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
   if (!fake || typeof fake !== 'object' || OWNER_TABLES.has(fake)) return fake;
   OWNER_TABLES.add(fake);
-  const { users, plans, members } = store;
-  const remember = (rows: Rows, row: Record<string, any>) => rows.set(row.id, { ...rows.get(row.id), ...row });
+  const remember = (table: OwnerTable, row: Record<string, any>) => {
+    if (typeof row.id !== 'string') return;
+    store[table].set(row.id, { ...store[table].get(row.id), ...row });
+  };
   const harvest = (table: string, value: unknown, depth = 0): void => {
-    if (depth > 3) return;
+    if (depth > 4) return;
     if (Array.isArray(value)) { for (const item of value) harvest(table, item, depth); return; }
     if (!isRow(value)) return;
-    for (const key of ['inviter', 'invitee', 'user', 'owner'] as const) {
-      const related = value[key];
-      if (isRow(related) && typeof related.id === 'string') remember(users, related);
-    }
-    const plan = value.weddingPlan;
-    if (isRow(plan) && typeof plan.id === 'string') remember(plans, plan);
-    if (table === 'sharedMember' && typeof value.id === 'string' && typeof value.weddingPlanId === 'string' && typeof value.userId === 'string') {
-      remember(members, value);
+    if (table === 'sharedMember' && typeof value.weddingPlanId === 'string' && typeof value.userId === 'string') remember('sharedMember', value);
+    for (const [key, related] of Object.entries(value)) {
+      const owner = RELATION_TABLES[key];
+      if (owner && isRow(related)) remember(owner, related);
+      // A cost linked to an offer arrives inline on the offer (`offers[].weddingCosts`).
+      if (key === 'weddingCosts' && Array.isArray(related) && typeof value.id === 'string') {
+        for (const cost of related) if (isRow(cost)) remember('weddingCost', { ...cost, quoteOfferId: value.id });
+      }
+      if (isRow(related) || Array.isArray(related)) harvest(key === 'sharedMembers' ? 'sharedMember' : key, related, depth + 1);
     }
   };
-  const ids = (where: any): string[] | null => (where?.id?.in ? [...where.id.in] : typeof where?.id === 'string' ? [where.id] : null);
   const matches = (row: Record<string, any>, where: Record<string, any>) => Object.entries(where ?? {}).every(([key, expected]) => (
-    key === 'id' && isRow(expected) ? (expected.in as string[]).includes(row.id) : row[key] === expected
+    isRow(expected) && Array.isArray(expected.in) ? expected.in.includes(row[key]) : row[key] === expected
   ));
-  const registries: Record<string, Record<string, (args: any) => Promise<unknown>>> = {
-    user: {
-      findMany: async ({ where }: any) => { const wanted = ids(where); return [...users.values()].filter((row) => (wanted ? wanted.includes(row.id) : true)); },
-      findUnique: async ({ where }: any) => users.get(where.id) ?? null,
-      findFirst: async ({ where }: any) => [...users.values()].find((row) => matches(row, where)) ?? null,
-    },
-    weddingPlan: {
-      findMany: async ({ where }: any) => [...plans.values()].filter((row) => matches(row, where)),
-      findUnique: async ({ where }: any) => plans.get(where.id) ?? null,
-      findFirst: async ({ where }: any) => [...plans.values()].find((row) => matches(row, where)) ?? null,
-    },
-    sharedMember: {
-      findFirst: async ({ where }: any) => [...members.values()].find((row) => matches(row, where)) ?? null,
-      findMany: async ({ where }: any) => [...members.values()].filter((row) => matches(row, where)),
-    },
-  };
-  for (const table of ['planInvite', 'sharedMember', 'user', 'weddingPlan']) {
-    const delegate = fake[table];
-    if (!isRow(delegate)) continue;
+  const registry = (table: OwnerTable) => ({
+    findMany: async ({ where }: any = {}) => [...store[table].values()].filter((row) => matches(row, where)),
+    findUnique: async ({ where }: any) => store[table].get(where.id) ?? null,
+    findFirst: async ({ where }: any) => [...store[table].values()].find((row) => matches(row, where)) ?? null,
+  });
+  for (const [table, delegate] of Object.entries(fake)) {
+    if (table.startsWith('$') || !isRow(delegate)) continue;
     for (const method of Object.keys(delegate)) {
       const own = delegate[method];
       if (typeof own !== 'function') continue;
       delegate[method] = async (...args: unknown[]) => { const result = await own.apply(delegate, args); harvest(table, result); return result; };
     }
   }
-  for (const [table, methods] of Object.entries(registries)) {
+  for (const table of Object.keys(store) as OwnerTable[]) {
     if (fake[table] === undefined) (fake as FakeClient)[table] = {};
     if (!isRow(fake[table])) continue;
-    for (const [method, implementation] of Object.entries(methods)) {
+    for (const [method, implementation] of Object.entries(registry(table))) {
       if (fake[table][method] === undefined) fake[table][method] = implementation;
     }
   }

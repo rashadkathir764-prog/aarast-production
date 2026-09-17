@@ -26,6 +26,7 @@ import { ConversationsService } from '../src/conversations/conversations.service
 import { acceptQuoteOfferInTransaction } from '../src/marketplace/quote-offer-acceptance';
 import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
+import { marketplaceRelations, withOwnerTables } from './support/owner-ports';
 
 const providerUserId = '11111111-1111-4111-8111-111111111111';
 const providerId = '22222222-2222-4222-8222-222222222222';
@@ -837,10 +838,10 @@ test('a customer cannot accept an offer after the provider becomes inactive', as
 
   const result = await outcome(() =>
     acceptQuoteOfferInTransaction(
-      {
+      withOwnerTables({
         $transaction: async (operation: (client: any) => Promise<unknown>) =>
           operation(tx),
-      } as any,
+      } as any),
       lifecycle, {
         assertProviderAndMoneyManageableInTransaction: async () => ({
           plan: {
@@ -853,6 +854,7 @@ test('a customer cannot accept an offer after the provider becomes inactive', as
       } as any,
       {} as any,
       new FinancePortService(),
+      marketplaceRelations(),
       {
         id: offerId,
         weddingPlanId: currentOffer.quoteRequest.weddingPlanId,

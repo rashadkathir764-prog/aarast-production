@@ -10,9 +10,8 @@ import {
   ProviderService,
   ProviderStatus,
   UserStatus,
-  WeddingPlan,
 } from "@prisma/client";
-import { assertWeddingPlanWritable } from "../modules/collaboration/public/collaboration-permission.port";
+import type { CatalogReadPort } from "../modules/catalog/public/catalog-read.port";
 import { lockUserLifecycleRowsInTransaction } from "../modules/identity/public/user-lifecycle-lock";
 
 export async function lockMarketplaceMutationUsers(
@@ -75,31 +74,6 @@ export async function lockMarketplaceProvider(
   return provider;
 }
 
-export async function lockWritableMarketplacePlan(
-  tx: Prisma.TransactionClient,
-  weddingPlanId: string,
-): Promise<WeddingPlan> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`
-      SELECT "id"
-      FROM "WeddingPlan"
-      WHERE "id" = ${weddingPlanId}
-      FOR SHARE
-    `,
-  );
-  if (rows.length !== 1) {
-    throw new NotFoundException("Wedding plan not found");
-  }
-  const plan = await tx.weddingPlan.findUnique({
-    where: { id: weddingPlanId },
-  });
-  if (!plan) {
-    throw new NotFoundException("Wedding plan not found");
-  }
-  assertWeddingPlanWritable(plan);
-  return plan;
-}
-
 export function assertMarketplaceProviderActive(
   provider: Pick<Provider, "status">,
 ): void {
@@ -157,22 +131,11 @@ export async function lockActiveProviderService(
 
 export async function lockActiveMarketplaceCity(
   tx: Prisma.TransactionClient,
+  catalog: CatalogReadPort,
   cityId: string,
 ): Promise<City> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`
-      SELECT "id"
-      FROM "City"
-      WHERE "id" = ${cityId}
-      FOR SHARE
-    `,
-  );
-  if (rows.length !== 1) {
-    throw new BadRequestException("cityId must reference an active city");
-  }
-  const city = await tx.city.findFirst({
-    where: { id: cityId, isActive: true },
-  });
+  // The city row is catalog's: locked for share and confirmed active there.
+  const city = await catalog.lockActiveCityForShareInTransaction(tx, cityId);
   if (!city) {
     throw new BadRequestException("cityId must reference an active city");
   }

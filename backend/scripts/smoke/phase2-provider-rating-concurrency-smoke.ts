@@ -24,7 +24,8 @@ import {
 import { AdminService } from "../../src/admin/admin.service";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
 import { UsersService } from "../../src/modules/identity/internal/profile/users.service";
-import { identityErasurePorts, ownerPorts } from "./support/owner-ports";
+import { identityErasurePorts, ownerPorts, marketplaceService } from "./support/owner-ports";
+import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
@@ -87,10 +88,11 @@ async function main(): Promise<void> {
       adminRole: AdminRole.MODERATOR,
     },
   });
-  const marketplace = new MarketplaceService(
-    prisma as any,
-    {} as any,
-    {} as any, lifecycle, ownerPorts.finance,
+  const marketplace = marketplaceService(
+    prisma,
+    new PermissionService(prisma as any, ownerPorts.plans),
+    {},
+    lifecycle,
   );
   const admin = new AdminService(prisma as any, {} as any, {
     createNotificationInTransaction: async () => null,

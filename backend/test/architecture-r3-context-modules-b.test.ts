@@ -103,8 +103,11 @@ test('Task 7 full modules preserve the exact controller ownership', () => {
 
 test('Task 7 owner-private leaves register each remaining application service once', () => {
   const expected = new Map<string, string[]>([
+    // The ownership program added marketplace's private relations service:
+    // it attaches catalog's, planning's, identity's and finance's rows to
+    // marketplace's own rows through their ports (its includes are gone).
     ['modules/marketplace/internal/marketplace-services.internal.module.ts#MarketplaceServicesInternalModule', [
-      'MarketplaceService', 'ProviderDashboardService',
+      'MarketplaceRelationsService', 'MarketplaceService', 'ProviderDashboardService',
     ]],
     ['modules/catalog/internal/catalog-services.internal.module.ts#CatalogServicesInternalModule', [
       'AdministrativeCatalogService', 'ReferenceCatalogService',

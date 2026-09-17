@@ -24,11 +24,10 @@ import {
   WeddingPlanStatus,
 } from '@prisma/client';
 import { ConversationsService } from '../src/conversations/conversations.service';
-import { MarketplaceService } from '../src/marketplace/marketplace.service';
 import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
 import { ProviderDashboardService } from '../src/provider-dashboard/provider-dashboard.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
-import { collaborationHistory, collaborationPermissions, planningOwnerPorts, sharingService } from './support/owner-ports';
+import { collaborationHistory, collaborationPermissions, marketplaceService, planningOwnerPorts, sharingService } from './support/owner-ports';
 
 const now = new Date('2026-07-26T00:00:00.000Z');
 const weddingPlanId = '11111111-1111-4111-8111-111111111111';
@@ -384,7 +383,7 @@ test('a requester cannot cancel a quote linked to an archived plan', async () =>
       },
     },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     {
       $transaction: async (operation: (client: any) => Promise<unknown>) =>
         operation(tx),

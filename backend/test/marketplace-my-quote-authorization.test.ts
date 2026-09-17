@@ -20,8 +20,9 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { marketplaceService } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 
 const contributorAId = "11111111-1111-4111-8111-111111111111";
 const contributorBId = "22222222-2222-4222-8222-222222222222";
@@ -33,29 +34,35 @@ const providerId = "77777777-7777-4777-8777-777777777777";
 const conversationId = "88888888-8888-4888-8888-888888888888";
 
 const currentUser = (id: string) => ({ id }) as any;
+const ownedPlanId = "99999999-9999-4999-8999-999999999999";
+const otherPlanId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-const expectedMyQuoteScope = (userId: string, qualifiedQuoteIds: string[]) => ({
+// The scope used to be a `weddingPlan: { is: ... }` join on planning's and
+// collaboration's tables. Ownership and membership are read through their
+// ports inside the same transaction and applied to the quote table by plan
+// id: the owned plans, and the plans the caller still manages providers for.
+const expectedMyQuoteScope = (
+  userId: string,
+  qualifiedQuoteIds: string[],
+  ownedPlanIds: string[],
+  providerManagingPlanIds: string[],
+) => ({
   userId,
   OR: [
     { weddingPlanId: null },
-    {
-      weddingPlan: {
-        is: {
-          ownerUserId: userId,
-        },
-      },
-    },
+    { weddingPlanId: { in: ownedPlanIds } },
     {
       id: { in: qualifiedQuoteIds },
-      weddingPlan: {
-        is: {
-          sharedMembers: {
-            some: { userId, canManageProviders: true },
-          },
-        },
-      },
+      weddingPlanId: { in: providerManagingPlanIds },
     },
   ],
+});
+
+const expectedContributionScope = (userId: string) => ({
+  contributorTenure: { actorReference: contributorActorReference(userId) },
+  entityType: { in: ["QUOTE_REQUEST"] },
+  action: { in: ["CREATED", "LEGACY_CAPTURED"] },
+  entityId: { not: null },
 });
 
 test("my quote list filters plan-linked requests by the caller's current stored provider permission", async () => {
@@ -69,6 +76,15 @@ test("my quote list filters plan-linked requests by the caller's current stored 
         return [{ entityId: quoteId }];
       },
     },
+    weddingPlan: {
+      findMany: async () => [{ id: ownedPlanId }],
+    },
+    sharedMember: {
+      findMany: async () => [
+        { weddingPlanId: planId, userId: contributorAId, canManageProviders: true },
+        { weddingPlanId: otherPlanId, userId: contributorAId, canManageProviders: false },
+      ],
+    },
     quoteRequest: {
       findMany: async ({ where }: { where: unknown }) => {
         capturedWhere = where;
@@ -76,7 +92,7 @@ test("my quote list filters plan-linked requests by the caller's current stored 
       },
     },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) => {
         transactionCalls += 1;
@@ -90,28 +106,26 @@ test("my quote list filters plan-linked requests by the caller's current stored 
   await service.findMyQuoteRequests(currentUser(contributorAId));
 
   assert.equal(transactionCalls, 1);
-  assert.deepEqual(
-    capturedContributionWhere,
-    {
-      contributorTenure: { actorUserId: contributorAId },
-      entityType: "QUOTE_REQUEST",
-      action: { in: ["CREATED", "LEGACY_CAPTURED"] },
-      entityId: { not: null },
-    },
-  );
+  assert.deepEqual(capturedContributionWhere, expectedContributionScope(contributorAId));
   assert.deepEqual(
     capturedWhere,
-    expectedMyQuoteScope(contributorAId, [quoteId]),
+    expectedMyQuoteScope(contributorAId, [quoteId], [ownedPlanId], [planId]),
   );
 });
 
 test("my quote detail keeps contributor A and B isolated and checks current plan permission in SQL", async () => {
   let capturedWhere: unknown;
   let transactionCalls = 0;
+  let capturedContributionWhere: unknown;
   const tx = {
     contributionEvent: {
-      findMany: async () => [],
+      findMany: async ({ where }: { where: unknown }) => {
+        capturedContributionWhere = where;
+        return [];
+      },
     },
+    weddingPlan: { findMany: async () => [] },
+    sharedMember: { findMany: async () => [] },
     quoteRequest: {
       findFirst: async ({ where }: { where: unknown }) => {
         capturedWhere = where;
@@ -119,7 +133,7 @@ test("my quote detail keeps contributor A and B isolated and checks current plan
       },
     },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     {
       $transaction: async (operation: (client: typeof tx) => unknown) => {
         transactionCalls += 1;
@@ -136,9 +150,13 @@ test("my quote detail keeps contributor A and B isolated and checks current plan
   );
 
   assert.equal(transactionCalls, 1);
+  assert.deepEqual(capturedContributionWhere, {
+    ...expectedContributionScope(contributorBId),
+    entityId: quoteId,
+  });
   assert.deepEqual(capturedWhere, {
     id: quoteId,
-    ...expectedMyQuoteScope(contributorBId, []),
+    ...expectedMyQuoteScope(contributorBId, [], [], []),
   });
   assert.notEqual((capturedWhere as any).userId, contributorAId);
 });
@@ -167,6 +185,7 @@ function cancellationHarness(options: {
     status: "ACTIVE",
     ratingAverage: 0,
     ratingCount: 0,
+    cityId: "99999999-9999-4999-8999-999999999999",
     city: {
       id: "99999999-9999-4999-8999-999999999999",
       nameAr: "صنعاء",
@@ -175,6 +194,7 @@ function cancellationHarness(options: {
       isActive: true,
       sortOrder: 1,
     },
+    primaryCategoryId: null,
     primaryCategory: null,
   };
   const plan = options.weddingPlanId
@@ -248,11 +268,11 @@ function cancellationHarness(options: {
       findUnique: async () => null,
     },
     contributionEvent: {
-      findFirst: async ({ where }: { where: unknown }) => {
+      findMany: async ({ where }: { where: unknown }) => {
         capturedContributionWhere = where;
         return options.hasQualifyingContribution === false
-          ? null
-          : { id: "history-1" };
+          ? []
+          : [{ entityId: quoteId }];
       },
     },
     provider: {
@@ -313,7 +333,7 @@ function cancellationHarness(options: {
       context.isOwner || Boolean(context.sharedMember?.canManageProviders),
     canViewMoney: () => true,
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     prisma as any,
     permissions as any,
     {} as any, lifecycle, new FinancePortService(),
@@ -413,8 +433,10 @@ test("my quote cancellation restores the contributor's qualified previous-tenure
   assert.equal(result.status, QuoteRequestStatus.CANCELLED);
   assert.equal(harness.planAuthorizationChecks(), 1);
   assert.equal(harness.quoteWrites(), 1);
+  // The tenure is matched by the actor's reference (collaboration's scope)
+  // and never by an end date, so a previous tenure's contribution qualifies.
   assert.deepEqual(harness.contributionWhere().contributorTenure, {
-    actorUserId: contributorAId,
+    actorReference: contributorActorReference(contributorAId),
   });
   assert.equal(
     Object.prototype.hasOwnProperty.call(

@@ -24,6 +24,7 @@ import { PrismaService } from "../platform/database/prisma.service";
 import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
 import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
 import type { FinancePort } from "../modules/finance/public/finance.port";
+import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
@@ -50,6 +51,7 @@ export async function acceptQuoteOfferInTransaction(
   permissions: PermissionService,
   notifications: NotificationsPort,
   finance: FinancePort,
+  relations: MarketplaceRelationsService,
   input: AcceptQuoteOfferInput,
   history?: ContributionHistoryService,
 ) {
@@ -64,7 +66,6 @@ export async function acceptQuoteOfferInTransaction(
           select: {
             userId: true,
             weddingPlanId: true,
-            weddingPlan: { select: { ownerUserId: true } },
           },
         },
       },
@@ -77,12 +78,15 @@ export async function acceptQuoteOfferInTransaction(
         "Quote offer is not linked to this wedding plan",
       );
     }
+    // The plan owner is planning's row, read through its port for the
+    // user lock set.
+    const planSeed = await relations.plans.getPlan(tx, weddingPlanId);
     const lockedUserIds = await lockMarketplaceMutationUsers(
       tx,
       input.currentUser.id,
       [
         offerSeed.quoteRequest.userId,
-        offerSeed.quoteRequest.weddingPlan?.ownerUserId,
+        planSeed?.ownerUserId,
         offerSeed.provider.userId,
       ],
     );
@@ -110,25 +114,23 @@ export async function acceptQuoteOfferInTransaction(
       throw new NotFoundException("Provider not found");
     }
 
-    const locked = await lockQuoteOfferTransitionRows(tx, id);
+    const locked = await lockQuoteOfferTransitionRows(tx, lifecycle, id);
     if (!locked) {
       throw new NotFoundException("Quote offer not found");
     }
 
-    const current = await tx.quoteOffer.findUnique({
+    const currentRow = await tx.quoteOffer.findUnique({
       where: { id },
       include: {
-        quoteRequest: {
-          include: {
-            weddingPlan: { select: { id: true, currency: true } },
-            service: { include: { category: true } },
-          },
-        },
+        quoteRequest: { include: { service: true } },
         provider: { select: { businessName: true, userId: true } },
         providerLinks: { where: { weddingPlanId } },
       },
     });
-    if (!current) throw new NotFoundException("Quote offer not found");
+    if (!currentRow) throw new NotFoundException("Quote offer not found");
+    // The plan currency and the service category are planning's and
+    // catalog's rows, attached through their ports on this transaction.
+    const current = await relations.attachOfferContext(tx, currentRow);
     if (
       current.providerId !== offerSeed.providerId ||
       current.quoteRequest.userId !== offerSeed.quoteRequest.userId ||
@@ -244,19 +246,17 @@ export async function acceptQuoteOfferInTransaction(
       if (offerTransition.count !== 1) {
         throw new ConflictException("Quote offer cannot be accepted");
       }
-      acceptedOffer = await tx.quoteOffer.findUniqueOrThrow({
-        where: { id },
-        include: {
-          quoteRequest: {
-            include: {
-              weddingPlan: { select: { id: true, currency: true } },
-              service: { include: { category: true } },
-            },
+      acceptedOffer = await relations.attachOfferContext(
+        tx,
+        await tx.quoteOffer.findUniqueOrThrow({
+          where: { id },
+          include: {
+            quoteRequest: { include: { service: true } },
+            provider: { select: { businessName: true, userId: true } },
+            providerLinks: { where: { weddingPlanId } },
           },
-          provider: { select: { businessName: true, userId: true } },
-          providerLinks: { where: { weddingPlanId } },
-        },
-      });
+        }),
+      );
       const rejectedOffers = await tx.quoteOffer.findMany({
         where: {
           quoteRequestId: current.quoteRequestId,

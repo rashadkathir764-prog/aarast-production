@@ -153,8 +153,17 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
   // acceptance's cost creation through the injected Finance port: +4 import
   // lines, +2 constructor lines, +1 call-site argument, +3 lines passing the
   // marketplace-owned provider name to the finance presenter (967 lines).
-  // The budget moves by exactly those approved deltas.
-  assert.ok(service.split("\n").length <= 968);
+  // The ownership program then stopped the service reading catalog's,
+  // planning's, identity's and finance's tables: +4 import lines, +4
+  // constructor lines (catalog and scope ports, the relations service), +7
+  // lines of the quote-scope port bundle, +2 call-site arguments per quote
+  // script (+9), and the own-table read followed by the owner attach in
+  // place of each include (+56 net across providers, services, reviews,
+  // favorites, plan quotes and my quotes), against the catalog list
+  // methods delegated to catalog's port (-31): 998 lines, 999 with the
+  // trailing newline this split counts. The budget moves by exactly those
+  // approved deltas.
+  assert.ok(service.split("\n").length <= 999);
   assert.match(service, /MarketplacePresenter\.toQuoteResponse/);
   assert.match(service, /this\.prisma\.\$transaction/);
   assert.doesNotMatch(service, /private toQuoteResponse/);
@@ -170,7 +179,11 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
   ]) {
     assert.equal(presenter.includes(forbidden), false, forbidden);
   }
-  assert.ok(contracts.split("\n").length <= 120);
+  // The contracts declare the provider/service search filters and the
+  // user's quote-access filter by their exact keys (+36) so the ownership
+  // scan proves their shape, and shrink the quote include to marketplace's
+  // own relations (-12): 124 lines, 125 with the trailing newline.
+  assert.ok(contracts.split("\n").length <= 125);
 });
 
 test("marketplace reference catalog is installed by an idempotent migration", () => {

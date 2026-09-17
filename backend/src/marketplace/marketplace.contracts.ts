@@ -9,11 +9,47 @@ import {
   ProviderReview,
   ProviderService,
   ProviderServiceImage,
+  ProviderStatus,
   QuoteOffer,
   QuoteRequest,
   User,
   WeddingPlan,
 } from "@prisma/client";
+
+// The search and access filters name marketplace's own columns and relations
+// exactly (the ownership scan proves a declared shape; a generated Prisma
+// input type admits every key and is never a proof).
+type TextMatch = { contains: string; mode: "insensitive" };
+export interface ProviderSearchWhere {
+  AND: Array<
+    | { status: ProviderStatus }
+    | { cityId: string }
+    | { isFeatured: boolean }
+    | { OR: Array<{ primaryCategoryId: string } | { services: { some: { categoryId: string; isActive: boolean } } }> }
+    | { OR: Array<{ businessName: TextMatch } | { ownerName: TextMatch } | { description: TextMatch } | { address: TextMatch } | { services: { some: { isActive: boolean; OR: Array<{ title: TextMatch } | { description: TextMatch }> } } }> }
+  >;
+}
+export interface ServiceSearchWhere {
+  isActive: true;
+  providerId?: string;
+  categoryId?: string;
+  basePrice?: { gte?: string; lte?: string };
+  AND: Array<
+    | { provider: { status: ProviderStatus } }
+    | { OR: Array<{ cityId: string } | { cityId: null; provider: { cityId: string } }> }
+    | { OR: Array<{ title: TextMatch } | { description: TextMatch } | { provider: { businessName: TextMatch } }> }
+  >;
+}
+/** A user's own quotes: plan-less, in an owned plan, or created in a plan the user still manages providers for. */
+export interface MyQuoteAccessWhere {
+  id?: string;
+  userId: string;
+  OR: [
+    { weddingPlanId: null },
+    { weddingPlanId: { in: string[] } },
+    { id: { in: string[] }; weddingPlanId: { in: string[] } },
+  ];
+}
 
 export interface MarketplacePagination {
   page: number;
@@ -74,21 +110,15 @@ export const FULL_QUOTE_VISIBILITY: QuoteVisibility = {
   contact: true,
 };
 
+// The quote row with marketplace's own relations only; the catalog, plan
+// and cost rows are attached afterwards by MarketplaceRelationsService.
 export const MARKETPLACE_QUOTE_INCLUDE = {
-  provider: { include: { city: true, primaryCategory: true } },
-  service: { include: { category: true } },
-  city: true,
-  weddingPlan: {
-    select: {
-      id: true,
-      title: true,
-      city: true,
-      weddingDate: true,
-    },
-  },
-  offers: {
-    orderBy: { createdAt: "desc" },
-    include: { weddingCosts: { select: { id: true } } },
-  },
+  provider: true,
+  service: true,
+  offers: { orderBy: { createdAt: "desc" } },
   providerLinks: true,
 } satisfies Prisma.QuoteRequestInclude;
+
+export type QuoteRow = Prisma.QuoteRequestGetPayload<{
+  include: typeof MARKETPLACE_QUOTE_INCLUDE;
+}>;

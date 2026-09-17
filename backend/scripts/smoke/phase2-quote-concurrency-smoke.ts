@@ -25,7 +25,7 @@ import {
 } from '@prisma/client';
 import { MarketplaceService } from '../../src/marketplace/marketplace.service';
 import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
-import { ownerPorts, contributionHistoryService } from './support/owner-ports';
+import { ownerPorts, contributionHistoryService, marketplaceService } from './support/owner-ports';
 import { buildContributionSnapshot } from '../../src/modules/collaboration/public/contribution-snapshot.builder';
 import { ProviderDashboardService } from '../../src/provider-dashboard/provider-dashboard.service';
 
@@ -300,11 +300,12 @@ function marketplaceWithPermissionSignal(): {
     return context;
   };
   return {
-    service: new MarketplaceService(
-      prisma as any,
+    service: marketplaceService(
+      prisma,
       permissions,
-      notifications as any,
-      lifecycle, ownerPorts.finance, contributionHistory,
+      notifications,
+      lifecycle,
+      contributionHistory,
     ),
     permissionChecked: permissionChecked.promise,
   };

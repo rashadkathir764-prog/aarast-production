@@ -1,23 +1,29 @@
 import { ConflictException } from '@nestjs/common';
 import { Prisma, QuoteRequestStatus } from '@prisma/client';
+import type { ConversationLifecyclePort } from '../modules/messaging/public/conversation-lifecycle.port';
 
 export type QuoteLifecycleActor = 'requester' | 'provider' | 'provider_offer';
 
 export async function lockQuoteRequestTransitionRow(
   tx: Prisma.TransactionClient,
+  lifecycle: ConversationLifecyclePort,
   quoteRequestId: string,
 ): Promise<boolean> {
-  const conversations = await tx.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`
-      SELECT conversation."id"
-      FROM "Conversation" conversation
-      INNER JOIN "QuoteRequest" request
-        ON request."conversationId" = conversation."id"
-      WHERE request."id" = ${quoteRequestId}
-      FOR UPDATE OF conversation
-    `,
-  );
-  if (conversations.length !== 1) return false;
+  // The conversation row is messaging's: its id is read from the request
+  // (set at creation, never changed) and the row locked by its owner first.
+  const request = await tx.quoteRequest.findUnique({
+    where: { id: quoteRequestId },
+    select: { conversationId: true },
+  });
+  if (!request) return false;
+  if (
+    !(await lifecycle.lockConversationForUpdateInTransaction(
+      tx,
+      request.conversationId,
+    ))
+  ) {
+    return false;
+  }
 
   const requests = await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT "id" FROM "QuoteRequest" WHERE "id" = ${quoteRequestId} FOR UPDATE`,
@@ -27,24 +33,25 @@ export async function lockQuoteRequestTransitionRow(
 
 export async function lockQuoteOfferTransitionRows(
   tx: Prisma.TransactionClient,
+  lifecycle: ConversationLifecyclePort,
   quoteOfferId: string,
 ): Promise<{ quoteRequestId: string } | null> {
   // Conversation events update the shared conversation row. Lock it before
   // request/offer rows so quote transitions match account deletion and cannot
   // deadlock as QuoteRequest -> Conversation versus Conversation -> QuoteRequest.
-  const conversations = await tx.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`
-      SELECT conversation."id"
-      FROM "Conversation" conversation
-      INNER JOIN "QuoteRequest" request
-        ON request."conversationId" = conversation."id"
-      INNER JOIN "QuoteOffer" offer
-        ON offer."quoteRequestId" = request."id"
-      WHERE offer."id" = ${quoteOfferId}
-      FOR UPDATE OF conversation
-    `,
-  );
-  if (conversations.length !== 1) return null;
+  const offer = await tx.quoteOffer.findUnique({
+    where: { id: quoteOfferId },
+    select: { quoteRequest: { select: { conversationId: true } } },
+  });
+  if (!offer) return null;
+  if (
+    !(await lifecycle.lockConversationForUpdateInTransaction(
+      tx,
+      offer.quoteRequest.conversationId,
+    ))
+  ) {
+    return null;
+  }
 
   // Every quote transition then takes the request row and the offer row in
   // that order. The final state is always re-read under all three locks.

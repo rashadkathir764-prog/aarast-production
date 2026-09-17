@@ -22,10 +22,12 @@ import {
   MarketplacePagination,
   PackageWithService,
   PaginatedResponse,
+  ProviderSearchWhere,
   ProviderWithCity,
   QuoteVisibility,
   QuoteWithRelations,
   ReviewWithUser,
+  ServiceSearchWhere,
   ServiceWithDetails,
 } from "./marketplace.contracts";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
@@ -49,13 +51,13 @@ export class MarketplaceQuery {
 
   static providerSearch(query: ListProvidersQueryDto): {
     pagination: MarketplacePagination;
-    where: Prisma.ProviderWhereInput;
+    where: ProviderSearchWhere;
   } {
     const pagination = this.parsePagination(query.page, query.limit);
-    const and: Prisma.ProviderWhereInput[] = [
+    const and: ProviderSearchWhere["AND"] = [
       { status: ProviderStatus.ACTIVE },
     ];
-    const where: Prisma.ProviderWhereInput = { AND: and };
+    const where: ProviderSearchWhere = { AND: and };
 
     if (query.cityId) {
       this.assertUuid(query.cityId, "cityId");
@@ -103,13 +105,13 @@ export class MarketplaceQuery {
 
   static serviceSearch(query: ListServicesQueryDto): {
     pagination: MarketplacePagination;
-    where: Prisma.ProviderServiceWhereInput;
+    where: ServiceSearchWhere;
   } {
     const pagination = this.parsePagination(query.page, query.limit);
-    const and: Prisma.ProviderServiceWhereInput[] = [
+    const and: ServiceSearchWhere["AND"] = [
       { provider: { status: ProviderStatus.ACTIVE } },
     ];
-    const where: Prisma.ProviderServiceWhereInput = {
+    const where: ServiceSearchWhere = {
       isActive: true,
       AND: and,
     };

@@ -19,7 +19,8 @@ import {
   SharedMemberRole,
 } from "@prisma/client";
 import { BudgetCategoriesService } from "../src/budget-categories/budget-categories.service";
-import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { marketplaceService } from "./support/owner-ports";
+import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 import { buildMoneySummaryInTransaction } from "../src/money/money-summary.service";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
 import { ProviderReadService } from "../src/modules/marketplace/internal/provider-read.service";
@@ -152,9 +153,13 @@ test("contributor cost detail rejects an id outside the actor contribution scope
   assert.equal(finalQueryCalled, false);
 });
 
+// The final quote read used to join planning's table with the live
+// membership predicate; the permission port is asked for the live check
+// (provider + money permission) and its result spread into the quote where.
 test("plan quote list restricts a contributor to requests they submitted", async () => {
   let capturedWhere: unknown;
   let capturedContributionWhere: unknown;
+  const liveChecks: unknown[] = [];
   const prisma = {
     contributionEvent: {
       findMany: async ({ where }: { where: unknown }) => {
@@ -173,8 +178,17 @@ test("plan quote list restricts a contributor to requests they submitted", async
     assertPlanReadable: async () => contributorContext,
     canManageProviders: () => true,
     canViewMoney: () => true,
+    liveAuthorizationFilter: async (
+      _client: unknown,
+      context: unknown,
+      userId: string,
+      required: readonly string[],
+    ) => {
+      liveChecks.push({ context, userId, required });
+      return {};
+    },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     prisma as any,
     permissions as any,
     {} as any,
@@ -186,26 +200,23 @@ test("plan quote list restricts a contributor to requests they submitted", async
     "plan-1",
   );
 
+  assert.deepEqual(liveChecks, [
+    {
+      context: contributorContext,
+      userId: "contributor-1",
+      required: ["canManageProviders", "canViewMoney"],
+    },
+  ]);
   assert.deepEqual(capturedWhere, {
     weddingPlanId: "plan-1",
-    weddingPlan: {
-      is: {
-        sharedMembers: {
-          some: {
-            id: "member-1",
-            userId: "contributor-1",
-            canManageProviders: true,
-            canViewMoney: true,
-          },
-        },
-      },
-    },
     id: { in: ["quote-mine"] },
   });
   assert.deepEqual(capturedContributionWhere, {
     historyScope: { weddingPlanId: "plan-1" },
-    contributorTenure: { actorUserId: "contributor-1" },
-    entityType: ContributionEntityType.QUOTE_REQUEST,
+    contributorTenure: {
+      actorReference: contributorActorReference("contributor-1"),
+    },
+    entityType: { in: [ContributionEntityType.QUOTE_REQUEST] },
     action: {
       in: [ContributionAction.CREATED, ContributionAction.LEGACY_CAPTURED],
     },

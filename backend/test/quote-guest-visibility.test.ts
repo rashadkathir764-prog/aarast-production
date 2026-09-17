@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { GuestsService } from "../src/guests/guests.service";
-import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { marketplaceService } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 
 const user = (id: string) =>
@@ -164,6 +164,7 @@ const provider = () => ({
   status: "ACTIVE",
   ratingAverage: new Prisma.Decimal("4.5"),
   ratingCount: 10,
+  cityId: "c1",
   city: {
     id: "c1",
     nameAr: "صنعاء",
@@ -172,6 +173,7 @@ const provider = () => ({
     isActive: true,
     sortOrder: 1,
   },
+  primaryCategoryId: null,
   primaryCategory: null,
 });
 
@@ -227,7 +229,7 @@ const marketplace = (
   quote: ReturnType<typeof quoteRow>,
   perms: Record<string, unknown>,
 ) =>
-  new MarketplaceService(
+  marketplaceService(
     {
       contributionEvent: {
         findMany: async () => [{ entityId: quote.id }],
@@ -245,6 +247,9 @@ const marketplace = (
           userId: currentUser.id,
         },
       }),
+      // The live re-check is the permission port's; these tests exercise
+      // the visibility rules on the rows the final read returns.
+      liveAuthorizationFilter: async () => ({}),
       ...perms,
     } as any,
     {} as any,
@@ -289,12 +294,13 @@ test("quote budget and contact phone are visible to a provider+budget manager", 
 
 test("plan owner sees the full plan quote context", async () => {
   const quote = quoteRow("requester");
-  const svc = new MarketplaceService(
+  const svc = marketplaceService(
     { quoteRequest: { findMany: async () => [quote] } } as any,
     {
       assertPlanReadable: async () => ({ isOwner: true, sharedMember: null }),
       canViewMoney: (context: any) => context.isOwner,
       canManageProviders: (context: any) => context.isOwner,
+      liveAuthorizationFilter: async () => ({}),
     } as any,
     {} as any, lifecycle, new FinancePortService(),
   );

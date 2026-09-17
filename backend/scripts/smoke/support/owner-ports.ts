@@ -4,6 +4,7 @@
 import { CatalogReadService } from '../../../src/modules/catalog/internal/catalog-read.service';
 import { CollaborationErasureService } from '../../../src/modules/collaboration/internal/collaboration-erasure.service';
 import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
+import { ContributorScopeService } from '../../../src/modules/collaboration/internal/contributor-scope.service';
 import type { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
 import { SharingService } from '../../../src/modules/collaboration/internal/sharing.service';
 import { FinancePortService } from '../../../src/modules/finance/internal/finance-port.service';
@@ -12,6 +13,8 @@ import { IdentityUserPortService } from '../../../src/modules/identity/internal/
 import { MarketplaceErasureService } from '../../../src/modules/marketplace/internal/marketplace-erasure.service';
 import { ProviderReadService } from '../../../src/modules/marketplace/internal/provider-read.service';
 import { QuoteReadService } from '../../../src/modules/marketplace/internal/quote-read.service';
+import { MarketplaceRelationsService } from '../../../src/marketplace/marketplace-relations';
+import { MarketplaceService } from '../../../src/marketplace/marketplace.service';
 import { MessagingErasureService } from '../../../src/modules/messaging/internal/messaging-erasure.service';
 import { MessagingParticipationService } from '../../../src/modules/messaging/internal/messaging-participation.service';
 import { NotificationsErasureService } from '../../../src/modules/notifications/internal/notifications-erasure.service';
@@ -77,6 +80,37 @@ export function sharingService(
     ownerPorts.users,
     messagingParticipation,
     realtime as any,
+  );
+}
+
+export const marketplaceRelations = new MarketplaceRelationsService(
+  ownerPorts.catalog,
+  ownerPorts.plans,
+  ownerPorts.users,
+  ownerPorts.finance,
+);
+
+/** `MarketplaceService` with the catalog port, the contribution scope over the smoke's client and the relations service. */
+export function marketplaceService(
+  prisma: unknown,
+  permissions: PermissionService,
+  notifications: unknown,
+  lifecycle: unknown,
+  history?: ContributionHistoryService,
+): MarketplaceService {
+  const scope = new ContributorScopeService(
+    history ?? contributionHistoryService(prisma, permissions),
+  );
+  return new MarketplaceService(
+    prisma as any,
+    permissions,
+    notifications as any,
+    lifecycle as any,
+    ownerPorts.finance,
+    ownerPorts.catalog,
+    scope,
+    marketplaceRelations,
+    history,
   );
 }
 

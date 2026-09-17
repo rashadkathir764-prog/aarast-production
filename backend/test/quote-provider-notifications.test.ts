@@ -12,7 +12,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
-import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { marketplaceRelations, marketplaceService, withOwnerTables } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { acceptQuoteOfferInTransaction } from "../src/marketplace/quote-offer-acceptance";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
@@ -175,7 +175,7 @@ test("a new quote request notifies the provider account too", async () => {
         },
       }),
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     prisma as any,
     {} as any,
     notifications as any, lifecycle, new FinancePortService(),
@@ -237,7 +237,7 @@ test("a provider without a linked user account is skipped silently", async () =>
         },
       }),
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     prisma as any,
     {} as any,
     notifications as any, lifecycle, new FinancePortService(),
@@ -365,7 +365,8 @@ function acceptanceHarness({
     weddingPlan: { id: PLAN_ID, currency: "YER" },
     service: {
       title: "خدمة القاعة",
-      category: { nameAr: providerCategoryName },
+      categoryId: "category-1",
+      category: { id: "category-1", nameAr: providerCategoryName },
     },
   });
   const accessibleOffer = () => ({
@@ -515,7 +516,7 @@ function acceptanceHarness({
       return {};
     },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     prisma as any,
     permissions as any,
     notifications as any, lifecycle, new FinancePortService(),
@@ -653,10 +654,10 @@ function acceptedReplayIntegrityHarness({
   };
   const execute = () =>
     acceptQuoteOfferInTransaction(
-      {
+      withOwnerTables({
         $transaction: async (operation: (client: any) => Promise<unknown>) =>
           operation(tx),
-      } as any,
+      } as any),
       lifecycle, {
         assertProviderAndMoneyManageableInTransaction: async () => ({}),
       } as any,
@@ -664,6 +665,7 @@ function acceptedReplayIntegrityHarness({
         createNotificationInTransaction: writeAttempt,
       } as any,
       new FinancePortService(),
+      marketplaceRelations(),
       {
         id: OFFER_ID,
         weddingPlanId: PLAN_ID,
@@ -946,7 +948,7 @@ test("rejecting an offer notifies the provider rather than the requester", async
     assertProviderManageable: async () => ({}),
     assertProviderManageableInTransaction: async () => ({}),
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     prisma as any,
     permissions as any,
     notifications as any, lifecycle, new FinancePortService(),
@@ -996,7 +998,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
     quoteRequest: { updateMany: async () => ({ count: 1 }) },
     provider: { findUnique: async () => providerRow(null) },
   };
-  const service = new MarketplaceService(
+  const service = marketplaceService(
     {
       quoteOffer: { findUnique: async () => offerRow },
       $transaction: async (fn: any) => fn(tx),

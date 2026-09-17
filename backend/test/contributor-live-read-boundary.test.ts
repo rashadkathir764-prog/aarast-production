@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { SharedMemberRole } from "@prisma/client";
 import { NotFoundException } from "@nestjs/common";
-import { MarketplaceService } from "../src/marketplace/marketplace.service";
+import { marketplaceService } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
@@ -118,8 +118,8 @@ test("task, plan quote, and contribution-history final queries carry live DB aut
     [
       "marketplace/marketplace.service.ts",
       "async findPlanQuoteRequests",
-      "/**",
-      [/livePlanAuthorizationWhere/],
+      "async findQuoteRequestForCurrentUser",
+      [/liveAuthorizationFilter\([\s\S]*"canManageProviders"/, /\.\.\.liveFilter,/],
     ],
     [
       "modules/collaboration/internal/contribution-history.service.ts",
@@ -172,9 +172,12 @@ test("quote detail does not return the seed row and revalidates provider permiss
   assert.match(method, /const quoteSeed = await this\.prisma\.quoteRequest\.findUnique/);
   assert.match(method, /findAccessiblePlanQuoteRequest/);
   assert.match(helper, /quoteRequest\.findFirst/);
-  assert.match(helper, /livePlanAuthorizationWhere\([\s\S]*"canManageProviders"/);
+  // The live provider (and money) re-check is asked of the permission port
+  // and spread into the quote table's own where.
+  assert.match(helper, /liveAuthorizationFilter\([\s\S]*"canManageProviders"/);
   assert.match(helper, /permissions\.canViewMoney\(context\)/);
   assert.match(helper, /"canViewMoney"/);
+  assert.match(helper, /\.\.\.liveFilter,/);
   assert.doesNotMatch(method, /return \{\s*quote: quoteSeed/);
 });
 
@@ -191,12 +194,21 @@ test("quote detail rejects a stale authorized seed when the final live predicate
     },
   } as any;
   let finalWhere: unknown;
-  const service = new MarketplaceService(
+  let liveMemberWhere: unknown;
+  const service = marketplaceService(
     {
       quoteRequest: {
         findUnique: async () => ({ id: quoteId, weddingPlanId: "plan-1" }),
         findFirst: async ({ where }: { where: unknown }) => {
           finalWhere = where;
+          return null;
+        },
+      },
+      // The stored membership no longer carries the required flags: the
+      // owner's live check finds no row and the final read matches nothing.
+      sharedMember: {
+        findFirst: async ({ where }: { where: unknown }) => {
+          liveMemberWhere = where;
           return null;
         },
       },
@@ -220,21 +232,16 @@ test("quote detail rejects a stale authorized seed when the final live predicate
       ),
     NotFoundException,
   );
-  assert.deepEqual(finalWhere, {
-    id: quoteId,
+  assert.deepEqual(liveMemberWhere, {
+    id: "member-a",
     weddingPlanId: "plan-1",
-    weddingPlan: {
-      is: {
-        sharedMembers: {
-          some: {
-            id: "member-a",
-            userId: "contributor-a",
-            canManageProviders: true,
-            canViewMoney: true,
-          },
-        },
-      },
-    },
+    userId: "contributor-a",
+    canManageProviders: true,
+    canViewMoney: true,
+  });
+  assert.deepEqual(finalWhere, {
+    id: { in: [] },
+    weddingPlanId: "plan-1",
   });
 });
 

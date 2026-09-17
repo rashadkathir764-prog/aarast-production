@@ -25,7 +25,7 @@ import {
 } from "@prisma/client";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts, contributionHistoryService } from "./support/owner-ports";
+import { ownerPorts, contributionHistoryService, marketplaceService } from "./support/owner-ports";
 import { buildContributionSnapshot } from "../../src/modules/collaboration/public/contribution-snapshot.builder";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -80,12 +80,13 @@ function authenticatedUser(user: {
   } as any;
 }
 
-function marketplaceService(): MarketplaceService {
-  return new MarketplaceService(
-    prisma as any,
+function marketplace(): MarketplaceService {
+  return marketplaceService(
+    prisma,
     new PermissionService(prisma as any, ownerPorts.plans),
-    notifications as any,
-    lifecycle, ownerPorts.finance, contributionHistory,
+    notifications,
+    lifecycle,
+    contributionHistory,
   );
 }
 
@@ -213,7 +214,7 @@ async function assertPermissionRevocationBlocksQuoteCreation(): Promise<void> {
   await withFixture(
     (environment) => createPermissionRevocationFixture(prisma, environment),
     async (fixture) => {
-      const service = marketplaceService();
+      const service = marketplace();
       const actor = authenticatedUser(fixture.member);
       const quoteWhere = {
         userId: fixture.member.id,
@@ -271,7 +272,7 @@ async function assertArchiveBlocksQuoteCreation(): Promise<void> {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = marketplaceService();
+      const service = marketplace();
       const actor = authenticatedUser(fixture.owner);
       const quoteCountBefore = await prisma.quoteRequest.count({
         where: {
@@ -334,7 +335,7 @@ async function assertProviderSuspensionBlocksFavorite(): Promise<void> {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = marketplaceService();
+      const service = marketplace();
       const actor = authenticatedUser(fixture.owner);
       const favoriteWhere = {
         userId: fixture.owner.id,
@@ -376,7 +377,7 @@ async function assertArchiveBlocksRequesterCancellation(): Promise<void> {
         where: { id: fixture.quoteRequest.id },
         data: { status: QuoteRequestStatus.SENT },
       });
-      const service = marketplaceService();
+      const service = marketplace();
       const blocker = await holdUncommittedMutation((tx) =>
         tx.weddingPlan.update({
           where: { id: fixture.plan.id },
@@ -413,7 +414,7 @@ async function assertPermissionRevocationBlocksRejection(): Promise<void> {
     (environment) => createPermissionRevocationFixture(prisma, environment),
     async (fixture) => {
       await recordFixtureContributorQuote(fixture);
-      const service = marketplaceService();
+      const service = marketplace();
       const eventCountBefore = await prisma.conversationEvent.count({
         where: { conversationId: fixture.conversation.id },
       });
@@ -464,7 +465,7 @@ async function assertProviderSuspensionBlocksAcceptance(): Promise<void> {
   await withFixture(
     (environment) => createQuoteDecisionFixture(prisma, environment),
     async (fixture) => {
-      const service = marketplaceService();
+      const service = marketplace();
       const eventCountBefore = await prisma.conversationEvent.count({
         where: { conversationId: fixture.conversation.id },
       });

@@ -809,7 +809,7 @@ export class ProviderDashboardService {
         currentUser.id,
         seed,
       );
-      if (!(await lockQuoteRequestTransitionRow(tx, id))) {
+      if (!(await lockQuoteRequestTransitionRow(tx, this.lifecycle, id))) {
         throw new NotFoundException('Quote request not found');
       }
       const existing = await tx.quoteRequest.findFirst({
@@ -899,7 +899,7 @@ export class ProviderDashboardService {
         currentUser.id,
         seed,
       );
-      if (!(await lockQuoteRequestTransitionRow(tx, quoteRequestId))) {
+      if (!(await lockQuoteRequestTransitionRow(tx, this.lifecycle, quoteRequestId))) {
         throw new NotFoundException('Quote request not found');
       }
       const quote = await tx.quoteRequest.findFirst({
@@ -1024,7 +1024,7 @@ export class ProviderDashboardService {
           conversationId: seed.quoteRequest.conversationId,
         },
       );
-      if (!(await lockQuoteOfferTransitionRows(tx, id))) {
+      if (!(await lockQuoteOfferTransitionRows(tx, this.lifecycle, id))) {
         throw new NotFoundException('Quote offer not found');
       }
       const existing = await tx.quoteOffer.findFirst({

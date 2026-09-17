@@ -145,6 +145,29 @@ export const messagingParticipation = new MessagingParticipationService(
   ownerPorts.plans,
 );
 
+/**
+ * A permission fake completed with the owner-side reads a consumer now asks
+ * of the port (the live re-check, membership lookups and locks); each runs the
+ * real statements against the fixture's client. The fake's own methods win.
+ */
+export function completePermissions<T extends object>(fake: T, client: unknown): T {
+  const live = new PermissionService(client as any, ownerPorts.plans);
+  const owned = {} as Record<string, unknown>;
+  for (const method of [
+    'liveAuthorizationFilter',
+    'getMembership',
+    'listMemberships',
+    'listMemberPlanIds',
+    'lockMembershipForShareInTransaction',
+  ] as const) {
+    if (typeof (fake as Record<string, unknown>)[method] !== 'function') {
+      owned[method] = (live[method] as (...args: unknown[]) => unknown).bind(live);
+    }
+  }
+  if (Object.keys(owned).length === 0) return fake;
+  return Object.assign(Object.create(Object.getPrototypeOf(fake ?? {})), owned, fake);
+}
+
 export function sharingService(
   prisma: unknown,
   permissions: unknown,
@@ -154,19 +177,9 @@ export function sharingService(
   realtime?: unknown,
 ): SharingService {
   const client = withOwnerTables(prisma as any);
-  // A permission fake without the live re-check gets the real one over the
-  // fixture's client; the fake's own methods win.
-  const livePermissions = new PermissionService(client, ownerPorts.plans);
-  const completedPermissions = permissions && typeof (permissions as any).liveAuthorizationFilter === 'function'
-    ? permissions
-    : Object.assign(
-        Object.create(Object.getPrototypeOf(permissions ?? {})),
-        { liveAuthorizationFilter: livePermissions.liveAuthorizationFilter.bind(livePermissions) },
-        permissions,
-      );
   return new SharingService(
     client,
-    completedPermissions as any,
+    completePermissions(permissions as object, client) as any,
     notifications as any,
     invitationDelivery as any,
     history as any,
@@ -190,6 +203,28 @@ export function contributionHistoryService(prisma: unknown): ContributionHistory
 
 export function inviteAccessService(prisma: unknown, auth: unknown): InviteAccessService {
   return new InviteAccessService(withOwnerTables(prisma as any), auth as any, ownerPorts.users);
+}
+
+// ---------------------------------------------------------------------------
+// Tasks: the live re-check and the assignee membership lock are asked of the
+// permission port; fixtures keep their five-argument list.
+import { TasksService } from '../../src/tasks/tasks.service';
+
+export function tasksService(
+  prisma: unknown,
+  permissions: unknown,
+  notifications: unknown,
+  history: unknown,
+  scope: unknown,
+): TasksService {
+  const client = withOwnerTables(prisma as any);
+  return new TasksService(
+    client,
+    completePermissions(permissions as object, client) as any,
+    notifications as any,
+    history as any,
+    scope as any,
+  );
 }
 
 // ---------------------------------------------------------------------------

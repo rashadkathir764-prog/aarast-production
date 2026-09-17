@@ -41,7 +41,6 @@ import {
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
-  livePlanAuthorizationWhere,
   PlanAccessContext,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
@@ -173,17 +172,18 @@ export class TasksService {
       currentUser.id,
     );
     if (contributorScope !== null && !canManageTasks) return [];
-    const livePlanAuthorization =
-      livePlanAuthorizationWhere(
-        context,
-        currentUser.id,
-        ["canManageTasks"],
-      );
+    // The final read re-checks current ownership/membership and the task
+    // permission through the owners and applies the result to the task table.
+    const liveFilter = await this.permissions.liveAuthorizationFilter(
+      this.prisma,
+      context,
+      currentUser.id,
+      ["canManageTasks"],
+    );
 
     const tasks = await this.prisma.weddingTask.findMany({
       where: {
         weddingPlanId,
-        weddingPlan: { is: livePlanAuthorization },
         ...(contributorScope
           ? {
               OR: [
@@ -192,6 +192,7 @@ export class TasksService {
               ],
             }
           : {}),
+        ...liveFilter,
       },
       orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       ...pageArgs(query),
@@ -224,17 +225,16 @@ export class TasksService {
     if (contributorScope !== null && !canManageTasks) {
       throw this.taskPermissionDenied();
     }
+    const liveFilter = await this.permissions.liveAuthorizationFilter(
+      this.prisma,
+      context,
+      currentUser.id,
+      ["canManageTasks"],
+    );
     const visibleTask = await this.prisma.weddingTask.findFirst({
       where: {
         id,
         weddingPlanId: task.weddingPlanId,
-        weddingPlan: {
-          is: livePlanAuthorizationWhere(
-            context,
-            currentUser.id,
-            ["canManageTasks"],
-          ),
-        },
         ...(contributorScope
           ? {
               OR: [
@@ -243,6 +243,7 @@ export class TasksService {
               ],
             }
           : {}),
+        ...liveFilter,
       },
     });
     if (!visibleTask) throw new NotFoundException("Task not found");
@@ -372,14 +373,11 @@ export class TasksService {
           currentTask.assigneeUserId &&
           currentTask.assigneeUserId !== context.sharedMember?.userId
         ) {
-          const previousMember = await tx.sharedMember.findUnique({
-            where: {
-              weddingPlanId_userId: {
-                weddingPlanId: existing.weddingPlanId,
-                userId: currentTask.assigneeUserId,
-              },
-            },
-          });
+          const previousMember = await this.permissions.getMembership(
+            tx,
+            existing.weddingPlanId,
+            currentTask.assigneeUserId,
+          );
           if (previousMember) {
             await this.recordTaskForMember(
               tx,
@@ -574,22 +572,14 @@ export class TasksService {
       context,
       currentUser.id,
     );
-    const livePlanAuthorization =
-      livePlanAuthorizationWhere(
-        context,
-        currentUser.id,
-        ["canManageTasks"],
-      );
-
     const today = this.startOfToday();
     const endOfToday = this.endOfToday(today);
     const rows =
       contributorScope !== null && !canManageTasks
         ? []
         : await this.prisma.weddingTask.findMany({
-             where: {
-               weddingPlanId,
-               weddingPlan: { is: livePlanAuthorization },
+            where: {
+              weddingPlanId,
               ...(contributorScope
                 ? {
                     OR: [
@@ -598,6 +588,12 @@ export class TasksService {
                     ],
                   }
                 : {}),
+              ...(await this.permissions.liveAuthorizationFilter(
+                this.prisma,
+                context,
+                currentUser.id,
+                ["canManageTasks"],
+              )),
             },
           });
     const tasks = rows.filter(
@@ -787,23 +783,12 @@ export class TasksService {
       return { receiveNotifications: true, member: null };
     }
 
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "userId" = ${assigneeUserId}
-        FOR SHARE
-      `,
+    // The membership row is collaboration's: locked for share and read there.
+    const member = await this.permissions.lockMembershipForShareInTransaction(
+      tx,
+      weddingPlanId,
+      assigneeUserId,
     );
-    const member = await tx.sharedMember.findUnique({
-      where: {
-        weddingPlanId_userId: {
-          weddingPlanId,
-          userId: assigneeUserId,
-        },
-      },
-    });
 
     if (!member) {
       throw new BadRequestException("assigneeUserId must belong to the plan");

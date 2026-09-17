@@ -8,7 +8,7 @@ import {
   WeddingTaskPriority,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { TasksService } from "../src/tasks/tasks.service";
+import { tasksService } from "./support/owner-ports";
 
 const now = new Date("2026-07-11T00:00:00.000Z");
 
@@ -58,7 +58,7 @@ test("account task creation persists optional manual responsibility", async () =
   const permissions = {
     assertTaskManageableInTransaction: async () => undefined,
   };
-  const service = new TasksService(
+  const service = tasksService(
     prisma as any,
     permissions as any,
     {
@@ -106,7 +106,7 @@ test("assigning a plan participant clears manual responsibility", async () => {
       sharedMember: null,
     }),
   };
-  const service = new TasksService(
+  const service = tasksService(
     prisma as any,
     permissions as any,
     {
@@ -170,7 +170,7 @@ test("assigning a notification-enabled contributor creates one durable task noti
       notificationCalls.push({ client, input });
     },
   };
-  const service = new TasksService(
+  const service = tasksService(
     prisma as any,
     permissions as any,
     notifications as any,
@@ -227,7 +227,7 @@ test("reassigning the same contributor does not duplicate the task notification"
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
-  const service = new TasksService(
+  const service = tasksService(
     prisma as any,
     {
       assertTaskManageableInTransaction: async () => ({
@@ -272,7 +272,7 @@ test("read-only plan members receive no live task rows", async () => {
     }),
     canManageTasks: () => false,
   };
-  const service = new TasksService(
+  const service = tasksService(
     prisma as any,
     permissions as any,
     {

@@ -95,3 +95,31 @@ test('a context whose membership belongs to another user is rejected before any 
 test('the never-matching filter is an empty id list so Prisma returns no rows for any model', () => {
   assert.deepEqual(NEVER_MATCHING_ROW_FILTER, { id: { in: [] } });
 });
+
+// Tasks used to lock the assignee's membership row itself (`SELECT ... FROM
+// "SharedMember" ... FOR SHARE`) before reading it; the member row is
+// collaboration's, so the lock-and-read is one port call on the caller's
+// transaction.
+test('the assignee membership is locked for share and read on the same transaction', async () => {
+  const calls: Array<[string, unknown]> = [];
+  const member = { id: 'member-a', weddingPlanId: 'plan-1', userId: 'contributor-a', canManageTasks: true };
+  const tx = {
+    $queryRaw: async (query: { strings: string[]; values: unknown[] }) => {
+      calls.push(['$queryRaw', { sql: query.strings.join('?').replace(/\s+/g, ' ').trim(), values: query.values }]);
+      return [{ id: member.id }];
+    },
+    sharedMember: {
+      findUnique: async (args: unknown) => { calls.push(['findUnique', args]); return member; },
+    },
+  } as any;
+  const service = new PermissionService({} as any, new PlanReadService());
+
+  assert.equal(await service.lockMembershipForShareInTransaction(tx, 'plan-1', 'contributor-a'), member);
+  assert.deepEqual(calls, [
+    ['$queryRaw', {
+      sql: 'SELECT "id" FROM "SharedMember" WHERE "weddingPlanId" = ? AND "userId" = ? FOR SHARE',
+      values: ['plan-1', 'contributor-a'],
+    }],
+    ['findUnique', { where: { weddingPlanId_userId: { weddingPlanId: 'plan-1', userId: 'contributor-a' } } }],
+  ]);
+});

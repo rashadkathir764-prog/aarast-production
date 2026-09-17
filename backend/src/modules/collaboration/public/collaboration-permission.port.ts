@@ -188,6 +188,12 @@ export interface CollaborationPermissionPort {
     client: Prisma.TransactionClient,
     userId: string,
   ): Promise<SharedMember[]>;
+  /** Locks the user's membership row in the plan for share and returns it (an assignee is checked under it). */
+  lockMembershipForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+  ): Promise<SharedMember | null>;
   /**
    * The live invitation an invite-OTP flow addresses: not declined, not
    * revoked, not expired at `now`, matching the token hash and phone;

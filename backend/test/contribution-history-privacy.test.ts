@@ -14,8 +14,7 @@ import {
   buildContributionSnapshot,
   validateContributionSnapshot,
 } from "../src/modules/collaboration/public/contribution-snapshot.builder";
-import { contributionHistoryService } from "./support/owner-ports";
-import { TasksService } from "../src/tasks/tasks.service";
+import { contributionHistoryService, tasksService } from "./support/owner-ports";
 
 test("each contribution snapshot type emits only its explicit privacy allowlist", () => {
   const sensitiveSource = {
@@ -172,7 +171,7 @@ test("sensitive user text is omitted from history without rejecting the task mut
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
-  const service = new TasksService(
+  const service = tasksService(
     prisma,
     { assertTaskManageableInTransaction: async () => context } as any,
     { notifyTaskDue: async () => undefined } as any,

@@ -2787,66 +2787,6 @@
       "count": 1
     },
     {
-      "key": "backend/src/tasks/tasks.service.ts|tasks|collaboration|SharedMember|findUnique|read|delegate|foreign-model",
-      "file": "backend/src/tasks/tasks.service.ts",
-      "context": "tasks",
-      "owner": "collaboration",
-      "model": "SharedMember",
-      "operation": "findUnique",
-      "mode": "read",
-      "source": "delegate",
-      "reason": "foreign-model",
-      "count": 2
-    },
-    {
-      "key": "backend/src/tasks/tasks.service.ts|tasks|collaboration|SharedMember|select|read|sql|foreign-model",
-      "file": "backend/src/tasks/tasks.service.ts",
-      "context": "tasks",
-      "owner": "collaboration",
-      "model": "SharedMember",
-      "operation": "select",
-      "mode": "read",
-      "source": "sql",
-      "reason": "foreign-model",
-      "count": 1
-    },
-    {
-      "key": "backend/src/tasks/tasks.service.ts|tasks|planning|WeddingPlan|weddingPlan|read|relation|foreign-model",
-      "file": "backend/src/tasks/tasks.service.ts",
-      "context": "tasks",
-      "owner": "planning",
-      "model": "WeddingPlan",
-      "operation": "weddingPlan",
-      "mode": "read",
-      "source": "relation",
-      "reason": "foreign-model",
-      "count": 3
-    },
-    {
-      "key": "backend/src/tasks/tasks.service.ts|tasks||<dynamic>|findFirst|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/tasks/tasks.service.ts",
-      "context": "tasks",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findFirst",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
-      "key": "backend/src/tasks/tasks.service.ts|tasks||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/tasks/tasks.service.ts",
-      "context": "tasks",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 2
-    },
-    {
       "key": "backend/src/timeline/timeline.service.ts|insights|finance|PaymentSchedule|findMany|read|delegate|foreign-model",
       "file": "backend/src/timeline/timeline.service.ts",
       "context": "insights",

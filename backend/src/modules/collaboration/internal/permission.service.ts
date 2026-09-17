@@ -495,6 +495,23 @@ export class PermissionService implements CollaborationPermissionPort {
     return client.sharedMember.findMany({ where: { userId } });
   }
 
+  async lockMembershipForShareInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+  ): Promise<SharedMember | null> {
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "SharedMember"
+        WHERE "weddingPlanId" = ${weddingPlanId}
+          AND "userId" = ${userId}
+        FOR SHARE
+      `,
+    );
+    return this.getMembership(tx, weddingPlanId, userId);
+  }
+
   async findLivePlanInvite(
     client: Prisma.TransactionClient,
     lookup: LivePlanInviteLookup,

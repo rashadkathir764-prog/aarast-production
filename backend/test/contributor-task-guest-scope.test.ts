@@ -17,9 +17,9 @@ import {
   WeddingTaskStatus,
 } from "@prisma/client";
 import { GuestsService } from "../src/guests/guests.service";
-import { contributionHistoryService } from "./support/owner-ports";
 import { ContributorScopeService } from "../src/modules/collaboration/internal/contributor-scope.service";
 import { TasksService } from "../src/tasks/tasks.service";
+import { contributionHistoryService, tasksService } from "./support/owner-ports";
 import { TimelineService } from "../src/timeline/timeline.service";
 
 const now = new Date("2026-08-02T09:00:00.000Z");
@@ -121,7 +121,7 @@ test("task list, detail, summary and timeline never expose another contributor t
   const scope = {
     qualifyingEntityIds: async () => [own.id],
   } as any;
-  const tasks = new (TasksService as any)(
+  const tasks = tasksService(
     prisma,
     permissions(),
     { notifyTaskDue: async () => undefined },
@@ -157,7 +157,7 @@ test("task list, detail, summary and timeline never expose another contributor t
 test("revoked task detail returns the stable Arabic 403 instead of hiding the permission failure", async () => {
   const own = task("task-a", "contributor-a");
   const context = contributorContext({ canManageTasks: false });
-  const tasks = new (TasksService as any)(
+  const tasks = tasksService(
     { weddingTask: { findUnique: async () => own } },
     permissions(context),
     { notifyTaskDue: async () => undefined },
@@ -229,7 +229,7 @@ test("timeline never exposes another contributor financial schedule", async () =
 test("revoked task permission returns no live rows even for a previously contributed task", async () => {
   let queried = false;
   const context = contributorContext({ canManageTasks: false });
-  const tasks = new (TasksService as any)(
+  const tasks = tasksService(
     {
       weddingTask: {
         findMany: async () => {
@@ -253,7 +253,7 @@ test("revoked task permission returns no live rows even for a previously contrib
 
 test("a historical ASSIGNED event does not keep live access after reassignment", async () => {
   const reassigned = task("task-reassigned", "contributor-b");
-  const tasks = new (TasksService as any)(
+  const tasks = tasksService(
     { weddingTask: { findMany: async () => [reassigned] } },
     permissions(),
     { notifyTaskDue: async () => undefined },
@@ -378,7 +378,7 @@ test("task create and completion append privacy-allowlisted events in the domain
   const scope = {
     qualifyingEntityIdsInTransaction: async () => [createdTask.id],
   };
-  const service = new (TasksService as any)(
+  const service = tasksService(
     prisma,
     permissions(),
     { notifyTaskDue: async () => undefined },
@@ -434,7 +434,7 @@ test("owner assignment records ASSIGNED for the target contributor in the same t
     isOwner: true,
     sharedMember: null,
   } as any;
-  const service = new (TasksService as any)(
+  const service = tasksService(
     prisma,
     {
       assertTaskManageableInTransaction: async () => ownerContext,

@@ -110,7 +110,7 @@ test("task, plan quote, and contribution-history final queries carry live DB aut
       "tasks/tasks.service.ts",
       "async findForPlan",
       "async findOne",
-      [/livePlanAuthorizationWhere/],
+      [/liveAuthorizationFilter\([\s\S]*\["canManageTasks"\]/, /\.\.\.liveFilter,/],
     ],
     [
       "marketplace/marketplace.service.ts",

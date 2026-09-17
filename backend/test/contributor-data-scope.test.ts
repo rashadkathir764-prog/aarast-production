@@ -7,7 +7,7 @@ import {
   WeddingTaskPriority,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { TasksService } from "../src/tasks/tasks.service";
+import { tasksService } from "./support/owner-ports";
 
 const now = new Date("2026-08-02T09:00:00.000Z");
 
@@ -34,7 +34,7 @@ function task(id: string, assigneeUserId: string) {
 test("contributor A never receives contributor B task rows from the plan task list", async () => {
   const contributorATask = task("task-a", "contributor-a");
   const contributorBTask = task("task-b", "contributor-b");
-  const service = new TasksService(
+  const service = tasksService(
     {
       weddingTask: {
         findMany: async () => [contributorATask, contributorBTask],

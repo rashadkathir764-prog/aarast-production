@@ -1,11 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import {
+  IDENTITY_ADMIN_PORT,
+  type IdentityAdminPort,
+} from '../modules/identity/public/identity-admin.port';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
@@ -23,7 +28,10 @@ const catalogSeedLock = 2_026_080_901;
 export class ReferenceCatalogService {
   private seedPromise: Promise<void> | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(IDENTITY_ADMIN_PORT) private readonly accounts: IdentityAdminPort,
+  ) {}
 
   async getBootstrap(knownVersion?: string) {
     await this.ensureSystemCatalogs();
@@ -193,6 +201,7 @@ export class ReferenceCatalogService {
     this.validateIcon(dto.icon);
     const result = await runAuthorizedAdminMutation(
       this.prisma,
+      this.accounts,
       currentUser,
       AdminPermission.CATALOG_WRITE,
       async (tx) => {
@@ -230,6 +239,7 @@ export class ReferenceCatalogService {
     this.validateIcon(dto.icon);
     const result = await runAuthorizedAdminMutation(
       this.prisma,
+      this.accounts,
       currentUser,
       AdminPermission.CATALOG_WRITE,
       async (tx) => {
@@ -266,6 +276,7 @@ export class ReferenceCatalogService {
     await this.ensureSystemCatalogs();
     const result = await runAuthorizedAdminMutation(
       this.prisma,
+      this.accounts,
       currentUser,
       AdminPermission.CATALOG_WRITE,
       async (tx) => {
@@ -297,6 +308,7 @@ export class ReferenceCatalogService {
     await this.ensureSystemCatalogs();
     const result = await runAuthorizedAdminMutation(
       this.prisma,
+      this.accounts,
       currentUser,
       AdminPermission.CATALOG_WRITE,
       async (tx) => {

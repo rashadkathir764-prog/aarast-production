@@ -10,8 +10,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { ForbiddenException } from "@nestjs/common";
-import { AdminService } from "../../src/admin/admin.service";
-import { notificationsService, ownerPorts } from "./support/owner-ports";
+import { notificationsService, ownerPorts, adminService } from "./support/owner-ports";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { OutboxService } from "../../src/platform/outbox/outbox.service";
 
@@ -117,7 +116,7 @@ async function main(): Promise<void> {
     new PermissionService(prisma as any, ownerPorts.plans),
     new OutboxService(),
   );
-  const service = new AdminService(
+  const service = adminService(
     prisma as any,
     {
       disconnectUser: (userId: string) => disconnectedUsers.push(userId),

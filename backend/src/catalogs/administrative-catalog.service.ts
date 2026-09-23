@@ -1,11 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { AdministrativeLocalityType, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import {
+  IDENTITY_ADMIN_PORT,
+  type IdentityAdminPort,
+} from '../modules/identity/public/identity-admin.port';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
@@ -18,7 +23,10 @@ import {
 
 @Injectable()
 export class AdministrativeCatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(IDENTITY_ADMIN_PORT) private readonly accounts: IdentityAdminPort,
+  ) {}
 
   async listGovernorates() {
     return this.prisma.governorate.findMany({
@@ -295,6 +303,7 @@ export class AdministrativeCatalogService {
   ) {
     return runAuthorizedAdminMutation(
       this.prisma,
+      this.accounts,
       currentUser,
       AdminPermission.CATALOG_WRITE,
       mutation,

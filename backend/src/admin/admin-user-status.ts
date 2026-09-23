@@ -1,37 +1,26 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { AdminRole, Prisma, UserRole, UserStatus } from '@prisma/client';
+import { AdminRole, Prisma, UserRole } from '@prisma/client';
+import type { IdentityAdminPort } from '../modules/identity/public/identity-admin.port';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { authorizeAdminMutationActor } from '../modules/backoffice/public/admin-mutation-gate';
 
 export async function authorizeAdminUserStatusChange(
   tx: Prisma.TransactionClient,
+  accounts: IdentityAdminPort,
   currentUser: AuthenticatedUser,
   targetId: string,
 ) {
   const actor = await authorizeAdminMutationActor(
     tx,
+    accounts,
     currentUser,
     AdminPermission.USERS_WRITE,
   );
   const targetRows =
     targetId === actor.id
       ? [actor]
-      : await tx.$queryRaw<
-          Array<{
-            id: string;
-            role: UserRole;
-            adminRole: AdminRole | null;
-            status: UserStatus;
-          }>
-        >(
-          Prisma.sql`
-            SELECT "id", "role", "adminRole", "status"
-            FROM "User"
-            WHERE "id" = ${targetId}
-            FOR UPDATE
-          `,
-        );
+      : await accounts.lockAccountsForUpdateInTransaction(tx, [targetId]);
   const target = targetRows[0];
   if (!target) {
     throw new NotFoundException('User not found');
@@ -45,21 +34,4 @@ export async function authorizeAdminUserStatusChange(
     );
   }
   return target;
-}
-
-export async function revokePendingInvitesIssuedByUserInTransaction(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  revokedAt: Date,
-): Promise<void> {
-  await tx.planInvite.updateMany({
-    where: {
-      inviterUserId: userId,
-      acceptedAt: null,
-      declinedAt: null,
-      revokedAt: null,
-      expiresAt: { gt: revokedAt },
-    },
-    data: { revokedAt },
-  });
 }

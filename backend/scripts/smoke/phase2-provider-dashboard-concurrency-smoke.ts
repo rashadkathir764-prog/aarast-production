@@ -22,9 +22,8 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { AdminService } from "../../src/admin/admin.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
-import { providerDashboardService } from "./support/owner-ports";
+import { providerDashboardService, adminService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -422,7 +421,7 @@ async function adminLocksOwnerBeforeProvider() {
             `,
           );
         });
-        const service = new AdminService(
+        const service = adminService(
           prisma as any,
           {
             revokeConversationAccess: () => undefined,

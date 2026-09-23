@@ -123,9 +123,13 @@ test('chat gateway authenticates sockets and publishes activity and permission c
 });
 
 test('conversation reports keep an admin review surface without one-quote identity', () => {
+  // Messaging lists its reports; the back office attaches the provider's
+  // id and business name and the conversation's latest quote request
+  // (admin-owners.ts), never a single-quote identity on the report.
   const service = readFileSync(join(process.cwd(), 'src/admin/admin.service.ts'), 'utf8');
-  assert.match(service, /conversationReport\.findMany/);
-  assert.match(service, /provider: \{ select: \{ id: true, businessName: true \} \}/);
-  assert.match(service, /quoteRequests:/);
-  assert.doesNotMatch(service, /quoteRequestId: true,[\s\S]*quoteRequest:/);
+  const owners = readFileSync(join(process.cwd(), 'src/admin/admin-owners.ts'), 'utf8');
+  assert.match(service, /owners\.messaging\.listConversationReports\(/);
+  assert.match(owners, /provider: \{ id: provider\.id, businessName: provider\.businessName \}/);
+  assert.match(owners, /quoteRequests: latestQuoteId \? \[\{ id: latestQuoteId \}\] : \[\]/);
+  assert.doesNotMatch(owners, /quoteRequestId/);
 });

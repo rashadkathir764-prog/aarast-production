@@ -310,7 +310,11 @@ test('R12A source and literal parity reject undeclared drift and preserve run-on
   const undeclaredImport = movedSource.replace("import {\n", "import { Forged } from './forged';\nimport {\n");
   assert.throws(() => scanner.verifyR12aSourceParity({ historicalSource: historical, liveSource: undeclaredImport, move }), /import|parity/u);
   const runOnly = manifest.behavioralTests.find((item: { mode: string }) => item.mode === 'run-only');
-  const runSource = readFileSync(path.join(backendRoot, 'test', path.basename(runOnly.path)), 'utf8');
+  // The run-only contract's hash names the R12A entry bytes. R12A is closed
+  // (the closed scan checks no behavioral-test bytes), and the live test
+  // evolves with AdminService's constructor, so the fixture is the entry
+  // revision of the file, not its live copy.
+  const runSource = readImmutable(runOnly.path);
   assert.throws(() => scanner.verifyR12aLiteralParity({ historicalSource: runSource, liveSource: `${runSource} `, contract: runOnly, manifest }), /run-only|drift/u);
 });
 

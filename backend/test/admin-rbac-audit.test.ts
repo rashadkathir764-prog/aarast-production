@@ -102,9 +102,12 @@ test('admin account status changes require a live super administrator and preser
   assert.match(service, /runSerializableTransaction\(this\.prisma/);
   assert.match(service, /activeSuperAdmins <= 1/);
   assert.match(service, /last active super administrator cannot be disabled/i);
+  // The refresh tokens are identity's: the service asks identity's admin
+  // port to revoke the target's live tokens at the same instant
+  // (admin-owner-ports.test.ts pins the statement).
   assert.match(
     service,
-    /refreshToken\.updateMany\([\s\S]*userId: target\.id[\s\S]*revokedAt: now/,
+    /revokeRefreshTokensInTransaction\(\s*tx,\s*target\.id,\s*now,?\s*\)/,
   );
 });
 

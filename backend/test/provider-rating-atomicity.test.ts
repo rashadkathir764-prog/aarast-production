@@ -169,8 +169,12 @@ test("every product review mutation uses the shared locked aggregate boundary", 
     (marketplace.match(/runProviderReviewMutation\(/g) ?? []).length,
     3,
   );
-  assert.equal((admin.match(/lockProviderRatingRows\(/g) ?? []).length, 2);
-  assert.equal((admin.match(/refreshProviderRating\(/g) ?? []).length, 2);
+  // Both admin review mutations run the one moderation helper, which takes
+  // the rating lock and refreshes the rating around the owner's status
+  // change (the two copies it replaces were identical).
+  assert.equal((admin.match(/lockProviderRatingRows\(/g) ?? []).length, 1);
+  assert.equal((admin.match(/refreshProviderRating\(/g) ?? []).length, 1);
+  assert.equal((admin.match(/this\.moderateReview\(/g) ?? []).length, 2);
   assert.equal((admin.match(/AdminPermission\.REVIEWS_WRITE/g) ?? []).length, 2);
   assert.doesNotMatch(marketplace, /recalculateProviderRating/);
   assert.doesNotMatch(admin, /recalculateProviderRating/);

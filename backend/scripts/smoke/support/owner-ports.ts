@@ -1,6 +1,13 @@
 // Real owner port implementations for the managed smokes. Every one runs its
 // statements on the client the calling service passes (the smoke's Prisma
 // client or its transaction), exactly as the Nest wiring does.
+import { AdminOwners } from '../../../src/admin/admin-owners';
+import { AdminService } from '../../../src/admin/admin.service';
+import { CatalogAdminService } from '../../../src/modules/catalog/internal/catalog-admin.service';
+import { IdentityAdminService } from '../../../src/modules/identity/internal/identity-admin.service';
+import { MarketplaceAdminService } from '../../../src/modules/marketplace/internal/marketplace-admin.service';
+import { MessagingAdminService } from '../../../src/modules/messaging/internal/messaging-admin.service';
+import { NotificationsAdminService } from '../../../src/modules/notifications/internal/notifications-admin.service';
 import { CatalogReadService } from '../../../src/modules/catalog/internal/catalog-read.service';
 import { CollaborationErasureService } from '../../../src/modules/collaboration/internal/collaboration-erasure.service';
 import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
@@ -8,7 +15,7 @@ import { ContributorScopeService } from '../../../src/modules/collaboration/inte
 import { ConversationRelationsService } from '../../../src/conversations/conversation-relations';
 import { ConversationLifecycleService } from '../../../src/modules/messaging/internal/conversation-lifecycle.internal.module';
 import { NotificationsService } from '../../../src/notifications/notifications.service';
-import type { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
+import { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
 import { SharingService } from '../../../src/modules/collaboration/internal/sharing.service';
 import { FinancePortService } from '../../../src/modules/finance/internal/finance-port.service';
 import { GuestsPortService } from '../../../src/modules/guests/internal/guests-port.service';
@@ -177,3 +184,30 @@ export const identityErasurePorts = [
   ownerPorts.tasks,
   ownerPorts.guests,
 ] as const;
+
+/** `AdminService` over the smoke's client with every owner's admin port (AdminOwners). */
+export function adminService(
+  prisma: unknown,
+  realtime: unknown,
+  notifications: unknown,
+): AdminService {
+  return new AdminService(
+    prisma as any,
+    realtime as any,
+    notifications as any,
+    new AdminOwners(
+      new IdentityAdminService(),
+      ownerPorts.users,
+      ownerPorts.users,
+      new CatalogAdminService(),
+      ownerPorts.catalog,
+      new MarketplaceAdminService(),
+      ownerPorts.providers,
+      ownerPorts.quotes,
+      new MessagingAdminService(),
+      new NotificationsAdminService(),
+      ownerPorts.plans,
+      new PermissionService(prisma as any, ownerPorts.plans),
+    ),
+  );
+}

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AdminService } from '../src/admin/admin.service';
+import { adminService } from './support/owner-ports';
 
 test('admin dashboard totalCities counts active cities only', async () => {
   const zeroCountModel = { count: async () => 0 };
@@ -13,14 +13,15 @@ test('admin dashboard totalCities counts active cities only', async () => {
   const prisma = new Proxy(
     {
       city,
-      $transaction: async (operations: Array<Promise<unknown>>) =>
-        Promise.all(operations),
+      // The owners read their counters inside one interactive transaction.
+      $transaction: async (operation: (tx: unknown) => Promise<unknown>) =>
+        operation(prisma),
     } as Record<string, unknown>,
     {
       get: (target, property: string) => target[property] ?? zeroCountModel,
     },
   );
-  const service = new AdminService(
+  const service = adminService(
     prisma as any,
     {} as any,
     {} as any,

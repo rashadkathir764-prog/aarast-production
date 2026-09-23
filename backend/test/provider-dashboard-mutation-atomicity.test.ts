@@ -90,10 +90,15 @@ test("admin provider review locks actor and owner users before the provider", ()
   const source = readFileSync("src/admin/admin.service.ts", "utf8");
   const block = source.slice(
     source.indexOf("  private async reviewProvider("),
-    source.indexOf("  private serviceWhere(", source.indexOf("  private async reviewProvider(")),
+    source.indexOf(
+      "  private async lockProviderReviewUsersInTransaction(",
+      source.indexOf("  private async reviewProvider("),
+    ),
   );
+  // The provider row lock is marketplace's statement now, taken through
+  // its admin port after identity locked the actor and owner accounts.
   const users = block.indexOf("lockProviderReviewUsersInTransaction");
-  const provider = block.indexOf("lockProviderReviewRowInTransaction");
+  const provider = block.indexOf("lockProviderForUpdateInTransaction");
   assert.ok(users >= 0, "reviewProvider must lock the actor and owner users");
   assert.ok(
     provider > users,

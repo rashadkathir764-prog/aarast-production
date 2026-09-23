@@ -22,10 +22,9 @@ import {
   UserRole,
   UserStatus,
 } from "@prisma/client";
-import { AdminService } from "../../src/admin/admin.service";
 import { MarketplaceService } from "../../src/marketplace/marketplace.service";
 import { UsersService } from "../../src/modules/identity/internal/profile/users.service";
-import { identityErasurePorts, ownerPorts, marketplaceService } from "./support/owner-ports";
+import { identityErasurePorts, ownerPorts, marketplaceService, adminService } from "./support/owner-ports";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
@@ -95,7 +94,7 @@ async function main(): Promise<void> {
     {},
     lifecycle,
   );
-  const admin = new AdminService(prisma as any, {} as any, {
+  const admin = adminService(prisma as any, {} as any, {
     createNotificationInTransaction: async () => null,
   } as any);
 

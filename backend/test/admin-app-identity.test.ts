@@ -20,7 +20,7 @@ import {
   UserRole,
   UserStatus,
 } from "@prisma/client";
-import { AdminService } from "../src/admin/admin.service";
+import { adminService } from "./support/owner-ports";
 import { providerDashboardService, usersService } from "./support/owner-ports";
 
 test("an administrator app profile cannot overwrite the administrator identity", async () => {
@@ -216,7 +216,18 @@ test("an administrator app session can create a provider profile without changin
 });
 
 test("provider approval preserves an administrator database role", () => {
-  const source = readFileSync("src/admin/admin.service.ts", "utf8");
+  // The role change is identity's decision over its User row: the back
+  // office asks identity's provider-account port, which runs the two
+  // guarded promotions (see identity-user-ports.test.ts).
+  const adminSource = readFileSync("src/admin/admin.service.ts", "utf8");
+  assert.match(
+    adminSource,
+    /providerAccounts\.promoteToProviderInTransaction\(/,
+  );
+  const source = readFileSync(
+    "src/modules/identity/internal/identity-user-port.service.ts",
+    "utf8",
+  );
   assert.match(
     source,
     /role:\s*\{\s*in:\s*\[UserRole\.USER,\s*UserRole\.PROVIDER\]/,
@@ -244,7 +255,7 @@ test("a provider owner cannot review their own provider application", async () =
         },
       }),
   };
-  const service = new AdminService(
+  const service = adminService(
     prisma as any,
     { disconnectUser: () => undefined } as any,
     { createNotificationInTransaction: async () => null } as any,
@@ -315,8 +326,17 @@ test("a different administrator can review a provider application", async () => 
               id: "provider-1",
               userId: "provider-owner",
               user: null,
-              cityId: null,
-              city: null,
+              // Provider.cityId is required; the city row is attached from
+              // catalog now, served from this inline row.
+              cityId: "city-1",
+              city: {
+                id: "city-1",
+                nameAr: "صنعاء",
+                nameEn: null,
+                countryCode: "YE",
+                sortOrder: 0,
+                isActive: true,
+              },
               primaryCategoryId: null,
               primaryCategory: null,
               businessName: "Independent Provider",
@@ -362,7 +382,7 @@ test("a different administrator can review a provider application", async () => 
         },
       }),
   };
-  const service = new AdminService(
+  const service = adminService(
     prisma as any,
     {
       disconnectUser: () => undefined,

@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 import * as adminPresenter from '../src/admin/admin.presenter';
 import { AdminService } from '../src/admin/admin.service';
+import { adminService } from './support/owner-ports';
 
 interface AdminPresenterHarness {
   toCityResponse(value: unknown): Record<string, unknown>;
@@ -55,8 +56,11 @@ test('admin extraction keeps DI, mutations and query builders inside AdminServic
   assert.match(serviceSource, /private async reviewProvider\(/);
   assert.match(serviceSource, /async disableUser\(/);
   assert.match(serviceSource, /this\.prisma\.\$transaction\(/);
-  assert.match(serviceSource, /private providerWhere\(/);
-  assert.match(serviceSource, /private serviceWhere\(/);
+  // The where builders moved to the owners (marketplace, notifications);
+  // the service parses the query into the owners' declared filters.
+  assert.match(serviceSource, /this\.owners\.marketplace\.listProviders\(/);
+  assert.match(serviceSource, /private serviceFilter\(/);
+  assert.match(serviceSource, /private notificationFilter\(/);
   assert.doesNotMatch(serviceSource, /private to[A-Za-z]+Response\(/);
   assert.doesNotMatch(
     presenterSource,
@@ -65,7 +69,8 @@ test('admin extraction keeps DI, mutations and query builders inside AdminServic
   assert.doesNotMatch(controllerSource, /admin\.presenter|admin\.contracts/);
   assert.doesNotMatch(moduleSource, /admin\.presenter|admin\.contracts/);
   assert.match(controllerSource, /constructor\(private readonly adminService: AdminService\)/);
-  assert.match(moduleSource, /providers:\s*\[AdminService,\s*AdminAuditService\]/);
+  // AdminOwners holds the owners' ports the service and executor reach.
+  assert.match(moduleSource, /providers:\s*\[AdminOwners,\s*AdminService,\s*AdminAuditService\]/);
 });
 
 test('admin report aggregation preserves totals, formatting and honesty flags', () => {
@@ -288,7 +293,7 @@ test('admin cannot reassign a service whose media belongs to another provider', 
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
-  const service = new AdminService(
+  const service = adminService(
     prisma as never,
     { disconnectUser: () => undefined } as never,
     { createNotificationInTransaction: async () => null } as never,

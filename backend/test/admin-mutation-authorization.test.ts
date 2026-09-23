@@ -81,17 +81,23 @@ test("every affected admin mutation runs behind the live serializable gate", () 
 });
 
 test("the gate locks and reauthorizes the actor before target helpers run", () => {
+  // The account row lock is identity's statement now (identity-admin
+  // service); the gate takes it through identity's admin port before it
+  // decides on the locked row.
   const gate = source("../modules/backoffice/public/admin-mutation-gate.ts");
+  const identityLocks = source("../modules/identity/internal/identity-admin.service.ts");
   assert.match(gate, /runSerializableTransaction/);
-  assert.match(gate, /FROM "User"[\s\S]*FOR UPDATE/);
+  assert.match(gate, /lockAccountsForUpdateInTransaction\(tx, \[\s*currentUser\.id,?\s*\]\)/);
+  assert.match(identityLocks, /FROM "User"[\s\S]*FOR UPDATE/);
   assert.match(gate, /actor\.role !== UserRole\.ADMIN/);
   assert.match(gate, /actor\.status !== UserStatus\.ACTIVE/);
   assert.match(gate, /hasAdminPermission\(actor\.adminRole, permission\)/);
 
   const userStatus = source("admin-user-status.ts");
   const actorGate = userStatus.indexOf("authorizeAdminMutationActor");
-  const targetLock = userStatus.indexOf('WHERE "id" = ${targetId}');
+  const targetLock = userStatus.indexOf(
+    "lockAccountsForUpdateInTransaction(tx, [targetId])",
+  );
   assert.ok(actorGate >= 0 && targetLock > actorGate);
   assert.match(userStatus, /AdminPermission\.USERS_WRITE/);
-  assert.match(userStatus, /FOR UPDATE/);
 });

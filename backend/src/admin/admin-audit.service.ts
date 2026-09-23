@@ -1,7 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import type { AdminAuditPhase } from '@prisma/client';
 import { PrismaService } from '../platform/database/prisma.service';
 import { AdminAuditQueryDto } from './dto/admin-audit-query.dto';
+
+/** The audit-log filters the back office offers, over its own table. */
+interface AdminAuditLogWhere {
+  action?: { contains: string; mode: 'insensitive' };
+  actorUserId?: string;
+  phase?: AdminAuditPhase;
+  createdAt?: { gte?: Date; lte?: Date };
+}
 
 @Injectable()
 export class AdminAuditService {
@@ -17,7 +25,7 @@ export class AdminAuditService {
       ...(query.from ? { gte: new Date(query.from) } : {}),
       ...(query.to ? { lte: new Date(query.to) } : {}),
     };
-    const where: Prisma.AdminAuditLogWhereInput = {
+    const where: AdminAuditLogWhere = {
       ...(query.action
         ? { action: { contains: query.action.trim(), mode: 'insensitive' } }
         : {}),

@@ -8,13 +8,11 @@ import {
 } from '@nestjs/common';
 import {
   AdminRole,
-  AppRole,
   ConversationReportStatus,
   NotificationPriority,
   NotificationType,
   Prisma,
   ProviderStatus,
-  QuoteRequestStatus,
   ReviewStatus,
   UserRole,
   UserStatus,
@@ -32,7 +30,14 @@ import {
 import { PrismaService } from '../platform/database/prisma.service';
 import { MESSAGING_REALTIME_PORT, type MessagingRealtimePort } from '../modules/messaging/public/messaging-realtime.port';
 import { NOTIFICATIONS_PORT, type NotificationsPort } from '../modules/notifications/public/notifications.port';
+import type { AdminNotificationFilter } from '../modules/notifications/public/notifications-admin.port';
+import type {
+  AdminServiceFilter,
+  AdminTextSearch,
+} from '../modules/marketplace/public/marketplace-admin.port';
+import type { AccountSearchField } from '../modules/identity/public/identity-admin.port';
 import { AdminMutationExecutor } from './admin-mutation-executor';
+import { AdminOwners } from './admin-owners';
 import { switchProviderStatusNotification } from './provider-status-notification';
 import {
   assertProviderAdminAction,
@@ -61,10 +66,7 @@ import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dt
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
-import {
-  authorizeAdminUserStatusChange,
-  revokePendingInvitesIssuedByUserInTransaction,
-} from './admin-user-status';
+import { authorizeAdminUserStatusChange } from './admin-user-status';
 
 interface Pagination {
   page: number;
@@ -81,52 +83,38 @@ export class AdminService {
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime: MessagingRealtimePort,
     @Inject(NOTIFICATIONS_PORT) private readonly notifications: NotificationsPort,
+    private readonly owners: AdminOwners,
   ) {
-    this.mutations = new AdminMutationExecutor(prisma);
+    this.mutations = new AdminMutationExecutor(prisma, owners);
   }
 
   async getDashboardStats() {
+    // One transaction, as the single batch of counters it replaces.
     const [
       totalUsers,
-      totalProviders,
-      pendingProviders,
-      approvedProviders,
-      rejectedProviders,
-      needsChangesProviders,
-      suspendedProviders,
-      totalQuoteRequests,
+      marketplace,
       totalWeddingPlans,
       totalCities,
       totalProviderCategories,
-    ] = await this.prisma.$transaction([
-      this.prisma.user.count(),
-      this.prisma.provider.count(),
-      this.prisma.provider.count({ where: { status: ProviderStatus.PENDING } }),
-      this.prisma.provider.count({ where: { status: ProviderStatus.ACTIVE } }),
-      this.prisma.provider.count({
-        where: { status: ProviderStatus.REJECTED },
-      }),
-      this.prisma.provider.count({
-        where: { status: ProviderStatus.NEEDS_CHANGES },
-      }),
-      this.prisma.provider.count({
-        where: { status: ProviderStatus.SUSPENDED },
-      }),
-      this.prisma.quoteRequest.count(),
-      this.prisma.weddingPlan.count(),
-      this.prisma.city.count({ where: { isActive: true } }),
-      this.prisma.providerCategory.count(),
-    ]);
+    ] = await this.prisma.$transaction(async (tx) =>
+      Promise.all([
+        this.owners.accounts.countAccounts(tx),
+        this.owners.marketplace.getCounters(tx),
+        this.owners.plans.countPlans(tx),
+        this.owners.catalog.countCities(tx, { isActive: true }),
+        this.owners.catalog.countCategories(tx),
+      ]),
+    );
 
     return {
       totalUsers,
-      totalProviders,
-      pendingProviders,
-      approvedProviders,
-      rejectedProviders,
-      needsChangesProviders,
-      suspendedProviders,
-      totalQuoteRequests,
+      totalProviders: marketplace.totalProviders,
+      pendingProviders: marketplace.pendingProviders,
+      approvedProviders: marketplace.approvedProviders,
+      rejectedProviders: marketplace.rejectedProviders,
+      needsChangesProviders: marketplace.needsChangesProviders,
+      suspendedProviders: marketplace.suspendedProviders,
+      totalQuoteRequests: marketplace.totalQuoteRequests,
       totalWeddingPlans,
       totalCities,
       totalProviderCategories,
@@ -156,17 +144,25 @@ export class AdminService {
     defaultStatuses: readonly ProviderStatus[],
   ) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const where = this.providerWhere(query, defaultStatuses);
-    const [total, providers] = await this.prisma.$transaction([
-      this.prisma.provider.count({ where }),
-      this.prisma.provider.findMany({
-        where,
-        include: this.providerListInclude(),
-        orderBy: [{ createdAt: 'desc' }],
-        skip: pagination.skip,
-        take: pagination.limit,
-      }),
-    ]);
+    const status = this.parseProviderStatus(query.status);
+    const searchText = this.optionalText(query.search);
+    const { total, providers } = await this.prisma.$transaction(async (tx) => {
+      const search = await this.textSearch(tx, searchText, ['name', 'phone']);
+      const listing = await this.owners.marketplace.listProviders(
+        tx,
+        {
+          statuses: status ? [status] : defaultStatuses,
+          cityId: query.cityId || null,
+          categoryId: query.categoryId || null,
+          search,
+        },
+        { skip: pagination.skip, take: pagination.limit },
+      );
+      return {
+        total: listing.total,
+        providers: await this.owners.attachProviders(tx, listing.items),
+      };
+    });
 
     return this.paginate(
       providers.map((provider) => toProviderResponse(provider)),
@@ -176,9 +172,9 @@ export class AdminService {
   }
 
   async getProvider(id: string) {
-    const provider = await this.prisma.provider.findUnique({
-      where: { id },
-      include: this.providerDetailInclude(),
+    const provider = await this.prisma.$transaction(async (tx) => {
+      const row = await this.owners.marketplace.getProvider(tx, id);
+      return row ? this.owners.attachProviderDetail(tx, row) : null;
     });
 
     if (!provider) {
@@ -190,17 +186,17 @@ export class AdminService {
 
   async listServices(query: AdminServiceQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const where = this.serviceWhere(query);
-    const [total, services] = await this.prisma.$transaction([
-      this.prisma.providerService.count({ where }),
-      this.prisma.providerService.findMany({
-        where,
-        include: this.adminServiceInclude(),
-        orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+    const filter = this.serviceFilter(query);
+    const { total, services } = await this.prisma.$transaction(async (tx) => {
+      const listing = await this.owners.marketplace.listServices(tx, filter, {
         skip: pagination.skip,
         take: pagination.limit,
-      }),
-    ]);
+      });
+      return {
+        total: listing.total,
+        services: await this.owners.attachServices(tx, listing.items),
+      };
+    });
 
     return this.paginate(
       services.map((service) => toAdminServiceResponse(service)),
@@ -230,17 +226,24 @@ export class AdminService {
 
   async listReviews(query: AdminReviewQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const where = this.reviewWhere(query);
-    const [total, reviews] = await this.prisma.$transaction([
-      this.prisma.providerReview.count({ where }),
-      this.prisma.providerReview.findMany({
-        where,
-        include: this.adminReviewInclude(),
-        orderBy: { createdAt: 'desc' },
-        skip: pagination.skip,
-        take: pagination.limit,
-      }),
-    ]);
+    const status = query.status ? this.parseReviewStatus(query.status) : null;
+    const searchText = this.optionalText(query.search);
+    const { total, reviews } = await this.prisma.$transaction(async (tx) => {
+      const search = await this.textSearch(tx, searchText, ['name']);
+      const listing = await this.owners.marketplace.listReviews(
+        tx,
+        {
+          ...(status ? { status } : {}),
+          ...(query.providerId ? { providerId: query.providerId } : {}),
+          ...(search ? { search } : {}),
+        },
+        { skip: pagination.skip, take: pagination.limit },
+      );
+      return {
+        total: listing.total,
+        reviews: await this.owners.attachReviews(tx, listing.items),
+      };
+    });
 
     return this.paginate(
       reviews.map((review) => toAdminReviewResponse(review)),
@@ -263,39 +266,20 @@ export class AdminService {
 
   async listConversationReports(query: AdminConversationReportQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const where: Prisma.ConversationReportWhereInput = query.status
-      ? { status: this.parseConversationReportStatus(query.status) }
-      : {};
-    const [total, reports] = await this.prisma.$transaction([
-      this.prisma.conversationReport.count({ where }),
-      this.prisma.conversationReport.findMany({
-        where,
-        select: {
-          id: true,
-          conversationId: true,
-          reason: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-          reporter: {
-            select: { id: true, name: true, phone: true, avatarUrl: true },
-          },
-          conversation: {
-            select: {
-              provider: { select: { id: true, businessName: true } },
-              quoteRequests: {
-                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-                take: 1,
-                select: { id: true },
-              },
-            },
-          },
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: pagination.skip,
-        take: pagination.limit,
-      }),
-    ]);
+    const status = query.status
+      ? this.parseConversationReportStatus(query.status)
+      : null;
+    const { total, reports } = await this.prisma.$transaction(async (tx) => {
+      const listing = await this.owners.messaging.listConversationReports(
+        tx,
+        status,
+        { skip: pagination.skip, take: pagination.limit },
+      );
+      return {
+        total: listing.total,
+        reports: await this.owners.attachConversationReports(tx, listing.items),
+      };
+    });
     return this.paginate(reports, total, pagination);
   }
 
@@ -313,17 +297,20 @@ export class AdminService {
 
   async listNotifications(query: AdminNotificationQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const where = this.notificationWhere(query);
-    const [total, notifications] = await this.prisma.$transaction([
-      this.prisma.notification.count({ where }),
-      this.prisma.notification.findMany({
-        where,
-        include: this.adminNotificationInclude(),
-        orderBy: { createdAt: 'desc' },
-        skip: pagination.skip,
-        take: pagination.limit,
-      }),
-    ]);
+    const filter = this.notificationFilter(query);
+    const searchText = this.optionalText(query.search);
+    const { total, notifications } = await this.prisma.$transaction(async (tx) => {
+      const search = await this.textSearch(tx, searchText, ['name']);
+      const listing = await this.owners.notifications.listNotifications(
+        tx,
+        { ...filter, ...(search ? { search } : {}) },
+        { skip: pagination.skip, take: pagination.limit },
+      );
+      return {
+        total: listing.total,
+        notifications: await this.owners.attachNotifications(tx, listing.items),
+      };
+    });
 
     return this.paginate(
       notifications.map((notification) => toAdminNotificationResponse(notification)),
@@ -333,9 +320,9 @@ export class AdminService {
   }
 
   async getUnreadNotificationsCount() {
-    const count = await this.prisma.notification.count({
-      where: { readAt: null, archivedAt: null },
-    });
+    const count = await this.owners.notifications.countUnreadNotifications(
+      this.prisma,
+    );
     return { count };
   }
 
@@ -354,28 +341,25 @@ export class AdminService {
   async getReportsOverview(query: AdminReportQueryDto) {
     const range = this.parseDateRange(query.from, query.to);
     const createdAt = range.where;
-    const [users, providers, services, reviews, quotes, notifications, weddingPlans, cities, categories] =
+    const [users, marketplace, notifications, weddingPlans, cities, categories] =
       await Promise.all([
-        this.getUserReport(createdAt),
-        this.getProviderReport(createdAt),
-        this.getServiceReport(createdAt),
-        this.getReviewReport(createdAt),
-        this.getQuoteReport(createdAt),
-        this.getNotificationReport(createdAt),
-        this.prisma.weddingPlan.count({ where: { createdAt } }),
-        this.prisma.city.count(),
-        this.prisma.providerCategory.count(),
+        this.owners.accounts.getAccountCounts(this.prisma, createdAt),
+        this.owners.marketplace.getReport(this.prisma, createdAt),
+        this.owners.notifications.getReport(this.prisma, createdAt),
+        this.owners.plans.countPlans(this.prisma, createdAt),
+        this.owners.catalog.countCities(this.prisma),
+        this.owners.catalog.countCategories(this.prisma),
       ]);
 
     return toAdminReportsOverviewResponse({
       generatedAt: new Date(),
       from: range.from,
       to: range.to,
-      users,
-      providers,
-      services,
-      reviews,
-      quotes,
+      users: toAdminUserReport(users),
+      providers: marketplace.providers,
+      services: marketplace.services,
+      reviews: toAdminReviewReport(marketplace.reviews),
+      quotes: toAdminQuoteReport(marketplace.quotes),
       notifications,
       cities,
       categories,
@@ -435,10 +419,12 @@ export class AdminService {
   }
 
   async listCategories() {
-    const categories = await this.prisma.providerCategory.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-      include: { _count: { select: { providers: true, services: true } } },
-    });
+    const categories = await this.prisma.$transaction(async (tx) =>
+      this.owners.attachCategories(
+        tx,
+        await this.owners.catalog.listCategories(tx),
+      ),
+    );
 
     return categories.map((category) => toCategoryResponse(category));
   }
@@ -463,10 +449,9 @@ export class AdminService {
   }
 
   async listCities() {
-    const cities = await this.prisma.city.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-      include: { _count: { select: { providers: true, services: true } } },
-    });
+    const cities = await this.prisma.$transaction(async (tx) =>
+      this.owners.attachCities(tx, await this.owners.catalog.listCities(tx)),
+    );
 
     return cities.map((city) => toCityResponse(city));
   }
@@ -490,26 +475,16 @@ export class AdminService {
   async listUsers(query: AdminProviderQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
     const search = this.optionalText(query.search);
-    const where: Prisma.UserWhereInput = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {};
-
-    const [total, users] = await this.prisma.$transaction([
-      this.prisma.user.count({ where }),
-      this.prisma.user.findMany({
-        where,
-        select: this.userSelect(true),
-        orderBy: { createdAt: 'desc' },
+    const { total, users } = await this.prisma.$transaction(async (tx) => {
+      const listing = await this.owners.accounts.listAccounts(tx, search, {
         skip: pagination.skip,
         take: pagination.limit,
-      }),
-    ]);
+      });
+      return {
+        total: listing.total,
+        users: await this.owners.attachAccounts(tx, listing.items),
+      };
+    });
 
     return this.paginate(
       users.map((user) => toUserResponse(user)),
@@ -519,9 +494,11 @@ export class AdminService {
   }
 
   async getUser(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: this.userSelect(true),
+    const user = await this.prisma.$transaction(async (tx) => {
+      const account = await this.owners.accounts.getAccount(tx, id);
+      return account
+        ? (await this.owners.attachAccounts(tx, [account]))[0]!
+        : null;
     });
 
     if (!user) {
@@ -535,14 +512,16 @@ export class AdminService {
     const user = await runSerializableTransaction(this.prisma, async (tx) => {
       const target = await authorizeAdminUserStatusChange(
         tx,
+        this.owners.accounts,
         currentUser,
         id,
       );
-      return tx.user.update({
-        where: { id: target.id },
-        data: { status: UserStatus.ACTIVE },
-        select: this.userSelect(true),
-      });
+      const updated = await this.owners.accounts.setAccountStatusInTransaction(
+        tx,
+        target.id,
+        UserStatus.ACTIVE,
+      );
+      return (await this.owners.attachAccounts(tx, [updated]))[0]!;
     });
     return toUserResponse(user);
   }
@@ -555,6 +534,7 @@ export class AdminService {
     const user = await runSerializableTransaction(this.prisma, async (tx) => {
       const target = await authorizeAdminUserStatusChange(
         tx,
+        this.owners.accounts,
         currentUser,
         id,
       );
@@ -563,13 +543,8 @@ export class AdminService {
         target.adminRole === AdminRole.SUPER_ADMIN &&
         target.status === UserStatus.ACTIVE
       ) {
-        const activeSuperAdmins = await tx.user.count({
-          where: {
-            role: UserRole.ADMIN,
-            adminRole: AdminRole.SUPER_ADMIN,
-            status: UserStatus.ACTIVE,
-          },
-        });
+        const activeSuperAdmins =
+          await this.owners.accounts.countActiveSuperAdminsInTransaction(tx);
         if (activeSuperAdmins <= 1) {
           throw new ConflictException(
             'The last active super administrator cannot be disabled',
@@ -577,18 +552,23 @@ export class AdminService {
         }
       }
 
-      const updated = await tx.user.update({
-        where: { id: target.id },
-        data: { status: UserStatus.DISABLED },
-        select: this.userSelect(true),
-      });
-      await revokePendingInvitesIssuedByUserInTransaction(tx, target.id, now);
-      await tx.refreshToken.updateMany({
-        where: { userId: target.id, revokedAt: null },
-        data: { revokedAt: now },
-      });
+      const updated = await this.owners.accounts.setAccountStatusInTransaction(
+        tx,
+        target.id,
+        UserStatus.DISABLED,
+      );
+      await this.owners.collaboration.revokeLiveInvitesIssuedByUserInTransaction(
+        tx,
+        target.id,
+        now,
+      );
+      await this.owners.accounts.revokeRefreshTokensInTransaction(
+        tx,
+        target.id,
+        now,
+      );
       await enqueueUserSessionsRevoked(tx, target.id);
-      return updated;
+      return (await this.owners.attachAccounts(tx, [updated]))[0]!;
     });
     // Sessions were just revoked; sever any live realtime channel the now
     // disabled account still holds open.
@@ -604,10 +584,7 @@ export class AdminService {
     reviewNote: string | null,
   ) {
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
-      const seed = await tx.provider.findUnique({
-        where: { id },
-        select: { userId: true },
-      });
+      const seed = await this.owners.marketplace.findProviderAccount(tx, id);
       if (!seed) {
         throw new NotFoundException('Provider application not found');
       }
@@ -620,67 +597,44 @@ export class AdminService {
         currentUser,
         seed.userId,
       );
-      await this.lockProviderReviewRowInTransaction(tx, id, seed.userId);
-      const currentProvider = await tx.provider.findUnique({
-        where: { id },
-        select: { status: true },
-      });
-      if (!currentProvider) {
+      const currentProvider =
+        await this.owners.marketplace.lockProviderForUpdateInTransaction(tx, id);
+      if (!currentProvider || currentProvider.userId !== seed.userId) {
         throw new NotFoundException('Provider application not found');
       }
       assertProviderAdminAction(action, currentProvider.status);
       const reviewedAt = new Date();
 
-      const updated = await tx.provider.update({
-        where: { id },
-        data: {
+      const updated = await this.owners.marketplace.recordProviderReviewInTransaction(
+        tx,
+        id,
+        {
           status,
           reviewNote,
           reviewedAt,
           reviewedById: currentUser.id,
         },
-        include: this.providerDetailInclude(),
-      });
+      );
 
-      if (updated.userId && status === ProviderStatus.ACTIVE) {
-        let promoted = await tx.user.updateMany({
-          where: {
-            id: updated.userId,
-            status: UserStatus.ACTIVE,
-            role: { in: [UserRole.USER, UserRole.PROVIDER] },
-          },
-          data: {
-            role: UserRole.PROVIDER,
-            appRole: AppRole.PROVIDER,
-          },
-        });
-        if (promoted.count === 0) {
-          promoted = await tx.user.updateMany({
-            where: {
-              id: updated.userId,
-              status: UserStatus.ACTIVE,
-              role: UserRole.ADMIN,
-              appPasswordHash: { not: null },
-            },
-            data: { appRole: AppRole.PROVIDER },
-          });
-        }
-        if (promoted.count !== 1) {
-          throw new BadRequestException(
-            'The application identity is not eligible for provider approval',
-          );
-        }
+      if (
+        updated.userId &&
+        status === ProviderStatus.ACTIVE &&
+        !(await this.owners.providerAccounts.promoteToProviderInTransaction(
+          tx,
+          updated.userId,
+        ))
+      ) {
+        throw new BadRequestException(
+          'The application identity is not eligible for provider approval',
+        );
       }
 
       const revokedConversationIds =
         updated.userId && status !== ProviderStatus.ACTIVE
-          ? (
-              await tx.conversation.findMany({
-                where: { providerId: updated.id },
-                orderBy: { id: 'asc' },
-                select: { id: true },
-              })
-            ).map((conversation) => conversation.id)
+          ? await this.owners.messaging.listProviderConversationIds(
+              tx,
+              updated.id,
+            )
           : [];
       if (updated.userId) {
         await enqueueConversationAccessRevoked(
@@ -715,7 +669,10 @@ export class AdminService {
         });
       }
 
-      return { provider: updated, revokedConversationIds };
+      return {
+        provider: await this.owners.attachProviderDetail(tx, updated),
+        revokedConversationIds,
+      };
     });
     const { provider, revokedConversationIds } = result;
 
@@ -738,22 +695,10 @@ export class AdminService {
       [currentUser.id, providerOwnerUserId].filter(
         (userId): userId is string => Boolean(userId),
       ),
-    )].sort();
-    const users = await tx.$queryRaw<
-      Array<{
-        id: string;
-        role: UserRole;
-        adminRole: AdminRole | null;
-        status: UserStatus;
-      }>
-    >(
-      Prisma.sql`
-        SELECT "id", "role", "adminRole", "status"
-        FROM "User"
-        WHERE "id" IN (${Prisma.join(userIds)})
-        ORDER BY "id" ASC
-        FOR UPDATE
-      `,
+    )];
+    const users = await this.owners.accounts.lockAccountsForUpdateInTransaction(
+      tx,
+      userIds,
     );
     if (users.length !== userIds.length) {
       throw new NotFoundException('Provider application not found');
@@ -769,352 +714,49 @@ export class AdminService {
     }
   }
 
-  private async lockProviderReviewRowInTransaction(
+  /** The accounts identity matches for a search text; null without one. */
+  private async textSearch(
     tx: Prisma.TransactionClient,
-    providerId: string,
-    expectedOwnerUserId: string | null,
-  ): Promise<void> {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "Provider"
-        WHERE "id" = ${providerId}
-        FOR UPDATE
-      `,
-    );
-    if (rows.length !== 1) {
-      throw new NotFoundException('Provider application not found');
-    }
-    const provider = await tx.provider.findUnique({
-      where: { id: providerId },
-      select: { userId: true },
-    });
-    if (!provider || provider.userId !== expectedOwnerUserId) {
-      throw new NotFoundException('Provider application not found');
-    }
-  }
-
-  private serviceWhere(query: AdminServiceQueryDto): Prisma.ProviderServiceWhereInput {
-    const and: Prisma.ProviderServiceWhereInput[] = [];
-    const status = query.status?.trim().toUpperCase();
-    if (status === 'ACTIVE') and.push({ isActive: true });
-    if (status === 'DISABLED' || status === 'INACTIVE') {
-      and.push({ isActive: false });
-    }
-    if (status === 'FEATURED') and.push({ isFeatured: true });
-    if (status && !['ACTIVE', 'DISABLED', 'INACTIVE', 'FEATURED'].includes(status)) {
-      throw new BadRequestException('service status is not supported');
-    }
-    if (query.providerId) and.push({ providerId: query.providerId });
-    if (query.categoryId) and.push({ categoryId: query.categoryId });
-    if (query.cityId) {
-      and.push({
-        OR: [{ cityId: query.cityId }, { cityId: null, provider: { cityId: query.cityId } }],
-      });
-    }
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          {
-            provider: {
-              businessName: { contains: search, mode: 'insensitive' },
-            },
-          },
-          { provider: { phone: { contains: search, mode: 'insensitive' } } },
-        ],
-      });
-    }
-    return and.length ? { AND: and } : {};
-  }
-
-  private reviewWhere(query: AdminReviewQueryDto): Prisma.ProviderReviewWhereInput {
-    const and: Prisma.ProviderReviewWhereInput[] = [];
-    if (query.status) and.push({ status: this.parseReviewStatus(query.status) });
-    if (query.providerId) and.push({ providerId: query.providerId });
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { comment: { contains: search, mode: 'insensitive' } },
-          { user: { name: { contains: search, mode: 'insensitive' } } },
-          {
-            provider: {
-              businessName: { contains: search, mode: 'insensitive' },
-            },
-          },
-        ],
-      });
-    }
-    return and.length ? { AND: and } : {};
-  }
-
-  private notificationWhere(query: AdminNotificationQueryDto): Prisma.NotificationWhereInput {
-    const and: Prisma.NotificationWhereInput[] = [];
-    if (query.type) and.push({ type: this.parseNotificationType(query.type) });
-    if (query.priority) {
-      and.push({ priority: this.parseNotificationPriority(query.priority) });
-    }
-    if (this.optionalBoolean(query.unreadOnly, 'unreadOnly') === true) {
-      and.push({ readAt: null });
-    }
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { entityType: { contains: search, mode: 'insensitive' } },
-          { user: { name: { contains: search, mode: 'insensitive' } } },
-        ],
-      });
-    }
-    return and.length ? { AND: and } : {};
-  }
-
-  private adminServiceInclude() {
+    text: string | null,
+    fields: readonly AccountSearchField[],
+  ): Promise<AdminTextSearch | null> {
+    if (!text) return null;
     return {
-      provider: { include: { city: true, primaryCategory: true } },
-      category: true,
-      city: true,
-      images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
-    } satisfies Prisma.ProviderServiceInclude;
-  }
-
-  private adminReviewInclude() {
-    return {
-      user: {
-        select: { id: true, name: true, appName: true, role: true },
-      },
-      provider: { include: { city: true, primaryCategory: true } },
-    } satisfies Prisma.ProviderReviewInclude;
-  }
-
-  private adminNotificationInclude() {
-    return {
-      user: { select: { id: true, name: true, phone: true } },
-      weddingPlan: { select: { id: true, title: true, city: true } },
-    } satisfies Prisma.NotificationInclude;
-  }
-
-  private async findUserOrThrow(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
-    return user;
-  }
-
-  private async getUserReport(createdAt?: Prisma.DateTimeFilter) {
-    const [total, active, disabled, admins, providers] = await Promise.all([
-      this.prisma.user.count({ where: { createdAt } }),
-      this.prisma.user.count({
-        where: { createdAt, status: UserStatus.ACTIVE },
-      }),
-      this.prisma.user.count({
-        where: { createdAt, status: UserStatus.DISABLED },
-      }),
-      this.prisma.user.count({ where: { createdAt, role: UserRole.ADMIN } }),
-      this.prisma.user.count({ where: { createdAt, role: UserRole.PROVIDER } }),
-    ]);
-    return toAdminUserReport({ total, active, disabled, admins, providers });
-  }
-
-  private async getProviderReport(createdAt?: Prisma.DateTimeFilter) {
-    const [total, pending, active, needsChanges, suspended, rejected, featured] = await Promise.all([
-      this.prisma.provider.count({ where: { createdAt } }),
-      this.prisma.provider.count({
-        where: { createdAt, status: ProviderStatus.PENDING },
-      }),
-      this.prisma.provider.count({
-        where: { createdAt, status: ProviderStatus.ACTIVE },
-      }),
-      this.prisma.provider.count({
-        where: { createdAt, status: ProviderStatus.NEEDS_CHANGES },
-      }),
-      this.prisma.provider.count({
-        where: { createdAt, status: ProviderStatus.SUSPENDED },
-      }),
-      this.prisma.provider.count({
-        where: { createdAt, status: ProviderStatus.REJECTED },
-      }),
-      this.prisma.provider.count({ where: { createdAt, isFeatured: true } }),
-    ]);
-    return {
-      total,
-      pending,
-      active,
-      needsChanges,
-      suspended,
-      rejected,
-      featured,
+      text,
+      userIds: await this.owners.accounts.searchAccountIds(tx, text, fields),
     };
   }
 
-  private async getServiceReport(createdAt?: Prisma.DateTimeFilter) {
-    const [total, active, disabled, featured] = await Promise.all([
-      this.prisma.providerService.count({ where: { createdAt } }),
-      this.prisma.providerService.count({
-        where: { createdAt, isActive: true },
-      }),
-      this.prisma.providerService.count({
-        where: { createdAt, isActive: false },
-      }),
-      this.prisma.providerService.count({
-        where: { createdAt, isFeatured: true },
-      }),
-    ]);
-    return { total, active, disabled, featured };
-  }
-
-  private async getReviewReport(createdAt?: Prisma.DateTimeFilter) {
-    const [total, published, hidden, pending, average] = await Promise.all([
-      this.prisma.providerReview.count({ where: { createdAt } }),
-      this.prisma.providerReview.count({
-        where: { createdAt, status: ReviewStatus.PUBLISHED },
-      }),
-      this.prisma.providerReview.count({
-        where: { createdAt, status: ReviewStatus.HIDDEN },
-      }),
-      this.prisma.providerReview.count({
-        where: { createdAt, status: ReviewStatus.PENDING },
-      }),
-      this.prisma.providerReview.aggregate({
-        where: { createdAt },
-        _avg: { rating: true },
-      }),
-    ]);
-    return toAdminReviewReport({
-      total,
-      published,
-      hidden,
-      pending,
-      averageRating: average._avg.rating,
-    });
-  }
-
-  private async getQuoteReport(createdAt?: Prisma.DateTimeFilter) {
-    const statuses = await Promise.all(
-      Object.values(QuoteRequestStatus).map(async (status) => ({
-        status,
-        count: await this.prisma.quoteRequest.count({
-          where: { createdAt, status },
-        }),
-      })),
-    );
-    return toAdminQuoteReport(statuses);
-  }
-
-  private async getNotificationReport(createdAt?: Prisma.DateTimeFilter) {
-    const [total, unread, archived, high, urgent] = await Promise.all([
-      this.prisma.notification.count({ where: { createdAt } }),
-      this.prisma.notification.count({
-        where: { createdAt, readAt: null, archivedAt: null },
-      }),
-      this.prisma.notification.count({
-        where: { createdAt, archivedAt: { not: null } },
-      }),
-      this.prisma.notification.count({
-        where: { createdAt, priority: NotificationPriority.HIGH },
-      }),
-      this.prisma.notification.count({
-        where: { createdAt, priority: NotificationPriority.URGENT },
-      }),
-    ]);
-    return { total, unread, archived, high, urgent };
-  }
-
-  private providerWhere(
-    query: AdminProviderQueryDto,
-    defaultStatuses: readonly ProviderStatus[],
-  ): Prisma.ProviderWhereInput {
-    const and: Prisma.ProviderWhereInput[] = [];
-    const status = this.parseProviderStatus(query.status);
-    if (status) {
-      and.push({ status });
-    } else {
-      and.push({ status: { in: [...defaultStatuses] } });
-    }
-    if (query.cityId) {
-      and.push({ cityId: query.cityId });
-    }
-    if (query.categoryId) {
-      and.push({
-        OR: [{ primaryCategoryId: query.categoryId }, { services: { some: { categoryId: query.categoryId } } }],
-      });
+  private serviceFilter(query: AdminServiceQueryDto): AdminServiceFilter {
+    const status = query.status?.trim().toUpperCase();
+    if (status && !['ACTIVE', 'DISABLED', 'INACTIVE', 'FEATURED'].includes(status)) {
+      throw new BadRequestException('service status is not supported');
     }
     const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { businessName: { contains: search, mode: 'insensitive' } },
-          { ownerName: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { user: { name: { contains: search, mode: 'insensitive' } } },
-          { user: { phone: { contains: search, mode: 'insensitive' } } },
-        ],
-      });
-    }
-    return and.length ? { AND: and } : {};
+    return {
+      ...(status === 'ACTIVE' ? { isActive: true } : {}),
+      ...(status === 'DISABLED' || status === 'INACTIVE' ? { isActive: false } : {}),
+      ...(status === 'FEATURED' ? { isFeatured: true } : {}),
+      ...(query.providerId ? { providerId: query.providerId } : {}),
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.cityId ? { cityId: query.cityId } : {}),
+      ...(search ? { search } : {}),
+    };
   }
 
-  private providerListInclude() {
+  private notificationFilter(
+    query: AdminNotificationQueryDto,
+  ): Omit<AdminNotificationFilter, 'search'> {
+    const type = query.type ? this.parseNotificationType(query.type) : null;
+    const priority = query.priority
+      ? this.parseNotificationPriority(query.priority)
+      : null;
+    const unreadOnly = this.optionalBoolean(query.unreadOnly, 'unreadOnly');
     return {
-      user: { select: this.userSelect(false) },
-      reviewedBy: { select: this.userSelect(false) },
-      city: true,
-      primaryCategory: true,
-      _count: {
-        select: {
-          services: true,
-          packages: true,
-          quoteRequests: true,
-          reviews: true,
-        },
-      },
-    } satisfies Prisma.ProviderInclude;
-  }
-
-  private providerDetailInclude() {
-    return {
-      ...this.providerListInclude(),
-      services: {
-        include: {
-          category: true,
-          city: true,
-          images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
-        },
-        orderBy: { createdAt: 'desc' },
-      },
-      packages: {
-        include: { service: true },
-        orderBy: { createdAt: 'desc' },
-      },
-    } satisfies Prisma.ProviderInclude;
-  }
-
-  private userSelect(withProvider: boolean) {
-    return {
-      id: true,
-      name: true,
-      phone: true,
-      email: true,
-      role: true,
-      status: true,
-      avatarUrl: true,
-      createdAt: true,
-      updatedAt: true,
-      ...(withProvider
-        ? {
-            providerProfile: {
-              include: {
-                city: true,
-                primaryCategory: true,
-              },
-            },
-          }
-        : {}),
-    } satisfies Prisma.UserSelect;
+      ...(type ? { type } : {}),
+      ...(priority ? { priority } : {}),
+      ...(unreadOnly === true ? { unreadOnly } : {}),
+    };
   }
 
   private parseProviderStatus(value?: string): ProviderStatus | null {

@@ -9,7 +9,7 @@ import {
   UserRole,
   UserStatus,
 } from "@prisma/client";
-import { AdminService } from "../src/admin/admin.service";
+import { adminService } from "./support/owner-ports";
 
 const currentUser = {
   id: "admin-actor",
@@ -72,6 +72,9 @@ test("catalog mutation locks and reauthorizes the live actor before its target",
         };
       },
     },
+    // The category's provider and service counts are marketplace's now.
+    provider: { groupBy: async () => [] },
+    providerService: { groupBy: async () => [] },
   };
   let isolationLevel: Prisma.TransactionIsolationLevel | undefined;
   const prisma = {
@@ -80,7 +83,7 @@ test("catalog mutation locks and reauthorizes the live actor before its target",
       return operation(tx);
     },
   };
-  const service = new AdminService(prisma as any, {} as any, {
+  const service = adminService(prisma as any, {} as any, {
     createNotificationInTransaction: async () => null,
   } as any);
 
@@ -122,7 +125,7 @@ test("active catalog categories require at least one wedding persona", async () 
       },
     },
   };
-  const createService = new AdminService(
+  const createService = adminService(
     {
       $transaction: async (operation: any) => operation(createTx),
     } as any,
@@ -174,7 +177,7 @@ test("active catalog categories require at least one wedding persona", async () 
       },
     },
   };
-  const updateService = new AdminService(
+  const updateService = adminService(
     {
       $transaction: async (operation: any) => operation(tx),
     } as any,
@@ -224,7 +227,7 @@ test("catalog mutation rejects a disabled or underprivileged live actor before w
     const prisma = {
       $transaction: async (operation: any) => operation(tx),
     };
-    const service = new AdminService(prisma as any, {} as any, {
+    const service = adminService(prisma as any, {} as any, {
       createNotificationInTransaction: async () => null,
     } as any);
 
@@ -322,7 +325,7 @@ test("disabling a user persists session revocation in the same transaction", asy
       return operation(tx);
     },
   };
-  const service = new AdminService(prisma as any, {
+  const service = adminService(prisma as any, {
     disconnectUser: (userId: string) => disconnectedUsers.push(userId),
   } as any, {
     createNotificationInTransaction: async () => null,

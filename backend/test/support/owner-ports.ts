@@ -435,6 +435,46 @@ export function timelineService(
 }
 
 // ---------------------------------------------------------------------------
+// Backoffice: the admin service reaches every owner through AdminOwners;
+// fixtures keep their argument lists and the owners run their statements
+// on the fixture client.
+import { AdminOwners } from '../../src/admin/admin-owners';
+import { AdminService } from '../../src/admin/admin.service';
+import { CatalogAdminService } from '../../src/modules/catalog/internal/catalog-admin.service';
+import { IdentityAdminService } from '../../src/modules/identity/internal/identity-admin.service';
+import { MarketplaceAdminService } from '../../src/modules/marketplace/internal/marketplace-admin.service';
+import { MessagingAdminService } from '../../src/modules/messaging/internal/messaging-admin.service';
+import { NotificationsAdminService } from '../../src/modules/notifications/internal/notifications-admin.service';
+
+export const adminOwners = new AdminOwners(
+  new IdentityAdminService(),
+  ownerPorts.users,
+  ownerPorts.users,
+  new CatalogAdminService(),
+  ownerPorts.catalog,
+  new MarketplaceAdminService(),
+  ownerPorts.providers,
+  ownerPorts.quotes,
+  new MessagingAdminService(),
+  new NotificationsAdminService(),
+  ownerPorts.plans,
+  realPermissions,
+);
+
+export function adminService(
+  prisma: unknown,
+  realtime: unknown,
+  notifications: unknown,
+): AdminService {
+  return new AdminService(
+    withOwnerTables(prisma as any),
+    realtime as any,
+    notifications as any,
+    adminOwners,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Fixture relation tables. Sharing fixtures describe their invite and member
 // rows with the related plan and people inline — the shape the old Prisma
 // includes returned. The owners now read those rows through their ports

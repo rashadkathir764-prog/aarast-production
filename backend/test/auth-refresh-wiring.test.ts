@@ -262,8 +262,11 @@ test("disabling an account revokes all active refresh sessions", () => {
   )?.[0];
   assert.ok(disableBlock);
   assert.match(disableBlock, /runSerializableTransaction\(this\.prisma/);
-  assert.match(disableBlock, /refreshToken\.updateMany/);
-  assert.match(disableBlock, /revokedAt/);
+  // Refresh tokens are identity's: the block asks identity's admin port to
+  // revoke the target's live tokens (admin-owner-ports.test.ts pins the
+  // `refreshToken.updateMany` it runs with `revokedAt: null`).
+  assert.match(disableBlock, /revokeRefreshTokensInTransaction\(/);
+  assert.match(disableBlock, /now/);
 });
 
 test("creating a wedding plan makes it the account active plan", () => {

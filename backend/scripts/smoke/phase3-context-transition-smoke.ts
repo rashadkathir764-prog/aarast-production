@@ -26,11 +26,10 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { JwtService } from "@nestjs/jwt";
-import { AdminService } from "../../src/admin/admin.service";
 import { ContextsService } from "../../src/modules/identity/internal/profile/contexts.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts, providerDashboardService } from "./support/owner-ports";
+import { ownerPorts, providerDashboardService, adminService } from "./support/owner-ports";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -57,7 +56,7 @@ const providerDashboard = providerDashboardService(
   {},
   lifecycle,
 );
-const admin = new AdminService(prisma as any, {
+const admin = adminService(prisma as any, {
   disconnectUser: () => undefined,
   revokeConversationAccess: () => undefined,
 } as any, {

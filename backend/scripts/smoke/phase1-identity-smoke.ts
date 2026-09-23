@@ -12,12 +12,11 @@ import {
 } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import * as bcryptjs from 'bcryptjs';
-import { AdminService } from '../../src/admin/admin.service';
 import { AuthService } from '../../src/modules/identity/internal/auth/auth.service';
 import { LoginThrottleService } from '../../src/modules/identity/internal/auth/login-throttle.service';
 import { toAuthenticatedUser } from '../../src/modules/identity/public/safe-user';
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { ownerPorts } from './support/owner-ports';
+import { ownerPorts, adminService } from './support/owner-ports';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   assertManagedSmokeEnvironment: (
@@ -48,7 +47,7 @@ assertManagedSmokeEnvironment(process.env);
 
 const prisma = new PrismaClient();
 const realtime = { disconnectUser: () => undefined };
-const service = new AdminService(prisma as any, realtime as any, {
+const service = adminService(prisma as any, realtime as any, {
   createNotificationInTransaction: async () => null,
 } as any);
 const loginThrottle = new LoginThrottleService(prisma as any);

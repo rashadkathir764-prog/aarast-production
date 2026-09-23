@@ -118,8 +118,11 @@ test('Task 7 owner-private leaves register each remaining application service on
     ['modules/insights/internal/insights-services.internal.module.ts#InsightsServicesInternalModule', [
       'DashboardService', 'InsightsReadPorts', 'TimelineService',
     ]],
+    // The back office owns only its audit log: the ownership program added
+    // its private AdminOwners holder of the owners' admin ports (the admin
+    // service's and executor's direct reads and writes are gone).
     ['modules/backoffice/internal/backoffice-services.internal.module.ts#BackofficeServicesInternalModule', [
-      'AdminAuditService', 'AdminService',
+      'AdminAuditService', 'AdminOwners', 'AdminService',
     ]],
   ]);
   for (const [key, names] of expected) {

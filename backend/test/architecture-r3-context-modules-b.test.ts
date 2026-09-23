@@ -112,8 +112,11 @@ test('Task 7 owner-private leaves register each remaining application service on
     ['modules/catalog/internal/catalog-services.internal.module.ts#CatalogServicesInternalModule', [
       'AdministrativeCatalogService', 'ReferenceCatalogService',
     ]],
+    // Insights owns no tables: the ownership program added its private
+    // InsightsReadPorts holder of the owner ports the dashboard and
+    // timeline compose (their direct reads are gone).
     ['modules/insights/internal/insights-services.internal.module.ts#InsightsServicesInternalModule', [
-      'DashboardService', 'TimelineService',
+      'DashboardService', 'InsightsReadPorts', 'TimelineService',
     ]],
     ['modules/backoffice/internal/backoffice-services.internal.module.ts#BackofficeServicesInternalModule', [
       'AdminAuditService', 'AdminService',

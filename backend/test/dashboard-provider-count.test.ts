@@ -8,7 +8,7 @@ import {
   ProviderStatus,
   WeddingPlanStatus,
 } from '@prisma/client';
-import { DashboardService } from '../src/dashboard/dashboard.service';
+import { dashboardService } from './support/owner-ports';
 
 test('dashboard provider count excludes linked providers that are not active', async () => {
   const activeLink = providerLink('link-active', 'provider-active', ProviderStatus.ACTIVE);
@@ -45,7 +45,7 @@ test('dashboard provider count excludes linked providers that are not active', a
       get: (target, property: string) => target[property] ?? emptyModel,
     },
   );
-  const service = new DashboardService(
+  const service = dashboardService(
     prisma as any,
     {
       assertPlanReadableInTransaction: async () => ({

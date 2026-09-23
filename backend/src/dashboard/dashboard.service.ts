@@ -1,17 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import {
-  GuestStatus,
-  NotificationPriority,
-  PaymentScheduleStatus,
-  PlanProviderLinkStatus,
-  ProviderStatus,
-  QuoteRequestStatus,
-  Prisma,
-  SharedMemberRole,
-  WeddingCostStatus,
-  WeddingPlanStatus,
-  WeddingTaskStatus,
-} from "@prisma/client";
+import { Prisma, SharedMemberRole } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import {
   COLLABORATION_HISTORY_PORT,
@@ -29,6 +17,7 @@ import {
   type NotificationsPort,
 } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
+import { InsightsReadPorts } from "./insights-read-ports";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -40,7 +29,8 @@ import {
   WeddingPlanDashboardSummaryResponse,
 } from "./dashboard.contracts";
 import {
-  dashboardTaskVisibilityWhere,
+  dashboardQuoteIds,
+  dashboardTaskReadScope,
   resolveDashboardContributorDataScope,
 } from "./dashboard-contributor-scope";
 import { loadDashboardHomeSections } from "./dashboard-home-queries";
@@ -77,6 +67,7 @@ export class DashboardService {
     private readonly permissions: PermissionService,
     @Inject(NOTIFICATIONS_PORT)
     private readonly notifications: NotificationsPort,
+    private readonly owners: InsightsReadPorts,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
     @Inject(COLLABORATION_HISTORY_PORT)
@@ -84,18 +75,17 @@ export class DashboardService {
   ) {}
 
   async getHome(currentUser: AuthenticatedUser) {
-    const currentWeddingPlan = await this.prisma.weddingPlan.findFirst({
-      where: {
-        ownerUserId: currentUser.id,
-        status: WeddingPlanStatus.PLANNING,
-      },
-      orderBy: [{ weddingDate: "asc" }, { createdAt: "desc" }],
-    });
+    const currentWeddingPlan = await this.owners.plans.findCurrentPlanningPlan(
+      this.prisma,
+      currentUser.id,
+    );
 
     const sections = await loadDashboardHomeSections(
       this.prisma,
+      this.owners,
+      this.permissions,
       currentUser.id,
-      currentWeddingPlan?.id ?? null,
+      currentWeddingPlan,
     );
 
     return {
@@ -146,22 +136,78 @@ export class DashboardService {
           canViewMoney,
           contributorScope: this.requiredContributorScope(),
         });
-    const taskVisibilityWhere = dashboardTaskVisibilityWhere(
-      contributorIds,
-      currentUser.id,
-    );
-    const notificationVisibility =
-      await this.notifications.visibilityWhereForUser(currentUser.id, tx);
-    const notificationWhere = {
-      userId: currentUser.id,
-      weddingPlanId,
-      archivedAt: null,
-      ...(notificationVisibility ? { AND: notificationVisibility } : {}),
-    };
+    // Every figure below is its owner's read on this repeatable-read
+    // transaction, narrowed to the contributor's own work where the reader
+    // is a contributor (collaboration's history qualified the ids).
+    const taskScope = dashboardTaskReadScope(contributorIds, currentUser.id);
+    const quoteIds = dashboardQuoteIds(contributorIds);
+    const costIds = contributorIds ? contributorIds.costIds : null;
 
     const [
       costs,
       paymentSchedules,
+      taskDashboard,
+      guestCounters,
+      providerCount,
+      planProviderLinkRows,
+      quoteCounters,
+      participantMembersCount,
+      pendingInvites,
+      notificationDashboard,
+    ] = await Promise.all([
+      canViewMoney
+        ? this.owners.finance.listPlanCostAmounts(tx, weddingPlanId, costIds)
+        : Promise.resolve([]),
+      canViewMoney
+        ? this.owners.finance.listPendingPaymentSchedules(
+            tx,
+            weddingPlanId,
+            costIds,
+          )
+        : Promise.resolve([]),
+      this.owners.tasks.getPlanTaskDashboard(tx, {
+        weddingPlanId,
+        scope: taskScope,
+        today,
+        endOfToday,
+      }),
+      this.owners.guests.getPlanGuestCounters(
+        tx,
+        weddingPlanId,
+        contributorIds ? contributorIds.guestIds : null,
+      ),
+      this.owners.providers.countActivePlanProviderLinks(
+        tx,
+        weddingPlanId,
+        quoteIds,
+      ),
+      this.owners.providers.listActivePlanProviderLinks(
+        tx,
+        weddingPlanId,
+        quoteIds,
+        3,
+      ),
+      this.owners.quotes.getPlanQuoteCounters(tx, weddingPlanId, quoteIds),
+      this.permissions.countPlanMembers(
+        tx,
+        weddingPlanId,
+        contributorIds
+          ? { userId: currentUser.id, memberIds: contributorIds.memberIds }
+          : null,
+      ),
+      this.permissions.countLivePlanInvites(
+        tx,
+        weddingPlanId,
+        new Date(),
+        contributorIds ? contributorIds.inviteIds : null,
+      ),
+      this.notifications.getPlanNotificationDashboard(
+        tx,
+        currentUser.id,
+        weddingPlanId,
+      ),
+    ]);
+    const {
       urgentTasks,
       nextTask,
       totalTasks,
@@ -169,303 +215,50 @@ export class DashboardService {
       openTasks,
       overdueTasks,
       todayTasks,
-      guestCount,
-      confirmedGuests,
-      pendingGuests,
-      declinedGuests,
-      incompleteGuestsCount,
-      providerCount,
-      planProviderLinks,
-      quoteRequestsCount,
-      pendingQuoteRequests,
-      receivedQuotes,
-      acceptedQuoteRequests,
-      rejectedClosedQuoteRequests,
-      participantMembersCount,
-      pendingInvites,
-      unreadNotificationsCount,
-      highPriorityNotificationsCount,
-      latestNotifications,
-      latestImportantNotification,
-    ] = await Promise.all([
-      canViewMoney
-        ? tx.weddingCost.findMany({
-            where: {
-              weddingPlanId,
-              ...(contributorIds ? { id: { in: contributorIds.costIds } } : {}),
-              status: { not: WeddingCostStatus.CANCELLED },
-            },
-            select: { id: true, totalAmount: true, paidAmount: true },
-          })
-        : Promise.resolve([]),
-      canViewMoney
-        ? tx.paymentSchedule.findMany({
-            where: {
-              status: PaymentScheduleStatus.PENDING,
-              weddingCost: {
-                weddingPlanId,
-                ...(contributorIds
-                  ? { id: { in: contributorIds.costIds } }
-                  : {}),
-                status: { not: WeddingCostStatus.CANCELLED },
-              },
-            },
-            include: { weddingCost: { select: { title: true } } },
-            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-          })
-        : Promise.resolve([]),
-      tx.weddingTask.findMany({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-          dueDate: { lte: endOfToday },
-          status: {
-            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-          },
-        },
-        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-        take: 2,
-      }),
-      tx.weddingTask.findFirst({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-          status: {
-            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-          },
-        },
-        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-      }),
-      tx.weddingTask.count({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-        },
-      }),
-      tx.weddingTask.count({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-          status: WeddingTaskStatus.DONE,
-        },
-      }),
-      tx.weddingTask.count({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-          status: {
-            in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS],
-          },
-        },
-      }),
-      tx.weddingTask.count({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-          dueDate: { lt: today },
-          status: {
-            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-          },
-        },
-      }),
-      tx.weddingTask.count({
-        where: {
-          weddingPlanId,
-          ...taskVisibilityWhere,
-          dueDate: { gte: today, lte: endOfToday },
-          status: {
-            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-          },
-        },
-      }),
-      tx.guest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
-        },
-      }),
-      tx.guest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
-          status: GuestStatus.CONFIRMED,
-        },
-      }),
-      tx.guest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
-          status: { in: [GuestStatus.PENDING, GuestStatus.INVITED] },
-        },
-      }),
-      tx.guest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
-          status: GuestStatus.DECLINED,
-        },
-      }),
-      tx.guest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds ? { id: { in: contributorIds.guestIds } } : {}),
-          OR: [{ phone: null }, { phone: "" }, { name: "" }],
-        },
-      }),
-      tx.planProviderLink.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { quoteRequestId: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-          status: PlanProviderLinkStatus.ACTIVE,
-          provider: { status: ProviderStatus.ACTIVE },
-        },
-      }),
-      tx.planProviderLink.findMany({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { quoteRequestId: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-          status: PlanProviderLinkStatus.ACTIVE,
-          provider: { status: ProviderStatus.ACTIVE },
-        },
-        include: {
-          provider: {
-            include: {
-              primaryCategory: true,
-              services: {
-                where: { isActive: true },
-                orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-                take: 1,
-                include: {
-                  images: {
-                    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-                    take: 1,
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-      }),
-      tx.quoteRequest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { id: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-        },
-      }),
-      tx.quoteRequest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { id: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-          status: {
-            in: [QuoteRequestStatus.SENT, QuoteRequestStatus.VIEWED],
-          },
-        },
-      }),
-      tx.quoteRequest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { id: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-          status: QuoteRequestStatus.RESPONDED,
-        },
-      }),
-      tx.quoteRequest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { id: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-          status: QuoteRequestStatus.ACCEPTED,
-        },
-      }),
-      tx.quoteRequest.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? contributorIds.providersEnabled
-              ? { id: { in: contributorIds.quoteIds } }
-              : { id: { in: [] as string[] } }
-            : {}),
-          status: {
-            in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED],
-          },
-        },
-      }),
-      tx.sharedMember.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds
-            ? {
-                OR: [
-                  { userId: currentUser.id },
-                  { id: { in: contributorIds.memberIds } },
-                ],
-              }
-            : {}),
-        },
-      }),
-      tx.planInvite.count({
-        where: {
-          weddingPlanId,
-          ...(contributorIds ? { id: { in: contributorIds.inviteIds } } : {}),
-          acceptedAt: null,
-          declinedAt: null,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-      }),
-      tx.notification.count({
-        where: {
-          ...notificationWhere,
-          readAt: null,
-        },
-      }),
-      tx.notification.count({
-        where: {
-          ...notificationWhere,
-          priority: {
-            in: [NotificationPriority.HIGH, NotificationPriority.URGENT],
-          },
-        },
-      }),
-      tx.notification.findMany({
-        where: notificationWhere,
-        orderBy: { createdAt: "desc" },
-        take: 3,
-      }),
-      tx.notification.findFirst({
-        where: {
-          ...notificationWhere,
-          priority: {
-            in: [NotificationPriority.URGENT, NotificationPriority.HIGH],
-          },
-        },
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-      }),
-    ]);
+    } = taskDashboard;
+    const {
+      total: guestCount,
+      confirmed: confirmedGuests,
+      pending: pendingGuests,
+      declined: declinedGuests,
+      incomplete: incompleteGuestsCount,
+    } = guestCounters;
+    const {
+      total: quoteRequestsCount,
+      pending: pendingQuoteRequests,
+      received: receivedQuotes,
+      accepted: acceptedQuoteRequests,
+      closed: rejectedClosedQuoteRequests,
+    } = quoteCounters;
+    const {
+      unreadCount: unreadNotificationsCount,
+      highPriorityCount: highPriorityNotificationsCount,
+      latest: latestNotifications,
+      latestImportant: latestImportantNotification,
+    } = notificationDashboard;
+    // The provider's primary category is catalog's row.
+    const categories = new Map(
+      (
+        await this.owners.catalog.getCategories(tx, [
+          ...new Set(
+            planProviderLinkRows.flatMap((link) =>
+              link.provider.primaryCategoryId
+                ? [link.provider.primaryCategoryId]
+                : [],
+            ),
+          ),
+        ])
+      ).map((category) => [category.id, category]),
+    );
+    const planProviderLinks = planProviderLinkRows.map((link) => ({
+      ...link,
+      provider: {
+        ...link.provider,
+        primaryCategory: link.provider.primaryCategoryId
+          ? (categories.get(link.provider.primaryCategoryId) ?? null)
+          : null,
+      },
+    }));
 
     const dueSoonSchedules = paymentSchedules.filter(
       (schedule) => schedule.dueDate >= today && schedule.dueDate <= dueSoonEnd,

@@ -11,7 +11,7 @@ import {
   WeddingTaskPriority,
   WeddingTaskStatus,
 } from "@prisma/client";
-import { DashboardService } from "../src/dashboard/dashboard.service";
+import { dashboardService } from "./support/owner-ports";
 
 const plan = {
   id: "plan-1",
@@ -302,7 +302,7 @@ function dashboardFixture(input: {
       );
     },
   };
-  const service = new DashboardService(
+  const service = dashboardService(
     prisma as any,
     permissions as any,
     {

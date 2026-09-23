@@ -5,7 +5,6 @@ import {
   PaymentSchedule,
   PaymentScheduleStatus,
   WeddingTask,
-  WeddingTaskStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import {
@@ -16,8 +15,9 @@ import { PrismaService } from "../platform/database/prisma.service";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
-  livePlanAuthorizationWhere,
 } from "../modules/collaboration/public/collaboration-permission.port";
+import type { TaskReadScope } from "../modules/tasks/public/tasks.port";
+import { InsightsReadPorts } from "../dashboard/insights-read-ports";
 
 export interface TimelineTaskResponse {
   id: string;
@@ -56,6 +56,7 @@ export class TimelineService {
     private readonly permissions: PermissionService,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope: ContributorScopeService,
+    private readonly owners: InsightsReadPorts,
   ) {}
 
   async getForPlan(
@@ -69,14 +70,27 @@ export class TimelineService {
     const canViewMoney = this.permissions.canViewMoney(context);
     const isContributor = !context.isOwner && Boolean(context.sharedMember);
     const canManageTasks = this.permissions.canManageTasks(context);
-    const taskPlanAuthorization = livePlanAuthorizationWhere(
-      context,
-      currentUser.id,
-      ["canManageTasks"],
+    // The final reads used to join planning's table with the live
+    // membership predicate; the live re-check is asked of the permission
+    // port and gates the task and schedule reads of their owners.
+    const taskAccessLive = isEmptyFilter(
+      await this.permissions.liveAuthorizationFilter(
+        this.prisma,
+        context,
+        currentUser.id,
+        ["canManageTasks"],
+      ),
     );
-    const moneyPlanAuthorization = canViewMoney
-      ? livePlanAuthorizationWhere(context, currentUser.id, ["canViewMoney"])
-      : null;
+    const moneyAccessLive =
+      canViewMoney &&
+      isEmptyFilter(
+        await this.permissions.liveAuthorizationFilter(
+          this.prisma,
+          context,
+          currentUser.id,
+          ["canViewMoney"],
+        ),
+      );
     const contributionIds =
       isContributor && canManageTasks
         ? new Set(
@@ -104,44 +118,29 @@ export class TimelineService {
           )
         : null;
 
+    const taskScope: TaskReadScope = !taskAccessLive
+      ? { kind: "none" }
+      : contributionIds
+        ? {
+            kind: "contributor",
+            assigneeUserId: currentUser.id,
+            taskIds: [...contributionIds],
+          }
+        : { kind: "all" };
     const [taskRows, paymentRows] = await Promise.all([
       isContributor && !canManageTasks
         ? Promise.resolve([])
-        : this.prisma.weddingTask.findMany({
-            where: {
-              weddingPlanId,
-              weddingPlan: { is: taskPlanAuthorization },
-              dueDate: { not: null },
-              status: {
-                notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-              },
-              ...(contributionIds
-                ? {
-                    OR: [
-                      { assigneeUserId: currentUser.id },
-                      { id: { in: [...contributionIds] } },
-                    ],
-                  }
-                : {}),
-            },
-            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-          }),
-      canViewMoney && (!isContributor || (moneyCostIds?.size ?? 0) > 0)
-        ? this.prisma.paymentSchedule.findMany({
-            where: {
-              status: PaymentScheduleStatus.PENDING,
-              weddingCost: {
-                weddingPlanId,
-                weddingPlan: { is: moneyPlanAuthorization! },
-                status: { not: "CANCELLED" },
-                ...(moneyCostIds
-                  ? { id: { in: [...moneyCostIds] } }
-                  : {}),
-              },
-            },
-            include: { weddingCost: { select: { title: true } } },
-            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-          })
+        : this.owners.tasks.listDatedOpenTasks(
+            this.prisma,
+            weddingPlanId,
+            taskScope,
+          ),
+      moneyAccessLive && (!isContributor || (moneyCostIds?.size ?? 0) > 0)
+        ? this.owners.finance.listPendingPaymentSchedules(
+            this.prisma,
+            weddingPlanId,
+            moneyCostIds ? [...moneyCostIds] : null,
+          )
         : Promise.resolve([]),
     ]);
     const tasks = taskRows.filter(
@@ -190,4 +189,9 @@ export class TimelineService {
       status: schedule.status,
     };
   }
+}
+
+/** The permission port returns `{}` while the reader's access still holds, a never-matching filter otherwise. */
+function isEmptyFilter(filter: object): boolean {
+  return Object.keys(filter).length === 0;
 }

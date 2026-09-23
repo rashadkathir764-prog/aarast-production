@@ -161,6 +161,8 @@ export function completePermissions<T extends object>(fake: T, client: unknown):
     'listMemberships',
     'listMemberPlanIds',
     'listPlanMembers',
+    'countPlanMembers',
+    'countLivePlanInvites',
     'lockMembershipForShareInTransaction',
     'lockMembershipsForShareInTransaction',
     'lockPlanMembershipsForShareInTransaction',
@@ -370,6 +372,65 @@ export function notificationsService(
     ownerPorts.finance,
     ownerPorts.providers,
     new ConversationLifecycleService(ownerPorts.plans, ownerPorts.providers),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Insights: the dashboard and timeline compose the owners' reads through
+// InsightsReadPorts; fixtures keep their argument lists. A notifications
+// fake without the plan dashboard preview gets the real preview statements,
+// run under the fake's own visibility filter.
+import { DashboardService } from '../../src/dashboard/dashboard.service';
+import { InsightsReadPorts } from '../../src/dashboard/insights-read-ports';
+import { TimelineService } from '../../src/timeline/timeline.service';
+
+export const insightsReadPorts = new InsightsReadPorts(
+  ownerPorts.plans,
+  ownerPorts.tasks,
+  ownerPorts.guests,
+  ownerPorts.finance,
+  ownerPorts.providers,
+  ownerPorts.quotes,
+  ownerPorts.users,
+  ownerPorts.catalog,
+);
+
+function completeNotifications<T extends object>(fake: T): T {
+  if (typeof (fake as Record<string, unknown>).getPlanNotificationDashboard === 'function') return fake;
+  return Object.assign(Object.create(fake), {
+    getPlanNotificationDashboard: NotificationsService.prototype.getPlanNotificationDashboard,
+  });
+}
+
+export function dashboardService(
+  prisma: unknown,
+  permissions: unknown,
+  notifications: unknown,
+  scope?: unknown,
+  history?: unknown,
+): DashboardService {
+  const client = withOwnerTables(prisma as any);
+  return new DashboardService(
+    client,
+    completePermissions(permissions as object, client) as any,
+    completeNotifications(notifications as object) as any,
+    insightsReadPorts,
+    scope as any,
+    history as any,
+  );
+}
+
+export function timelineService(
+  prisma: unknown,
+  permissions: unknown,
+  scope: unknown,
+): TimelineService {
+  const client = withOwnerTables(prisma as any);
+  return new TimelineService(
+    client,
+    completePermissions(permissions as object, client) as any,
+    scope as any,
+    insightsReadPorts,
   );
 }
 

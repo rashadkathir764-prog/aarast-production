@@ -11,8 +11,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from '@prisma/client';
-import { DashboardService } from '../src/dashboard/dashboard.service';
-import { notificationsService } from './support/owner-ports';
+import { dashboardService, notificationsService } from './support/owner-ports';
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const providerId = '22222222-2222-4222-8222-222222222222';
@@ -757,7 +756,7 @@ test('plan dashboard notification previews reuse the lifecycle visibility predic
     operation: (tx: unknown) => Promise<unknown>,
   ) => operation(prisma as any);
 
-  await new DashboardService(
+  await dashboardService(
     prisma as any,
     permissions as any,
     lifecycleVisibility as any,

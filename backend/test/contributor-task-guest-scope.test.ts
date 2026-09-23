@@ -19,7 +19,7 @@ import {
 import { GuestsService } from "../src/guests/guests.service";
 import { ContributorScopeService } from "../src/modules/collaboration/internal/contributor-scope.service";
 import { TasksService } from "../src/tasks/tasks.service";
-import { contributionHistoryService, tasksService } from "./support/owner-ports";
+import { contributionHistoryService, tasksService, timelineService } from "./support/owner-ports";
 import { TimelineService } from "../src/timeline/timeline.service";
 
 const now = new Date("2026-08-02T09:00:00.000Z");
@@ -128,7 +128,7 @@ test("task list, detail, summary and timeline never expose another contributor t
     {},
     scope,
   ) as TasksService;
-  const timeline = new (TimelineService as any)(
+  const timeline = timelineService(
     prisma,
     permissions(),
     scope,
@@ -195,10 +195,19 @@ test("timeline never exposes another contributor financial schedule", async () =
     },
   ];
   const context = contributorContext({ canViewMoney: true });
-  const timeline = new (TimelineService as any)(
+  let liveMemberWhere: unknown;
+  const timeline = timelineService(
     {
       weddingTask: { findMany: async () => [] },
       paymentSchedule: { findMany: async () => schedules },
+      // The live money re-check used to be a join on the schedule query;
+      // it is the stored membership row read through the permission port.
+      sharedMember: {
+        findFirst: async ({ where }: { where: unknown }) => {
+          liveMemberWhere = where;
+          return { id: context.sharedMember.id };
+        },
+      },
     },
     {
       ...permissions(context),
@@ -224,6 +233,12 @@ test("timeline never exposes another contributor financial schedule", async () =
     result.paymentSchedules.map((schedule) => schedule.id),
     ["schedule-a"],
   );
+  assert.deepEqual(liveMemberWhere, {
+    id: "member-a",
+    weddingPlanId: "plan-1",
+    userId: "contributor-a",
+    canViewMoney: true,
+  });
 });
 
 test("revoked task permission returns no live rows even for a previously contributed task", async () => {

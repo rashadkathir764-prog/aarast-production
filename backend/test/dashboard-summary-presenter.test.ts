@@ -57,7 +57,14 @@ test('dashboard extraction keeps service wiring, import compatibility and size b
     presenterSource,
     /@nestjs|PrismaService|PermissionService|this\.prisma/,
   );
-  assert.match(moduleSource, /providers:\s*\[DashboardService,\s*TimelineService\]/);
+  // Insights owns no tables: the owners' ports the dashboard and timeline
+  // compose are held by the insights-private InsightsReadPorts provider.
+  assert.match(
+    moduleSource,
+    /providers:\s*\[InsightsReadPorts,\s*DashboardService,\s*TimelineService\]/,
+  );
+  assert.match(serviceSource, /private readonly owners: InsightsReadPorts/);
+  assert.doesNotMatch(serviceSource, /tx\.[a-zA-Z]+\.(count|findMany|findFirst)\(/);
   assert.match(
     controllerSource,
     /constructor\(private readonly dashboardService: DashboardService\)/,

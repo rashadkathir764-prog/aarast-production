@@ -3,6 +3,7 @@ import {
   ContributionEntityType,
   Prisma,
 } from "@prisma/client";
+import type { TaskReadScope } from "../modules/tasks/public/tasks.port";
 import type { CollaborationScopePort as ContributorScopeService } from "../modules/collaboration/public/collaboration-scope.port";
 import type { PlanAccessContext } from "../modules/collaboration/public/collaboration-permission.port";
 
@@ -112,16 +113,24 @@ export async function resolveDashboardContributorDataScope(
   };
 }
 
-export function dashboardTaskVisibilityWhere(
+/** Which tasks the dashboard reader sees; the task table applies it (tasks' port). */
+export function dashboardTaskReadScope(
   scope: DashboardContributorDataScope | null,
   actorUserId: string,
-): Prisma.WeddingTaskWhereInput {
-  if (!scope) return {};
-  if (!scope.tasksEnabled) return { id: { in: [] } };
+): TaskReadScope {
+  if (!scope) return { kind: "all" };
+  if (!scope.tasksEnabled) return { kind: "none" };
   return {
-    OR: [
-      { assigneeUserId: actorUserId },
-      { id: { in: scope.taskIds } },
-    ],
+    kind: "contributor",
+    assigneeUserId: actorUserId,
+    taskIds: scope.taskIds,
   };
+}
+
+/** Which quote ids a contributor's provider figures cover: null for the owner, none when provider access is off. */
+export function dashboardQuoteIds(
+  scope: DashboardContributorDataScope | null,
+): string[] | null {
+  if (!scope) return null;
+  return scope.providersEnabled ? scope.quoteIds : [];
 }

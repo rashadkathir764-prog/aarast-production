@@ -1,59 +1,51 @@
-import {
-  Prisma,
-  WeddingCostStatus,
-  WeddingTaskStatus,
-} from "@prisma/client";
-import {
-  applicationNameFields,
-  toApplicationUserContact,
-} from "../shared-kernel/privacy/application-user-identity";
+import type { Prisma, WeddingPlan } from "@prisma/client";
+import type { CollaborationPermissionPort } from "../modules/collaboration/public/collaboration-permission.port";
+import { toApplicationUserContact } from "../shared-kernel/privacy/application-user-identity";
 import {
   moneyOrNull,
   resolveBudgetDecimal,
   sumMoney,
 } from "./dashboard-summary.presenter";
+import type { InsightsReadPorts } from "./insights-read-ports";
 
-type DashboardHomeClient = Pick<
-  Prisma.TransactionClient,
-  | "favoriteProvider"
-  | "provider"
-  | "quoteRequest"
-  | "sharedMember"
-  | "weddingCost"
-  | "weddingPlan"
-  | "weddingTask"
->;
-
+// The home dashboard composes what the owners serve: marketplace's
+// counters, finance's cost amounts, tasks' upcoming tasks, collaboration's
+// members and identity's people, all read through their ports on the given
+// client.
 export async function loadDashboardHomeSections(
-  client: DashboardHomeClient,
+  client: Prisma.TransactionClient,
+  ports: InsightsReadPorts,
+  permissions: CollaborationPermissionPort,
   userId: string,
-  weddingPlanId: string | null,
+  currentWeddingPlan: WeddingPlan | null,
 ) {
+  const weddingPlanId = currentWeddingPlan?.id ?? null;
   const [marketplaceSummary, moneySummary, upcomingTasks, sharedMembers] =
     await Promise.all([
-      getMarketplaceSummary(client, userId),
-      weddingPlanId
-        ? getMoneyHomeSummary(client, weddingPlanId)
+      getMarketplaceSummary(client, ports, userId),
+      currentWeddingPlan
+        ? getMoneyHomeSummary(client, ports, currentWeddingPlan)
         : Promise.resolve(null),
       weddingPlanId
-        ? getUpcomingTasks(client, weddingPlanId)
+        ? getUpcomingTasks(client, ports, weddingPlanId)
         : Promise.resolve([]),
       weddingPlanId
-        ? getSharedMembers(client, weddingPlanId)
+        ? getSharedMembers(client, ports, permissions, weddingPlanId)
         : Promise.resolve([]),
     ]);
   return { marketplaceSummary, moneySummary, upcomingTasks, sharedMembers };
 }
 
 async function getMarketplaceSummary(
-  client: DashboardHomeClient,
+  client: Prisma.TransactionClient,
+  ports: InsightsReadPorts,
   userId: string,
 ) {
   const [featuredProvidersCount, favoriteProvidersCount, quoteRequestsCount] =
     await Promise.all([
-      client.provider.count({ where: { status: "ACTIVE", isFeatured: true } }),
-      client.favoriteProvider.count({ where: { userId } }),
-      client.quoteRequest.count({ where: { userId } }),
+      ports.providers.countFeaturedActiveProviders(client),
+      ports.providers.countUserFavorites(client, userId),
+      ports.quotes.countUserQuoteRequests(client, userId),
     ]);
   return {
     featuredProvidersCount,
@@ -62,23 +54,14 @@ async function getMarketplaceSummary(
   };
 }
 
+// The plan row is the one the home just read (its budget and currency);
+// the costs are finance's.
 async function getMoneyHomeSummary(
-  client: DashboardHomeClient,
-  weddingPlanId: string,
+  client: Prisma.TransactionClient,
+  ports: InsightsReadPorts,
+  plan: Pick<WeddingPlan, "id" | "estimatedBudget" | "currency">,
 ) {
-  const [plan, costs] = await Promise.all([
-    client.weddingPlan.findUniqueOrThrow({
-      where: { id: weddingPlanId },
-      select: { estimatedBudget: true, currency: true },
-    }),
-    client.weddingCost.findMany({
-      where: {
-        weddingPlanId,
-        status: { not: WeddingCostStatus.CANCELLED },
-      },
-      select: { totalAmount: true, paidAmount: true },
-    }),
-  ]);
+  const costs = await ports.finance.listPlanCostAmounts(client, plan.id);
   // Exact decimal sums: the home summary must agree with Finance to the cent.
   const confirmedCost = sumMoney(costs.map((cost) => cost.totalAmount));
   const paid = sumMoney(costs.map((cost) => cost.paidAmount));
@@ -96,19 +79,11 @@ async function getMoneyHomeSummary(
 }
 
 async function getUpcomingTasks(
-  client: DashboardHomeClient,
+  client: Prisma.TransactionClient,
+  ports: InsightsReadPorts,
   weddingPlanId: string,
 ) {
-  const tasks = await client.weddingTask.findMany({
-    where: {
-      weddingPlanId,
-      status: {
-        notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
-      },
-    },
-    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-    take: 5,
-  });
+  const tasks = await ports.tasks.listUpcomingTasks(client, weddingPlanId, 5);
   return tasks.map((task) => ({
     id: task.id,
     weddingPlanId: task.weddingPlanId,
@@ -123,21 +98,33 @@ async function getUpcomingTasks(
 }
 
 async function getSharedMembers(
-  client: DashboardHomeClient,
+  client: Prisma.TransactionClient,
+  ports: InsightsReadPorts,
+  permissions: CollaborationPermissionPort,
   weddingPlanId: string,
 ) {
-  const members = await client.sharedMember.findMany({
-    where: { weddingPlanId },
-    include: {
-      user: { select: { id: true, phone: true, ...applicationNameFields } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  return members.map((member) => ({
+  const members = (await permissions.listPlanMembers(client, [weddingPlanId]))
+    .slice()
+    .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+  const users = new Map(
+    (
+      await ports.users.getAppIdentities(
+        client,
+        members.map((member) => member.userId),
+      )
+    ).map((user) => [user.id, user]),
+  );
+  return members.map((member) => {
+    const user = users.get(member.userId);
+    // The member's user is a required relation: it is missing only when
+    // the account disappeared between the two statements.
+    if (!user) throw new Error("Plan member user not found");
+    return { member, user };
+  }).map(({ member, user }) => ({
     id: member.id,
     weddingPlanId: member.weddingPlanId,
     userId: member.userId,
-    user: toApplicationUserContact(member.user),
+    user: toApplicationUserContact(user),
     role: member.role,
     canViewMoney: member.canViewMoney || member.canManageMoney,
     canEditPlan: member.canEditPlan,

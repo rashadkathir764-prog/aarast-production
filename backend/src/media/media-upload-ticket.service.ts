@@ -275,9 +275,16 @@ export class MediaUploadTicketService {
     });
   }
 
+  // The two erasure scopes name only this table's columns; the shape is
+  // declared so the ownership scan can prove it (a generated Prisma input
+  // type admits every key, relations included, and is never a proof).
   private async scheduleOwnedDeletion(
     userId: string,
-    where: Prisma.MediaUploadTicketWhereInput,
+    where: {
+      userId: string;
+      status: { not: MediaUploadStatus };
+      NOT?: { consumedByType: string };
+    },
     transaction: Prisma.TransactionClient,
   ): Promise<string[]> {
     const tickets = await transaction.mediaUploadTicket.findMany({

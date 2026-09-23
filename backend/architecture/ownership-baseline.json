@@ -1359,18 +1359,6 @@
       "count": 1
     },
     {
-      "key": "backend/src/media/media-upload-ticket.service.ts|media||<dynamic>|findMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/media/media-upload-ticket.service.ts",
-      "context": "media",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "findMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/modules/backoffice/public/admin-mutation-gate.ts|backoffice|identity|User|select|read|sql|foreign-model",
       "file": "backend/src/modules/backoffice/public/admin-mutation-gate.ts",
       "context": "backoffice",

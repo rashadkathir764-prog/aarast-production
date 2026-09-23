@@ -1,4 +1,4 @@
-import 'package:aarast_mobile/shared/models/quote_finance_context.dart';
+import 'package:aarast_mobile/features/finance/models/quote_finance_context.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

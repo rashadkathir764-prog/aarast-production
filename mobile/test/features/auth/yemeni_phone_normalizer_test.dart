@@ -1,4 +1,4 @@
-import 'package:aarast_mobile/features/auth/utils/yemeni_phone_normalizer.dart';
+import 'package:aarast_mobile/core/phone/yemeni_phone_normalizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

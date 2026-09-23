@@ -963,18 +963,6 @@
       "count": 6
     },
     {
-      "key": "backend/src/marketplace/quote-request-creation.ts|marketplace||<dynamic>|create|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/marketplace/quote-request-creation.ts",
-      "context": "marketplace",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "create",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/modules/backoffice/public/admin-mutation-gate.ts|backoffice|identity|User|select|read|sql|foreign-model",
       "file": "backend/src/modules/backoffice/public/admin-mutation-gate.ts",
       "context": "backoffice",

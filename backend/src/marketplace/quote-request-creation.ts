@@ -35,8 +35,29 @@ import {
   quoteSubmittedRequesterNotification,
 } from "./quote-notifications";
 
+// The request is created with its own columns only. The generated
+// `QuoteRequestUncheckedCreateInput` also admits nested writes to the
+// offers, links and conversation events, so the ownership scan cannot prove
+// a write typed by it; the columns the service sets are declared exactly.
+interface QuoteRequestCreateData {
+  userId: string;
+  providerId: string;
+  weddingPlanId?: string | null;
+  serviceId?: string | null;
+  eventDate?: Date | null;
+  location?: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+  cityId?: string | null;
+  guestCount?: number | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactNormalizedPhone?: string | null;
+  message?: string | null;
+  budgetMin?: Prisma.Decimal | string | null;
+  budgetMax?: Prisma.Decimal | string | null;
+}
+
 interface CreateQuoteRequestTransactionInput {
-  data: Omit<Prisma.QuoteRequestUncheckedCreateInput, "conversationId">;
+  data: QuoteRequestCreateData;
   requesterId: string;
 }
 

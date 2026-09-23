@@ -794,7 +794,9 @@ function resolveStaticObject(node, checker, visitedSymbols = new Set()) {
         elements.push(...spread.elements);
         unknown = unknown || spread.unknown;
       } else {
-        unknown = true;
+        // A spread iterable (a Map's values, a Set) stops the literal walk;
+        // the array literal's inferred element type still names the shape.
+        return resolveTypeShape(checker.getTypeAtLocation(current), current, checker);
       }
     }
     return { kind: 'array', elements, unknown };

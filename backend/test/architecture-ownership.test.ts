@@ -760,6 +760,33 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
   ]);
 });
 
+// An array literal that spreads an iterable (a Map's values, a Set) stops
+// the literal walk; TypeScript still knows the element type, so the array
+// literal's inferred type names the shape. A generated Prisma input element
+// type is still never a proof.
+test('an array literal spreading an iterable resolves through its inferred element type', () => {
+  const options = fixtureProject({
+    'conversations/iterable.ts': prismaFixture([
+      'declare const seeds: Array<{ conversationId: string; userId: string }>;',
+      'const unique = [...new Map(seeds.map((seed) => [seed.userId, seed])).values()];',
+      'await prisma.conversationParticipant.createMany({ data: unique, skipDuplicates: true });',
+    ].join('\n')),
+    'conversations/generated-iterable.ts': prismaFixture([
+      'declare const seeds: Set<Prisma.ConversationParticipantCreateManyInput>;',
+      'await prisma.conversationParticipant.createMany({ data: [...seeds] });',
+    ].join('\n')),
+  });
+  const records = scanOwnershipViolations(options);
+  assert.equal(
+    records.some((record) => record.file === 'backend/src/conversations/iterable.ts'),
+    false,
+  );
+  assertRecord(records, {
+    file: 'backend/src/conversations/generated-iterable.ts', model: '<dynamic>', owner: null,
+    mode: 'unknown', source: 'relation', reason: 'unknown-relation-shape',
+  });
+});
+
 test('static const arguments resolve while call, mutable import, and computed spread fail closed', () => {
   const options = fixtureProject({
     'marketplace/static.ts': prismaFixture([

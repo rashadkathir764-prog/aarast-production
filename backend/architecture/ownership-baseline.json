@@ -963,18 +963,6 @@
       "count": 6
     },
     {
-      "key": "backend/src/conversations/conversations.service.ts|messaging||<dynamic>|createMany|unknown|relation|unknown-relation-shape",
-      "file": "backend/src/conversations/conversations.service.ts",
-      "context": "messaging",
-      "owner": null,
-      "model": "<dynamic>",
-      "operation": "createMany",
-      "mode": "unknown",
-      "source": "relation",
-      "reason": "unknown-relation-shape",
-      "count": 1
-    },
-    {
       "key": "backend/src/marketplace/quote-request-creation.ts|marketplace||<dynamic>|create|unknown|relation|unknown-relation-shape",
       "file": "backend/src/marketplace/quote-request-creation.ts",
       "context": "marketplace",

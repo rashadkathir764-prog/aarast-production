@@ -643,6 +643,23 @@ export class PermissionService implements CollaborationPermissionPort {
     });
   }
 
+  async revokeLiveInvitesIssuedByUserInTransaction(
+    tx: Prisma.TransactionClient,
+    inviterUserId: string,
+    revokedAt: Date,
+  ): Promise<void> {
+    await tx.planInvite.updateMany({
+      where: {
+        inviterUserId,
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: revokedAt },
+      },
+      data: { revokedAt },
+    });
+  }
+
   private async getLockedPlanAccessContext(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

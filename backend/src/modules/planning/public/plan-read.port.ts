@@ -59,4 +59,9 @@ export interface PlanReadPort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<LockedWeddingPlanRow[]>;
+  /** Plans created in the window (the back-office counters); every plan without one. */
+  countPlans(
+    client: Prisma.TransactionClient,
+    createdAt?: { gte?: Date; lte?: Date },
+  ): Promise<number>;
 }

@@ -1,0 +1,104 @@
+import type {
+  AdminRole,
+  Prisma,
+  User,
+  UserRole,
+  UserStatus,
+} from '@prisma/client';
+
+export const IDENTITY_ADMIN_PORT = Symbol('IDENTITY_ADMIN_PORT');
+
+/** The account columns an administrative decision is taken on, read under the account's row lock. */
+export interface AdminAccountLock {
+  id: string;
+  role: UserRole;
+  adminRole: AdminRole | null;
+  status: UserStatus;
+}
+
+/** The account as the back office lists and shows it: never a credential. */
+export type AdminAccountRow = Pick<
+  User,
+  | 'id'
+  | 'name'
+  | 'phone'
+  | 'email'
+  | 'role'
+  | 'status'
+  | 'avatarUrl'
+  | 'createdAt'
+  | 'updatedAt'
+>;
+
+export interface AdminAccountPage {
+  total: number;
+  items: AdminAccountRow[];
+}
+
+export interface AdminAccountCounts {
+  total: number;
+  active: number;
+  disabled: number;
+  admins: number;
+  providers: number;
+}
+
+/** An inclusive creation-time window; an absent bound is open. */
+export interface CreatedAtRange {
+  gte?: Date;
+  lte?: Date;
+}
+
+export type AccountSearchField = 'name' | 'phone';
+
+// Identity owns `User` and `RefreshToken`. The back office manages accounts
+// through this port on the client it passes (its serializable transaction
+// or the shared Prisma service): the account row locks its mutation gate
+// takes, the status change and its session revocation, and the listings
+// and counters it shows.
+export interface IdentityAdminPort {
+  /** Locks the accounts FOR UPDATE in id order and returns the rows found. */
+  lockAccountsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    userIds: readonly string[],
+  ): Promise<AdminAccountLock[]>;
+  countActiveSuperAdminsInTransaction(
+    tx: Prisma.TransactionClient,
+  ): Promise<number>;
+  setAccountStatusInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    status: UserStatus,
+  ): Promise<AdminAccountRow>;
+  /** Revokes every refresh token of the account still live, at `revokedAt`. */
+  revokeRefreshTokensInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    revokedAt: Date,
+  ): Promise<void>;
+  /** Newest first; `search` matches name, phone or email (case-insensitive). */
+  listAccounts(
+    client: Prisma.TransactionClient,
+    search: string | null,
+    page: { skip: number; take: number },
+  ): Promise<AdminAccountPage>;
+  getAccount(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<AdminAccountRow | null>;
+  getAccounts(
+    client: Prisma.TransactionClient,
+    userIds: readonly string[],
+  ): Promise<AdminAccountRow[]>;
+  /** The accounts whose given fields contain `search` (case-insensitive). */
+  searchAccountIds(
+    client: Prisma.TransactionClient,
+    search: string,
+    fields: readonly AccountSearchField[],
+  ): Promise<string[]>;
+  countAccounts(client: Prisma.TransactionClient): Promise<number>;
+  getAccountCounts(
+    client: Prisma.TransactionClient,
+    createdAt?: CreatedAtRange,
+  ): Promise<AdminAccountCounts>;
+}

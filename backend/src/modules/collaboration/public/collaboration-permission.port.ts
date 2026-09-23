@@ -177,6 +177,12 @@ export interface CollaborationPermissionPort {
     weddingPlanId: string,
     revokedAt: Date,
   ): Promise<void>;
+  /** Revokes the live pending invitations the user issued (the back office disables the account). */
+  revokeLiveInvitesIssuedByUserInTransaction(
+    tx: Prisma.TransactionClient,
+    inviterUserId: string,
+    revokedAt: Date,
+  ): Promise<void>;
   /** The plan's members; a contributor counts themself and the members they created. */
   countPlanMembers(
     client: Prisma.TransactionClient,

@@ -6,11 +6,13 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AppRole, OnboardingPath, UserRole, UserStatus, type Prisma } from '@prisma/client';
 import {
   ACTIVE_PLAN_IMPLEMENTATION,
+  IDENTITY_ADMIN_IMPLEMENTATION,
   IDENTITY_REALTIME_SESSION_IMPLEMENTATION,
   IdentityUserInternalModule,
   PROVIDER_ACCOUNT_IMPLEMENTATION,
   USER_READ_IMPLEMENTATION,
 } from '../src/modules/identity/internal/identity-user.internal.module';
+import { IdentityAdminService } from '../src/modules/identity/internal/identity-admin.service';
 import { IdentityRealtimeSessionService } from '../src/modules/identity/internal/identity-realtime-session.service';
 import { IdentityUserPortService } from '../src/modules/identity/internal/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
@@ -270,9 +272,12 @@ test('the identity user public modules expose only their port tokens bound to th
   assert.deepEqual(metadata(IdentityUserInternalModule, MODULE_METADATA.PROVIDERS), [
     IdentityUserPortService,
     IdentityRealtimeSessionService,
+    IdentityAdminService,
     { provide: USER_READ_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: ACTIVE_PLAN_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: PROVIDER_ACCOUNT_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: IDENTITY_REALTIME_SESSION_IMPLEMENTATION, useExisting: IdentityRealtimeSessionService },
+    // The back office's account administration (identity-admin.port.ts).
+    { provide: IDENTITY_ADMIN_IMPLEMENTATION, useExisting: IdentityAdminService },
   ]);
 });

@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import type { Prisma } from '@prisma/client';
+import { MessagingAdminService } from '../src/modules/messaging/internal/messaging-admin.service';
 import {
+  MESSAGING_ADMIN_IMPLEMENTATION,
   MESSAGING_ERASURE_IMPLEMENTATION,
   MESSAGING_PARTICIPATION_IMPLEMENTATION,
   MessagingPortsInternalModule,
@@ -130,7 +132,10 @@ test('the messaging participation public module exposes only its port token boun
   assert.deepEqual(metadata(MessagingPortsInternalModule, MODULE_METADATA.PROVIDERS), [
     MessagingErasureService,
     MessagingParticipationService,
+    MessagingAdminService,
     { provide: MESSAGING_ERASURE_IMPLEMENTATION, useExisting: MessagingErasureService },
     { provide: MESSAGING_PARTICIPATION_IMPLEMENTATION, useExisting: MessagingParticipationService },
+    // The back office's report triage (messaging-admin.port.ts).
+    { provide: MESSAGING_ADMIN_IMPLEMENTATION, useExisting: MessagingAdminService },
   ]);
 });

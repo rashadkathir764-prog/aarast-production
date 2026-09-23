@@ -113,4 +113,13 @@ export class PlanReadService implements PlanReadPort {
     });
     return plans.map((plan) => plan.id);
   }
+
+  async countPlans(
+    client: Prisma.TransactionClient,
+    createdAt?: { gte?: Date; lte?: Date },
+  ): Promise<number> {
+    return createdAt
+      ? client.weddingPlan.count({ where: { createdAt } })
+      : client.weddingPlan.count();
+  }
 }

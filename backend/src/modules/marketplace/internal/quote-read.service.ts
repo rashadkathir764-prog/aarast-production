@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, QuoteOfferStatus } from '@prisma/client';
+import { Prisma, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
 import type {
   ConversationQuoteCount,
   ConversationQuoteRequest,
   ExpiredPendingOffer,
+  PlanQuoteCounters,
   QuoteOfferProviderRow,
   QuoteOfferWithRequest,
   QuoteReadPort,
@@ -75,6 +76,36 @@ export class QuoteReadService implements QuoteReadPort {
       conversationId: group.conversationId,
       count: group._count._all,
     }));
+  }
+
+  async countUserQuoteRequests(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<number> {
+    return client.quoteRequest.count({ where: { userId } });
+  }
+
+  async getPlanQuoteCounters(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteIds?: readonly string[] | null,
+  ): Promise<PlanQuoteCounters> {
+    const base = {
+      weddingPlanId,
+      ...(quoteIds ? { id: { in: [...quoteIds] } } : {}),
+    };
+    const [total, pending, received, accepted, closed] = await Promise.all([
+      client.quoteRequest.count({ where: base }),
+      client.quoteRequest.count({
+        where: { ...base, status: { in: [QuoteRequestStatus.SENT, QuoteRequestStatus.VIEWED] } },
+      }),
+      client.quoteRequest.count({ where: { ...base, status: QuoteRequestStatus.RESPONDED } }),
+      client.quoteRequest.count({ where: { ...base, status: QuoteRequestStatus.ACCEPTED } }),
+      client.quoteRequest.count({
+        where: { ...base, status: { in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED] } },
+      }),
+    ]);
+    return { total, pending, received, accepted, closed };
   }
 
   async listExpiredPendingOffersForConversation(

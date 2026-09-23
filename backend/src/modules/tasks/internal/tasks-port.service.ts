@@ -3,11 +3,97 @@ import { Prisma, type WeddingTask, WeddingTaskStatus } from '@prisma/client';
 import type {
   DueTaskQuery,
   ImportedTaskInput,
+  PlanTaskDashboard,
+  TaskReadScope,
   TasksPort,
 } from '../public/tasks.port';
 
+const openStatuses = () => ({
+  notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
+});
+
+function scopeWhere(scope: TaskReadScope) {
+  switch (scope.kind) {
+    case 'all':
+      return {};
+    case 'none':
+      return { id: { in: [] as string[] } };
+    case 'contributor':
+      return {
+        OR: [
+          { assigneeUserId: scope.assigneeUserId },
+          { id: { in: [...scope.taskIds] } },
+        ],
+      };
+  }
+}
+
 @Injectable()
 export class TasksPortService implements TasksPort {
+  async listUpcomingTasks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    take: number,
+  ): Promise<WeddingTask[]> {
+    return client.weddingTask.findMany({
+      where: { weddingPlanId, status: openStatuses() },
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      take,
+    });
+  }
+
+  async getPlanTaskDashboard(
+    client: Prisma.TransactionClient,
+    input: {
+      weddingPlanId: string;
+      scope: TaskReadScope;
+      today: Date;
+      endOfToday: Date;
+    },
+  ): Promise<PlanTaskDashboard> {
+    const base = { weddingPlanId: input.weddingPlanId, ...scopeWhere(input.scope) };
+    const [urgentTasks, nextTask, totalTasks, completedTasks, openTasks, overdueTasks, todayTasks] =
+      await Promise.all([
+        client.weddingTask.findMany({
+          where: { ...base, dueDate: { lte: input.endOfToday }, status: openStatuses() },
+          orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+          take: 2,
+        }),
+        client.weddingTask.findFirst({
+          where: { ...base, status: openStatuses() },
+          orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        }),
+        client.weddingTask.count({ where: base }),
+        client.weddingTask.count({ where: { ...base, status: WeddingTaskStatus.DONE } }),
+        client.weddingTask.count({
+          where: { ...base, status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] } },
+        }),
+        client.weddingTask.count({
+          where: { ...base, dueDate: { lt: input.today }, status: openStatuses() },
+        }),
+        client.weddingTask.count({
+          where: { ...base, dueDate: { gte: input.today, lte: input.endOfToday }, status: openStatuses() },
+        }),
+      ]);
+    return { urgentTasks, nextTask, totalTasks, completedTasks, openTasks, overdueTasks, todayTasks };
+  }
+
+  async listDatedOpenTasks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scope: TaskReadScope,
+  ): Promise<WeddingTask[]> {
+    return client.weddingTask.findMany({
+      where: {
+        weddingPlanId,
+        dueDate: { not: null },
+        status: openStatuses(),
+        ...scopeWhere(scope),
+      },
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
   async listAssignedTasks(
     client: Prisma.TransactionClient,
     userId: string,

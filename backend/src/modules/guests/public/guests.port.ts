@@ -25,7 +25,21 @@ export interface ImportedGuestInput {
 // Guests owns `Guest` and `GuestGroup`. Planning's local plan import
 // creates the imported guests through this port inside its transaction
 // (duplicates skipped, as before) and reports their count.
+export interface PlanGuestCounters {
+  total: number;
+  confirmed: number;
+  pending: number;
+  declined: number;
+  incomplete: number;
+}
+
 export interface GuestsPort {
+  /** The plan dashboard's guest counters; `guestIds` narrows to a contributor's guests. */
+  getPlanGuestCounters(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    guestIds?: readonly string[] | null,
+  ): Promise<PlanGuestCounters>;
   createImportedGuestsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

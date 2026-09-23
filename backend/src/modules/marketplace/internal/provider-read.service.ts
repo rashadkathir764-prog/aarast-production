@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type Provider } from '@prisma/client';
+import {
+  PlanProviderLinkStatus,
+  Prisma,
+  type Provider,
+  ProviderStatus,
+} from '@prisma/client';
 import type {
+  PlanProviderLinkPreview,
   LockedProviderRow,
   ProviderReadPort,
 } from '../public/provider-read.port';
@@ -55,6 +61,64 @@ export class ProviderReadService implements ProviderReadPort {
     return providers.map((provider) => provider.id);
   }
 
+  async countFeaturedActiveProviders(
+    client: Prisma.TransactionClient,
+  ): Promise<number> {
+    return client.provider.count({
+      where: { status: ProviderStatus.ACTIVE, isFeatured: true },
+    });
+  }
+
+  async countUserFavorites(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<number> {
+    return client.favoriteProvider.count({ where: { userId } });
+  }
+
+  async countActivePlanProviderLinks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds?: readonly string[] | null,
+  ): Promise<number> {
+    return client.planProviderLink.count({
+      where: activePlanLinksWhere(weddingPlanId, quoteRequestIds),
+    });
+  }
+
+  async listActivePlanProviderLinks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds: readonly string[] | null,
+    take: number,
+  ): Promise<PlanProviderLinkPreview[]> {
+    return client.planProviderLink.findMany({
+      where: activePlanLinksWhere(weddingPlanId, quoteRequestIds),
+      include: {
+        provider: {
+          include: {
+            services: {
+              where: { isActive: true },
+              orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+              take: 1,
+              select: {
+                id: true,
+                title: true,
+                images: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                  take: 1,
+                  select: { imageUrl: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+  }
+
   async lockOwnedProviderForShareInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,
@@ -86,4 +150,16 @@ export class ProviderReadService implements ProviderReadPort {
       `,
     );
   }
+}
+
+function activePlanLinksWhere(
+  weddingPlanId: string,
+  quoteRequestIds?: readonly string[] | null,
+) {
+  return {
+    weddingPlanId,
+    ...(quoteRequestIds ? { quoteRequestId: { in: [...quoteRequestIds] } } : {}),
+    status: PlanProviderLinkStatus.ACTIVE,
+    provider: { status: ProviderStatus.ACTIVE },
+  };
 }

@@ -1,4 +1,9 @@
-import type { BudgetCategory, PaymentSchedule, Prisma } from '@prisma/client';
+import type {
+  BudgetCategory,
+  PaymentSchedule,
+  Prisma,
+  WeddingCost,
+} from '@prisma/client';
 import type { WeddingCostWithDetails } from './wedding-cost.presenter';
 
 export const FINANCE_PORT = Symbol('FINANCE_PORT');
@@ -44,6 +49,14 @@ export type DuePaymentSchedule = PaymentSchedule & {
     partyName: string | null;
     providerId: string | null;
   };
+};
+
+/** A cost's amounts for a money summary (non-cancelled costs of the plan, optionally only the given ones). */
+export type CostAmounts = Pick<WeddingCost, 'id' | 'totalAmount' | 'paidAmount'>;
+
+/** A pending schedule with the title of its cost (dashboard and timeline). */
+export type PendingPaymentSchedule = PaymentSchedule & {
+  weddingCost: { title: string };
 };
 
 export interface DuePaymentScheduleQuery {
@@ -107,6 +120,18 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     quoteOfferId: string,
   ): Promise<WeddingCostWithDetails | null>;
+  /** The plan's non-cancelled cost amounts; `costIds` narrows to a contributor's costs. */
+  listPlanCostAmounts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds?: readonly string[] | null,
+  ): Promise<CostAmounts[]>;
+  /** The plan's pending schedules of non-cancelled costs, due date then creation order; `costIds` narrows to a contributor's costs. */
+  listPendingPaymentSchedules(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds?: readonly string[] | null,
+  ): Promise<PendingPaymentSchedule[]>;
   /** Pending schedules of non-cancelled costs in the plans, due at or before `dueBefore`. */
   listDuePaymentSchedules(
     client: Prisma.TransactionClient,

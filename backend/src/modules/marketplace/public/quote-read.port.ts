@@ -25,6 +25,14 @@ export interface ConversationQuoteCount {
   count: number;
 }
 
+export interface PlanQuoteCounters {
+  total: number;
+  pending: number;
+  received: number;
+  accepted: number;
+  closed: number;
+}
+
 export type ExpiredPendingOffer = Pick<
   QuoteOffer,
   'id' | 'quoteRequestId' | 'validUntil'
@@ -67,6 +75,17 @@ export interface QuoteReadPort {
     client: Prisma.TransactionClient,
     conversationIds: readonly string[],
   ): Promise<ConversationQuoteCount[]>;
+  /** The user's quote requests (the home dashboard counter). */
+  countUserQuoteRequests(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<number>;
+  /** The plan dashboard's quote counters; `quoteIds` narrows to a contributor's quotes. */
+  getPlanQuoteCounters(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteIds?: readonly string[] | null,
+  ): Promise<PlanQuoteCounters>;
   /** Pending offers of the conversation whose validity lapsed at or before `before`, latest expiry first. */
   listExpiredPendingOffersForConversation(
     client: Prisma.TransactionClient,

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type WeddingPlan, type WeddingPlanStatus } from '@prisma/client';
+import { Prisma, type WeddingPlan, WeddingPlanStatus } from '@prisma/client';
 import type {
   LockedWeddingPlanRow,
   PlanReadPort,
@@ -67,6 +67,16 @@ export class PlanReadService implements PlanReadPort {
     ownerUserId: string,
   ): Promise<WeddingPlan[]> {
     return client.weddingPlan.findMany({ where: { ownerUserId } });
+  }
+
+  async findCurrentPlanningPlan(
+    client: Prisma.TransactionClient,
+    ownerUserId: string,
+  ): Promise<WeddingPlan | null> {
+    return client.weddingPlan.findFirst({
+      where: { ownerUserId, status: WeddingPlanStatus.PLANNING },
+      orderBy: [{ weddingDate: 'asc' }, { createdAt: 'desc' }],
+    });
   }
 
   async listPlansInStatus(

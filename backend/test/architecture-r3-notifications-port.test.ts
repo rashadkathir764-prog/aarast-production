@@ -62,9 +62,12 @@ test('Task 4 publishes the exact notifications service contract and signature ty
   const path = 'modules/notifications/public/notifications.port.ts';
   // The R3 surface is the frozen five; the ownership program added the
   // provider-message preference read messaging used to run on the
-  // notification preference table itself. Frozen surfaces stay, may grow.
+  // notification preference table itself, and the plan dashboard's
+  // notification preview insights used to query itself. Frozen surfaces
+  // stay, may grow.
   assert.deepEqual(interfaceMethods(path, 'NotificationsPort'), [
     'createNotificationInTransaction',
+    'getPlanNotificationDashboard',
     'listProviderMessagePreferences',
     'notifyTaskDue',
     'purgeMoneyForMember',
@@ -84,6 +87,7 @@ test('Task 4 publishes the exact notifications service contract and signature ty
     'NotificationVisibilityClient',
     'NotificationVisibilityWhere',
     'NotificationsPort',
+    'PlanNotificationDashboard',
     'PlanVisibilityWhere',
     'ProviderAudienceWhere',
     'ProviderExclusionClause',

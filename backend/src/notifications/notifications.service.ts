@@ -51,6 +51,7 @@ import {
   type NotificationsPort,
   type NotificationVisibilityClient,
   type NotificationVisibilityWhere,
+  type PlanNotificationDashboard,
   type PlanVisibilityWhere,
   type ProviderAudienceWhere,
   type ProviderMessagePreference,
@@ -424,6 +425,38 @@ export class NotificationsService implements NotificationsPort {
     });
     await this.enqueueNotificationDelivery(client, created);
     return this.toResponse(created);
+  }
+
+  async getPlanNotificationDashboard(
+    client: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanId: string,
+  ): Promise<PlanNotificationDashboard> {
+    const visibility = await this.visibilityWhereForUser(userId, client);
+    const where = {
+      userId,
+      weddingPlanId,
+      archivedAt: null,
+      ...(visibility ? { AND: visibility } : {}),
+    } satisfies Prisma.NotificationWhereInput;
+    const important = {
+      in: [NotificationPriority.HIGH, NotificationPriority.URGENT],
+    };
+    const [unreadCount, highPriorityCount, latest, latestImportant] =
+      await Promise.all([
+        client.notification.count({ where: { ...where, readAt: null } }),
+        client.notification.count({ where: { ...where, priority: important } }),
+        client.notification.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 3,
+        }),
+        client.notification.findFirst({
+          where: { ...where, priority: important },
+          orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        }),
+      ]);
+    return { unreadCount, highPriorityCount, latest, latestImportant };
   }
 
   async listProviderMessagePreferences(

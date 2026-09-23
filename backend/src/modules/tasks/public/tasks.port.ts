@@ -28,7 +28,45 @@ export interface DueTaskQuery {
   taskIds?: readonly string[];
 }
 
+/** Which of a plan's tasks a reader sees: all (owner), none (revoked), or the contributor's own work. */
+export type TaskReadScope =
+  | { kind: 'all' }
+  | { kind: 'none' }
+  | { kind: 'contributor'; assigneeUserId: string; taskIds: readonly string[] };
+
+export interface PlanTaskDashboard {
+  urgentTasks: WeddingTask[];
+  nextTask: WeddingTask | null;
+  totalTasks: number;
+  completedTasks: number;
+  openTasks: number;
+  overdueTasks: number;
+  todayTasks: number;
+}
+
 export interface TasksPort {
+  /** The plan's open tasks in due order, at most `take` (the home dashboard). */
+  listUpcomingTasks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    take: number,
+  ): Promise<WeddingTask[]>;
+  /** The plan dashboard's task counters and its two urgent tasks and next task, inside the reader's scope. */
+  getPlanTaskDashboard(
+    client: Prisma.TransactionClient,
+    input: {
+      weddingPlanId: string;
+      scope: TaskReadScope;
+      today: Date;
+      endOfToday: Date;
+    },
+  ): Promise<PlanTaskDashboard>;
+  /** The plan's dated open tasks in due order, inside the reader's scope (the timeline). */
+  listDatedOpenTasks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scope: TaskReadScope,
+  ): Promise<WeddingTask[]>;
   /** The tasks assigned to the user in the given plans. */
   listAssignedTasks(
     client: Prisma.TransactionClient,

@@ -495,6 +495,39 @@ export class PermissionService implements CollaborationPermissionPort {
     return client.sharedMember.findMany({ where: { userId } });
   }
 
+  async countPlanMembers(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scope?: { userId: string; memberIds: readonly string[] } | null,
+  ): Promise<number> {
+    return client.sharedMember.count({
+      where: {
+        weddingPlanId,
+        ...(scope
+          ? { OR: [{ userId: scope.userId }, { id: { in: [...scope.memberIds] } }] }
+          : {}),
+      },
+    });
+  }
+
+  async countLivePlanInvites(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    now: Date,
+    inviteIds?: readonly string[] | null,
+  ): Promise<number> {
+    return client.planInvite.count({
+      where: {
+        weddingPlanId,
+        ...(inviteIds ? { id: { in: [...inviteIds] } } : {}),
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+    });
+  }
+
   async listPlanMembers(
     client: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],

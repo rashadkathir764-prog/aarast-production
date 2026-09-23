@@ -44,6 +44,11 @@ export interface PlanReadPort {
     client: Prisma.TransactionClient,
     ownerUserId: string,
   ): Promise<string[]>;
+  /** The owner's current planning plan: the earliest wedding date, newest first among equals (the home dashboard). */
+  findCurrentPlanningPlan(
+    client: Prisma.TransactionClient,
+    ownerUserId: string,
+  ): Promise<WeddingPlan | null>;
   /** Every plan in the status (the reminder scan walks the planning plans). */
   listPlansInStatus(
     client: Prisma.TransactionClient,

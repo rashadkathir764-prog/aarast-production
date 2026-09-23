@@ -1,9 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
-import type { GuestsPort, ImportedGuestInput } from '../public/guests.port';
+import { GuestStatus, type Prisma } from '@prisma/client';
+import type {
+  GuestsPort,
+  ImportedGuestInput,
+  PlanGuestCounters,
+} from '../public/guests.port';
 
 @Injectable()
 export class GuestsPortService implements GuestsPort {
+  async getPlanGuestCounters(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    guestIds?: readonly string[] | null,
+  ): Promise<PlanGuestCounters> {
+    const base = {
+      weddingPlanId,
+      ...(guestIds ? { id: { in: [...guestIds] } } : {}),
+    };
+    const [total, confirmed, pending, declined, incomplete] = await Promise.all([
+      client.guest.count({ where: base }),
+      client.guest.count({ where: { ...base, status: GuestStatus.CONFIRMED } }),
+      client.guest.count({
+        where: { ...base, status: { in: [GuestStatus.PENDING, GuestStatus.INVITED] } },
+      }),
+      client.guest.count({ where: { ...base, status: GuestStatus.DECLINED } }),
+      client.guest.count({
+        where: { ...base, OR: [{ phone: null }, { phone: '' }, { name: '' }] },
+      }),
+    ]);
+    return { total, confirmed, pending, declined, incomplete };
+  }
+
   async createImportedGuestsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

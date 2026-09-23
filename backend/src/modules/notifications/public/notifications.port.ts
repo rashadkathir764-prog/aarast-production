@@ -1,4 +1,5 @@
 import {
+  Notification,
   NotificationPriority,
   NotificationType,
   Prisma,
@@ -128,11 +129,25 @@ export interface NotificationsPort {
     userId: string,
     client?: NotificationVisibilityClient,
   ): Promise<NotificationVisibilityWhere | null>;
+  /** The plan dashboard's notification counters, its three latest notifications and the latest important one. */
+  getPlanNotificationDashboard(
+    client: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanId: string,
+  ): Promise<PlanNotificationDashboard>;
   /** Whether each recipient still accepts provider-message notifications (missing rows accept). */
   listProviderMessagePreferences(
     client: Prisma.TransactionClient,
     userIds: readonly string[],
   ): Promise<ProviderMessagePreference[]>;
+}
+
+/** What the plan dashboard shows of the reader's notifications for the plan, under the reader's visibility. */
+export interface PlanNotificationDashboard {
+  unreadCount: number;
+  highPriorityCount: number;
+  latest: Notification[];
+  latestImportant: Notification | null;
 }
 
 export interface ProviderMessagePreference {

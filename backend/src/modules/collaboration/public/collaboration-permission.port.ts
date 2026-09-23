@@ -177,6 +177,19 @@ export interface CollaborationPermissionPort {
     weddingPlanId: string,
     revokedAt: Date,
   ): Promise<void>;
+  /** The plan's members; a contributor counts themself and the members they created. */
+  countPlanMembers(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scope?: { userId: string; memberIds: readonly string[] } | null,
+  ): Promise<number>;
+  /** The plan's live pending invitations at `now`; `inviteIds` narrows to a contributor's invitations. */
+  countLivePlanInvites(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    now: Date,
+    inviteIds?: readonly string[] | null,
+  ): Promise<number>;
   /** The user's membership row in the plan, if any. */
   getMembership(
     client: Prisma.TransactionClient,

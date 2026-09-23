@@ -1,10 +1,27 @@
-import type { Prisma, Provider } from '@prisma/client';
+import type {
+  PlanProviderLink,
+  Prisma,
+  Provider,
+  ProviderService,
+  ProviderServiceImage,
+} from '@prisma/client';
 
 export const PROVIDER_READ_PORT = Symbol('PROVIDER_READ_PORT');
 
 export interface LockedProviderRow {
   id: string;
 }
+
+/** An active plan-provider link with the provider it names, its first active service and that service's first image (the dashboard preview). */
+export type PlanProviderLinkPreview = PlanProviderLink & {
+  provider: Provider & {
+    services: Array<
+      Pick<ProviderService, 'id' | 'title'> & {
+        images: Array<Pick<ProviderServiceImage, 'imageUrl'>>;
+      }
+    >;
+  };
+};
 
 // Marketplace owns `Provider`. Other contexts read provider rows and take
 // the provider row lock through this port; every method runs on the client
@@ -39,6 +56,26 @@ export interface ProviderReadPort {
     tx: Prisma.TransactionClient,
     providerIds: readonly string[],
   ): Promise<LockedProviderRow[]>;
+  /** Active, featured providers (the home dashboard counter). */
+  countFeaturedActiveProviders(client: Prisma.TransactionClient): Promise<number>;
+  /** The user's favorite providers (the home dashboard counter). */
+  countUserFavorites(
+    client: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<number>;
+  /** The plan's active links to active providers; `quoteRequestIds` narrows to a contributor's quotes. */
+  countActivePlanProviderLinks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds?: readonly string[] | null,
+  ): Promise<number>;
+  /** The newest active links (at most `take`) with their provider preview; `quoteRequestIds` narrows as above. */
+  listActivePlanProviderLinks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds: readonly string[] | null,
+    take: number,
+  ): Promise<PlanProviderLinkPreview[]>;
   /** Locks the user's provider row (if any) for share and returns it. */
   lockOwnedProviderForShareInTransaction(
     tx: Prisma.TransactionClient,

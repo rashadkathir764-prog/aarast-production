@@ -12,11 +12,13 @@ import {
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
 import type {
+  CostAmounts,
   CreateCostFromAcceptedOfferInput,
   DuePaymentSchedule,
   DuePaymentScheduleQuery,
   FinancePort,
   ImportedCostInput,
+  PendingPaymentSchedule,
   PlanImportCounts,
 } from '../public/finance.port';
 import {
@@ -157,6 +159,40 @@ export class FinancePortService implements FinancePort {
     return tx.weddingCost.findFirst({
       where: { quoteOfferId },
       include: weddingCostResponseInclude,
+    });
+  }
+
+  async listPlanCostAmounts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds?: readonly string[] | null,
+  ): Promise<CostAmounts[]> {
+    return client.weddingCost.findMany({
+      where: {
+        weddingPlanId,
+        ...(costIds ? { id: { in: [...costIds] } } : {}),
+        status: { not: WeddingCostStatus.CANCELLED },
+      },
+      select: { id: true, totalAmount: true, paidAmount: true },
+    });
+  }
+
+  async listPendingPaymentSchedules(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds?: readonly string[] | null,
+  ): Promise<PendingPaymentSchedule[]> {
+    return client.paymentSchedule.findMany({
+      where: {
+        status: PaymentScheduleStatus.PENDING,
+        weddingCost: {
+          weddingPlanId,
+          ...(costIds ? { id: { in: [...costIds] } } : {}),
+          status: { not: WeddingCostStatus.CANCELLED },
+        },
+      },
+      include: { weddingCost: { select: { title: true } } },
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
     });
   }
 

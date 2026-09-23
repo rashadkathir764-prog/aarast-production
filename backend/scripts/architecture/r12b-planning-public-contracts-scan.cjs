@@ -1300,7 +1300,7 @@ function scanR12bClosed(root, checked) {
   const dependency = JSON.parse(r12a.readR12aSuccessorDependencyBytes(root).toString('utf8'));
   if (!Array.isArray(dependency) || dependency.length !== 0) throw new Error('R12B closed successor dependency must be zero');
   const approvedSecurityPrerequisite = verifyR12bClosedSecurityPrerequisite(root, checked);
-  const ownership = JSON.parse(fs.readFileSync(inspectPlainFile(root, OWNERSHIP_PATH), 'utf8'));
+  const ownership = closure.strictOwnershipCounts(root);
   return deepFreeze({
     ok: true,
     stage: checked.stage,
@@ -1308,8 +1308,8 @@ function scanR12bClosed(root, checked) {
     documentationStage: checked.documentationStage,
     receipts: checked.documentationTransitions.length,
     dependencyRecords: 0,
-    ownershipRecords: ownership.violations.length,
-    ownershipOccurrences: ownership.violations.reduce((sum, item) => sum + item.count, 0),
+    ownershipRecords: ownership.ownershipRecords,
+    ownershipOccurrences: ownership.ownershipOccurrences,
     approvedSecurityPrerequisite,
   });
 }

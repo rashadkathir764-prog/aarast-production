@@ -1737,7 +1737,7 @@ function scanR8GlobalRemoval(options) {
     }
     if (canonicalJson(realtime.bindings) !== canonicalJson(bindings)) failures.push('Messaging realtime port bindings changed');
     if (failures.length !== 0) throw new Error(`R8 closed law violated: ${failures.join('; ')}`);
-    const ownership = readJsonFile(path.join(options.repositoryRoot, 'backend', 'architecture', 'ownership-baseline.json'), 'R8 ownership baseline');
+    const ownership = require('./modular-monolith-closure.cjs').strictOwnershipCounts(options.repositoryRoot);
     return Object.freeze({
       ok: true,
       stage: manifest.stage,
@@ -1751,8 +1751,8 @@ function scanR8GlobalRemoval(options) {
       nestModuleCycles: 0,
       externalIdentities: external.identities,
       dependencyRecords: 0,
-      ownershipRecords: ownership.violations.length,
-      ownershipOccurrences: ownership.violations.reduce((sum, item) => sum + item.count, 0),
+      ownershipRecords: ownership.ownershipRecords,
+      ownershipOccurrences: ownership.ownershipOccurrences,
     });
   }
   const baselines = verifyBaselines(

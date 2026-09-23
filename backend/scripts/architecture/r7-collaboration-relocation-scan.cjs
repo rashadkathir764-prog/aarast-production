@@ -3190,10 +3190,7 @@ function scanR7Closed(repositoryRoot, manifest) {
   if (sourceReferences.duplicatePublicExports !== 0) throw new Error('R7 duplicate public snapshot export remains');
   verifyProtectedCollaborationImports(repositoryRoot, analysis);
   const nest = verifyStrictNestState(repositoryRoot, analysis);
-  const ownership = JSON.parse(fs.readFileSync(path.join(
-    repositoryRoot,
-    ...'backend/architecture/ownership-baseline.json'.split('/'),
-  ), 'utf8'));
+  const ownership = require('./modular-monolith-closure.cjs').strictOwnershipCounts(repositoryRoot);
   return Object.freeze({
     ok: true,
     stage: manifest.stage,
@@ -3201,8 +3198,8 @@ function scanR7Closed(repositoryRoot, manifest) {
     sourceFiles: layout.sourceFiles,
     targetFiles: layout.targetFiles,
     dependencyRecords: 0,
-    ownershipRecords: ownership.violations.length,
-    ownershipOccurrences: ownership.violations.reduce((sum, item) => sum + item.count, 0),
+    ownershipRecords: ownership.ownershipRecords,
+    ownershipOccurrences: ownership.ownershipOccurrences,
     forwardRef: nest.forwardRef,
     globals: nest.globals,
   });

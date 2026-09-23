@@ -65,18 +65,15 @@ const lineageOnly = closure
   ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
   : false;
 // Closed: files the R12C manifest hashed are history at the lineage commit
-// (the product keeps editing them), and the ownership baseline shrinks by
-// exact subtraction under the ownership program, so live results carry the
-// live counts.
+// (the product keeps editing them). The ownership debt reached 0/0 and the
+// baseline file is deleted (R18, strict): live results carry the tolerated
+// debt, which is none, and the baseline file must stay absent.
 const lineageRead = (relative: string): Buffer => closure
   ? execFileSync('git', ['show', `${closure.lineageCommit}:${relative}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
   : read(relative);
 const liveOwnershipCounts = () => {
-  const baseline = JSON.parse(read(ownershipPath).toString('utf8')) as { violations: Array<{ count: number }> };
-  return {
-    ownershipRecords: baseline.violations.length,
-    ownershipOccurrences: baseline.violations.reduce((sum, entry) => sum + entry.count, 0),
-  };
+  assert.equal(existsSync(path.join(root, ownershipPath)), false);
+  return { ownershipRecords: 0, ownershipOccurrences: 0 };
 };
 
 const changed = (value: any, mutation: (copy: any) => void) => {

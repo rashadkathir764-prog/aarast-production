@@ -493,15 +493,13 @@ function scanR12cClosed(repositoryRoot, manifest) {
   assert.deepStrictEqual(exportedNamesOf(read(marketplace.target)), checked.contractFamilies[2].exports);
   const consumers = marketplacePolicyReferences(repositoryRoot, marketplace.target);
   verifyStrictZeroCommand(repositoryRoot);
-  const ownership = JSON.parse(read(OWNERSHIP_PATH).toString('utf8'));
   return {
     ok: true,
     stage: checked.stage,
     closed: true,
     dependencyRecords: 0,
     marketplaceConsumers: consumers.length,
-    ownershipRecords: ownership.violations.length,
-    ownershipOccurrences: ownership.violations.reduce((sum, row) => sum + row.count, 0),
+    ...closure.strictOwnershipCounts(repositoryRoot),
   };
 }
 

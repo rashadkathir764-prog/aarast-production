@@ -96,4 +96,19 @@ function readClosure(repositoryRoot, expectedBaseCommit) {
   });
 }
 
-module.exports = { CLOSURE_PATH, MANIFEST_PATHS, readClosure };
+// R18: the ownership debt reached 0/0, the ownership gate is strict and its
+// baseline file is deleted. The closed gates report the ownership debt the
+// repository tolerates, which under the strict regime is none; a baseline
+// file that reappears would tolerate debt again, so it fails every closed
+// gate.
+const OWNERSHIP_BASELINE_PATH = 'backend/architecture/ownership-baseline.json';
+
+function strictOwnershipCounts(repositoryRoot) {
+  if (typeof repositoryRoot !== 'string' || !path.isAbsolute(repositoryRoot)) throw closureError('repository root must be absolute');
+  if (fs.existsSync(path.join(repositoryRoot, ...OWNERSHIP_BASELINE_PATH.split('/')))) {
+    throw closureError('an ownership baseline reappeared; the ownership gate is strict');
+  }
+  return Object.freeze({ ownershipRecords: 0, ownershipOccurrences: 0 });
+}
+
+module.exports = { CLOSURE_PATH, MANIFEST_PATHS, OWNERSHIP_BASELINE_PATH, readClosure, strictOwnershipCounts };

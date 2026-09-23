@@ -37,18 +37,13 @@ const repositoryRoot = path.resolve(backendRoot, '..');
 // architecture-governance-portability.test.ts and are lineage-only here.
 const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot);
 
-// Closed: the ownership baseline shrinks by exact subtraction under the
-// ownership program; the closed scan reports the live counts, so the
-// expectation reads them from the live baseline instead of pinning the
-// counts recorded when the phase closed.
+// Closed and strict (R18): the ownership debt reached 0/0 under the
+// ownership program and the baseline file is deleted. The closed scan
+// reports the ownership debt the repository tolerates, which is none, and
+// the baseline file must stay absent.
 const liveOwnershipCounts = () => {
-  const baseline = JSON.parse(readFileSync(path.join(backendRoot, 'architecture', 'ownership-baseline.json'), 'utf8')) as {
-    violations: Array<{ count: number }>;
-  };
-  return {
-    ownershipRecords: baseline.violations.length,
-    ownershipOccurrences: baseline.violations.reduce((sum, entry) => sum + entry.count, 0),
-  };
+  assert.equal(existsSync(path.join(backendRoot, 'architecture', 'ownership-baseline.json')), false);
+  return { ownershipRecords: 0, ownershipOccurrences: 0 };
 };
 const lineageOnly = closure
   ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`

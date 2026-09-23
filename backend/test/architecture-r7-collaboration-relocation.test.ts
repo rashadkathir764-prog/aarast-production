@@ -4892,15 +4892,23 @@ test('R7 closed law proves the live Collaboration boundary and lets relocated fi
     copyFileSync(path.join(gitRoot, ...relative.split('/')), path.join(root, ...relative.split('/')));
   }
   mkdirSync(path.join(root, 'backend', 'architecture'), { recursive: true });
-  for (const name of ['ownership-baseline.json', 'r8-global-module-removal.json']) {
-    copyFileSync(path.join(backendRoot, 'architecture', name), path.join(root, 'backend', 'architecture', name));
-  }
+  // Strict ownership (R18): the fixture, like the live tree, has no
+  // ownership baseline.
+  copyFileSync(
+    path.join(backendRoot, 'architecture', 'r8-global-module-removal.json'),
+    path.join(root, 'backend', 'architecture', 'r8-global-module-removal.json'),
+  );
   // The fixture resolves @nestjs types through the real installation read-only.
   symlinkSync(path.join(backendRoot, 'node_modules'), path.join(root, 'backend', 'node_modules'), 'junction');
   const relocated = path.join(root, 'backend', 'src', 'modules', 'collaboration', 'internal', 'sharing.service.ts');
   writeFileSync(relocated, `${readFileSync(relocated, 'utf8')}\n// product change after closure\n`, 'utf8');
   writeFileSync(path.join(root, 'backend', 'src', 'modules', 'collaboration', 'internal', 'new-helper.ts'), 'export const helper = 1;\n', 'utf8');
   assert.equal(loaded.scanR7Closed(root, value).closed, true);
+  // A reappearing ownership baseline would tolerate ownership debt again.
+  const planted = path.join(root, 'backend', 'architecture', 'ownership-baseline.json');
+  writeFileSync(planted, '{"schemaVersion":1,"violations":[]}\n', 'utf8');
+  assert.throws(() => loaded.scanR7Closed(root, value), /ownership baseline reappeared/u);
+  rmSync(planted);
   // A runtime import into Collaboration internal from another context fails.
   const intruder = path.join(root, 'backend', 'src', 'tasks', 'tasks.service.ts');
   writeFileSync(intruder, `${readFileSync(intruder, 'utf8')}\nimport { SharingService as _Probe } from "../modules/collaboration/internal/sharing.service";\n`, 'utf8');

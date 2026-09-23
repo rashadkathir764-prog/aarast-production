@@ -1615,17 +1615,7 @@ function scanOwnershipViolations(options) {
   ));
 }
 
-function compareWithBaseline(currentRecords, baselineRecords) {
-  const current = validateViolationArray(currentRecords, 'ownership scan violations');
-  const saved = validateViolationArray(baselineRecords, 'ownership baseline violations');
-  const allowed = new Map(saved.map((record) => [record.key, record.count]));
-  const additions = current.filter((record) => {
-    return !allowed.has(record.key) || record.count > allowed.get(record.key);
-  });
-  return { ok: additions.length === 0, additions };
-}
-
-function canonicalBaselineFile(file) {
+function canonicalRecordFile(file) {
   if (
     typeof file !== 'string'
     || file.length === 0
@@ -1865,7 +1855,7 @@ function validReasonShape(record) {
 
 function validateViolation(value) {
   const record = exactDataObject(value, BASELINE_FIELDS, 'ownership violation');
-  if (!canonicalBaselineFile(record.file)) {
+  if (!canonicalRecordFile(record.file)) {
     throw new Error('ownership violation contains a non-canonical file');
   }
   if (![...CONTEXTS, 'unclassified'].includes(record.context)) {
@@ -1927,22 +1917,22 @@ function validateViolationArray(value, description) {
   return violations;
 }
 
-function validateBaseline(baseline) {
+function validateCandidate(candidate) {
   const value = exactDataObject(
-    baseline,
+    candidate,
     ['schemaVersion', 'sourceRevision', 'violations'],
-    'ownership baseline',
+    'ownership candidate',
   );
   if (value.schemaVersion !== SCHEMA_VERSION) {
-    throw new Error('ownership baseline schemaVersion must be 1');
+    throw new Error('ownership candidate schemaVersion must be 1');
   }
   if (value.sourceRevision !== SOURCE_REVISION) {
-    throw new Error('ownership baseline sourceRevision is invalid');
+    throw new Error('ownership candidate sourceRevision is invalid');
   }
   return {
     schemaVersion: SCHEMA_VERSION,
     sourceRevision: SOURCE_REVISION,
-    violations: validateViolationArray(value.violations, 'ownership baseline violations'),
+    violations: validateViolationArray(value.violations, 'ownership candidate violations'),
   };
 }
 
@@ -2017,8 +2007,11 @@ function runCli(dependencies) {
     writeLine(dependencies.stderr, 'ERROR - architecture ownership scan failed');
     return 2;
   }
-  if (!outputMode && (argv.length !== 1 || !['--check', '--write-baseline'].includes(argv[0]))) {
-    writeLine(dependencies.stderr, 'usage: ownership-scan.cjs --check | --write-baseline');
+  // R18: the gate is strict. The ownership debt reached 0/0 and its
+  // baseline file is deleted; nothing is tolerated and nothing is written
+  // back to tolerate it.
+  if (!outputMode && (argv.length !== 1 || argv[0] !== '--check')) {
+    writeLine(dependencies.stderr, 'usage: ownership-scan.cjs --check | --output <os-temp-file>');
     return 2;
   }
   try {
@@ -2031,7 +2024,7 @@ function runCli(dependencies) {
       sourceRevision: SOURCE_REVISION,
       violations: current,
     };
-    validateBaseline(candidate);
+    validateCandidate(candidate);
     if (outputMode) {
       if (typeof dependencies.writeOutput !== 'function') {
         throw new Error('candidate writer is unavailable');
@@ -2040,37 +2033,17 @@ function runCli(dependencies) {
       writeLine(dependencies.stdout, `ownership candidate written (${current.length} records)`);
       return 0;
     }
-    if (argv[0] === '--write-baseline') {
-      if (typeof dependencies.writeBaseline !== 'function') {
-        throw new Error('baseline writer is unavailable');
-      }
-      dependencies.writeBaseline(candidate);
-      writeLine(dependencies.stdout, `ownership baseline written (${current.length} records)`);
-      return 0;
-    }
-    const baseline = validateBaseline(dependencies.readBaseline());
-    const effectiveBaseline = typeof dependencies.mapBaseline === 'function'
-      ? validateViolationArray(
-        dependencies.mapBaseline(baseline.violations),
-        'mapped ownership baseline violations',
-      )
-      : baseline.violations;
-    const comparison = compareWithBaseline(current, effectiveBaseline);
-    if (!comparison.ok) {
-      writeLine(dependencies.stderr, `ownership violations added (${comparison.additions.length} records)`);
-      const allowed = new Map(effectiveBaseline.map((record) => [record.key, record.count]));
-      for (const addition of comparison.additions) {
-        const kind = allowed.has(addition.key)
-          ? 'increased ownership violation'
-          : 'new ownership violation';
+    if (current.length > 0) {
+      writeLine(dependencies.stderr, `ownership violations found (${current.length} records)`);
+      for (const record of current) {
         writeLine(
           dependencies.stderr,
-          `${kind} [${addition.reason}]: ${addition.file} count=${addition.count}`,
+          `ownership violation [${record.reason}]: ${record.file} count=${record.count}`,
         );
       }
       return 1;
     }
-    writeLine(dependencies.stdout, `ownership check passed (${current.length} current records)`);
+    writeLine(dependencies.stdout, 'ownership check passed (0 records)');
     return 0;
   } catch {
     writeLine(dependencies.stderr, 'ERROR - architecture ownership scan failed');
@@ -2081,28 +2054,14 @@ function runCli(dependencies) {
 function defaultDependencies(argv) {
   const backendRoot = path.resolve(__dirname, '../..');
   const repoRoot = path.resolve(backendRoot, '..');
-  const baselinePath = path.join(backendRoot, 'architecture', 'ownership-baseline.json');
-  const r5ManifestPath = path.join(backendRoot, 'architecture', 'r5-identity-relocation.json');
   return {
     argv,
     scan: () => scanOwnershipViolations({ repoRoot, backendRoot }),
-    readBaseline: () => readJson(baselinePath, 'ownership baseline'),
-    mapBaseline: (records) => {
-      if (!fs.existsSync(r5ManifestPath)) return records;
-      const r5 = require('./r5-identity-scan.cjs');
-      const manifest = readJson(r5ManifestPath, 'R5 identity manifest');
-      return r5.mapOwnershipRecordsForR5(records, manifest);
-    },
-    writeBaseline: (baseline) => fs.writeFileSync(
-      baselinePath,
-      `${JSON.stringify(baseline, null, 2)}\n`,
-      'utf8',
-    ),
-    writeOutput: (target, baseline) => {
+    writeOutput: (target, candidate) => {
       const authorizedTarget = safeOutputPath(target);
       const temporary = `${authorizedTarget}.${process.pid}.${Date.now()}.tmp`;
       try {
-        fs.writeFileSync(temporary, `${JSON.stringify(baseline, null, 2)}\n`, {
+        fs.writeFileSync(temporary, `${JSON.stringify(candidate, null, 2)}\n`, {
           encoding: 'utf8',
           flag: 'wx',
         });
@@ -2128,7 +2087,6 @@ module.exports = {
   contextForRepositoryPath,
   classifyOwnershipAccesses,
   scanOwnershipViolations,
-  compareWithBaseline,
   runCli,
 };
 

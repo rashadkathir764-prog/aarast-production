@@ -45,7 +45,6 @@ const {
   contextForRepositoryPath,
   classifyOwnershipAccesses,
   scanOwnershipViolations,
-  compareWithBaseline,
   runCli,
 } = require('../scripts/architecture/ownership-scan.cjs') as {
   extractSchemaMetadata: (schema: string) => {
@@ -61,15 +60,9 @@ const {
   contextForRepositoryPath: (file: string, registry: Registry) => string;
   classifyOwnershipAccesses: (options: ScanOptions) => OwnershipRecord[];
   scanOwnershipViolations: (options: ScanOptions) => OwnershipRecord[];
-  compareWithBaseline: (
-    scan: OwnershipRecord[],
-    baseline: OwnershipRecord[],
-  ) => { ok: boolean; additions: OwnershipRecord[] };
   runCli: (dependencies: {
     argv: string[];
     scan: () => OwnershipRecord[];
-    readBaseline: () => { schemaVersion: number; sourceRevision: string; violations: OwnershipRecord[] };
-    writeBaseline?: (value: unknown) => void;
     writeOutput?: (target: string, value: unknown) => void;
     stdout: (message: string) => void;
     stderr: (message: string) => void;
@@ -229,17 +222,15 @@ function ownershipBaseline(records: OwnershipRecord[] = []) {
 function captureOwnershipCli(options: {
   argv?: string[];
   scan?: unknown;
-  saved?: unknown;
-  writeBaseline?: (value: unknown) => void;
   writeOutput?: (target: string, value: unknown) => void;
+  extra?: Record<string, unknown>;
 }) {
   const stdout: string[] = [];
   const stderr: string[] = [];
   const dependencies = {
+    ...options.extra,
     argv: options.argv ?? ['--check'],
     scan: () => options.scan ?? [],
-    readBaseline: () => options.saved ?? ownershipBaseline(),
-    writeBaseline: options.writeBaseline,
     writeOutput: options.writeOutput,
     stdout: (message: string) => stdout.push(message),
     stderr: (message: string) => stderr.push(message),
@@ -1194,32 +1185,36 @@ test('quoted SQL identifiers with controls or annotation text fail atomically be
     assert.equal(scan.some((record) => record.model === model), true, JSON.stringify(model));
   }
 
-  const result = captureOwnershipCli({ scan, saved: ownershipBaseline() });
+  const result = captureOwnershipCli({ scan });
   assert.equal(result.exitCode, 2);
   assert.deepEqual(result.stdout, []);
   assert.deepEqual(result.stderr, ['ERROR - architecture ownership scan failed']);
 });
 
-test('ownership CLI renders legitimate additions and increases from fixed fields only', () => {
+// R18: the ownership gate is strict. The baseline that tolerated the
+// recorded debt is deleted (the debt reached 0/0); any live record fails
+// the gate, rendered from its fixed fields only.
+test('ownership CLI fails on every live record and renders it from fixed fields only', () => {
   const added = violation();
-  const addition = captureOwnershipCli({ scan: [added], saved: ownershipBaseline() });
+  const addition = captureOwnershipCli({ scan: [added] });
   assert.equal(addition.exitCode, 1);
   assert.deepEqual(addition.stdout, []);
   assert.deepEqual(addition.stderr, [
-    'ownership violations added (1 records)',
-    'new ownership violation [foreign-model]: backend/src/money/x.ts count=1',
+    'ownership violations found (1 records)',
+    'ownership violation [foreign-model]: backend/src/money/x.ts count=1',
   ]);
 
-  const increased = violation({ count: 2 });
-  const increase = captureOwnershipCli({ scan: [increased], saved: ownershipBaseline([added]) });
-  assert.equal(increase.exitCode, 1);
-  assert.deepEqual(increase.stderr, [
-    'ownership violations added (1 records)',
-    'increased ownership violation [foreign-model]: backend/src/money/x.ts count=2',
+  const repeated = captureOwnershipCli({ scan: [violation({ count: 2 })] });
+  assert.equal(repeated.exitCode, 1);
+  assert.deepEqual(repeated.stderr, [
+    'ownership violations found (1 records)',
+    'ownership violation [foreign-model]: backend/src/money/x.ts count=2',
   ]);
 
-  assert.equal(captureOwnershipCli({ scan: [], saved: ownershipBaseline([added]) }).exitCode, 0);
-  assert.equal(captureOwnershipCli({ scan: [added], saved: ownershipBaseline([increased]) }).exitCode, 0);
+  const clean = captureOwnershipCli({ scan: [] });
+  assert.equal(clean.exitCode, 0);
+  assert.deepEqual(clean.stdout, ['ownership check passed (0 records)']);
+  assert.deepEqual(clean.stderr, []);
 
   const unknownDebt = violation({
     owner: null,
@@ -1229,11 +1224,11 @@ test('ownership CLI renders legitimate additions and increases from fixed fields
     source: 'sql',
     reason: 'unknown-model',
   });
-  const unknown = captureOwnershipCli({ scan: [unknownDebt], saved: ownershipBaseline() });
+  const unknown = captureOwnershipCli({ scan: [unknownDebt] });
   assert.equal(unknown.exitCode, 1);
   assert.deepEqual(unknown.stderr, [
-    'ownership violations added (1 records)',
-    'new ownership violation [unknown-model]: backend/src/money/x.ts count=1',
+    'ownership violations found (1 records)',
+    'ownership violation [unknown-model]: backend/src/money/x.ts count=1',
   ]);
   assert.equal(unknown.stderr.join('\n').includes('UnknownTable'), false);
 
@@ -1245,10 +1240,7 @@ test('ownership CLI renders legitimate additions and increases from fixed fields
     source: 'sql',
     reason: 'unknown-model',
   });
-  assert.equal(captureOwnershipCli({
-    scan: [dynamicDebt],
-    saved: ownershipBaseline(),
-  }).exitCode, 1);
+  assert.equal(captureOwnershipCli({ scan: [dynamicDebt] }).exitCode, 1);
 
   const otherUnknownDebt = [
     violation({
@@ -1268,10 +1260,7 @@ test('ownership CLI renders legitimate additions and increases from fixed fields
       reason: 'unknown-operation',
     }),
   ].sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
-  assert.equal(captureOwnershipCli({
-    scan: otherUnknownDebt,
-    saved: ownershipBaseline(),
-  }).exitCode, 1);
+  assert.equal(captureOwnershipCli({ scan: otherUnknownDebt }).exitCode, 1);
 });
 
 test('ownership CLI rejects malformed scan records atomically without reflecting their fields', () => {
@@ -1303,14 +1292,14 @@ test('ownership CLI rejects malformed scan records atomically without reflecting
   ];
 
   for (const invalid of invalidRecords) {
-    const result = captureOwnershipCli({ scan: [safe, invalid], saved: ownershipBaseline() });
+    const result = captureOwnershipCli({ scan: [safe, invalid] });
     assert.equal(result.exitCode, 2);
     assert.deepEqual(result.stdout, []);
     assert.deepEqual(result.stderr, ['ERROR - architecture ownership scan failed']);
   }
 });
 
-test('ownership CLI rejects semantically impossible records in scans, baselines, and writes', () => {
+test('ownership CLI rejects semantically impossible records in scans and candidate writes', () => {
   const exact = (overrides: Partial<OwnershipRecord>) => violation(overrides);
   const impossible = [
     exact({ operation: 'findUnique', mode: 'write' }),
@@ -1364,22 +1353,19 @@ test('ownership CLI rejects semantically impossible records in scans, baselines,
     }),
   ];
 
+  const outputPath = path.join(mkdtempSync(path.join(tmpdir(), 'aarast-ownership-impossible-')), 'candidate.json');
+  fixtureRoots.push(path.dirname(outputPath));
   for (const record of impossible) {
-    const scan = captureOwnershipCli({ scan: [record], saved: ownershipBaseline() });
+    const scan = captureOwnershipCli({ scan: [record] });
     assert.equal(scan.exitCode, 2, `scan accepted ${JSON.stringify(record)}`);
     assert.deepEqual(scan.stdout, []);
     assert.deepEqual(scan.stderr, ['ERROR - architecture ownership scan failed']);
 
-    const baseline = captureOwnershipCli({ scan: [], saved: ownershipBaseline([record]) });
-    assert.equal(baseline.exitCode, 2, `baseline accepted ${JSON.stringify(record)}`);
-    assert.deepEqual(baseline.stdout, []);
-    assert.deepEqual(baseline.stderr, ['ERROR - architecture ownership scan failed']);
-
     let writeCalled = false;
     const write = captureOwnershipCli({
-      argv: ['--write-baseline'],
+      argv: ['--output', outputPath],
       scan: [record],
-      writeBaseline: () => { writeCalled = true; },
+      writeOutput: () => { writeCalled = true; },
     });
     assert.equal(write.exitCode, 2, `writer accepted ${JSON.stringify(record)}`);
     assert.equal(writeCalled, false);
@@ -1396,16 +1382,16 @@ test('ownership CLI derives every context from the registry-backed repository pa
     violation({ file: 'backend/src/platform/x.ts', context: 'finance' }),
     violation({ file: 'backend/src/not-a-root/x.ts', context: 'finance' }),
   ];
+  const outputPath = path.join(mkdtempSync(path.join(tmpdir(), 'aarast-ownership-context-')), 'candidate.json');
+  fixtureRoots.push(path.dirname(outputPath));
   for (const record of invalid) {
-    const current = captureOwnershipCli({ scan: [record], saved: ownershipBaseline() });
+    const current = captureOwnershipCli({ scan: [record] });
     assert.equal(current.exitCode, 2, `current context accepted ${JSON.stringify(record)}`);
-    const baseline = captureOwnershipCli({ scan: [], saved: ownershipBaseline([record]) });
-    assert.equal(baseline.exitCode, 2, `baseline context accepted ${JSON.stringify(record)}`);
     let writeCalled = false;
     const write = captureOwnershipCli({
-      argv: ['--write-baseline'],
+      argv: ['--output', outputPath],
       scan: [record],
-      writeBaseline: () => { writeCalled = true; },
+      writeOutput: () => { writeCalled = true; },
     });
     assert.equal(write.exitCode, 2, `writer context accepted ${JSON.stringify(record)}`);
     assert.equal(writeCalled, false);
@@ -1423,7 +1409,11 @@ test('ownership CLI derives every context from the registry-backed repository pa
       reason: 'unclassified-context',
     }),
   ].sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
-  assert.equal(captureOwnershipCli({ scan: legal, saved: ownershipBaseline(legal) }).exitCode, 0);
+  // Valid records: the strict gate reports them (exit 1), it does not reject
+  // them as malformed (exit 2).
+  const reported = captureOwnershipCli({ scan: legal });
+  assert.equal(reported.exitCode, 1);
+  assert.equal(reported.stderr.length, legal.length + 1);
 });
 
 test('ownership CLI accepts every legal operation and reason boundary', () => {
@@ -1474,9 +1464,10 @@ test('ownership CLI accepts every legal operation and reason boundary', () => {
       .map((operation) => violation({ operation, mode: 'write', source: 'sql' })),
   ].sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
 
-  const result = captureOwnershipCli({ scan: legal, saved: ownershipBaseline(legal) });
-  assert.equal(result.exitCode, 0);
-  assert.deepEqual(result.stderr, []);
+  const result = captureOwnershipCli({ scan: legal });
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.stderr[0], `ownership violations found (${legal.length} records)`);
+  assert.equal(result.stderr.some((line) => line.startsWith('ERROR')), false);
 });
 
 test('ownership CLI rejects duplicate, sparse, oversized, inherited, accessor, and proxy scan data', () => {
@@ -1518,7 +1509,7 @@ test('ownership CLI rejects duplicate, sparse, oversized, inherited, accessor, a
     arraySubclass,
     arrayWithExtra,
   ]) {
-    const result = captureOwnershipCli({ scan, saved: ownershipBaseline() });
+    const result = captureOwnershipCli({ scan });
     assert.equal(result.exitCode, 2);
     assert.deepEqual(result.stdout, []);
     assert.deepEqual(result.stderr, ['ERROR - architecture ownership scan failed']);
@@ -1526,89 +1517,23 @@ test('ownership CLI rejects duplicate, sparse, oversized, inherited, accessor, a
   assert.equal(accessorInvoked, false);
 });
 
-test('ownership CLI validates hostile baselines atomically before comparison', () => {
-  const safe = violation();
-  let accessorInvoked = false;
-  let recordAccessorInvoked = false;
-  const accessorBaseline = ownershipBaseline([safe]) as Record<string, unknown>;
-  Object.defineProperty(accessorBaseline, 'violations', {
-    enumerable: true,
-    get() {
-      accessorInvoked = true;
-      throw new Error('TOKEN=baseline-accessor');
-    },
-  });
-  const sparse: unknown[] = [];
-  sparse.length = 2;
-  sparse[1] = safe;
-  const oversized = new Array(10_001).fill(safe);
-  const recordAccessor = { ...safe } as Record<string, unknown>;
-  Object.defineProperty(recordAccessor, 'model', {
-    enumerable: true,
-    get() {
-      recordAccessorInvoked = true;
-      throw new Error('TOKEN=baseline-record-accessor');
-    },
-  });
-  const inheritedRecord = Object.assign(Object.create({ TOKEN: 'record-inherited' }), safe);
-  const proxyRecord = new Proxy({ ...safe }, {
-    get() { throw new Error('TOKEN=baseline-record-proxy-get'); },
-  });
-  const violationsProxy = new Proxy([safe], {
-    get() { throw new Error('TOKEN=baseline-array-proxy-get'); },
-  });
-  const proxy = new Proxy(ownershipBaseline([safe]), {
-    get() { throw new Error('TOKEN=baseline-proxy-get'); },
-  });
-  const invalidBaselines: unknown[] = [
-    { ...ownershipBaseline([safe]), extra: 'TOKEN=extra' },
-    { ...ownershipBaseline([safe]), schemaVersion: 1n },
-    { ...ownershipBaseline([safe]), sourceRevision: Symbol('TOKEN=revision') },
-    { ...ownershipBaseline([safe]), sourceRevision: 'TOKEN=revision' },
-    { ...ownershipBaseline(), violations: [safe, safe] },
-    { ...ownershipBaseline(), violations: sparse },
-    { ...ownershipBaseline(), violations: oversized },
-    { ...ownershipBaseline(), violations: [safe, { ...safe, count: 1n }] },
-    { ...ownershipBaseline(), violations: [safe, { ...safe, model: Symbol('TOKEN=model') }] },
-    { ...ownershipBaseline(), violations: [recordAccessor] },
-    { ...ownershipBaseline(), violations: [inheritedRecord] },
-    { ...ownershipBaseline(), violations: [proxyRecord] },
-    { ...ownershipBaseline(), violations: violationsProxy },
-    Object.assign(Object.create({ TOKEN: 'inherited' }), ownershipBaseline([safe])),
-    accessorBaseline,
-    proxy,
-  ];
-  for (const saved of invalidBaselines) {
-    const result = captureOwnershipCli({ scan: [safe], saved });
-    assert.equal(result.exitCode, 2);
-    assert.deepEqual(result.stdout, []);
-    assert.deepEqual(result.stderr, ['ERROR - architecture ownership scan failed']);
-  }
-  assert.equal(accessorInvoked, false);
-  assert.equal(recordAccessorInvoked, false);
-});
-
-test('ownership baseline writer validates atomically and preserves the canonical shape', () => {
-  const safe = violation();
-  let written: unknown;
-  const valid = captureOwnershipCli({
-    argv: ['--write-baseline'],
-    scan: [safe],
-    writeBaseline: (value) => { written = value; },
-  });
-  assert.equal(valid.exitCode, 0);
-  assert.deepEqual(written, ownershipBaseline([safe]));
-
-  let invalidWriteCalled = false;
-  const invalid = captureOwnershipCli({
-    argv: ['--write-baseline'],
-    scan: [safe, { ...safe, model: 'FORGED\nTOKEN=x' }],
-    writeBaseline: () => { invalidWriteCalled = true; },
-  });
-  assert.equal(invalid.exitCode, 2);
-  assert.equal(invalidWriteCalled, false);
-  assert.deepEqual(invalid.stdout, []);
-  assert.deepEqual(invalid.stderr, ['ERROR - architecture ownership scan failed']);
+test('the strict ownership CLI never consults or writes a baseline', () => {
+  // A baseline dependency, even a hostile one, is never read, and the
+  // baseline writer mode is gone: the strict gate compares the live scan
+  // with nothing.
+  let readInvoked = false;
+  let writeInvoked = false;
+  const hostile = {
+    readBaseline: () => { readInvoked = true; return ownershipBaseline([violation()]); },
+    writeBaseline: () => { writeInvoked = true; },
+  };
+  assert.equal(captureOwnershipCli({ scan: [], extra: hostile }).exitCode, 0);
+  assert.equal(captureOwnershipCli({ scan: [violation()], extra: hostile }).exitCode, 1);
+  const refused = captureOwnershipCli({ argv: ['--write-baseline'], scan: [], extra: hostile });
+  assert.equal(refused.exitCode, 2);
+  assert.deepEqual(refused.stdout, []);
+  assert.equal(readInvoked, false);
+  assert.equal(writeInvoked, false);
 });
 
 test('ownership output mode writes the canonical candidate to an absolute OS-temp path', () => {
@@ -1688,36 +1613,23 @@ test('the real ownership output rejects an OS-temp junction escape without writi
   assert.equal(existsSync(path.join(outside, 'candidate.json')), false);
 });
 
-test('baseline comparison is counted and CLI returns 0, 1, and 2', () => {
+test('the strict CLI returns 0 without records, 1 with any, and 2 on misuse', () => {
   const record: OwnershipRecord = {
     key: 'backend/src/money/x.ts|finance|planning|WeddingPlan|update|write|delegate|foreign-model',
     file: 'backend/src/money/x.ts', context: 'finance', owner: 'planning', model: 'WeddingPlan',
     operation: 'update', mode: 'write', source: 'delegate', reason: 'foreign-model', count: 1,
   };
-  assert.deepEqual(compareWithBaseline([record], [record]), { ok: true, additions: [] });
-  assert.deepEqual(compareWithBaseline([{ ...record, count: 2 }], [record]), {
-    ok: false, additions: [{ ...record, count: 2 }],
-  });
-
   const output: string[] = [];
   const dependencies = {
     argv: ['--check'],
-    scan: () => [record],
-    readBaseline: () => ({
-      schemaVersion: 1,
-      sourceRevision: 'feafe3db0053d6c66d5f46b56ff9a512861dfbad',
-      violations: [record],
-    }),
+    scan: () => [] as OwnershipRecord[],
     stdout: (message: string) => output.push(message),
     stderr: (message: string) => output.push(message),
   };
   assert.equal(runCli(dependencies), 0);
-  assert.equal(runCli({ ...dependencies, readBaseline: () => ({
-    schemaVersion: 1,
-    sourceRevision: 'feafe3db0053d6c66d5f46b56ff9a512861dfbad',
-    violations: [],
-  }) }), 1);
+  assert.equal(runCli({ ...dependencies, scan: () => [record] }), 1);
   assert.equal(runCli({ ...dependencies, argv: ['--wat'] }), 2);
+  assert.equal(runCli({ ...dependencies, argv: ['--write-baseline'] }), 2);
 });
 
 test('ownership CLI never reflects scanner exceptions containing absolute paths', () => {
@@ -1737,7 +1649,6 @@ test('ownership CLI never reflects scanner exceptions containing absolute paths'
     const exitCode = runCli({
       argv: ['--check'],
       scan: () => { throw new Error(`${failure}${index % 2 ? '\n' : '\r\n'}stack detail`); },
-      readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
     });
@@ -1749,7 +1660,6 @@ test('ownership CLI never reflects scanner exceptions containing absolute paths'
   assert.equal(runCli({
     argv: ['--check'],
     scan: () => { throw new Error('scan failed at https://example.test/docs/path\nstack detail'); },
-    readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
     stdout: (message: string) => urlOutput.push(message),
     stderr: (message: string) => urlOutput.push(message),
   }), 2);
@@ -1777,7 +1687,6 @@ test('ownership CLI never reflects file, web, malformed URL, secret, or sentinel
     assert.equal(runCli({
       argv: ['--check'],
       scan: () => { throw new Error(`scan failed [${reflectedInput}\r\nstack detail`); },
-      readBaseline: () => ({ schemaVersion: 1, sourceRevision: '', violations: [] }),
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
     }), 2);
@@ -1785,7 +1694,7 @@ test('ownership CLI never reflects file, web, malformed URL, secret, or sentinel
   }
 });
 
-test('baseline validation rejects invalid fields and sensitive strings with sanitized errors', () => {
+test('record validation rejects invalid fields and sensitive strings with sanitized errors', () => {
   const base: OwnershipRecord = {
     file: 'backend/src/money/x.ts', context: 'finance', owner: 'planning', model: 'WeddingPlan',
     operation: 'update', mode: 'write', source: 'delegate', reason: 'foreign-model', count: 1,
@@ -1817,48 +1726,48 @@ test('baseline validation rejects invalid fields and sensitive strings with sani
     const exitCode = runCli({
       argv: ['--check'],
       scan: () => [record],
-      readBaseline: () => ({
-        schemaVersion: 1,
-        sourceRevision: 'feafe3db0053d6c66d5f46b56ff9a512861dfbad',
-        violations: [record],
-      }),
       stdout: (message: string) => output.push(message),
       stderr: (message: string) => output.push(message),
     });
-    assert.equal(exitCode, 2, `baseline value was accepted: ${JSON.stringify(record)}`);
+    assert.equal(exitCode, 2, `record value was accepted: ${JSON.stringify(record)}`);
     assert.deepEqual(output, ['ERROR - architecture ownership scan failed']);
   }
 });
 
-test('persisted baseline is canonical, sorted, unique, counted, and contains no secrets', () => {
-  const baselineText = readFileSync(
-    path.join(backendRoot, 'architecture', 'ownership-baseline.json'),
-    'utf8',
-  );
-  const baseline = JSON.parse(baselineText) as {
-    schemaVersion: number;
-    sourceRevision: string;
-    violations: Required<OwnershipRecord>[];
-  };
-  assert.equal(baseline.schemaVersion, 1);
-  assert.equal(baseline.sourceRevision, 'feafe3db0053d6c66d5f46b56ff9a512861dfbad');
-  const keys = baseline.violations.map((record) => record.key);
-  assert.deepEqual(keys, [...keys].sort());
-  assert.equal(new Set(keys).size, keys.length);
-  for (const record of baseline.violations) {
-    assert.equal(record.key, [
-      record.file, record.context, record.owner ?? '', record.model, record.operation,
-      record.mode, record.source, record.reason,
-    ].join('|'));
-    assert.match(record.file, /^backend\/src\/.+\.ts$/);
-    assert.equal(path.posix.isAbsolute(record.file), false);
-    assert.equal(path.win32.isAbsolute(record.file), false);
-    assert.equal(Number.isInteger(record.count) && record.count > 0, true);
-  }
-  assert.doesNotMatch(
-    baselineText,
-    /DATABASE_URL\s*=|JWT_SECRET\s*=|PASSWORD\s*=|SECRET\s*=|TOKEN\s*=|BEGIN (?:RSA |OPENSSH )?PRIVATE KEY|postgres(?:ql)?:\/\/|D:\\\\|[A-Za-z]:\\\\/i,
-  );
+test('the ownership baseline is deleted: the gate has no file to tolerate debt with', () => {
+  assert.equal(existsSync(path.join(backendRoot, 'architecture', 'ownership-baseline.json')), false);
+  const cli = readFileSync(path.join(backendRoot, 'scripts', 'architecture', 'ownership-scan.cjs'), 'utf8');
+  assert.doesNotMatch(cli, /ownership-baseline\.json|readBaseline|writeBaseline|'--write-baseline'/);
+});
+
+test('planted-violation probe: one foreign access planted in a copy of the live source fails the strict gate', () => {
+  // The live source scans to zero records (the architecture:ownership gate).
+  // A copy of it with a single planted foreign access must produce exactly
+  // that record, and the strict CLI must fail on it.
+  const fixture = fixtureProject({});
+  cpSync(path.join(backendRoot, 'src'), path.join(fixture.backendRoot, 'src'), { recursive: true });
+  copyFileSync(path.join(backendRoot, 'tsconfig.json'), path.join(fixture.backendRoot, 'tsconfig.json'));
+  write(fixture.repoRoot, 'backend/src/admin/planted-ownership-probe.ts', prismaFixture(
+    'await prisma.weddingPlan.findMany();',
+  ));
+
+  const records = scanOwnershipViolations(fixture);
+  assertExactRecords(records, [{
+    file: 'backend/src/admin/planted-ownership-probe.ts',
+    model: 'WeddingPlan',
+    owner: 'planning',
+    operation: 'findMany',
+    mode: 'read',
+    source: 'delegate',
+    reason: 'foreign-model',
+    count: 1,
+  }]);
+  const gate = captureOwnershipCli({ scan: records });
+  assert.equal(gate.exitCode, 1);
+  assert.deepEqual(gate.stderr, [
+    'ownership violations found (1 records)',
+    'ownership violation [foreign-model]: backend/src/admin/planted-ownership-probe.ts count=1',
+  ]);
 });
 
 test('the real wrapper rejects unknown arguments without absolute paths or stack traces', () => {

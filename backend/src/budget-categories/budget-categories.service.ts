@@ -24,6 +24,8 @@ import {
   type CollaborationScopePort as ContributorScopeService,
 } from "../modules/collaboration/public/collaboration-scope.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
+import { allocationWithinBudgetViolation } from "../modules/finance/domain/budget-allocation-policy";
+import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import {
   runRetryableTransaction,
   runSerializableTransaction,
@@ -343,11 +345,7 @@ export class BudgetCategoriesService {
     const sum = (result._sum.allocatedAmount ?? new Prisma.Decimal(0)).plus(
       allocation ?? 0,
     );
-    if (totalBudget !== null && sum.gt(totalBudget)) {
-      throw new BadRequestException(
-        "Category allocations cannot exceed the general budget",
-      );
-    }
+    raiseFinanceViolation(allocationWithinBudgetViolation(totalBudget, sum));
   }
 
   private async findCategoryOrThrow(id: string) {

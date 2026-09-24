@@ -8,6 +8,8 @@ import {
 import { Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
+import { budgetAllocationViolation } from "../modules/finance/domain/budget-allocation-policy";
+import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
@@ -72,16 +74,7 @@ export class MoneyBudgetService {
       (sum, item) => sum.plus(item.allocatedAmount ?? 0),
       new Prisma.Decimal(0),
     );
-    if (totalBudget === null && allocated.gt(0)) {
-      throw new BadRequestException(
-        "Set the general budget before allocating money to categories",
-      );
-    }
-    if (totalBudget !== null && allocated.gt(totalBudget)) {
-      throw new BadRequestException(
-        "Category allocations cannot exceed the general budget",
-      );
-    }
+    raiseFinanceViolation(budgetAllocationViolation(totalBudget, allocated));
 
     try {
       return await runSerializableTransaction(this.prisma, async (tx) => {

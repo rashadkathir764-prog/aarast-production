@@ -123,7 +123,13 @@ test("database constraints protect budgets while payment schedules remain non-re
 
   const service = read("src/wedding-costs/wedding-costs.service.ts");
   assert.doesNotMatch(service, /pendingScheduleTotal|reserved by pending payment schedules/);
-  assert.match(service, /Payment schedule amount cannot exceed the remaining cost/);
+  // The schedule cap is Finance's pure domain policy (O3): the service
+  // applies it; the policy caps each schedule by the outstanding amount alone.
+  const schedulePolicy = read("src/modules/finance/domain/payment-schedule-policy.ts");
+  assert.match(service, /scheduleAmountViolation\(/);
+  assert.match(schedulePolicy, /Payment schedule amount cannot exceed the remaining cost/);
+  assert.match(schedulePolicy, /amount\.gt\(totalAmount\.minus\(paidAmount\)\)/);
+  assert.doesNotMatch(schedulePolicy, /pendingScheduleTotal|reserved by pending payment schedules/);
   assert.match(service, /cancelPendingSchedulesWhenPaid/);
   for (const method of ["updateCost", "createPayment", "paySchedule"]) {
     const start = service.indexOf("async " + method + "(");

@@ -62,6 +62,23 @@ import {
   type WeddingCostResponse,
   type WeddingCostWithDetails,
 } from "../modules/finance/public/wedding-cost.presenter";
+import {
+  costCancellationViolation,
+  costDeletionViolation,
+  deriveCostStatus,
+  initialPaymentViolation,
+  payableViolation,
+  paymentAmountViolation,
+  positiveAmountViolation,
+  reversalViolation,
+  totalAmountViolation,
+} from "../modules/finance/domain/wedding-cost-aggregate";
+import {
+  scheduleAmountViolation,
+  scheduledPaymentViolation,
+  schedulesToCancelOnStatus,
+} from "../modules/finance/domain/payment-schedule-policy";
+import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {
@@ -175,11 +192,7 @@ export class WeddingCostsService {
       dto.initialPaymentAmount,
       "initialPaymentAmount",
     );
-    if (initialPayment.gt(totalAmount)) {
-      throw new BadRequestException(
-        "initialPaymentAmount cannot exceed totalAmount",
-      );
-    }
+    raiseFinanceViolation(initialPaymentViolation(initialPayment, totalAmount));
 
     try {
       const cost = await runSerializableTransaction(this.prisma, async (tx) => {
@@ -220,7 +233,7 @@ export class WeddingCostsService {
               dto.agreementDate,
               "agreementDate",
             ),
-            status: this.deriveStatus(totalAmount, initialPayment),
+            status: deriveCostStatus(totalAmount, initialPayment),
             note: this.optionalText(dto.note),
           },
         });
@@ -444,11 +457,9 @@ export class WeddingCostsService {
           dto.totalAmount === undefined
             ? locked.totalAmount
             : this.positiveAmount(dto.totalAmount, "totalAmount");
-        if (totalAmount.lt(locked.paidAmount)) {
-          throw new BadRequestException(
-            "totalAmount cannot be less than paidAmount",
-          );
-        }
+        raiseFinanceViolation(
+          totalAmountViolation(totalAmount, locked.paidAmount),
+        );
         const budgetCategoryId =
           dto.budgetCategoryId === undefined
             ? locked.budgetCategoryId
@@ -469,7 +480,7 @@ export class WeddingCostsService {
             dto.partyPhone === undefined ? locked.partyPhone : dto.partyPhone,
           currentCostId: id,
         });
-        const status = this.deriveStatus(totalAmount, locked.paidAmount);
+        const status = deriveCostStatus(totalAmount, locked.paidAmount);
         const updated = await tx.weddingCost.update({
           where: { id },
           data: {
@@ -534,11 +545,9 @@ export class WeddingCostsService {
       const paymentsCount = await tx.costPayment.count({
         where: { weddingCostId: id },
       });
-      if (paymentsCount > 0 || !locked.paidAmount.isZero()) {
-        throw new ConflictException(
-          "A cost with payment history cannot be deleted",
-        );
-      }
+      raiseFinanceViolation(
+        costDeletionViolation(paymentsCount, locked.paidAmount),
+      );
       await this.recordMoneyEvent(tx, context, {
         entityType: ContributionEntityType.WEDDING_COST,
         entityId: locked.id,
@@ -580,11 +589,7 @@ export class WeddingCostsService {
           }),
         );
       }
-      if (!locked.paidAmount.isZero()) {
-        throw new ConflictException(
-          "Reverse the active payments before cancelling this cost",
-        );
-      }
+      raiseFinanceViolation(costCancellationViolation(locked.paidAmount));
       await tx.paymentSchedule.updateMany({
         where: { weddingCostId: id, status: PaymentScheduleStatus.PENDING },
         data: { status: PaymentScheduleStatus.CANCELLED },
@@ -632,12 +637,9 @@ export class WeddingCostsService {
         const amount = this.positiveAmount(dto.amount, "amount");
         const cost = await this.lockCost(tx, costId);
         this.assertCostPayable(cost.status);
-        const remaining = cost.totalAmount.minus(cost.paidAmount);
-        if (amount.gt(remaining)) {
-          throw new BadRequestException(
-            "Payment amount cannot exceed the remaining cost",
-          );
-        }
+        raiseFinanceViolation(
+          paymentAmountViolation(amount, cost.totalAmount, cost.paidAmount),
+        );
         const payment = await tx.costPayment.create({
           data: {
             weddingCostId: costId,
@@ -649,7 +651,7 @@ export class WeddingCostsService {
           include: paymentInclude,
         });
         const paidAmount = cost.paidAmount.plus(amount);
-        const status = this.deriveStatus(cost.totalAmount, paidAmount);
+        const status = deriveCostStatus(cost.totalAmount, paidAmount);
         await tx.weddingCost.update({
           where: { id: costId },
           data: {
@@ -848,15 +850,16 @@ export class WeddingCostsService {
         include: paymentInclude,
       });
       if (!payment) throw new NotFoundException("Cost payment not found");
-      if (payment.entryType !== CostPaymentType.PAYMENT) {
-        throw new ConflictException("A reversal entry cannot be reversed");
-      }
-      if (payment.reversedBy) {
-        throw new ConflictException("Payment has already been reversed");
-      }
-      if (payment.amount.gt(cost.paidAmount)) {
-        throw new ConflictException("Payment ledger is inconsistent");
-      }
+      raiseFinanceViolation(
+        reversalViolation(
+          {
+            entryType: payment.entryType,
+            reversed: Boolean(payment.reversedBy),
+            amount: payment.amount,
+          },
+          cost.paidAmount,
+        ),
+      );
       const paidAmount = cost.paidAmount.minus(payment.amount);
       const reversal = await tx.costPayment.create({
         data: {
@@ -873,7 +876,7 @@ export class WeddingCostsService {
         where: { id: cost.id },
         data: {
           paidAmount,
-          status: this.deriveStatus(cost.totalAmount, paidAmount),
+          status: deriveCostStatus(cost.totalAmount, paidAmount),
         },
       });
       if (payment.paymentScheduleId) {
@@ -893,7 +896,7 @@ export class WeddingCostsService {
           totalAmount: cost.totalAmount,
           paidAmount,
           amount: reversal.amount,
-          status: this.deriveStatus(cost.totalAmount, paidAmount),
+          status: deriveCostStatus(cost.totalAmount, paidAmount),
           relevantDate: reversal.paidAt,
         },
         occurredAt: reversal.paidAt,
@@ -918,11 +921,9 @@ export class WeddingCostsService {
       const amount = this.positiveAmount(dto.amount, "amount");
       const cost = await this.lockCost(tx, costId);
       this.assertCostPayable(cost.status);
-      if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
-        throw new BadRequestException(
-          "Payment schedule amount cannot exceed the remaining cost",
-        );
-      }
+      raiseFinanceViolation(
+        scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
+      );
       const schedule = await tx.paymentSchedule.create({
         data: {
           weddingCostId: costId,
@@ -1082,11 +1083,9 @@ export class WeddingCostsService {
           ? schedule.amount
           : this.positiveAmount(dto.amount, "amount");
       this.assertCostPayable(cost.status);
-      if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
-        throw new BadRequestException(
-          "Payment schedule amount cannot exceed the remaining cost",
-        );
-      }
+      raiseFinanceViolation(
+        scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
+      );
       const updated = await tx.paymentSchedule.update({
         where: { id },
         data: {
@@ -1308,12 +1307,13 @@ export class WeddingCostsService {
         );
       }
       this.assertCostPayable(cost.status);
-      const remaining = cost.totalAmount.minus(cost.paidAmount);
-      if (schedule.amount.gt(remaining)) {
-        throw new BadRequestException(
-          "Scheduled payment exceeds the remaining cost",
-        );
-      }
+      raiseFinanceViolation(
+        scheduledPaymentViolation(
+          schedule.amount,
+          cost.totalAmount,
+          cost.paidAmount,
+        ),
+      );
       const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
       const payment = await tx.costPayment.create({
         data: {
@@ -1332,7 +1332,7 @@ export class WeddingCostsService {
         include: scheduleInclude,
       });
       const paidAmount = cost.paidAmount.plus(schedule.amount);
-      const status = this.deriveStatus(cost.totalAmount, paidAmount);
+      const status = deriveCostStatus(cost.totalAmount, paidAmount);
       await tx.weddingCost.update({
         where: { id: cost.id },
         data: {
@@ -1558,7 +1558,7 @@ export class WeddingCostsService {
     costId: string,
     status: WeddingCostStatus,
   ) {
-    if (status !== WeddingCostStatus.PAID) return;
+    if (!schedulesToCancelOnStatus(status)) return;
     await tx.paymentSchedule.updateMany({
       where: {
         weddingCostId: costId,
@@ -1867,25 +1867,13 @@ export class WeddingCostsService {
     };
   }
 
-  private deriveStatus(total: Prisma.Decimal, paid: Prisma.Decimal) {
-    if (paid.gte(total)) return WeddingCostStatus.PAID;
-    if (paid.gt(0)) return WeddingCostStatus.PARTIALLY_PAID;
-    return WeddingCostStatus.OPEN;
-  }
-
   private assertCostPayable(status: WeddingCostStatus) {
-    if (status === WeddingCostStatus.CANCELLED) {
-      throw new ConflictException("Cancelled costs cannot receive payments");
-    }
-    if (status === WeddingCostStatus.PAID) {
-      throw new ConflictException("Cost is already fully paid");
-    }
+    raiseFinanceViolation(payableViolation(status));
   }
 
   private positiveAmount(value: string | number, field: string) {
     const amount = new Prisma.Decimal(requiredMoneyAmount(value, field));
-    if (!amount.gt(0))
-      throw new BadRequestException(`${field} must be greater than zero`);
+    raiseFinanceViolation(positiveAmountViolation(amount, field));
     return amount;
   }
 

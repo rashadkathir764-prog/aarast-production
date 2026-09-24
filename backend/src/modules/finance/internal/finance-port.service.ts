@@ -11,6 +11,7 @@ import {
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
+import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
 import type {
   CostAmounts,
   CreateCostFromAcceptedOfferInput,
@@ -60,11 +61,8 @@ export class FinancePortService implements FinancePort {
     weddingPlanId: string,
     cost: ImportedCostInput,
   ): Promise<void> {
-    const status = cost.paidAmount.isZero()
-      ? WeddingCostStatus.OPEN
-      : cost.paidAmount.eq(cost.totalAmount)
-        ? WeddingCostStatus.PAID
-        : WeddingCostStatus.PARTIALLY_PAID;
+    // The import validated paid <= total before calling the port.
+    const status = deriveCostStatus(cost.totalAmount, cost.paidAmount);
     await tx.weddingCost.create({
       data: {
         weddingPlanId,

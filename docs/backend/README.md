@@ -64,10 +64,12 @@ npm run smoke:all
 npx prisma validate
 ```
 
-`npm run architecture` is the incremental modular-monolith gate: it rejects a
-new dependency edge/cycle, new or increased foreign Prisma ownership debt, and
-new ports/global/Nest-graph violations while allowing the committed counted
-debt baselines only to shrink. R1 keeps 52 models and 76 migrations and changes
+`npm run architecture` is the strict modular-monolith gate: it rejects any
+dependency violation and any foreign Prisma access (root delegates, relation
+traversal, nested writes, raw-SQL tables, and argument shapes it cannot
+prove), plus ports/global/Nest-graph violations. Since the 2026-09-24 closure
+no dependency or ownership baseline exists; the closed phase gates fail if
+one reappears. R1 keeps 52 models and 76 migrations and changes
 no API route or database contract.
 
 R7 physically owns Collaboration under `src/modules/collaboration`: all 18

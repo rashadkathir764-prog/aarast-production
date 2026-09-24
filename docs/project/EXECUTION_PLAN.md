@@ -1,11 +1,42 @@
 # Modernization Execution Plan
 
-Snapshot date: 2026-09-13
+Snapshot date: 2026-09-24
 
 This is the active execution plan for the Aarast modernization. It replaces
 implementation assumptions made in historical remediation and premium-roadmap
 notes. Product, API, database, privacy, and phase boundaries remain governed by
 the current source documents listed in `docs/README.md`.
+
+## Modular Monolith Mission — Closure — 2026-09-24
+
+The final closure mission (local branch
+`final/modular-monolith-mission-closeout-20260913`, from `cd45e435`) executed
+the parts of R13–R20 the original 2026-08-04 target requires.
+Ownership debt is 0/0 and the ownership baseline is deleted:
+`architecture:ownership` is strict, fails on any live foreign table access,
+and a planted `prisma.weddingPlan.findMany()` in the back office fails it with
+exactly that record. Dependency debt stays 0 with no baseline.
+Every context reads and writes only its own tables; data another context
+owns is reached through that owner's public port on the caller's client or
+transaction (planning, finance, tasks, guests, identity, collaboration,
+catalog, marketplace, messaging, notifications, media; insights and the back
+office compose over them and own no foreign table).
+The Mobile fate map is complete: the phone wrappers are dissolved,
+`QuoteFinanceContext` lives in finance, the provider persona is its own
+feature (`features/provider_portal`), the seven god files and the touched
+marketplace provider are split into same-library parts, and the router is
+assembled from per-area route trees with `MOBILE_ROUTES.md` unchanged.
+Commits exist only on the local branch. No push, merge, deployment,
+production mutation, remote CI, provider delivery, phone acceptance, or
+release is claimed. Verification and verdicts:
+`docs/superpowers/reports/2026-09-24-modular-monolith-mission-closure-final-report.md`.
+
+No architecture phase remains: R13–R19 are executed and R20 is this
+mission's exit audit and clean-room verification (see the final report).
+The next work is a product phase under separate owner authorization; the
+modular-monolith gates (dependency and ownership strict, ports, R3–R12C
+closed invariants, Mobile R9 strict) stay in `npm run architecture` and the
+Mobile boundary command and must stay green.
 
 ## Modular Monolith R12C — Local Completion — 2026-09-13
 

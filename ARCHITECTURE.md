@@ -1,12 +1,42 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-09-13
+Snapshot date: 2026-09-24
 
 This is the canonical human contract for Aarast's modular-monolith migration.
 It defines the target bounded contexts, dependency direction, physical data
 ownership, Mobile boundaries, test-change policy, and phase gates. R0 is a
 governance phase: it moves no application source and changes no runtime
 behavior, route, database schema, migration, or deployment artifact.
+
+## Modular Monolith Mission — Closure — 2026-09-24
+
+The final closure mission (local branch
+`final/modular-monolith-mission-closeout-20260913`, from `cd45e435`) executed
+the parts of R13–R20 the original 2026-08-04 target requires.
+Ownership debt is 0/0 and the ownership baseline is deleted:
+`architecture:ownership` is strict, fails on any live foreign table access,
+and a planted `prisma.weddingPlan.findMany()` in the back office fails it with
+exactly that record. Dependency debt stays 0 with no baseline.
+Every context reads and writes only its own tables; data another context
+owns is reached through that owner's public port on the caller's client or
+transaction (planning, finance, tasks, guests, identity, collaboration,
+catalog, marketplace, messaging, notifications, media; insights and the back
+office compose over them and own no foreign table).
+The Mobile fate map is complete: the phone wrappers are dissolved,
+`QuoteFinanceContext` lives in finance, the provider persona is its own
+feature (`features/provider_portal`), the seven god files and the touched
+marketplace provider are split into same-library parts, and the router is
+assembled from per-area route trees with `MOBILE_ROUTES.md` unchanged.
+Commits exist only on the local branch. No push, merge, deployment,
+production mutation, remote CI, provider delivery, phone acceptance, or
+release is claimed. Verification and verdicts:
+`docs/superpowers/reports/2026-09-24-modular-monolith-mission-closure-final-report.md`.
+
+The ownership gate reads no baseline; the closed R7/R8/R12A/R12B/R12C gates
+report the tolerated ownership debt as `0/0` from one strict-regime fact
+(`backend/scripts/architecture/modular-monolith-closure.cjs`), and a baseline
+file that reappears fails every closed gate. The R11 ownership ledger outcome
+and its reason are recorded under "Post-R10 Target Completion Contract".
 
 ## Modular Monolith R12C — Local Completion — 2026-09-13
 
@@ -179,6 +209,15 @@ The old E1 treatment is not a target exception. A transaction that spans
 contexts must preserve the caller's transaction boundary through an explicit
 owner public port; it does not transfer physical ownership to the caller.
 
+Since R18 the rule is enforced without a baseline: `architecture:ownership`
+fails on any record, including an argument shape it cannot prove (declared
+Prisma input types fail closed, so product code declares the exact `where` /
+`data` shapes it passes). Consumers that present another owner's rows
+(marketplace, messaging, insights, back office) attach them after their own
+read through the owners' ports, in context-private holders
+(`MarketplaceRelationsService`, `ConversationRelationsService`,
+`InsightsReadPorts`, `AdminOwners`).
+
 ## Mobile Boundary Contract
 
 - R0 baseline mode: existing direct imports may remain but their counted set
@@ -194,6 +233,17 @@ Dart `part`/`part of` is a compilation-unit relationship, not a boundary
 escape: both files must resolve, declare each other through URI-style
 directives, and remain inside the same feature/core area. Cross-area parts and
 unresolved local directives fail immediately in every phase.
+
+R19 split the god files this way (spec M6): a library keeps its imports,
+public class names and privacy while its private widgets, route trees or flows
+live in `<file>.<topic>.dart` parts. A class too large for one file keeps its
+public members as instance members: a private core class owns the state and
+shared helpers, and flow mixins `on` that core live in the parts, so
+subclasses and test fakes still override every public member. There are 20
+feature areas; `features/provider_portal` (the provider persona) has its own
+owner API, and the live legal owner-API projection is 172 records. The R9
+manifest stays the closed R9 record (19 areas, 159); the R9 tests pin the
+live delta.
 
 ## Existing-Test Change Policy
 
@@ -518,6 +568,24 @@ and 103/231, summing to 385/781. R14B cannot start before R14A exits because
 the owner-side invite OTP port must exist first. The reason
 projection 301/563 plus 84/218 classifies those same records and is not a second
 backlog. Any nonzero record at R18 entry returns to its R13-R17 owner.
+
+Ledger outcome (2026-09-24). The ledger above was measured by a scanner that
+could not see through dynamic argument shapes. The first R18 provability fix
+(`78ad279f`) resolved those shapes through their inferred TypeScript types and
+re-measured the same debt as 369 records / 900 occurrences: fewer unprovable
+records, more proven foreign occurrences, the 385/781 total having undercounted
+them. Retirement then ran owner by owner rather than in the R13–R17 buckets,
+each commit subtracting its exact records (baseline after it): the planning
+read port `f87ad955` (367/894), finance `06d3dcfc` (342/824),
+planning `3e2d1315` (320/795), identity `d2a27b60` (265/726) before
+collaboration `25121ef2` (242/631) as R14A-before-R14B required, tasks
+`c5731cd8` (237/622), marketplace `fd0b2861` and provider dashboard `e37f4aa1`
+(175/466), messaging `c711a70a` (150/391), notifications `ee21236e` (120/308),
+media `b6acfde2` (119/307), insights `2ea012b7` (83/248), the last marketplace
+shape `4a7d56fc` (81/246), back office `10630d25` (0/0). Three further scanner
+provability fixes (`82f1a4a9`, `02b76f23`, `3cec0ee6`) resolved shapes the
+walker could not prove; none hid a real foreign access. R18 (`095d9bd8`) deleted the zero-valued baseline and
+made the gate strict. The phase labels changed; the invariant did not.
 
 The phrase `architecture target complete` remains reserved for R20 after
 dependency zero, ownership 0/0, both baselines removed, and all binding local

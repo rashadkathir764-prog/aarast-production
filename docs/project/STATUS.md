@@ -1,10 +1,39 @@
 # Current Status
 
-Snapshot date: 2026-09-13
+Snapshot date: 2026-09-24
 
 This is the compact current-status source for Aarast. Source code, schema,
 generated references, and observed checks override historical plans or
 completion reports.
+
+## Modular Monolith Mission — Closure — 2026-09-24
+
+The final closure mission (local branch
+`final/modular-monolith-mission-closeout-20260913`, from `cd45e435`) executed
+the parts of R13–R20 the original 2026-08-04 target requires.
+Ownership debt is 0/0 and the ownership baseline is deleted:
+`architecture:ownership` is strict, fails on any live foreign table access,
+and a planted `prisma.weddingPlan.findMany()` in the back office fails it with
+exactly that record. Dependency debt stays 0 with no baseline.
+Every context reads and writes only its own tables; data another context
+owns is reached through that owner's public port on the caller's client or
+transaction (planning, finance, tasks, guests, identity, collaboration,
+catalog, marketplace, messaging, notifications, media; insights and the back
+office compose over them and own no foreign table).
+The Mobile fate map is complete: the phone wrappers are dissolved,
+`QuoteFinanceContext` lives in finance, the provider persona is its own
+feature (`features/provider_portal`), the seven god files and the touched
+marketplace provider are split into same-library parts, and the router is
+assembled from per-area route trees with `MOBILE_ROUTES.md` unchanged.
+Commits exist only on the local branch. No push, merge, deployment,
+production mutation, remote CI, provider delivery, phone acceptance, or
+release is claimed. Verification and verdicts:
+`docs/superpowers/reports/2026-09-24-modular-monolith-mission-closure-final-report.md`.
+
+The 2026-09-13 entry below recorded MODULAR MONOLITH MISSION: NOT CLOSED
+with ownership 385/781 and R13–R20 open; that state is superseded by this
+section. The three product decisions it recorded (unreferenced routes, FK
+indexes, desktop targets) are unchanged and remain owner decisions.
 
 ## Closeout Mission — Governance Closed, Product Audited — 2026-09-13
 

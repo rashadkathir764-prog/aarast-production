@@ -30,7 +30,17 @@ unresolved local directives fail immediately in every phase.
 
 ## Current Architecture Areas
 
-- Routing: `mobile/lib/core/routing/app_router.dart`.
+- Routing: `mobile/lib/core/routing/app_router.dart` assembles one router from
+  per-area route trees in its parts (`app_router.<area>.dart`: entry,
+  marketplace, provider_portal, conversations, account, plan_shell,
+  wedding_plans), in go_router matching order.
+- Provider persona: `mobile/lib/features/provider_portal/` (portal screen and
+  tabs, apply, profile/service/package management, `ProviderDashboardProvider`)
+  with its own owner API; customer discovery stays in `features/marketplace/`.
+- Large libraries are split into same-library parts; a class too large for one
+  file is a private core plus flow mixins in the parts (see `ARCHITECTURE.md`,
+  Mobile Boundary Contract). Source-contract tests read a library with its
+  parts through `test/support/library_source.dart`.
 - Account-context entry: `mobile/lib/features/account_contexts/providers/account_context_controller.dart`
   and `mobile/lib/features/account_contexts/widgets/account_context_entry_gate.dart`.
 - API config: `mobile/lib/core/config/api_config.dart`.

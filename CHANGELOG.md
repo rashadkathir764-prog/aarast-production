@@ -1,5 +1,58 @@
 # Changelog
 
+## 2026-09-24 - Modular Monolith Mission Closure
+
+The final closure mission (local branch
+`final/modular-monolith-mission-closeout-20260913`, from `cd45e435`) executed
+the parts of R13–R20 the original 2026-08-04 target requires.
+Ownership debt is 0/0 and the ownership baseline is deleted:
+`architecture:ownership` is strict, fails on any live foreign table access,
+and a planted `prisma.weddingPlan.findMany()` in the back office fails it with
+exactly that record. Dependency debt stays 0 with no baseline.
+Every context reads and writes only its own tables; data another context
+owns is reached through that owner's public port on the caller's client or
+transaction (planning, finance, tasks, guests, identity, collaboration,
+catalog, marketplace, messaging, notifications, media; insights and the back
+office compose over them and own no foreign table).
+The Mobile fate map is complete: the phone wrappers are dissolved,
+`QuoteFinanceContext` lives in finance, the provider persona is its own
+feature (`features/provider_portal`), the seven god files and the touched
+marketplace provider are split into same-library parts, and the router is
+assembled from per-area route trees with `MOBILE_ROUTES.md` unchanged.
+Commits exist only on the local branch. No push, merge, deployment,
+production mutation, remote CI, provider delivery, phone acceptance, or
+release is claimed. Verification and verdicts:
+`docs/superpowers/reports/2026-09-24-modular-monolith-mission-closure-final-report.md`.
+
+- Backend ownership 385/781 -> 0/0. Each owner exposes what other contexts
+  read or change as public ports on the caller's client (plan read, plan
+  erasure, planning budget write, finance, tasks, guests, user read, active
+  plan, provider account, realtime session, collaboration permission / scope
+  / history / erasure, catalog read and admin, provider read, quote read,
+  marketplace erasure and admin, conversation lifecycle, messaging
+  participation / erasure / admin, notifications, notifications erasure and
+  admin, identity admin); consumers attach owners' rows after their own reads
+  (`MarketplaceRelationsService`, `ConversationRelationsService`,
+  `InsightsReadPorts`, `AdminOwners`).
+- Ownership scanner provability: dynamic argument shapes resolve through
+  their inferred types, product-declared interfaces are walked, a `data`
+  column is a field inside a write, an array literal spreading an iterable
+  resolves through its element type; declared Prisma input types still fail
+  closed, so product code declares exact where/data shapes.
+- R18: `architecture:ownership` is strict and reads no baseline;
+  `backend/architecture/ownership-baseline.json` and `--write-baseline` are
+  deleted; closed gates report the tolerated debt 0/0 and fail if a baseline
+  reappears; a planted-violation probe test proves the gate fails.
+- R19 Mobile: phone wrappers dissolved; `QuoteFinanceContext` moved to
+  finance; `features/provider_portal` split from marketplace (20 areas, live
+  legal projection 172; the closed R9 manifest is unchanged, the R9 tests pin
+  the delta); invite decision, contributor workspace, task
+  timeline, plan management, FinanceApi, AuthController and the marketplace
+  provider split into same-library parts (private core + flow mixins for the
+  large classes); router assembled from seven per-area route trees;
+  `test/support/library_source.dart` lets source-contract tests read a
+  library with its parts.
+
 ## 2026-09-13 - Modular Monolith R12C Local Completion
 
 R12C is complete locally.

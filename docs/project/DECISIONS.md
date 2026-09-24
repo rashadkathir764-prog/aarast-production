@@ -1,5 +1,47 @@
 # Decisions
 
+## Modular Monolith Mission — Closure — 2026-09-24
+
+The final closure mission (local branch
+`final/modular-monolith-mission-closeout-20260913`, from `cd45e435`) executed
+the parts of R13–R20 the original 2026-08-04 target requires.
+Ownership debt is 0/0 and the ownership baseline is deleted:
+`architecture:ownership` is strict, fails on any live foreign table access,
+and a planted `prisma.weddingPlan.findMany()` in the back office fails it with
+exactly that record. Dependency debt stays 0 with no baseline.
+Every context reads and writes only its own tables; data another context
+owns is reached through that owner's public port on the caller's client or
+transaction (planning, finance, tasks, guests, identity, collaboration,
+catalog, marketplace, messaging, notifications, media; insights and the back
+office compose over them and own no foreign table).
+The Mobile fate map is complete: the phone wrappers are dissolved,
+`QuoteFinanceContext` lives in finance, the provider persona is its own
+feature (`features/provider_portal`), the seven god files and the touched
+marketplace provider are split into same-library parts, and the router is
+assembled from per-area route trees with `MOBILE_ROUTES.md` unchanged.
+Commits exist only on the local branch. No push, merge, deployment,
+production mutation, remote CI, provider delivery, phone acceptance, or
+release is claimed. Verification and verdicts:
+`docs/superpowers/reports/2026-09-24-modular-monolith-mission-closure-final-report.md`.
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Retire the ownership debt owner by owner through the owners' public ports instead of the R13–R17 buckets. | Accepted; completed | The first provability fix re-measured 385/781 as 369/900 (the old walker undercounted); each owner commit subtracted its exact records; R14A identity still exited before R14B collaboration. Ledger outcome in `ARCHITECTURE.md`. |
+| Grow an owner's existing port with the methods other contexts need; add a new port only for a new consumer role (erasure steps, admin). | Accepted | One contract per owner role; no facade over a service; the R3 frozen port surfaces only grow. |
+| Account erasure runs as per-owner erasure-step ports called by identity's deletion saga, in the saga's order, not as one AccountErasurePort. | Accepted | Each owner deletes its own rows on the saga's transaction; the saga keeps the order and the single transaction. |
+| Present another owner's rows through context-private holders that attach them after the own-table read. | Accepted | No foreign include or relation filter remains; response shapes are unchanged. |
+| Product code declares the exact where/data shapes it passes to Prisma. | Accepted | Generated Prisma input types admit every relation and fail closed in the scanner; declared shapes are provable. |
+| Keep the provider-rating lock/refresh in the admin mutation executor and pass identity's lock port into the Backoffice mutation gate. | Accepted | R12A freezes the consumers of `provider-review-rating.ts` and forbids Backoffice-public runtime imports of Identity-public; both constraints stay intact. |
+| Make the ownership gate strict, delete its baseline and let the closed gates report the tolerated debt from one strict-regime fact. | Accepted; R18 | "R8 deletes all baselines"; a reappearing baseline fails every closed gate; a planted foreign access fails the gate. |
+| The R12A run-only parity unit test reads its fixture from the R12A entry revision. | Accepted | R12A is closed and its scan checks no behavioral-test bytes; the live test evolves with `AdminService`'s constructor. |
+| `identity/public/user-lifecycle-lock.ts` stays identity's public helper used by other contexts. | Accepted | It is identity's own SQL on its own `User` row in identity's public folder; the owner performs the statement. |
+| Keep `livePlanAuthorizationWhere` on the frozen R3 collaboration port although no production code uses it. | Accepted; recorded | Removing a frozen contract method is a contract change; any non-owner use would fail the strict ownership gate. |
+| Split the provider persona into `features/provider_portal`; keep the R9 manifest as the closed R9 record and pin the live delta (20th area, legal owner-API projection 172) in the R9 tests. | Accepted; R19 (spec M6, C9) | The provider is a separate account role; route paths and names are unchanged. Amending the manifest broke the backend R3 scope gate, which validates the historical manifest (fixed in `88e6c9c7`); closed manifests are never re-registered. |
+| Split god files into same-library parts; a class too large for one file becomes a private core plus flow mixins. | Accepted; R19 (spec M6) | Public class names, imports, privacy and overridability are unchanged; session and account deletion stay one mixin because they are mutually recursive. |
+| Do not split `main.dart` (723 -> 721 lines). | Accepted | It is the composition root, touched only for one import; the <= 700 target belongs to the god-file row, and a split would change the R9 composition sources for no boundary gain. |
+| Move `QuoteFinanceContext` to finance although no lib code uses it. | Accepted; recorded | The spec moves it out of `shared/`; deleting tested product code is a product decision. |
+| No real-phone QA for R19. | Recorded | R19 changes no Mobile behavior (analyze clean, 1164 tests, routes identical); no device is available here and phone acceptance is not claimed. |
+
 ## Modular Monolith R12C — Local Completion — 2026-09-13
 
 R12C is complete locally.

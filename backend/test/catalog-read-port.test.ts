@@ -74,19 +74,14 @@ test('the catalog read port reads rows by id and active rows by id without a sta
 
   assert.deepEqual(await service.getCities(tx, []), []);
   assert.deepEqual(await service.getCategories(tx, []), []);
-  assert.equal(await service.countActiveCategories(tx, []), 0);
   assert.deepEqual(await service.getCities(tx, ['city-1', 'city-2']), [{ id: 'city-1' }]);
   assert.deepEqual(await service.getCategories(tx, ['category-1']), [{ id: 'category-1' }]);
   assert.deepEqual(await service.findActiveCity(tx, 'city-1'), { id: 'city-1' });
-  assert.deepEqual(await service.findActiveCategory(tx, 'category-1'), { id: 'category-1' });
-  assert.equal(await service.countActiveCategories(tx, ['category-1', 'category-2']), 2);
 
   assert.deepEqual(calls, [
     ['city.findMany', { where: { id: { in: ['city-1', 'city-2'] } } }],
     ['category.findMany', { where: { id: { in: ['category-1'] } } }],
     ['city.findFirst', { where: { id: 'city-1', isActive: true } }],
-    ['category.findFirst', { where: { id: 'category-1', isActive: true } }],
-    ['category.count', { where: { id: { in: ['category-1', 'category-2'] }, isActive: true } }],
   ]);
 });
 

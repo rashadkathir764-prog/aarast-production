@@ -45,15 +45,6 @@ export interface CatalogReadPort {
     client: Prisma.TransactionClient,
     cityId: string,
   ): Promise<City | null>;
-  findActiveCategory(
-    client: Prisma.TransactionClient,
-    categoryId: string,
-  ): Promise<ProviderCategory | null>;
-  /** How many of the given categories exist and are active. */
-  countActiveCategories(
-    client: Prisma.TransactionClient,
-    categoryIds: readonly string[],
-  ): Promise<number>;
   /** Locks the city row for share and returns it while it is active. */
   lockActiveCityForShareInTransaction(
     tx: Prisma.TransactionClient,

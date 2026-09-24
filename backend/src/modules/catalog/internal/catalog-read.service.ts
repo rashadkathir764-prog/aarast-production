@@ -92,16 +92,7 @@ export class CatalogReadService implements CatalogReadPort {
     return client.city.findFirst({ where: { id: cityId, isActive: true } });
   }
 
-  async findActiveCategory(
-    client: Prisma.TransactionClient,
-    categoryId: string,
-  ): Promise<ProviderCategory | null> {
-    return client.providerCategory.findFirst({
-      where: { id: categoryId, isActive: true },
-    });
-  }
-
-  async countActiveCategories(
+  private async countActiveCategories(
     client: Prisma.TransactionClient,
     categoryIds: readonly string[],
   ): Promise<number> {

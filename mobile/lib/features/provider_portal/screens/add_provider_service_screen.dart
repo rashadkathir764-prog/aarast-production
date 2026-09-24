@@ -13,24 +13,27 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        ProviderMarketplaceProvider;
+import '../providers/provider_dashboard_provider.dart';
 
-class AddProviderPackageScreen extends StatefulWidget {
-  const AddProviderPackageScreen({super.key});
+class AddProviderServiceScreen extends StatefulWidget {
+  const AddProviderServiceScreen({super.key});
 
   @override
-  State<AddProviderPackageScreen> createState() =>
-      _AddProviderPackageScreenState();
+  State<AddProviderServiceScreen> createState() =>
+      _AddProviderServiceScreenState();
 }
 
-class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
+class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _itemsController = TextEditingController();
-  String? _serviceId;
+  final _basePriceController = TextEditingController();
+  final _priceUnitController = TextEditingController(text: 'حسب الخدمة');
+  String? _categoryId;
+  String? _cityId;
   AarastFormDraftBinding? _draft;
 
   @override
@@ -38,6 +41,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      context.read<ProviderMarketplaceProvider>().loadReferenceData();
       context.read<ProviderDashboardProvider>().loadDashboard();
       _configureDraft();
     });
@@ -48,26 +52,26 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
     _draft?.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
-    _priceController.dispose();
-    _itemsController.dispose();
+    _basePriceController.dispose();
+    _priceUnitController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final marketplace = context.watch<ProviderMarketplaceProvider>();
     final dashboard = context.watch<ProviderDashboardProvider>();
-    final services = dashboard.services;
     final canManageListing = _canManageProviderListing(
       dashboard.profile?.status,
     );
 
     return AarastPageScaffold(
-      title: 'إضافة باقة',
-      subtitle: 'اجمعي أكثر عرض يطلبه العملاء في باقة واضحة.',
+      title: 'إضافة خدمة',
+      subtitle: 'أضف خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: canManageListing
           ? AarastV3FormActionBar(
-              label: 'إضافة الباقة',
+              label: 'إضافة الخدمة',
               icon: LucideIcons.plus,
               loading: dashboard.isSubmitting,
               onPressed: dashboard.isSubmitting ? null : _submit,
@@ -90,9 +94,9 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                 else
                   AarastEmptyState(
                     icon: LucideIcons.fileClock,
-                    title: 'إضافة الباقات بعد الاعتماد',
+                    title: 'إضافة الخدمات بعد الاعتماد',
                     message:
-                        'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الباقات بعد أن تصبح الحالة نشطة.',
+                        'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الخدمات بعد أن تصبح الحالة نشطة.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
                       icon: const Icon(LucideIcons.layoutDashboard),
@@ -108,10 +112,10 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
                   const AarastV3FocusPrompt(
-                    question: 'ما العرض الذي تريد جمعه في باقة واحدة؟',
+                    question: 'ما الخدمة التي سيجدها العميل هنا؟',
                     supportingText:
-                        'ابدأ باسم واضح وسعر حقيقي؛ وأضف المزايا والخدمة المرتبطة عند الحاجة.',
-                    icon: LucideIcons.package,
+                        'اكتب اسمًا مفهومًا واختر الفئة؛ السعر والوصف يساعدان المقارنة دون وعود حجز.',
+                    icon: LucideIcons.wand,
                   ),
                   if (_draft != null) ...[
                     const SizedBox(height: 8),
@@ -124,22 +128,44 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                         controller: _titleController,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: 'اسم الباقة',
-                          prefixIcon: Icon(LucideIcons.package),
+                          labelText: 'اسم الخدمة',
+                          prefixIcon: Icon(LucideIcons.wand),
                         ),
                         validator: (value) =>
                             value == null || value.trim().length < 2
-                            ? 'اكتب اسم الباقة'
+                            ? 'اكتب اسم الخدمة'
                             : null,
                       ),
                       const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: _safeCategoryId(marketplace),
+                        decoration: const InputDecoration(
+                          labelText: 'الفئة',
+                          prefixIcon: Icon(LucideIcons.shapes),
+                        ),
+                        items: marketplace.categories
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.nameAr),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() => _categoryId = value);
+                          _draft?.changed();
+                        },
+                        validator: (value) =>
+                            value == null ? 'اختر الفئة' : null,
+                      ),
+                      const SizedBox(height: 10),
                       TextFormField(
-                        controller: _priceController,
+                        controller: _basePriceController,
                         keyboardType: TextInputType.number,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.right,
                         decoration: InputDecoration(
-                          labelText: 'السعر',
+                          labelText: 'السعر من',
                           suffixText: currencyLabelAr(defaultCurrencyCode),
                           prefixIcon: Icon(LucideIcons.wallet),
                         ),
@@ -148,34 +174,33 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                   ),
                   const SizedBox(height: 10),
                   AarastDisclosureCard(
-                    title: 'محتوى الباقة',
-                    subtitle: 'الخدمة المرتبطة والوصف والمميزات',
-                    icon: LucideIcons.listChecks,
+                    title: 'تفاصيل تساعد العميل',
+                    subtitle: 'المدينة والوصف وملاحظة السعر',
+                    icon: LucideIcons.fileText,
                     initiallyExpanded:
-                        _serviceId != null ||
-                        _descriptionController.text.isNotEmpty ||
-                        _itemsController.text.isNotEmpty,
+                        _cityId != null ||
+                        _descriptionController.text.isNotEmpty,
                     child: Column(
                       children: [
                         DropdownButtonFormField<String>(
-                          initialValue: _safeServiceId(services),
+                          initialValue: _safeCityId(marketplace),
                           decoration: const InputDecoration(
-                            labelText: 'الخدمة المرتبطة',
-                            prefixIcon: Icon(LucideIcons.wand),
+                            labelText: 'مدينة الخدمة',
+                            prefixIcon: Icon(LucideIcons.mapPin),
                           ),
                           items: [
                             const DropdownMenuItem<String>(
                               value: null,
-                              child: Text('باقة عامة'),
+                              child: Text('نفس مدينة المزود'),
                             ),
-                            for (final service in services)
+                            for (final city in marketplace.cities)
                               DropdownMenuItem(
-                                value: service.id,
-                                child: Text(service.title),
+                                value: city.id,
+                                child: Text(city.nameAr),
                               ),
                           ],
                           onChanged: (value) {
-                            setState(() => _serviceId = value);
+                            setState(() => _cityId = value);
                             _draft?.changed();
                           },
                         ),
@@ -184,21 +209,18 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           controller: _descriptionController,
                           minLines: 2,
                           maxLines: 3,
-                          maxLength: 220,
+                          maxLength: 280,
                           decoration: const InputDecoration(
-                            labelText: 'وصف مختصر',
+                            labelText: 'ماذا تشمل الخدمة؟',
                             prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
                         const SizedBox(height: 10),
                         TextFormField(
-                          controller: _itemsController,
-                          minLines: 3,
-                          maxLines: 4,
+                          controller: _priceUnitController,
                           decoration: const InputDecoration(
-                            labelText: 'المميزات',
-                            hintText: 'كل ميزة في سطر',
-                            prefixIcon: Icon(LucideIcons.listChecks),
+                            labelText: 'ملاحظة السعر أو المدة',
+                            prefixIcon: Icon(LucideIcons.timer),
                           ),
                         ),
                       ],
@@ -215,10 +237,17 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
     );
   }
 
-  String? _safeServiceId(List<MarketplaceService> services) {
-    if (_serviceId == null) return null;
-    return services.any((service) => service.id == _serviceId)
-        ? _serviceId
+  String? _safeCategoryId(ProviderMarketplaceProvider marketplace) {
+    if (_categoryId == null) return null;
+    return marketplace.categories.any((category) => category.id == _categoryId)
+        ? _categoryId
+        : null;
+  }
+
+  String? _safeCityId(ProviderMarketplaceProvider marketplace) {
+    if (_cityId == null) return null;
+    return marketplace.cities.any((city) => city.id == _cityId)
+        ? _cityId
         : null;
   }
 
@@ -226,17 +255,20 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
     if (_draft != null) return;
     _draft = AarastFormDraftBinding(
       store: context.read<AarastFormDraftStore?>(),
-      scope: 'provider:package:new',
+      scope: 'provider:service:new',
       fields: {
         'title': _titleController,
         'description': _descriptionController,
-        'price': _priceController,
-        'items': _itemsController,
+        'basePrice': _basePriceController,
+        'priceUnit': _priceUnitController,
       },
-      readExtras: () => {'serviceId': _serviceId},
+      readExtras: () => {'categoryId': _categoryId, 'cityId': _cityId},
       restoreExtras: (data) {
         if (!mounted) return;
-        setState(() => _serviceId = data['serviceId']?.toString());
+        setState(() {
+          _categoryId = data['categoryId']?.toString();
+          _cityId = data['cityId']?.toString();
+        });
       },
       onStatusChanged: () {
         if (mounted) setState(() {});
@@ -246,20 +278,15 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final items = _itemsController.text
-        .split('\n')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
-
-    final ok = await context.read<ProviderDashboardProvider>().createPackage(
+    if (!_formKey.currentState!.validate() || _categoryId == null) return;
+    final ok = await context.read<ProviderDashboardProvider>().createService(
       title: _titleController.text,
-      serviceId: _serviceId,
+      categoryId: _categoryId!,
       description: _descriptionController.text,
-      price: _priceController.text,
+      basePrice: _basePriceController.text,
+      priceUnit: _priceUnitController.text,
       currency: defaultCurrencyCode,
-      items: items,
+      cityId: _cityId,
     );
 
     if (!mounted) return;
@@ -269,9 +296,9 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       final router = GoRouter.of(context);
       AarastFormSuccess.show(
         context,
-        message: 'تمت إضافة الباقة.',
+        message: 'تمت إضافة الخدمة.',
         nextLabel: 'إضافة أخرى',
-        onNext: () => router.push(AppRouter.providerPackageNew),
+        onNext: () => router.push(AppRouter.providerServiceNew),
       );
       context.go(AppRouter.providerDashboard);
     }

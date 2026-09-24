@@ -1772,7 +1772,19 @@ const trackedOwnerApiContracts = [
         uri: 'data/marketplace_api.dart',
         show: ['MarketplaceApi', 'ProviderDashboardApi'],
       },
-      { uri: 'models/marketplace_models.dart', show: ['MarketplaceProvider'] },
+      {
+        uri: 'models/marketplace_models.dart',
+        show: [
+          'MarketplaceProvider',
+          'MarketplaceService',
+          'ProviderDashboardProfile',
+          'ProviderDashboardSummary',
+          'ProviderPackage',
+          'ProviderReview',
+          'ProviderServiceImage',
+          'QuoteRequest',
+        ],
+      },
       {
         uri: 'models/provider_budget_match_intent.dart',
         show: ['ProviderBudgetMatchIntent', 'ProviderQuoteInitialContext'],
@@ -1780,40 +1792,24 @@ const trackedOwnerApiContracts = [
       {
         uri: 'providers/marketplace_provider.dart',
         show: [
-          'ProviderDashboardProvider',
           'ProviderMarketplaceProvider',
+          'marketplaceErrorMessage',
           'providerDirectoryErrorMessage',
           'providerReferenceDataErrorMessage',
         ],
       },
       {
-        uri: 'screens/add_provider_package_screen.dart',
-        show: ['AddProviderPackageScreen'],
-      },
-      {
-        uri: 'screens/add_provider_service_screen.dart',
-        show: ['AddProviderServiceScreen'],
-      },
-      {
-        uri: 'screens/edit_provider_profile_screen.dart',
-        show: ['EditProviderProfileScreen'],
-      },
-      {
         uri: 'screens/favorite_providers_screen.dart',
         show: ['FavoriteProvidersScreen'],
-      },
-      {
-        uri: 'screens/provider_apply_screen.dart',
-        show: ['ProviderApplyScreen', 'ProviderApplyStatusScreen'],
       },
       { uri: 'screens/provider_details_screen.dart', show: ['ProviderDetailsScreen'] },
       {
         uri: 'screens/provider_marketplace_screen.dart',
         show: ['ProviderMarketplaceScreen'],
       },
-      { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
       { uri: 'screens/quote_request_screen.dart', show: ['QuoteRequestScreen'] },
       { uri: 'widgets/provider_auth_gate.dart', show: ['ProviderAuthGate'] },
+      { uri: 'widgets/quote_status_chip.dart', show: ['QuoteStatusChip'] },
     ],
   },
   {
@@ -1878,6 +1874,33 @@ const trackedOwnerApiContracts = [
         uri: 'widgets/location_picker_section.dart',
         show: ['LocationPickerSection'],
       },
+    ],
+  },
+  {
+    area: 'features/provider_portal',
+    path: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
+    exports: [
+      {
+        uri: 'providers/provider_dashboard_provider.dart',
+        show: ['ProviderDashboardProvider'],
+      },
+      {
+        uri: 'screens/add_provider_package_screen.dart',
+        show: ['AddProviderPackageScreen'],
+      },
+      {
+        uri: 'screens/add_provider_service_screen.dart',
+        show: ['AddProviderServiceScreen'],
+      },
+      {
+        uri: 'screens/edit_provider_profile_screen.dart',
+        show: ['EditProviderProfileScreen'],
+      },
+      {
+        uri: 'screens/provider_apply_screen.dart',
+        show: ['ProviderApplyScreen', 'ProviderApplyStatusScreen'],
+      },
+      { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
     ],
   },
   {
@@ -2110,7 +2133,7 @@ const trackedIdentityBatchContracts = [
   },
   {
     source: 'mobile/lib/features/auth/screens/otp_screen.dart',
-    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    target: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
     show: ['ProviderDashboardProvider'],
   },
   {
@@ -2140,7 +2163,7 @@ const trackedCollaborationBatchContracts = [
     show: ['WeddingLocationDraft'],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/edit_provider_profile_screen.dart',
+    source: 'mobile/lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard'],
   },
@@ -2150,12 +2173,12 @@ const trackedCollaborationBatchContracts = [
     show: ['AuthActionGuard'],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/provider_apply_screen.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/provider_apply_screen.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
   },
@@ -2202,22 +2225,22 @@ const trackedCollaborationBatchContracts = [
     ],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/provider_portal_screen.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
     target: 'mobile/lib/features/chat/chat_api.dart',
     show: ['ChatProvider', 'ConversationListView'],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/provider_profile_tab.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/provider_profile_tab.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthController'],
   },
   {
-    source: 'mobile/lib/features/marketplace/screens/provider_profile_tab.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
     target: 'mobile/lib/features/chat/chat_api.dart',
     show: ['ChatProvider'],
   },
@@ -2242,7 +2265,7 @@ const trackedCollaborationBatchContracts = [
     show: ['WeddingPlansProvider'],
   },
   {
-    source: 'mobile/lib/features/marketplace/widgets/provider_account_actions.dart',
+    source: 'mobile/lib/features/provider_portal/widgets/provider_account_actions.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['confirmAccountDeletion'],
   },
@@ -2257,7 +2280,7 @@ const trackedCollaborationBatchContracts = [
     show: ['AuthController', 'AuthStatus'],
   },
   {
-    source: 'mobile/lib/features/marketplace/widgets/provider_portal_bottom_nav.dart',
+    source: 'mobile/lib/features/provider_portal/widgets/provider_portal_bottom_nav.dart',
     target: 'mobile/lib/features/shell/shell_api.dart',
     show: ['AarastNavigationItem', 'AarastPlanNavigationBar'],
   },
@@ -2335,6 +2358,29 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/sharing/screens/sharing_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+  // R19 provider_portal split: the provider-persona files moved out of
+  // marketplace now read marketplace's models and discovery provider through
+  // its owner API.
+  {
+    source: 'mobile/lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderDashboardProfile', 'ProviderMarketplaceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderMarketplaceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderDashboardProfile'],
+  },
+  {
+    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['MarketplaceService', 'ProviderDashboardProfile', 'ProviderReview'],
   },
 ];
 
@@ -2907,17 +2953,11 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/marketplace/marketplace_api.dart',
         show: [
-          'AddProviderPackageScreen',
-          'AddProviderServiceScreen',
-          'EditProviderProfileScreen',
           'FavoriteProvidersScreen',
-          'ProviderApplyScreen',
-          'ProviderApplyStatusScreen',
           'ProviderAuthGate',
           'ProviderBudgetMatchIntent',
           'ProviderDetailsScreen',
           'ProviderMarketplaceScreen',
-          'ProviderPortalScreen',
           'ProviderQuoteInitialContext',
           'QuoteRequestScreen',
         ],
@@ -2929,6 +2969,17 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/notifications/notifications_api.dart',
         show: ['NotificationsScreen'],
+      },
+      {
+        target: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
+        show: [
+          'AddProviderPackageScreen',
+          'AddProviderServiceScreen',
+          'EditProviderProfileScreen',
+          'ProviderApplyScreen',
+          'ProviderApplyStatusScreen',
+          'ProviderPortalScreen',
+        ],
       },
       {
         target: 'mobile/lib/features/settings/settings_api.dart',
@@ -3014,7 +3065,6 @@ const trackedCompositionRootContracts = [
         show: [
           'MarketplaceApi',
           'ProviderDashboardApi',
-          'ProviderDashboardProvider',
           'ProviderMarketplaceProvider',
         ],
       },
@@ -3029,6 +3079,10 @@ const trackedCompositionRootContracts = [
           'YemenAdministrativeApi',
           'YemenAdministrativeProvider',
         ],
+      },
+      {
+        target: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
+        show: ['ProviderDashboardProvider'],
       },
       {
         target: 'mobile/lib/features/settings/settings_api.dart',
@@ -3664,8 +3718,9 @@ test('tracked owner API contract rejects one additional public symbol', () => {
 
 test('tracked Collaboration batch rejects one unchanged internal import', () => {
   const files = trackedBatchFixture(trackedCollaborationBatchContracts, {
-    'mobile/lib/features/marketplace/screens/provider_apply_screen.dart': [
+    'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart': [
       "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
+      "import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceProvider;",
       "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController, AuthStatus;",
       "import '../../auth/providers/auth_controller.dart';",
       '',
@@ -3682,8 +3737,9 @@ test('tracked Collaboration batch rejects one unchanged internal import', () => 
 
 test('tracked Collaboration batch rejects one duplicate owner import', () => {
   const files = trackedBatchFixture(trackedCollaborationBatchContracts, {
-    'mobile/lib/features/marketplace/screens/provider_apply_screen.dart': [
+    'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart': [
       "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
+      "import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceProvider;",
       "import '../../auth/auth_api.dart' show AuthActionGuard;",
       "import '../../auth/auth_api.dart' show AuthController, AuthStatus;",
       '',
@@ -3700,8 +3756,9 @@ test('tracked Collaboration batch rejects one duplicate owner import', () => {
 
 test('tracked Collaboration batch rejects one missing symbol', () => {
   const files = trackedBatchFixture(trackedCollaborationBatchContracts, {
-    'mobile/lib/features/marketplace/screens/provider_apply_screen.dart': [
+    'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart': [
       "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
+      "import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceProvider;",
       "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;",
       '',
     ].join('\n'),

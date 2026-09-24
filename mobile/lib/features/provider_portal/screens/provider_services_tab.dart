@@ -11,8 +11,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        MarketplaceService,
+        ProviderPackage,
+        ProviderServiceImage;
+import '../providers/provider_dashboard_provider.dart';
 import 'provider_catalog_management_widgets.dart';
 
 typedef ProviderServiceImagePicker = Future<List<XFile>> Function();

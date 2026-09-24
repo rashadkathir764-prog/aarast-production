@@ -14,8 +14,12 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart' show AuthController;
 import '../../chat/chat_api.dart' show ChatProvider;
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        MarketplaceService,
+        ProviderDashboardProfile,
+        ProviderReview;
+import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_account_actions.dart';
 
 class ProviderProfileTab extends StatefulWidget {

@@ -12,7 +12,8 @@ import 'package:aarast_mobile/features/chat/screens/quote_conversation_entry_scr
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
-import 'package:aarast_mobile/features/marketplace/screens/edit_provider_profile_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/edit_provider_profile_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/data/local_plan_migration.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';

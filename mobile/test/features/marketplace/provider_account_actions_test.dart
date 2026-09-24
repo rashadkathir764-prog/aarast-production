@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/features/marketplace/widgets/provider_account_actions.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_account_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

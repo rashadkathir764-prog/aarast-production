@@ -1,17 +1,17 @@
 import 'dart:io';
 
 import 'package:aarast_mobile/core/utils/currency_label.dart';
-import 'package:aarast_mobile/features/marketplace/screens/provider_apply_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_apply_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Phase E provider B2B screens contract', () {
     final screenPaths = <String>[
-      'lib/features/marketplace/screens/provider_apply_screen.dart',
-      'lib/features/marketplace/screens/edit_provider_profile_screen.dart',
-      'lib/features/marketplace/screens/add_provider_service_screen.dart',
-      'lib/features/marketplace/screens/add_provider_package_screen.dart',
+      'lib/features/provider_portal/screens/provider_apply_screen.dart',
+      'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
+      'lib/features/provider_portal/screens/add_provider_service_screen.dart',
+      'lib/features/provider_portal/screens/add_provider_package_screen.dart',
     ];
 
     test('provider B2B screens use Lucide and avoid stale UI leaks', () {
@@ -32,8 +32,8 @@ void main() {
 
     test('provider service and package forms keep Arabic currency UI', () {
       for (final path in [
-        'lib/features/marketplace/screens/add_provider_service_screen.dart',
-        'lib/features/marketplace/screens/add_provider_package_screen.dart',
+        'lib/features/provider_portal/screens/add_provider_service_screen.dart',
+        'lib/features/provider_portal/screens/add_provider_package_screen.dart',
       ]) {
         final source = File(path).readAsStringSync();
         expect(source, contains('currencyLabelAr(defaultCurrencyCode)'));
@@ -60,7 +60,7 @@ void main() {
 
     test('provider portal is split into bounded real tab libraries', () {
       final barrel = File(
-        'lib/features/marketplace/screens/provider_portal_tabs.dart',
+        'lib/features/provider_portal/screens/provider_portal_tabs.dart',
       ).readAsStringSync();
       const tabFiles = [
         'provider_home_tab.dart',
@@ -70,7 +70,7 @@ void main() {
       ];
       final sources = <String>[];
       for (final name in tabFiles) {
-        final file = File('lib/features/marketplace/screens/$name');
+        final file = File('lib/features/provider_portal/screens/$name');
         expect(file.existsSync(), isTrue, reason: name);
         final source = file.readAsStringSync();
         expect(source.split('\n').length, lessThanOrEqualTo(500), reason: name);

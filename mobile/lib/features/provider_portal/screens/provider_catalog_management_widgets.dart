@@ -6,8 +6,11 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        MarketplaceService,
+        ProviderPackage;
+import '../providers/provider_dashboard_provider.dart';
 
 class ProviderPackageManagementCard extends StatelessWidget {
   const ProviderPackageManagementCard({

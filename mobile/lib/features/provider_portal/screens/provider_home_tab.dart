@@ -7,9 +7,13 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
-import '../widgets/quote_status_chip.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        ProviderDashboardProfile,
+        ProviderDashboardSummary,
+        QuoteRequest,
+        QuoteStatusChip;
+import '../providers/provider_dashboard_provider.dart';
 
 class ProviderHomeTab extends StatelessWidget {
   const ProviderHomeTab({required this.onOpenTab, super.key});

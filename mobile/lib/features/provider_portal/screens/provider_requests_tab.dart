@@ -9,9 +9,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
-import '../widgets/quote_status_chip.dart';
+import '../../marketplace/marketplace_api.dart'
+    show
+        QuoteRequest,
+        QuoteStatusChip;
+import '../providers/provider_dashboard_provider.dart';
 
 class ProviderRequestsTab extends StatefulWidget {
   const ProviderRequestsTab({super.key});

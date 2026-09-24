@@ -44,22 +44,24 @@ import '../../features/guests/guests_api.dart' show GuestListScreen;
 import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
-        AddProviderPackageScreen,
-        AddProviderServiceScreen,
-        EditProviderProfileScreen,
         FavoriteProvidersScreen,
-        ProviderApplyScreen,
-        ProviderApplyStatusScreen,
         ProviderAuthGate,
         ProviderBudgetMatchIntent,
         ProviderDetailsScreen,
         ProviderMarketplaceScreen,
-        ProviderPortalScreen,
         ProviderQuoteInitialContext,
         QuoteRequestScreen;
 import '../../features/more/more_api.dart' show MoreScreen;
 import '../../features/notifications/notifications_api.dart'
     show NotificationsScreen;
+import '../../features/provider_portal/provider_portal_api.dart'
+    show
+        AddProviderPackageScreen,
+        AddProviderServiceScreen,
+        EditProviderProfileScreen,
+        ProviderApplyScreen,
+        ProviderApplyStatusScreen,
+        ProviderPortalScreen;
 import '../../features/settings/settings_api.dart' show SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
     show

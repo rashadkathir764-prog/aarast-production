@@ -1,8 +1,8 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
-import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
-import 'package:aarast_mobile/features/marketplace/screens/provider_requests_tab.dart';
+import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_requests_tab.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

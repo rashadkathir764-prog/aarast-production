@@ -880,7 +880,8 @@ const R9_ROOT_SHA256 = '1cf2239bdf339b12fa76abfa3dd90ef9bbf2dd39a0778f2af9385f2e
 const R9_ALLOWED_PATHS_SHA256 = 'eda3b152a7eb8986482fa1b2d0aeaa32120a26f721be1cf1c36515ba107f967c';
 const R9_FEATURES = [
   'account_contexts', 'auth', 'catalogs', 'chat', 'finance', 'guests', 'home',
-  'marketplace', 'more', 'notifications', 'onboarding', 'settings', 'sharing',
+  'marketplace', 'more', 'notifications', 'onboarding', 'provider_portal',
+  'settings', 'sharing',
   'shell', 'support', 'tasks', 'wedding_day', 'wedding_plans', 'welcome_gateway',
 ];
 const R9_COMPOSITION_SOURCES = [
@@ -1087,7 +1088,7 @@ export function validateR9Manifest(value) {
   if (!sameArray(compositionSources, R9_COMPOSITION_SOURCES)) {
     throw new Error('invalid composition sources');
   }
-  if (manifest.finalLegalRecordCount !== 159) throw new Error('invalid final legal count');
+  if (manifest.finalLegalRecordCount !== 172) throw new Error('invalid final legal count');
 
   const documents = readDenseArray(manifest.documents).map((value, index) => (
     validateExactObject(value, R9_DOCUMENTS[index] || {}, ['path', 'sha256'])
@@ -1115,7 +1116,7 @@ export function validateR9Manifest(value) {
     },
     featureApis,
     expectedDebt,
-    finalLegalRecordCount: 159,
+    finalLegalRecordCount: 172,
     compositionSources,
     documents,
     allowedChangedPaths,

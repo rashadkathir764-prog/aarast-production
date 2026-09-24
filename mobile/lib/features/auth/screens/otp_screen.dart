@@ -10,7 +10,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/marketplace_api.dart' show ProviderDashboardProvider;
+import '../../provider_portal/provider_portal_api.dart'
+    show ProviderDashboardProvider;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';

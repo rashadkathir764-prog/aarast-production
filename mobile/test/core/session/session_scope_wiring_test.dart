@@ -15,6 +15,8 @@ void main() {
       'lib/features/guests/providers/guests_provider.dart',
       'lib/features/settings/providers/settings_provider.dart',
       'lib/features/marketplace/providers/marketplace_provider.dart',
+      // The provider persona's dashboard provider moved to provider_portal.
+      'lib/features/provider_portal/providers/provider_dashboard_provider.dart',
       'lib/features/chat/providers/chat_provider.dart',
     ];
 

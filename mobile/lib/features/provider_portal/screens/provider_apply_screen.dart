@@ -14,25 +14,29 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
-import '../../auth/auth_api.dart' show AuthActionGuard;
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
+import '../../account_contexts/account_contexts_api.dart'
+    show AccountContextController;
+import '../../auth/auth_api.dart'
+    show AuthActionGuard, AuthController, AuthStatus;
+import '../../marketplace/marketplace_api.dart'
+    show
+        ProviderMarketplaceProvider;
+import '../providers/provider_dashboard_provider.dart';
 
-class EditProviderProfileScreen extends StatefulWidget {
-  const EditProviderProfileScreen({super.key});
+class ProviderApplyScreen extends StatefulWidget {
+  const ProviderApplyScreen({super.key});
 
   @override
-  State<EditProviderProfileScreen> createState() =>
-      _EditProviderProfileScreenState();
+  State<ProviderApplyScreen> createState() => _ProviderApplyScreenState();
 }
 
-class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
+class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   final _formKey = GlobalKey<FormState>();
   final _businessNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _cityId;
-  bool _didPopulate = false;
+  String? _categoryId;
   AarastFormDraftBinding? _draft;
 
   @override
@@ -46,6 +50,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
           await AuthActionGuard.hasAccount(context);
       if (!mounted || !hasAccount) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
+      _configureDraft();
     });
   }
 
@@ -60,29 +65,27 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final dashboard = context.watch<ProviderDashboardProvider>();
-    final profile = dashboard.profile;
-
-    if (profile != null && !_didPopulate) {
-      _populate(profile);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _configureDraft(profile.id);
-      });
-    }
+    final hasProfile = dashboard.hasProviderProfile;
 
     return AarastPageScaffold(
-      title: 'تعديل ملف المزود',
-      subtitle: 'حدّث بيانات النشاط التي تظهر للعملاء في سوق الموردين.',
+      title: 'طلب الانضمام كمزود',
+      subtitle: 'أضف نشاطك ليصل إليك عملاء يبحثون عن خدمات الزفاف.',
       resizeToAvoidBottomInset: true,
-      bottomNavigationBar: profile == null
-          ? null
-          : AarastV3FormActionBar(
-              label: 'حفظ التعديل',
-              icon: LucideIcons.save,
+      bottomNavigationBar:
+          !hasProfile &&
+              !(auth.status == AuthStatus.unauthenticated &&
+                  !AppFeatureFlags.devBypassLoginGatesForUxExploration) &&
+              !(dashboard.isLoading && dashboard.profile == null)
+          ? AarastV3FormActionBar(
+              label: 'إرسال طلب الانضمام',
+              icon: LucideIcons.send,
               loading: dashboard.isSubmitting,
               onPressed: dashboard.isSubmitting ? null : _submit,
-            ),
+            )
+          : null,
       actions: [
         IconButton(
           tooltip: 'رجوع',
@@ -90,7 +93,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go(AppRouter.providerDashboard);
+              context.go(AppRouter.home);
             }
           },
           icon: const Icon(LucideIcons.chevronRight),
@@ -102,33 +105,25 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
           bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
         ),
         children: [
-          if (dashboard.isLoading && profile == null)
-            AarastSkeleton.form(fields: 4, inline: true)
-          else if (profile == null && dashboard.errorMessage != null)
-            AarastErrorState(
-              title: 'تعذر تحميل ملف المزود',
-              message: dashboard.errorMessage!,
-              onRetry: dashboard.loadDashboard,
+          if (auth.status == AuthStatus.unauthenticated &&
+              !AppFeatureFlags.devBypassLoginGatesForUxExploration)
+            _AuthRequiredCard(
+              onLogin: () => context.go(AppRouter.login),
+              onRegisterProvider: () =>
+                  context.go('${AppRouter.register}?type=provider'),
             )
-          else if (profile == null)
-            AarastEmptyState(
-              icon: LucideIcons.store,
-              title: 'لا يوجد ملف مزود',
-              message:
-                  'أرسل طلب الانضمام أولاً حتى تتمكن من تعديل بيانات المزود.',
-              action: FilledButton.icon(
-                onPressed: () => context.go(AppRouter.providerApply),
-                icon: const Icon(LucideIcons.contact),
-                label: const Text('طلب الانضمام كمزود'),
-              ),
+          else if (dashboard.isLoading && dashboard.profile == null)
+            AarastSkeleton.form(fields: 4, inline: true)
+          else if (hasProfile)
+            _AlreadyProviderCard(
+              status: dashboard.profile?.status ?? 'PENDING',
+              onDashboard: () => context.go(AppRouter.providerDashboard),
             )
           else ...[
-            _ProfileEditNotice(profile: profile),
-            const SizedBox(height: 14),
             const AarastV3FocusPrompt(
-              question: 'ما البيانات التي يجب أن يراها العميل الآن؟',
+              question: 'ما النشاط الذي تريد عرضه في أعرست؟',
               supportingText:
-                  'ثبّت اسم النشاط ورقم التواصل والمدينة؛ ويمكن إضافة النبذة لاحقًا.',
+                  'أدخل بيانات النشاط الحقيقية للمراجعة؛ الإرسال لا يعني قبولًا أو حجزًا مؤكدًا.',
               icon: LucideIcons.store,
             ),
             if (_draft != null) ...[
@@ -139,7 +134,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             Form(
               key: _formKey,
               child: AarastV3FormSurface(
-                title: 'بيانات الظهور للعملاء',
+                title: 'بيانات النشاط',
                 children: [
                   TextFormField(
                     controller: _businessNameController,
@@ -161,7 +156,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                     requireYemeni: true,
                   ),
                   const SizedBox(height: 10),
-                  _ProfileDropdown(
+                  _ApplyDropdown(
                     value: _safeCityId(marketplace),
                     label: 'المدينة',
                     icon: LucideIcons.mapPin,
@@ -180,11 +175,29 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                     validator: (value) => value == null ? 'اختر المدينة' : null,
                   ),
                   const SizedBox(height: 10),
+                  _ApplyDropdown(
+                    value: _safeCategoryId(marketplace),
+                    label: 'فئة الخدمة',
+                    icon: LucideIcons.shapes,
+                    items: marketplace.categories
+                        .map(
+                          (category) => DropdownMenuItem(
+                            value: category.id,
+                            child: Text(category.nameAr),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _categoryId = value);
+                      _draft?.changed();
+                    },
+                    validator: (value) =>
+                        value == null ? 'اختر فئة الخدمة' : null,
+                  ),
+                  const SizedBox(height: 10),
                   AarastDisclosureCard(
-                    title: 'نبذة النشاط',
-                    subtitle: _descriptionController.text.trim().isEmpty
-                        ? 'يمكن إضافتها لاحقاً'
-                        : 'نبذة محفوظة — افتحها للتعديل',
+                    title: 'أضف نبذة قصيرة',
+                    subtitle: 'ما يميز خدمتك ومناطق التغطية عند الحاجة',
                     icon: LucideIcons.fileText,
                     child: TextFormField(
                       controller: _descriptionController,
@@ -192,19 +205,13 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                       maxLines: 3,
                       maxLength: 280,
                       decoration: const InputDecoration(
-                        labelText: 'ما الذي يميز خدمتك؟',
+                        labelText: 'نبذة النشاط',
                         prefixIcon: Icon(LucideIcons.fileText),
                       ),
                     ),
                   ),
-                  if (profile.primaryCategory?.nameAr.trim().isNotEmpty ==
-                      true) ...[
-                    const SizedBox(height: 12),
-                    _LockedCategoryNote(
-                      categoryName: profile.primaryCategory!.nameAr.trim(),
-                    ),
-                  ],
-                  if (marketplace.cities.isEmpty) ...[
+                  if (marketplace.cities.isEmpty ||
+                      marketplace.categories.isEmpty) ...[
                     const SizedBox(height: 12),
                     const _ReferenceDataWarning(),
                   ],
@@ -216,17 +223,10 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 24),
         ],
       ),
     );
-  }
-
-  void _populate(ProviderDashboardProfile profile) {
-    _businessNameController.text = profile.businessName;
-    _phoneController.text = profile.phone ?? '';
-    _descriptionController.text = profile.description ?? '';
-    _cityId = profile.cityId;
-    _didPopulate = true;
   }
 
   String? _safeCityId(ProviderMarketplaceProvider marketplace) {
@@ -236,20 +236,30 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
         : null;
   }
 
-  void _configureDraft(String profileId) {
+  String? _safeCategoryId(ProviderMarketplaceProvider marketplace) {
+    if (_categoryId == null) return null;
+    return marketplace.categories.any((category) => category.id == _categoryId)
+        ? _categoryId
+        : null;
+  }
+
+  void _configureDraft() {
     if (_draft != null) return;
     _draft = AarastFormDraftBinding(
       store: context.read<AarastFormDraftStore?>(),
-      scope: 'provider:profile:$profileId',
+      scope: 'provider:application:new',
       fields: {
         'businessName': _businessNameController,
         'phone': _phoneController,
         'description': _descriptionController,
       },
-      readExtras: () => {'cityId': _cityId},
+      readExtras: () => {'cityId': _cityId, 'categoryId': _categoryId},
       restoreExtras: (data) {
         if (!mounted) return;
-        setState(() => _cityId = data['cityId']?.toString());
+        setState(() {
+          _cityId = data['cityId']?.toString();
+          _categoryId = data['categoryId']?.toString();
+        });
       },
       onStatusChanged: () {
         if (mounted) setState(() {});
@@ -259,7 +269,9 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _cityId == null) {
+    if (!_formKey.currentState!.validate() ||
+        _cityId == null ||
+        _categoryId == null) {
       return;
     }
     if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
@@ -267,10 +279,11 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
     }
     if (!mounted) return;
 
-    final ok = await context.read<ProviderDashboardProvider>().updateProfile(
+    final ok = await context.read<ProviderDashboardProvider>().applyProvider(
       businessName: _businessNameController.text,
       phone: _phoneController.text,
       cityId: _cityId!,
+      categoryIds: [_categoryId!],
       description: _descriptionController.text,
     );
 
@@ -278,36 +291,78 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
     if (ok) {
       await _draft?.clear();
       if (!mounted) return;
-      AarastFormSuccess.show(context, message: 'تم حفظ ملف المورد.');
-      context.go(AppRouter.providerDashboard);
+      final auth = context.read<AuthController>();
+      final accountContexts = context.read<AccountContextController>();
+      await auth.refreshCurrentUser();
+      if (!mounted) return;
+      await accountContexts.refresh();
+      if (!mounted) return;
+      AarastFormSuccess.show(context, message: 'تم إرسال طلب الانضمام.');
+      context.go(AppRouter.providerApplyStatus);
     }
   }
 }
 
-class _ProfileEditNotice extends StatelessWidget {
-  const _ProfileEditNotice({required this.profile});
-
-  final ProviderDashboardProfile profile;
+class ProviderApplyStatusScreen extends StatelessWidget {
+  const ProviderApplyStatusScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final statusLabel = _providerStatusLabel(profile.status);
-    return AarastCard(
-      color: AppTheme.canvas,
-      child: Row(
+    return AarastPageScaffold(
+      title: 'تم استلام طلبك',
+      subtitle: 'طلب الانضمام كمزود قيد المراجعة.',
+      child: ListView(
         children: [
-          const Icon(LucideIcons.info, color: AppTheme.focus),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'حالة الحساب: $statusLabel. تعديل البيانات لا يعني اعتماد المزود تلقائياً.',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
-              ),
+          const SizedBox(height: 32),
+          AarastEmptyState(
+            icon: LucideIcons.mailCheck,
+            title: 'تم استلام طلبك',
+            message:
+                'سيتم مراجعة بياناتك، وبعد الموافقة ستظهر لوحة المزود وخدماتك في المكان المناسب.',
+            action: FilledButton.icon(
+              onPressed: () => context.go(AppRouter.home),
+              icon: const Icon(LucideIcons.home),
+              label: const Text('العودة للرئيسية'),
             ),
+          ),
+          const SizedBox(height: 18),
+          const _ProviderReviewNote(),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthRequiredCard extends StatelessWidget {
+  const _AuthRequiredCard({
+    required this.onLogin,
+    required this.onRegisterProvider,
+  });
+
+  final VoidCallback onLogin;
+  final VoidCallback onRegisterProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastEmptyState(
+      icon: LucideIcons.lock,
+      title: 'تسجيل الدخول مطلوب',
+      message:
+          'يرجى إنشاء حساب أو تسجيل الدخول أولًا لإرسال طلب الانضمام كمزود.',
+      action: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: onLogin,
+            icon: const Icon(LucideIcons.logIn),
+            label: const Text('تسجيل الدخول'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onRegisterProvider,
+            icon: const Icon(LucideIcons.store),
+            label: const Text('إنشاء حساب كمزود'),
           ),
         ],
       ),
@@ -315,31 +370,24 @@ class _ProfileEditNotice extends StatelessWidget {
   }
 }
 
-class _LockedCategoryNote extends StatelessWidget {
-  const _LockedCategoryNote({required this.categoryName});
+class _AlreadyProviderCard extends StatelessWidget {
+  const _AlreadyProviderCard({required this.status, required this.onDashboard});
 
-  final String categoryName;
+  final String status;
+  final VoidCallback onDashboard;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.brandMuted,
-      child: Row(
-        children: [
-          const Icon(LucideIcons.lock, color: AppTheme.brand),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'فئة الخدمة الحالية: $categoryName. تغيير الفئة يحتاج مسار مراجعة منفصل.',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
+    return AarastEmptyState(
+      icon: LucideIcons.store,
+      title: status == 'ACTIVE' ? 'حساب المزود نشط' : 'طلبك قيد المراجعة',
+      message: status == 'ACTIVE'
+          ? 'يمكنك فتح لوحة المزود لإدارة الخدمات والطلبات.'
+          : 'تم استلام طلبك مسبقًا. ستظهر حالة الحساب من لوحة المزود.',
+      action: FilledButton.icon(
+        onPressed: onDashboard,
+        icon: const Icon(LucideIcons.layoutDashboard),
+        label: const Text('فتح لوحة المزود'),
       ),
     );
   }
@@ -353,9 +401,37 @@ class _ReferenceDataWarning extends StatelessWidget {
     return const AarastCard(
       color: AppTheme.brandMuted,
       child: Text(
-        'تعذر تحميل المدن الآن. تحقق من الاتصال وحاول مرة أخرى.',
+        'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
         textAlign: TextAlign.center,
         style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _ProviderReviewNote extends StatelessWidget {
+  const _ProviderReviewNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AarastCard(
+      color: AppTheme.surfaceRaised,
+      child: Row(
+        children: [
+          Icon(LucideIcons.info, color: AppTheme.brand),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'لن يتم اعتماد المزود تلقائيًا. الظهور في نتائج البحث يعتمد على حالة الموافقة من النظام.',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w700,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -383,8 +459,8 @@ class _InlineError extends StatelessWidget {
   }
 }
 
-class _ProfileDropdown extends StatelessWidget {
-  const _ProfileDropdown({
+class _ApplyDropdown extends StatelessWidget {
+  const _ApplyDropdown({
     required this.value,
     required this.label,
     required this.icon,
@@ -420,14 +496,4 @@ class _ProfileDropdown extends StatelessWidget {
       validator: validator,
     );
   }
-}
-
-String _providerStatusLabel(String status) {
-  return switch (status) {
-    'ACTIVE' => 'نشط',
-    'PENDING' => 'قيد المراجعة',
-    'REJECTED' => 'مرفوض',
-    'SUSPENDED' => 'موقوف',
-    _ => 'قيد المراجعة',
-  };
 }

@@ -51,7 +51,7 @@ void main() {
       );
       expect(
         File(
-          'lib/features/marketplace/screens/provider_portal_screen.dart',
+          'lib/features/provider_portal/screens/provider_portal_screen.dart',
         ).readAsStringSync(),
         isNot(contains('AccountContextSwitcher')),
       );
@@ -98,7 +98,7 @@ void main() {
       <({String name, String path, String startMarker, String endMarker})>[
         (
           name: 'ProviderProfileTab._logout',
-          path: 'lib/features/marketplace/screens/provider_profile_tab.dart',
+          path: 'lib/features/provider_portal/screens/provider_profile_tab.dart',
           startMarker: 'Future<void> _logout()',
           endMarker: 'Future<String?> _deleteAccount()',
         ),
@@ -138,7 +138,7 @@ void main() {
     'provider application refreshes user then contexts before status navigation',
     () {
       for (final path in [
-        'lib/features/marketplace/screens/provider_apply_screen.dart',
+        'lib/features/provider_portal/screens/provider_apply_screen.dart',
       ]) {
         final source = File(path).readAsStringSync();
         final refreshUser = source.indexOf('await auth.refreshCurrentUser()');
@@ -206,7 +206,7 @@ void main() {
 
   test('provider portal trusts the resolved account-context gate', () {
     final source = File(
-      'lib/features/marketplace/screens/provider_portal_screen.dart',
+      'lib/features/provider_portal/screens/provider_portal_screen.dart',
     ).readAsStringSync();
     final initializePortal = _sourceBetween(
       source,

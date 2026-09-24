@@ -6,8 +6,8 @@ import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
-import '../models/marketplace_models.dart';
-import '../providers/marketplace_provider.dart';
+import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
+import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_portal_bottom_nav.dart';
 import 'provider_portal_tabs.dart';
 

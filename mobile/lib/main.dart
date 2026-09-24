@@ -42,11 +42,7 @@ import 'features/finance/finance_api.dart'
 import 'features/guests/guests_api.dart' show GuestsApi, GuestsProvider;
 import 'features/home/home_api.dart' show HomeDashboardProvider;
 import 'features/marketplace/marketplace_api.dart'
-    show
-        MarketplaceApi,
-        ProviderDashboardApi,
-        ProviderDashboardProvider,
-        ProviderMarketplaceProvider;
+    show MarketplaceApi, ProviderDashboardApi, ProviderMarketplaceProvider;
 import 'features/notifications/notifications_api.dart'
     show NotificationsApi, NotificationsProvider;
 import 'features/onboarding/onboarding_api.dart'
@@ -54,6 +50,8 @@ import 'features/onboarding/onboarding_api.dart'
         GuestOnboardingStorage,
         YemenAdministrativeApi,
         YemenAdministrativeProvider;
+import 'features/provider_portal/provider_portal_api.dart'
+    show ProviderDashboardProvider;
 import 'features/settings/settings_api.dart' show SettingsApi, SettingsProvider;
 import 'features/sharing/sharing_api.dart'
     show

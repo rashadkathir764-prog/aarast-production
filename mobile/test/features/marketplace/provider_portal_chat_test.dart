@@ -11,8 +11,8 @@ import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
-import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
-import 'package:aarast_mobile/features/marketplace/screens/provider_portal_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -111,10 +111,10 @@ void main() {
 
   test('provider portal keeps the five approved Arabic destinations', () {
     final portalSource = File(
-      'lib/features/marketplace/screens/provider_portal_screen.dart',
+      'lib/features/provider_portal/screens/provider_portal_screen.dart',
     ).readAsStringSync();
     final navigationSource = File(
-      'lib/features/marketplace/widgets/provider_portal_bottom_nav.dart',
+      'lib/features/provider_portal/widgets/provider_portal_bottom_nav.dart',
     ).readAsStringSync();
     final source = '$portalSource\n$navigationSource';
     for (final label in ['الرئيسية', 'الطلبات', 'الخدمات', 'الرسائل', 'ملفي']) {

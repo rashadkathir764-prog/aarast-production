@@ -2,8 +2,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/library_source.dart';
+
 void main() {
-  final router = File('lib/core/routing/app_router.dart').readAsStringSync();
+  // The router's route trees live in per-area part files of the router
+  // library (spec M6); the contract reads the whole library.
+  final router = readLibrarySource('lib/core/routing/app_router.dart');
   final main = File('lib/main.dart').readAsStringSync();
   final mainShell = File(
     'lib/features/shell/main_shell.dart',

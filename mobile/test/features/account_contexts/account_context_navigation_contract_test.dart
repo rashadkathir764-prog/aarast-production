@@ -4,6 +4,8 @@ import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/account_contexts/widgets/wedding_plan_context_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/library_source.dart';
+
 void main() {
   test(
     'session and account-context gates own post-auth dashboard resolution',
@@ -98,7 +100,8 @@ void main() {
       <({String name, String path, String startMarker, String endMarker})>[
         (
           name: 'ProviderProfileTab._logout',
-          path: 'lib/features/provider_portal/screens/provider_profile_tab.dart',
+          path:
+              'lib/features/provider_portal/screens/provider_profile_tab.dart',
           startMarker: 'Future<void> _logout()',
           endMarker: 'Future<String?> _deleteAccount()',
         ),
@@ -164,7 +167,9 @@ void main() {
   );
 
   test('all plan routes validate selectedContext before building', () {
-    final router = File('lib/core/routing/app_router.dart').readAsStringSync();
+    // The router's route trees live in per-area part files of the router
+    // library (spec M6); the contract reads the whole library.
+    final router = readLibrarySource('lib/core/routing/app_router.dart');
     final gate = File(
       'lib/features/account_contexts/widgets/wedding_plan_context_gate.dart',
     ).readAsStringSync();

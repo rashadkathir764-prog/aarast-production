@@ -15,6 +15,8 @@ import 'package:aarast_mobile/features/provider_portal/providers/provider_dashbo
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/library_source.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,7 +47,9 @@ void main() {
   });
 
   test('direct conversation routes require an authenticated account', () {
-    final source = File('lib/core/routing/app_router.dart').readAsStringSync();
+    // The router's route trees live in per-area part files of the router
+    // library (spec M6); the contract reads the whole library.
+    final source = readLibrarySource('lib/core/routing/app_router.dart');
 
     expect(
       source,

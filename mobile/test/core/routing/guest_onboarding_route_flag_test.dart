@@ -1,18 +1,19 @@
 import 'package:aarast_mobile/core/config/app_feature_flags.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'dart:io';
+
+import '../../support/library_source.dart';
 
 void main() {
   group('guest onboarding route flag', () {
     test('the dev preview route consumes the runtime feature flag', () {
-      final source = File(
-        'lib/core/routing/app_router.dart',
-      ).readAsStringSync();
+      // The router's route trees live in per-area part files of the router
+      // library (spec M6); the contract reads the whole library.
+      final source = readLibrarySource('lib/core/routing/app_router.dart');
       expect(
         source,
         contains(
-          'redirect: (context, state) => guestOnboardingRedirect(flags)',
+          'redirect: (context, state) => AppRouter.guestOnboardingRedirect(flags)',
         ),
       );
     });

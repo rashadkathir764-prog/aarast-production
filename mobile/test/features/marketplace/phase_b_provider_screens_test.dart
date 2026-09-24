@@ -15,6 +15,8 @@ import 'package:aarast_mobile/features/marketplace/screens/favorite_providers_sc
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/library_source.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -61,7 +63,11 @@ void main() {
     });
 
     test('plan providers route forwards a quote deep-link context', () {
-      final routerSource = _readSource('lib/core/routing/app_router.dart');
+      // The router's route trees live in per-area part files of the router
+      // library (spec M6); the contract reads the whole library.
+      final routerSource = readLibrarySource(
+        '${_findMobileRoot()}lib/core/routing/app_router.dart',
+      );
       final routeStart = routerSource.indexOf(
         "path: '/wedding-plans/:id/providers'",
       );

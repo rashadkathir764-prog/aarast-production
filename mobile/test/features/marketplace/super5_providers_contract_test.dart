@@ -22,6 +22,8 @@ import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/library_source.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -79,15 +81,15 @@ void main() {
   test(
     'user conversation inbox route stays authenticated and quote scoped',
     () {
-      final source = File(
-        'lib/core/routing/app_router.dart',
-      ).readAsStringSync();
+      // The router's route trees live in per-area part files of the router
+      // library (spec M6); the contract reads the whole library.
+      final source = readLibrarySource('lib/core/routing/app_router.dart');
 
       expect(
         source,
         contains("static const conversations = '/conversations';"),
       );
-      expect(source, contains('path: conversations'));
+      expect(source, contains('path: AppRouter.conversations'));
       expect(source, contains('const ConversationListView()'));
       expect(source, contains('ProviderAuthGate('));
     },

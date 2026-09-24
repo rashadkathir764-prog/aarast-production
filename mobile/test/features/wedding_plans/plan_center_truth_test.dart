@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/library_source.dart';
+
 void main() {
   group('Plan management truth contract', () {
     final mobileRoot = _findMobileRoot();
@@ -19,9 +21,10 @@ void main() {
     });
 
     test('management screen loads real plan and administrative summary data', () {
-      final source = File(
+      // The plan management library spans part files (spec M6).
+      final source = readLibrarySource(
         '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
-      ).readAsStringSync();
+      );
 
       expect(
         source,
@@ -34,9 +37,10 @@ void main() {
     });
 
     test('server and local edits preserve structured administrative fields', () {
-      final source = File(
+      // The plan management library spans part files (spec M6).
+      final source = readLibrarySource(
         '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
-      ).readAsStringSync();
+      );
 
       for (final field in [
         "'title':",
@@ -57,9 +61,10 @@ void main() {
     test(
       'danger area uses archive only and never invents unsupported actions',
       () {
-        final source = File(
+        // The plan management library spans part files (spec M6).
+        final source = readLibrarySource(
           '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
-        ).readAsStringSync();
+        );
 
         expect(source, contains('archiveWeddingPlan('));
         expect(source, isNot(contains('deleteWeddingPlan')));

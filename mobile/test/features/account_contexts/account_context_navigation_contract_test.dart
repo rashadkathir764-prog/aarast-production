@@ -127,7 +127,8 @@ void main() {
       expect(app, contains('claimLoginAfterLogout()'));
       expect(app, contains('router.go(AppRouter.login)'));
 
-      final source = File(logoutCase.path).readAsStringSync();
+      // A logout flow may live in a part of its screen library (spec M6).
+      final source = readLibrarySource(logoutCase.path);
       final action = _sourceBetween(
         source,
         logoutCase.startMarker,

@@ -20,7 +20,10 @@ import {
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { COLLABORATION_HISTORY_PORT, type CollaborationHistoryPort as ContributionHistoryService } from "../modules/collaboration/public/collaboration-history.port";
 import { PhoneNormalizer } from "../shared-kernel/phone/phone-normalizer";
-import { runSerializableTransaction } from "../platform/database/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../platform/database/serializable-transaction";
 import { NOTIFICATIONS_PORT, type NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
@@ -532,29 +535,35 @@ export class MarketplaceService {
         );
     // The final read re-checks current ownership/membership and the
     // provider (and money) permission through the owners and applies the
-    // result to the quote table itself.
-    const liveFilter = await this.permissions.liveAuthorizationFilter(
+    // result to the quote table itself, in one snapshot with the read.
+    const quotes = await runRetryableTransaction(
       this.prisma,
-      context,
-      currentUser.id,
-      [
-        "canManageProviders",
-        ...(this.permissions.canViewMoney(context)
-          ? (["canViewMoney"] as const)
-          : []),
-      ],
-    );
-    const quotes = await this.relations.attachQuoteRelations(
-      this.prisma,
-      await this.prisma.quoteRequest.findMany({
-        where: {
-          weddingPlanId,
-          ...(quoteIds ? { id: { in: quoteIds } } : {}),
-          ...liveFilter,
-        },
-        include: MARKETPLACE_QUOTE_INCLUDE,
-        orderBy: { createdAt: "desc" },
-      }),
+      async (tx) => {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          context,
+          currentUser.id,
+          [
+            "canManageProviders",
+            ...(this.permissions.canViewMoney(context)
+              ? (["canViewMoney"] as const)
+              : []),
+          ],
+        );
+        return this.relations.attachQuoteRelations(
+          tx,
+          await tx.quoteRequest.findMany({
+            where: {
+              weddingPlanId,
+              ...(quoteIds ? { id: { in: quoteIds } } : {}),
+              ...liveFilter,
+            },
+            include: MARKETPLACE_QUOTE_INCLUDE,
+            orderBy: { createdAt: "desc" },
+          }),
+        );
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
 
     return quotes.map((quote) =>
@@ -923,13 +932,20 @@ export class MarketplaceService {
         currentUser,
       );
       assertProviderSectionLive(context, this.permissions);
-      const quote = await findAccessiblePlanQuoteRequest(
+      // The helper re-checks live access and reads the quote in one snapshot.
+      const planId = quoteSeed.weddingPlanId;
+      const quote = await runRetryableTransaction(
         this.prisma,
-        this.quoteScopePorts,
-        context,
-        currentUser.id,
-        quoteSeed.id,
-        quoteSeed.weddingPlanId,
+        (tx) =>
+          findAccessiblePlanQuoteRequest(
+            tx,
+            this.quoteScopePorts,
+            context,
+            currentUser.id,
+            quoteSeed.id,
+            planId,
+          ),
+        { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
       );
       return {
         quote,

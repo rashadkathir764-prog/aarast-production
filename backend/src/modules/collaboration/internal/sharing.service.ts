@@ -29,7 +29,10 @@ import { createHash, randomBytes } from "crypto";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import { invitationDeliveryPersistenceFailuresTotal } from "../../../platform/observability/metrics";
 import { PhoneNormalizer } from "../../../shared-kernel/phone/phone-normalizer";
-import { runSerializableTransaction } from "../../../platform/database/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../../../platform/database/serializable-transaction";
 import { canonicalPlanContextKey } from "../../identity/public/context-key";
 import { ContributionHistoryService } from "./contribution-history.service";
 import { buildContributionSnapshot } from "../public/contribution-snapshot.builder";
@@ -470,87 +473,96 @@ export class SharingService {
       weddingPlanId,
       currentUser,
     );
+    const createdMemberIds =
+      !access.isOwner && this.permissions.canManageMembers(access)
+        ? await this.contributedEntityIds(
+            weddingPlanId,
+            currentUser.id,
+            ContributionEntityType.MEMBER_ITEM,
+            ContributionAction.CREATED,
+          )
+        : [];
     // The final reads re-check current membership through the owners
     // (planning for ownership, this context for the member row) and apply
-    // the result to the member table itself.
-    const liveMembershipFilter = await this.permissions.liveAuthorizationFilter(
+    // the result to the member table itself, in one snapshot with them.
+    return runRetryableTransaction(
       this.prisma,
-      access,
-      currentUser.id,
-    );
-    if (access.isOwner) {
-      const plan = await this.plans.findOwnedPlan(
-        this.prisma,
-        weddingPlanId,
-        currentUser.id,
-      );
-      const owner = plan
-        ? await this.users.getAppIdentity(this.prisma, plan.ownerUserId)
-        : null;
-      if (!plan || !owner) {
-        throw new NotFoundException("Wedding plan not found");
-      }
-      const members = await this.withMemberUsers(
-        this.prisma,
-        await this.prisma.sharedMember.findMany({
-          where: {
-            weddingPlanId,
-            ...liveMembershipFilter,
-          },
-          orderBy: { createdAt: "asc" },
-        }),
-      );
-      return [
-        this.toOwnerMemberResponse({ ...plan, owner }),
-        ...members.map((member) => this.toPlanMemberResponse(member)),
-      ];
-    }
-
-    const createdMemberIds = this.permissions.canManageMembers(access)
-      ? await this.contributedEntityIds(
-          weddingPlanId,
-          currentUser.id,
-          ContributionEntityType.MEMBER_ITEM,
-          ContributionAction.CREATED,
-        )
-      : [];
-    const allowedMemberIds = new Set(createdMemberIds);
-    const inviterAuthorityFilter =
-      createdMemberIds.length > 0
-        ? await this.permissions.liveAuthorizationFilter(
-            this.prisma,
+      async (tx) => {
+        const liveMembershipFilter =
+          await this.permissions.liveAuthorizationFilter(
+            tx,
             access,
             currentUser.id,
-            ["canInviteMembers"],
+          );
+        if (access.isOwner) {
+          const plan = await this.plans.findOwnedPlan(
+            tx,
+            weddingPlanId,
+            currentUser.id,
+          );
+          const owner = plan
+            ? await this.users.getAppIdentity(tx, plan.ownerUserId)
+            : null;
+          if (!plan || !owner) {
+            throw new NotFoundException("Wedding plan not found");
+          }
+          const members = await this.withMemberUsers(
+            tx,
+            await tx.sharedMember.findMany({
+              where: {
+                weddingPlanId,
+                ...liveMembershipFilter,
+              },
+              orderBy: { createdAt: "asc" },
+            }),
+          );
+          return [
+            this.toOwnerMemberResponse({ ...plan, owner }),
+            ...members.map((member) => this.toPlanMemberResponse(member)),
+          ];
+        }
+
+        const allowedMemberIds = new Set(createdMemberIds);
+        const inviterAuthorityFilter =
+          createdMemberIds.length > 0
+            ? await this.permissions.liveAuthorizationFilter(
+                tx,
+                access,
+                currentUser.id,
+                ["canInviteMembers"],
+              )
+            : {};
+        const members = await this.withMemberUsers(
+          tx,
+          await tx.sharedMember.findMany({
+            where: {
+              weddingPlanId,
+              OR: [
+                { userId: currentUser.id },
+                ...(createdMemberIds.length > 0
+                  ? [
+                      {
+                        id: { in: createdMemberIds },
+                        ...inviterAuthorityFilter,
+                      },
+                    ]
+                  : []),
+              ],
+              ...liveMembershipFilter,
+            },
+            orderBy: { createdAt: "asc" },
+          }),
+        );
+        return members
+          .filter(
+            (member) =>
+              member.userId === currentUser.id ||
+              allowedMemberIds.has(member.id),
           )
-        : {};
-    const members = await this.withMemberUsers(
-      this.prisma,
-      await this.prisma.sharedMember.findMany({
-        where: {
-          weddingPlanId,
-          OR: [
-            { userId: currentUser.id },
-            ...(createdMemberIds.length > 0
-              ? [
-                  {
-                    id: { in: createdMemberIds },
-                    ...inviterAuthorityFilter,
-                  },
-                ]
-              : []),
-          ],
-          ...liveMembershipFilter,
-        },
-        orderBy: { createdAt: "asc" },
-      }),
+          .map((member) => this.toPlanMemberResponse(member));
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
-    return members
-      .filter(
-        (member) =>
-          member.userId === currentUser.id || allowedMemberIds.has(member.id),
-      )
-      .map((member) => this.toPlanMemberResponse(member));
   }
 
   async createInvite(
@@ -809,22 +821,29 @@ export class SharingService {
     if (!this.permissions.canManageMembers(access)) {
       throw new NotFoundException("Wedding plan not found");
     }
-    const liveFilter = await this.permissions.liveAuthorizationFilter(
+    // The live re-check and the invite read share one snapshot.
+    const invites = await runRetryableTransaction(
       this.prisma,
-      access,
-      currentUser.id,
-      ["canInviteMembers"],
-    );
-    const invites = await this.withInvitesRelations(
-      this.prisma,
-      await this.prisma.planInvite.findMany({
-        where: {
-          weddingPlanId,
-          ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
-          ...liveFilter,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
+      async (tx) => {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+          ["canInviteMembers"],
+        );
+        return this.withInvitesRelations(
+          tx,
+          await tx.planInvite.findMany({
+            where: {
+              weddingPlanId,
+              ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
+              ...liveFilter,
+            },
+            orderBy: { createdAt: "desc" },
+          }),
+        );
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
     return invites
       .filter(

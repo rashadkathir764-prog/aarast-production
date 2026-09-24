@@ -161,9 +161,13 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
   // place of each include (+56 net across providers, services, reviews,
   // favorites, plan quotes and my quotes), against the catalog list
   // methods delegated to catalog's port (-31): 998 lines, 999 with the
-  // trailing newline this split counts. The budget moves by exactly those
-  // approved deltas.
-  assert.ok(service.split("\n").length <= 999);
+  // trailing newline this split counts. The mission's exit review then made
+  // each live authorization re-check share one RepeatableRead snapshot with
+  // the read it guards (the single statement it had replaced did): +3
+  // import lines and the transaction wrappers of the plan quote list and the
+  // plan quote lookup (+13 net): 1,014 lines, 1,015 with the trailing
+  // newline. The budget moves by exactly those approved deltas.
+  assert.ok(service.split("\n").length <= 1015);
   assert.match(service, /MarketplacePresenter\.toQuoteResponse/);
   assert.match(service, /this\.prisma\.\$transaction/);
   assert.doesNotMatch(service, /private toQuoteResponse/);

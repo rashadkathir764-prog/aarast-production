@@ -349,22 +349,29 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
         ? contributorActorReference(contributorUserId)
         : undefined
       : contributorActorReference(currentUser.id);
-    const liveFilter = await this.permissions.liveAuthorizationFilter(
+    // The live re-check and the history read share one snapshot.
+    const events = await runRetryableTransaction(
       this.prisma,
-      access,
-      currentUser.id,
-    );
-    const events = await this.prisma.contributionEvent.findMany({
-      where: {
-        historyScope: { weddingPlanId },
-        ...(contributorReference
-          ? { contributorTenure: { actorReference: contributorReference } }
-          : {}),
-        entityId: { not: null },
-        ...liveFilter,
+      async (tx) => {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          access,
+          currentUser.id,
+        );
+        return tx.contributionEvent.findMany({
+          where: {
+            historyScope: { weddingPlanId },
+            ...(contributorReference
+              ? { contributorTenure: { actorReference: contributorReference } }
+              : {}),
+            entityId: { not: null },
+            ...liveFilter,
+          },
+          select: { section: true, entityId: true },
+        });
       },
-      select: { section: true, entityId: true },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
     const sets = Object.fromEntries(
       Object.values(ContributionSection).map((section) => [section, new Set<string>()]),
     ) as Record<ContributionSection, Set<string>>;

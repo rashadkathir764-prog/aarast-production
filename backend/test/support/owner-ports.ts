@@ -588,7 +588,14 @@ function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
   // afterwards, so the transaction client shares the store. The wrapping is an
   // accessor because some fixtures replace `$transaction` after the service
   // was built; the replacement is wrapped the same way.
-  let transaction: unknown = fake.$transaction;
+  // A fixture that models no transaction runs a transaction's callback on
+  // the fixture itself: services open read snapshots (the live authorization
+  // re-check and the read it guards), and a fake has no isolation to model.
+  let transaction: unknown = fake.$transaction ?? (async (operation: unknown) => (
+    typeof operation === 'function'
+      ? (operation as (client: unknown) => unknown)(fake)
+      : Promise.all(operation as unknown[])
+  ));
   if (typeof transaction === 'function') {
     const wrapped = (operation: unknown, ...rest: unknown[]) => (transaction as (...args: unknown[]) => unknown).call(
       fake,

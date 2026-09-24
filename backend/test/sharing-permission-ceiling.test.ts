@@ -224,6 +224,8 @@ class MemorySharingPrisma {
         user: this.user,
         sharedMember: this.sharedMember,
         planInvite: {
+          // The invite list reads under a snapshot transaction too.
+          findMany: (args: any) => this.planInvite.findMany(args),
           findFirst: async ({ where }: any) => this.findFirstInvite(where),
           findUnique: async ({ where }: any) => this.findUniqueInvite(where),
           create: async ({ data }: any) => this.createInvite(data),

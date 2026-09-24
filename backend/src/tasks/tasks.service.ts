@@ -22,7 +22,10 @@ import {
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { ListQueryDto, pageArgs } from "../platform/http/list-query.dto";
-import { runSerializableTransaction } from "../platform/database/serializable-transaction";
+import {
+  runRetryableTransaction,
+  runSerializableTransaction,
+} from "../platform/database/serializable-transaction";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../shared-kernel/time/business-day";
 import {
   COLLABORATION_HISTORY_PORT,
@@ -173,30 +176,36 @@ export class TasksService {
     );
     if (contributorScope !== null && !canManageTasks) return [];
     // The final read re-checks current ownership/membership and the task
-    // permission through the owners and applies the result to the task table.
-    const liveFilter = await this.permissions.liveAuthorizationFilter(
+    // permission through the owners and applies the result to the task table,
+    // in one snapshot with the read (as the single statement it replaces).
+    const tasks = await runRetryableTransaction(
       this.prisma,
-      context,
-      currentUser.id,
-      ["canManageTasks"],
-    );
-
-    const tasks = await this.prisma.weddingTask.findMany({
-      where: {
-        weddingPlanId,
-        ...(contributorScope
-          ? {
-              OR: [
-                { assigneeUserId: currentUser.id },
-                { id: { in: [...contributorScope] } },
-              ],
-            }
-          : {}),
-        ...liveFilter,
+      async (tx) => {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          context,
+          currentUser.id,
+          ["canManageTasks"],
+        );
+        return tx.weddingTask.findMany({
+          where: {
+            weddingPlanId,
+            ...(contributorScope
+              ? {
+                  OR: [
+                    { assigneeUserId: currentUser.id },
+                    { id: { in: [...contributorScope] } },
+                  ],
+                }
+              : {}),
+            ...liveFilter,
+          },
+          orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+          ...pageArgs(query),
+        });
       },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-      ...pageArgs(query),
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
 
     return tasks
       .filter(
@@ -225,27 +234,33 @@ export class TasksService {
     if (contributorScope !== null && !canManageTasks) {
       throw this.taskPermissionDenied();
     }
-    const liveFilter = await this.permissions.liveAuthorizationFilter(
+    const visibleTask = await runRetryableTransaction(
       this.prisma,
-      context,
-      currentUser.id,
-      ["canManageTasks"],
-    );
-    const visibleTask = await this.prisma.weddingTask.findFirst({
-      where: {
-        id,
-        weddingPlanId: task.weddingPlanId,
-        ...(contributorScope
-          ? {
-              OR: [
-                { assigneeUserId: currentUser.id },
-                { id: { in: [...contributorScope] } },
-              ],
-            }
-          : {}),
-        ...liveFilter,
+      async (tx) => {
+        const liveFilter = await this.permissions.liveAuthorizationFilter(
+          tx,
+          context,
+          currentUser.id,
+          ["canManageTasks"],
+        );
+        return tx.weddingTask.findFirst({
+          where: {
+            id,
+            weddingPlanId: task.weddingPlanId,
+            ...(contributorScope
+              ? {
+                  OR: [
+                    { assigneeUserId: currentUser.id },
+                    { id: { in: [...contributorScope] } },
+                  ],
+                }
+              : {}),
+            ...liveFilter,
+          },
+        });
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
     if (!visibleTask) throw new NotFoundException("Task not found");
     return this.toResponse(visibleTask, canManageTasks);
   }
@@ -577,25 +592,30 @@ export class TasksService {
     const rows =
       contributorScope !== null && !canManageTasks
         ? []
-        : await this.prisma.weddingTask.findMany({
-            where: {
-              weddingPlanId,
-              ...(contributorScope
-                ? {
-                    OR: [
-                      { assigneeUserId: currentUser.id },
-                      { id: { in: [...contributorScope] } },
-                    ],
-                  }
-                : {}),
-              ...(await this.permissions.liveAuthorizationFilter(
-                this.prisma,
-                context,
-                currentUser.id,
-                ["canManageTasks"],
-              )),
-            },
-          });
+        : await runRetryableTransaction(
+            this.prisma,
+            async (tx) =>
+              tx.weddingTask.findMany({
+                where: {
+                  weddingPlanId,
+                  ...(contributorScope
+                    ? {
+                        OR: [
+                          { assigneeUserId: currentUser.id },
+                          { id: { in: [...contributorScope] } },
+                        ],
+                      }
+                    : {}),
+                  ...(await this.permissions.liveAuthorizationFilter(
+                    tx,
+                    context,
+                    currentUser.id,
+                    ["canManageTasks"],
+                  )),
+                },
+              }),
+            { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+          );
     const tasks = rows.filter(
       (task) =>
         contributorScope === null ||

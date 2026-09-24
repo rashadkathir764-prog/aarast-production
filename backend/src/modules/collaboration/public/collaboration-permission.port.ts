@@ -160,6 +160,12 @@ export interface CollaborationPermissionPort {
     currentUserId: string,
     requiredPermissions?: readonly LivePlanPermission[],
   ): Prisma.WeddingPlanWhereInput;
+  /**
+   * The live re-check as a filter for the caller's own table. Evaluate it on
+   * the client of a RepeatableRead or Serializable transaction and run the
+   * read it guards on that same client, so both share one snapshot
+   * (enforced by test/live-authorization-snapshot.test.ts).
+   */
   liveAuthorizationFilter(
     client: Prisma.TransactionClient,
     context: PlanAccessContext,

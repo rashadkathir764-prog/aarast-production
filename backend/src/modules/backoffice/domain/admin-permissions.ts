@@ -1,4 +1,5 @@
-import { AdminRole } from '@prisma/client';
+// Domain purity: the generated role enum is used as a type only.
+import type { AdminRole } from '@prisma/client';
 
 export enum AdminPermission {
   DASHBOARD_READ = 'DASHBOARD_READ',
@@ -23,8 +24,8 @@ export enum AdminPermission {
 const allPermissions = Object.values(AdminPermission);
 
 const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
-  [AdminRole.SUPER_ADMIN]: allPermissions,
-  [AdminRole.OPERATIONS]: [
+  SUPER_ADMIN: allPermissions,
+  OPERATIONS: [
     AdminPermission.DASHBOARD_READ,
     AdminPermission.REPORTS_READ,
     AdminPermission.USERS_READ,
@@ -38,7 +39,7 @@ const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
     AdminPermission.REVIEWS_READ,
     AdminPermission.NOTIFICATIONS_READ,
   ],
-  [AdminRole.MODERATOR]: [
+  MODERATOR: [
     AdminPermission.DASHBOARD_READ,
     AdminPermission.PROVIDERS_READ,
     AdminPermission.REVIEWS_READ,
@@ -48,7 +49,7 @@ const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
     AdminPermission.NOTIFICATIONS_READ,
     AdminPermission.NOTIFICATIONS_WRITE,
   ],
-  [AdminRole.SUPPORT]: [
+  SUPPORT: [
     AdminPermission.DASHBOARD_READ,
     AdminPermission.USERS_READ,
     AdminPermission.PROVIDERS_READ,

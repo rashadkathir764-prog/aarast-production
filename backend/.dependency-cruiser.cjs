@@ -128,6 +128,18 @@ module.exports = {
       to: { path: '^(?:node_modules/)?@nestjs/' },
     },
     {
+      // Purity law: a domain may import generated Prisma enums and
+      // Prisma.Decimal for types only, never the runtime client or the
+      // persistence layer.
+      name: 'domain-no-runtime-prisma',
+      severity: 'error',
+      from: { path: '^src/modules/[^/]+/domain(?:/|$)' },
+      to: {
+        path: '(?:^|/)node_modules/(?:@prisma/client|\\.prisma)(?:/|$)|^@prisma/client(?:/|$)|^src/platform/database(?:/|$)',
+        dependencyTypesNot: ['type-only'],
+      },
+    },
+    {
       name: 'platform-no-business-contexts',
       severity: 'error',
       from: { path: '^src/platform(?:/|$)' },

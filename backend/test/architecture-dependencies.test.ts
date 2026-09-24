@@ -356,3 +356,40 @@ test('cross-owner public slices accept type-only imports and reject runtime impo
   assert.notEqual(runtime.status, 0);
   assert.match(`${runtime.stdout}\n${runtime.stderr}`, /public-cross-owner-type-only/);
 });
+
+test('a domain may use Prisma types only: runtime Prisma and the persistence layer fail', () => {
+  // Inside the backend (ignored dist/), so `@prisma/client` resolves to the
+  // real package and depcruise can tell a type-only import from a runtime one.
+  const parent = path.join(backendRoot, 'dist', 'test-fixtures');
+  mkdirSync(parent, { recursive: true });
+  const root = mkdtempSync(path.join(parent, 'depcruise-domain-'));
+  temporaryRoots.push(root);
+  write(root, 'tsconfig.json', JSON.stringify({
+    compilerOptions: { module: 'commonjs', target: 'ES2022' },
+    include: ['src/**/*.ts'],
+  }));
+  write(root, 'src/modules/finance/domain/legal.ts', [
+    "import type { Prisma } from '@prisma/client';",
+    'export const positive = (amount: Prisma.Decimal): boolean => amount.gt(0);',
+  ].join('\n'));
+  const legal = cruise(root, ['--config', configPath, 'src']);
+  assert.equal(legal.status, 0, legal.stderr || legal.stdout);
+
+  write(root, 'src/modules/finance/domain/runtime.ts', [
+    "import { WeddingCostStatus } from '@prisma/client';",
+    'export const paid = WeddingCostStatus.PAID;',
+  ].join('\n'));
+  const runtime = cruise(root, ['--config', configPath, 'src']);
+  assert.notEqual(runtime.status, 0);
+  assert.match(`${runtime.stdout}\n${runtime.stderr}`, /domain-no-runtime-prisma/);
+
+  rmSync(path.join(root, 'src/modules/finance/domain/runtime.ts'));
+  write(root, 'src/platform/database/prisma.service.ts', 'export class PrismaService {}\n');
+  write(root, 'src/modules/finance/domain/persistence.ts', [
+    "import { PrismaService } from '../../../platform/database/prisma.service';",
+    'export const service = PrismaService;',
+  ].join('\n'));
+  const persistence = cruise(root, ['--config', configPath, 'src']);
+  assert.notEqual(persistence.status, 0);
+  assert.match(`${persistence.stdout}\n${persistence.stderr}`, /domain-no-runtime-prisma/);
+});

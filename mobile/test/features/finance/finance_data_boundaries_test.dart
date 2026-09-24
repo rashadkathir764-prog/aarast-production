@@ -2,15 +2,30 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/library_source.dart';
+
 void main() {
   test('finance API keeps network orchestration outside local persistence', () {
-    final api = _read('lib/features/finance/data/finance_api.dart');
+    // FinanceApi is split into same-library resource parts (spec M6): the
+    // contract reads the whole library, and every file of it stays within
+    // the 700-line god-file target (it replaces the old 1,750-line cap).
+    final api = readLibrarySource(
+      _path('lib/features/finance/data/finance_api.dart'),
+    );
+    for (final file in _libraryFiles(
+      'lib/features/finance/data/finance_api.dart',
+    )) {
+      expect(
+        _lineCount(File(file).readAsStringSync()),
+        lessThanOrEqualTo(700),
+        reason: file,
+      );
+    }
     final local = _read(
       'lib/features/finance/data/finance_local_data_source.dart',
     );
     final rules = _read('lib/features/finance/data/finance_money_rules.dart');
 
-    expect(_lineCount(api), lessThanOrEqualTo(1750));
     expect(api, contains('FinanceLocalDataSource get _local'));
     expect(api, contains("'/api/v1/"));
     expect(api, contains('enqueueSync('));
@@ -73,13 +88,27 @@ void main() {
   });
 }
 
-String _read(String relativePath) {
+String _read(String relativePath) =>
+    File(_path(relativePath)).readAsStringSync();
+
+String _path(String relativePath) {
   final cwd = Directory.current.path;
   final root =
       cwd.endsWith('${Platform.pathSeparator}mobile') || cwd.endsWith('/mobile')
       ? cwd
       : '$cwd${Platform.pathSeparator}mobile';
-  return File('$root${Platform.pathSeparator}$relativePath').readAsStringSync();
+  return '$root${Platform.pathSeparator}$relativePath';
+}
+
+List<String> _libraryFiles(String relativePath) {
+  final library = File(_path(relativePath));
+  final parts = RegExp(r"^part '([^']+)';", multiLine: true)
+      .allMatches(library.readAsStringSync())
+      .map(
+        (match) =>
+            '${library.parent.path}${Platform.pathSeparator}${match.group(1)}',
+      );
+  return [library.path, ...parts];
 }
 
 int _lineCount(String source) => '\n'.allMatches(source).length + 1;

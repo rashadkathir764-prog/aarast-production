@@ -1,10 +1,10 @@
-import 'dart:io';
-
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/library_source.dart';
 
 void main() {
   group('FinanceApi money-budget contract', () {
@@ -135,9 +135,10 @@ void main() {
   );
 
   test('all FinanceApi HTTP paths match the live money controllers', () {
-    final source = File(
+    // FinanceApi spans same-library resource parts (spec M6).
+    final source = readLibrarySource(
       'lib/features/finance/data/finance_api.dart',
-    ).readAsStringSync();
+    );
 
     for (final route in <String>[
       '/api/v1/wedding-plans/\$planId/money-summary',

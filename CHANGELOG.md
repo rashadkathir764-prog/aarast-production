@@ -52,6 +52,15 @@ release is claimed. Verification and verdicts:
   large classes); router assembled from seven per-area route trees;
   `test/support/library_source.dart` lets source-contract tests read a
   library with its parts.
+- Exit audit: the money invariants moved into Finance's pure domain
+  (`wedding-cost-aggregate`, `payment-schedule-policy`,
+  `budget-allocation-policy`; services map violations to the same errors);
+  depcruise now also forbids runtime Prisma in any `domain/` (the backoffice
+  permission map became type-only); the catalog read port lost two members
+  no other context used; every live authorization re-check now shares one
+  RepeatableRead snapshot with the read it guards (11 sites had split it
+  into two autocommit statements), pinned by
+  `test/live-authorization-snapshot.test.ts`.
 
 ## 2026-09-13 - Modular Monolith R12C Local Completion
 

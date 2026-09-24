@@ -40,6 +40,9 @@ release is claimed. Verification and verdicts:
 | Split god files into same-library parts; a class too large for one file becomes a private core plus flow mixins. | Accepted; R19 (spec M6) | Public class names, imports, privacy and overridability are unchanged; session and account deletion stay one mixin because they are mutually recursive. |
 | Do not split `main.dart` (723 -> 721 lines). | Accepted | It is the composition root, touched only for one import; the <= 700 target belongs to the god-file row, and a split would change the R9 composition sources for no boundary gain. |
 | Move `QuoteFinanceContext` to finance although no lib code uses it. | Accepted; recorded | The spec moves it out of `shared/`; deleting tested product code is a product decision. |
+| Put the money invariants in pure Finance domain policies that return violations; services map them to the unchanged HTTP errors. | Accepted; O3, R11 item 4 | The domain stays framework-free; "mandatory category" stays a schema/DTO invariant (non-null FK, DTO, plan-scope check), since a domain check would be dead or change the error of a blank id. |
+| Forbid runtime Prisma and the persistence layer in every `domain/` (depcruise `domain-no-runtime-prisma`). | Accepted | The original purity law has two halves; only `@nestjs/*` was enforced. |
+| Evaluate every live authorization filter and the read it guards in one RepeatableRead (or Serializable) snapshot. | Accepted; exit-review fix | Splitting the former single statement into two autocommit statements let a revocation committing in between pass; the AST guard keeps every call site on a snapshot client. |
 | No real-phone QA for R19. | Recorded | R19 changes no Mobile behavior (analyze clean, 1164 tests, routes identical); no device is available here and phone acceptance is not claimed. |
 
 ## Modular Monolith R12C — Local Completion — 2026-09-13

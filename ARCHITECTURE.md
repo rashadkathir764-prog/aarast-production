@@ -216,7 +216,13 @@ Prisma input types fail closed, so product code declares the exact `where` /
 (marketplace, messaging, insights, back office) attach them after their own
 read through the owners' ports, in context-private holders
 (`MarketplaceRelationsService`, `ConversationRelationsService`,
-`InsightsReadPorts`, `AdminOwners`).
+`InsightsReadPorts`, `AdminOwners`). A live authorization re-check
+(`liveAuthorizationFilter`) and the read it guards run on one
+RepeatableRead/Serializable transaction client, so they share a snapshot as
+the single statement they replaced did
+(`backend/test/live-authorization-snapshot.test.ts`). Finance's money
+invariants are pure policies in `modules/finance/domain`; every `domain/`
+is free of `@nestjs/*`, runtime Prisma and the persistence layer.
 
 ## Mobile Boundary Contract
 

@@ -433,10 +433,6 @@
       "path": "mobile/lib/features/onboarding/onboarding_api.dart"
     },
     {
-      "area": "features/provider_portal",
-      "path": "mobile/lib/features/provider_portal/provider_portal_api.dart"
-    },
-    {
       "area": "features/settings",
       "path": "mobile/lib/features/settings/settings_api.dart"
     },
@@ -515,7 +511,7 @@
       "root": 0
     }
   },
-  "finalLegalRecordCount": 172,
+  "finalLegalRecordCount": 159,
   "compositionSources": [
     "mobile/lib/app.dart",
     "mobile/lib/core/routing/app_router.dart",

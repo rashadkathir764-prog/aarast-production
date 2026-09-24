@@ -1618,6 +1618,13 @@ function loadR9Manifest() {
 }
 
 const ownerApiComment = '// Owner-controlled public API. Cross-feature consumers import this library.';
+// R19 (spec M6): the provider persona is its own feature area. The R9
+// manifest stays the closed R9 record; these two facts are the live delta.
+const r19ProviderPortalApi = Object.freeze({
+  area: 'features/provider_portal',
+  path: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
+});
+const r19LegalRecordCount = 172;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -3168,8 +3175,13 @@ function assertTrackedOwnerApiContracts({
   repoRoot: repositoryRoot,
   manifest = loadR9Manifest(),
 }) {
+  // The R9 manifest is the closed R9 record (19 feature areas). R19 split
+  // features/provider_portal out of marketplace (spec M6, C9), so the live
+  // owner-API inventory is the R9 inventory plus that one area.
   assert.deepEqual(
-    manifest.featureApis,
+    [...manifest.featureApis, r19ProviderPortalApi].sort((left, right) => (
+      left.area < right.area ? -1 : left.area > right.area ? 1 : 0
+    )),
     trackedOwnerApiContracts.map(({ area, path: apiPath }) => ({ area, path: apiPath })),
   );
 
@@ -3622,9 +3634,13 @@ function assertTrackedCompositionRoots({
   assert.deepEqual(scan.legacyRecords, [], 'historical cross-feature debt remains');
   assert.deepEqual(scan.rootRecords, [], 'root composition debt remains');
   assert.deepEqual(scan.strictViolations, [], 'strict R9 violations remain');
+  // R9 closed at manifest.finalLegalRecordCount (159). The R19 provider-portal
+  // split moved the persona's imports behind two owner APIs; the live
+  // projection is pinned here, the closed manifest stays unchanged.
+  assert.equal(manifest.finalLegalRecordCount, 159);
   assert.equal(
     scan.legalRecords.length,
-    manifest.finalLegalRecordCount,
+    r19LegalRecordCount,
     'final legal owner API projection mismatch',
   );
 }

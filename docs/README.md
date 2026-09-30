@@ -1,6 +1,6 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-09-24
+Snapshot date: 2026-10-01
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
@@ -84,10 +84,11 @@ are reference-only and will be retired with the P2 visual migration.
 
 1. `README.md`
 2. `AGENTS.md`
-3. `docs/README.md`
-4. `docs/HANDOFF.md`
-5. `docs/project/STATUS.md`
-6. Area-specific docs below
+3. `ARCHITECTURE_CONSTITUTION.md` for architecture work
+4. `docs/README.md`
+5. `docs/HANDOFF.md`
+6. `docs/project/STATUS.md`
+7. Area-specific docs below
 
 When docs and implementation disagree, inspect the current source/config before
 changing behavior.
@@ -98,7 +99,9 @@ changing behavior.
 
 - `README.md` - project entry point.
 - `AGENTS.md` - agent rules.
-- `ARCHITECTURE.md` - canonical modular-monolith architecture and phase contract.
+- `CLAUDE.md` - Claude entry point to the shared agent rules.
+- `ARCHITECTURE_CONSTITUTION.md` - binding current modular-monolith laws and agent governance.
+- `ARCHITECTURE.md` - architecture migration history, owner map, and phase contract.
 - `CHANGELOG.md` - change history.
 
 ### Project

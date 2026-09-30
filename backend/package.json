@@ -77,6 +77,8 @@
     "start:dev": "node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts",
     "architecture:imports": "depcruise --config .dependency-cruiser.cjs src",
     "architecture:ownership": "node scripts/architecture/ownership-scan.cjs --check",
+    "architecture:migrations": "node scripts/architecture/published-migrations.cjs --check",
+    "prearchitecture": "npm run architecture:migrations",
     "architecture:ports": "node scripts/architecture/ports-scan.cjs --check",
     "architecture:r3": "node scripts/architecture/r3-context-scan.cjs --check --stage strict",
     "architecture:r4": "node --test -r ts-node/register test/architecture-r4-planning-finance-boundary.test.ts",

@@ -1,12 +1,12 @@
 # Aarast Modular Monolith Architecture
 
-Snapshot date: 2026-09-24
+Snapshot date: 2026-10-01
 
-This is the canonical human contract for Aarast's modular-monolith migration.
-It defines the target bounded contexts, dependency direction, physical data
-ownership, Mobile boundaries, test-change policy, and phase gates. R0 is a
-governance phase: it moves no application source and changes no runtime
-behavior, route, database schema, migration, or deployment artifact.
+This records the modular-monolith migration, bounded contexts, owner map, and
+phase decisions. [ARCHITECTURE_CONSTITUTION.md](ARCHITECTURE_CONSTITUTION.md)
+is the binding statement of the current proven laws after truth-gap remediation.
+Historical phase allowances below are not live exceptions. R0 was a governance
+phase: it moved no application source or runtime behavior.
 
 ## Modular Monolith Mission — Closure — 2026-09-24
 
@@ -135,10 +135,9 @@ Business modules may also import `shared-kernel` directly. `platform` may not
 import business modules, and `shared-kernel` may import neither `platform` nor
 business modules.
 
-Any edge involving a future module may cross context only into the target's
-`public/` slice. Legacy-to-legacy debt remains frozen by the R0 dependency
-baseline: a baseline records debt, not permission, and its counted set may only
-shrink.
+Every live cross-context edge targets the owner's `public/` slice. The R0
+dependency baseline described below was retired at zero; no live dependency
+baseline permits a deep import.
 
 The Nest class/import graph must remain acyclic and `forwardRef()` remains
 forbidden. Reciprocal business consumption is legal only when the two public
@@ -178,18 +177,10 @@ The binding laws are:
 - Cross-context consumers depend on the owner's public token and types, not on
   its legacy service or repository implementation.
 
-R1 has one exact pre-port exception for the existing Backoffice permission
-contract: current `auth/**` and `catalogs/**` consumers may import only
-`modules/backoffice/domain/admin-permissions.ts`; `admin/**` is the owning
-Backoffice context and needs no exception. The file is a pure enum and
-role-matrix helper that uses only the generated `AdminRole` enum: it creates no
-Nest, PrismaService, model access, query, or repository dependency, and replaces
-the former `common/admin` location. No other
-`modules/backoffice/domain/**` import is allowed across contexts. This exact
-contract is enforced by a near-miss test plus an unauthorized-source test, and
-is not dependency-baseline debt; a later module phase may expose it through a
-public slice. Its import surface is exact: one named `AdminRole` import from
-`@prisma/client` and no other import.
+The R1 pre-port Backoffice permission import was retired in the truth-gap
+remediation at `6a6ce5c4`. Catalog consumes the Backoffice public contract;
+no cross-context import of `modules/backoffice/domain/**` is allowed. The
+dependency-cruiser and ports negative tests enforce this current law.
 
 ## Physical Data Ownership
 

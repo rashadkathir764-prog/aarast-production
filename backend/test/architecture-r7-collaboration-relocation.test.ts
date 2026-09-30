@@ -4613,14 +4613,34 @@ test('R7 architecture delegation preserves the immutable R5 package fingerprint'
     cwd: gitRoot,
     encoding: 'utf8',
   }).split(/\r?\n/u).filter(Boolean);
+  const r5Manifest = JSON.parse(readFileSync(path.join(
+    backendRoot, 'architecture', 'r5-identity-relocation.json',
+  ), 'utf8'));
+  const r5Paths = new Set(r5Manifest.allowedChangedPaths as string[]);
+  // This historical checkpoint accepts at most 1,000 paths. Later mission
+  // files cannot affect its package proof; retain the R5 surface and every
+  // security subtree path, including an unapproved new implementation file.
   const changedPaths = [...new Set([
     ...gitLines(['diff', '--no-renames', '--name-only', r5.R5_BASE, '--']),
     ...gitLines(['ls-files', '--others', '--exclude-standard']),
-  ])].sort();
+  ])].filter((relative) =>
+    r5Paths.has(relative)
+    || relative.startsWith('backend/scripts/security/')
+    || relative.startsWith('backend/test/prisma-config-merge-security')
+  ).sort();
+  const packageJson = JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   assert.doesNotThrow(() => r5.validateR5SecurityCheckpointScope({
     changedPaths,
-    packageJson: JSON.parse(readFileSync(path.join(backendRoot, 'package.json'), 'utf8')),
-    packageLock: JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8')),
+    packageJson,
+    packageLock,
+  }));
+  const tamperedPackage = structuredClone(packageJson);
+  tamperedPackage.scripts['architecture:r8'] += ' --skip';
+  assert.throws(() => r5.validateR5SecurityCheckpointScope({
+    changedPaths,
+    packageJson: tamperedPackage,
+    packageLock,
   }));
 });
 

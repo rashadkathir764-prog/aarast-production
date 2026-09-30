@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-09-13
+Snapshot date: 2026-10-01
 
 Snapshot source: the checked-out branch content. Resolve its immutable revision
 with `git rev-parse HEAD`; local phase receipts do not imply a push, merge, or
@@ -18,7 +18,7 @@ written.
 ```powershell
 # Backend (from backend/)
 npm run check
-npm run architecture          # imports, ownership, ports, R3, R4, R5, R6, R7, R8, R12A, R12B, R12C
+npm run architecture          # prearchitecture pins migrations; then imports, ownership, ports, R3, R4, R5, R6, R7, R8, R12A, R12B, R12C
 npm run security:prisma-config-merge
 npm test                      # guarded runner: preflight batch, then the main batch
 npm run smoke:all             # managed isolated smoke packages (Docker stack)
@@ -50,6 +50,12 @@ lineage commit by `backend/test/architecture-governance-portability.test.ts`
 (spec: `docs/superpowers/specs/2026-09-08-modular-monolith-r12c-zero-cross-context-dependencies-design.md`,
 section 19). Set `ARCHITECTURE_DEBUG=1` to print the reason a scanner fails;
 the R3 scanner always lists its diagnostics.
+
+`architecture:migrations` pins the 76 published migration files and
+`migration_lock.toml` to the proven baseline. A newly approved migration must
+be added to its reviewed manifest; changing a pinned historical file fails.
+Hashes use Git's canonical LF text, so Windows CRLF checkout conversion does
+not produce false drift.
 
 Phase scope fences (`check-r0-scope`, `check-r9-scope`, `check-r10-scope`,
 `r2-schema-scope`) and the one-shot R12B documentation transition runner were

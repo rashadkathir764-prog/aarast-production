@@ -15,9 +15,15 @@ These rules apply to AI agents and automation working on Aarast / اعّرست.
 
 ## Modular Monolith Guard
 
-- Read `ARCHITECTURE.md` before architecture work.
+- Read `ARCHITECTURE_CONSTITUTION.md` and `ARCHITECTURE.md` before architecture work. The constitution states the binding current laws; the older phase sections in `ARCHITECTURE.md` are history.
+- Follow `UNDERSTAND → IDENTIFY OWNER → IDENTIFY PUBLIC CONTRACT → CHECK EXISTING TESTS → MAKE ISOLATED CHANGE → RUN FOCUSED TESTS → RUN ARCHITECTURE GATES → REVIEW DIFF → COMMIT` when Git work is authorized.
+- Do not work directly on `main`; use an isolated worktree for significant work and verify its base and cleanliness.
+- Confirm ownership in the registry and live source, not from file names or comments. Business-owner Prisma access belongs only in that owner's `infrastructure/`.
 - Cross-context Backend code consumes only the owner's public contract.
-- No new foreign Prisma root/relation/SQL access, `forwardRef()`, or `@Global()` use.
+- No foreign Prisma root/relation/SQL access, deep cross-context import, `forwardRef()`, or project-owned `@Global()` use.
+- Do not duplicate owner business logic to avoid a port, add a masking baseline/ignore/exception, weaken a gate, or change a behavioral test assertion to make a defect pass.
+- Preserve published migrations and existing API, permission, transaction, locking, Mobile, and Admin contracts unless the task explicitly approves a change.
+- Classify findings using the constitution. `OPTIONAL IMPROVEMENT` is not an architecture blocker. A new exception requires explicit approval, a narrow documented scope, a protecting test, and a removal plan if temporary.
 - No new Mobile boundary-baseline entry, unresolved local directive, or cross-area `part` relationship.
 - A phase cannot start until the prior phase gate is green.
 

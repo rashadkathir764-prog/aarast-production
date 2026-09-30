@@ -17,7 +17,7 @@ import {
 } from '@prisma/client';
 import sharp from 'sharp';
 import { MediaStorageService } from '../../src/media/media-storage.service';
-import { MediaUploadTicketService } from '../../src/media/media-upload-ticket.service';
+import { MediaUploadTicketService } from '../../src/modules/media/infrastructure/media-upload-ticket.service';
 import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
 import { identityErasurePorts } from './support/owner-ports';
 

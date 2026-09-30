@@ -8,7 +8,7 @@ import {
   PrismaClient,
   UserStatus,
 } from "@prisma/client";
-import { MediaUploadTicketService } from "../../src/media/media-upload-ticket.service";
+import { MediaUploadTicketService } from "../../src/modules/media/infrastructure/media-upload-ticket.service";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
